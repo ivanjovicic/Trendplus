@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ474
+Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 moved WAITING -> READY for its repository-local error-contract scope; the live root cause stays a provider-log evidence gap. RQ475 stays WAITING behind RQ536 (shared Decision Hub surface), with the live-evidence gate satisfied and the store-filtered scorecard HTTP 500 added to its scope. RQ487 stays WAITING on the 503 root cause.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
 Owner promotion/claim 2026-09-29: idle recovery refreshed `origin/main` to `67e310027c7684d4c468665db760308bb6acad4c`, verified no active RQ509 lock/branch/PR owner and no collision with the PARTIAL/non-runnable RQ137/RQ139/RQ140 contracts. RQ509 moved `WAITING -> READY -> IN_PROGRESS` as the first P0 context-identity prompt; local lock: `.ai/task-locks/RQ509-codex.lock.md`. Q83 remains the exclusive PARTIAL Pre/Post SQL/view owner and RQ491 is not promoted.
@@ -26422,7 +26423,11 @@ Equivalent data has equivalent margin semantics across both screens, and intenti
 
 ## RQ474 - Separate Supplier overview failure, empty and retry states
 
-Status: WAITING
+Status: READY
+Reclassified 2026-10-01 by RQ535 (WAITING -> READY): the 503 persists on the exact deployed SHA `3a6a6886`. GET `/api/analytics/supplier-sales-stats` returns 503 for dataScope `all`, `imported` and store `2082886995`, while `/ready`, `/health/dependencies` and `/api/analytics/health` report both databases reachable. Code inspection shows the handler maps every `NpgsqlException`, including SQL-state errors such as `42P01`/`42703`, to the same "Problem pri povezivanju sa bazom" 503 without a correlation id. Repository-local work no longer waits on provider logs:
+- classify the exception by SQL state (missing object, missing column, timeout or cancel, true connection failure) into stable safe error codes with a correlation id;
+- render distinct frontend error, empty and retry states.
+Identifying the exact live SQL cause still needs Render logs around 2026-10-01T09:37:16Z (RQ454/STAB16) and stays an explicit evidence gap; RQ487 remains WAITING on that classification.
 Priority: P1
 Type: backend/frontend/tests
 Feature family: supplier-overview-error-empty-contract
@@ -26467,7 +26472,8 @@ Unavailable Supplier overview cannot be mistaken for “no data”, while a succ
 
 ### Dependencies
 
-- Read-only current API/provider logs are needed to classify the 503 cause.
+- Repository-local: none (RQ535 supplied exact-SHA evidence; the SQL-state mapping and frontend states are testable on Testcontainers fixtures).
+- Read-only current API/provider logs are still needed to name the live 503 cause; record it as missing evidence rather than guessing.
 - No production schema/data change is in scope.
 
 ---
@@ -26475,6 +26481,12 @@ Unavailable Supplier overview cannot be mistaken for “no data”, while a succ
 ## RQ475 - Make Supplier scorecard/assortment semantic-data readiness operationally actionable
 
 Status: WAITING
+Ready after: RQ536 is DONE (same Supplier Decision Hub endpoint/page surface). The live-evidence gate is satisfied by RQ535.
+Reclassified 2026-10-01 by RQ535: the September live premise was re-observed on exact deployed SHA `3a6a6886` with sharper object names.
+- Scorecard (30d request, effective 90d): HTTP 200, `meta.success=false`, `MISSING_OBJECT`, because `mv_supplier_decision_score_cache_90d` does not exist (it was `MISSING_SCHEMA` before).
+- Scorecard with `storeId=2082886995`: unhandled HTTP 500 `INTERNAL_ERROR` (correlation `00-7441e54e617a25a805ec090e222744df-1310dcf03655e1fb-00`). The store filter disables the precomputed path, and the live SQL path only catches `42P01` and timeouts. Every other `PostgresException` escapes as 500. This is now in scope: fail closed with a safe readiness or error code.
+- Assortment: `vendor_sales_nivelacija_contract_missing` with `scopeApplied=false` on every scope.
+The deployed SHA already contains the startup re-apply logic for 014/029 (`StartupTasks__RunDatabaseInitialization=true`, `RunFullSupplierDecisionHubOnStartup=false`). Why the live objects are still missing needs Render startup logs from 2026-10-01T08:53Z plus the Neon storage state (RQ454/STAB16). That is an evidence gap, not a repository-local blocker.
 Priority: P1
 Type: backend/runtime-contract/tests
 Feature family: supplier-analytics-schema-readiness
@@ -26520,7 +26532,8 @@ An operator can identify why scorecard/assortment are unavailable and what read-
 
 ### Dependencies
 
-- Read-only live database/schema or provider-log access is required.
+- RQ536 DONE first (shared Decision Hub surface). The repository-local readiness/error work no longer needs live access; RQ535 recorded the exact missing objects.
+- Read-only live database/schema or provider-log access is still needed to explain why the startup DDL did not apply; record it as missing evidence.
 - RQ146/RQ459 remain prior contracts and are not reopened without new proof.
 
 ---

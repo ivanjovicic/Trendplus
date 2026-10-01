@@ -1045,6 +1045,8 @@ Commit suggestion: `fix(sql): preserve nivelacija evidence states`
 
 Re-entry 2026-10-01: operator reports Docker Desktop available. RQ533 left a bounded backend residual in this owner family: price-direction and category aggregates still coerce an unavailable change percent to numeric zero, while RQ534 already repaired the unrelated stale frontend spec statuses. Re-promoted PARTIAL -> READY for repository-local PostgreSQL/backend proof. A successful Render deploy was also reported, but production/runtime verification is not claimed here and is handled by RQ535/STAB16.
 
+RQ535 runtime evidence 2026-10-01: on exact deployed SHA `3a6a6886`, GET `/api/analytics/vendor-sales-nivelacija` still returns `vendor_sales_nivelacija_contract_missing` with `scopeApplied=false` for dataScope `all`, `imported` and store `2082886995`, although the deployed startup initializer contains the 014 re-apply logic. The live contract is therefore still absent and HTTP success cannot stand in for Pre/Post runtime availability. Repository-local Q83 work is unaffected; RQ491 stays behind Q83.
+
 ### Re-entry scope delta
 
 - Keep the original raw SQL/nullability owner boundary.

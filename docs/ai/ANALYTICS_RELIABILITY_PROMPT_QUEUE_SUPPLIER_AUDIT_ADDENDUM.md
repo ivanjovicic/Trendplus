@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ535 (IN_PROGRESS)
-Additional READY prompts: RQ536; RQ524, RQ527, RQ528, RQ533 and RQ534 are DONE
+Current READY prompt: RQ536
+Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534 and RQ535 are DONE
+Queue reconciliation 2026-10-01: RQ535 DONE. Exact deployed SHA `3a6a6886` confirms the Supplier gates (Overview 503, Scorecard `MISSING_OBJECT` plus a store-filtered 500, Assortment and Pre/Post contract missing) with sharper evidence. RQ474 is READY in the canonical RQ queue. RQ475 waits on RQ536 (shared Decision Hub surface). Q83 stays READY in the SQL queue. The live root causes need Render/Neon logs (STAB16).
 Queue reconciliation 2026-10-01 (latest): owner reports Docker Desktop available and today's Render deploy successful. RQ534 is DONE and the Pre/Post spec CI regression is closed. Two non-duplicate lanes are now promoted: RQ535 (P0 primary) performs exact-SHA public deployed smoke/gate reclassification without DB/provider writes; RQ536 (P2 additional) versions/explains the current Supplier scorecard model without changing policy. Q83 is separately re-promoted in the SQL queue for the remaining price-direction/category fake-zero contract. RQ531 stays owner-gated for actual policy changes after RQ536.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ533 DONE. Assortment vendor and totals change percent are null without mature comparable evidence or a revenue baseline; the error fallback reports null instead of 0; cache key v7. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval. Follow-up for the Q83 Pre/Post owner: price-direction and category change percent `?? 0m`.
@@ -1004,7 +1005,7 @@ RQ520 and RQ533 DONE.
 
 ## RQ535 - Reclassify Supplier and Pre/Post gates on the successful Render deploy
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-01 by Cursor agent on `main` (direct) as the primary READY prompt. No lock, open PR or unmerged branch touches it; RQ536 and Q83 stay available to other agents.
 Priority: P0
 Type: deployed-smoke/read-only/evidence
@@ -1056,6 +1057,39 @@ The repository no longer routes Supplier work from September live evidence when 
 ### Dependencies
 
 None beyond the operator-reported successful deploy; step 1 must independently verify the exact deployed SHA before any gate is considered satisfied.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: public read-only GETs bound to the exact deployed SHA `3a6a6886` (build 2026-10-01T08:53:20Z), which is contained in main; the only runtime delta is RQ533.
+  - Health passes and the analytics data is present.
+  - Supplier Overview returns 503 on every scope: a catch-all `NpgsqlException` mapping with no correlation id.
+  - Scorecard fails closed with `MISSING_OBJECT` (`mv_supplier_decision_score_cache_90d` absent), and its store-filtered request returns an unhandled 500.
+  - Assortment and Pre/Post return `vendor_sales_nivelacija_contract_missing` on every scope.
+  - The September premises are confirmed with sharper object names, not superseded.
+- Reclassification:
+  - RQ474 WAITING -> READY (repository-local error contract).
+  - RQ475 stays WAITING behind RQ536 (shared surface); its live gate is satisfied and the store-filtered 500 is added to its scope.
+  - Q83 gets a runtime evidence line and RQ491 stays behind it.
+  - RQ487/RQ498/RQ499/RQ500 unchanged.
+  - The RQ514 readiness manifest now carries the deployed SHA and four runtime records; the regenerated snapshot is overall `failed`.
+- Changed files:
+  - `docs/qa/ANALYTICS_PRODUCTION_READINESS_EVIDENCE.json` and the generated STATUS json/md
+  - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+  - `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`
+  - this addendum, `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: none (evidence and routing only).
+- Checks run: read-only GETs with timestamps and correlation ids; deployed SHA containment check; `test:analytics-readiness` 6/6; governance validators pass; `git diff --check` clean.
+- Checks not run: provider logs, database/schema queries, browser/export (RQ448), raw-fact reconciliation (RQ454/STAB16).
+- Run log: `.ai/runs/2026-10-01-RQ535-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: recorded in the run log after push (docs-only close commit)
+- Main verification: `origin/main` contains the close commit (ancestor check after push)
+- Missed: the live root causes (why the 014/029 objects are absent despite the startup logic, and which SQL error lies behind the Overview 503) remain unproven without Render/Neon logs.
+- Follow-up: the operator/STAB16 owner should supply Render startup logs (2026-10-01T08:53Z), Overview error logs (09:37:16Z) and the Neon storage state; the next runnable prompts are RQ474, RQ536 and Q83.
+- Residual risk: the 24-hour evidence expiry applies, and a deploy of current main makes this evidence stale.
 
 
 ---

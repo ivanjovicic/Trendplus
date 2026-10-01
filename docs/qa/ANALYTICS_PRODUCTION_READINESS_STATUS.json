@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
   "kind": "analytics-production-readiness-snapshot",
-  "generatedAtUtc": "2026-09-30T07:52:28.039Z",
-  "repoSha": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
-  "deployedSha": null,
+  "generatedAtUtc": "2026-10-01T09:40:27.487Z",
+  "repoSha": "b01ac6872b38acae4c7677989fa759974389cc2e",
+  "deployedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
   "currentGenerations": {
     "schema": "operations-analytics-integrity-schema-v1",
     "contract": "analytics-readiness-contract-v1",
     "context": "analytics-context-fingerprint-policy-v1"
   },
   "expiryPolicy": "Code evidence: 7 days. Browser/provider/runtime evidence: 24 hours unless a source-specific expiry is shorter.",
-  "overallState": "blocked",
+  "overallState": "failed",
   "families": [
     {
       "family": "readiness-tooling",
-      "state": "code-ready",
+      "state": "stale-evidence",
       "evidence": [
         {
           "id": "rq514-readiness-tooling",
           "family": "readiness-tooling",
           "scope": "code",
-          "state": "code-ready",
+          "state": "stale-evidence",
           "source": ".ai/runs/2026-09-30-RQ514-readiness-validation.json",
           "status": "pass",
           "checkedSha": "d393c63695f7f28a1d77c32b71c1de1c6b8d36ad",
@@ -106,7 +106,7 @@
     },
     {
       "family": "prepost-runtime",
-      "state": "blocked",
+      "state": "failed",
       "evidence": [
         {
           "id": "q83-prepost-live-schema",
@@ -122,13 +122,96 @@
           "generationRefs": {},
           "limitation": "Q83 is PARTIAL; this readiness snapshot does not promote RQ491 or bypass the gate.",
           "required": true
+        },
+        {
+          "id": "rq535-supplier-assortment-prepost",
+          "family": "prepost-runtime",
+          "scope": "runtime",
+          "state": "failed",
+          "source": ".ai/runs/2026-10-01-RQ535-evidence.md (GET /api/analytics/vendor-sales-nivelacija, all/store/imported)",
+          "status": "failed",
+          "checkedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "deployedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "checkedAtUtc": "2026-10-01T09:37:20.000Z",
+          "expiresAtUtc": "2026-10-02T09:37:20.000Z",
+          "generationRefs": {},
+          "limitation": "HTTP 200 with meta.success=false, vendor_sales_nivelacija_contract_missing and scopeApplied=false on every scope, including the store-scoped raw path. The live view still lacks the semantic revenue-change column despite the startup re-apply logic in the deployed SHA.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "deployed-health",
+      "state": "stale-evidence",
+      "evidence": [
+        {
+          "id": "rq535-deployed-health",
+          "family": "deployed-health",
+          "scope": "runtime",
+          "state": "stale-evidence",
+          "source": ".ai/runs/2026-10-01-RQ535-evidence.md (GET /ready, /health/dependencies, /api/analytics/health)",
+          "status": "pass",
+          "checkedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "deployedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "checkedAtUtc": "2026-10-01T09:37:43.000Z",
+          "expiresAtUtc": "2026-10-02T09:37:43.000Z",
+          "generationRefs": {
+            "schema": "operations-analytics-integrity-schema-v1",
+            "contract": "analytics-readiness-contract-v1",
+            "context": "analytics-context-fingerprint-policy-v1"
+          },
+          "limitation": "Public health only: default and analytics databases reachable, analytics facts present. Says nothing about analytics views or materialized views.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "supplier-overview-runtime",
+      "state": "failed",
+      "evidence": [
+        {
+          "id": "rq535-supplier-overview",
+          "family": "supplier-overview-runtime",
+          "scope": "runtime",
+          "state": "failed",
+          "source": ".ai/runs/2026-10-01-RQ535-evidence.md (GET /api/analytics/supplier-sales-stats, all/store/imported)",
+          "status": "failed",
+          "checkedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "deployedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "checkedAtUtc": "2026-10-01T09:37:16.000Z",
+          "expiresAtUtc": "2026-10-02T09:37:16.000Z",
+          "generationRefs": {},
+          "limitation": "HTTP 503 'Problem pri povezivanju sa bazom' on every scope while database health passes. The endpoint maps every NpgsqlException to that 503 without a correlation id, so the SQL cause needs provider logs (RQ474).",
+          "required": true
+        }
+      ]
+    },
+    {
+      "family": "supplier-scorecard-runtime",
+      "state": "failed",
+      "evidence": [
+        {
+          "id": "rq535-supplier-scorecard",
+          "family": "supplier-scorecard-runtime",
+          "scope": "runtime",
+          "state": "failed",
+          "source": ".ai/runs/2026-10-01-RQ535-evidence.md (GET /api/analytics/suppliers/decision-hub/summary, all/store)",
+          "status": "failed",
+          "checkedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "deployedSha": "3a6a6886ca2c6d0d9e5924dfbce4f7788409f427",
+          "checkedAtUtc": "2026-10-01T09:37:19.000Z",
+          "expiresAtUtc": "2026-10-02T09:37:19.000Z",
+          "generationRefs": {},
+          "limitation": "All-scope fails closed with MISSING_OBJECT (mv_supplier_decision_score_cache_90d absent; 30d request falls back to the 90d dataset). The store-filtered request returns an unhandled HTTP 500 INTERNAL_ERROR (RQ475 scope).",
+          "required": true
         }
       ]
     }
   ],
   "limitations": [
-    "No deployed SHA or connected provider/browser session was supplied for this repository-local run.",
-    "Q83 remains PARTIAL and its live-schema gate is not bypassed; Pre/Post production verification is blocked.",
+    "RQ535 (2026-10-01): deployed SHA read from public GET /api/runtime/version on https://trendplus-api.onrender.com (Render, build 2026-10-01T08:53:20Z). No connected provider-log, database or browser session was used.",
+    "Deployed 3a6a6886 is contained in main; the only runtime delta to current main is RQ533 (vendor/totals change percent nullability).",
+    "Pre/Post production verification still fails on the live view contract (vendor_sales_nivelacija_contract_missing); Q83 owns the remaining semantics and the live gate is not bypassed.",
     "RQ513 integrity families without an executed probe remain unverified rather than green."
   ],
   "sourceManifest": "docs/qa/ANALYTICS_PRODUCTION_READINESS_EVIDENCE.json"
