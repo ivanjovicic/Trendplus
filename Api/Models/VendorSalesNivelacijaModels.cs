@@ -122,7 +122,7 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public int ActiveArticlesCount { get; set; }
     public decimal AvgRevenuePerArticlePre { get; set; }
     public decimal AvgRevenuePerArticlePost { get; set; }
-    public decimal AvgPriceChangePercent { get; set; }
+    public decimal? AvgPriceChangePercent { get; set; }
     public decimal AbsoluteChangeRevenue { get; set; }
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
@@ -187,7 +187,7 @@ public sealed class VendorSalesNivelacijaPriceDirectionStatDto
     public string Segment { get; set; } = string.Empty;
     public int ArticlesCount { get; set; }
     public int VendorsCount { get; set; }
-    public decimal AvgPriceChangePercent { get; set; }
+    public decimal? AvgPriceChangePercent { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal? ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }

@@ -21,6 +21,24 @@ public sealed class VendorSalesNivelacijaNullabilityContractTests
     }
 
     [Fact]
+    public void AveragePriceChangeFieldsRemainNullableAndUseObservedValuesOnly()
+    {
+        Assert.Equal(
+            typeof(decimal?),
+            typeof(VendorSalesNivelacijaTotalsDto)
+                .GetProperty(nameof(VendorSalesNivelacijaTotalsDto.AvgPriceChangePercent))!
+                .PropertyType);
+        Assert.Equal(
+            typeof(decimal?),
+            typeof(VendorSalesNivelacijaPriceDirectionStatDto)
+                .GetProperty(nameof(VendorSalesNivelacijaPriceDirectionStatDto.AvgPriceChangePercent))!
+                .PropertyType);
+
+        var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+        Assert.Contains("ComputeAveragePriceChangePercent(", source);
+    }
+
+    [Fact]
     public void PriceDirectionProjectionDoesNotTurnMissingBaselineIntoZero()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");

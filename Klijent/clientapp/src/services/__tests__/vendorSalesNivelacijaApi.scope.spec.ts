@@ -35,7 +35,7 @@ function validResponse(overrides: Record<string, unknown> = {}) {
       activeArticlesCount: 0,
       avgRevenuePerArticlePre: 0,
       avgRevenuePerArticlePost: 0,
-      avgPriceChangePercent: 0,
+      avgPriceChangePercent: null,
       absoluteChangeRevenue: 0,
       avgCoveragePre30: null,
       avgCoveragePost30: null,

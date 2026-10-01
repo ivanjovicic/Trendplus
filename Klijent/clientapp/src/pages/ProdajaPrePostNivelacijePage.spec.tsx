@@ -252,6 +252,28 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
   });
 
+  it("does not present an unavailable price change as a dominant direction or measured zero", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      priceDirectionStats: [{
+        segment: "Cena nije dostupna",
+        articlesCount: 1,
+        vendorsCount: 1,
+        avgPriceChangePercent: null,
+        changeRevenue: 1200,
+        changePercent: 12,
+        hasComparableSalesWindow: true,
+        comparableArticleCount: 1,
+      }],
+    }));
+    renderPage();
+
+    const card = (await screen.findByRole("heading", { name: "Dominantna promena cene" })).closest("article");
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent("Nema dovoljno signala o smeru promene cene za izabrani opseg.");
+    expect(card).toHaveTextContent("Nije dostupno");
+    expect(card).not.toHaveTextContent("0,0%");
+  });
+
   it("restores validated period, vendor, category, store and focus from a shared URL", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       vendorStats: [vendor({

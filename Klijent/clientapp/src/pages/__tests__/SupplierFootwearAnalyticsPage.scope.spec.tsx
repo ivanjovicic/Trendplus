@@ -47,7 +47,7 @@ vi.mock("../../services/vendorSalesNivelacijaApi", () => ({
       activeArticlesCount: 0,
       avgRevenuePerArticlePre: 0,
       avgRevenuePerArticlePost: 0,
-      avgPriceChangePercent: 0,
+      avgPriceChangePercent: null,
       absoluteChangeRevenue: 0,
       avgCoveragePre30: 0,
       avgCoveragePost30: 0,

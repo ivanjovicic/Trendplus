@@ -1137,7 +1137,7 @@ export default function ProdajaPrePostNivelacijePage() {
 
   const leadingPriceDirection = useMemo(() => {
     const rows = [...(data?.priceDirectionStats ?? [])]
-      .filter((row) => row.hasComparableSalesWindow === true)
+      .filter((row) => row.hasComparableSalesWindow === true && row.avgPriceChangePercent !== null)
       .sort((left, right) => right.changeRevenue - left.changeRevenue);
     return rows[0] ?? null;
   }, [data?.priceDirectionStats]);
@@ -1739,7 +1739,9 @@ const advancedSignals = useMemo(
               </p>
               <div className="ppn-stat-pair">
                 <strong>{leadingPriceDirection ? fmtRsd(leadingPriceDirection.changeRevenue) : "Nije dostupno"}</strong>
-                <span>{leadingPriceDirection ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1) : "Nije dostupno"}</span>
+                <span>{leadingPriceDirection?.avgPriceChangePercent != null
+                  ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1)
+                  : "Nije dostupno"}</span>
               </div>
             </article>
           </section>

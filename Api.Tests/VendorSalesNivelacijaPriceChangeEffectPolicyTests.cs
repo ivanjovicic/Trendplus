@@ -36,6 +36,15 @@ public sealed class VendorSalesNivelacijaPriceChangeEffectPolicyTests
     }
 
     [Fact]
+    public void ComputeAveragePriceChangePercent_KeepsUnknownDistinctFromMeasuredZero()
+    {
+        Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent([]));
+        Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent([null, null]));
+        Assert.Equal(0m, VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent([0m, null]));
+        Assert.Equal(10m, VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent([20m, null, 0m]));
+    }
+
+    [Fact]
     public void IsPostWindowMature_RequiresFullThirtyDayWindow()
     {
         var eventDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);

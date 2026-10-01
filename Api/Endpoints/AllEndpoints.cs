@@ -4628,11 +4628,8 @@ public static class AllEndpoints
                 var avgRevenuePerArticlePre = activeArticlesCount == 0 ? 0m : Math.Round(totalPreRevenue / activeArticlesCount, 2);
                 var avgRevenuePerArticlePost = activeArticlesCount == 0 ? 0m : Math.Round(totalPostRevenue / activeArticlesCount, 2);
 
-                var avgPriceChangePercent = matureComparableRows
-                    .Where(x => x.PriceChangePercent.HasValue)
-                    .Select(x => x.PriceChangePercent!.Value)
-                    .DefaultIfEmpty()
-                    .Average();
+                var avgPriceChangePercent = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent(
+                    matureComparableRows.Select(x => x.PriceChangePercent));
 
                 var avgCoveragePre30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePre30));
                 var avgCoveragePost30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePost30));
@@ -4657,7 +4654,7 @@ public static class AllEndpoints
                     ActiveArticlesCount = activeArticlesCount,
                     AvgRevenuePerArticlePre = avgRevenuePerArticlePre,
                     AvgRevenuePerArticlePost = avgRevenuePerArticlePost,
-                    AvgPriceChangePercent = Math.Round(avgPriceChangePercent, 2),
+                    AvgPriceChangePercent = avgPriceChangePercent,
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
                     AvgCoveragePost30 = avgCoveragePost30,
@@ -4915,13 +4912,14 @@ public static class AllEndpoints
                         var comparable = g.Where(x => x.HasComparableSalesWindow && x.IsPostWindowMature).ToList();
                         var preRev = comparable.Sum(x => x.PreRevenue);
                         var postRev = comparable.Sum(x => x.PostRevenue);
-                        var avgPct = comparable.Where(x => x.PriceChangePercent.HasValue).Select(x => x.PriceChangePercent!.Value).DefaultIfEmpty().Average();
+                        var avgPct = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent(
+                            comparable.Select(x => x.PriceChangePercent));
                         return new VendorSalesNivelacijaPriceDirectionStatDto
                         {
                             Segment = g.Key,
                             ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
                             VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
-                            AvgPriceChangePercent = Math.Round(avgPct, 2),
+                            AvgPriceChangePercent = avgPct,
                             ChangeRevenue = postRev - preRev,
                             ChangePercent = SemanticChangePercent(preRev, postRev),
                             HasComparableSalesWindow = comparable.Count > 0,

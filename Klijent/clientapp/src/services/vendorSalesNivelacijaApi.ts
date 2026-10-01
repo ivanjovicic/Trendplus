@@ -111,7 +111,7 @@ export interface VendorSalesNivelacijaTotals {
     activeArticlesCount: number;
     avgRevenuePerArticlePre: number;
     avgRevenuePerArticlePost: number;
-    avgPriceChangePercent: number;
+    avgPriceChangePercent: number | null;
     absoluteChangeRevenue: number;
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
@@ -172,7 +172,7 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     segment: string;
     articlesCount: number;
     vendorsCount: number;
-    avgPriceChangePercent: number;
+    avgPriceChangePercent: number | null;
     changeRevenue: number;
     changePercent: number | null;
     hasComparableSalesWindow?: boolean;

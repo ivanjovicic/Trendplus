@@ -54,6 +54,23 @@ public static class VendorSalesNivelacijaPriceChangeEffectPolicy
             ? ComputeSemanticChangePercent(preRevenue, postRevenue)
             : null;
 
+    /// <summary>
+    /// Average only observed price changes. An empty or entirely unknown population is not 0%.
+    /// </summary>
+    public static decimal? ComputeAveragePriceChangePercent(IEnumerable<decimal?> priceChangePercents)
+    {
+        ArgumentNullException.ThrowIfNull(priceChangePercents);
+
+        var measured = priceChangePercents
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .ToArray();
+
+        return measured.Length == 0
+            ? null
+            : Math.Round(measured.Average(), 2);
+    }
+
     public static bool IsPostWindowMature(DateTime eventDateUtc, DateTime asOfDateUtc)
         => eventDateUtc.Date.AddDays(PostWindowDays) <= asOfDateUtc.Date;
 
