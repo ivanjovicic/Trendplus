@@ -136,6 +136,7 @@ public sealed class VendorSalesNivelacijaDataQualityDto
     public decimal? ComparableSharePercent { get; set; }
     public bool? IsDetailTruncated { get; set; }
     public string? CohortPolicy { get; set; }
+    public int? UnknownVendorSourceIdCount { get; set; }
     public int? InactiveRows { get; set; }
     public int? UnchangedPriceRows { get; set; }
     public int? AnalyzedRows { get; set; }

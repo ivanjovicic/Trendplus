@@ -234,7 +234,7 @@ public static class AnalyticsCacheKeys
 
     // Keeps the historical heavy-endpoint key dimensions: period, store, season, data scope, and active snapshot batch.
     public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}supplier-sales-stats:v5:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+        $"{Prefix}supplier-sales-stats:v6:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
 
     public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
         $"{Prefix}shoe-type-sales-stats:v4:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
@@ -325,7 +325,7 @@ public static class AnalyticsCacheKeys
         int maxRows,
         int? storeId = null,
         string? dataScope = null) =>
-        $"{Prefix}vendor-sales-nivelacija:v5:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
+        $"{Prefix}vendor-sales-nivelacija:v6:vendor:{FormatNullable(vendorId)}:event:{FormatInstant(eventDate)}:from:{FormatInstant(from)}:to:{FormatInstant(to)}:category:{HashPart(category)}:inactive:{includeInactive}:max:{maxRows}:store:{FormatNullable(storeId)}:scope:{NormalizeDataScope(dataScope)}";
 
     public static string VendorSalesNivelacijaOptions(
         int? vendorId,

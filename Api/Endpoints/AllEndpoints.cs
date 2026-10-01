@@ -1284,16 +1284,18 @@ public static class AllEndpoints
                     previousPeriodUnits = previousFootwearRows.Sum(x => x.Units);
 
                     previousSupplierMetrics = previousFootwearRows
-                        .GroupBy(x => x.SupplierId)
+                        .GroupBy(x => BuildSupplierBucketKey(ResolveSupplierBucket(x.SupplierId).SupplierId))
                         .ToDictionary(
-                            g => BuildSupplierBucketKey(g.Key),
+                            g => g.Key,
                             g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
                             StringComparer.Ordinal);
 
-                    previousSupplierFootwearMetrics = previousFootwearRows.ToDictionary(
-                        x => BuildSupplierFootwearBucketKey(x.SupplierId, x.FootwearTypeId),
-                        x => (x.Revenue, x.Units),
-                        StringComparer.Ordinal);
+                    previousSupplierFootwearMetrics = previousFootwearRows
+                        .GroupBy(x => BuildSupplierFootwearBucketKey(ResolveSupplierBucket(x.SupplierId).SupplierId, x.FootwearTypeId))
+                        .ToDictionary(
+                            g => g.Key,
+                            g => (g.Sum(x => x.Revenue), g.Sum(x => x.Units)),
+                            StringComparer.Ordinal);
                 }
 
                 var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
@@ -1407,11 +1409,20 @@ public static class AllEndpoints
                         : "Nepoznato";
                 }
 
+                (int? SupplierId, string SupplierName) ResolveSupplierBucket(int? supplierId)
+                {
+                    var resolved = SupplierUnknownBucketPolicy.Resolve(supplierId, ResolveSupplierName(supplierId));
+                    return (resolved.SupplierId, resolved.SupplierName);
+                }
+
+                var unknownSupplierSourceIdCount = SupplierUnknownBucketPolicy.CountUnresolvedSourceIds(
+                    stavke.Select(s => (s.DobavljacId, (string?)ResolveSupplierName(s.DobavljacId))));
+
                 var suppliers = stavke
                     .GroupBy(s => new
                     {
-                        s.DobavljacId,
-                        DobavljacNaziv = ResolveSupplierName(s.DobavljacId)
+                        DobavljacId = ResolveSupplierBucket(s.DobavljacId).SupplierId,
+                        DobavljacNaziv = ResolveSupplierBucket(s.DobavljacId).SupplierName
                     })
                     .Select(g =>
                     {
@@ -1699,6 +1710,7 @@ public static class AllEndpoints
                         : (double?)null,
                     costSourceBasis = "historical_sale_line_then_snapshot_then_product_fallback_then_unavailable",
                     unknownSupplierRevenue = Math.Round(unknownSupplierRevenue, 2),
+                    unknownSupplierSourceIdCount,
                     unknownSupplierRevenueSharePct = SupplierSharePolicy.Resolve(unknownSupplierRevenue, positiveNetRevenueDenominator).SharePct,
                     unknownSupplierRevenueShareState = SupplierSharePolicy.Resolve(unknownSupplierRevenue, positiveNetRevenueDenominator).State,
                     positiveNetRevenueDenominator = positiveNetRevenueDenominator > 0m
@@ -2022,6 +2034,7 @@ public static class AllEndpoints
                     "supplier",
                     supplierTrustMeta,
                     supplierTrustMeta.MetricProvenance);
+                supplierTrustMeta.Basis = SupplierTabBasisPolicy.Overview(generatedAtUtc);
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -4559,7 +4572,10 @@ public static class AllEndpoints
                     return known.Length == 0 ? null : Math.Round(known.Average(), 4);
                 }
 
-                var vendorsCount = matureComparableRows.Select(x => x.VendorId).Distinct().Count();
+                var vendorsCount = matureComparableRows
+                    .Select(x => SupplierUnknownBucketPolicy.Resolve(x.VendorId, x.VendorName).SupplierId)
+                    .Distinct()
+                    .Count();
                 var articlesCount = matureComparableRows
                     .Select(x => x.Sku)
                     .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -4641,8 +4657,14 @@ public static class AllEndpoints
                 }
 
                 // Vendor stats
+                var unknownVendorSourceIdCount = SupplierUnknownBucketPolicy.CountUnresolvedSourceIds(
+                    analyzed.Select(x => (x.VendorId, x.VendorName)));
                 var vendorRecommendationRows = analyzed
-                    .GroupBy(x => new { x.VendorId, x.VendorName })
+                    .GroupBy(x =>
+                    {
+                        var bucket = SupplierUnknownBucketPolicy.Resolve(x.VendorId, x.VendorName);
+                        return new { VendorId = bucket.SupplierId, VendorName = (string?)bucket.SupplierName };
+                    })
                     .Select(g =>
                     {
                         var comparable = g.Where(x => x.HasComparableSalesWindow).ToList();
@@ -4941,6 +4963,7 @@ public static class AllEndpoints
                             : Math.Round((decimal)comparableRows.Count / analyzedRows * 100m, 2),
                         IsDetailTruncated = articleStats.Count < analyzedRows,
                         CohortPolicy = "latest_event_per_article",
+                        UnknownVendorSourceIdCount = unknownVendorSourceIdCount,
                         InactiveRows = inactiveRows,
                         UnchangedPriceRows = unchangedPriceRows,
                         AnalyzedRows = analyzedRows,
@@ -7487,6 +7510,7 @@ public static class AllEndpoints
     {
         response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
         response.Meta.RecommendationAllowed = response.RecommendationAllowed;
+        response.Meta.Basis = SupplierTabBasisPolicy.Assortment(response.Meta.GeneratedAtUtc);
         return response;
     }
 
@@ -7707,7 +7731,8 @@ public static class AllEndpoints
             IsPartial = meta.IsPartial,
             MetricProvenance = meta.MetricProvenance,
             Context = meta.Context,
-            DecisionReadiness = meta.DecisionReadiness
+            DecisionReadiness = meta.DecisionReadiness,
+            Basis = meta.Basis
         };
     }
 
@@ -7886,6 +7911,7 @@ public static class AllEndpoints
               ON pz.id = ps.id_prodaja
             CROSS JOIN event_bounds bounds
             WHERE (@storeId IS NULL OR pz.id_objekat = @storeId::int)
+              AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND bounds.min_event_date IS NOT NULL
               AND pz.datum_prodaje::date >= bounds.min_event_date - INTERVAL '30 days'
               AND pz.datum_prodaje::date < bounds.max_event_date + INTERVAL '30 days'

@@ -108,6 +108,22 @@ export interface AnalyticsResponseMeta {
   operationsIntegrityCheckedAtUtc?: string | null;
   operationsIntegrityEvidenceId?: string | null;
   decisionReadiness?: AnalyticsDecisionReadiness | null;
+  basis?: SupplierTabBasis | null;
+}
+
+/** Backend-owned counting basis of one Supplier tab ("Kako se broji"). */
+export interface SupplierTabBasis {
+  tab: "overview" | "scorecard" | "assortment" | string;
+  version: string;
+  supplierAttribution: string;
+  costBasis: string;
+  receiptPopulation: string;
+  cohort: string;
+  periodSemantics: string;
+  storeScope: string;
+  unknownSupplierPolicy: string;
+  asOfDate: string;
+  timezone: string;
 }
 
 export type AnalyticsDecisionReadinessState =

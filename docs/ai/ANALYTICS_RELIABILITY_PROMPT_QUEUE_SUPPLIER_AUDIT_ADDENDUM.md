@@ -238,8 +238,9 @@ RQ518 DONE and RQ526 DONE; RQ445/RQ473 remain authority.
 
 ## RQ522 - Declare Supplier cross-tab basis and align cheap canonical mismatches
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ519 and RQ521 DONE (satisfied 2026-10-01)
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == 04bd151e`); no open PR, `rq522` branch or task lock collision found; BCI/STAB routers report no READY. Local lock `.ai/task-locks/RQ522-cursor.lock.md`.
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: supplier-cross-tab-basis

@@ -49,4 +49,8 @@ public class AnalyticsResponseMetaDto
     /// This is additive and preserves existing response shapes.
     /// </summary>
     public AnalyticsDecisionReadinessDto? DecisionReadiness { get; set; }
+    /// <summary>
+    /// Optional per-tab counting basis for Supplier surfaces. Existing clients may omit this field.
+    /// </summary>
+    public SupplierTabBasisDto? Basis { get; set; }
 }

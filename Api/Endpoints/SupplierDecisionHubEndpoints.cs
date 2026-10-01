@@ -2168,7 +2168,8 @@ public static class SupplierDecisionHubEndpoints
             LastRefreshAtUtc = source.LastRefreshAtUtc,
             CorrelationId = source.CorrelationId,
             Context = source.Context,
-            DecisionReadiness = source.DecisionReadiness
+            DecisionReadiness = source.DecisionReadiness,
+            Basis = source.Basis
         };
     }
 
@@ -2304,6 +2305,7 @@ public static class SupplierDecisionHubEndpoints
             "supplier",
             meta,
             meta.MetricProvenance);
+        meta.Basis = SupplierTabBasisPolicy.Scorecard(trustMetadata?.EffectiveDataset, meta.GeneratedAtUtc);
         return meta;
     }
 

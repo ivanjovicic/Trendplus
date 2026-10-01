@@ -782,8 +782,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
         ? "Skorkarta je signalni sloj uz aktivnu finalnu preporuku."
         : "Ovo je analitički signal. Finalna preporuka je u tabu Pregled.",
       emptyStateReason: !loading && sortedRows.length === 0 ? zeroStateExplanation : null,
+      basis: scorecardMeta?.basis ?? null,
     });
   }, [
+    scorecardMeta?.basis,
     activeFilters.category,
     activeFilters.dataScope,
     activeFilters.excludeOosBeforeMarkdown,

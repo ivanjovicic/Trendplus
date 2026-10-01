@@ -1310,6 +1310,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       recommendationAllowed: data.recommendationAllowed === true,
       recommendationNote: `Prikazani skup: ${displayPopulationLabel}. Referentni skup preporuke: ${recommendationReferenceLabel}. Preporuke dolaze iz serverskog sloja.`,
       emptyStateReason: trustEmptyStateReason,
+      basis: responseMeta?.basis ?? null,
     });
   }, [
     activeDataScope,
@@ -1319,6 +1320,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     embedded,
     loading,
     onTrustMetadataChange,
+    responseMeta?.basis,
     trustDataFreshnessStatus,
     trustDataQualityStatus,
     trustEmptyStateReason,

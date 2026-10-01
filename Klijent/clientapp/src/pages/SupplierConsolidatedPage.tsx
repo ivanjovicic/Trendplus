@@ -7,6 +7,7 @@ import type { StoreOption, SupplierFilterOption } from "../types/analytics";
 import type { Sezona } from "../types/Sezona";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
+import { buildSupplierTabBasisRows } from "../utils/supplierTabBasisLabels";
 import {
   resolveSupplierFilterFallbackState,
   SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
@@ -129,6 +130,10 @@ export default function SupplierConsolidatedPage() {
   const trustRequestKeyRef = useRef("");
   trustRequestKeyRef.current = trustRequestKey;
   const trustPayload = trustState.key === trustRequestKey ? trustState.payload : null;
+  const countingBasisRows = useMemo(
+    () => buildSupplierTabBasisRows(trustPayload?.basis ?? null),
+    [trustPayload?.basis],
+  );
   const handleTrustMetadataChange = useCallback(
     (payload: SupplierTrustHeaderPayload | null) => setTrustState({ key: trustRequestKeyRef.current, payload }),
     [],
@@ -513,6 +518,27 @@ export default function SupplierConsolidatedPage() {
           <p>{`${trustDescription} Kvalitet: ${trustStatusLabel}. Skup podataka: ${datasetLabel}.`}</p>
         </article>
       </section>
+
+      <details className="supplier-counting-basis" data-testid="supplier-counting-basis">
+        <summary>Kako se broji</summary>
+        {countingBasisRows ? (
+          <dl className="supplier-counting-basis-list">
+            {countingBasisRows.map((row) => (
+              <div key={row.key} className="supplier-counting-basis-row">
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="supplier-counting-basis-empty">
+            Način brojanja za ovaj prikaz još nije dostupan. Brojke između tabova ne porediti dok se ne učita.
+          </p>
+        )}
+        <p className="supplier-counting-basis-note">
+          Tabovi namerno broje različito; ista oznaka u dva taba ne mora dati isti iznos.
+        </p>
+      </details>
 
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (

@@ -1,3 +1,5 @@
+import type { SupplierTabBasis } from "../types/analytics";
+
 export type SupplierPeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 
 export type SupplierTab = "overview" | "scorecard" | "assortment";
@@ -57,4 +59,5 @@ export type SupplierTrustHeaderPayload = {
   recommendationAllowed?: boolean | null;
   recommendationNote?: string;
   emptyStateReason?: string | null;
+  basis?: SupplierTabBasis | null;
 };

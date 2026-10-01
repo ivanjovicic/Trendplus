@@ -732,6 +732,7 @@ export default function SupplierFootwearAnalyticsPage({
         ? "Asortiman je analitički signal. Uporedni prethodni period nije učitan."
         : "Asortiman je analitički signal. Finalna preporuka ostaje u centralnom dobavljačkom pregledu.",
       emptyStateReason: showEmptyState ? (dataMetaMessage ?? dataHint ?? null) : null,
+      basis: data.meta?.basis ?? null,
     });
   }, [
     activeFilters.fromDate,

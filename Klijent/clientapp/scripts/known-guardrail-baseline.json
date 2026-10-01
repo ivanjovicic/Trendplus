@@ -11,13 +11,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1264,
+      "line": 1266,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1265,
+      "line": 1267,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -137,7 +137,7 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1871,
+      "line": 1873,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {

@@ -81,6 +81,8 @@ sales_daily AS (
     FROM prodaja_stavke ps
     JOIN prodaja_zaglavlje pz
       ON pz.id = ps.id_prodaja
+    -- Canonical retail receipt population (SalesReceiptPopulationPolicy).
+    WHERE UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY ps.id_artikal, pz.datum_prodaje::date
 )
 SELECT
@@ -142,6 +144,8 @@ sales_daily AS (
     FROM prodaja_stavke ps
     JOIN prodaja_zaglavlje pz
       ON pz.id = ps.id_prodaja
+    -- Canonical retail receipt population (SalesReceiptPopulationPolicy).
+    WHERE UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY ps.id_artikal, pz.datum_prodaje::date
 )
 SELECT

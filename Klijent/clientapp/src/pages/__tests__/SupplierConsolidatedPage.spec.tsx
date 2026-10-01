@@ -37,6 +37,19 @@ vi.mock("../SupplierSalesStatsPage", () => ({
         dataQualityStatus: "warning",
         recommendationAllowed: false,
         recommendationNote: "Mock overview tab",
+        basis: {
+          tab: "overview",
+          version: "supplier_tab_basis_v1",
+          supplierAttribution: "sale_time_supplier",
+          costBasis: "sale_line_then_snapshot_then_current_article_cost",
+          receiptPopulation: "retail_receipts_excluding_dug_korekcija",
+          cohort: "all_sales_in_period",
+          periodSemantics: "sale_date_in_period",
+          storeScope: "future_store_rule_code",
+          unknownSupplierPolicy: "single_unknown_bucket",
+          asOfDate: "2026-07-01",
+          timezone: "UTC",
+        },
       });
     }, [props.onTrustMetadataChange]);
 
@@ -77,6 +90,39 @@ describe("SupplierConsolidatedPage", () => {
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
       expect(screen.getByText("Sveže")).toBeInTheDocument();
     });
+  });
+
+  it("renders the backend counting basis in plain language without raw codes", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const basis = await screen.findByTestId("supplier-counting-basis");
+    await waitFor(() => {
+      expect(basis).toHaveTextContent("Kako se broji");
+      expect(basis).toHaveTextContent("Dobavljač u trenutku prodaje.");
+      expect(basis).toHaveTextContent("Maloprodajni računi, bez DUG i KOREKCIJA dokumenata.");
+      expect(basis).toHaveTextContent("Svi nepoznati dobavljači su spojeni u jedan red „Nepoznato”.");
+      expect(basis).toHaveTextContent("2026-07-01 — Kalendarski dan po UTC vremenu.");
+      expect(basis).toHaveTextContent("Pravilo nije opisano u ovoj verziji ekrana.");
+    });
+    expect(basis).not.toHaveTextContent("future_store_rule_code");
+    expect(basis).not.toHaveTextContent("sale_time_supplier");
+  });
+
+  it("shows a safe counting-basis fallback when the active tab reports no basis", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
+    expect(screen.getByTestId("supplier-counting-basis")).toHaveTextContent(
+      "Način brojanja za ovaj prikaz još nije dostupan.",
+    );
   });
 
   it("explains an Operations legacy source while preserving the canonical tab", () => {
