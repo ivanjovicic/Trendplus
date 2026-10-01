@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ521
-Additional READY prompts: RQ527 (parallel-safe `supplier-assortment-oracle`; no path overlap with RQ521)
+Current READY prompt: RQ522
+Additional READY prompts: RQ527 (parallel-safe `supplier-assortment-oracle`; tests/fixtures only, RQ522 reads nivelacija store grain read-only)
+Queue reconciliation 2026-10-01: RQ521 DONE — Supplier scorecard return rate uses gross sold units with neutral missing-return rank, sale-time supplier attribution bounded to the published window, and canonical DUG/KOREKCIJA exclusion from full-price turnover evidence; existing databases pick it up through outdated-definition readiness and one-time stale windowed cache recreation. RQ522 is dependency-complete (RQ519/RQ521 DONE) and promoted to primary READY; RQ527 stays additional READY.
 Queue reconciliation 2026-10-01: RQ526 DONE — independent Supplier scorecard oracle and golden fixture match real PostgreSQL article signals and all-time/90d/180d score caches; known input defects are pinned for RQ521 to flip. RQ521 is dependency-complete and primary READY; RQ527 was dependency-complete and is promoted as additional READY.
 Queue reconciliation 2026-09-30: RQ520 DONE — assortment vendor-sales-nivelacija uses dedicated price-change effect policy (non-actionable), mature-post zero semantics, aligned vendor change totals, and Supplier Footwear labels decoupled from Supplier PoP. RQ518, RQ519 and RQ525 are DONE.
 
@@ -172,8 +173,9 @@ RQ519 DONE; owner approval only if effect becomes actionable.
 
 ## RQ521 - Repair confirmed Supplier scorecard input bugs without changing model policy
 
-Status: READY
+Status: DONE
 Ready after: RQ518 DONE and RQ526 DONE (satisfied 2026-10-01)
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == 0043ce55`); no open PR, `rq521` branch or task lock collision found. Lock released at close.
 Priority: P2
 Type: sql/backend/tests
 Feature family: supplier-scorecard-input-correctness
@@ -212,12 +214,32 @@ Oracle/MV agree on corrected inputs without changing owner-approved model policy
 
 RQ518 DONE and RQ526 DONE; RQ445/RQ473 remain authority.
 
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: Supplier scorecard inputs repaired in all three caches (018 all-time, 029 90d/180d) and the live endpoint SQL. Return rate = returned / gross positive sold units (N11); missing return rate ranks neutral 0.5 and known rates rank only against each other (single-supplier cohort keeps the shared guard of 1); `sales_in_period` attributes only by `supplier_id_at_sale`, bounded to the published `period_from..period_to` (N12); DUG/KOREKCIJA are excluded from full-price turnover evidence (pre-window qty/revenue/cost, first sale, had-sales) but still count as physical movement in the stock proxy (N19). Oracle defaults now are the corrected formula and match real PostgreSQL field by field.
+- Changed files: `Database/Migrations/018_AddSupplierDecisionHubViews.sql`, `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `Api.Tests/SupplierScorecardOracle.cs`, `Api.Tests/SupplierScorecardOracleTests.cs`, `Api.Tests/SupplierDecisionSchemaSqlTests.cs`
+- Contract/runtime behavior changed: yes — return_rate, return_rate_missing_evidence_reason, full-price pre-markdown signals and dependent score/recommendation values change; response shape and view/MV column lists unchanged. Deployment: core-view readiness now also requires the RQ521 definition markers, so existing databases re-run the cheap 018 CREATE OR REPLACE VIEW batches; 029 drops a windowed score cache only when its stored definition predates RQ521 and recreates it WITH DATA; the all-time cache picks up the replaced view on its next refresh.
+- Checks run: `dotnet build Api.Tests` pass; `dotnet test --filter SupplierScorecardOracleTests|SupplierDecisionSchema` pass `60/60` with Testcontainers PostgreSQL actually started (includes the existing initializer repair integration test, the readiness predicate executed against repaired views, and stale 90d cache recreation); mutation counterexample (disable the 90d stale-cache drop) fails the upgrade test, file restored; `git diff --check` clean; governance validators pass.
+- Checks not run: full backend suite (change bounded to Supplier scorecard SQL/initializer readiness; focused tests cover the touched contracts); live endpoint SQL is guarded statically, not executed against PostgreSQL.
+- Run log: `.ai/runs/2026-10-01-RQ521-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: fe0ee347b5233b36140147559eeb71aca149a13d
+- Main verification: recorded in run log after push
+- Missed: N20 (customer return possibly subtracted twice from the stock proxy) left unchanged — the oracle proves only the conditional arithmetic, not that real data records a return in both places; the nivelacija `sales_daily` DUG/KOREKCIJA alignment is RQ522 (SA-F6) scope.
+- Follow-up: RQ531 owns coverage gates (N13), confidence weights (N16), inventory penalty (N15) and first-markdown cohort (N17) policy; N20 needs a read-only real-data check before any fix.
+- Residual risk: windowed cache recreation runs synchronously in the 029 startup transaction (same cost class as the existing missing-cache path) and the all-time cache shows pre-RQ521 values until its next refresh.
+- Next: RQ522 (primary READY), RQ527 (additional READY).
+- Prompt defect / scope repair: none; "bound sales evidence to documented dates" interpreted as the already-published `period_from..period_to` window, now applied in the join instead of per-CASE.
+
 ---
 
 ## RQ522 - Declare Supplier cross-tab basis and align cheap canonical mismatches
 
-Status: WAITING
-Ready after: RQ519 and RQ521 DONE
+Status: READY
+Ready after: RQ519 and RQ521 DONE (satisfied 2026-10-01)
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: supplier-cross-tab-basis
