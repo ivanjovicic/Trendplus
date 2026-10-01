@@ -584,6 +584,7 @@ body {
     font-size: var(--font-size-control-phone, 1rem) !important;
   }
 
+  button,
   .btn,
   .button-big {
     min-height: var(--size-touch-target, 2.75rem);
