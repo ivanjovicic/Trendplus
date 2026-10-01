@@ -1579,9 +1579,9 @@ Several shared primitives have viewport/touch problems: `Modal` has fixed minimu
 - Checks not run: full P-UI-24 PNG matrix; real device Safari
 - Run log: `.ai/runs/2026-10-01-P-UI-27-evidence.md`
 - Delivery mode: direct-main
-- Main commit SHA: pending delivery synchronization
-- Main verification: pending delivery synchronization
-- Evidence state: pending
+- Main commit SHA: `d41ef0d7725b0a6554f750597fba8637c129ee61`
+- Main verification: `origin/main` contains `d41ef0d7725b0a6554f750597fba8637c129ee61`
+- Evidence state: synchronized
 - Missed: shared tabs primitive and page-level tab migrations deferred
 - Follow-up: promote P-UI-28 after collision check
 - Next: idle recovery for P-UI-28

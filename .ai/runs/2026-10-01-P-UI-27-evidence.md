@@ -4,9 +4,9 @@ Date: 2026-10-01
 Agent/tool: ChatGPT + Vitest
 Delivery target: main
 Working branch: cursor/p-ui-27-responsive-primitives-51d0
-Main commit SHA: `d41ef0d7f8b2e8c8b2f8e8c8b2f8e8c8b2f8e8c8`
-Main verification: pending sync
-Evidence state: pending
+Main commit SHA: `d41ef0d7725b0a6554f750597fba8637c129ee61`
+Main verification: `origin/main` contains `d41ef0d7725b0a6554f750597fba8637c129ee61`
+Evidence state: synchronized
 
 ## What was done
 - Promoted and claimed P-UI-27 after collision review (no open PR/lock on Modal/InfoTip paths).
