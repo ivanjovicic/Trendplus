@@ -8592,19 +8592,21 @@ public static class AllEndpoints
         CancellationToken ct)
     {
         const string sql = """
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = @rel
-              AND column_name = @col
-            LIMIT 1;
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_catalog.pg_attribute a
+                WHERE a.attrelid = to_regclass(@rel)
+                  AND a.attname = @col
+                  AND a.attnum > 0
+                  AND NOT a.attisdropped
+            );
             """;
 
         await using var cmd = new NpgsqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("rel", relationName);
         cmd.Parameters.AddWithValue("col", columnName);
         var result = await cmd.ExecuteScalarAsync(ct);
-        return result is not null;
+        return result is true;
     }
 }
 
