@@ -143,6 +143,45 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
+  it("explains current-stock and relative-rank limitations from the backend model contract", async () => {
+    const trustMetadata = {
+      recommendationAllowed: true,
+      hasData: true,
+      model: {
+        formulaVersion: "supplier-scorecard-v1",
+        explainabilityVersion: "supplier-scorecard-explainability-v1",
+        scoreScale: "0-100",
+        rankPopulation: "active supplier population",
+        signedMarginContributionDenominator: "signed pre-markdown revenue",
+        stockInputBasis: "current article stock snapshot",
+        components: [],
+        gates: [],
+        ownerDecisionPending: ["owner_decision_pending: coverage gate"],
+        limitations: [
+          "Trenutna zaliha je presek; ne dokazuje uzročnost dobavljača.",
+          "Rangovi su relativni prema aktivnoj populaciji dobavljača.",
+        ],
+      },
+    };
+
+    installFetchMock(
+      () => ({
+        page: 1,
+        pageSize: 100,
+        totalCount: 2,
+        items: [rankingItem(1), rankingItem(2, 80_000)],
+        trustMetadata,
+      }),
+      { trustMetadata },
+    );
+
+    renderPage();
+
+    expect(await screen.findByText(/Verzija i objašnjenje modela skorkarte/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trenutna zaliha je presek/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rangovi su relativni prema aktivnoj populaciji/i)).toBeInTheDocument();
+  });
+
   it("uses summary-owned aggregates when ranking rows are only a visible projection", async () => {
     installFetchMock(undefined, {
       totalRevenue: 500_000,

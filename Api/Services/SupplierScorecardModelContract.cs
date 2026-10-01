@@ -50,10 +50,10 @@ public static class SupplierScorecardModelContract
             "owner_decision_pending: customer-return stock moves and negative sale lines may both affect the current stock proxy"
         ],
         [
-            "Current stock is a snapshot input; it does not prove that a supplier caused dead stock or sell-through.",
-            "Ranks are relative to the returned supplier population; adding or removing suppliers can change an existing score.",
-            "The scorecard is a signal for review, not a causal estimate or profit forecast.",
-            "A missing or unavailable denominator remains unavailable; it is never a trusted zero."
+            "Trenutna zaliha je presek; ne dokazuje da je dobavljač uzrok mrtve zalihe ili prodaje.",
+            "Rangovi su relativni prema vraćenoj populaciji; dodavanje ili uklanjanje dobavljača može promeniti postojeći skor.",
+            "Skorkarta je signal za proveru, a ne uzročna procena ili prognoza profita.",
+            "Nedostajući ili nedostupan imenilac ostaje nedostupan; nikada nije pouzdana nula."
         ]);
 }
 
