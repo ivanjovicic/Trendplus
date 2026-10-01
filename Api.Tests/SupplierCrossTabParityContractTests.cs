@@ -13,7 +13,7 @@ public sealed class SupplierCrossTabParityContractTests
         var fixture = new SupplierCrossTabFixture(
             FixtureNowUtc,
             EffectiveDataset: "90d",
-            SupplierRows: new[]
+            SupplierRows: new (int? SupplierId, string? SupplierName)[]
             {
                 (SupplierId: 17, SupplierName: "Supplier A"),
                 (SupplierId: 18, SupplierName: " nepoznato "),
