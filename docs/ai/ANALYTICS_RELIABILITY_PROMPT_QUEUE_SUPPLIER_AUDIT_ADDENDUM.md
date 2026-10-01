@@ -4,7 +4,7 @@ Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: none
-Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE/PARTIAL
+Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534 and RQ535 are DONE; RQ536 is PARTIAL
 Queue reconciliation 2026-10-01: RQ535 DONE. Exact deployed SHA `3a6a6886` confirms the Supplier gates (Overview 503, Scorecard `MISSING_OBJECT` plus a store-filtered 500, Assortment and Pre/Post contract missing) with sharper evidence. RQ474 is READY in the canonical RQ queue. RQ475 waits on RQ536 (shared Decision Hub surface). Q83 stays READY in the SQL queue. The live root causes need Render/Neon logs (STAB16).
 Queue reconciliation 2026-10-01 (latest): owner reports Docker Desktop available and today's Render deploy successful. RQ534 is DONE and the Pre/Post spec CI regression is closed. Two non-duplicate lanes are now promoted: RQ535 (P0 primary) performs exact-SHA public deployed smoke/gate reclassification without DB/provider writes; RQ536 (P2 additional) versions/explains the current Supplier scorecard model without changing policy. Q83 is separately re-promoted in the SQL queue for the remaining price-direction/category fake-zero contract. RQ531 stays owner-gated for actual policy changes after RQ536.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
