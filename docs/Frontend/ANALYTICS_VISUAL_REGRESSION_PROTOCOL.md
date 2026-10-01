@@ -9,14 +9,15 @@ Audience: agents and humans doing premium UI / layout work on analytics surfaces
 
 Premium UI changes must be verified as **rendered pixels**, not only by route smoke or unit tests. This protocol is the repeatable gate before broad visual refactors (`P-UI-06` onward).
 
-There is still **no dedicated responsive screenshot regression suite**, but the workspace is no longer "Vitest only": `puppeteer` / `puppeteer-core` are installed and `Klijent/clientapp/scripts/perf08_frontend_render.mjs` already drives a headless browser. Prefer extending that existing browser toolchain before adding Playwright/Storybook solely for responsive coverage.
+The workspace is no longer "Vitest only": `puppeteer` / `puppeteer-core` are installed, `Klijent/clientapp/scripts/perf08_frontend_render.mjs` drives a headless browser, and P-UI-24 adds the deterministic `responsive:baseline` runner. Prefer extending that existing browser toolchain before adding Playwright/Storybook solely for responsive coverage.
 
-Until `P-UI-24` lands the dedicated responsive runner, validation is:
+Responsive validation is now:
 
 1. automated route smoke (non-visual)
-2. existing Puppeteer browser evidence where applicable
-3. **manual screenshot checklist** (this document)
-4. optional evidence file filled per PR / session
+2. `npm run responsive:baseline` in fixture or connected-local mode
+3. existing Puppeteer browser evidence where applicable
+4. **manual screenshot checklist** (this document)
+5. optional evidence file filled per PR / session
 
 ## When this protocol is required
 
@@ -159,14 +160,16 @@ tmp/ui-visual/2026-08-06/C3__dark__mobile.png
 
 Do **not** commit screenshots that contain real customer metrics unless explicitly sanitized. Prefer local `tmp/` (ignored) + written PASS/FAIL notes in the PR.
 
-## Future automation (out of scope for P-UI-05 runtime)
+## P-UI-24 automated baseline
 
-When adding Playwright later:
+The committed runner `Klijent/clientapp/scripts/responsive_baseline.mjs`:
 
-- keep this checklist as the coverage contract
-- map each `ID` to a screenshot assertion
-- run light+dark via theme attribute/class, not by changing `defaultTheme` in production code
-- gate premium UI PRs on the same surface list
+- reuses Puppeteer and captures the bounded routes at 320/375/768/1024/1280 in light and dark themes;
+- records root overflow, header/control/region geometry, page/console/request failures and local screenshot paths;
+- runs in `fixture` mode by default so evidence is deterministic and contains no customer metrics;
+- emits `responsive-baseline.json` and `responsive-baseline.md`;
+- includes an intentional overflow self-test that must fail the geometry assertion;
+- keeps Chromium emulation separate from real iOS/iPad Safari evidence.
 
 ## Related docs
 
