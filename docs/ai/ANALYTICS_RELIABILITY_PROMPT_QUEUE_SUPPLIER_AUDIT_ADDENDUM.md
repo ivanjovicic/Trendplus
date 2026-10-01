@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ526
-Additional READY prompts: none (RQ526 primary)
+Current READY prompt: RQ521
+Additional READY prompts: RQ527 (parallel-safe `supplier-assortment-oracle`; no path overlap with RQ521)
+Queue reconciliation 2026-10-01: RQ526 DONE — independent Supplier scorecard oracle and golden fixture match real PostgreSQL article signals and all-time/90d/180d score caches; known input defects are pinned for RQ521 to flip. RQ521 is dependency-complete and primary READY; RQ527 was dependency-complete and is promoted as additional READY.
 Queue reconciliation 2026-09-30: RQ520 DONE — assortment vendor-sales-nivelacija uses dedicated price-change effect policy (non-actionable), mature-post zero semantics, aligned vendor change totals, and Supplier Footwear labels decoupled from Supplier PoP. RQ518, RQ519 and RQ525 are DONE.
 
 This addendum registers only non-duplicate Supplier follow-ups after second-pass source verification. Existing RQ474, RQ475 and RQ487 remain authoritative for overview error/readiness/query-cost work. RQ517 is already DONE for Daily Sales and is not reused.
@@ -171,8 +172,8 @@ RQ519 DONE; owner approval only if effect becomes actionable.
 
 ## RQ521 - Repair confirmed Supplier scorecard input bugs without changing model policy
 
-Status: WAITING
-Ready after: RQ518 DONE and RQ526 DONE
+Status: READY
+Ready after: RQ518 DONE and RQ526 DONE (satisfied 2026-10-01)
 Priority: P2
 Type: sql/backend/tests
 Feature family: supplier-scorecard-input-correctness
@@ -409,7 +410,9 @@ None; coordinate with RQ518/RQ519 paths.
 
 ## RQ526 - Add independent Supplier scorecard oracle and golden fixture
 
-Status: READY
+Status: DONE
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == 1cb72699`); no open PR, `rq526` branch or task lock collision found. Local lock `.ai/task-locks/RQ526-cursor.lock.md` (removed at close).
+Completion: delivered on main through `6fd58eb287cd0c1d83051913e8b5e9e23fb657f0`; evidence `.ai/runs/2026-10-01-RQ526-evidence.md`.
 Ready after: RQ525 DONE (satisfied 2026-09-30)
 Priority: P2
 Type: tests/sql
@@ -449,12 +452,32 @@ Every component is independently reproducible; input bugs fail before/pass after
 
 RQ525 DONE.
 
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: independent C# oracle recomputes the deployed 018/029 Supplier scorecard from raw fixture rows; a six-supplier golden fixture (sell-through, margin, markdown share, stock, returns, supplier change, DUG, missing cost, foreign-cost fallback, price increase, first markdown before the window, missing DiD, unknown sale-time supplier) matches real PostgreSQL article signals and all three score caches (all-time, 90d, 180d) field by field.
+- Changed files: `Api.Tests/SupplierScorecardOracle.cs`, `Api.Tests/SupplierScorecardOracleTests.cs`
+- Contract/runtime behavior changed: none; tests only. Known input defects N11/N12/N13/N17/N19/N20 are pinned as current SQL behaviour with opt-in RQ521 corrections that produce different values; policy (weights, thresholds, coverage gates, inventory penalty, confidence weights, cost fallback) stays explicit and unswitchable in the oracle.
+- Checks run: `dotnet build Api.Tests` pass; `dotnet test --filter SupplierScorecardOracleTests` pass `12/12` with Testcontainers PostgreSQL (pgvector/pg16) actually started; mutation counterexample (demand weight 0.60 -> 0.50 in 029) fails the oracle comparison on 90d/180d, file reverted; governance validators pass.
+- Checks not run: full backend suite (no runtime/SQL change; wider risk not in scope).
+- Run log: `.ai/runs/2026-10-01-RQ526-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: 6fd58eb287cd0c1d83051913e8b5e9e23fb657f0
+- Main verification: recorded in run log after push
+- Missed: the nivelacija event layer (`vw_vendor_sales_nivelacija`, `vw_nivelacija_did`) is a fixture-controlled seam; its own window/aggregate math is RQ527 scope.
+- Follow-up: RQ521 flips the known-defect assertions together with the SQL fix; RQ531 owns policy changes.
+- Residual risk: MV and anchor use the session `CURRENT_DATE`; a run crossing midnight between seeding and assertion could shift windows.
+- Next: RQ521 (primary READY), RQ527 (additional READY).
+- Prompt defect / scope repair: none; RQ527 was dependency-complete (RQ519/RQ525 DONE) but still WAITING, so it was promoted as an additional parallel-safe READY.
+
 ---
 
 ## RQ527 - Add Assortment pre/post oracle and golden fixture
 
-Status: WAITING
-Ready after: RQ519 DONE and RQ525 DONE
+Status: READY
+Ready after: RQ519 DONE and RQ525 DONE (satisfied 2026-09-30; promoted 2026-10-01)
 Priority: P2
 Type: tests/sql
 Feature family: supplier-assortment-oracle
