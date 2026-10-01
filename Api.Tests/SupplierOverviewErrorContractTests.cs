@@ -35,6 +35,29 @@ public sealed class SupplierOverviewErrorContractTests
         Assert.Equal(503, result.StatusCode);
     }
 
+    [Theory]
+    [InlineData("08006")]
+    [InlineData("53300")]
+    [InlineData("57P01")]
+    [InlineData("58P01")]
+    public void TransientPostgresAvailabilityFailure_IsClassifiedAsDatabaseUnavailable(string sqlState)
+    {
+        var result = SupplierOverviewErrorContract.Classify(Postgres(sqlState));
+
+        Assert.Equal("ANALYTICS_DB_UNAVAILABLE", result.ErrorCode);
+        Assert.Equal(503, result.StatusCode);
+    }
+
+    [Fact]
+    public void UnexpectedPostgresQueryFailure_IsNotMisreportedAsDatabaseUnavailable()
+    {
+        var result = SupplierOverviewErrorContract.Classify(Postgres("22012"));
+
+        Assert.Equal("SUPPLIER_OVERVIEW_UNEXPECTED_ERROR", result.ErrorCode);
+        Assert.Equal(500, result.StatusCode);
+        Assert.DoesNotContain("22012", result.Detail);
+    }
+
     [Fact]
     public void NpgsqlFailure_IsClassifiedAsDatabaseUnavailable()
     {

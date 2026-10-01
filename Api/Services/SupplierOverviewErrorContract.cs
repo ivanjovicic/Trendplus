@@ -38,9 +38,9 @@ public static class SupplierOverviewErrorContract
                     "Podaci dobavljača trenutno nisu dostupni",
                     "Analitička šema za pregled dobavljača nije kompatibilna sa aktivnim ugovorom. Proverite migracije i pokušajte ponovo.",
                     StatusCodes.Status503ServiceUnavailable),
-                _ when postgres.SqlState.StartsWith("08", StringComparison.Ordinal) => DatabaseUnavailable(),
                 _ when postgres.SqlState == "57014" => Timeout(),
-                _ => DatabaseUnavailable()
+                _ when IsDatabaseUnavailableSqlState(postgres.SqlState) => DatabaseUnavailable(),
+                _ => UnexpectedError()
             };
         }
 
@@ -49,12 +49,21 @@ public static class SupplierOverviewErrorContract
             return DatabaseUnavailable();
         }
 
-        return new(
+        return UnexpectedError();
+    }
+
+    private static bool IsDatabaseUnavailableSqlState(string sqlState) =>
+        sqlState.StartsWith("08", StringComparison.Ordinal)
+        || sqlState.StartsWith("53", StringComparison.Ordinal)
+        || sqlState.StartsWith("57", StringComparison.Ordinal)
+        || sqlState.StartsWith("58", StringComparison.Ordinal);
+
+    private static SupplierOverviewErrorClassification UnexpectedError() =>
+        new(
             "SUPPLIER_OVERVIEW_UNEXPECTED_ERROR",
             "Podaci dobavljača trenutno nisu dostupni",
             "Podaci dobavljača trenutno nisu dostupni zbog neočekivane greške. Pokušajte ponovo.",
             StatusCodes.Status500InternalServerError);
-    }
 
     private static SupplierOverviewErrorClassification DatabaseUnavailable() =>
         new(
