@@ -465,7 +465,7 @@ RQ525 DONE.
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: 6fd58eb287cd0c1d83051913e8b5e9e23fb657f0
-- Main verification: recorded in run log after push
+- Main verification: `origin/main` `050ac70dda4c4bb124be60c09d5481a36b1d2fdb` contains 6fd58eb287cd0c1d83051913e8b5e9e23fb657f0; post-push CI `36831681616`/`36831681812` queued at close
 - Missed: the nivelacija event layer (`vw_vendor_sales_nivelacija`, `vw_nivelacija_did`) is a fixture-controlled seam; its own window/aggregate math is RQ527 scope.
 - Follow-up: RQ521 flips the known-defect assertions together with the SQL fix; RQ531 owns policy changes.
 - Residual risk: MV and anchor use the session `CURRENT_DATE`; a run crossing midnight between seeding and assertion could shift windows.
