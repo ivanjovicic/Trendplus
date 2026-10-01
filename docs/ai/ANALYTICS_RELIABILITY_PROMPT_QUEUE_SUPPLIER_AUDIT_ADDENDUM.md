@@ -4,7 +4,7 @@ Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: RQ527
-Additional READY prompts: RQ528 (parallel-safe `supplier-cross-tab-parity`; tests/contract only, consumes RQ522 `meta.basis`)
+Additional READY prompts: none; RQ528 is IN_PROGRESS in this workspace (parallel-safe `supplier-cross-tab-parity`; tests/contract only, consumes RQ522 `meta.basis`)
 Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
 Queue reconciliation 2026-10-01: RQ521 DONE — Supplier scorecard return rate uses gross sold units with neutral missing-return rank, sale-time supplier attribution bounded to the published window, and canonical DUG/KOREKCIJA exclusion from full-price turnover evidence; existing databases pick it up through outdated-definition readiness and one-time stale windowed cache recreation. RQ522 is dependency-complete (RQ519/RQ521 DONE) and promoted to primary READY; RQ527 stays additional READY.
 Queue reconciliation 2026-10-01: RQ526 DONE — independent Supplier scorecard oracle and golden fixture match real PostgreSQL article signals and all-time/90d/180d score caches; known input defects are pinned for RQ521 to flip. RQ521 is dependency-complete and primary READY; RQ527 was dependency-complete and is promoted as additional READY.
@@ -520,8 +520,9 @@ RQ525 DONE.
 
 ## RQ527 - Add Assortment pre/post oracle and golden fixture
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ519 DONE and RQ525 DONE (satisfied 2026-09-30; promoted 2026-10-01)
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == ba450485`); no open PR, `rq527` branch or lock collision. Local lock `.ai/task-locks/RQ527-cursor.lock.md`.
 Priority: P2
 Type: tests/sql
 Feature family: supplier-assortment-oracle
@@ -564,7 +565,7 @@ RQ519 DONE and RQ525 DONE.
 
 ## RQ528 - Add Supplier cross-tab parity contract
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ522 DONE (satisfied 2026-10-01)
 Priority: P2
 Type: tests/contract
@@ -603,6 +604,10 @@ Silent basis changes fail; intentional differences remain machine-readable/expla
 ### Dependencies
 
 RQ522 DONE.
+
+Owner promotion/claim 2026-10-01: fresh recovery verified `RQ522` DONE on exact `origin/main` `ba4504857634a27d4fcb4dc3744a408d8a9e4ed3`, confirmed no active RQ528 lock/branch/open-PR owner or feature-family collision, and found RQ527 separately claimed by Cursor with its own `supplier-assortment-oracle` scope. RQ528 moved `READY -> IN_PROGRESS` as the additional parallel-safe Supplier cross-tab parity prompt. Local lock: `.ai/task-locks/RQ528-codex.lock.md`.
+
+Owner completion 2026-10-01: RQ528 moved `IN_PROGRESS -> DONE` and was delivered directly to `main`. The focused cross-tab contract uses one 90-day supplier fixture, asserts shared version/receipt/timezone/as-of semantics, pins exact attribution/cost/cohort/period/store differences, and verifies consistent unknown-supplier identity normalization. Focused API proof is 13/13; Release API build, prompt governance and `git diff --check` pass. RQ527 remains the primary READY prompt and is separately claimed by Cursor; Q83 remains PARTIAL and RQ491 remains WAITING. Run log: `.ai/runs/2026-10-01-RQ528-evidence.md`. Evidence state: synchronized.
 
 ---
 
