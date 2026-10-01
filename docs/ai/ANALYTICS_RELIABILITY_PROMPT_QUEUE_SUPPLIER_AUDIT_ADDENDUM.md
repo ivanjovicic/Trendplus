@@ -3,7 +3,7 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ535
+Current READY prompt: RQ535 (IN_PROGRESS)
 Additional READY prompts: RQ536; RQ524, RQ527, RQ528, RQ533 and RQ534 are DONE
 Queue reconciliation 2026-10-01 (latest): owner reports Docker Desktop available and today's Render deploy successful. RQ534 is DONE and the Pre/Post spec CI regression is closed. Two non-duplicate lanes are now promoted: RQ535 (P0 primary) performs exact-SHA public deployed smoke/gate reclassification without DB/provider writes; RQ536 (P2 additional) versions/explains the current Supplier scorecard model without changing policy. Q83 is separately re-promoted in the SQL queue for the remaining price-direction/category fake-zero contract. RQ531 stays owner-gated for actual policy changes after RQ536.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
@@ -1004,7 +1004,8 @@ RQ520 and RQ533 DONE.
 
 ## RQ535 - Reclassify Supplier and Pre/Post gates on the successful Render deploy
 
-Status: READY
+Status: IN_PROGRESS
+Claimed: 2026-10-01 by Cursor agent on `main` (direct) as the primary READY prompt. No lock, open PR or unmerged branch touches it; RQ536 and Q83 stay available to other agents.
 Priority: P0
 Type: deployed-smoke/read-only/evidence
 Feature family: supplier-post-deploy-gate-reclassification
