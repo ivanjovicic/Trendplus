@@ -4755,6 +4755,11 @@ public static class AllEndpoints
                                 : null,
                             MarginSnapshot = marginSnapshot,
                             IsNewVendor = preRev <= 0m && postRev > 0m,
+                            ComparableCount = comparable
+                                .Select(x => x.Sku)
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Distinct(StringComparer.Ordinal)
+                                .Count(),
                             MatureComparableCount = matureComparable.Count,
                             ImmatureComparableCount = comparable.Count - matureComparable.Count
                         };
@@ -4774,7 +4779,7 @@ public static class AllEndpoints
                                 PostRevenue: row.Vendor.PostRevenue,
                                 PreQty: row.Vendor.PreQty,
                                 PostQty: row.Vendor.PostQty,
-                                ComparableArticleCount: row.Vendor.ComparableArticleCount,
+                                ComparableArticleCount: row.ComparableCount,
                                 MatureComparableArticleCount: row.MatureComparableCount,
                                 ImmatureComparableArticleCount: row.ImmatureComparableCount,
                                 SemanticChangePercentRevenue: row.Vendor.SemanticChangePercentRevenue.HasValue
@@ -7982,7 +7987,7 @@ public static class AllEndpoints
               ON s.article_id = e.article_id
              AND s.day >= e.event_date
              AND s.day < e.event_date + INTERVAL '30 days'
-            GROUP BY e.price_event_id
+            GROUP BY e.price_event_id, e.event_date
         ),
         scoped_vendor_sales_nivelacija AS (
             SELECT
