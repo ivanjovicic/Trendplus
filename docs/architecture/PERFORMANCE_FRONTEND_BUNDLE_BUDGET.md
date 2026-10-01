@@ -24,7 +24,7 @@ The production build transformed 2,597 modules and produced the following larges
 | `InventoryPage-*.js` | 134.96 kB | 31.24 kB | lazy route chunk |
 | `InsightStudioPage-*.js` | 109.14 kB | 22.88 kB | lazy route chunk |
 
-The application routes are already loaded with React `lazy()`. Recharts is deliberately isolated by the existing Vite `manualChunks` rule, so chart code is fetched with chart-bearing routes rather than included in the main application entry.
+At the 2026-09-02 PERF17 baseline, application routes were loaded with React `lazy()` and the measured intent of the existing Vite `manualChunks` rule was to keep Recharts with chart-bearing routes rather than the main entry. **That route-isolation statement is historical baseline evidence, not current truth; see the 2026-10-01 drift note below.**
 
 ## Budget and enforcement
 
@@ -41,3 +41,19 @@ Removing the existing Recharts `manualChunks` rule reduced the largest individua
 ## Boundary
 
 This is a frontend measurement/guardrail contract. It does not change analytics calculations, API contracts, worker behavior, tenant authority or the Vite warning threshold. CI wiring and further Recharts import-level optimization require a separate, explicitly promoted follow-up with runtime/browser proof.
+
+
+## Current-main drift detected 2026-10-01
+
+A fresh production build captured by the responsive UI audit on current-main base `5257014a3bb6925cb13d6bffdb47affb41437c3d` no longer proves the route-isolation property documented by PERF17:
+
+- entry: approximately 298.86 kB raw / 82.73 kB gzip;
+- `recharts-*.js`: approximately 548.04 kB raw / 163.69 kB gzip;
+- generated `dist/index.html` modulepreloads `recharts-*.js`;
+- the entry imports runtime symbols from that Recharts-named chunk.
+
+The raw-size budget can therefore remain green while the **loading graph regresses**. Do not use the PERF17 sentence “chart code is fetched with chart-bearing routes” as current truth until browser/network evidence re-proves it.
+
+Owner follow-up: `PERF18` in `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`.
+
+PERF18 must extend the existing `check:bundle-budget` contract rather than create a parallel budget script, and it must respect PERF17's evidence that blindly removing the Recharts manual split produced Rollup circular-dependency/execution-order warnings.
