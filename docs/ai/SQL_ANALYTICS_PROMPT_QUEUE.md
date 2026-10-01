@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: Q83
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -37,7 +37,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 | Q80 | DONE | lost-sales-source-confidence | Make lost-sales validation source/confidence explicit |
 | Q81 | DONE | analytics-datascope-sql-consistency | Audit dataScope/store/supplier filtering across raw SQL helpers |
 | Q82 | DONE | analytics-sql-observability | Standardize SQL timeout/cancellation/logging expectations |
-| Q83 | PARTIAL | nivelacija-sql-nullability-and-baseline | Prove raw nivelacija SQL preserves missing coverage and revenue baseline semantics |
+| Q83 | READY | nivelacija-sql-nullability-and-baseline | Resume raw nivelacija nullability/baseline contract with Docker-backed proof and remove remaining fake-zero aggregates |
 
 ---
 
@@ -1035,13 +1035,23 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 ## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
 
-Status: PARTIAL
+Status: READY
 Priority: P0
 Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
 Parallel-safe: no, this is the SQL owner for pre/post change semantics
 Owner: Codex
 Commit suggestion: `fix(sql): preserve nivelacija evidence states`
+
+Re-entry 2026-10-01: operator reports Docker Desktop available. RQ533 left a bounded backend residual in this owner family: price-direction and category aggregates still coerce an unavailable change percent to numeric zero, while RQ534 already repaired the unrelated stale frontend spec statuses. Re-promoted PARTIAL -> READY for repository-local PostgreSQL/backend proof. A successful Render deploy was also reported, but production/runtime verification is not claimed here and is handled by RQ535/STAB16.
+
+### Re-entry scope delta
+
+- Keep the original raw SQL/nullability owner boundary.
+- Also include the backend DTO/policy projection for Pre/Post `priceDirectionStats` and `categoryStats` only where it is required to preserve the same missing-baseline semantics end to end.
+- `VendorSalesNivelacijaPriceDirectionStatDto.ChangePercent` and `VendorSalesNivelacijaCategoryStatDto.ChangePercent` must be nullable when no comparable revenue baseline exists; no `?? 0m` fallback may manufacture evidence.
+- Use Docker/Testcontainers to exercise valid baseline, flat measured zero, missing baseline, immature/no-comparable and missing-view/column cases.
+- Do not reopen RQ520/RQ533 vendor/totals semantics and do not touch frontend behavior covered by RQ534.
 
 ### Problem
 
