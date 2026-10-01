@@ -280,6 +280,19 @@ FROM aggregated;
 --  duplicate the scoring formula referencing different base views.)
 -- ----------------------------------------------------------
 
+-- The windowed caches inline the scoring formula, so CREATE ... IF NOT EXISTS
+-- alone would keep a pre-RQ521 definition forever. Drop only a stale cache
+-- (no gross-sold return-rate base) so it is recreated once with the current formula.
+DO $$
+BEGIN
+    IF to_regclass('public.mv_supplier_decision_score_cache_90d') IS NOT NULL
+       AND pg_get_viewdef(to_regclass('public.mv_supplier_decision_score_cache_90d')) NOT LIKE '%gross_sold_units_in_period%'
+    THEN
+        DROP MATERIALIZED VIEW public.mv_supplier_decision_score_cache_90d;
+    END IF;
+END
+$$;
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_90d AS
 WITH supplier_totals AS (
     SELECT
@@ -347,13 +360,15 @@ seasonal_category_mix AS (
     GROUP BY md.supplier_id
 ),
 sales_in_period AS (
+    -- Sale-time supplier, canonical receipts, published evidence window; gross sold units.
     SELECT sr.supplier_id,
-        COALESCE(SUM(CASE WHEN pz.datum_prodaje::date >= sr.period_from AND pz.datum_prodaje::date <= sr.period_to THEN ps.kolicina ELSE 0 END), 0)::numeric AS sold_units_in_period,
-        COALESCE(SUM(CASE WHEN pz.datum_prodaje::date >= sr.period_from AND pz.datum_prodaje::date <= sr.period_to AND ps.kolicina < 0 THEN ABS(ps.kolicina) ELSE 0 END), 0)::numeric AS returned_units_in_period
+        COALESCE(SUM(ps.kolicina) FILTER (WHERE ps.kolicina > 0), 0)::numeric AS gross_sold_units_in_period,
+        COALESCE(SUM(ABS(ps.kolicina)) FILTER (WHERE ps.kolicina < 0), 0)::numeric AS returned_units_in_period
     FROM signal_rollup sr
-    JOIN "Artikli" a ON a."IDDobavljac" = sr.supplier_id
-    LEFT JOIN prodaja_stavke ps ON ps.id_artikal = a."Id" AND ps.supplier_id_at_sale = sr.supplier_id
-    LEFT JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+    JOIN prodaja_stavke ps ON ps.supplier_id_at_sale = sr.supplier_id
+    JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+       AND pz.datum_prodaje::date >= sr.period_from
+       AND pz.datum_prodaje::date <= sr.period_to
        AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY sr.supplier_id
 ),
@@ -372,18 +387,18 @@ decision_inputs AS (
         COALESCE(st.did_signal_coverage, 0) AS did_signal_coverage,
         COALESCE(st.cost_signal_coverage, 0) AS cost_signal_coverage,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN NULL
-            ELSE COALESCE(si.returned_units_in_period, 0) / NULLIF(si.sold_units_in_period, 0)
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN NULL
+            ELSE COALESCE(si.returned_units_in_period, 0) / NULLIF(si.gross_sold_units_in_period, 0)
         END AS return_rate,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
             ELSE NULL
         END AS return_rate_missing_evidence_reason,
         CASE
             WHEN COALESCE(st.post_signal_coverage, 0) < 1
               OR COALESCE(st.did_signal_coverage, 0) < 1
               OR COALESCE(st.cost_signal_coverage, 0) < 1
-              OR COALESCE(si.sold_units_in_period, 0) = 0
+              OR COALESCE(si.gross_sold_units_in_period, 0) = 0
             THEN 'partial'
             ELSE 'complete'
         END AS evidence_quality_status,
@@ -417,7 +432,7 @@ normalized_signals AS (
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.dead_stock_rate, 0)), 0)::numeric END AS dead_stock_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.unsold_stock_value, 0)), 0)::numeric END AS unsold_stock_value_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.repeat_winner_rate, 0)), 0)::numeric END AS repeat_winner_rate_rank,
-        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.return_rate, 0)), 0)::numeric END AS return_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric WHEN di.return_rate IS NULL OR COUNT(di.return_rate) OVER () = 1 THEN 0.5::numeric ELSE COALESCE(PERCENT_RANK() OVER (PARTITION BY di.return_rate IS NULL ORDER BY di.return_rate), 0)::numeric END AS return_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.category_focus_score, 0)), 0)::numeric END AS category_focus_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.article_count, 0)), 0)::numeric END AS article_count_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.units, 0)), 0)::numeric END AS sales_volume_rank
@@ -479,6 +494,16 @@ COMMENT ON MATERIALIZED VIEW mv_supplier_decision_score_cache_90d IS
 'Supplier decision scorecard computed over the rolling 90-day window. Refreshed nightly.';
 
 -- SQL_BATCH_BREAK
+
+DO $$
+BEGIN
+    IF to_regclass('public.mv_supplier_decision_score_cache_180d') IS NOT NULL
+       AND pg_get_viewdef(to_regclass('public.mv_supplier_decision_score_cache_180d')) NOT LIKE '%gross_sold_units_in_period%'
+    THEN
+        DROP MATERIALIZED VIEW public.mv_supplier_decision_score_cache_180d;
+    END IF;
+END
+$$;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_supplier_decision_score_cache_180d AS
 WITH supplier_totals AS (
@@ -547,13 +572,15 @@ seasonal_category_mix AS (
     GROUP BY md.supplier_id
 ),
 sales_in_period AS (
+    -- Sale-time supplier, canonical receipts, published evidence window; gross sold units.
     SELECT sr.supplier_id,
-        COALESCE(SUM(CASE WHEN pz.datum_prodaje::date >= sr.period_from AND pz.datum_prodaje::date <= sr.period_to THEN ps.kolicina ELSE 0 END), 0)::numeric AS sold_units_in_period,
-        COALESCE(SUM(CASE WHEN pz.datum_prodaje::date >= sr.period_from AND pz.datum_prodaje::date <= sr.period_to AND ps.kolicina < 0 THEN ABS(ps.kolicina) ELSE 0 END), 0)::numeric AS returned_units_in_period
+        COALESCE(SUM(ps.kolicina) FILTER (WHERE ps.kolicina > 0), 0)::numeric AS gross_sold_units_in_period,
+        COALESCE(SUM(ABS(ps.kolicina)) FILTER (WHERE ps.kolicina < 0), 0)::numeric AS returned_units_in_period
     FROM signal_rollup sr
-    JOIN "Artikli" a ON a."IDDobavljac" = sr.supplier_id
-    LEFT JOIN prodaja_stavke ps ON ps.id_artikal = a."Id" AND ps.supplier_id_at_sale = sr.supplier_id
-    LEFT JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+    JOIN prodaja_stavke ps ON ps.supplier_id_at_sale = sr.supplier_id
+    JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+       AND pz.datum_prodaje::date >= sr.period_from
+       AND pz.datum_prodaje::date <= sr.period_to
        AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY sr.supplier_id
 ),
@@ -572,18 +599,18 @@ decision_inputs AS (
         COALESCE(st.did_signal_coverage, 0) AS did_signal_coverage,
         COALESCE(st.cost_signal_coverage, 0) AS cost_signal_coverage,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN NULL
-            ELSE COALESCE(si.returned_units_in_period, 0) / NULLIF(si.sold_units_in_period, 0)
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN NULL
+            ELSE COALESCE(si.returned_units_in_period, 0) / NULLIF(si.gross_sold_units_in_period, 0)
         END AS return_rate,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
             ELSE NULL
         END AS return_rate_missing_evidence_reason,
         CASE
             WHEN COALESCE(st.post_signal_coverage, 0) < 1
               OR COALESCE(st.did_signal_coverage, 0) < 1
               OR COALESCE(st.cost_signal_coverage, 0) < 1
-              OR COALESCE(si.sold_units_in_period, 0) = 0
+              OR COALESCE(si.gross_sold_units_in_period, 0) = 0
             THEN 'partial'
             ELSE 'complete'
         END AS evidence_quality_status,
@@ -617,7 +644,7 @@ normalized_signals AS (
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.dead_stock_rate, 0)), 0)::numeric END AS dead_stock_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.unsold_stock_value, 0)), 0)::numeric END AS unsold_stock_value_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.repeat_winner_rate, 0)), 0)::numeric END AS repeat_winner_rate_rank,
-        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.return_rate, 0)), 0)::numeric END AS return_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric WHEN di.return_rate IS NULL OR COUNT(di.return_rate) OVER () = 1 THEN 0.5::numeric ELSE COALESCE(PERCENT_RANK() OVER (PARTITION BY di.return_rate IS NULL ORDER BY di.return_rate), 0)::numeric END AS return_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.category_focus_score, 0)), 0)::numeric END AS category_focus_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.article_count, 0)), 0)::numeric END AS article_count_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.units, 0)), 0)::numeric END AS sales_volume_rank

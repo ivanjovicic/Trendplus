@@ -141,12 +141,15 @@ first_markdown AS (
 sales_profile AS (
     -- Derive pre-markdown quantities, revenue and gross margin directly from
     -- line-level sales so margin stays in SQL and does not leak to the UI.
+    -- Retail evidence uses the canonical receipt population (no DUG/KOREKCIJA);
+    -- the stock proxy below still counts every physical sale document.
     SELECT
         fm.article_id,
         COALESCE(SUM(
             CASE
                 WHEN pz.datum_prodaje::date >= fm.first_markdown_date - INTERVAL '30 days'
                  AND pz.datum_prodaje::date <  fm.first_markdown_date
+                 AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                 THEN ps.kolicina
                 ELSE 0
             END
@@ -155,6 +158,7 @@ sales_profile AS (
             CASE
                 WHEN pz.datum_prodaje::date >= fm.first_markdown_date - INTERVAL '30 days'
                  AND pz.datum_prodaje::date <  fm.first_markdown_date
+                 AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                 THEN ps.kolicina * ps.cena
                 ELSE 0
             END
@@ -163,6 +167,7 @@ sales_profile AS (
             CASE
                 WHEN pz.datum_prodaje::date >= fm.first_markdown_date - INTERVAL '30 days'
                  AND pz.datum_prodaje::date <  fm.first_markdown_date
+                 AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                 THEN ps.kolicina * COALESCE(
                     CASE
                         WHEN ps.nabavna_cena > 0 THEN ps.nabavna_cena
@@ -178,11 +183,15 @@ sales_profile AS (
         MIN(
             CASE
                 WHEN pz.datum_prodaje::date < fm.first_markdown_date
+                 AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                 THEN pz.datum_prodaje::date
                 ELSE NULL
             END
         ) AS first_sale_before_markdown_date,
-        COALESCE(BOOL_OR(pz.datum_prodaje::date < fm.first_markdown_date), FALSE) AS had_sales_before_markdown_flag,
+        COALESCE(BOOL_OR(
+            pz.datum_prodaje::date < fm.first_markdown_date
+            AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
+        ), FALSE) AS had_sales_before_markdown_flag,
         COALESCE(SUM(
             CASE
                 WHEN pz.datum_prodaje::date >= fm.first_markdown_date
@@ -614,35 +623,22 @@ seasonal_category_mix AS (
     GROUP BY md.supplier_id
 ),
 sales_in_period AS (
-    -- Sold units in the supplier evidence window, used as the denominator
-    -- for return rate.
+    -- Retail sales evidence for return rate: canonical sale-time supplier
+    -- attribution, canonical receipt population, bounded to the published
+    -- evidence window [period_from, period_to]. Gross sold units are the
+    -- denominator so returns are not netted out of their own base.
     SELECT
         sr.supplier_id,
-        COALESCE(SUM(
-            CASE
-                WHEN pz.datum_prodaje::date >= sr.period_from
-                 AND pz.datum_prodaje::date <= sr.period_to
-                THEN ps.kolicina
-                ELSE 0
-            END
-        ), 0)::numeric AS sold_units_in_period,
-        COALESCE(SUM(
-            CASE
-                WHEN pz.datum_prodaje::date >= sr.period_from
-                 AND pz.datum_prodaje::date <= sr.period_to
-                 AND ps.kolicina < 0
-                THEN ABS(ps.kolicina)
-                ELSE 0
-            END
-        ), 0)::numeric AS returned_units_in_period
+        COALESCE(SUM(ps.kolicina) FILTER (WHERE ps.kolicina > 0), 0)::numeric AS gross_sold_units_in_period,
+        COALESCE(SUM(ABS(ps.kolicina)) FILTER (WHERE ps.kolicina < 0), 0)::numeric AS returned_units_in_period
     FROM signal_rollup sr
-    JOIN "Artikli" a ON a."IDDobavljac" = sr.supplier_id
-    LEFT JOIN prodaja_stavke ps
-           ON ps.id_artikal = a."Id"
-          AND ps.supplier_id_at_sale = sr.supplier_id
-    LEFT JOIN prodaja_zaglavlje pz
-           ON pz.id = ps.id_prodaja
-          AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
+    JOIN prodaja_stavke ps
+      ON ps.supplier_id_at_sale = sr.supplier_id
+    JOIN prodaja_zaglavlje pz
+      ON pz.id = ps.id_prodaja
+     AND pz.datum_prodaje::date >= sr.period_from
+     AND pz.datum_prodaje::date <= sr.period_to
+     AND UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY sr.supplier_id
 ),
 decision_inputs AS (
@@ -663,12 +659,12 @@ decision_inputs AS (
         COALESCE(st.did_signal_coverage, 0) AS did_signal_coverage,
         COALESCE(st.cost_signal_coverage, 0) AS cost_signal_coverage,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN NULL
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN NULL
             ELSE COALESCE(si.returned_units_in_period, 0)
-                 / NULLIF(si.sold_units_in_period, 0)
+                 / NULLIF(si.gross_sold_units_in_period, 0)
         END AS return_rate,
         CASE
-            WHEN COALESCE(si.sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
+            WHEN COALESCE(si.gross_sold_units_in_period, 0) = 0 THEN 'missing_sales_baseline'
             ELSE NULL
         END AS return_rate_missing_evidence_reason,
         COALESCE(cf.category_focus_score, 0) AS category_focus_score,
@@ -774,9 +770,13 @@ normalized_signals AS (
             WHEN COUNT(*) OVER () = 1 THEN 1::numeric
             ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.repeat_winner_rate, 0)), 0)::numeric
         END AS repeat_winner_rate_rank,
+        -- Missing return evidence (or a single known rate with no peer) is
+        -- neutral mid-scale, never the best rank; known rates rank only
+        -- against each other.
         CASE
             WHEN COUNT(*) OVER () = 1 THEN 1::numeric
-            ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(di.return_rate, 0)), 0)::numeric
+            WHEN di.return_rate IS NULL OR COUNT(di.return_rate) OVER () = 1 THEN 0.5::numeric
+            ELSE COALESCE(PERCENT_RANK() OVER (PARTITION BY di.return_rate IS NULL ORDER BY di.return_rate), 0)::numeric
         END AS return_rate_rank,
         CASE
             WHEN COUNT(*) OVER () = 1 THEN 1::numeric

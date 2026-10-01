@@ -547,6 +547,9 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')", endpoint);
         Assert.Contains("store_pz.\\\"IDObjekat\\\" = @storeId", endpoint);
         Assert.Contains("returned_units_in_period", endpoint);
+        Assert.Contains("/ NULLIF(COALESCE(s.gross_sold_units_in_period, 0), 0)", endpoint);
+        Assert.Contains("WHEN ss.return_rate IS NULL OR COUNT(ss.return_rate) OVER () = 1 THEN 0.5::numeric", endpoint);
+        Assert.DoesNotContain("ORDER BY COALESCE(ss.return_rate, 0)", endpoint);
         Assert.DoesNotContain("period_returns AS", endpoint);
         Assert.DoesNotContain("povracaj_zaglavlje", endpoint);
     }
@@ -564,11 +567,32 @@ public sealed class SupplierDecisionSchemaSqlTests
 
             Assert.Contains("ps.supplier_id_at_sale = sr.supplier_id", sql);
             Assert.Contains("returned_units_in_period", sql);
+            Assert.Contains("/ NULLIF(si.gross_sold_units_in_period, 0)", sql);
+            Assert.Contains("WHEN di.return_rate IS NULL OR COUNT(di.return_rate) OVER () = 1 THEN 0.5::numeric", sql);
+            Assert.DoesNotContain("ORDER BY COALESCE(di.return_rate, 0)", sql);
+            Assert.DoesNotContain("LEFT JOIN prodaja_stavke ps ON ps.id_artikal = a.\"Id\" AND ps.supplier_id_at_sale", sql);
             Assert.Contains("UPPER(TRIM(COALESCE(pz.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')", sql);
             Assert.DoesNotContain("returns_in_period AS", sql);
             Assert.DoesNotContain("povracaj_zaglavlje", sql);
             Assert.DoesNotContain("povracaj_stavke", sql);
         }
+    }
+
+    [Fact]
+    public void SupplierDecisionScorecardInputRepairReachesExistingDatabases()
+    {
+        var windowed = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+        foreach (var mv in new[] { "mv_supplier_decision_score_cache_90d", "mv_supplier_decision_score_cache_180d" })
+        {
+            var drop = windowed.IndexOf($"DROP MATERIALIZED VIEW public.{mv};", StringComparison.Ordinal);
+            var create = windowed.IndexOf($"CREATE MATERIALIZED VIEW IF NOT EXISTS {mv} AS", StringComparison.Ordinal);
+            Assert.True(drop >= 0 && drop < create, $"{mv} must drop a stale definition before CREATE IF NOT EXISTS.");
+            Assert.Contains($"pg_get_viewdef(to_regclass('public.{mv}')) NOT LIKE '%gross_sold_units_in_period%'", windowed);
+        }
+
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        Assert.Contains("pg_get_viewdef(to_regclass('public.vw_supplier_fullprice_signals')) LIKE '%KOREKCIJA%'", initializer);
+        Assert.Contains("pg_get_viewdef(to_regclass('public.vw_supplier_decision_score')) LIKE '%gross_sold_units_in_period%'", initializer);
     }
 
     [Fact]

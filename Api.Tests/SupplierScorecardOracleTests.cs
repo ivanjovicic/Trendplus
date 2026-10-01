@@ -43,9 +43,13 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Equal(4m, signals[1022].StockBeforeMarkdown);
         Assert.Equal(0.3333m, signals[1022].PreSellthrough);
 
-        // A1041: 2 retail units + 1 DUG unit at 120 inside the pre window.
-        Assert.Equal(3m, signals[1041].PreQty);
-        Assert.Equal(360m, signals[1041].PreRevenue);
+        // A1041: the DUG receipt in the pre window is not retail turnover.
+        Assert.Equal(2m, signals[1041].PreQty);
+        Assert.Equal(240m, signals[1041].PreRevenue);
+
+        // A1042: a post-markdown KOREKCIJA line still moved stock: 2 + (1 + 1) sold since markdown.
+        Assert.Equal(4m, signals[1042].StockBeforeMarkdown);
+        Assert.Equal(0.3333m, signals[1042].PreSellthrough);
 
         // A1050: no line, article or foreign cost -> margin equals revenue and no cost signal.
         Assert.Equal(240m, signals[1050].PreMargin);
@@ -89,8 +93,8 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Equal(810m / 1340m, scores[101].Input.PreMarkdownMarginPct);
         Assert.Equal("complete", scores[101].EvidenceQualityStatus);
 
-        // Gama: 3 returned / 9 net units in the evidence window.
-        Assert.Equal(3m / 9m, scores[103].Input.ReturnRate);
+        // Gama: 3 returned / 12 gross sold units in the evidence window.
+        Assert.Equal(0.25m, scores[103].Input.ReturnRate);
         Assert.Equal("REVIEW_QUALITY", scores[103].RecommendationCode);
 
         // Delta: 9 of 10 articles have cost evidence.
@@ -103,14 +107,18 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Equal(0m, scores[105].Input.ReturnRate);
         Assert.Equal("OOS_FALSE_NEGATIVE", scores[105].RecommendationCode);
 
-        // Zeta: sale-time supplier is unknown, so the return-rate baseline is missing.
+        // Zeta: sale-time supplier is unknown, so the return-rate baseline is
+        // missing and the return rank is neutral, not best.
         Assert.Null(scores[106].Input.ReturnRate);
         Assert.Equal("missing_sales_baseline", scores[106].ReturnRateMissingEvidenceReason);
+        Assert.Equal(0.5m, scores[106].ReturnRateRank);
         Assert.Equal(1, scores[106].Input.ArticleCount);
         Assert.Equal("REVIEW_QUALITY", scores[106].RecommendationCode);
 
-        // Beta: 1 returned / (9 + 4) net units.
-        Assert.Equal(1m / 13m, scores[102].Input.ReturnRate);
+        // Beta: sale-time attribution keeps A1053's sale/return under Beta after
+        // the supplier change: 2 returned / (9 + 5 + 2) gross sold units.
+        Assert.Equal(0.125m, scores[102].Input.ReturnRate);
+        Assert.Equal("REVIEW_QUALITY", scores[102].RecommendationCode);
     }
 
     // ------------------------------------------------------------------
@@ -203,19 +211,23 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
     }
 
     [Fact]
-    public void MissingReturnRate_RanksAsBestReturnRate_ButCostsConfidence_DocumentsN11()
+    public void MissingReturnRate_IsNeutral_NotBest_AndCostsConfidence_RepairsN11()
     {
         var inputs = SyntheticInputs();
-        inputs[0] = inputs[0] with { ReturnRate = null, SoldUnitsInPeriod = 0m };
+        inputs[0] = inputs[0] with { ReturnRate = null, GrossSoldUnitsInPeriod = 0m };
         inputs[1] = inputs[1] with { ReturnRate = 0m };
 
         var scores = SupplierScorecardOracle.Score(inputs);
 
-        Assert.Equal(scores[1].ReturnRateRank, scores[0].ReturnRateRank);
-        Assert.Equal(0m, scores[0].ReturnRateRank);
+        Assert.Equal(0.5m, scores[0].ReturnRateRank);
+        Assert.Equal(0m, scores[1].ReturnRateRank);
+        // Known rates rank only against each other: 0.00 < 0.01 < 0.08 < 0.10.
+        Assert.Equal(
+            new[] { 0m, 0.666666666666667m, 0.333333333333333m, 1m },
+            scores.Skip(1).Select(s => s.ReturnRateRank).ToArray());
         Assert.Equal("partial", scores[0].EvidenceQualityStatus);
         Assert.Equal(
-            SupplierScorecardOracle.Score(inputs.Select((i, index) => index == 0 ? i with { ReturnRate = 0m, SoldUnitsInPeriod = 10m } : i).ToList())[0].ConfidenceRaw - 0.15m,
+            SupplierScorecardOracle.Score(inputs.Select((i, index) => index == 0 ? i with { ReturnRate = 0m, GrossSoldUnitsInPeriod = 10m } : i).ToList())[0].ConfidenceRaw - 0.15m,
             scores[0].ConfidenceRaw);
     }
 
@@ -314,9 +326,9 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
     }
 
     [Fact]
-    public async Task KnownScorecardInputDefects_AreReproducedBySql_UntilRq521Flips()
+    public async Task ScorecardInputRepairs_AreAppliedBySql_Rq521()
     {
-        await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_defects");
+        await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_repairs");
         if (db is null)
         {
             return;
@@ -326,45 +338,41 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         await SeedAsync(db.Connection, fixture);
         await ApplyScorecardSqlAsync(db.Connection);
 
-        var current90 = SupplierScorecardOracleOptions.Window(db.Anchor, 90);
         var currentAllTime = SupplierScorecardOracleOptions.AllTime(db.Anchor);
+
+        foreach (var mv in new[] { "mv_supplier_decision_score_cache", "mv_supplier_decision_score_cache_90d", "mv_supplier_decision_score_cache_180d" })
+        {
+            var scores = await ReadScoresAsync(db.Connection, mv);
+
+            // N11: return rate uses gross sold units (3 / 12), not net units (3 / 9).
+            Assert.Equal(0.25m, scores[103].ReturnRate);
+
+            // N12: sale-time attribution keeps A1053's sale/return (sold under Beta
+            // before the supplier change) in Beta: 2 / 16 crosses the 12% gate.
+            Assert.Equal(0.125m, scores[102].ReturnRate);
+            Assert.Equal("REVIEW_QUALITY", scores[102].RecommendationCode);
+
+            // Missing return evidence stays visible and is not treated as zero.
+            Assert.Null(scores[106].ReturnRate);
+            Assert.Equal("missing_sales_baseline", scores[106].ReturnRateMissingEvidenceReason);
+        }
+
         var sql90 = await ReadScoresAsync(db.Connection, "mv_supplier_decision_score_cache_90d");
         var sqlArticles = await ReadArticleSignalsAsync(db.Connection, "vw_supplier_fullprice_signals");
 
-        // Each block asserts: SQL == deployed formula, and the RQ521 candidate
-        // correction yields a different value. RQ521 flips these to the corrected
-        // expectation together with the SQL fix.
-
-        // N11: return rate divides by net units (already reduced by returns).
-        var grossReturns = Score(fixture, current90 with { ReturnRateUsesGrossUnits = true }, 103);
-        Assert.Equal(Round4(3m / 9m), sql90[103].ReturnRate);
-        Assert.Equal(Round4(3m / 12m), Round4(grossReturns.Input.ReturnRate!.Value));
-
-        // N12: sales_in_period needs current supplier == sale-time supplier, so the
-        // supplier-change article's sale/return under Beta disappears from Beta.
-        var saleTimeOnly = Score(
-            fixture,
-            current90 with { ReturnRateUsesGrossUnits = true, SalesInPeriodUsesSaleTimeSupplierOnly = true },
-            102);
-        Assert.Equal(Round4(1m / 13m), sql90[102].ReturnRate);
-        Assert.Equal(0.125m, saleTimeOnly.Input.ReturnRate);
-        Assert.NotEqual("REVIEW_QUALITY", sql90[102].RecommendationCode);
-        Assert.Equal("REVIEW_QUALITY", saleTimeOnly.RecommendationCode);
-
-        // N13: one missing cost out of ten forces REVIEW_QUALITY.
+        // N13 is policy (RQ531), not an input bug: one missing cost out of ten still forces REVIEW_QUALITY.
         Assert.Equal(0.9m, sql90[104].CostSignalCoverage);
         Assert.Equal("partial", sql90[104].EvidenceQualityStatus);
         Assert.Equal("REVIEW_QUALITY", sql90[104].RecommendationCode);
 
-        // N19: DUG receipts count as full-price sales in the pre-markdown profile.
-        var withoutDug = SupplierScorecardOracle
-            .ArticleSignals(fixture, currentAllTime with { ExcludeDugKorekcijaFromPreMarkdownSales = true })
-            .Single(s => s.ArticleId == 1041);
-        Assert.Equal(360m, sqlArticles[1041].PreRevenue);
-        Assert.Equal(240m, withoutDug.PreRevenue);
+        // N19: DUG/KOREKCIJA are not retail turnover in the full-price profile,
+        // but a post-markdown KOREKCIJA line still counts as a physical stock movement.
+        Assert.Equal(2m, sqlArticles[1041].PreQty);
+        Assert.Equal(240m, sqlArticles[1041].PreRevenue);
+        Assert.Equal(4m, sqlArticles[1042].StockBeforeMarkdown);
 
-        // N20: a customer return recorded both as a negative sale line and as a
-        // "Povrat kupca" move is subtracted twice from the stock proxy.
+        // N20 (unchanged, unproven against real data): a customer return recorded both
+        // as a negative sale line and as a "Povrat kupca" move is subtracted twice.
         var singleReturn = SupplierScorecardOracle
             .ArticleSignals(fixture, currentAllTime with { StockProxySubtractsCustomerReturnMoves = false })
             .Single(s => s.ArticleId == 1022);
@@ -413,6 +421,52 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
             || before.StockRiskScore != after.StockRiskScore
             || before.ConfidenceScore != after.ConfidenceScore,
             "Adding an unrelated supplier should move at least one relative Alfa output.");
+    }
+
+    [Fact]
+    public async Task StaleWindowedCaches_AreRecreated_AndRepairedCoreViewsPassStartupReadiness()
+    {
+        await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_upgrade");
+        if (db is null)
+        {
+            return;
+        }
+
+        var builder = GoldenFixture.Build(db.Anchor);
+        await SeedAsync(db.Connection, builder.Fixture);
+        await ApplyScorecardSqlAsync(db.Connection);
+
+        // The startup readiness predicate must accept the repaired core views as
+        // deparsed by PostgreSQL; otherwise every startup re-runs the core batches
+        // and skips the cache build as "still missing after repair".
+        var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
+        var method = initializer.IndexOf("AreSupplierDecisionHubCoreViewsReadyAsync(string connectionString)", StringComparison.Ordinal);
+        var sqlStart = initializer.IndexOf("\"\"\"", method, StringComparison.Ordinal) + 3;
+        var sqlEnd = initializer.IndexOf("\"\"\"", sqlStart, StringComparison.Ordinal);
+        await using (var readiness = new NpgsqlCommand(initializer[sqlStart..sqlEnd], db.Connection))
+        {
+            Assert.True((bool)(await readiness.ExecuteScalarAsync())!);
+        }
+
+        // A windowed cache built from a pre-RQ521 definition is replaced on the
+        // next 029 run instead of being kept by CREATE ... IF NOT EXISTS.
+        await ExecuteAsync(db.Connection, """
+            DROP MATERIALIZED VIEW mv_supplier_decision_score_cache_90d;
+            CREATE MATERIALIZED VIEW mv_supplier_decision_score_cache_90d AS SELECT 1 AS legacy_sold_units_in_period;
+            """);
+        foreach (var batch in ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql")
+                     .Split("-- SQL_BATCH_BREAK", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            await ExecuteAsync(db.Connection, batch);
+        }
+
+        var mismatches = new List<string>();
+        CompareScores(
+            "mv_supplier_decision_score_cache_90d+recreated",
+            SupplierScorecardOracle.Score(builder.Fixture, SupplierScorecardOracleOptions.Window(db.Anchor, 90)),
+            await ReadScoresAsync(db.Connection, "mv_supplier_decision_score_cache_90d"),
+            mismatches);
+        Assert.True(mismatches.Count == 0, string.Join(Environment.NewLine, mismatches));
     }
 
     // ------------------------------------------------------------------
@@ -541,8 +595,8 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
             b.Sale(1031, -20, -3, 60m, 103, 30m);
             b.PriceEvent(1031, 103, -40, 80m, 60m);
 
-            // 104 Delta: ten boots, one without any cost (90% cost coverage) and
-            // one DUG receipt in a pre-markdown window.
+            // 104 Delta: ten boots, one without any cost (90% cost coverage), one
+            // DUG receipt in a pre-markdown window and one post-markdown KOREKCIJA.
             b.Supplier(104, "Delta Coverage");
             for (var id = 1041; id <= 1050; id++)
             {
@@ -554,6 +608,10 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
                     b.Sale(id, -45, 1, 120m, 104, 60m, receiptNumber: "DUG");
                 }
                 b.Sale(id, -25, 1, 90m, 104, hasCost ? 60m : null);
+                if (id == 1042)
+                {
+                    b.Sale(id, -20, 1, 90m, 104, 60m, receiptNumber: " korekcija ");
+                }
                 b.PriceEvent(id, 104, -35, 120m, 90m);
             }
 
@@ -647,9 +705,6 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
             Input(5, 0.50m, 0.20m, 0.60m, 0.05m, 2_000m, 0.10m, 40m, 3, 20m)
         ];
     }
-
-    private static OracleSupplierScore Score(OracleFixture fixture, SupplierScorecardOracleOptions options, int supplierId) =>
-        SupplierScorecardOracle.Score(fixture, options).Single(s => s.Input.SupplierId == supplierId);
 
     private static decimal Round4(decimal value) => SupplierScorecardOracle.Round(value, 4);
 

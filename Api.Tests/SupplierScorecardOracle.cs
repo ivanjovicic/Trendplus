@@ -58,20 +58,18 @@ internal sealed class OracleFixture
 }
 
 /// <summary>
-/// Formula switches. Defaults reproduce the deployed v1 formula. The candidate
-/// corrections are the RQ521 input-bug repairs; they are opt-in so tests can
-/// assert the known defects until RQ521 lands. Model policy (weights,
-/// thresholds, coverage gates, inventory penalty, cost fallback) is not
-/// switchable here and changes only through RQ531/owner decision.
+/// Formula switches. Defaults reproduce the deployed formula, including the
+/// RQ521 input repairs (gross return-rate base, sale-time supplier attribution,
+/// canonical receipts for turnover evidence, neutral rank for missing returns).
+/// The stock-proxy switch exists only to document the unresolved N20 question.
+/// Model policy (weights, thresholds, coverage gates, inventory penalty, cost
+/// fallback) is not switchable here and changes only through RQ531/owner decision.
 /// </summary>
 internal sealed record SupplierScorecardOracleOptions(
     DateOnly Anchor,
     int? WindowDays,
     bool DeadStockCountsOnlyPostSignalArticles)
 {
-    public bool ReturnRateUsesGrossUnits { get; init; }
-    public bool SalesInPeriodUsesSaleTimeSupplierOnly { get; init; }
-    public bool ExcludeDugKorekcijaFromPreMarkdownSales { get; init; }
     public bool StockProxySubtractsCustomerReturnMoves { get; init; } = true;
 
     public static SupplierScorecardOracleOptions AllTime(DateOnly anchor) => new(anchor, null, true);
@@ -120,7 +118,7 @@ internal sealed record OracleDecisionInput(
     decimal PostSignalCoverage,
     decimal DidSignalCoverage,
     decimal CostSignalCoverage,
-    decimal SoldUnitsInPeriod,
+    decimal GrossSoldUnitsInPeriod,
     decimal ReturnedUnitsInPeriod,
     decimal? ReturnRate,
     decimal CategoryFocusScore,
@@ -196,16 +194,14 @@ internal static class SupplierScorecardOracle
             var oldPrice = Round(fm.OldPrice, 2);
             var newPrice = Round(fm.NewPrice, 2);
 
-            var lines = fixture.Sales
-                .Where(s => s.ArticleId == fm.ArticleId)
-                .Where(s => !options.ExcludeDugKorekcijaFromPreMarkdownSales || !IsDugOrKorekcija(s.ReceiptNumber))
-                .ToList();
-            var preLines = lines.Where(s => s.Day >= fmd.AddDays(-30) && s.Day < fmd).ToList();
+            var physicalLines = fixture.Sales.Where(s => s.ArticleId == fm.ArticleId).ToList();
+            var retailLines = physicalLines.Where(s => !IsDugOrKorekcija(s.ReceiptNumber)).ToList();
+            var preLines = retailLines.Where(s => s.Day >= fmd.AddDays(-30) && s.Day < fmd).ToList();
             var preQty = (decimal)preLines.Sum(s => s.Qty);
             var preRevenue = Round(preLines.Sum(s => s.Qty * s.Price), 2);
             var preCost = Round(preLines.Sum(s => s.Qty * UnitCost(s, article)), 2);
-            var hadSales = lines.Any(s => s.Day < fmd);
-            var soldSince = (decimal)lines.Where(s => s.Day >= fmd).Sum(s => s.Qty);
+            var hadSales = retailLines.Any(s => s.Day < fmd);
+            var soldSince = (decimal)physicalLines.Where(s => s.Day >= fmd).Sum(s => s.Qty);
 
             var moves = fixture.Moves.Where(m => m.ArticleId == fm.ArticleId && m.Day >= fmd).ToList();
             decimal MoveQty(string type) => moves.Where(m => m.Type == type).Sum(m => m.Qty);
@@ -312,8 +308,7 @@ internal static class SupplierScorecardOracle
 
             var periodFrom = rows.Min(r => r.FirstMarkdownDate).AddDays(-30);
             var periodTo = rows.Max(r => r.FirstMarkdownDate).AddDays(30);
-            var (sold, gross, returned) = SalesInPeriod(fixture, options, group.Key, periodFrom, periodTo);
-            var returnDenominator = options.ReturnRateUsesGrossUnits ? gross : sold;
+            var (gross, returned) = SalesInPeriod(fixture, group.Key, periodFrom, periodTo);
 
             inputs.Add(new OracleDecisionInput(
                 group.Key,
@@ -331,9 +326,9 @@ internal static class SupplierScorecardOracle
                 Round(rows.Count(r => r.HasPostSignal) / count, 4),
                 Round(rows.Count(r => r.HasDidSignal) / count, 4),
                 Round(rows.Count(r => r.HasCostSignal) / count, 4),
-                sold,
+                gross,
                 returned,
-                sold == 0 || returnDenominator == 0 ? null : returned / returnDenominator,
+                gross == 0 ? null : returned / gross,
                 categoryFocus,
                 rows.Count(r => r.PreSellthrough >= 0.45m
                     && r.PreMargin > 0
@@ -366,7 +361,7 @@ internal static class SupplierScorecardOracle
         var deadStockRanks = PercentRanks(inputs, i => i.DeadStockRate);
         var stockValueRanks = PercentRanks(inputs, i => i.UnsoldStockValue);
         var repeatWinnerRanks = PercentRanks(inputs, i => i.RepeatWinnerRate);
-        var returnRanks = PercentRanks(inputs, i => i.ReturnRate ?? 0m);
+        var returnRanks = ReturnRateRanks(inputs);
         var categoryFocusRanks = PercentRanks(inputs, i => i.CategoryFocusScore);
         var articleCountRanks = PercentRanks(inputs, i => i.ArticleCount);
         var salesVolumeRanks = PercentRanks(inputs, i => i.Units);
@@ -403,7 +398,7 @@ internal static class SupplierScorecardOracle
             var evidence = input.PostSignalCoverage < 1
                 || input.DidSignalCoverage < 1
                 || input.CostSignalCoverage < 1
-                || input.SoldUnitsInPeriod == 0
+                || input.GrossSoldUnitsInPeriod == 0
                 ? "partial"
                 : "complete";
 
@@ -441,7 +436,7 @@ internal static class SupplierScorecardOracle
                 score,
                 scoreRaw is < 0 or > 100,
                 evidence,
-                input.SoldUnitsInPeriod == 0 ? "missing_sales_baseline" : null,
+                input.GrossSoldUnitsInPeriod == 0 ? "missing_sales_baseline" : null,
                 recommendation));
         }
 
@@ -451,29 +446,39 @@ internal static class SupplierScorecardOracle
     public static decimal Round(decimal value, int decimals) =>
         Math.Round(value, decimals, MidpointRounding.AwayFromZero);
 
-    private static (decimal Sold, decimal Gross, decimal Returned) SalesInPeriod(
+    private static (decimal Gross, decimal Returned) SalesInPeriod(
         OracleFixture fixture,
-        SupplierScorecardOracleOptions options,
         int supplierId,
         DateOnly from,
         DateOnly to)
     {
-        var currentArticles = fixture.Articles
-            .Where(a => a.SupplierId == supplierId)
-            .Select(a => a.Id)
-            .ToHashSet();
-
         var lines = fixture.Sales
             .Where(s => s.SupplierAtSale == supplierId)
-            .Where(s => options.SalesInPeriodUsesSaleTimeSupplierOnly || currentArticles.Contains(s.ArticleId))
             .Where(s => !IsDugOrKorekcija(s.ReceiptNumber))
             .Where(s => s.Day >= from && s.Day <= to)
             .ToList();
 
         return (
-            lines.Sum(s => s.Qty),
             lines.Where(s => s.Qty > 0).Sum(s => s.Qty),
             lines.Where(s => s.Qty < 0).Sum(s => -s.Qty));
+    }
+
+    // Single-supplier cohort keeps the shared rank guard of 1; a missing rate,
+    // or the only known rate with no peer, is neutral 0.5; known rates rank
+    // only against each other.
+    private static decimal[] ReturnRateRanks(IReadOnlyList<OracleDecisionInput> inputs)
+    {
+        if (inputs.Count == 1)
+        {
+            return [1m];
+        }
+
+        var known = inputs.Where(i => i.ReturnRate is not null).Select(i => i.ReturnRate!.Value).ToArray();
+        return inputs
+            .Select(i => i.ReturnRate is not decimal rate || known.Length == 1
+                ? 0.5m
+                : FromFloat8(known.Count(other => other < rate) / (double)(known.Length - 1)))
+            .ToArray();
     }
 
     private static decimal UnitCost(OracleSaleLine line, OracleArticle article) =>

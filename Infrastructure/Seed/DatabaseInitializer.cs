@@ -351,12 +351,17 @@ public static class DatabaseInitializer
 
     private static async Task<bool> AreSupplierDecisionHubCoreViewsReadyAsync(string connectionString)
     {
+        // Core views are also "not ready" when they predate the RQ521 input
+        // formula (canonical receipts in the full-price profile, gross-sold
+        // return-rate base); the core-view batches are cheap CREATE OR REPLACE VIEW.
         const string sql = """
             SELECT
                 to_regclass('public.vw_supplier_fullprice_signals') IS NOT NULL
                 AND to_regclass('public.vw_supplier_markdown_dependency') IS NOT NULL
                 AND to_regclass('public.vw_supplier_decision_score') IS NOT NULL
-                AND to_regclass('public.vw_supplier_recommendations') IS NOT NULL;
+                AND to_regclass('public.vw_supplier_recommendations') IS NOT NULL
+                AND COALESCE(pg_get_viewdef(to_regclass('public.vw_supplier_fullprice_signals')) LIKE '%KOREKCIJA%', FALSE)
+                AND COALESCE(pg_get_viewdef(to_regclass('public.vw_supplier_decision_score')) LIKE '%gross_sold_units_in_period%', FALSE);
             """;
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -417,7 +422,7 @@ public static class DatabaseInitializer
             if (!coreViewsReady)
             {
                 logger.LogInformation(
-                    "[{Mode}] Supplier decision hub core views are missing in {DatabaseLabel}. Forcing startup-safe core view batches.",
+                    "[{Mode}] Supplier decision hub core views are missing or outdated in {DatabaseLabel}. Forcing startup-safe core view batches.",
                     mode,
                     databaseLabel);
                 await DeleteAppliedStartupSqlHistoryAsync(
@@ -1046,7 +1051,7 @@ public static class DatabaseInitializer
 
                     if (!coreViewsReady)
                     {
-                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
+                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing or outdated. Forcing re-execution of the core-view batch...");
                         await DeleteAppliedStartupSqlHistoryAsync(
                             bg018ConnectionString,
                             "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
@@ -1125,7 +1130,7 @@ public static class DatabaseInitializer
                     var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
                     if (!coreViewsReady)
                     {
-                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing. Forcing re-execution of the core-view batch...");
+                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing or outdated. Forcing re-execution of the core-view batch...");
                         await DeleteAppliedStartupSqlHistoryAsync(
                             bg018ConnectionString,
                             "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");

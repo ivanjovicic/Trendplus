@@ -3564,16 +3564,18 @@ category_focus AS (
     GROUP BY c.supplier_id
 ),
 period_sales AS (
+    -- Gross sold units are the return-rate base so returns are not netted out of their own denominator.
     SELECT
         b.supplier_id,
         COALESCE(SUM(
             CASE
                 WHEN pz.datum_prodaje::date >= b.period_from
                  AND pz.datum_prodaje::date <= b.period_to
+                 AND ps.kolicina > 0
                 THEN ps.kolicina
                 ELSE 0
             END
-        ), 0)::numeric AS sold_units_in_period
+        ), 0)::numeric AS gross_sold_units_in_period
         ,COALESCE(SUM(
             CASE
                 WHEN pz.datum_prodaje::date >= b.period_from
@@ -3628,7 +3630,7 @@ supplier_scored AS (
         ) AS stock_risk_score,
         ROUND(
             COALESCE(s.returned_units_in_period, 0)
-            / NULLIF(COALESCE(s.sold_units_in_period, 0), 0),
+            / NULLIF(COALESCE(s.gross_sold_units_in_period, 0), 0),
             4
         ) AS return_rate,
         ROUND(COALESCE(cf.category_focus_score, 0), 2) AS category_focus_score,
@@ -3673,7 +3675,7 @@ normalized_signals AS (
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.dead_stock_rate, 0)), 0)::numeric END AS dead_stock_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.unsold_stock_value, 0)), 0)::numeric END AS unsold_stock_value_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.repeat_winner_rate, 0)), 0)::numeric END AS repeat_winner_rate_rank,
-        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.return_rate, 0)), 0)::numeric END AS return_rate_rank,
+        CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric WHEN ss.return_rate IS NULL OR COUNT(ss.return_rate) OVER () = 1 THEN 0.5::numeric ELSE COALESCE(PERCENT_RANK() OVER (PARTITION BY ss.return_rate IS NULL ORDER BY ss.return_rate), 0)::numeric END AS return_rate_rank,
         CASE WHEN COUNT(*) OVER () = 1 THEN 1::numeric ELSE COALESCE(PERCENT_RANK() OVER (ORDER BY COALESCE(ss.category_focus_score, 0)), 0)::numeric END AS category_focus_rank
     FROM supplier_scored ss
     CROSS JOIN distribution_bounds db
