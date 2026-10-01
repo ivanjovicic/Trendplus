@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ475 (IN_PROGRESS; exclusive local claim `.ai/task-locks/RQ475-codex.lock.md`; MASTER_ROADMAP.md carries the cross-program pointer)
+Current READY prompt: none (RQ475 is DONE; run fresh selector/recovery for the next cross-program pointer)
 Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 was WAITING behind RQ536 (shared Decision Hub surface) and was promoted to IN_PROGRESS after RQ536 reached DONE on 2026-10-01; the live-evidence gate remains satisfied and the store-filtered scorecard HTTP 500 is in scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 were independent runnable lanes at that time.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -26500,7 +26500,7 @@ Unavailable Supplier overview cannot be mistaken for “no data”, while a succ
 
 ## RQ475 - Make Supplier scorecard/assortment semantic-data readiness operationally actionable
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ536 is DONE (same Supplier Decision Hub endpoint/page surface). The live-evidence gate is satisfied by RQ535.
 Reclassified 2026-10-01 by RQ535: the September live premise was re-observed on exact deployed SHA `3a6a6886` with sharper object names.
 - Scorecard (30d request, effective 90d): HTTP 200, `meta.success=false`, `MISSING_OBJECT`, because `mv_supplier_decision_score_cache_90d` does not exist (it was `MISSING_SCHEMA` before).
@@ -26562,6 +26562,26 @@ An operator can identify why scorecard/assortment are unavailable and what read-
 - Idle recovery refreshed origin/main to a0cb2d714319db69c9860347785ef0f1193d4f5; RQ535 and RQ536 are DONE, the named RQ536 dependency is satisfied, and no active lock/branch/open PR owner or same-family collision was found.
 - RQ475 moved WAITING -> READY -> IN_PROGRESS as the next P1 Supplier readiness prompt. Scope remains repository-local readiness/error/empty/retry behavior; live provider logs remain an evidence gap and no production DDL is authorized.
 - Local lock: .ai/task-locks/RQ475-codex.lock.md.
+
+### Completion note
+
+- Completion date: 2026-10-01
+- Status: DONE
+- Completion: Supplier scorecard and assortment errors now expose a stable readiness ID, safe recovery guidance, requested/effective period and scope truth, and retry behavior. Missing schema/columns/privileges fail closed, recommendations remain blocked, valid empty remains distinct, and neither page renders fake zero KPIs.
+- Changed files: backend analytics meta/endpoint and focused tests; frontend analytics meta schema/client/error state, Supplier Decision Hub and Supplier Footwear pages and tests; reviewed guardrail baseline coordinates; roadmap, queue and `.ai/runs/2026-10-01-RQ475-evidence.md`.
+- Contract/runtime behavior changed: SQL states 42P01/42703/42501/3F000 map to safe stable readiness/error codes; error metadata leaves effective period/scope unapplied; successful empty responses keep their applied context. Existing formula and recommendation scoring policy were not changed.
+- Checks run: focused backend 39/39 before the unrelated latest-main Daily Sales commit; targeted supplier UI tests 2/2; analytics response-schema tests 18/18; analytics guardrails/typecheck and production build pass; `git diff --check` pass. The two focused page specs ran 35/36, with one unrelated checkbox-selector failure. Local prompt governance and current-main Planning Governance run report the same unrelated P-UI-27 `Residual risk:` omission.
+- Checks not run: full backend/frontend suites; live provider startup logs, Neon inspection, new production probes or DDL.
+- Run log: `.ai/runs/2026-10-01-RQ475-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e1099d20d2b2149c68cb06b96469cffb3b867fd0`
+- Main verification: fresh `git fetch origin` confirmed `HEAD == origin/main == e1099d20d2b2149c68cb06b96469cffb3b867fd0`; `git merge-base --is-ancestor e1099d20d2b2149c68cb06b96469cffb3b867fd0 origin/main` passed.
+- Missed: provider startup logs and Neon state are still needed to explain why startup migrations/views were not applied.
+- Follow-up: RQ491 remains behind Q83; RQ479 needs release/seed provenance, RQ481 needs the product-owner shared-filter decision, and RQ487 needs baseline timing/EXPLAIN evidence.
+- Residual risk: current-main backend compilation is blocked by unrelated Daily Sales commit `1ed9c9e57` (`CS0272` at `DailySalesStatsService.cs:510`). Analytics Tests & Data Integrity run `36878713532` and Analytics Quality Gates run `36878713638` were `in_progress` when inspected. Planning Governance run `36878713530` is red only on the unrelated P-UI-27 queue-note omission.
+- Next: no other safe repository-local RQ candidate was found during post-completion idle recovery; resume selection after those gates change or on a fresh queue request.
+- Prompt defect / scope repair: repaired a stray control character and stale RQ475 WAITING wording in the routing note; refreshed only existing guardrail baseline line coordinates shifted by Supplier UI edits and concurrent Daily Sales changes.
 
 ---
 
