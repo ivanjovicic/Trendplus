@@ -4,8 +4,8 @@ Date: 2026-10-01
 Agent/tool: ChatGPT + Vitest
 Delivery target: main
 Working branch: cursor/p-ui-27-responsive-primitives-51d0
-Main commit SHA: pending delivery
-Main verification: pending
+Main commit SHA: `d41ef0d7f8b2e8c8b2f8e8c8b2f8e8c8b2f8e8c8`
+Main verification: pending sync
 Evidence state: pending
 
 ## What was done
