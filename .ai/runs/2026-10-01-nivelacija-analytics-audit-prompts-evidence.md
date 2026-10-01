@@ -5,9 +5,9 @@ Agent/tool: Grok Bot (executor subagent; read-only box clone of `origin/main`; p
 Delivery target: main (direct-main docs commit)
 Working branch / PR: detached temporary worktree on `origin/main`, pushed as `HEAD:main` on explicit user instruction; no branch or PR; the user's main checkout was not touched.
 Main implementation SHA: f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5
-Main registration SHA: PENDING_REGISTRATION
-Main verification: `git ls-remote origin main` after the push (see the executing agent's report); audit base `cb3eb7e`, rechecked on `c51d7a4` (analysis started on `3b7ed53b`; line references recomputed for `cb3eb7e`)
-Evidence state: implementation delivered; registration sync pending
+Main registration SHA: 44d0aa617a9aad5a3e52488fde8cb7c0e74dbc66
+Main verification: GitHub main contains the implementation stack through `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5` and registration/roadmap SHA `44d0aa617a9aad5a3e52488fde8cb7c0e74dbc66`; audit base `cb3eb7e`, rechecked on current main during integration
+Evidence state: synchronized
 
 ## What was done
 - Phase A (read-only):
