@@ -5,7 +5,8 @@ Repo: ivanjovicic/Trendplus
 Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
-Current READY routing: none. RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
+Owner promotion/claim 2026-10-01: fresh idle recovery found no current READY prompt, no active lock/branch/open-PR collision for `RQ540`, and no dependency gate. `RQ540` moved `WAITING -> READY -> IN_PROGRESS` as the bounded P1 cache-truth repair for transient Pre-Nivelacija query failures and cancellations. Local lock: `.ai/task-locks/RQ540-codex.lock.md`. RQ537 remains WAITING because its scenario intent still needs semantic proof before arithmetic changes.
+Current READY routing: `RQ540` (IN_PROGRESS). RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -230,7 +231,7 @@ NV-F1 (same files; land it first, or in one PR).
 
 ## RQ540 - NV-F4 - Never cache transient Pre-Nivelacija failures or client cancellations
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/tests
 Feature family: pre-nivelacija-cache-truth

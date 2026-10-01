@@ -6,6 +6,20 @@ namespace Api.Tests;
 public sealed class PreNivelacijaQueryFailureMetaTests
 {
     [Fact]
+    public void QueryFailureException_PreservesFailureSourceForUncachedMapping()
+    {
+        var source = new InvalidOperationException("database unavailable");
+        var exception = new PreNivelacijaQueryFailedException(
+            salesQueryFailed: true,
+            markdownQueryFailed: false,
+            source);
+
+        Assert.True(exception.SalesQueryFailed);
+        Assert.False(exception.MarkdownQueryFailed);
+        Assert.Same(source, exception.InnerException);
+    }
+
+    [Fact]
     public void BuildQueryFailureMeta_SalesFailure_IsErrorNotSuccessZero()
     {
         var meta = PreNivelacijaPriorityEndpoints.BuildQueryFailureMeta(salesQueryFailed: true, markdownQueryFailed: false);

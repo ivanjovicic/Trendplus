@@ -196,7 +196,6 @@ public static class PreNivelacijaPriorityEndpoints
                     var artikalIds = artikli.Select(x => x.Id).ToArray();
 
                     Dictionary<(int ArtikalId, int? StoreId), SalesLite> salesByArtikal;
-                    var salesQueryFailed = false;
                     try
                     {
                         var sales = await (
@@ -240,14 +239,21 @@ public static class PreNivelacijaPriorityEndpoints
                                 LastPositiveSaleDateUtc = x.LastPositiveSale
                             });
                     }
-                    catch
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
-                        salesQueryFailed = true;
-                        salesByArtikal = new Dictionary<(int ArtikalId, int? StoreId), SalesLite>();
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                            .LogWarning(ex, "Pre-nivelacija sales evidence query failed.");
+                        throw new PreNivelacijaQueryFailedException(
+                            salesQueryFailed: true,
+                            markdownQueryFailed: false,
+                            ex);
                     }
 
                     Dictionary<(int ArtikalId, int? StoreId), (int MarkdownEvents, decimal AvgMarkdownPct)> markdownByArtikal;
-                    var markdownQueryFailed = false;
                     try
                     {
                         // Keep the relational query simple and perform the small
@@ -291,17 +297,18 @@ public static class PreNivelacijaPriorityEndpoints
                                             .Average(),
                                         2)));
                     }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
                             .LogWarning(ex, "Pre-nivelacija markdown evidence query failed.");
-                        markdownQueryFailed = true;
-                        markdownByArtikal = new Dictionary<(int ArtikalId, int? StoreId), (int MarkdownEvents, decimal AvgMarkdownPct)>();
-                    }
-
-                    if (salesQueryFailed || markdownQueryFailed)
-                    {
-                        return BuildEmptyBaseEntry(nowUtc, BuildQueryFailureMeta(salesQueryFailed, markdownQueryFailed));
+                        throw new PreNivelacijaQueryFailedException(
+                            salesQueryFailed: false,
+                            markdownQueryFailed: true,
+                            ex);
                     }
 
                     var maxStock = Math.Max(1, artikli.Max(x => x.StockUnits));
@@ -513,6 +520,22 @@ public static class PreNivelacijaPriorityEndpoints
                     storeId));
 
                 return Results.Ok(response);
+            }
+            catch (PreNivelacijaQueryFailedException ex)
+            {
+                var unavailable = BuildEmptyBaseEntry(
+                    DateTime.UtcNow,
+                    BuildQueryFailureMeta(ex.SalesQueryFailed, ex.MarkdownQueryFailed));
+                return Results.Ok(BuildResponse(
+                    unavailable,
+                    page,
+                    pageSize,
+                    focus,
+                    new PreNivelacijaFilterFacetsDto()));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -1415,4 +1438,21 @@ public static class PreNivelacijaPriorityEndpoints
 
         return alerts;
     }
+}
+
+internal sealed class PreNivelacijaQueryFailedException : Exception
+{
+    public PreNivelacijaQueryFailedException(
+        bool salesQueryFailed,
+        bool markdownQueryFailed,
+        Exception innerException)
+        : base("Pre-nivelacija query failed.", innerException)
+    {
+        SalesQueryFailed = salesQueryFailed;
+        MarkdownQueryFailed = markdownQueryFailed;
+    }
+
+    public bool SalesQueryFailed { get; }
+
+    public bool MarkdownQueryFailed { get; }
 }

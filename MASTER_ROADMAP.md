@@ -1,5 +1,7 @@
 # Trendplus Master Roadmap
 
+Owner promotion/claim 2026-10-01: fresh idle recovery found no current READY prompt, no active lock/branch/open-PR collision for `RQ540`, and no dependency gate. `RQ540` moved `WAITING -> READY -> IN_PROGRESS` for the bounded P1 Pre-Nivelacija cache-truth repair; local lock `.ai/task-locks/RQ540-codex.lock.md`. RQ537 remains WAITING pending semantic proof for its scenario arithmetic.
+
 Owner promotion/claim 2026-10-01: fresh idle recovery verified `HEAD == origin/main == b0801f28`, confirmed RQ490 and Q83 are DONE, and found no active RQ491 lock, branch or open-PR collision. RQ491 moved `WAITING -> READY -> IN_PROGRESS` as the next Pre/Post evidence-coverage semantics prompt. Local lock: `.ai/task-locks/RQ491-codex.lock.md`.
 Owner completion 2026-10-01: RQ491 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `eaa31629f82f46a5d05e318fb1496f34e620ad13`; fresh fetch verified exact `origin/main`. Sale-day activity and data completeness are now separate backend-owned fields, with legacy coverage aliases preserved and completeness explicitly unavailable without an authoritative denominator. Focused backend proof is 6/6 plus Pre/Post oracle 15/15; frontend proof is 52/52, guardrails/typecheck/build and diff check pass. Run log: `.ai/runs/2026-10-01-RQ491-evidence.md`; evidence state is synchronized. Current RQ READY is none; fresh recovery is next.
 
