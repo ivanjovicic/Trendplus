@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { isChunkLoadError, recoverFromChunkLoadError } from "../chunkLoadRecovery";
+import { installChunkLoadRecovery, isChunkLoadError, recoverFromChunkLoadError } from "../chunkLoadRecovery";
 
 describe("chunkLoadRecovery", () => {
   beforeEach(() => {
@@ -23,5 +23,31 @@ describe("chunkLoadRecovery", () => {
     currentTime = 2_000;
     expect(recoverFromChunkLoadError(new TypeError("Failed to fetch dynamically imported module"), reload, now)).toBe(false);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("prevents preload default only when a reload is actually scheduled", () => {
+    const reload = vi.fn();
+    let currentTime = 1_000;
+    const now = vi.fn(() => currentTime);
+    const cleanup = installChunkLoadRecovery(reload, now);
+
+    const first = new CustomEvent("vite:preloadError", {
+      cancelable: true,
+      detail: new TypeError("Failed to fetch dynamically imported module"),
+    });
+    expect(window.dispatchEvent(first)).toBe(false);
+    expect(first.defaultPrevented).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    currentTime = 2_000;
+    const second = new CustomEvent("vite:preloadError", {
+      cancelable: true,
+      detail: new TypeError("Failed to fetch dynamically imported module"),
+    });
+    expect(window.dispatchEvent(second)).toBe(true);
+    expect(second.defaultPrevented).toBe(false);
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    cleanup();
   });
 });
