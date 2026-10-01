@@ -82,8 +82,8 @@ function vendor(overrides: Partial<VendorSalesNivelacijaVendorStat> = {}): Vendo
     decreasedPriceArticlesCount: 1,
     reliabilityPct: 80,
     recommendation: {
-      status: "increase_focus",
-      label: "Increase focus",
+      status: "effective",
+      label: "Efekat pozitivan",
       summary: "Jak signal.",
       confidencePct: 85,
       reliabilityPct: 80,
@@ -228,8 +228,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       vendorStats: [vendor({
         recommendation: {
-          status: "review",
-          label: "Review",
+          status: "immature",
+          label: "Prozor u toku",
           summary: "Signal za proveru.",
           confidencePct: 64,
           reliabilityPct: 61,
@@ -241,7 +241,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage(["/analytics/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
 
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
-    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
     const revenueButton = within(table).getByRole("button", { name: /Promena/ });
     expect(revenueButton).toHaveTextContent("^");
 
@@ -256,8 +256,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       vendorStats: [vendor({
         recommendation: {
-          status: "review",
-          label: "Review",
+          status: "immature",
+          label: "Prozor u toku",
           summary: "Signal za proveru.",
           confidencePct: 64,
           reliabilityPct: 61,
@@ -279,15 +279,15 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByLabelText("Dobavljač")).toHaveValue("10");
     expect(screen.getByLabelText("Kategorija")).toHaveValue("Obuca");
     expect(screen.getByLabelText("Objekat")).toHaveValue("2");
-    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
   });
 
   it("restores focus from a shared URL and keeps it after applying filters", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       vendorStats: [vendor({
         recommendation: {
-          status: "review",
-          label: "Review",
+          status: "immature",
+          label: "Prozor u toku",
           summary: "Signal za proveru.",
           confidencePct: 64,
           reliabilityPct: 61,
@@ -299,12 +299,12 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage(["/analytics/nivelacije-pre-post?focus=review"]);
 
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
-    expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
 
     fireEvent.click(screen.getByRole("button", { name: "Primeni" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+      expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
       expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
     });
   });
@@ -317,8 +317,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
           vendorId: 11,
           vendorName: "Vendor B",
           recommendation: {
-            status: "review",
-            label: "Review",
+            status: "immature",
+            label: "Prozor u toku",
             summary: "Signal za proveru.",
             confidencePct: 64,
             reliabilityPct: 61,
@@ -334,8 +334,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Pregledaj/i }));
-    expect(screen.getByTestId("ppn-focus-row-context")).toHaveTextContent("Prikazano 1 od 2 dobavljača (fokus: Pregledaj)");
+    fireEvent.click(screen.getByRole("button", { name: /Prozor u toku/i }));
+    expect(screen.getByTestId("ppn-focus-row-context")).toHaveTextContent("Prikazano 1 od 2 dobavljača (fokus: Prozor u toku)");
 
     fireEvent.click(screen.getByRole("button", { name: /^Sve/ }));
     expect(screen.queryByTestId("ppn-focus-row-context")).not.toBeInTheDocument();
@@ -389,8 +389,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
           vendorId: 11,
           vendorName: "Vendor B",
           recommendation: {
-            status: "review",
-            label: "Review",
+            status: "immature",
+            label: "Prozor u toku",
             summary: "Signal za proveru.",
             confidencePct: 64,
             reliabilityPct: 61,
@@ -404,15 +404,15 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
 
     await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
-    fireEvent.click(screen.getByRole("button", { name: /Pregledaj/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Prozor u toku/i }));
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
 
-    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pozitivan efekat/i }));
     expect(screen.getByTestId("location-search")).toHaveTextContent("focus=increaseFocus");
 
     fireEvent.click(screen.getByTestId("history-back"));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Pregledaj/i })).toHaveClass("active");
+      expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
       expect(screen.getByTestId("location-search")).toHaveTextContent("focus=review");
     });
   });
@@ -538,8 +538,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
             postRevenue: 50000,
             changeRevenue: 10000,
             recommendation: {
-              status: "review",
-              label: "Review",
+              status: "immature",
+              label: "Prozor u toku",
               summary: "Signal za proveru.",
               confidencePct: 64,
               reliabilityPct: 61,
@@ -561,7 +561,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(within(table).getByText("Vendor A")).toBeInTheDocument();
     expect(within(table).getByText("Vendor B")).toBeInTheDocument();
 
-    const focusChip = screen.getByRole("button", { name: /Pojacaj/i });
+    const focusChip = screen.getByRole("button", { name: /Pozitivan efekat/i });
     fireEvent.click(focusChip);
     expect(focusChip).toHaveClass("active");
     expect(within(table).getByText("Vendor A")).toBeInTheDocument();
@@ -575,7 +575,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
 
     const reloadedTable = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
-    expect(screen.getByRole("button", { name: /Pojacaj/i })).toHaveClass("active");
+    expect(screen.getByRole("button", { name: /Pozitivan efekat/i })).toHaveClass("active");
     expect(within(reloadedTable).getByText("Vendor A")).toBeInTheDocument();
     expect(within(reloadedTable).queryByText("Vendor B")).not.toBeInTheDocument();
   });
@@ -620,8 +620,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
           vendor({
             reliabilityPct: null as unknown as number,
             recommendation: {
-              status: "review",
-              label: "Pregled",
+              status: "immature",
+              label: "Prozor u toku",
               summary: "Reliability signal nije dostupan.",
               confidencePct: 61,
               reliabilityPct: null as unknown as number,
@@ -781,8 +781,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
             postRevenue: 50000,
             changeRevenue: 10000,
             recommendation: {
-              status: "review",
-              label: "Review",
+              status: "immature",
+              label: "Prozor u toku",
               summary: "Signal za proveru.",
               confidencePct: 64,
               reliabilityPct: 61,
@@ -802,7 +802,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
 
-    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pozitivan efekat/i }));
 
     expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." })).toBeInTheDocument();
@@ -818,8 +818,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({
         vendorStats: [
-          vendor({ vendorId: 10, vendorName: "Vendor A", recommendation: { status: "increase_focus", label: "Increase focus", summary: "Jak signal.", confidencePct: 85, reliabilityPct: 80, dataQualityStatus: "good", reasonCodes: [] } }),
-          vendor({ vendorId: 11, vendorName: "Vendor B", postRevenue: 50000, changeRevenue: 10000, recommendation: { status: "review", label: "Review", summary: "Signal za proveru.", confidencePct: 64, reliabilityPct: 61, dataQualityStatus: "warning", reasonCodes: ["review_signal"] } }),
+          vendor({ vendorId: 10, vendorName: "Vendor A", recommendation: { status: "effective", label: "Efekat pozitivan", summary: "Jak signal.", confidencePct: 85, reliabilityPct: 80, dataQualityStatus: "good", reasonCodes: [] } }),
+          vendor({ vendorId: 11, vendorName: "Vendor B", postRevenue: 50000, changeRevenue: 10000, recommendation: { status: "immature", label: "Prozor u toku", summary: "Signal za proveru.", confidencePct: 64, reliabilityPct: 61, dataQualityStatus: "warning", reasonCodes: ["review_signal"] } }),
         ],
         totals: {
           ...response().totals,
@@ -835,7 +835,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     fireEvent.click(within(reviewRow!).getAllByRole("button", { name: "Detalji" })[0]);
     expect(await screen.findByText(/Detalj odluke: Vendor B/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Pojacaj/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pozitivan efekat/i }));
     expect(screen.queryByText(/Detalj odluke: Vendor B/i)).not.toBeInTheDocument();
   });
 
