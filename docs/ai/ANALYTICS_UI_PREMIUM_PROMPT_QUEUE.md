@@ -2,8 +2,8 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (queue complete; `P-UI-23` is a prepared WAITING hygiene follow-up)
-Purpose: make analytics navigation, controls, tables and dashboard UX premium without mixing visual polish with analytics correctness fixes.
+Current READY prompt: `P-UI-24` (responsive browser baseline; supplemental/path-safe and must not displace higher-priority RQ correctness work)
+Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
 
@@ -29,6 +29,21 @@ Use with:
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 | P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
+| P-UI-24 | READY | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
+| P-UI-25 | WAITING | responsive-ui-foundation | Responsive type/control/input/focus foundation |
+| P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
+| P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
+| P-UI-28 | WAITING | responsive-filter-bar | Responsive filter pilot with semantics frozen |
+| P-UI-29 | WAITING | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
+| P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
+| P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
+| P-UI-32 | WAITING | product-decision-responsive | Product Decision Center responsive + measured row rendering |
+| P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
+| P-UI-34 | WAITING | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
+| P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
+| P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
+| P-UI-37 | WAITING | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
+| P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 
 ---
 
@@ -1201,3 +1216,984 @@ The frontend lint command still reports a legacy backlog even though typecheck, 
 
 - P-UI-22 is DONE.
 - This is a later hygiene follow-up and must not displace BCI/STAB/RQ work.
+
+
+---
+
+# Responsive UI audit follow-up (2026-10-01)
+
+Source: `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md`  
+Verified base: `5257014a3bb6925cb13d6bffdb47affb41437c3d`
+
+These prompts are presentation/browser-proof work only. They must not change analytics formulas, recommendation/trust semantics, filter meaning/defaults, URL contracts, API shapes or authorization. `PERF18` separately owns the Recharts initial-preload regression.
+
+## P-UI-24 - Establish a measured responsive browser baseline with the existing toolchain
+
+Status: READY
+Priority: P1
+Type: frontend/tests/evidence
+Feature family: responsive-ui-browser-baseline
+Parallel-safe: yes, while no active prompt owns the same browser-test/docs paths
+Owner: unassigned
+Commit suggestion: `test(ui): add responsive browser baseline`
+
+### Problem
+
+The responsive audit contains several high-confidence source findings but also runtime hypotheses about header height, modal overflow, scroll traps and touch ergonomics. Registering layout fixes before a rendered baseline risks optimizing imagined behavior and makes regression review subjective.
+
+### Evidence
+
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md` already defines a manual 375/768/1280 visual review contract.
+- `Klijent/clientapp/package.json` already includes `puppeteer` and `puppeteer-core`.
+- `Klijent/clientapp/scripts/perf08_frontend_render.mjs` demonstrates headless Puppeteer use.
+- No dedicated responsive screenshot/geometry suite exists.
+- The source audit marks several findings as browser/device pending.
+
+### Scope
+
+- `Klijent/clientapp/scripts/` or a narrow existing frontend test-support path;
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`;
+- `docs/qa/` evidence/template files if needed;
+- package scripts only when needed to expose the new check;
+- no production component/CSS redesign in this prompt.
+
+### Read first
+
+- `AGENTS.md`
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`
+- `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md`
+- `Klijent/clientapp/scripts/perf08_frontend_render.mjs`
+- `Klijent/clientapp/package.json`
+
+### Do
+
+1. Reuse Puppeteer unless current evidence proves it cannot meet the required Chromium geometry/screenshot checks; do not add Playwright by default.
+2. Add a deterministic responsive audit runner for 320, 375, 768, 1024 and 1280 widths.
+3. Start with a bounded representative matrix: app shell, `/prodaja`, `/analytics`, `/analytics/supplier`, `/analytics/products`, `/analytics/actions`, plus one nivelacija page. Expand only when the fixture/backend mode is deterministic.
+4. Record per route: root/document overflow, header bounding box, visible form-control font sizes, relevant modal/table/filter bounding boxes, console/page errors and screenshot path.
+5. Support light/dark capture for shared shell/primitives. Keep screenshots local/CI artifacts; never commit real customer metrics.
+6. Clearly distinguish fixture/mock mode, connected-local mode and real-device evidence. Do not present Chromium emulation as iOS Safari proof.
+7. Emit a machine-readable JSON baseline plus a concise Markdown evidence summary.
+8. Seed one intentional overflow fixture/test condition and prove the geometry assertion fails.
+
+### Tests
+
+- `npm run typecheck`
+- focused Vitest tests for any helper logic
+- the new Puppeteer responsive command at the bounded route matrix
+- `npm run check:analytics-guardrails` if analytics test support is touched
+- `git diff --check`
+- queue/planning validators if queue/docs are updated
+
+### Acceptance
+
+- One command produces reproducible viewport evidence for 320/375/768/1024/1280 without requiring a new browser framework.
+- The output distinguishes observed failures from source hypotheses.
+- An intentional overflow regression fails the check.
+- No production UI behavior or analytics semantics change.
+- Real iOS/iPad evidence remains explicitly pending unless it was actually captured.
+
+### Dependencies
+
+- `P-UI-05` is DONE and supplies the existing visual-review contract.
+- Path collision check against current RQ/frontend work is required before claim.
+- This lower-priority P-UI task may run only when it does not displace active BCI/STAB/RQ correctness work.
+
+---
+
+## P-UI-25 - Introduce responsive type/control/input/focus foundations without desktop churn
+
+Status: WAITING
+Ready after: P-UI-24 baseline
+Priority: P1
+Type: frontend/css/tests
+Feature family: responsive-ui-foundation
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): add responsive control and type foundations`
+
+### Problem
+
+Current tokens and shared forms are desktop-dense: body/small tokens are below the desired phone scale, `.form-control` is 40px, compact controls are 34px and `.btn` is 38px. Many page fields use 13–14px text. Broad page-by-page fixes would duplicate policy and cause inconsistent coarse-pointer behavior.
+
+### Evidence
+
+- `src/styles/themes.css` defines `--font-size-base: .9rem`, `--font-size-sm: .78rem`, `--font-size-xs: .72rem`, `--size-control: 2.5rem`.
+- `src/styles/forms.css` defines 40px controls, 34px compact controls and 38px buttons.
+- `AnalyticsControlBar.css` fields are 13px/42px.
+- Data-entry forms use `text-sm`; focus suppression exists in shared CSS/Tailwind call sites.
+- P-UI-24 supplies actual computed-size/overflow evidence before the global change.
+
+### Scope
+
+- `Klijent/clientapp/src/styles/themes.css`
+- `Klijent/clientapp/src/styles/forms.css`
+- `Klijent/clientapp/src/tailwind.css`
+- the smallest shared helper/test files needed to prove the foundation
+- no page-family migration in this prompt
+
+### Read first
+
+- `P-UI-24` evidence
+- `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md`
+- the three scoped style files
+- Tailwind v4 configuration/import path
+- existing focus-visible patterns in shared analytics components
+
+### Do
+
+1. Define one documented responsive token source for body/input/label/meta/table text, control height and coarse-pointer target.
+2. Use 16px as the phone form-control text contract and 44px as the Trendplus coarse-pointer primary-control target; do not describe either as a universal browser/WCAG law.
+3. Keep desktop/fine-pointer density close to current behavior; avoid a repository-wide typography jump.
+4. Add a global `:focus-visible` baseline, then remove/override only bare focus suppression that defeats visible focus in scoped shared styles.
+5. Make cascade/layer ownership explicit so page CSS cannot silently shrink phone inputs below the contract.
+6. Do not mass-convert every hard-coded font size or media query in this prompt.
+
+### Tests
+
+- P-UI-24 geometry/computed-style runner on representative routes
+- existing shared-form/component Vitest suites
+- `npm run typecheck`
+- `npm run build`
+- `npm run check:analytics-guardrails`
+- `git diff --check`
+
+### Acceptance
+
+- At 375px, representative visible text inputs/selects/textarea compute to at least 16px and shared primary controls hit the intended 44px coarse-pointer target.
+- At 1024/1280 with a fine pointer, shared desktop density remains visually close to baseline with reviewed deltas.
+- Every keyboard-focusable shared primitive in scope has a visible focus indicator.
+- No `maximum-scale=1` or `user-scalable=no` accessibility regression is introduced.
+- No business semantics change.
+
+### Dependencies
+
+- `P-UI-24` baseline is DONE.
+- Path collision check is required before editing global styles.
+
+---
+
+## P-UI-26 - Compact the mobile header and make the mobile drawer an accessible dialog
+
+Status: WAITING
+Ready after: P-UI-24 and P-UI-25
+Priority: P1
+Type: frontend/layout/a11y/tests
+Feature family: responsive-ui-shell
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(layout): harden responsive app shell`
+
+### Problem
+
+The sticky header currently wraps many actions plus a second system-control strip, while the mobile drawer is a fixed overlay without dialog semantics, Esc handling, focus containment or scroll lock. Source proves the structural risk; P-UI-24 must supply rendered height/overflow evidence.
+
+### Evidence
+
+- `HeaderStatus.tsx` uses sticky positioning, `flex-wrap`, many action controls and an `xl:hidden` system strip.
+- Header scope select/buttons are small by the responsive target.
+- `Sidebar.tsx` mobile overlay has no `role=dialog`/`aria-modal`, focus trap, Esc close or body scroll lock; width is `w-80`.
+- The existing `Modal.tsx` already demonstrates Esc/focus return/body-scroll-lock behavior that may be reused conceptually.
+
+### Scope
+
+- `src/layout/components/HeaderStatus.tsx`
+- `src/layout/components/Sidebar.tsx`
+- `src/layout/AppLayout.tsx`
+- nearest layout tests/helpers/styles
+- no backend status/polling or nav-route semantic changes
+
+### Read first
+
+- P-UI-24 baseline
+- P-UI-25 token contract
+- existing `HeaderStatus`/`Sidebar` tests
+- `Modal.tsx` accessibility behavior
+- `navConfig.ts`
+
+### Do
+
+1. Use the measured baseline to define compact mobile/tablet header modes; do not hard-code a 56px/64px budget unless the evidence confirms it is practical.
+2. Preserve page title, navigation entry, backend status, notification access and all existing actions; move secondary actions into an accessible overflow surface instead of deleting them.
+3. Make command/inbox/context panels viewport-bounded and keyboard/touch usable on small screens.
+4. Make the mobile nav a proper modal dialog: semantics, Esc, focus containment, focus return, backdrop close and body scroll lock.
+5. Use dynamic viewport units with fallback and safe-area padding where the drawer/sheet reaches viewport edges.
+6. Keep persistent desktop sidebar behavior and existing route grouping unchanged.
+
+### Tests
+
+- focused `HeaderStatus` and `Sidebar` Vitest/RTL suites
+- P-UI-24 320/375/768/1024/1280 shell captures
+- keyboard order/focus return assertions
+- root-overflow assertion
+- `npm run typecheck`, `npm run build`, `git diff --check`
+
+### Acceptance
+
+- No root horizontal overflow in the shell matrix.
+- Mobile/tablet header height and wrapping match the reviewed P-UI-24 target rather than an unmeasured arbitrary threshold.
+- Every existing header action remains reachable.
+- Drawer passes dialog keyboard behavior and background scrolling is locked while open.
+- Desktop navigation/header functionality is unchanged.
+
+### Dependencies
+
+- P-UI-24 and P-UI-25 DONE.
+- Do not overlap another active owner in header/sidebar paths.
+
+---
+
+## P-UI-27 - Make Modal, InfoTip, tabs and shared compact controls touch-safe
+
+Status: WAITING
+Ready after: P-UI-25
+Priority: P1
+Type: frontend/component/a11y/tests
+Feature family: responsive-ui-primitives
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `fix(ui): harden responsive shared primitives`
+
+### Problem
+
+Several shared primitives have viewport/touch problems: `Modal` has fixed minimum widths, `InfoTip` is an ~18px `span role=button` that closes on every scroll, and tabs/chips are implemented ad hoc with small targets. Fixing each page separately would multiply behavior.
+
+### Evidence
+
+- `Modal.tsx` has min widths 320/400/600; existing Esc/focus-trap/body-scroll-lock behavior is already correct and must be preserved.
+- `.modal-content` has no viewport width cap; toast has `min-width:300px`.
+- `InfoTip` is a focusable span, ~18px, and attaches a capture scroll listener that calls `hide`.
+- Multiple pages use page-specific compact tabs/chips.
+
+### Scope
+
+- `src/components/Modal.tsx`
+- modal/toast CSS in `src/tailwind.css`
+- `src/components/ui/InfoTip.*`
+- one shared tabs/segmented primitive only if two or more current call sites can adopt it without semantic changes
+- focused primitive tests
+
+### Read first
+
+- P-UI-25 contract
+- existing Modal and InfoTip code/tests
+- current tab call sites named by the responsive audit
+- ARIA patterns already used in the repo
+
+### Do
+
+1. Cap modal width to viewport; use a phone sheet only when content benefits from it, not as a mandatory visual rewrite.
+2. Preserve existing Esc, focus trap, scroll lock and focus return.
+3. Replace the InfoTip pseudo-button with a real button and enlarge the hit area while keeping the visual icon compact.
+4. On touch/coarse pointer, open help on tap and close on outside tap/Esc/second tap; do not dismiss solely because the page scrolls.
+5. If shared tabs are introduced, preserve active state/URL behavior and implement tab semantics/keyboard behavior; otherwise harden the existing bounded call sites without adding another abstraction.
+6. Make toast width safe at 320px.
+
+### Tests
+
+- primitive RTL/Vitest suites for modal and InfoTip
+- touch/click and keyboard behavior
+- P-UI-24 geometry on one modal/help route at 320/375/768
+- `npm run typecheck`, `npm run build`, `git diff --check`
+
+### Acceptance
+
+- md/lg modal never exceeds viewport width at 320/375 and footer/close controls stay reachable.
+- InfoTip uses a native button and meets the project coarse-pointer target without visually inflating the icon.
+- Existing modal accessibility behavior remains green.
+- No information-bearing interaction becomes hover-only on touch.
+
+### Dependencies
+
+- P-UI-25 DONE.
+- Page-specific migrations may follow separately.
+
+---
+
+## P-UI-28 - Build a responsive FilterBar pilot without changing filter semantics
+
+Status: WAITING
+Ready after: P-UI-24 and P-UI-25
+Priority: P1
+Type: frontend/component/tests
+Feature family: responsive-filter-bar
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): pilot responsive filter bar`
+
+### Problem
+
+Analytics pages duplicate compact 13px decision-field/filter CSS. On narrow screens filters often become long vertical stacks, and fixes do not propagate. A mass migration would be high-risk because filter defaults, URL state and request semantics are correctness-sensitive.
+
+### Evidence
+
+- `AnalyticsControlBar.css` owns a shared 4/2/1-column control pattern but remains 13px.
+- Multiple decision pages duplicate field CSS.
+- Supplier filters already become non-sticky below 900px; the remaining issue is density/one-column length at <=768px, not a mobile sticky bug.
+
+### Scope
+
+- shared filter/control component files
+- exactly one low-conflict analytics page as the pilot
+- its focused tests
+- no change to filter names/defaults/URL params/request mapping
+
+### Read first
+
+- P-UI-24/25 evidence
+- existing `AnalyticsControlBar`
+- URL/filter tests for the selected pilot
+- relevant RQ contract for that page if it defines store/period/supplier semantics
+
+### Do
+
+1. Extend or wrap the existing control-bar/filter primitives; do not create a parallel competing control system.
+2. Add a compact mobile summary + accessible filter disclosure/sheet only if baseline evidence shows the inline stack is materially harmful.
+3. Keep all filters, active-count truth, Apply/Reset semantics and URL state identical.
+4. Use responsive auto-fit/content-aware layout on tablet/desktop; do not force exactly two columns if available width proves another layout better.
+5. Migrate one pilot page and leave subsequent page migrations to P-UI-31..36.
+
+### Tests
+
+- existing URL/filter request tests for the pilot
+- shared component tests
+- P-UI-24 geometry/screenshot diff
+- `npm run typecheck`, `npm run build`, analytics guardrails, `git diff --check`
+
+### Acceptance
+
+- The pilot has materially shorter/clearer phone filter chrome with no root overflow.
+- Filter values/defaults/request payload/URL behavior are byte-for-byte or semantically equivalent to baseline.
+- No new filter system duplicates `AnalyticsControlBar`.
+- Tablet/desktop behavior remains usable.
+
+### Dependencies
+
+- P-UI-24 and P-UI-25 DONE.
+- Select a pilot whose paths are not owned by a current RQ prompt.
+
+---
+
+## P-UI-29 - Add a responsive AnalyticsDataTable pilot with explicit column priority
+
+Status: WAITING
+Ready after: P-UI-24 and P-UI-25
+Priority: P1
+Type: frontend/component/tests
+Feature family: responsive-analytics-table
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(analytics-ui): pilot responsive data table`
+
+### Problem
+
+`AnalyticsDataTable` standardizes chrome but remains horizontal-scroll-only with 760px minimum width and 12px cells. Many decision pages still use wider page-owned tables. Migrating all tables at once would risk hiding decision context, sorting or row actions.
+
+### Evidence
+
+- `AnalyticsDataTable.css` has `overflow-x:auto`, `min-width:760px`, 12px cells.
+- Important page tables range roughly 880–1400px.
+- Existing P-UI table work explicitly preserves data/export semantics.
+
+### Scope
+
+- `AnalyticsDataTable.*`
+- one representative table whose export/sort/detail behavior is covered by tests
+- focused tests/styles
+- no data fetching, sorting, export-row-set or metric changes
+
+### Read first
+
+- P-UI-24/25 evidence
+- current `AnalyticsDataTable` tests/call sites
+- selected page's sort/export/detail tests
+- P-UI-03/P-UI-07 completion notes
+
+### Do
+
+1. Add explicit responsive column metadata/priority only if the selected page can map it without losing meaning.
+2. At phone width, prefer a card/stacked representation when it remains semantically clear; otherwise retain contained horizontal scroll with strong affordance rather than hiding required columns.
+3. At tablet width, evaluate sticky key column/edge affordance from measured behavior.
+4. Preserve desktop column order, numeric semantics, sorting, row actions and export row set.
+5. Do not migrate every page in this prompt.
+
+### Tests
+
+- component unit tests for responsive representation
+- selected page sort/export/detail tests
+- P-UI-24 root/internal overflow and screenshot evidence
+- `npm run typecheck`, build, analytics guardrails, `git diff --check`
+
+### Acceptance
+
+- The pilot has no document-level horizontal overflow at 320/375.
+- All decision-relevant fields remain reachable; no hidden field changes interpretation.
+- Sort/export/row-action semantics remain identical.
+- Desktop table parity is reviewed against baseline.
+
+### Dependencies
+
+- P-UI-24 and P-UI-25 DONE.
+- Page migrations remain separate prompts.
+
+---
+
+## P-UI-30 - Harden mobile data-entry workflows for sales, goods receipt and price changes
+
+Status: WAITING
+Ready after: P-UI-25 and P-UI-26
+Priority: P1
+Type: frontend/workflow/tests
+Feature family: mobile-data-entry
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): improve mobile data entry ergonomics`
+
+### Problem
+
+Store workflows are high-frequency and currently use small labels/fields/quick chips, desktop shortcut hints and number inputs without an explicit mobile keyboard/locale strategy. A generic analytics redesign must not delay these operational paths.
+
+### Evidence
+
+- `CreateProdajaForm.tsx` and `UnosRobeForm.tsx` use `text-sm` fields, `text-xs` labels and ~11px suggestion chips.
+- Numeric quantity/price inputs use `type=number`.
+- `NivelacijaCenaPage` uses shared 38px buttons and number fields.
+- Ctrl+Enter hints appear regardless of pointer/device.
+
+### Scope
+
+- `/prodaja` form/components
+- `/unos-robe` form/components
+- `/nivelacija` price-entry surface
+- nearest shared form styles/tests
+- no API/validation/business-rule or persisted numeric-semantic changes
+
+### Read first
+
+- P-UI-25/26 evidence
+- form tests and validation helpers
+- Serbian decimal parsing/formatting helpers if any
+- relevant backend request DTO expectations
+
+### Do
+
+1. Apply the shared 16px/44px mobile control contract and visible focus.
+2. Make suggestion/action rows touch-sized and keep search results within the usable viewport when the keyboard is open.
+3. Hide keyboard-shortcut hints on coarse-pointer-only contexts without removing shortcuts for keyboard users.
+4. Improve primary save/continue reachability based on baseline evidence; a sticky action bar is optional, not mandatory.
+5. Do not switch `type=number` to free text or add decimal-comma parsing unless an existing parser/DTO contract is proven and regression-tested.
+6. Preserve validation messages and submit behavior exactly.
+
+### Tests
+
+- existing sales/goods/nivelacija form suites
+- P-UI browser flow: fill receipt/search/add/edit/save or stop at mocked submit boundary
+- 320/375/768 geometry
+- `npm run typecheck`, build, `git diff --check`
+
+### Acceptance
+
+- Core workflow controls are readable/touchable at phone width with no root overflow.
+- No mobile-specific change alters submitted numeric values or validation rules.
+- Keyboard shortcuts still work on keyboard-capable contexts.
+- Real iOS zoom/keyboard behavior is recorded as device evidence if available; otherwise remains residual risk.
+
+### Dependencies
+
+- P-UI-25 and P-UI-26 DONE.
+- No active owner collision in the data-entry paths.
+
+---
+
+## P-UI-31 - Migrate Supplier overview to the responsive primitives
+
+Status: WAITING
+Ready after: P-UI-28 and P-UI-29
+Priority: P1
+Type: frontend/page/tests
+Feature family: supplier-overview-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): make supplier overview responsive`
+
+### Problem
+
+Supplier overview has a dense filter surface and wide tables. The original audit incorrectly claimed the mobile filter block remains sticky; current CSS already makes it static below 900px. The real phone issue is an 11-field one-column stack at <=768px plus controls that shrink to 2.2rem.
+
+### Evidence
+
+- `SupplierConsolidatedPage.css`: sticky on wide screens, `position:static` at <=900px, one-column at <=768px, `min-height:2.2rem`.
+- Supplier-related tables remain wide/page-specific.
+- Shared responsive FilterBar/DataTable pilots are supplied by P-UI-28/29.
+
+### Scope
+
+- Supplier overview page/component/styles/tests
+- adoption of P-UI-28/29 primitives where semantics fit
+- no supplier scoring, store filter meaning, analytics values or request changes
+
+### Read first
+
+- P-UI-28/P-UI-29 contracts
+- Supplier page tests and current RQ supplier contracts
+- current source around filter/store/supplier URL state
+
+### Do
+
+1. Replace the long phone filter stack with the proven responsive filter pattern while preserving every filter.
+2. Remove the phone control shrink below the shared control target.
+3. Migrate bounded supplier tables to the responsive table pattern; preserve required ranking/detail fields.
+4. Verify tabs/actions/help controls meet shared primitive contracts.
+5. Preserve desktop sticky-filter behavior unless browser evidence shows it causes overlap.
+
+### Tests
+
+- Supplier page/filter/request tests
+- table sort/export/detail tests where present
+- P-UI browser matrix
+- typecheck/build/analytics guardrails/diff check
+
+### Acceptance
+
+- No false claim remains about a sticky mobile filter stack.
+- Phone filter interaction is shorter/clearer and all existing filters remain reachable.
+- Supplier values, ordering, store/scope semantics and exports are unchanged.
+- No root overflow at 320/375.
+
+### Dependencies
+
+- P-UI-28 and P-UI-29 DONE.
+- Must avoid active Supplier RQ path/semantic ownership.
+
+---
+
+## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
+
+Status: WAITING
+Ready after: P-UI-24 and P-UI-29
+Priority: P1
+Type: frontend/page/perf-tests
+Feature family: product-decision-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): harden product decision responsive table`
+
+### Problem
+
+Product Decision Center uses a 1400px table, requests up to 1,200 rows and renders `sortedRows.map(...)`. The source proves a large DOM is possible, but it does not prove that virtualization is required or which strategy is safest.
+
+### Evidence
+
+- `ProductDecisionCenterPage.tsx` calls `getProductDecisionCenter(... top:1200 ...)`.
+- The table maps all `sortedRows`.
+- `ProductDecisionCenterPage.css` sets `min-width:1400px`.
+- No virtualization dependency exists.
+
+### Scope
+
+- Product Decision Center presentation/rendering only
+- shared table primitive if applicable
+- a bounded measurement script/test using existing Puppeteer
+- no recommendation, sorting meaning, action eligibility, pagination API or analytics contract changes
+
+### Read first
+
+- P-UI-24/P-UI-29 evidence
+- Product Decision Center tests and RQ contracts
+- existing performance measurement conventions
+
+### Do
+
+1. Capture row-count, DOM-node, useful-render and interaction evidence at representative row counts before selecting an optimization.
+2. Make the table/card layout responsive while preserving every decision-critical field/action.
+3. If measurement justifies optimization, prefer the smallest strategy compatible with current API: progressive rendering, client windowing or a separately owned server-pagination follow-up. Do not add `@tanstack/react-virtual` by default.
+4. Preserve sorting/action/export semantics and current 1,200-row completeness unless a backend-owned prompt changes it.
+5. Record before/after measurement.
+
+### Tests
+
+- Product Decision focused suites
+- Puppeteer render/interaction measurement
+- responsive geometry
+- typecheck/build/analytics guardrails/diff check
+
+### Acceptance
+
+- Phone layout has no root overflow and all decision-critical information remains reachable.
+- Any performance optimization is justified by recorded before/after evidence.
+- No row silently disappears from the current result contract.
+- No new virtualization dependency is added without measured need.
+
+### Dependencies
+
+- P-UI-24 and P-UI-29 DONE.
+- Active Product/RQ owner collision check required.
+
+---
+
+## P-UI-33 - Migrate Central Actions to responsive filters, table and dialogs
+
+Status: WAITING
+Ready after: P-UI-27, P-UI-28 and P-UI-29
+Priority: P1
+Type: frontend/page/tests
+Feature family: central-actions-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): make central actions responsive`
+
+### Problem
+
+Central Actions combines compact filters, a wide actions table and page-specific dialog sizing. It should consume the proven shared primitives rather than receive a standalone visual rewrite.
+
+### Evidence
+
+- Responsive source audit identifies wide table/filter/modal paths on `AnalyticsActionsPage`.
+- Shared primitive owners are P-UI-27/28/29.
+
+### Scope
+
+- Central Actions page/styles/tests
+- adoption of shared primitives
+- no queue/action status, actionability, trust reason, filter or API semantic changes
+
+### Read first
+
+- P-UI-27/28/29
+- Actions page tests
+- current RQ action/trust contracts
+
+### Do
+
+1. Migrate filters without changing defaults/URL/request mapping.
+2. Migrate the action table with all status/reason/action fields reachable on phone.
+3. Use the responsive shared modal/dialog behavior.
+4. Keep destructive/confirm actions explicit and keyboard/touch accessible.
+5. Preserve desktop workflow.
+
+### Tests
+
+- Actions focused suites
+- request/filter/action-state regression tests
+- responsive browser matrix
+- typecheck/build/analytics guardrails/diff check
+
+### Acceptance
+
+- Phone workflow can filter, inspect and act without root overflow.
+- Action semantics, eligibility and statuses are unchanged.
+- Dialog content/actions remain fully reachable at 320/375.
+
+### Dependencies
+
+- P-UI-27/28/29 DONE.
+- No active action-queue correctness owner on the same paths.
+
+---
+
+## P-UI-34 - Make Analytics Dashboard and Daily Sales responsive using measured chart/control rules
+
+Status: WAITING
+Ready after: P-UI-25 and P-UI-28
+Priority: P2
+Type: frontend/pages/tests
+Feature family: analytics-overview-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): harden analytics overview responsive layout`
+
+### Problem
+
+Dashboard and Daily Sales use compact controls and desktop-oriented grids. Dashboard KPI cards collapse directly to one column below 920px; several charts have fixed geometry. These are layout issues only; metric semantics are RQ-owned.
+
+### Evidence
+
+- `AnalyticsDashboard.css` uses 5-column KPIs, 3 at <=1260px, then 1 at <=920px.
+- Dashboard/Daily controls include sub-16px text by the responsive design target.
+- Daily Sales has multiple legacy breakpoint values and already contains useful mobile card patterns for some content.
+
+### Scope
+
+- Analytics Dashboard and Daily Sales presentation/styles
+- shared chart layout helper only if reused by both pages
+- no metric, period, anomaly, store, export or trust semantic changes
+
+### Read first
+
+- P-UI-24/25/28 evidence
+- page tests and analytics contracts
+- existing chart components/ResponsiveContainer usage
+
+### Do
+
+1. Use content width, not a hard-coded “2-up always”, to choose phone/tablet KPI columns.
+2. Apply shared control/filter sizing.
+3. Make chart axis/height/legend behavior responsive from measured container width; preserve full labels via tooltip/accessibility text where truncation is necessary.
+4. Preserve existing anomaly card behavior and data series.
+5. Normalize only breakpoint rules touched by this work; do not mass-rewrite unrelated CSS.
+
+### Tests
+
+- Dashboard and Daily Sales focused suites
+- screenshot/geometry evidence at reference widths
+- chart/data-series assertions
+- typecheck/build/analytics guardrails/diff check
+
+### Acceptance
+
+- First phone viewport exposes period/context and useful KPI content without unreadable compression.
+- Charts retain the same data/series and remain readable at 375/768.
+- No metric/filter/export behavior changes.
+
+### Dependencies
+
+- P-UI-25 and P-UI-28 DONE.
+- Current analytics correctness owner collision check required.
+
+---
+
+## P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives
+
+Status: WAITING
+Ready after: P-UI-27, P-UI-28 and P-UI-29
+Priority: P2
+Type: frontend/pages/tests
+Feature family: nivelacija-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): make nivelacija analytics responsive`
+
+### Problem
+
+The nivelacija analytics pages combine small fields/tabs, wide tables, large fixed inner scroll regions and desktop-first grids. They also sit next to active correctness contracts, so presentation changes must be especially strict about ownership.
+
+### Evidence
+
+- Source audit identifies compact controls, ~620px table scroll containers and grid minimums on Pre/Post and Pre-Nivelacija pages.
+- Existing RQ/NV work owns score/event/trust/data semantics.
+
+### Scope
+
+- responsive presentation for the two named pages
+- adoption of P-UI shared primitives
+- no scoring, event definition, trust, scenario, filter, export or recommendation semantics
+
+### Read first
+
+- P-UI-27/28/29
+- current nivelacija RQ/NV queue and tests
+- page-specific tests and export/detail behavior
+
+### Do
+
+1. Migrate small tabs/help/filter controls to shared responsive behavior.
+2. Make table/detail layout phone-safe without hiding score/action/evidence context.
+3. Remove nested scroll only when browser evidence proves the replacement is better; otherwise contain it with clear affordance.
+4. Collapse secondary scenario/detail panels through accessible disclosure where useful.
+5. Re-run correctness-facing page tests to prove presentation-only behavior.
+
+### Tests
+
+- focused nivelacija page suites
+- responsive browser evidence
+- analytics guardrails/typecheck/build/diff check
+
+### Acceptance
+
+- No root overflow at 320/375.
+- Score/action/stock/evidence fields remain reachable and semantically identical.
+- No active NV/RQ acceptance is weakened or duplicated by UI logic.
+
+### Dependencies
+
+- P-UI-27/28/29 DONE.
+- Do not claim while an active nivelacija RQ owner edits the same paths.
+
+---
+
+## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
+
+Status: WAITING
+Ready after: P-UI-28 and P-UI-29
+Priority: P2
+Type: frontend/pages/tests
+Feature family: supplier-segment-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): harden supplier segment responsive views`
+
+### Problem
+
+The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-column panels and chart geometry that can crowd narrow screens. They must reuse the same responsive primitives while preserving recent analytics truth hardening.
+
+### Evidence
+
+- Source audit identifies ~980/1020px tables, wide panel minimums and category-axis width on these pages.
+- Current RQ work recently hardened supporting-signal/status semantics.
+
+### Scope
+
+- responsive presentation on the named three surfaces
+- optional shared chart layout helper
+- no score/status/reason/store/supplier/category semantic changes
+
+### Read first
+
+- P-UI-28/29
+- current Supplier/Shoe Type/Color RQ contracts and tests
+- page-specific charts/table tests
+
+### Do
+
+1. Adopt responsive filter/table primitives where compatible.
+2. Stack Hub panels when measured width cannot sustain both columns.
+3. Make chart container/axis/tooltip behavior adapt to width without changing series/data.
+4. Preserve all supporting-signal/trust/status explanations.
+5. Keep desktop presentation close to baseline.
+
+### Tests
+
+- focused page suites
+- chart/data assertions
+- responsive browser matrix
+- analytics guardrails/typecheck/build/diff check
+
+### Acceptance
+
+- Named pages are usable at 375/768 without root overflow.
+- Chart/table changes do not alter values or status/reason semantics.
+- Desktop parity is reviewed.
+
+### Dependencies
+
+- P-UI-28 and P-UI-29 DONE.
+- Avoid current Supplier/segment RQ path collisions.
+
+---
+
+## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
+
+Status: WAITING
+Ready after: P-UI-25, P-UI-27 and P-UI-29
+Priority: P2
+Type: frontend/pages/tests
+Feature family: responsive-long-tail
+Parallel-safe: yes only for explicitly disjoint page slices
+Owner: unassigned
+Commit suggestion: `fix(ui): close bounded responsive long-tail gaps`
+
+### Problem
+
+Article List has small pagination/input controls and a table without an explicit phone priority strategy. Additional admin/observability/legacy pages have wide grids/tables, but not all warrant card redesign.
+
+### Evidence
+
+- `ArtikliListPage` uses small pagination buttons and a 12px page input/select.
+- Long-tail admin/observability tables have large minimum widths.
+- Responsive audit did not deeply inspect every long-tail table, so broad redesign would exceed evidence.
+
+### Scope
+
+- Article List as the required slice
+- one additional disjoint long-tail page family per execution only when measured by P-UI-24/P-UI-38
+- no API paging, admin operation, observability meaning or scraper behavior changes
+
+### Read first
+
+- P-UI-25/27/29
+- Article List tests/API paging contract
+- selected long-tail page tests
+
+### Do
+
+1. Make Article List pagination/filter controls meet responsive shared contracts.
+2. Choose card/sticky/contained-scroll table behavior from actual column semantics.
+3. For admin/observability, contained horizontal scroll is acceptable when card conversion would reduce operator clarity; ensure the document itself does not overflow.
+4. Keep each extra long-tail slice separately evidenced; do not turn this into a repository-wide CSS pass.
+
+### Tests
+
+- Article List focused tests
+- selected page tests
+- browser geometry evidence
+- typecheck/build/diff check
+
+### Acceptance
+
+- Article List is phone-usable without changing API paging.
+- Each additional long-tail slice has an explicit before/after evidence entry.
+- No unreviewed broad CSS rewrite is introduced.
+
+### Dependencies
+
+- P-UI-25/27/29 DONE.
+- Execute disjoint slices only after collision checks.
+
+---
+
+## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
+
+Status: WAITING
+Ready after: P-UI-30 through P-UI-37 core migrations or explicit owner decision that remaining slices are deferred
+Priority: P2
+Type: frontend/tests/tooling/css-hygiene
+Feature family: responsive-ui-regression-gates
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `test(ui): enforce responsive regression contracts`
+
+### Problem
+
+The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneously with hard-coded thresholds. That would add tooling and unstable gates before the UI contracts are measured. After the migrations, the repeated invariants should become deterministic checks using the smallest existing toolchain.
+
+### Evidence
+
+- P-UI-24 supplies Puppeteer geometry/screenshot evidence.
+- Existing Node guard scripts are the repo pattern for deterministic static checks.
+- Existing `check:bundle-budget` owns bundle size; PERF18 owns preload graph.
+- No Stylelint/Playwright/axe/LHCI dependency currently exists.
+
+### Scope
+
+- existing Puppeteer responsive runner
+- focused Node guard scripts/package commands/CI wiring when stable
+- bounded CSS cleanup revealed by the completed migrations
+- no new test framework unless a demonstrated gap cannot be closed with existing tooling
+
+### Read first
+
+- P-UI-24 and completed migration evidence
+- existing package scripts/CI
+- `check-bundle-budget.mjs`
+- `PROMPT_QUEUE_PROTOCOL.md`
+
+### Do
+
+1. Promote only stable invariants to gates: root overflow, mobile form font floor, selected coarse-pointer target rules with documented exceptions, dialog viewport containment, and named shell/table invariants.
+2. Test reduced motion behaviorally: non-essential autoplay/long-running movement stops; do not require zero browser animations globally.
+3. Add keyboard/focus assertions for shared dialog/drawer/help primitives.
+4. Add a small CSS/static guard only for patterns proven harmful; allow documented content-driven breakpoints/container queries.
+5. Do not introduce Lighthouse score gates without a measured environment baseline. Performance score ownership remains PERF.
+6. Do not duplicate the existing bundle-size guard; consume PERF18 results if preload graph becomes a gate.
+
+### Tests
+
+- responsive runner self-test/negative fixtures
+- relevant Vitest suites
+- typecheck/build/analytics guardrails
+- any new Node guard self-test
+- governance validators
+- `git diff --check`
+
+### Acceptance
+
+- A seeded root-overflow/input-font/dialog regression fails deterministically.
+- The gate is reproducible locally and in CI without real customer data.
+- No new dependency/tool is added without a documented gap and rationale.
+- Breakpoint/static checks prevent known regressions without banning valid content-driven layouts.
+
+### Dependencies
+
+- Core responsive migrations are DONE or explicitly deferred.
+- PERF18 separately owns bundle/preload performance gating.
