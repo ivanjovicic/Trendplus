@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-24 DONE; promote P-UI-25 only after a fresh collision check against active frontend owners)
+Current READY prompt: `P-UI-25` (IN_PROGRESS; responsive foundation; supplemental/path-safe and must not displace higher-priority RQ correctness work)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -29,8 +29,8 @@ Use with:
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 | P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
-| P-UI-24 | IN_PROGRESS | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
-| P-UI-25 | WAITING | responsive-ui-foundation | Responsive type/control/input/focus foundation |
+| P-UI-24 | DONE | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
+| P-UI-25 | IN_PROGRESS | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
 | P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
 | P-UI-28 | WAITING | responsive-filter-bar | Responsive filter pilot with semantics frozen |
@@ -1324,13 +1324,14 @@ The responsive audit contains several high-confidence source findings but also r
 
 ## P-UI-25 - Introduce responsive type/control/input/focus foundations without desktop churn
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-24 baseline
 Priority: P1
 Type: frontend/css/tests
 Feature family: responsive-ui-foundation
 Parallel-safe: no
-Owner: unassigned
+Owner: ChatGPT
+Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-25-responsive-foundation-51d0`; local lock `.ai/task-locks/P-UI-25-chatgpt.lock.md`.
 Commit suggestion: `feat(ui): add responsive control and type foundations`
 
 ### Problem
