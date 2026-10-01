@@ -4,9 +4,9 @@ Date: 2026-10-01
 Agent/tool: Codex / PowerShell / Vitest / .NET
 Delivery target: main
 Working branch / PR: main / direct-main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: dc5d3b269e5323e766f169ba5d791860820f0a22
+Main verification: passed - fresh `git fetch origin main` confirmed `HEAD == origin/main == dc5d3b269e5323e766f169ba5d791860820f0a22`; ancestry checks passed
+Evidence state: synchronized
 
 ## What was done
 - Reviewed the remaining 2026-10-01 implementation commits and their run evidence, including Daily Sales, Pre/Post activity/export provenance, supplier readiness, nivelacija diagnostics, scorecard explainability and responsive shared UI work.
@@ -32,7 +32,7 @@ Evidence state: pending
 
 ## Validation not run
 - Full backend/frontend suites and production builds -> not run; focused page, type and contract checks cover the changed scope.
-- Post-delivery GitHub Actions for the new SHA -> pending inspection after delivery.
+- `gh run list --commit dc5d3b26 --limit 15` -> no Actions runs returned at inspection; remote CI is not claimed as passing.
 - Deployed database checks for RQ545/RQ547, live sales freshness/timezone verification, and real iOS/iPad Safari proof -> not run; those remain operator/device acceptance outside this repository-local change.
 
 ## Documentation impact
@@ -42,7 +42,7 @@ Evidence state: pending
 - No additional repository-local defect was confirmed in the reviewed commit evidence. Production/provider and device-specific acceptance remains outstanding under its existing owners.
 
 ## Risks
-- The known Supplier Decision Hub test failure should be rechecked in current-main CI after delivery. External database and real-device proof remains unverified.
+- No current-main Actions run was discoverable for the delivered SHA at inspection. External database and real-device proof remains unverified.
 
 ## Next
-- Deliver to `main`, verify the exact implementation SHA on `origin/main`, then classify any current-main checks that were triggered.
+- Recheck current-main CI if a run appears; operator/device owners retain the remaining external acceptance checks.
