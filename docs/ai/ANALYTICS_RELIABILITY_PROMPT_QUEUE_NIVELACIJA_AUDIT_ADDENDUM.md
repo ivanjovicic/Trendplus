@@ -5,7 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
-Current READY routing: RQ547 (NV-P1) is IN_PROGRESS after fresh recovery: Q83, RQ524 and RQ525 are DONE, and no active lock/branch/PR collision exists. RQ547 is the evidence-first read-only reconciliation pack recommended by the latest audit run log. RQ545 follows for residual endpoint diagnostics; RQ475 remains WAITING pending its own fresh selection/collision pass.
+Current READY routing: RQ545 (NV-F9) is IN_PROGRESS after RQ547 completed and fresh recovery confirmed Q83/RQ535 dependencies are DONE with no active lock/branch/PR collision. RQ545 owns the residual endpoint diagnostic and PostgreSQL proof; production writes remain outside its scope. RQ475 remains WAITING pending its own fresh selection/collision pass.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -21,9 +21,9 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F6 | RQ542 | WAITING |
 | NV-F7 | RQ543 | WAITING |
 | NV-F8 | RQ544 | WAITING |
-| NV-F9 | RQ545 | WAITING |
+| NV-F9 | RQ545 | IN_PROGRESS |
 | NV-F10 | RQ546 | WAITING |
-| NV-P1 | RQ547 | WAITING |
+| NV-P1 | RQ547 | DONE |
 | NV-P2 | RQ548 | WAITING |
 | NV-P3 | RQ549 | WAITING |
 | NV-P4 | RQ550 | WAITING |
@@ -491,7 +491,7 @@ NV-P1 (value inventory) as evidence input.
 
 ## RQ545 - NV-F9 - Diagnose the live Pre/Post `contract_missing` (schema/privilege mismatch hypothesis)
 
-Status: WAITING
+Status: IN_PROGRESS
 Registration note: (Q83 is DONE; live application stays with RQ535/STAB16, so this is the code-side diagnosis lane)
 Priority: P1
 Type: backend/diagnostic/tests
@@ -539,6 +539,8 @@ The deployed endpoint either serves data or names the exact missing object, sche
 #### Dependencies
 
 Q83 DONE (SQL contract); RQ535/STAB16 (live application).
+
+Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25cebfe81c5`; RQ547 is DONE, and Q83/RQ535 dependencies are DONE. No active RQ545 lock, branch or open PR owns the `nivelacija-live-contract` column-check helper. The audit integration run log sequences RQ545 after RQ547. RQ545 moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ545-codex.lock.md`. Scope is the code-side contract diagnostic and real-PostgreSQL proof; deployment verification remains read-only under the existing RQ535/STAB16 owner.
 
 ---
 
@@ -591,7 +593,7 @@ None.
 
 ## RQ547 - NV-P1 - Read-only nivelacija reconciliation SQL pack
 
-Status: IN_PROGRESS
+Status: DONE
 Registration note: (recommended first; unblocks hypotheses)
 Priority: P1
 Type: sql/tests/evidence
@@ -659,6 +661,24 @@ Every **H** in this document has a check whose verdict can confirm or reject it.
 The RQ524/RQ525 harness.
 
 Claim note 2026-10-01: fresh `origin/main` is `cde8307bb1579222f44a4da171f024127917781e`; Q83, RQ524 and RQ525 are DONE. No active task lock, `rq547` branch or open PR owns this new-files-only feature family. RQ547 moved `WAITING -> READY -> IN_PROGRESS` following the latest audit evidence's recommended first step. Local lock: `.ai/task-locks/RQ547-codex.lock.md`. Scope is limited to new read-only reconciliation SQL and fixture tests; no production database run or write is included.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: Added nine stable read-only checks and fixture-tested clean, adverse, missing-relation, missing-privilege and parity-mismatch states; focused PostgreSQL proof passed 6/6.
+- Changed files: nine scripts under `scripts/sql/nivelacija-reconciliation/`, `scripts/fixtures/nivelacija-reconciliation-bootstrap.sql`, `Api.Tests/NivelacijaReconciliationPackTests.cs`, this addendum, the root RQ router, `MASTER_ROADMAP.md` and the RQ547 run log.
+- Checks run: focused Testcontainers suite 6/6; agent instruction and planning architecture validators pass; prompt-queue self-test passes; `git diff --check` passes. The full prompt validator reports only P-UI-27's missing `Residual risk:` field.
+- Checks not run: production SQL (operator-only per prompt); full backend suite. Planning Governance run 36870353311 is red at `Validate prompt queues` for the same unrelated P-UI-27 field. Analytics Tests & Data Integrity run 36870353240 was in progress at last inspection.
+- Run log: `.ai/runs/2026-10-01-RQ547-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `c99c0208aa3c2cb9fbbbc25947aea25cebfe81c5`
+- Main verification: passed; fresh `origin/main` was `c99c0208aa3c2cb9fbbbc25947aea25cebfe81c5` and contains the implementation.
+- Missed: no production data was sampled; the mapped hypotheses remain unconfirmed until the operator-only run.
+- Follow-up: RQ545 (NV-F9) is now IN_PROGRESS after fresh dependency and collision recovery.
+- Residual risk: deployed schema, view privileges, event distributions and timestamp basis still need the read-only operator run.
+- Prompt defect / scope repair: added the required Evidence, Scope and Read first sections before implementation; kept production execution out of scope.
 
 ---
 
