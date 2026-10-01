@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `none` (P-UI-24 DONE; promote P-UI-25 only after a fresh collision check against active frontend owners)
+Current READY prompt: none (P-UI-24 DONE; promote P-UI-25 only after a fresh collision check against active frontend owners)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -1316,6 +1316,8 @@ The responsive audit contains several high-confidence source findings but also r
 - Main verification: pending final delivery synchronization
 - Evidence state: pending
 - Missed: 4 observed root-overflow cases remain as baseline findings on `/analytics/products` at 320/375px in both themes; they are intentionally not fixed by this measurement prompt
+- Follow-up: promote/claim `P-UI-25` only after a fresh collision check against active frontend owners
+- Residual risk: Chromium/Puppeteer evidence does not prove iOS/iPad Safari keyboard, zoom or coarse-pointer behavior
 - Next: promote/claim `P-UI-25` only after a fresh collision check against active frontend owners
 
 ---

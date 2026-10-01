@@ -25,14 +25,15 @@ Evidence state: pending
 
 ## Validation run
 - `npm run responsive:baseline -- --self-test` -> pass; the intentional overflow assertion failed as expected and was caught.
-- Bounded fixture browser matrix -> pass: 70 route/theme/viewport combinations, 0 page errors.
+- `npm run responsive:baseline -- --mode fixture --output-dir tmp/ui-visual/responsive-baseline-final` -> pass on clean sequential retry: 70 route/theme/viewport combinations, 4 root-overflow observations, 0 page errors, 72 output files (70 screenshots plus JSON/Markdown).
+- An earlier concurrent/first retry of the same browser matrix failed with a transient Puppeteer `Execution context was destroyed`/`Page.captureScreenshot timed out`; the clean sequential rerun passed without a code change.
 - `node --check scripts/responsive_baseline.mjs` -> pass.
 - `npm run typecheck` -> pass.
 - `npm run check:analytics-guardrails` -> pass.
 - `npm run build` -> pass.
-- Queue/planning validators -> pass.
+- `node scripts/check-prompt-queues.mjs && node scripts/check-planning-architecture.mjs` -> pass: 671 queue tasks and 79 planning tasks checked.
 - `git diff --check` -> pass.
-- Walkthrough artifacts were written under `/opt/cursor/artifacts/pui24-responsive-baseline/`: JSON, Markdown and representative shell/products screenshots.
+- Walkthrough artifacts were refreshed under `/opt/cursor/artifacts/pui24-responsive-baseline/`: JSON, Markdown and representative shell/products screenshots.
 
 ## Validation not run
 - Real iOS/iPad Safari and coarse-pointer device capture -> not run; Chromium/Puppeteer evidence cannot prove device-specific keyboard, zoom or touch behavior.
