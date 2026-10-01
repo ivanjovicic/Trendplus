@@ -3,10 +3,10 @@ Queue: docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md
 Date: 2026-10-01
 Agent/tool: ChatGPT + Puppeteer/Vitest
 Delivery target: main
-Working branch / PR: cursor/p-ui-25-responsive-foundation-51d0 / pending PR update
-Main commit SHA: pending final delivery synchronization
-Main verification: pending final delivery synchronization
-Evidence state: pending
+Working branch / PR: cursor/p-ui-25-responsive-foundation-51d0 / PR #92
+Main commit SHA: `61ec1eb2`
+Main verification: `origin/main` resolves to `61ec1eb2`; implementation and evidence commits are ancestors
+Evidence state: synchronized
 
 ## What was done
 - Promoted and claimed P-UI-25 after fresh P-UI-24 completion and collision review.
@@ -53,4 +53,4 @@ Evidence state: pending
 - Remote CI was not used as focused acceptance evidence.
 
 ## Next
-- Deliver this revision to `main`, synchronize evidence, then promote P-UI-26/P-UI-27 only through a fresh collision check.
+- Re-enter canonical idle recovery and promote P-UI-26/P-UI-27 only through a fresh collision check.
