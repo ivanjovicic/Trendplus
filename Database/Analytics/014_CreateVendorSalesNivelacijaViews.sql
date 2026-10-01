@@ -117,6 +117,8 @@ SELECT
     e.new_price,
     SUM(s.units) AS pre_qty,
     SUM(s.revenue) AS pre_revenue,
+    -- Legacy column name retained for compatibility: this is sale-day activity
+    -- (distinct sale days / 30), never authoritative data completeness.
     CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
          ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
     END AS coverage_pre30,
@@ -186,6 +188,8 @@ SELECT
         WHEN e.event_date + INTERVAL '30 days' <= CURRENT_DATE THEN COALESCE(SUM(s.revenue), 0)::numeric(18,2)
         ELSE SUM(s.revenue)::numeric(18,2)
     END AS post_revenue,
+    -- Legacy column name retained for compatibility: this is sale-day activity
+    -- (distinct sale days / 30), never authoritative data completeness.
     CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
          ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
     END AS coverage_post30,

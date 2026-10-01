@@ -642,6 +642,10 @@ const vendorSalesNivelacijaVendorSchema = z.object({
   postRevenueSharePercent: finiteNumber,
   avgCoveragePre30: nullableNonNegativePercentage,
   avgCoveragePost30: nullableNonNegativePercentage,
+  avgSalesActivityRatePre30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActivityRatePost30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActiveDaysPre30: nullableNonNegativeNumber.optional(),
+  avgSalesActiveDaysPost30: nullableNonNegativeNumber.optional(),
   hasComparableSalesWindow: z.boolean().optional(),
   semanticChangePercentRevenue: nullableNumber.optional(),
   semanticChangePercentQty: nullableNumber.optional(),
@@ -676,6 +680,10 @@ const vendorSalesNivelacijaArticleSchema = z.object({
   changePercent: nullableNumber,
   coveragePre30: nullableNonNegativePercentage,
   coveragePost30: nullableNonNegativePercentage,
+  salesActivityRatePre30Pct: nullableNonNegativePercentage.optional(),
+  salesActivityRatePost30Pct: nullableNonNegativePercentage.optional(),
+  salesActiveDaysPre30: nullableNonNegativeInteger.optional(),
+  salesActiveDaysPost30: nullableNonNegativeInteger.optional(),
   hasSalesWindow: z.boolean(),
   hasPreSalesEvidence: z.boolean().optional(),
   hasPostSalesEvidence: z.boolean().optional(),
@@ -716,6 +724,10 @@ const vendorSalesNivelacijaTotalsSchema = z.object({
   absoluteChangeRevenue: finiteNumber,
   avgCoveragePre30: nullableNonNegativePercentage,
   avgCoveragePost30: nullableNonNegativePercentage,
+  avgSalesActivityRatePre30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActivityRatePost30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActiveDaysPre30: nullableNonNegativeNumber.optional(),
+  avgSalesActiveDaysPost30: nullableNonNegativeNumber.optional(),
   hasComparableSalesWindow: z.boolean(),
   comparableRows: nonNegativeInteger,
   comparableArticlesCount: nonNegativeInteger,
@@ -741,6 +753,11 @@ const vendorSalesNivelacijaDataQualitySchema = z.object({
   lowPostCoverageRows: nullableNonNegativeInteger,
   avgCoveragePre30: nullableNonNegativePercentage,
   avgCoveragePost30: nullableNonNegativePercentage,
+  lowPostActivityRows: nullableNonNegativeInteger.optional(),
+  avgSalesActivityRatePre30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActivityRatePost30Pct: nullableNonNegativePercentage.optional(),
+  avgSalesActiveDaysPre30: nullableNonNegativeNumber.optional(),
+  avgSalesActiveDaysPost30: nullableNonNegativeNumber.optional(),
 }).passthrough();
 
 const vendorSalesNivelacijaCategorySchema = z.object({
@@ -808,6 +825,8 @@ export const vendorSalesNivelacijaResponseSchema = z.object({
   oosRate: nullableNonNegativePercentage.optional(),
   metricsStatus: z.string().nullable().optional(),
   recommendationAllowed: z.boolean().nullable().optional(),
+  dataCoverageStatus: z.string().optional(),
+  dataCoverageReason: z.string().optional(),
   meta: optionalMeta,
 }).passthrough();
 

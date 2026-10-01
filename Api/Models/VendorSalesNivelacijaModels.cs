@@ -26,6 +26,11 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public decimal? ChangePercent { get; set; }
     public decimal? CoveragePre30 { get; set; }
     public decimal? CoveragePost30 { get; set; }
+    // Deprecated compatibility aliases: these values are sale-day activity ratios, not data completeness.
+    public decimal? SalesActivityRatePre30Pct { get; set; }
+    public decimal? SalesActivityRatePost30Pct { get; set; }
+    public int? SalesActiveDaysPre30 { get; set; }
+    public int? SalesActiveDaysPost30 { get; set; }
     public bool HasSalesWindow { get; set; }
     public bool PriceChanged { get; set; }
     public decimal? PriceChangePercent { get; set; }
@@ -83,6 +88,10 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public decimal PostRevenueSharePercent { get; set; }
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
+    public decimal? AvgSalesActivityRatePre30Pct { get; set; }
+    public decimal? AvgSalesActivityRatePost30Pct { get; set; }
+    public decimal? AvgSalesActiveDaysPre30 { get; set; }
+    public decimal? AvgSalesActiveDaysPost30 { get; set; }
     public int ArticleCount { get; set; }
     public int ActiveArticlesCount { get; set; }
     public int IncreasedPriceArticlesCount { get; set; }
@@ -117,6 +126,10 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public decimal AbsoluteChangeRevenue { get; set; }
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
+    public decimal? AvgSalesActivityRatePre30Pct { get; set; }
+    public decimal? AvgSalesActivityRatePost30Pct { get; set; }
+    public decimal? AvgSalesActiveDaysPre30 { get; set; }
+    public decimal? AvgSalesActiveDaysPost30 { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableRows { get; set; }
     public int ComparableArticlesCount { get; set; }
@@ -144,6 +157,11 @@ public sealed class VendorSalesNivelacijaDataQualityDto
     public int? LowPostCoverageRows { get; set; }
     public decimal? AvgCoveragePre30 { get; set; }
     public decimal? AvgCoveragePost30 { get; set; }
+    public decimal? AvgSalesActivityRatePre30Pct { get; set; }
+    public decimal? AvgSalesActivityRatePost30Pct { get; set; }
+    public decimal? AvgSalesActiveDaysPre30 { get; set; }
+    public decimal? AvgSalesActiveDaysPost30 { get; set; }
+    public int? LowPostActivityRows { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaCategoryStatDto
@@ -218,6 +236,8 @@ public sealed class VendorSalesNivelacijaResponseDto
     public decimal? OOSRate { get; set; }
     public string? MetricsStatus { get; set; } // null if all metrics valid, else reason
     public bool RecommendationAllowed { get; set; }
+    public string DataCoverageStatus { get; set; } = Api.Services.VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageStatus;
+    public string DataCoverageReason { get; set; } = Api.Services.VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageReason;
     public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 

@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ491 (IN_PROGRESS; exclusive local claim)
+Owner promotion/claim 2026-10-01: fresh idle recovery verified `HEAD == origin/main == b0801f28`, confirmed RQ490 is DONE and Q83 is DONE on current `origin/main`, and found no active RQ491 task lock, branch or open PR. RQ491 moved `WAITING -> READY -> IN_PROGRESS` for the pre/post activity-versus-coverage contract. Local lock: `.ai/task-locks/RQ491-codex.lock.md`.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ce690bbf6df25cc14361299fc70fed6d6f80fc9a`, confirmed RQ501/RQ505/RQ507 are DONE, no active `analytics-plan-current-truth` lock/branch/open-PR owner exists, and moved `RQ508` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ508-codex.lock.md`.
 Owner completion 2026-09-30: `RQ508` moved `IN_PROGRESS -> DONE` on implementation SHA `50512ffefb2005c889cafecfec46c770fc5c46bf`; fresh fetch verified `HEAD == origin/main` at that SHA. The execution plan now has a verified current-truth contract for surface ownership, backend decision authority, dataScope, line-bound cost precedence and signed-share semantics; historical May 2026 proposals are explicitly non-live. A source-reference/current-truth guard is wired into Planning Governance. Run log: `.ai/runs/2026-09-30-RQ508-evidence.md`; evidence state is synchronized. Fresh recovery found no safe successor READY: the parent RQ pointer is `none`, RQ491 remains WAITING behind PARTIAL Q83 and other candidates retain their named gates.
 Owner completion 2026-09-30: `RQ507` moved `IN_PROGRESS -> DONE` on implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh fetch verified `HEAD == origin/main` at that SHA. Supplier compatibility aliases were removed from the primary Operations sidebar, legacy redirect/query/history semantics were preserved, and canonical Supplier/Shoe Type/Color/Daily/Pre/Post navigation remains reachable. Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state is synchronized. Fresh recovery found no active `analytics-plan-current-truth` lock/branch/open-PR collision and promoted `RQ508` `WAITING -> READY`; no RQ508 claim started in this delivery turn.
@@ -2251,7 +2252,7 @@ Do not change Q83 nullability rules, RQ140 causal interpretation, recommendation
 
 ## RQ491 - Pre/Post: separate sales activity/sample strength from real data coverage
 
-Status: WAITING  
+Status: IN_PROGRESS
 Priority: P1  
 Type: SQL/backend/frontend/tests  
 Feature family: pre-post-evidence-coverage-semantics  
@@ -2316,6 +2317,11 @@ Do not change the event window from 30 calendar days and do not invent a data-co
 
 - Ready after RQ490, because both change the same Pre/Post SQL/endpoint family.
 - Coordinate with Q83/RQ140; this prompt does not reopen their nullability/causal ownership.
+
+### Current claim
+
+- Claimed 2026-10-01 after fresh collision recovery: RQ490 and Q83 are DONE on `origin/main`; no RQ491 lock, branch or open PR collision exists.
+- Scope is limited to naming/provenance for activity versus authoritative data completeness across the Pre/Post SQL, DTO/endpoint, UI, export and focused tests.
 
 ## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
 

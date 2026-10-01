@@ -33,6 +33,10 @@ export interface VendorSalesNivelacijaVendorStat {
     postRevenueSharePercent: number;
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
+    avgSalesActivityRatePre30Pct?: number | null;
+    avgSalesActivityRatePost30Pct?: number | null;
+    avgSalesActiveDaysPre30?: number | null;
+    avgSalesActiveDaysPost30?: number | null;
     hasComparableSalesWindow?: boolean;
     semanticChangePercentRevenue?: number | null;
     semanticChangePercentQty?: number | null;
@@ -67,6 +71,10 @@ export interface VendorSalesNivelacijaArticleStat {
     changePercent: number | null;
     coveragePre30: number | null;
     coveragePost30: number | null;
+    salesActivityRatePre30Pct?: number | null;
+    salesActivityRatePost30Pct?: number | null;
+    salesActiveDaysPre30?: number | null;
+    salesActiveDaysPost30?: number | null;
     hasSalesWindow: boolean;
     hasPreSalesEvidence?: boolean;
     hasPostSalesEvidence?: boolean;
@@ -107,6 +115,10 @@ export interface VendorSalesNivelacijaTotals {
     absoluteChangeRevenue: number;
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
+    avgSalesActivityRatePre30Pct?: number | null;
+    avgSalesActivityRatePost30Pct?: number | null;
+    avgSalesActiveDaysPre30?: number | null;
+    avgSalesActiveDaysPost30?: number | null;
     hasComparableSalesWindow?: boolean;
     comparableRows?: number;
     comparableArticlesCount?: number;
@@ -132,6 +144,11 @@ export interface VendorSalesNivelacijaDataQuality {
     lowPostCoverageRows: number | null;
     avgCoveragePre30: number | null;
     avgCoveragePost30: number | null;
+    lowPostActivityRows?: number | null;
+    avgSalesActivityRatePre30Pct?: number | null;
+    avgSalesActivityRatePost30Pct?: number | null;
+    avgSalesActiveDaysPre30?: number | null;
+    avgSalesActiveDaysPost30?: number | null;
 }
 
 export interface VendorSalesNivelacijaCategoryStat {
@@ -200,6 +217,8 @@ export interface VendorSalesNivelacijaResponse {
     oosRate?: number | null;
     metricsStatus?: string | null;
     recommendationAllowed?: boolean | null;
+    dataCoverageStatus?: "complete" | "partial" | "empty" | "unavailable" | string;
+    dataCoverageReason?: string;
     meta?: AnalyticsResponseMeta | null;
 }
 

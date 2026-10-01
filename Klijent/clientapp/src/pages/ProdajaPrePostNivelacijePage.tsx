@@ -197,6 +197,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   avgCoveragePost30Available: boolean;
+  avgSalesActivityRatePost30PctAvailable: boolean;
   confidencePct: number | null;
   confidenceAvailable: boolean;
   status: DecisionStatus;
@@ -877,7 +878,10 @@ export default function ProdajaPrePostNivelacijePage() {
       const trustedPostRevenue = trustedMetric(item.postRevenue, item);
       const postSharePct = resolvePostRevenueSharePercent(item);
       const trendPct = trustedMetric(item.changePercent, item);
-      const avgCoveragePost30 = item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null;
+      const avgSalesActivityRatePost30Pct = item.avgSalesActivityRatePost30Pct
+        ?? (item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null);
+      const avgSalesActiveDaysPost30 = item.avgSalesActiveDaysPost30
+        ?? (avgSalesActivityRatePost30Pct != null ? avgSalesActivityRatePost30Pct * 0.3 : null);
       const normalizedReliabilityPct = recommendationReliabilityPct;
       const previousPostRevenue = previousRevenueByVendorKey.get(vendorRowKey) ?? null;
       const confidence = buildConfidenceMeta(recommendationReliabilityPct, recommendationReliabilityPct != null);
@@ -895,8 +899,10 @@ export default function ProdajaPrePostNivelacijePage() {
         trendPct,
         reliabilityPct: normalizedReliabilityPct,
         reliabilityAvailable: recommendationReliabilityPct != null,
-        avgCoveragePost30,
+        avgSalesActivityRatePost30Pct,
+        avgSalesActiveDaysPost30,
         avgCoveragePost30Available: item.avgCoveragePost30 != null,
+        avgSalesActivityRatePost30PctAvailable: avgSalesActivityRatePost30Pct != null,
         confidencePct: confidencePctValue,
         confidenceAvailable: confidencePctValue != null,
         status,
@@ -1076,9 +1082,8 @@ export default function ProdajaPrePostNivelacijePage() {
       const changeRevenue = trustedMetric(row.changeRevenue, row);
       return changeRevenue != null && Math.abs(changeRevenue) > 0.0001;
     }).length;
-    const avgPostCoveragePct = dataQualityProjection.avgCoveragePost30 != null
-      ? dataQualityProjection.avgCoveragePost30 * 100
-      : null;
+    const avgPostActivityPct = dataQualityProjection.avgSalesActivityRatePost30Pct;
+    const avgPostActivityDays = dataQualityProjection.avgSalesActiveDaysPost30;
 
     if (!dataQualityProjection.isComplete || analyzedRows == null || analyzedRows === 0 || vendorRows === 0 || totalAbsoluteChangeRevenue == null || totalAbsoluteChangeRevenue <= 0) {
       return {
@@ -1088,34 +1093,34 @@ export default function ProdajaPrePostNivelacijePage() {
       };
     }
 
-    if (avgPostCoveragePct == null) {
+    if (avgPostActivityPct == null) {
       return {
         tone: "weak" as const,
-        label: "Pokrivenost nije potvrđena",
-        details: `Nema validnog podatka o post-window pokrivenosti za ${analyzedRows} analiziranih redova; koncentraciju ne treba tumačiti kao potvrđen signal.`,
+        label: "Aktivnost prodaje nije potvrđena",
+        details: `Nema validnog podatka o post-window aktivnosti prodaje za ${analyzedRows} analiziranih redova; potpunost podataka nije dostupna.`,
       };
     }
 
-    if (analyzedRows < 40 || nonZeroChangeVendors < 5 || avgPostCoveragePct < 20) {
+    if (analyzedRows < 40 || nonZeroChangeVendors < 5 || avgPostActivityPct < 20) {
       return {
         tone: "weak" as const,
         label: "Nizak signal",
-        details: `Koncentracija je izračunata iz ${analyzedRows} redova i ${nonZeroChangeVendors} dobavljača sa promenom; post-window pokrivenost je ${fmtPct(avgPostCoveragePct, 0)}. Kratak ili svež period tumači oprezno.`,
+        details: `Koncentracija je izračunata iz ${analyzedRows} redova i ${nonZeroChangeVendors} dobavljača sa promenom; post-window aktivnost je ${fmtPct(avgPostActivityPct, 0)} (${fmtNumber(avgPostActivityDays, 1)} aktivnih dana od 30). Kratak ili svež period tumači oprezno.`,
       };
     }
 
-    if (analyzedRows < 120 || avgPostCoveragePct < 60) {
+    if (analyzedRows < 120 || avgPostActivityPct < 60) {
       return {
         tone: "watch" as const,
         label: "Srednji signal",
-        details: `Uzorak je upotrebljiv, ali nije potpuno zreo: ${analyzedRows} redova, post-window pokrivenost ${fmtPct(avgPostCoveragePct, 0)}.`,
+        details: `Uzorak je upotrebljiv, ali nije potpuno zreo: ${analyzedRows} redova, post-window aktivnost ${fmtPct(avgPostActivityPct, 0)} (${fmtNumber(avgPostActivityDays, 1)} aktivnih dana od 30); potpunost podataka nije dostupna.`,
       };
     }
 
     return {
       tone: "strong" as const,
       label: "Stabilan signal",
-      details: `Dovoljno promena i pokrivenosti za citanje koncentracije: ${analyzedRows} redova, post-window pokrivenost ${fmtPct(avgPostCoveragePct, 0)}.`,
+      details: `Dovoljno promena i aktivnosti prodaje za čitanje koncentracije: ${analyzedRows} redova, post-window aktivnost ${fmtPct(avgPostActivityPct, 0)} (${fmtNumber(avgPostActivityDays, 1)} aktivnih dana od 30); potpunost podataka nije dostupna.`,
     };
   }, [
     dataQualityProjection,
@@ -1288,6 +1293,7 @@ const advancedSignals = useMemo(
         value: "abs(promena prometa) / zbir apsolutnih promena prometa",
       },
       { key: "dataTrust", label: "Poverenje", value: dataTrustSummary.label },
+      { key: "dataCoverage", label: "Potpunost podataka", value: data?.dataCoverageStatus === "unavailable" ? "Nije dostupna" : data?.dataCoverageStatus ?? "Nije dostupna" },
       { key: "analyzedShare", label: "Analizirani redovi", value: fmtPct(dataQualityProjection.isComplete ? dataQualityProjection.analyzedSharePercent : null, 0, "Nije dostupno") },
       { key: "cohortPolicy", label: "Kohort", value: dataQualityProjection.cohortPolicy === "latest_event_per_article" ? "Najnoviji događaj po artiklu" : dataQualityProjection.cohortPolicy },
       { key: "cohortRowsExcluded", label: "Isključeno iz kohorta", value: dataQualityProjection.cohortRowsExcluded },
@@ -1303,6 +1309,7 @@ const advancedSignals = useMemo(
       dataQualityProjection,
       data?.generatedAt,
       data?.metricsStatus,
+      data?.dataCoverageStatus,
       data?.totals.articlesCount,
       data?.totals.vendorsCount,
       data?.windowDays,
@@ -1878,7 +1885,7 @@ const advancedSignals = useMemo(
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo apsolutne promene{sortMarker("sharePct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Udeo apsolutne promene = abs(promena prometa) / zbir apsolutnih promena prometa. Ako je post-window pokrivenost niska, signal pokazuje koncentraciju rizika, ali ne i konačan efekat nivelacije." />
+                        <InfoTip text="Udeo apsolutne promene = abs(promena prometa) / zbir apsolutnih promena prometa. Ako je post-window aktivnost prodaje niska, signal pokazuje koncentraciju rizika uz slab uzorak, ali ne i konačan efekat nivelacije. Potpunost podataka nije dostupna iz ovog izvora." />
                       </th>
                       <th className="align-right">
                         <button type="button" onClick={() => handleSort("changeRevenue")}>
@@ -1925,7 +1932,7 @@ const advancedSignals = useMemo(
                                 <div className="ppn-chip-wrap">
                                   <span className={confidenceClass(row.confidenceTone)}>
                                     {row.confidenceLabel} signal
-                                    <InfoTip text={`${analyticsMetricDescriptions.reliabilityPct} Aktivni artikli: ${row.activeArticlesCount}/${row.articleCount}. Post-window pokrivenost: ${row.avgCoveragePost30Available ? fmtPct(row.avgCoveragePost30, 0) : "Nije dostupno"}.`} />
+                                    <InfoTip text={`${analyticsMetricDescriptions.reliabilityPct} Aktivni artikli: ${row.activeArticlesCount}/${row.articleCount}. Post-window aktivnost prodaje: ${row.avgSalesActivityRatePost30PctAvailable ? `${fmtPct(row.avgSalesActivityRatePost30Pct, 0)} (${fmtNumber(row.avgSalesActiveDaysPost30, 1)} dana/30)` : "Nije dostupno"}. Potpunost podataka nije dostupna iz ovog izvora.`} />
                                   </span>
                                   <span className="ppn-signal-pill signal-neutral">{row.activeArticlesCount}/{row.articleCount} aktivno</span>
                                 </div>

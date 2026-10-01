@@ -56,6 +56,19 @@ describe("projectVendorSalesDataQuality", () => {
     expect(projection.avgCoveragePost30).toBeNull();
   });
 
+  it("projects sample activity separately from unavailable data completeness", () => {
+    const projection = projectVendorSalesDataQuality({
+      ...completeQuality,
+      avgCoveragePost30: 2 / 30,
+      avgSalesActivityRatePost30Pct: 6.67,
+      avgSalesActiveDaysPost30: 2,
+    });
+
+    expect(projection.avgSalesActivityRatePost30Pct).toBe(6.67);
+    expect(projection.avgSalesActiveDaysPost30).toBe(2);
+    expect(projection.avgCoveragePost30).toBeCloseTo(2 / 30);
+  });
+
   it("keeps cohort and detail truncation provenance separate from duplicate removal", () => {
     const projection = projectVendorSalesDataQuality({
       ...completeQuality,

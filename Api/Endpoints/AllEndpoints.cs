@@ -4415,6 +4415,12 @@ public static class AllEndpoints
                             && hasQtyBaseline && hasRevenueBaseline;
                         var isPostWindowMature = VendorSalesNivelacijaPriceChangeEffectPolicy.IsPostWindowMature(evDate, asOfDate);
                         var postWindowDaysElapsed = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputePostWindowDaysElapsed(evDate, asOfDate);
+                        var salesActivityRatePre30Pct = VendorSalesNivelacijaActivityEvidencePolicy.ProjectActivityRatePct(
+                            coveragePre30Evidence,
+                            evDate.Date <= asOfDate.Date);
+                        var salesActivityRatePost30Pct = VendorSalesNivelacijaActivityEvidencePolicy.ProjectActivityRatePct(
+                            coveragePost30Evidence,
+                            isPostWindowMature);
                         if (isPostWindowMature)
                         {
                             if (!postQtyEvidence.HasValue)
@@ -4473,6 +4479,10 @@ public static class AllEndpoints
                             ChangePercent = changePercentRevenue,
                             CoveragePre30 = coveragePre30,
                             CoveragePost30 = coveragePost30,
+                            SalesActivityRatePre30Pct = salesActivityRatePre30Pct,
+                            SalesActivityRatePost30Pct = salesActivityRatePost30Pct,
+                            SalesActiveDaysPre30 = VendorSalesNivelacijaActivityEvidencePolicy.ProjectActiveDays(salesActivityRatePre30Pct),
+                            SalesActiveDaysPost30 = VendorSalesNivelacijaActivityEvidencePolicy.ProjectActiveDays(salesActivityRatePost30Pct),
                             HasSalesWindow = hasSalesWindow,
                             PriceChanged = priceChanged,
                             PriceChangePercent = priceChangePercent,
@@ -4580,6 +4590,26 @@ public static class AllEndpoints
                     return known.Length == 0 ? null : Math.Round(known.Average(), 4);
                 }
 
+                static decimal? AverageKnownActivityRate(IEnumerable<decimal?> values)
+                {
+                    var known = values
+                        .Where(value => value.HasValue)
+                        .Select(value => value!.Value)
+                        .ToArray();
+
+                    return known.Length == 0 ? null : Math.Round(known.Average(), 2);
+                }
+
+                static decimal? AverageKnownActiveDays(IEnumerable<int?> values)
+                {
+                    var known = values
+                        .Where(value => value.HasValue)
+                        .Select(value => (decimal)value!.Value)
+                        .ToArray();
+
+                    return known.Length == 0 ? null : Math.Round(known.Average(), 2);
+                }
+
                 var vendorsCount = matureComparableRows
                     .Select(x => SupplierUnknownBucketPolicy.Resolve(x.VendorId, x.VendorName).SupplierId)
                     .Distinct()
@@ -4606,6 +4636,10 @@ public static class AllEndpoints
 
                 var avgCoveragePre30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePre30));
                 var avgCoveragePost30 = AverageKnownCoverage(matureComparableRows.Select(x => x.CoveragePost30));
+                var avgSalesActivityRatePre30Pct = AverageKnownActivityRate(matureComparableRows.Select(x => x.SalesActivityRatePre30Pct));
+                var avgSalesActivityRatePost30Pct = AverageKnownActivityRate(matureComparableRows.Select(x => x.SalesActivityRatePost30Pct));
+                var avgSalesActiveDaysPre30 = AverageKnownActiveDays(matureComparableRows.Select(x => x.SalesActiveDaysPre30));
+                var avgSalesActiveDaysPost30 = AverageKnownActiveDays(matureComparableRows.Select(x => x.SalesActiveDaysPost30));
                 var lowPostCoverageRows = analyzed.Count(x => x.CoveragePost30.HasValue && x.CoveragePost30.Value < 0.2m);
 
                 var totals = new VendorSalesNivelacijaTotalsDto
@@ -4627,6 +4661,10 @@ public static class AllEndpoints
                     AbsoluteChangeRevenue = 0m,
                     AvgCoveragePre30 = avgCoveragePre30,
                     AvgCoveragePost30 = avgCoveragePost30,
+                    AvgSalesActivityRatePre30Pct = avgSalesActivityRatePre30Pct,
+                    AvgSalesActivityRatePost30Pct = avgSalesActivityRatePost30Pct,
+                    AvgSalesActiveDaysPre30 = avgSalesActiveDaysPre30,
+                    AvgSalesActiveDaysPost30 = avgSalesActiveDaysPost30,
                     HasComparableSalesWindow = matureComparableRows.Count > 0,
                     ComparableRows = matureComparableRows.Count,
                     ComparableArticlesCount = articlesCount,
@@ -4735,6 +4773,10 @@ public static class AllEndpoints
                                 PostRevenueSharePercent = 0m,
                                 AvgCoveragePre30 = AverageKnownCoverage(matureComparable.Select(x => x.CoveragePre30)),
                                 AvgCoveragePost30 = AverageKnownCoverage(matureComparable.Select(x => x.CoveragePost30)),
+                                AvgSalesActivityRatePre30Pct = AverageKnownActivityRate(matureComparable.Select(x => x.SalesActivityRatePre30Pct)),
+                                AvgSalesActivityRatePost30Pct = AverageKnownActivityRate(matureComparable.Select(x => x.SalesActivityRatePost30Pct)),
+                                AvgSalesActiveDaysPre30 = AverageKnownActiveDays(matureComparable.Select(x => x.SalesActiveDaysPre30)),
+                                AvgSalesActiveDaysPost30 = AverageKnownActiveDays(matureComparable.Select(x => x.SalesActiveDaysPost30)),
                                 ArticleCount = matureComparable
                                     .Select(x => x.Sku)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -4989,7 +5031,12 @@ public static class AllEndpoints
                         AnalyzedSharePercent = analyzedSharePercent,
                         LowPostCoverageRows = lowPostCoverageRows,
                         AvgCoveragePre30 = avgCoveragePre30,
-                        AvgCoveragePost30 = avgCoveragePost30
+                        AvgCoveragePost30 = avgCoveragePost30,
+                        LowPostActivityRows = lowPostCoverageRows,
+                        AvgSalesActivityRatePre30Pct = avgSalesActivityRatePre30Pct,
+                        AvgSalesActivityRatePost30Pct = avgSalesActivityRatePost30Pct,
+                        AvgSalesActiveDaysPre30 = avgSalesActiveDaysPre30,
+                        AvgSalesActiveDaysPost30 = avgSalesActiveDaysPost30
                     },
                     CategoryStats = categoryStats,
                     TypeInsightsAuthoritative = typeInsightsAuthoritative,
@@ -5010,7 +5057,9 @@ public static class AllEndpoints
                     AvgLostSalesOOS = avgLostSalesOos,
                     OOSRate = avgOosRate,
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal)),
-                    RecommendationAllowed = false
+                    RecommendationAllowed = false,
+                    DataCoverageStatus = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageStatus,
+                    DataCoverageReason = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageReason
                 };
 
                 ApplyVendorSalesNivelacijaMeta(response, correlationId);
@@ -8028,6 +8077,7 @@ public static class AllEndpoints
                 e.new_price,
                 SUM(s.units) AS pre_qty,
                 SUM(s.revenue) AS pre_revenue,
+                -- Legacy coverage_* is a sale-day activity ratio, not data completeness.
                 CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
                      ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
                 END AS coverage_pre30,
@@ -8065,6 +8115,7 @@ public static class AllEndpoints
                     WHEN e.event_date + INTERVAL '30 days' <= COALESCE(@toDate::date, CURRENT_DATE) THEN COALESCE(SUM(s.revenue), 0)::numeric(18,2)
                     ELSE SUM(s.revenue)::numeric(18,2)
                 END AS post_revenue,
+                -- Legacy coverage_* is a sale-day activity ratio, not data completeness.
                 CASE WHEN COUNT(DISTINCT s.day) = 0 THEN NULL
                      ELSE LEAST(COUNT(DISTINCT s.day) / 30.0, 1)
                 END AS coverage_post30,

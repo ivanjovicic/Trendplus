@@ -19,6 +19,10 @@ export type VendorSalesDataQualityProjection = {
   lowPostCoverageRows: number | null;
   avgCoveragePre30: number | null;
   avgCoveragePost30: number | null;
+  avgSalesActivityRatePre30Pct: number | null;
+  avgSalesActivityRatePost30Pct: number | null;
+  avgSalesActiveDaysPre30: number | null;
+  avgSalesActiveDaysPost30: number | null;
   isComplete: boolean;
 };
 
@@ -51,6 +55,18 @@ export function projectVendorSalesDataQuality(
   const lowPostCoverageRows = finiteQualityValue(dataQuality?.lowPostCoverageRows);
   const avgCoveragePre30 = finiteQualityValue(dataQuality?.avgCoveragePre30);
   const avgCoveragePost30 = finiteQualityValue(dataQuality?.avgCoveragePost30);
+  const avgSalesActivityRatePre30Pct = finiteQualityValue(
+    dataQuality?.avgSalesActivityRatePre30Pct ?? (avgCoveragePre30 == null ? null : avgCoveragePre30 * 100),
+  );
+  const avgSalesActivityRatePost30Pct = finiteQualityValue(
+    dataQuality?.avgSalesActivityRatePost30Pct ?? (avgCoveragePost30 == null ? null : avgCoveragePost30 * 100),
+  );
+  const avgSalesActiveDaysPre30 = finiteQualityValue(
+    dataQuality?.avgSalesActiveDaysPre30 ?? (avgSalesActivityRatePre30Pct == null ? null : avgSalesActivityRatePre30Pct * 0.3),
+  );
+  const avgSalesActiveDaysPost30 = finiteQualityValue(
+    dataQuality?.avgSalesActiveDaysPost30 ?? (avgSalesActivityRatePost30Pct == null ? null : avgSalesActivityRatePost30Pct * 0.3),
+  );
   const requiredCounts = [
     rawRows,
     deduplicatedRows,
@@ -94,6 +110,10 @@ export function projectVendorSalesDataQuality(
     lowPostCoverageRows,
     avgCoveragePre30,
     avgCoveragePost30,
+    avgSalesActivityRatePre30Pct,
+    avgSalesActivityRatePost30Pct,
+    avgSalesActiveDaysPre30,
+    avgSalesActiveDaysPost30,
     isComplete: dataQuality != null && countsAreCompatible && shareIsCompatible && optionalCoverageIsCompatible && optionalCohortIsCompatible,
   };
 }
