@@ -132,7 +132,8 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Equal(SupplierScorecardModelContract.FormulaVersion, SupplierScorecardOracle.FormulaVersion);
         Assert.Equal("supplier-scorecard-explainability-v1", SupplierScorecardModelContract.Current.ExplainabilityVersion);
         Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "demand.fullprice_sellthrough");
-        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "penalty.inventory");
+        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "penalty.dead_stock");
+        Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "penalty.unsold_stock_value");
         Assert.Contains(SupplierScorecardModelContract.Current.Components, item => item.Key == "score.final");
         Assert.Contains(SupplierScorecardModelContract.Current.Gates, item => item.Key == "margin_p80_clamp");
         Assert.Contains(

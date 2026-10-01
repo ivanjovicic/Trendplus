@@ -2356,7 +2356,7 @@ public static class SupplierDecisionHubEndpoints
         IReadOnlyCollection<SupplierScoreRow> population,
         string? sourceBasis = null)
     {
-        var rows = population.Count == 0 ? [row] : population.ToList();
+        IReadOnlyList<SupplierScoreRow> rows = population.Count == 0 ? [row] : population.ToList();
         var rowCount = rows.Count;
         decimal Rank(Func<SupplierScoreRow, decimal> selector)
         {
