@@ -2,8 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ491 (IN_PROGRESS; exclusive local claim)
+Current READY prompt: none
 Owner promotion/claim 2026-10-01: fresh idle recovery verified `HEAD == origin/main == b0801f28`, confirmed RQ490 is DONE and Q83 is DONE on current `origin/main`, and found no active RQ491 task lock, branch or open PR. RQ491 moved `WAITING -> READY -> IN_PROGRESS` for the pre/post activity-versus-coverage contract. Local lock: `.ai/task-locks/RQ491-codex.lock.md`.
+Owner completion 2026-10-01: RQ491 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `eaa31629f82f46a5d05e318fb1496f34e620ad13`; fresh fetch verified `main == origin/main` at that SHA. Pre/Post now exposes backend-owned sale-day activity (active days and activity rate) while preserving legacy coverage aliases, reports data completeness as unavailable without an authoritative denominator, and uses activity wording in concentration/trust/tooltips/metadata. Focused backend proof is 6/6 plus the Pre/Post oracle 15/15; frontend proof is 52/52, guardrails/typecheck/build pass. Run log: `.ai/runs/2026-10-01-RQ491-evidence.md`; evidence state is synchronized. The queue validator still reports the unrelated historical P-UI-27 note missing `Residual risk:`.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ce690bbf6df25cc14361299fc70fed6d6f80fc9a`, confirmed RQ501/RQ505/RQ507 are DONE, no active `analytics-plan-current-truth` lock/branch/open-PR owner exists, and moved `RQ508` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ508-codex.lock.md`.
 Owner completion 2026-09-30: `RQ508` moved `IN_PROGRESS -> DONE` on implementation SHA `50512ffefb2005c889cafecfec46c770fc5c46bf`; fresh fetch verified `HEAD == origin/main` at that SHA. The execution plan now has a verified current-truth contract for surface ownership, backend decision authority, dataScope, line-bound cost precedence and signed-share semantics; historical May 2026 proposals are explicitly non-live. A source-reference/current-truth guard is wired into Planning Governance. Run log: `.ai/runs/2026-09-30-RQ508-evidence.md`; evidence state is synchronized. Fresh recovery found no safe successor READY: the parent RQ pointer is `none`, RQ491 remains WAITING behind PARTIAL Q83 and other candidates retain their named gates.
 Owner completion 2026-09-30: `RQ507` moved `IN_PROGRESS -> DONE` on implementation SHA `8b4e1fc1c2ed89cff450f2be640ca98fecbfd342`; fresh fetch verified `HEAD == origin/main` at that SHA. Supplier compatibility aliases were removed from the primary Operations sidebar, legacy redirect/query/history semantics were preserved, and canonical Supplier/Shoe Type/Color/Daily/Pre/Post navigation remains reachable. Run log: `.ai/runs/2026-09-30-RQ507-evidence.md`; evidence state is synchronized. Fresh recovery found no active `analytics-plan-current-truth` lock/branch/open-PR collision and promoted `RQ508` `WAITING -> READY`; no RQ508 claim started in this delivery turn.
@@ -2252,7 +2253,7 @@ Do not change Q83 nullability rules, RQ140 causal interpretation, recommendation
 
 ## RQ491 - Pre/Post: separate sales activity/sample strength from real data coverage
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1  
 Type: SQL/backend/frontend/tests  
 Feature family: pre-post-evidence-coverage-semantics  
@@ -2322,6 +2323,24 @@ Do not change the event window from 30 calendar days and do not invent a data-co
 
 - Claimed 2026-10-01 after fresh collision recovery: RQ490 and Q83 are DONE on `origin/main`; no RQ491 lock, branch or open PR collision exists.
 - Scope is limited to naming/provenance for activity versus authoritative data completeness across the Pre/Post SQL, DTO/endpoint, UI, export and focused tests.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: activity and completeness semantics separated across backend, frontend, schema and trust metadata
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api/Services/VendorSalesNivelacijaActivityEvidencePolicy.cs`, `Api.Tests/VendorSalesNivelacijaActivityEvidencePolicyTests.cs`, `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`, Pre/Post frontend service/page/schema/quality files, queue/roadmap docs
+- Checks run: focused backend 6/6, Pre/Post oracle 15/15, frontend 52/52, guardrails, typecheck, production build and diff check passed
+- Checks not run: full suites, production PostgreSQL/deployed browser/export proof and remote CI
+- Run log: `.ai/runs/2026-10-01-RQ491-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `eaa31629f82f46a5d05e318fb1496f34e620ad13`
+- Main verification: fresh fetch shows `main == origin/main` at the implementation SHA
+- Missed: unrelated Supplier Decision static contract failure and historical P-UI-27 queue validator issue remain outside scope
+- Follow-up: fresh RQ selector/recovery
+- Residual risk: data completeness remains intentionally unavailable until an authoritative observation/freshness denominator exists
+- Prompt defect / scope repair: legacy `coverage*` aliases preserved for compatibility; no new completeness estimate was invented
 
 ## RQ492 - Pre-Nivelacija: make SKU + store the actionable decision grain
 
