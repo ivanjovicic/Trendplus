@@ -39,11 +39,22 @@ export function recoverFromChunkLoadError(
   return true;
 }
 
-export function installChunkLoadRecovery(): void {
-  window.addEventListener("vite:preloadError", (event) => {
-    event.preventDefault();
+export function installChunkLoadRecovery(
+  reload: () => void = () => window.location.reload(),
+  now = Date.now,
+): () => void {
+  const handler = (event: Event) => {
     const preloadEvent = event as Event & { payload?: unknown; detail?: unknown };
     const payload = preloadEvent.payload ?? preloadEvent.detail ?? event;
-    recoverFromChunkLoadError(payload);
-  });
+
+    // Suppress Vite's default rejection only when we are actually replacing
+    // the stale document. During the cooldown, propagate the import failure so
+    // React.lazy/ErrorBoundary receives a real error instead of undefined.
+    if (recoverFromChunkLoadError(payload, reload, now)) {
+      event.preventDefault();
+    }
+  };
+
+  window.addEventListener("vite:preloadError", handler);
+  return () => window.removeEventListener("vite:preloadError", handler);
 }
