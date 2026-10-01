@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { getDobavljaci } from "../services/dobavljaciApi";
@@ -17,11 +18,11 @@ import {
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
-import type { AnalyticsFreshnessStatus } from "../types/analytics";
+import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
-import { getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
+import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
 import {
   resolvePreviousPeriodComparison,
@@ -296,6 +297,7 @@ export default function SupplierFootwearAnalyticsPage({
   const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorMeta, setErrorMeta] = useState<AnalyticsResponseMeta | null>(null);
   const [dataHint, setDataHint] = useState<string | null>(null);
   const [suggestedRange, setSuggestedRange] = useState<SuggestedRange | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
@@ -378,6 +380,7 @@ export default function SupplierFootwearAnalyticsPage({
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setErrorMeta(null);
     setDataHint(null);
     setSuggestedRange(null);
     setPreviousPeriodWarning(null);
@@ -465,6 +468,7 @@ export default function SupplierFootwearAnalyticsPage({
       setPreviousPeriodWarning(null);
       setPreviousPeriodEmptyNote(null);
       setDataHint(null);
+      setErrorMeta(reason instanceof AnalyticsMetaError ? reason.meta ?? null : null);
       setSuggestedRange(null);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju analize dobavljača i tipova obuće.");
     } finally {
@@ -871,7 +875,19 @@ export default function SupplierFootwearAnalyticsPage({
       ) : null}
 
       {invalidRange ? <div className="sf-decision-message error" role="alert">Datum 'od' ne može biti posle datuma 'do'.</div> : null}
-      {error ? <div className="sf-decision-message error" role="alert">{error}</div> : null}
+      {error ? (
+        <AnalyticsErrorState
+          title="Asortiman dobavljača nije dostupan"
+          message={error}
+          errorCode={errorMeta?.errorCode ?? undefined}
+          correlationId={errorMeta?.correlationId ?? undefined}
+          readinessId={errorMeta?.readinessId ?? undefined}
+          recoveryInstruction={errorMeta?.recoveryInstruction ?? undefined}
+          contextMessage={getAnalyticsMetaContextMessage(errorMeta)}
+          onRetry={() => { void load(activeFilters); }}
+          helpHref="/analytics/data-quality"
+        />
+      ) : null}
       {loading ? <div className="sf-decision-message loading" role="status" aria-live="polite">Učitavam dobavljače i tipove obuće...</div> : null}
       {!loading && !error && previousPeriodWarning ? (
         <div className="sf-decision-message warning" role="status" aria-live="polite">{previousPeriodWarning}</div>

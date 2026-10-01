@@ -802,6 +802,14 @@ describe("SupplierDecisionHubPage", () => {
             success: false,
             errorCode: "supplier_decision_unavailable",
             errorMessage: "Skorkarta dobavljača trenutno nije dostupna.",
+            readinessId: "supplier-scorecard-cache:90d",
+            recoveryInstruction: "Administrator treba read-only da proveri analitički skup.",
+            requestedPeriodFromUtc: "2026-07-01T00:00:00Z",
+            requestedPeriodToUtc: "2026-09-30T00:00:00Z",
+            effectivePeriodFromUtc: "2026-07-03T00:00:00Z",
+            effectivePeriodToUtc: "2026-09-30T00:00:00Z",
+            requestedDataScope: "all",
+            dataScopeSource: "not_applied",
           },
         });
       }
@@ -816,6 +824,8 @@ describe("SupplierDecisionHubPage", () => {
             success: false,
             errorCode: "supplier_decision_unavailable",
             errorMessage: "Skorkarta dobavljača trenutno nije dostupna.",
+            readinessId: "supplier-scorecard-cache:90d",
+            recoveryInstruction: "Administrator treba read-only da proveri analitički skup.",
           },
         });
       }
@@ -831,6 +841,10 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
 
     expect(await screen.findByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    expect(screen.getByText("ID provere: supplier-scorecard-cache:90d")).toBeInTheDocument();
+    expect(screen.getByText("Administrator treba read-only da proveri analitički skup.")).toBeInTheDocument();
+    expect(screen.getByText(/Traženi period: 2026-07-01 – 2026-09-30; efektivni period: 2026-07-03 – 2026-09-30/)).toBeInTheDocument();
+    expect(screen.getByText(/efektivni opseg: nije primenjen/)).toBeInTheDocument();
     expect(screen.queryByText("Ukupan prihod")).not.toBeInTheDocument();
   });
 });

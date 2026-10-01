@@ -3972,6 +3972,9 @@ public static class AllEndpoints
                         contractIssue.ErrorMessage,
                         correlationId);
                     errorMeta.ContractDiagnostic = contractIssue.ToDto();
+                    errorMeta.ReadinessId = "vendor-sales-nivelacija-schema";
+                    errorMeta.RecoveryInstruction = "Administrator može pokrenuti zaštićenu read-only proveru relacije, kolone i SELECT prava; ponovite zahtev nakon potvrde spremnosti.";
+                    errorMeta.RecommendationAllowed = false;
                     var missingContract = CreateVendorSalesNivelacijaFallbackResponse(
                         vendorId,
                         eventDateOnly,
@@ -5039,6 +5042,13 @@ public static class AllEndpoints
                     ex.SqlState);
 
                 var reason = $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.";
+                var errorMeta = AnalyticsResponseMetaFactory.Error(
+                    "vendor_sales_nivelacija_error",
+                    "Pre/post nivelacija nije dostupna.",
+                    correlationId);
+                errorMeta.ReadinessId = "vendor-sales-nivelacija-query";
+                errorMeta.RecoveryInstruction = "Administrator može pokrenuti zaštićenu read-only proveru analitičkog ugovora; ponovite zahtev nakon provere. Sačuvajte referentni ID ako se problem ponovi.";
+                errorMeta.RecommendationAllowed = false;
 
                 // Keep the UI operational with an empty payload when DB schema is behind.
                 var fallback = CreateVendorSalesNivelacijaFallbackResponse(
@@ -5051,16 +5061,21 @@ public static class AllEndpoints
                     storeId,
                     NormalizeVendorSalesNivelacijaDataScope(dataScope),
                     reason,
-                    AnalyticsResponseMetaFactory.Error(
-                        "vendor_sales_nivelacija_error",
-                        "Pre/post nivelacija nije dostupna.",
-                        correlationId));
+                    errorMeta);
 
                 return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Vendor sales nivelacija failed unexpectedly.");
+
+                var errorMeta = AnalyticsResponseMetaFactory.Error(
+                    "vendor_sales_nivelacija_error",
+                    "Pre/post nivelacija nije dostupna.",
+                    correlationId);
+                errorMeta.ReadinessId = "vendor-sales-nivelacija-unavailable";
+                errorMeta.RecoveryInstruction = "Pokušajte ponovo. Ako se greška ponovi, sačuvajte referentni ID i prosledite ga podršci.";
+                errorMeta.RecommendationAllowed = false;
 
                 var fallback = CreateVendorSalesNivelacijaFallbackResponse(
                     vendorId,
@@ -5072,10 +5087,7 @@ public static class AllEndpoints
                     storeId,
                     NormalizeVendorSalesNivelacijaDataScope(dataScope),
                     $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.",
-                    AnalyticsResponseMetaFactory.Error(
-                        "vendor_sales_nivelacija_error",
-                        "Pre/post nivelacija nije dostupna.",
-                        correlationId));
+                    errorMeta);
 
                 return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
             }
@@ -7534,57 +7546,89 @@ public static class AllEndpoints
         VendorSalesNivelacijaResponseDto response,
         string correlationId)
     {
+        AnalyticsResponseMetaDto meta;
         if (response.Meta is not null)
         {
-            var resolved = CloneAnalyticsResponseMeta(response.Meta);
-            resolved.CorrelationId = correlationId;
-            return resolved;
-        }
-
-        var hasFallbackInsight = response.Insights.Any(insight =>
-            (string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(insight.Value, "Rezervni režim", StringComparison.OrdinalIgnoreCase))
-            || string.Equals(insight.Title, "Podaci privremeno nedostupni", StringComparison.OrdinalIgnoreCase));
-
-        AnalyticsResponseMetaDto meta;
-        if (hasFallbackInsight)
-        {
-            meta = AnalyticsResponseMetaFactory.Error(
-                "vendor_sales_nivelacija_error",
-                response.MetricsStatus ?? "Pre/post nivelacija nije dostupna.",
-                correlationId);
+            meta = CloneAnalyticsResponseMeta(response.Meta);
+            meta.CorrelationId = correlationId;
         }
         else
         {
-            var hasData = response.VendorStats.Count > 0
-                || response.ArticleStats.Count > 0
-                || response.CategoryStats.Count > 0
-                || response.PriceDirectionStats.Count > 0;
+            var hasFallbackInsight = response.Insights.Any(insight =>
+                (string.Equals(insight.Value, "Fallback mode", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(insight.Value, "Rezervni režim", StringComparison.OrdinalIgnoreCase))
+                || string.Equals(insight.Title, "Podaci privremeno nedostupni", StringComparison.OrdinalIgnoreCase));
 
-            if (!hasData)
+            if (hasFallbackInsight)
             {
-                meta = AnalyticsResponseMetaFactory.Empty(
-                    "no_data_in_period",
-                    "Nema podataka za pre/post nivelaciju.",
-                    "insufficient_data");
-            }
-            else if (!string.IsNullOrWhiteSpace(response.MetricsStatus))
-            {
-                meta = AnalyticsResponseMetaFactory.Warning(
-                    "vendor_sales_nivelacija_warning",
-                    response.MetricsStatus,
-                    "warning");
+                meta = AnalyticsResponseMetaFactory.Error(
+                    "vendor_sales_nivelacija_error",
+                    response.MetricsStatus ?? "Pre/post nivelacija nije dostupna.",
+                    correlationId);
             }
             else
             {
-                meta = AnalyticsResponseMetaFactory.Success("good");
-            }
+                var hasData = response.VendorStats.Count > 0
+                    || response.ArticleStats.Count > 0
+                    || response.CategoryStats.Count > 0
+                    || response.PriceDirectionStats.Count > 0;
 
-            meta.CorrelationId = correlationId;
+                if (!hasData)
+                {
+                    meta = AnalyticsResponseMetaFactory.Empty(
+                        "no_data_in_period",
+                        "Nema podataka za pre/post nivelaciju.",
+                        "insufficient_data");
+                }
+                else if (!string.IsNullOrWhiteSpace(response.MetricsStatus))
+                {
+                    meta = AnalyticsResponseMetaFactory.Warning(
+                        "vendor_sales_nivelacija_warning",
+                        response.MetricsStatus,
+                        "warning");
+                }
+                else
+                {
+                    meta = AnalyticsResponseMetaFactory.Success("good");
+                }
+
+                meta.CorrelationId = correlationId;
+            }
+        }
+
+        return ApplyVendorSalesNivelacijaContext(meta, response);
+    }
+
+    private static AnalyticsResponseMetaDto ApplyVendorSalesNivelacijaContext(
+        AnalyticsResponseMetaDto meta,
+        VendorSalesNivelacijaResponseDto response)
+    {
+        var requestedFrom = response.EventDate ?? response.From;
+        var requestedTo = response.EventDate ?? response.To;
+        meta.RequestedPeriodFromUtc ??= AsUtcDate(requestedFrom);
+        meta.RequestedPeriodToUtc ??= AsUtcDate(requestedTo);
+        meta.RequestedDataScope = response.DataScope;
+
+        var scopeWasApplied = meta.Success && response.ScopeApplied;
+        meta.EffectivePeriodFromUtc = scopeWasApplied
+            ? meta.EffectivePeriodFromUtc ?? AsUtcDate(requestedFrom)
+            : null;
+        meta.EffectivePeriodToUtc = scopeWasApplied
+            ? meta.EffectivePeriodToUtc ?? AsUtcDate(requestedTo)
+            : null;
+        meta.EffectiveDataScope = scopeWasApplied ? response.DataScope : null;
+        meta.DataScopeSource = scopeWasApplied ? "vendor-sales-nivelacija" : "not_applied";
+        if (!meta.Success || !response.ScopeApplied)
+        {
+            meta.RecommendationAllowed = false;
         }
 
         return meta;
     }
+
+    private static DateTime? AsUtcDate(DateTime? value) => value is null
+        ? null
+        : DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc);
 
     private static IResult BuildSupplierOverviewError(HttpContext httpContext, Exception exception)
     {
@@ -7758,6 +7802,19 @@ public static class AllEndpoints
             Message = meta.Message,
             GeneratedAtUtc = meta.GeneratedAtUtc,
             LastRefreshAtUtc = meta.LastRefreshAtUtc,
+            CacheCreatedAtUtc = meta.CacheCreatedAtUtc,
+            RequestedPeriodFromUtc = meta.RequestedPeriodFromUtc,
+            RequestedPeriodToUtc = meta.RequestedPeriodToUtc,
+            EffectivePeriodFromUtc = meta.EffectivePeriodFromUtc,
+            EffectivePeriodToUtc = meta.EffectivePeriodToUtc,
+            RequestedDataScope = meta.RequestedDataScope,
+            EffectiveDataScope = meta.EffectiveDataScope,
+            DataScopeSource = meta.DataScopeSource,
+            ProvenanceBasis = meta.ProvenanceBasis,
+            AttributionBasis = meta.AttributionBasis,
+            AttributionCoveragePct = meta.AttributionCoveragePct,
+            ObservedPeriodFromUtc = meta.ObservedPeriodFromUtc,
+            ObservedPeriodToUtc = meta.ObservedPeriodToUtc,
             DataQualityStatus = meta.DataQualityStatus,
             RecommendationAllowed = meta.RecommendationAllowed,
             IsPartial = meta.IsPartial,
@@ -7765,7 +7822,9 @@ public static class AllEndpoints
             Context = meta.Context,
             DecisionReadiness = meta.DecisionReadiness,
             Basis = meta.Basis,
-            ContractDiagnostic = meta.ContractDiagnostic
+            ContractDiagnostic = meta.ContractDiagnostic,
+            ReadinessId = meta.ReadinessId,
+            RecoveryInstruction = meta.RecoveryInstruction
         };
     }
 

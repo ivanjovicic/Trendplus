@@ -39,4 +39,4 @@ Evidence state: synchronized
 - The prompt-queue validator remains red because of the unrelated P-UI-27 completion note.
 
 ## Next
-- Deliver this routing sync to main, then claim RQ475 under its now-satisfied RQ536 dependency.
+- RQ475 was promoted and claimed after this routing sync.

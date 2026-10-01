@@ -24,15 +24,24 @@ public static class SupplierDecisionHubEndpoints
     private const decimal HighConfidenceThreshold = 60m;
     private static readonly string[] InsufficientSignalReasonCodes = ["insufficient_signal"];
 
-    private sealed class SupplierDecisionUnavailableException : Exception
+    internal sealed class SupplierDecisionUnavailableException : Exception
     {
-        public SupplierDecisionUnavailableException(string errorCode, string message, Exception? innerException = null)
+        public SupplierDecisionUnavailableException(
+            string errorCode,
+            string message,
+            Exception? innerException = null,
+            string? readinessId = null,
+            string? recoveryInstruction = null)
             : base(message, innerException)
         {
             ErrorCode = errorCode;
+            ReadinessId = readinessId;
+            RecoveryInstruction = recoveryInstruction;
         }
 
         public string ErrorCode { get; }
+        public string? ReadinessId { get; }
+        public string? RecoveryInstruction { get; }
     }
 
     public static void MapSupplierDecisionHubEndpoints(this WebApplication app)
@@ -123,7 +132,13 @@ public static class SupplierDecisionHubEndpoints
                     [],
                     BuildDecisionScoreDataNote(activeFilters),
                     BuildScorecardTrustMetadata(emptyDataset, activeFilters),
-                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+                    BuildErrorMeta(
+                        ex.ErrorCode,
+                        ex.Message,
+                        ResolveCorrelationId(httpContext),
+                        ex.ReadinessId,
+                        ex.RecoveryInstruction,
+                        activeFilters)));
             }
         });
 
@@ -225,7 +240,13 @@ public static class SupplierDecisionHubEndpoints
                 return Results.Ok(new QuadrantResponse(
                     [],
                     BuildScorecardTrustMetadata(emptyDataset, activeFilters),
-                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+                    BuildErrorMeta(
+                        ex.ErrorCode,
+                        ex.Message,
+                        ResolveCorrelationId(httpContext),
+                        ex.ReadinessId,
+                        ex.RecoveryInstruction,
+                        activeFilters)));
             }
         });
 
@@ -366,7 +387,13 @@ public static class SupplierDecisionHubEndpoints
                     [],
                     BuildDecisionScoreDataNote(activeFilters),
                     BuildScorecardTrustMetadata(emptyDataset, activeFilters),
-                    BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))));
+                    BuildErrorMeta(
+                        ex.ErrorCode,
+                        ex.Message,
+                        ResolveCorrelationId(httpContext),
+                        ex.ReadinessId,
+                        ex.RecoveryInstruction,
+                        activeFilters)));
             }
         });
 
@@ -449,7 +476,9 @@ public static class SupplierDecisionHubEndpoints
                     extensions: new Dictionary<string, object?>
                     {
                         ["errorCode"] = ex.ErrorCode,
-                        ["correlationId"] = ResolveCorrelationId(httpContext)
+                        ["correlationId"] = ResolveCorrelationId(httpContext),
+                        ["readinessId"] = ex.ReadinessId,
+                        ["recoveryInstruction"] = ex.RecoveryInstruction
                     });
             }
 
@@ -629,7 +658,13 @@ public static class SupplierDecisionHubEndpoints
         }
         catch (SupplierDecisionUnavailableException ex)
         {
-            return Results.Ok(BuildSupplierDecisionErrorReportResponse(activeFilters, ex.ErrorCode, ex.Message, correlationId));
+            return Results.Ok(BuildSupplierDecisionErrorReportResponse(
+                activeFilters,
+                ex.ErrorCode,
+                ex.Message,
+                correlationId,
+                ex.ReadinessId,
+                ex.RecoveryInstruction));
         }
     }
 
@@ -1114,7 +1149,9 @@ public static class SupplierDecisionHubEndpoints
         SupplierDecisionHubFilters filters,
         string errorCode,
         string message,
-        string correlationId)
+        string correlationId,
+        string? readinessId = null,
+        string? recoveryInstruction = null)
     {
         var generatedAtUtc = DateTime.UtcNow;
         var requestedDataset = ResolveRequestedDataset(filters);
@@ -1192,7 +1229,7 @@ public static class SupplierDecisionHubEndpoints
             ReportTitle: "Trendplus izveštaj dobavljača",
             ReportType: "supplier-decision",
             MethodologySummary: methodology.Summary,
-            Meta: BuildErrorMeta(errorCode, message, correlationId));
+            Meta: BuildErrorMeta(errorCode, message, correlationId, readinessId, recoveryInstruction));
     }
 
     private static string BuildSupplierDecisionReportId(SupplierDecisionHubFilters filters)
@@ -2323,18 +2360,48 @@ public static class SupplierDecisionHubEndpoints
         return meta;
     }
 
-    private static AnalyticsResponseMetaDto BuildErrorMeta(string errorCode, string message, string correlationId)
+    internal static AnalyticsResponseMetaDto BuildErrorMeta(
+        string errorCode,
+        string message,
+        string correlationId,
+        string? readinessId = null,
+        string? recoveryInstruction = null,
+        SupplierDecisionHubFilters? filters = null)
     {
-        return new AnalyticsResponseMetaDto
+        var meta = new AnalyticsResponseMetaDto
         {
             Success = false,
             ErrorCode = errorCode,
             ErrorMessage = message,
             Message = message,
             CorrelationId = correlationId,
+            ReadinessId = readinessId,
+            RecoveryInstruction = recoveryInstruction,
             DataQualityStatus = "insufficient_data",
+            RecommendationAllowed = false,
             GeneratedAtUtc = DateTime.UtcNow
         };
+
+        if (filters is not null)
+        {
+            var unavailableDataset = new SupplierRowsDataset(
+                Array.Empty<SupplierScoreRow>(),
+                0,
+                0,
+                DateTime.UtcNow);
+            var trustMetadata = BuildScorecardTrustMetadata(unavailableDataset, filters);
+            meta.RequestedPeriodFromUtc = trustMetadata.RequestedFrom;
+            meta.RequestedPeriodToUtc = trustMetadata.RequestedTo;
+            // No effective period is claimed until a query confirms which rows
+            // actually satisfied the requested period.
+            meta.EffectivePeriodFromUtc = null;
+            meta.EffectivePeriodToUtc = null;
+            meta.RequestedDataScope = trustMetadata.DataScope;
+            meta.EffectiveDataScope = null;
+            meta.DataScopeSource = "not_applied";
+        }
+
+        return meta;
     }
 
     private static AnalyticsResponseMetaDto ApplyCorrelationId(AnalyticsResponseMetaDto? meta, string correlationId)
@@ -2602,10 +2669,15 @@ public static class SupplierDecisionHubEndpoints
             }
             catch (PostgresException ex) when (IsMissingPrecomputedDependency(ex))
             {
-                throw new SupplierDecisionUnavailableException(
-                    ex.SqlState == "42P01" ? "MISSING_TABLE" : "SQL_ERROR",
-                    "Podaci za odluke o dobavljačima trenutno nisu spremni. Pokušajte ponovo uskoro.",
-                    ex);
+                throw CreatePostgresUnavailableException(
+                    ex,
+                    $"supplier-scorecard-cache:{windowDays}d");
+            }
+            catch (PostgresException ex)
+            {
+                throw CreatePostgresUnavailableException(
+                    ex,
+                    $"supplier-scorecard-cache:{windowDays}d");
             }
         }
 
@@ -2623,10 +2695,15 @@ public static class SupplierDecisionHubEndpoints
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
-            throw new SupplierDecisionUnavailableException(
-                "MISSING_TABLE",
-                "Podaci za odluke o dobavljačima trenutno nisu spremni. Pokušajte ponovo uskoro.",
-                ex);
+            throw CreatePostgresUnavailableException(
+                ex,
+                "supplier-scorecard-live-query");
+        }
+        catch (PostgresException ex)
+        {
+            throw CreatePostgresUnavailableException(
+                ex,
+                "supplier-scorecard-live-query");
         }
         catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
         {
@@ -2901,7 +2978,7 @@ public static class SupplierDecisionHubEndpoints
             DecisionScoreCacheForWindow(windowDays).IsReady;
     }
 
-    private static SupplierDecisionUnavailableException BuildDecisionScoreCapabilityException(
+    internal static SupplierDecisionUnavailableException BuildDecisionScoreCapabilityException(
         MaterializedViewCapabilityResult capability,
         int windowDays)
     {
@@ -2919,7 +2996,34 @@ public static class SupplierDecisionHubEndpoints
                 $"Skup podataka odluke dobavljača za period {datasetLabel} nije spreman za traženi period."
         };
 
-        return new SupplierDecisionUnavailableException(errorCode, message);
+        var recoveryInstruction = "Administrator treba read-only da proveri postojanje, obavezne kolone i popunjenost analitičkog skupa, pa da potvrdi osvežavanje pre ponovnog pokušaja.";
+        return new SupplierDecisionUnavailableException(
+            errorCode,
+            message,
+            readinessId: $"supplier-scorecard-cache:{windowDays}d",
+            recoveryInstruction: recoveryInstruction);
+    }
+
+    internal static (string ErrorCode, string Message) ClassifyPostgresFailure(string? sqlState) => sqlState switch
+    {
+        "42P01" => ("MISSING_TABLE", "Nedostaje očekivana analitička relacija za odluke dobavljača."),
+        "42703" => ("MISSING_COLUMN", "Analitička relacija za odluke dobavljača nema očekivanu kolonu."),
+        "42501" => ("INSUFFICIENT_PRIVILEGE", "API nalog nema potrebna prava za čitanje analitičkih podataka."),
+        "3F000" => ("MISSING_SCHEMA", "Očekivana analitička šema za odluke dobavljača nije dostupna."),
+        _ => ("SQL_ERROR", "Analitički upit za odluke dobavljača trenutno nije moguće izvršiti.")
+    };
+
+    private static SupplierDecisionUnavailableException CreatePostgresUnavailableException(
+        PostgresException exception,
+        string readinessId)
+    {
+        var classification = ClassifyPostgresFailure(exception.SqlState);
+        return new SupplierDecisionUnavailableException(
+            classification.ErrorCode,
+            classification.Message,
+            exception,
+            readinessId,
+            "Administrator može pokrenuti zaštićenu read-only proveru analitičke šeme i privilegija; ponovite zahtev nakon potvrde spremnosti.");
     }
 
     private sealed record SupplierMlQueryCapabilities(

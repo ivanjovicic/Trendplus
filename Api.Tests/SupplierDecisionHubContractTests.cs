@@ -1,4 +1,5 @@
 using Trendplus2.Endpoints;
+using Infrastructure.Analytics;
 using Xunit;
 
 namespace Api.Tests;
@@ -560,6 +561,69 @@ public sealed class SupplierDecisionHubContractTests
             row.Item == "Greška" &&
             row.Value == "Supplier scorecard nije dostupan." &&
             row.Secondary == "supplier_decision_schema_missing");
+    }
+
+    [Theory]
+    [InlineData("42P01", "MISSING_TABLE")]
+    [InlineData("42703", "MISSING_COLUMN")]
+    [InlineData("42501", "INSUFFICIENT_PRIVILEGE")]
+    [InlineData("3F000", "MISSING_SCHEMA")]
+    [InlineData("XX000", "SQL_ERROR")]
+    public void ClassifyPostgresFailureReturnsSafeStableReadinessCode(string sqlState, string expectedCode)
+    {
+        var classification = SupplierDecisionHubEndpoints.ClassifyPostgresFailure(sqlState);
+
+        Assert.Equal(expectedCode, classification.ErrorCode);
+        Assert.DoesNotContain(sqlState, classification.Message);
+    }
+
+    [Theory]
+    [InlineData("MISSING_OBJECT", false, true, false)]
+    [InlineData("MISSING_COLUMNS", true, true, true)]
+    [InlineData("NOT_POPULATED", true, false, false)]
+    public void BuildDecisionScoreCapabilityExceptionFailsClosedWithReadinessGuidance(
+        string expectedCode,
+        bool exists,
+        bool isPopulated,
+        bool hasMissingColumn)
+    {
+        var capability = new MaterializedViewCapabilityResult(
+            "public",
+            "mv_supplier_decision_score_cache_90d",
+            exists,
+            isPopulated,
+            hasMissingColumn ? ["supplier_quality_index"] : []);
+
+        var exception = SupplierDecisionHubEndpoints.BuildDecisionScoreCapabilityException(capability, 90);
+
+        Assert.Equal(expectedCode, exception.ErrorCode);
+        Assert.Equal("supplier-scorecard-cache:90d", exception.ReadinessId);
+        Assert.False(string.IsNullOrWhiteSpace(exception.RecoveryInstruction));
+    }
+
+    [Fact]
+    public void BuildErrorMetaPreservesRequestedAndEffectivePeriodButMarksScopeUnavailable()
+    {
+        var filters = Filters90Days();
+        var meta = SupplierDecisionHubEndpoints.BuildErrorMeta(
+            "MISSING_COLUMN",
+            "Analitička relacija nema očekivanu kolonu.",
+            "supplier-contract-test",
+            "supplier-scorecard-live-query",
+            "Administrator treba da proveri ugovor read-only.",
+            filters);
+
+        Assert.False(meta.Success);
+        Assert.False(meta.RecommendationAllowed);
+        Assert.Equal("supplier-scorecard-live-query", meta.ReadinessId);
+        Assert.Equal("Administrator treba da proveri ugovor read-only.", meta.RecoveryInstruction);
+        Assert.NotNull(meta.RequestedPeriodFromUtc);
+        Assert.NotNull(meta.RequestedPeriodToUtc);
+        Assert.Null(meta.EffectivePeriodFromUtc);
+        Assert.Null(meta.EffectivePeriodToUtc);
+        Assert.Equal(filters.DataScope, meta.RequestedDataScope);
+        Assert.Null(meta.EffectiveDataScope);
+        Assert.Equal("not_applied", meta.DataScopeSource);
     }
 
     private static SupplierDecisionHubEndpoints.SupplierDecisionHubFilters Filters90Days(

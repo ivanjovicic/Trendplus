@@ -49,6 +49,7 @@ import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyti
 import { supplierDecisionDatasetLabel, supplierDecisionReasonText } from "../utils/supplierDecisionLabels";
 import {
   getAnalyticsMetaMessage,
+  getAnalyticsMetaContextMessage,
   isAnalyticsMetaInsufficient,
   isAnalyticsMetaError,
   isAnalyticsMetaWarning,
@@ -319,7 +320,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
   const [previousSummary, setPreviousSummary] = useState<SummaryResponse | null>(null);
   const [ranking, setRanking] = useState<RankingResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; errorCode?: string | null; correlationId?: string | null } | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    errorCode?: string | null;
+    correlationId?: string | null;
+    meta?: SupplierDecisionApiError["meta"];
+  } | null>(null);
   const [staleWarning, setStaleWarning] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -463,6 +469,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           message: reason.message,
           errorCode: reason.errorCode,
           correlationId: reason.correlationId,
+          meta: reason.meta,
         });
       } else {
         setError({
@@ -1422,6 +1429,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           message={error?.message ?? scorecardMetaMessage ?? "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
           errorCode={error?.errorCode ?? undefined}
           correlationId={error?.correlationId ?? undefined}
+          readinessId={error?.meta?.readinessId ?? undefined}
+          recoveryInstruction={error?.meta?.recoveryInstruction ?? undefined}
+          contextMessage={getAnalyticsMetaContextMessage(error?.meta)}
           onRetry={() => {
             void load(activeFilters);
           }}

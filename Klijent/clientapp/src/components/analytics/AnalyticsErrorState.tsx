@@ -10,6 +10,9 @@ type AnalyticsErrorStateProps = {
   message: string;
   errorCode?: string | null;
   correlationId?: string | null;
+  readinessId?: string | null;
+  recoveryInstruction?: string | null;
+  contextMessage?: string | null;
   suggestions?: string[];
   retryLabel?: string;
   onRetry?: () => void;
@@ -37,6 +40,9 @@ export default function AnalyticsErrorState({
   message,
   errorCode,
   correlationId,
+  readinessId,
+  recoveryInstruction,
+  contextMessage,
   suggestions,
   retryLabel = "Pokušaj ponovo",
   onRetry,
@@ -54,6 +60,9 @@ export default function AnalyticsErrorState({
     <section className="analytics-error-state" role="alert" aria-live="assertive">
       <h2>{title}</h2>
       <p>{displayMessage}</p>
+      {readinessId ? <p className="aes-code">ID provere: {readinessId}</p> : null}
+      {recoveryInstruction ? <p>{recoveryInstruction}</p> : null}
+      {contextMessage ? <p>{contextMessage}</p> : null}
       {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
       {resolvedSuggestions.length > 0 ? (
         <ul className="aes-suggestions">

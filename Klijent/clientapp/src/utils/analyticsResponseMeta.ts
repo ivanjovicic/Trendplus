@@ -144,6 +144,29 @@ export function getAnalyticsMetaMessage(meta?: AnalyticsResponseMeta | null): st
   return null;
 }
 
+export function getAnalyticsMetaContextMessage(meta?: AnalyticsResponseMeta | null): string | null {
+  if (!meta) return null;
+
+  const formatRange = (from?: string | null, to?: string | null) => {
+    if (!from && !to) return "nije primenjen";
+    return `${from?.slice(0, 10) ?? "?"} – ${to?.slice(0, 10) ?? "?"}`;
+  };
+
+  const hasPeriod = Boolean(meta.requestedPeriodFromUtc || meta.requestedPeriodToUtc
+    || meta.effectivePeriodFromUtc || meta.effectivePeriodToUtc);
+  const hasScope = Boolean(meta.requestedDataScope || meta.effectiveDataScope);
+  if (!hasPeriod && !hasScope) return null;
+
+  const parts: string[] = [];
+  if (hasPeriod) {
+    parts.push(`Traženi period: ${formatRange(meta.requestedPeriodFromUtc, meta.requestedPeriodToUtc)}; efektivni period: ${formatRange(meta.effectivePeriodFromUtc, meta.effectivePeriodToUtc)}.`);
+  }
+  if (hasScope) {
+    parts.push(`Traženi opseg: ${meta.requestedDataScope ?? "nije poznat"}; efektivni opseg: ${meta.effectiveDataScope ?? "nije primenjen"}.`);
+  }
+  return parts.join(" ");
+}
+
 export function assertAnalyticsMetaSuccess<T>(
   response: T,
   getMeta: (response: T) => AnalyticsResponseMeta | undefined | null,

@@ -330,13 +330,21 @@ export class SupplierDecisionApiError extends Error {
   readonly status: number;
   readonly errorCode: string | null;
   readonly correlationId: string | null;
+  readonly meta: AnalyticsResponseMeta | null;
 
-  constructor(message: string, status: number, errorCode?: string | null, correlationId?: string | null) {
+  constructor(
+    message: string,
+    status: number,
+    errorCode?: string | null,
+    correlationId?: string | null,
+    meta?: AnalyticsResponseMeta | null,
+  ) {
     super(message);
     this.name = "SupplierDecisionApiError";
     this.status = status;
     this.errorCode = errorCode ?? null;
     this.correlationId = correlationId ?? null;
+    this.meta = meta ?? null;
   }
 }
 
@@ -431,7 +439,8 @@ async function fetchJson<T>(
         reason.message,
         response.status,
         reason.errorCode,
-        reason.correlationId
+        reason.correlationId,
+        reason.meta
       );
     }
     throw reason;

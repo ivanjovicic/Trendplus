@@ -82,6 +82,15 @@ export interface AnalyticsResponseMeta {
   warningMessage?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  readinessId?: string | null;
+  recoveryInstruction?: string | null;
+  contractDiagnostic?: {
+    relation: string;
+    missingPart: string;
+    schema?: string | null;
+    missingColumn?: string | null;
+    foundInSchemas?: string[] | null;
+  } | null;
   emptyReason?: string | null;
   correlationId?: string | null;
   message?: string | null;

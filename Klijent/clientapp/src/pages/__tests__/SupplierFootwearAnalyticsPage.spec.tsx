@@ -1,10 +1,11 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SupplierFootwearAnalyticsPage, { decisionColumns } from "../SupplierFootwearAnalyticsPage";
 import { getVendorSalesNivelacija, getVendorSalesNivelacijaOptions } from "../../services/vendorSalesNivelacijaApi";
 import { buildAnalyticsDetailSnapshot, resolveAnalyticsTablePayload, saveAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import * as analyticsTableState from "../../services/analyticsTableState";
+import { AnalyticsMetaError } from "../../utils/analyticsResponseMeta";
 
 vi.mock("recharts", () => ({
   Bar: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -460,6 +461,45 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Pre/post nivelacija nije dostupna.");
     expect(screen.getByText("Nije poznato")).toBeInTheDocument();
     expect(screen.queryByText("Sveže")).not.toBeInTheDocument();
+  });
+
+  it("shows schema readiness guidance and retries without rendering fallback zero KPIs", async () => {
+    const baseResponse = await getVendorSalesNivelacija({});
+    vi.mocked(getVendorSalesNivelacija).mockRejectedValueOnce(new AnalyticsMetaError(
+      "Pre/post nivelacija nije dostupna.",
+      {
+        errorCode: "vendor_sales_nivelacija_contract_missing",
+        correlationId: "vendor-readiness-test",
+        meta: {
+          success: false,
+          errorCode: "vendor_sales_nivelacija_contract_missing",
+          errorMessage: "Nedostaje očekivana relacija.",
+          readinessId: "vendor-sales-nivelacija-schema",
+          recoveryInstruction: "Administrator može pokrenuti read-only proveru relacije i SELECT prava.",
+          requestedPeriodFromUtc: "2026-09-01T00:00:00Z",
+          requestedPeriodToUtc: "2026-09-30T00:00:00Z",
+          requestedDataScope: "all",
+          effectiveDataScope: null,
+          dataScopeSource: "not_applied",
+          recommendationAllowed: false,
+        },
+      },
+    ));
+
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("ID provere: vendor-sales-nivelacija-schema")).toBeInTheDocument();
+    expect(screen.getByText("Administrator može pokrenuti read-only proveru relacije i SELECT prava.")).toBeInTheDocument();
+    expect(screen.getByText(/efektivni opseg: nije primenjen/)).toBeInTheDocument();
+    expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+    expect(await screen.findByText("Ukupan promet")).toBeInTheDocument();
+    expect(baseResponse.meta?.success).toBe(true);
   });
 
   it("publishes trust metadata for the embedded consolidated page", async () => {

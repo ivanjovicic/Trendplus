@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this file (RQ547 is IN_PROGRESS in the Nivelacija audit addendum; MASTER_ROADMAP.md carries the program pointer)
-Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 stays WAITING behind RQ536 (shared Decision Hub surface), with the live-evidence gate satisfied and the store-filtered scorecard HTTP 500 added to its scope. RQ487 stays WAITING on the 503 root cause.
+Current READY prompt: RQ475 (IN_PROGRESS; exclusive local claim `.ai/task-locks/RQ475-codex.lock.md`; MASTER_ROADMAP.md carries the cross-program pointer)
+Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 was WAITING behind RQ536 (shared Decision Hub surface) and was promoted to IN_PROGRESS after RQ536 reached DONE on 2026-10-01; the live-evidence gate remains satisfied and the store-filtered scorecard HTTP 500 is in scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 were independent runnable lanes at that time.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
 Systemic reliability audit registration 2026-09-29: `RQ509`-`RQ515` are registered as WAITING follow-ups from `docs/qa/ANALYTICS_RELIABILITY_NEXT_WAVE_AUDIT_2026-09-29.md`. They extend, rather than replace, RQ359-RQ367/RQ141/RQ145-RQ149 and the RQ413/RQ449/RQ450 integrity stack. No RQ509-RQ515 prompt is promoted or claimed by this audit; RQ501 completed separately and current routing is defined only by this header plus fresh dependency/collision checks.
@@ -26500,7 +26500,7 @@ Unavailable Supplier overview cannot be mistaken for “no data”, while a succ
 
 ## RQ475 - Make Supplier scorecard/assortment semantic-data readiness operationally actionable
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ536 is DONE (same Supplier Decision Hub endpoint/page surface). The live-evidence gate is satisfied by RQ535.
 Reclassified 2026-10-01 by RQ535: the September live premise was re-observed on exact deployed SHA `3a6a6886` with sharper object names.
 - Scorecard (30d request, effective 90d): HTTP 200, `meta.success=false`, `MISSING_OBJECT`, because `mv_supplier_decision_score_cache_90d` does not exist (it was `MISSING_SCHEMA` before).
@@ -26555,6 +26555,13 @@ An operator can identify why scorecard/assortment are unavailable and what read-
 - RQ536 DONE first (shared Decision Hub surface). The repository-local readiness/error work no longer needs live access; RQ535 recorded the exact missing objects.
 - Read-only live database/schema or provider-log access is still needed to explain why the startup DDL did not apply; record it as missing evidence.
 - RQ146/RQ459 remain prior contracts and are not reopened without new proof.
+
+### Claim note
+
+- Claim date: 2026-10-01
+- Idle recovery refreshed origin/main to a0cb2d714319db69c9860347785ef0f1193d4f5; RQ535 and RQ536 are DONE, the named RQ536 dependency is satisfied, and no active lock/branch/open PR owner or same-family collision was found.
+- RQ475 moved WAITING -> READY -> IN_PROGRESS as the next P1 Supplier readiness prompt. Scope remains repository-local readiness/error/empty/retry behavior; live provider logs remain an evidence gap and no production DDL is authorized.
+- Local lock: .ai/task-locks/RQ475-codex.lock.md.
 
 ---
 

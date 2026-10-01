@@ -55,4 +55,8 @@ public class AnalyticsResponseMetaDto
     public SupplierTabBasisDto? Basis { get; set; }
     /// <summary>Optional database contract diagnosis for analytics availability failures.</summary>
     public AnalyticsContractDiagnosticDto? ContractDiagnostic { get; set; }
+    /// <summary>Stable identifier for a read-only readiness check; not a correlation ID.</summary>
+    public string? ReadinessId { get; set; }
+    /// <summary>Safe next step for restoring an unavailable analytics contract.</summary>
+    public string? RecoveryInstruction { get; set; }
 }

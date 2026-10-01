@@ -75,6 +75,15 @@ const decisionReadinessSchema = z.object({
 
 export const analyticsResponseMetaSchema = z.object({
   success: z.boolean(),
+  readinessId: z.string().nullable().optional(),
+  recoveryInstruction: z.string().nullable().optional(),
+  contractDiagnostic: z.object({
+    relation: z.string(),
+    missingPart: z.string(),
+    schema: z.string().nullable().optional(),
+    missingColumn: z.string().nullable().optional(),
+    foundInSchemas: z.array(z.string()).nullable().optional(),
+  }).nullable().optional(),
   generatedAtUtc: validDate.optional(),
   lastRefreshAtUtc: validDate.nullable().optional(),
   requestedPeriodFromUtc: validDate.nullable().optional(),
