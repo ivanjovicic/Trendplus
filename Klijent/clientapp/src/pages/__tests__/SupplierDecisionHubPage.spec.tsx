@@ -230,10 +230,10 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
     await screen.findByTestId("supplier-decision-hub-data-table");
 
-    fireEvent.change(screen.getByLabelText("Kategorija"), { target: { value: "Patike" } });
-    fireEvent.change(screen.getByLabelText("Pol"), { target: { value: "Muško" } });
-    fireEvent.change(screen.getByLabelText("Sezona"), { target: { value: "7" } });
-    fireEvent.change(screen.getByLabelText("Min prihod"), { target: { value: "5000" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Kategorija" }), { target: { value: "Patike" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Pol" }), { target: { value: "Muško" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Sezona" }), { target: { value: "7" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Min prihod" }), { target: { value: "5000" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /Samo visoka pouzdanost/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /bez zaliha pre sniženja/i }));
     fireEvent.click(screen.getByRole("button", { name: "Primeni" }));

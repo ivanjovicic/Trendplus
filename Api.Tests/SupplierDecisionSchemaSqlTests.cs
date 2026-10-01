@@ -829,9 +829,12 @@ public sealed class SupplierDecisionSchemaSqlTests
     public void SupplierDecisionUnavailablePathsReturnExplicitErrorMeta()
     {
         var endpoint = ReadRepoFile("Api/Endpoints/SupplierDecisionHubEndpoints.cs");
+        var normalizedEndpoint = NormalizeWhitespace(endpoint);
 
         Assert.Contains("SupplierDecisionUnavailableException", endpoint);
-        Assert.Contains("BuildErrorMeta(ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext))", endpoint);
+        Assert.Contains(
+            "BuildErrorMeta( ex.ErrorCode, ex.Message, ResolveCorrelationId(httpContext), ex.ReadinessId, ex.RecoveryInstruction, activeFilters)",
+            normalizedEndpoint);
         Assert.Contains("MISSING_TABLE", endpoint);
         Assert.Contains("SQL_TIMEOUT", endpoint);
     }

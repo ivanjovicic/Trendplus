@@ -1337,84 +1337,84 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
       {!embedded ? (
       <section className="sdh-decision-filters">
-        <label className="sdh-decision-field">
-          <span>
-            Period 
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-period-preset">Period</label>
             <InfoTip text="Kraći period bolje hvata svež signal, duži period smanjuje slučajne oscilacije i daje stabilniji rang." />
-          </span>
-          <select value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}>
+          </div>
+          <select id="sdh-period-preset" value={periodPreset} onChange={(e) => handlePresetChange(e.target.value as PeriodPreset)}>
             <option value="30d">Poslednjih 30 dana</option>
             <option value="90d">Poslednjih 90 dana</option>
             <option value="180d">Poslednjih 180 dana</option>
             <option value="365d">Poslednjih 365 dana</option>
             <option value="custom">Prilagođeno</option>
           </select>
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Od
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-period-from">Od</label>
             <InfoTip text="Početak perioda skorkarte. Uključuju se dobavljači čiji artikli imaju prvu nivelaciju od ovog datuma." />
-          </span>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Do
+          </div>
+          <input id="sdh-period-from" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-period-to">Do</label>
             <InfoTip text="Kraj perioda skorkarte. Analiza uključuje signale do kraja ovog dana." />
-          </span>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Kategorija
+          </div>
+          <input id="sdh-period-to" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-category">Kategorija</label>
             <InfoTip text="Ograniči skorkartu na izabranu kategoriju." />
-          </span>
-          <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="npr. Patike" />
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Pol
+          </div>
+          <input id="sdh-category" type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="npr. Patike" />
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-gender">Pol</label>
             <InfoTip text="Ograniči skorkartu na izabrani pol." />
-          </span>
-          <select value={gender} onChange={(e) => setGender(e.target.value)}>
+          </div>
+          <select id="sdh-gender" value={gender} onChange={(e) => setGender(e.target.value)}>
             <option value="">Svi polovi</option>
             <option value="Žensko">Žensko</option>
             <option value="Muško">Muško</option>
             <option value="Unisex">Unisex</option>
             <option value="Dečije">Dečije</option>
           </select>
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Sezona
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-season">Sezona</label>
             <InfoTip text="Ograniči analizu na određenu sezonu ako su podaci povezani sa sezonom." />
-          </span>
-          <select value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
+          </div>
+          <select id="sdh-season" value={seasonId ?? ""} onChange={(e) => setSeasonId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Sve sezone</option>
             {seasons.map((season) => <option key={season.id} value={season.id}>{season.naziv}</option>)}
           </select>
-        </label>
-        <label className="sdh-decision-field">
-          <span>
-            Min prihod
+        </div>
+        <div className="sdh-decision-field">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-min-revenue">Min prihod</label>
             <InfoTip text="Sakrije dobavljače čiji je ukupan prihod manji od ovog iznosa. Koristi se za fokus na veće dobavljače." />
-          </span>
-          <input type="number" value={minRevenue ?? ""} onChange={(e) => setMinRevenue(e.target.value ? Number(e.target.value) : null)} placeholder="npr. 500000" />
-        </label>
-        <label className="sdh-decision-field check">
-          <span>
-            Samo visoka pouzdanost
+          </div>
+          <input id="sdh-min-revenue" type="number" value={minRevenue ?? ""} onChange={(e) => setMinRevenue(e.target.value ? Number(e.target.value) : null)} placeholder="npr. 500000" />
+        </div>
+        <div className="sdh-decision-field check">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-only-high-confidence">Samo visoka pouzdanost</label>
             <InfoTip text="Sakriva dobavljače sa slabim ili nepotpunim signalom, na primer malo artikala, malo prodaje ili nedostajuće nabavne cene." />
-          </span>
-          <input type="checkbox" checked={onlyHighConfidence} onChange={(e) => setOnlyHighConfidence(e.target.checked)} />
-        </label>
-        <label className="sdh-decision-field check">
-          <span>
-            Isključi artikle bez zaliha pre sniženja
+          </div>
+          <input id="sdh-only-high-confidence" type="checkbox" checked={onlyHighConfidence} onChange={(e) => setOnlyHighConfidence(e.target.checked)} />
+        </div>
+        <div className="sdh-decision-field check">
+          <div className="sdh-decision-field-caption">
+            <label htmlFor="sdh-exclude-oos">Isključi artikle bez zaliha pre sniženja</label>
             <InfoTip text="Izostavi artikle koji su bili bez zaliha pre sniženja iz skorkarte." />
-          </span>
-          <input type="checkbox" checked={excludeOosBeforeMarkdown} onChange={(e) => setExcludeOosBeforeMarkdown(e.target.checked)} />
-        </label>
+          </div>
+          <input id="sdh-exclude-oos" type="checkbox" checked={excludeOosBeforeMarkdown} onChange={(e) => setExcludeOosBeforeMarkdown(e.target.checked)} />
+        </div>
         <div className="sdh-decision-actions">
           <button type="button" onClick={handleApplyFilters} disabled={loading || invalidRange}>Primeni</button>
           <button type="button" className="secondary" onClick={handleResetFilters} disabled={loading}>Poništi filtere</button>
