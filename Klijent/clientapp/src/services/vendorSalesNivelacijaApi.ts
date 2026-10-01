@@ -144,7 +144,7 @@ export interface VendorSalesNivelacijaCategoryStat {
     postRevenue: number;
     changeQty: number;
     changeRevenue: number;
-    changePercent: number;
+    changePercent: number | null;
     hasComparableSalesWindow?: boolean;
     comparableArticleCount?: number;
     postRevenueSharePercent?: number | null;
@@ -157,7 +157,7 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     vendorsCount: number;
     avgPriceChangePercent: number;
     changeRevenue: number;
-    changePercent: number;
+    changePercent: number | null;
     hasComparableSalesWindow?: boolean;
     comparableArticleCount?: number;
 }

@@ -736,7 +736,7 @@ const vendorSalesNivelacijaCategorySchema = z.object({
   postRevenue: finiteNumber,
   changeQty: finiteNumber,
   changeRevenue: finiteNumber,
-  changePercent: finiteNumber,
+  changePercent: nullableNumber,
   hasComparableSalesWindow: z.boolean(),
   comparableArticleCount: nonNegativeInteger,
   postRevenueSharePercent: nullableNonNegativePercentage.optional(),
@@ -749,7 +749,7 @@ const vendorSalesNivelacijaPriceDirectionSchema = z.object({
   vendorsCount: nonNegativeInteger,
   avgPriceChangePercent: finiteNumber,
   changeRevenue: finiteNumber,
-  changePercent: finiteNumber,
+  changePercent: nullableNumber,
   hasComparableSalesWindow: z.boolean(),
   comparableArticleCount: nonNegativeInteger,
 }).passthrough();
