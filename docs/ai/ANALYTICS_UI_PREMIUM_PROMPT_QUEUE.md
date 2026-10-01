@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-25` (IN_PROGRESS; responsive foundation; supplemental/path-safe and must not displace higher-priority RQ correctness work)
+Current READY prompt: none (P-UI-25 DONE; P-UI-26/P-UI-27 require fresh collision checks before promotion)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -30,7 +30,7 @@ Use with:
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
 | P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
 | P-UI-24 | DONE | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
-| P-UI-25 | IN_PROGRESS | responsive-ui-foundation | Responsive type/control/input/focus foundation |
+| P-UI-25 | DONE | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
 | P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
 | P-UI-28 | WAITING | responsive-filter-bar | Responsive filter pilot with semantics frozen |
@@ -1324,14 +1324,14 @@ The responsive audit contains several high-confidence source findings but also r
 
 ## P-UI-25 - Introduce responsive type/control/input/focus foundations without desktop churn
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-24 baseline
 Priority: P1
 Type: frontend/css/tests
 Feature family: responsive-ui-foundation
 Parallel-safe: no
 Owner: ChatGPT
-Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-25-responsive-foundation-51d0`; local lock `.ai/task-locks/P-UI-25-chatgpt.lock.md`.
+Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-25-responsive-foundation-51d0`; completed on the same branch; local lock removed after delivery.
 Commit suggestion: `feat(ui): add responsive control and type foundations`
 
 ### Problem
@@ -1392,6 +1392,25 @@ Current tokens and shared forms are desktop-dense: body/small tokens are below t
 
 - `P-UI-24` baseline is DONE.
 - Path collision check is required before editing global styles.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: 100%
+- Changed files: `Klijent/clientapp/src/styles/themes.css`; `Klijent/clientapp/src/styles/forms.css`; `Klijent/clientapp/src/tailwind.css`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-01-P-UI-25-evidence.md`
+- Contract/runtime behavior changed: shared phone text controls now use the 16px product contract, native phone buttons use the 44px coarse-pointer target, and keyboard focus has a visible theme-token ring; no analytics/API/business semantics changed
+- Checks run: shared interaction tests 9/9; `npm run typecheck`; `npm run check:analytics-guardrails`; `npm run build`; P-UI-24 fixture matrix 70/70 with 0 page errors and 4 baseline overflow observations; phone computed-style proof; `git diff --check`
+- Checks not run: real iOS/iPad Safari and physical coarse-pointer device proof
+- Run log: `.ai/runs/2026-10-01-P-UI-25-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: pending final delivery synchronization
+- Main verification: pending final delivery synchronization
+- Evidence state: pending
+- Missed: page-family migrations, mobile drawer behavior and shared primitive migrations remain later P-UI prompts; the existing four Products-page overflow observations remain unfixed baseline findings
+- Follow-up: promote P-UI-26 or P-UI-27 only after a fresh collision check
+- Residual risk: global phone button sizing may increase mobile header height; P-UI-26 owns measured header/drawer remediation
+- Next: re-enter canonical idle recovery for P-UI-26/P-UI-27
 
 ---
 
