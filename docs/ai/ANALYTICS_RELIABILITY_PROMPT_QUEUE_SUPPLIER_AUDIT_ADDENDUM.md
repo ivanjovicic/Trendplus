@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ534 (IN_PROGRESS)
-Additional READY prompts: none; RQ524, RQ527, RQ528 and RQ533 are DONE
+Current READY prompt: none
+Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533 and RQ534 are DONE
+Queue reconciliation 2026-10-01: RQ534 DONE. The Pre/Post page spec uses the RQ520 effect statuses and current focus-chip labels (45/45), removing the 8 failures that kept Analytics Quality Gates red since `13a01ebd`. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ533 DONE. Assortment vendor and totals change percent are null without mature comparable evidence or a revenue baseline; the error fallback reports null instead of 0; cache key v7. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval. Follow-up for the Q83 Pre/Post owner: price-direction and category change percent `?? 0m`.
 Queue registration 2026-10-01: RQ533 was registered from the RQ527 follow-up (Assortment fake 0% change percent without comparable evidence), deduplicated against the existing queues, and promoted and claimed in the same idle-recovery run.
@@ -940,7 +941,7 @@ RQ520 and RQ527 DONE.
 
 ## RQ534 - Align the Pre/Post page spec with the RQ520 price-change effect statuses
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-01 by Cursor agent on `main` (direct). Registered and promoted WAITING -> READY -> IN_PROGRESS in the same idle-recovery run (user authorized promotion). Dependencies RQ520 and RQ533 are DONE. The frontend spec is outside Q83's SQL-only scope, and no lock, open PR or branch touches it.
 Priority: P1
 Type: frontend-tests/ci
@@ -980,3 +981,21 @@ The Pre/Post spec passes on current `main` with fixtures that are valid for the 
 ### Dependencies
 
 RQ520 and RQ533 DONE.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: the Pre/Post spec now seeds the typed effect statuses (`effective`, `immature`) with backend-style labels and queries the current focus chips ("Pozitivan efekat", "Prozor u toku"). The URL focus keys are unchanged. Page behavior was not touched.
+- Changed files: `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`
+- Contract/runtime behavior changed: none (test only).
+- Checks run: counterexample on the unchanged spec gives 8 failed, 37 passed; after the fix 45/45. `git diff --check` clean; governance validators pass.
+- Checks not run: full local vitest (the CI gate on the delivered SHA is inspected instead).
+- Run log: `.ai/runs/2026-10-01-RQ534-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: e5cc93c3d83e66144778b31108277f28d8d1eef3
+- Main verification: `origin/main` contains e5cc93c3 (ancestor check after push)
+- Missed: intermittent `InventoryPage.queueStatus` and `InventoryPage.signalWindow` failures in some main runs are outside this scope.
+- Follow-up: an owner for Inventory spec flakiness if it recurs; the Q83 price-direction/category change-percent follow-up from RQ533 remains.
+- Residual risk: specs are not type-checked, so other specs may carry status values that are invalid for their contracts.
