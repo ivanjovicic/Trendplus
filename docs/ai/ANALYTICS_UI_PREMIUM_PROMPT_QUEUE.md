@@ -1312,9 +1312,9 @@ The responsive audit contains several high-confidence source findings but also r
 - Checks not run: real iOS/iPad Safari and coarse-pointer device capture not run; Chromium evidence cannot prove device behavior
 - Run log: `.ai/runs/2026-10-01-P-UI-24-evidence.md`
 - Delivery mode: direct-main
-- Main commit SHA: pending final delivery synchronization
-- Main verification: pending final delivery synchronization
-- Evidence state: pending
+- Main commit SHA: `007e26c64ff5dbea16cd434ab1e02fc50e21642b`
+- Main verification: `origin/main` contains `007e26c64ff5dbea16cd434ab1e02fc50e21642b`
+- Evidence state: synchronized
 - Missed: 4 observed root-overflow cases remain as baseline findings on `/analytics/products` at 320/375px in both themes; they are intentionally not fixed by this measurement prompt
 - Follow-up: promote/claim `P-UI-25` only after a fresh collision check against active frontend owners
 - Residual risk: Chromium/Puppeteer evidence does not prove iOS/iPad Safari keyboard, zoom or coarse-pointer behavior
