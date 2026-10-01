@@ -147,8 +147,25 @@ async function fixtureResponse(request) {
 
 async function collectGeometry(page, viewportWidth) {
   const documentMetrics = await page.evaluate(() => {
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number.parseFloat(style.opacity || "1") > 0
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const rectValue = (rect) => rect
+      ? {
+        x: Math.round(rect.x * 100) / 100,
+        y: Math.round(rect.y * 100) / 100,
+        width: Math.round(rect.width * 100) / 100,
+        height: Math.round(rect.height * 100) / 100,
+      }
+      : null;
     const controls = [...document.querySelectorAll("input, button, select, textarea")]
-      .filter(visible)
+      .filter(isVisible)
       .slice(0, 40)
       .map((element) => {
         const rect = element.getBoundingClientRect();
@@ -157,27 +174,27 @@ async function collectGeometry(page, viewportWidth) {
           role: element.getAttribute("role"),
           label: element.getAttribute("aria-label") || element.textContent?.trim().slice(0, 60) || null,
           fontSizePx: Number.parseFloat(window.getComputedStyle(element).fontSize),
-          rect: serializeRect(rect),
+          rect: rectValue(rect),
         };
       });
 
     const regions = [...document.querySelectorAll(
       "table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
     )]
-      .filter(visible)
+      .filter(isVisible)
       .slice(0, 40)
       .map((element) => ({
         tag: element.tagName.toLowerCase(),
         testId: element.getAttribute("data-testid"),
         className: typeof element.className === "string" ? element.className.slice(0, 120) : null,
-        rect: serializeRect(element.getBoundingClientRect()),
+        rect: rectValue(element.getBoundingClientRect()),
       }));
 
     return {
       viewportHeight: window.innerHeight,
       scrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body?.scrollWidth ?? 0,
-      header: serializeRect(
+      header: rectValue(
         document.querySelector("[role='banner'], header")?.getBoundingClientRect(),
       ),
       controls,
