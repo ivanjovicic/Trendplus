@@ -1187,8 +1187,8 @@ live analytics database.
 - Run log: `.ai/runs/2026-10-01-Q83-reentry-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `3e929bcb55ddca90de756791da6624bca5479c84`
-- Main verification: fresh `origin/main` contained implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`; re-entry queue/evidence changes were delivered directly to `main` and verified after push.
+- Main commit SHA: `32f36939b5367f5c67ebafcd495fd769e7fa5488`
+- Main verification: fresh fetch verified `HEAD == origin/main == 32f36939b5367f5c67ebafcd495fd769e7fa5488`; it contains implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
 - Missed: Live applied-migration and deployed-view state remains unverified; local EF tooling could not query applied status after Neon returned `28P01`.
 - Follow-up: RQ475 is dependency-complete after RQ536; select it through fresh collision checks. Keep RQ491 on its own live/runtime gate until re-evaluated.
 - Residual risk: Production view availability and migration application remain separate operational evidence; no production success is inferred.

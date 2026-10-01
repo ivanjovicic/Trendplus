@@ -4,8 +4,8 @@ Date: 2026-10-01
 Agent/tool: Codex Desktop (local)
 Delivery target: main
 Working branch / PR: `main` / no active PR; stale PR #89 closed
-Main commit SHA: 3e929bcb55ddca90de756791da6624bca5479c84
-Main verification: fresh `origin/main` contained the Q83 implementation SHA; queue/evidence re-entry changes were delivered directly to `main` and verified after push.
+Main commit SHA: 32f36939b5367f5c67ebafcd495fd769e7fa5488
+Main verification: fresh fetch verified `HEAD == origin/main == 32f36939b5367f5c67ebafcd495fd769e7fa5488`; it contains implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
 Evidence state: synchronized
 
 ## What was done
@@ -26,6 +26,7 @@ Evidence state: synchronized
 - `dotnet ef migrations list --project .\Infrastructure\Infrastructure.csproj --startup-project .\Api\Api.csproj --context AnalyticsDbContext` -> build succeeded and local migrations were enumerated; database applied-status query failed with Neon `28P01`, so deployed/applied state is unknown.
 - Queue/planning/instruction validators and `git diff --check` -> pass.
 - Fresh post-push fetch and ancestry check -> pass; current `origin/main` contains Q83 implementation SHA `3e929bcb55ddca90de756791da6624bca5479c84`.
+- GitHub Actions Planning Governance run `36866350531` -> success on Q83 closure SHA `32f36939b5367f5c67ebafcd495fd769e7fa5488`.
 
 ## Validation not run
 - Full `Api.Tests` suite -> not run; the focused matrix covered Q83 acceptance and no wider risk was identified.
