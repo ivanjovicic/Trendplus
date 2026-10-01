@@ -577,7 +577,11 @@ body {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   select,
   textarea {
-    font-size: var(--font-size-control-phone, 1rem);
+    /*
+      This is an intentional contract guard: page-specific typography must not
+      silently shrink phone text controls below the shared 16px baseline.
+    */
+    font-size: var(--font-size-control-phone, 1rem) !important;
   }
 
   .btn,

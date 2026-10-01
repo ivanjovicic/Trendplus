@@ -548,7 +548,7 @@ textarea.form-control {
   */
   .form-control,
   .form-control--compact {
-    font-size: var(--font-size-control-phone, 1rem);
+    font-size: var(--font-size-control-phone, 1rem) !important;
     min-height: var(--size-control-phone, 2.75rem);
   }
 
