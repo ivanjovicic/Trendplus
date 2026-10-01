@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF17` DONE; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF17` DONE; `PERF18` WAITING on current browser/network proof; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
@@ -2781,3 +2781,84 @@ Admin API-key / deployment-secret rotation and emergency-access expectations are
 - SEC02 DONE.
 
 ---
+
+
+---
+
+## PERF18 - Reconcile the Recharts initial-preload regression with the measured bundle contract
+
+Status: WAITING
+Ready after: P-UI-24 records current route/network evidence, or equivalent current-main browser proof is attached
+Priority: P1
+Type: frontend performance/runtime/tests
+Feature family: frontend-bundle-loading
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `perf(frontend): restore chart chunk route isolation`
+
+### Problem
+
+`PERF17` documented the Recharts manual chunk as a route-isolated chart dependency, but a production build on current main `5257014` now shows `dist/index.html` modulepreloading the `recharts` chunk and the entry importing runtime symbols from it. The raw-size guard still passes, so the existing guard does not detect this loading-graph regression.
+
+### Evidence
+
+- `Klijent/clientapp/vite.config.ts` still places `node_modules/recharts` into a `recharts` manual chunk.
+- Current audit build: entry ~298.86 kB raw / 82.73 kB gzip; Recharts ~548.04 kB raw / 163.69 kB gzip.
+- Current `dist/index.html` modulepreloads `recharts-*.js`.
+- The current entry imports symbols from `recharts-*.js`; React runtime markers are present in that chunk.
+- `PERF17` previously rejected simply removing the manual Recharts split because Rollup emitted 13 circular-dependency/execution-order warnings.
+- `scripts/check-bundle-budget.mjs` checks raw chunk sizes but not entry/preload graph.
+
+### Scope
+
+- `Klijent/clientapp/vite.config.ts`
+- actual import/route boundaries proven to pull React/runtime through the Recharts chunk
+- `Klijent/clientapp/scripts/check-bundle-budget.mjs` or the narrowest extension of that existing guard
+- existing Puppeteer route/network measurement scripts or a small companion helper
+- `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`
+- no analytics formula/API/worker changes and no generic bundler rewrite
+
+### Read first
+
+- `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`
+- `.ai/runs/2026-09-02-PERF17-evidence.md`
+- `Klijent/clientapp/vite.config.ts`
+- `Klijent/clientapp/scripts/check-bundle-budget.mjs`
+- P-UI-24 route/network evidence if available
+- current route lazy-import structure
+
+### Do
+
+1. Reproduce the current-main build and record the entry imports, `index.html` modulepreloads, chunk sizes and route network requests.
+2. Trace why shared React/runtime code is co-located with or imported from the manually named Recharts chunk.
+3. Evaluate the smallest safe chunk/import strategy. Do not repeat PERF17's rejected “remove manualChunks” variant unless current Rollup behavior has changed and runtime proof is supplied.
+4. Restore the intended property that non-chart routes such as `/prodaja` do not eagerly fetch/preload Recharts, if it can be done without circular/execution-order regressions.
+5. Extend the existing `check:bundle-budget` guard to detect the relevant entry/preload graph regression; do not create a second competing bundle-budget script.
+6. Use existing Puppeteer browser tooling to prove a non-chart route and a chart route after the change.
+7. Synchronize the performance contract to the behavior actually proven. If safe route isolation cannot be restored, leave the task PARTIAL/BLOCKED with measurements rather than preserving a false contract.
+
+### Tests
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run check:bundle-budget`
+- focused Vitest suites for any changed lazy/import boundary
+- Puppeteer network/console smoke for `/prodaja` and `/analytics` (or another chart route)
+- route-hop smoke proving no module-init/`undefined.default` regression
+- `git diff --check`
+- queue/planning validators
+
+### Acceptance
+
+- The final evidence states exactly whether `recharts-*.js` appears in `dist/index.html` preloads and whether a non-chart route requests it.
+- If fixed, `/prodaja` does not eagerly fetch/preload Recharts while chart routes still render correctly.
+- The existing bundle guard fails on a seeded recurrence of the proven preload/entry-graph defect.
+- No circular dependency/execution-order warnings are newly accepted without explicit runtime proof.
+- `PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md` no longer claims route isolation that the build does not prove.
+- Analytics behavior is unchanged.
+
+### Dependencies
+
+- `PERF17` is DONE and supplies the prior baseline/guard.
+- Current browser/network evidence from P-UI-24 or equivalent is required before runtime implementation.
+- This task is independent of responsive CSS migrations but must avoid simultaneous edits to the same Vite/import-boundary files.
