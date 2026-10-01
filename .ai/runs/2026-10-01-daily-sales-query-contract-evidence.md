@@ -3,10 +3,10 @@ Queue: direct-user-request
 Date: 2026-10-01
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/daily-sales-contract
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Working branch / PR: codex/daily-sales-contract -> direct main push (no PR)
+Main commit SHA: deb6db0419a60207bcf0790bd2d906ce6eac3d33
+Main verification: passed - fresh fetch showed origin/main at the implementation SHA; merge-base --is-ancestor returned 0
+Evidence state: synchronized
 
 ## What was done
 - Reproduced the live mismatch: `from` / `to` were ignored by `DailySalesStatsRequest`, so the endpoint returned the existing inclusive last-30-days default (`2026-09-02` through `2026-10-01`).
@@ -31,23 +31,27 @@ Evidence state: pending
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~DailySalesStatsIntegrationTests --logger "console;verbosity=minimal" --verbosity quiet -p:WarningLevel=0` -> pass, 16/16.
 - `npm run test -- --run src/validation/__tests__/analyticsResponseSchemas.spec.ts` -> pass, 18/18; includes the signed supplier-ID regression.
 - `git diff --check` -> pass.
+- Pushed implementation SHA `deb6db0419a60207bcf0790bd2d906ce6eac3d33`; a fresh fetch confirmed `origin/main` at that SHA and `git merge-base --is-ancestor` passed.
+- GitHub Actions run `36879880379` for the implementation SHA was `in_progress` when inspected; no CI result is claimed.
+- Post-push live GET still returned the old `2026-09-02`–`2026-10-01` default response, so the Render API had not rolled out this main change at check time.
+- Prior red runs were classified: `36878713532` failed the backend build on the `CS0272` initializer fixed here; `36878713638` failed an unrelated Supplier Decision Hub filter test; `36878713530` and `36879126225` failed prompt-queue validation on earlier governance commits.
 
 ## Validation not run
 - Full API solution test suite -> not run; focused Daily Sales integration coverage passed.
 - Full frontend build/guardrails and browser/device checks -> not run; frontend runtime schema was unchanged and its focused spec passed.
-- Current-main Actions/deployment status -> pending delivery; inspect once after push if discoverable.
+- Live behavior after the Render rollout -> not run; the post-push read still served the previous API behavior and the deployment has not been confirmed.
 
 ## Documentation impact
 - Updated `Api/docs/daily-sales-stats-runbook.md` with the short query aliases and canonical-name precedence.
 - Queue files were not changed because this was a direct user request; queue value is recorded as `direct-user-request`.
 
 ## What was missed
-- Post-push main verification and any available current-main Actions/deployment classification remain pending.
+- The Render API had not yet deployed the main change at the post-push check; a later live confirmation remains outstanding.
 - The live dataset still reports `maxAvailableDate=2026-08-05`; this request does not repair source freshness.
 
 ## Risks
 - After the query fix, the requested range correctly includes available sales through `2026-08-05`; dates after that remain empty until source data is refreshed.
-- Live API behavior cannot reflect the alias fix until the main deployment completes.
+- Live API behavior still reflects the old alias handling until the main deployment completes.
 
 ## Next
-- Push the validated commit to `main`, verify the exact SHA, and synchronize this evidence.
+- Verify the live API after the Render deployment rolls out; source-data freshness remains a separate follow-up.
