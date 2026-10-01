@@ -575,7 +575,7 @@ RQ519 DONE and RQ525 DONE.
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: a4c8d5144376231c57587ce92065bacc8c5476bb
-- Main verification: recorded in the run log after push
+- Main verification: `origin/main` contains a4c8d514 and the CI repair commit 57ee54c6 (`git merge-base --is-ancestor`). The red "Analytics Tests & Data Integrity" bootstrap had failed since RQ520 run 36754474929 with `42P16 post_revenue numeric -> numeric(18,2)` in 014. It was classified as a pre-existing RQ520 view-lifecycle regression and fixed in 57ee54c6 with a regression test; details are in the run log.
 - Missed: a vendor without mature comparable rows reports semantic change 0% (`ComputeSemanticChangePercent(0,0)`), a fake-zero risk pinned in the golden; the legacy `change_percent_*` view/scoped divergence (immature no-post) is pinned, not changed; N09 stays with the RQ520 unit tests.
 - Follow-up: the Assortment semantics owner should return null instead of 0 for a vendor semantic % without mature comparable evidence.
 - Residual risk: store-filtered Assortment now shows numbers where users saw an error; PostgreSQL tests anchor on session `CURRENT_DATE` (midnight crossing).
