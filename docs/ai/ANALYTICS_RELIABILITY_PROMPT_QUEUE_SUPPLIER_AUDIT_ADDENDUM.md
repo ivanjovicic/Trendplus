@@ -3,8 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ527
-Additional READY prompts: none; RQ528 is DONE (parallel-safe `supplier-cross-tab-parity`; tests/contract only, consumes RQ522 `meta.basis`)
+Current READY prompt: none
+Additional READY prompts: none; RQ527 and RQ528 are DONE
+Queue reconciliation 2026-10-01: RQ527 DONE — independent Assortment oracle and golden fixture match startup view 014 and the bounded scoped source on real PostgreSQL; the oracle exposed and the run fixed a scoped-SQL `42803` failure (store/dataScope-filtered Assortment) and the unreachable `immature` vendor state. No Supplier-audit prompt is runnable: RQ523 waits on RQ498, RQ529 on RQ523/RQ499, RQ530 on RQ500/RQ524/RQ474/RQ487, RQ531 on owner approval, RQ532 on RQ500; RQ524 is PARTIAL.
 Queue reconciliation 2026-10-01: RQ522 DONE — every Supplier tab publishes backend `meta.basis` rendered as "Kako se broji"; nivelacija sales exclude DUG/KOREKCIJA; Overview/Assortment use one `Nepoznato` supplier bucket. RQ527 promoted to primary READY; RQ528 is dependency-complete and promoted to additional READY; RQ523 stays WAITING on RQ498, RQ530 on RQ500/RQ524/RQ474/RQ487.
 Queue reconciliation 2026-10-01: RQ521 DONE — Supplier scorecard return rate uses gross sold units with neutral missing-return rank, sale-time supplier attribution bounded to the published window, and canonical DUG/KOREKCIJA exclusion from full-price turnover evidence; existing databases pick it up through outdated-definition readiness and one-time stale windowed cache recreation. RQ522 is dependency-complete (RQ519/RQ521 DONE) and promoted to primary READY; RQ527 stays additional READY.
 Queue reconciliation 2026-10-01: RQ526 DONE — independent Supplier scorecard oracle and golden fixture match real PostgreSQL article signals and all-time/90d/180d score caches; known input defects are pinned for RQ521 to flip. RQ521 is dependency-complete and primary READY; RQ527 was dependency-complete and is promoted as additional READY.
@@ -520,9 +521,9 @@ RQ525 DONE.
 
 ## RQ527 - Add Assortment pre/post oracle and golden fixture
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ519 DONE and RQ525 DONE (satisfied 2026-09-30; promoted 2026-10-01)
-Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == ba450485`); no open PR, `rq527` branch or lock collision. Local lock `.ai/task-locks/RQ527-cursor.lock.md`.
+Claimed: 2026-10-01 by Cursor workspace after exact-main refresh (`HEAD == origin/main == ba450485`); no open PR, `rq527` branch or lock collision.
 Priority: P2
 Type: tests/sql
 Feature family: supplier-assortment-oracle
@@ -560,6 +561,26 @@ Totals match declared population; Change equals Post-Pre for comparable rows; ma
 ### Dependencies
 
 RQ519 DONE and RQ525 DONE.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: an independent Assortment oracle recomputes nivelacija windows, maturity, baselines and the declared endpoint population (latest event per article, changed price, mature comparable totals/vendor sums, production effect policy). A golden snapshot and a real-PostgreSQL row-for-row comparison cover startup view 014 and the bounded scoped source (chain-wide and store 1). Fixture cases: mature, immature, no-post, missing and netted-zero baseline, repeated event, price increase, unchanged price, duplicate rows, store-vs-chain, partially comparable vendor, unknown bucket, DUG/KOREKCIJA. The bounded source is value-equivalent to the unbounded view after endpoint dedup; Change = Post − Pre and totals = vendor sums.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api.Tests/AssortmentNivelacijaOracle.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/Golden/assortment-nivelacija-oracle.json`, `Api.Tests/SupplierCrossTabParityContractTests.cs` (compile fix)
+- Contract/runtime behavior changed: yes — the scoped source SQL no longer fails with PostgreSQL `42803`, so store-filtered and imported/existing-scope Assortment requests return data instead of the error fallback. Vendors with only immature comparable evidence now get effect status `immature` instead of `insufficient_data`. Response shape is unchanged.
+- Checks run: `dotnet build Api.Tests` 0 errors; `AssortmentNivelacijaOracleTests` 11/11 with Testcontainers PostgreSQL executed; mutation check (014 without the DUG/KOREKCIJA predicate fails on event 1, restored); counterexample (scoped tests failed with `42803` before the fix); `Supplier|VendorSales|Nivelacija|Assortment|CacheKey` 332 pass / 28 pre-existing skips / 0 fail; `git diff --check` clean; governance validators pass.
+- Checks not run: full HTTP execution of the endpoint over the fixture (aggregation lives in the endpoint lambda and needs the full app schema; static guard pins the Change formulas and effect wiring); frontend (no change).
+- Run log: `.ai/runs/2026-10-01-RQ527-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: a4c8d5144376231c57587ce92065bacc8c5476bb
+- Main verification: recorded in the run log after push
+- Missed: a vendor without mature comparable rows reports semantic change 0% (`ComputeSemanticChangePercent(0,0)`), a fake-zero risk pinned in the golden; the legacy `change_percent_*` view/scoped divergence (immature no-post) is pinned, not changed; N09 stays with the RQ520 unit tests.
+- Follow-up: the Assortment semantics owner should return null instead of 0 for a vendor semantic % without mature comparable evidence.
+- Residual risk: store-filtered Assortment now shows numbers where users saw an error; PostgreSQL tests anchor on session `CURRENT_DATE` (midnight crossing).
+- Next: no Supplier-audit READY; RQ523/RQ529/RQ530/RQ531/RQ532 WAITING, RQ524 PARTIAL.
+- Prompt defect / scope repair: two same-owner repairs proven by the oracle and required by acceptance (scoped `post_window` GROUP BY; vendor-effect comparable count including immature). Unblocking repair `6eaf09d2`: the RQ528 parity test did not compile on main `1120a063` (explicit nullable tuple array, assertions unchanged).
 
 ---
 
