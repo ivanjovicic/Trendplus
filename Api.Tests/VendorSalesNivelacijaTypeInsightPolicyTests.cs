@@ -59,6 +59,33 @@ public sealed class VendorSalesNivelacijaTypeInsightPolicyTests
         Assert.Null(aggregates[0].AvgElasticity);
     }
 
+    [Fact]
+    public void MissingRevenueBaselineKeepsCategoryChangePercentUnavailable()
+    {
+        var aggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(
+        [
+            ComparableRow("SKU-1", "Patike", 0m, 120m, null)
+        ]);
+
+        Assert.Null(aggregates[0].ChangePercent);
+    }
+
+    [Theory]
+    [InlineData(100, 100, 0)]
+    [InlineData(100, 0, -100)]
+    public void MeasuredPostRevenueZeroRemainsDistinctFromMissingBaseline(
+        decimal preRevenue,
+        decimal postRevenue,
+        decimal expectedChangePercent)
+    {
+        var aggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(
+        [
+            ComparableRow("SKU-1", "Patike", preRevenue, postRevenue, null)
+        ]);
+
+        Assert.Equal(expectedChangePercent, aggregates[0].ChangePercent);
+    }
+
     private static VendorSalesNivelacijaArticleStatDto ComparableRow(
         string sku,
         string category,

@@ -157,7 +157,7 @@ public sealed class VendorSalesNivelacijaCategoryStatDto
     public decimal PostRevenue { get; set; }
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
-    public decimal ChangePercent { get; set; }
+    public decimal? ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
     public decimal? PostRevenueSharePercent { get; set; }
@@ -171,7 +171,7 @@ public sealed class VendorSalesNivelacijaPriceDirectionStatDto
     public int VendorsCount { get; set; }
     public decimal AvgPriceChangePercent { get; set; }
     public decimal ChangeRevenue { get; set; }
-    public decimal ChangePercent { get; set; }
+    public decimal? ChangePercent { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
 }

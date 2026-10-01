@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: Q83
+Current READY prompt: none (Q83 is IN_PROGRESS)
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -1035,12 +1035,14 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 ## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
 Parallel-safe: no, this is the SQL owner for pre/post change semantics
 Owner: Codex
+Claimed: 2026-10-01 by ChatGPT on `cursor/q83-nivelacija-nullability-51d0`; no conflicting branch, lock or open PR found
+Local lock: `.ai/task-locks/Q83-chatgpt.lock.md`
 Commit suggestion: `fix(sql): preserve nivelacija evidence states`
 
 Re-entry 2026-10-01: operator reports Docker Desktop available. RQ533 left a bounded backend residual in this owner family: price-direction and category aggregates still coerce an unavailable change percent to numeric zero, while RQ534 already repaired the unrelated stale frontend spec statuses. Re-promoted PARTIAL -> READY for repository-local PostgreSQL/backend proof. A successful Render deploy was also reported, but production/runtime verification is not claimed here and is handled by RQ535/STAB16.

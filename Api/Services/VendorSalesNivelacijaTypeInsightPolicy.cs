@@ -63,10 +63,10 @@ public static class VendorSalesNivelacijaTypeInsightPolicy
     private static string NormalizeCategory(string? category) =>
         string.IsNullOrWhiteSpace(category) ? "Nepoznato" : category.Trim();
 
-    private static decimal CalculatePercent(decimal preRevenue, decimal postRevenue)
+    private static decimal? CalculatePercent(decimal preRevenue, decimal postRevenue)
     {
         if (preRevenue == 0m)
-            return postRevenue > 0m ? 100m : 0m;
+            return null;
 
         return Math.Round((postRevenue - preRevenue) / preRevenue * 100m, 2);
     }
@@ -116,7 +116,7 @@ public sealed record VendorSalesNivelacijaTypeInsightAggregate(
     decimal PostRevenue,
     int ChangeQty,
     decimal ChangeRevenue,
-    decimal ChangePercent,
+    decimal? ChangePercent,
     int ComparableArticleCount,
     decimal? AvgElasticity,
     decimal? PostRevenueSharePercent);

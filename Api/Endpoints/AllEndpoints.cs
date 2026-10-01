@@ -4871,7 +4871,7 @@ public static class AllEndpoints
                             VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
                             AvgPriceChangePercent = Math.Round(avgPct, 2),
                             ChangeRevenue = postRev - preRev,
-                            ChangePercent = SemanticChangePercent(preRev, postRev) ?? 0m,
+                            ChangePercent = SemanticChangePercent(preRev, postRev),
                             HasComparableSalesWindow = comparable.Count > 0,
                             ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                         };

@@ -207,6 +207,59 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     }
 
     [Fact]
+    public async Task StartupView_SeparatesMeasuredZeroFromMissingRevenueBaseline()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_assortment_nullability");
+        if (db is null)
+        {
+            return;
+        }
+
+        await SeedAsync(db.Connection, GoldenFixture.Build(db.Anchor));
+        var rows = (await ReadViewRowsAsync(db.Connection)).ToDictionary(row => row.PriceEventId);
+
+        var validBaseline = rows[1];
+        Assert.True(validBaseline.HasRevenueBaseline);
+        Assert.Equal(12.00m, validBaseline.ChangePercentRevenueSemantic);
+
+        var measuredZeroPostWindow = rows[3];
+        Assert.True(measuredZeroPostWindow.HasRevenueBaseline);
+        Assert.Equal(0m, measuredZeroPostWindow.PostRevenue);
+        Assert.Equal(-100.00m, measuredZeroPostWindow.ChangePercentRevenueSemantic);
+
+        var missingBaseline = rows[11];
+        Assert.False(missingBaseline.HasRevenueBaseline);
+        Assert.Null(missingBaseline.ChangePercentRevenueSemantic);
+
+        var immatureWithoutPostEvidence = rows[17];
+        Assert.Null(immatureWithoutPostEvidence.PostRevenue);
+        Assert.Null(immatureWithoutPostEvidence.ChangePercentRevenueSemantic);
+    }
+
+    [Fact]
+    public async Task SemanticRevenueContract_IsDetectablyMissingWhenViewOrColumnIsMissing()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_assortment_missing_contract");
+        if (db is null)
+        {
+            return;
+        }
+
+        Assert.True(await HasSemanticRevenueColumnAsync(db.Connection));
+
+        await ExecuteAsync(db.Connection, "DROP VIEW vw_vendor_sales_nivelacija CASCADE;");
+        Assert.False(await HasSemanticRevenueColumnAsync(db.Connection));
+
+        await ExecuteAsync(
+            db.Connection,
+            """
+            CREATE VIEW vw_vendor_sales_nivelacija AS
+            SELECT 1::bigint AS price_event_id;
+            """);
+        Assert.False(await HasSemanticRevenueColumnAsync(db.Connection));
+    }
+
+    [Fact]
     public async Task StartupView_ReappliesOverLegacyPlainNumericPostRevenue()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_legacy_type");
@@ -751,6 +804,18 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         return (T)(await command.ExecuteScalarAsync()
             ?? throw new InvalidOperationException($"Expected scalar result for SQL: {sql}"));
     }
+
+    private static Task<bool> HasSemanticRevenueColumnAsync(NpgsqlConnection connection) =>
+        ScalarAsync<bool>(
+            connection,
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'vw_vendor_sales_nivelacija'
+                  AND column_name = 'change_percent_revenue_semantic');
+            """);
 
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
     {
