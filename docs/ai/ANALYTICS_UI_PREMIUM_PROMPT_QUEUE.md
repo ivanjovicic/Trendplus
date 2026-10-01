@@ -1306,7 +1306,7 @@ The responsive audit contains several high-confidence source findings but also r
 - Date: 2026-10-01
 - Status: DONE
 - Completion: 100%
-- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/package.json`; `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`; `.ai/runs/2026-10-01-P-UI-24-evidence.md`; `MASTER_ROADMAP.md`
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/package.json`; `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `.ai/runs/2026-10-01-P-UI-24-evidence.md`; `MASTER_ROADMAP.md`
 - Contract/runtime behavior changed: added a deterministic Puppeteer fixture/connected-local responsive baseline command; no production UI, analytics semantics or API contract changes
 - Checks run: `npm run responsive:baseline -- --self-test` pass; bounded fixture matrix pass for 70 route/theme/viewport combinations with 0 page errors and 4 recorded root-overflow observations; `node --check scripts/responsive_baseline.mjs` pass; `npm run typecheck` pass; `npm run check:analytics-guardrails` pass; `npm run build` pass; queue/planning validators and `git diff --check` pass
 - Checks not run: real iOS/iPad Safari and coarse-pointer device capture not run; Chromium evidence cannot prove device behavior
