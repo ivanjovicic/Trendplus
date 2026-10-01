@@ -549,12 +549,12 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 - Completion: Delivered shared search-path-aware contract inspection, exact relation/schema/column/privilege classification, an admin-only read-only diagnostic and focused PostgreSQL proof.
 - Changed files: `Infrastructure/Database/PostgresRelationInspector.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `Api/Services/VendorSalesNivelacijaContractInspector.cs`, `Api/Dtos/AnalyticsContractDiagnosticDto.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/VendorSalesNivelacijaContractDiagnosticsTests.cs`, `Api.Tests/VendorSalesNivelacijaNullabilityContractTests.cs`, this addendum, `MASTER_ROADMAP.md` and `.ai/runs/2026-10-01-RQ545-evidence.md`.
 - Checks run: focused Release tests 40/40 including PostgreSQL Testcontainers; prompt-queue self-test passed; planning architecture self-test and full validation passed (79 tasks); `git diff --check` passed.
-- Checks not run: deployed endpoint/live database verification, owned by RQ535/STAB16; full backend suite. Full queue validation reports only unrelated P-UI-27 missing `Residual risk:`.
+- Checks not run: deployed endpoint/live database verification, owned by RQ535/STAB16; full backend suite. Planning Governance run `36872716556` was in progress and Analytics Tests & Data Integrity run `36872716532` was queued at inspection. Full queue validation reports only unrelated P-UI-27 missing `Residual risk:`.
 - Run log: `.ai/runs/2026-10-01-RQ545-evidence.md`
-- Evidence state: pending delivery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `8ca3d49a2b0184bd9ce18a55b368e8bdf1b6b1af`
+- Main verification: passed; fresh `origin/main` exactly matched the implementation SHA at verification.
 - Missed: deployed acceptance has not yet shown whether the live endpoint serves data or names the exact live relation/schema/privilege issue.
 - Follow-up: RQ535/STAB16 to perform deployed read-only verification; refresh RQ545 acceptance evidence after that check.
 - Residual risk: live database role, view schema and connection search path are not verified.
