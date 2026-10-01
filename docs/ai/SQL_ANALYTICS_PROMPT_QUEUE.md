@@ -2,7 +2,7 @@
 
 Date: 2026-09-05
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (Q83 is IN_PROGRESS)
+Current READY prompt: none
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -1035,14 +1035,14 @@ Analytics SQL paths use different timeout/cancellation/error-reporting approache
 
 ## Q83 - Prove raw nivelacija SQL preserves nullability and revenue baseline semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: SQL/backend/tests
 Feature family: nivelacija-sql-nullability-and-baseline
 Parallel-safe: no, this is the SQL owner for pre/post change semantics
 Owner: Codex
 Claimed: 2026-10-01 by ChatGPT on `cursor/q83-nivelacija-nullability-51d0`; no conflicting branch, lock or open PR found
-Local lock: `.ai/task-locks/Q83-chatgpt.lock.md`
+Claim lock: `.ai/task-locks/Q83-chatgpt.lock.md` (removed before commit)
 Commit suggestion: `fix(sql): preserve nivelacija evidence states`
 
 Re-entry 2026-10-01: operator reports Docker Desktop available. RQ533 left a bounded backend residual in this owner family: price-direction and category aggregates still coerce an unavailable change percent to numeric zero, while RQ534 already repaired the unrelated stale frontend spec statuses. Re-promoted PARTIAL -> READY for repository-local PostgreSQL/backend proof. A successful Render deploy was also reported, but production/runtime verification is not claimed here and is handled by RQ535/STAB16.
@@ -1156,3 +1156,21 @@ live analytics database.
 - Follow-up: restore valid DB access and repeat migration/view/refresh verification; RQ140 remains the consumer for cross-layer comparability.
 - Residual risk: production schema may still be missing the additive semantic columns until migration/view deployment is verified.
 - Prompt defect / scope repair: the user-requested full pre/post/parity outcome required a bounded connected frontend contract in addition to the SQL owner scope; no unrelated analytics formulas were changed.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: Removed the remaining Pre/Post aggregate fake-zero behavior. Category and price-direction `ChangePercent` values now remain `null` without a revenue baseline; valid baselines retain measured `0%` and negative changes, and the frontend API contract accepts the nullable values.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api/Services/VendorSalesNivelacijaTypeInsightPolicy.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/VendorSalesNivelacijaTypeInsightPolicyTests.cs`, `Api.Tests/VendorSalesNivelacijaNullabilityContractTests.cs`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-01-Q83-evidence.md`
+- Checks run: focused frontend schema tests 17/17; analytics guardrails and typecheck pass; production frontend build pass; prompt, planning and instruction governance validators pass; `git diff --check` pass; static nullable/schema-gate checks pass; fresh `origin/main` contains `3e929bcb55ddca90de756791da6624bca5479c84`.
+- Checks not run: focused .NET backend tests, API build, EF migration listing and PostgreSQL/Testcontainers execution — `dotnet` and Docker are unavailable in this workspace.
+- Run log: `.ai/runs/2026-10-01-Q83-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `3e929bcb55ddca90de756791da6624bca5479c84`
+- Main verification: fresh fetch and `git merge-base --is-ancestor 3e929bcb origin/main` passed; `origin/main` resolves to `3e929bcb55ddca90de756791da6624bca5479c84`.
+- Missed: local backend/Testcontainers execution and live production schema verification remain unavailable; no production proof is claimed.
+- Follow-up: RQ491 may be re-evaluated after Q83; live Pre/Post view application/verification remains with RQ535/STAB16.
+- Residual risk: backend compilation/runtime and live view/migration application need CI or an environment with .NET, Docker and authorized PostgreSQL access.
+- Prompt defect / scope repair: the bounded frontend API schema/type update was required to keep the end-to-end nullable contract valid; no frontend page/UX behavior was changed.
