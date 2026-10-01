@@ -3,8 +3,8 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ536
-Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534 and RQ535 are DONE
+Current READY prompt: none
+Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE/PARTIAL
 Queue reconciliation 2026-10-01: RQ535 DONE. Exact deployed SHA `3a6a6886` confirms the Supplier gates (Overview 503, Scorecard `MISSING_OBJECT` plus a store-filtered 500, Assortment and Pre/Post contract missing) with sharper evidence. RQ474 is READY in the canonical RQ queue. RQ475 waits on RQ536 (shared Decision Hub surface). Q83 stays READY in the SQL queue. The live root causes need Render/Neon logs (STAB16).
 Queue reconciliation 2026-10-01 (latest): owner reports Docker Desktop available and today's Render deploy successful. RQ534 is DONE and the Pre/Post spec CI regression is closed. Two non-duplicate lanes are now promoted: RQ535 (P0 primary) performs exact-SHA public deployed smoke/gate reclassification without DB/provider writes; RQ536 (P2 additional) versions/explains the current Supplier scorecard model without changing policy. Q83 is separately re-promoted in the SQL queue for the remaining price-direction/category fake-zero contract. RQ531 stays owner-gated for actual policy changes after RQ536.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
@@ -1096,7 +1096,7 @@ None beyond the operator-reported successful deploy; step 1 must independently v
 
 ## RQ536 - Version and explain the current Supplier scorecard model without changing policy
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Claimed: 2026-10-01 by ChatGPT on `cursor/rq536-scorecard-explainability-51d0`; local lock `.ai/task-locks/RQ536-chatgpt.lock.md`.
 Priority: P2
 Type: backend/frontend/docs/tests
@@ -1141,4 +1141,22 @@ A reviewer can explain exactly why a Supplier score/recommendation has its curre
 ### Dependencies
 
 RQ521 and RQ526 DONE. RQ531 consumes this baseline for later owner-approved policy changes.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: PARTIAL
+- Completion: current Supplier scorecard behavior is versioned as `supplier-scorecard-v1`; machine-readable components, weights, transforms, ranges, clamps, gates, owner-decision markers and limitations are exposed through trust metadata; summary/quadrant/ranking/details rows expose contribution explanations and active rank-population provenance; the Supplier Decision Hub renders the model version, relative-rank and current-stock limitations in Serbian. Numeric policy constants remain unchanged.
+- Changed files: `Api/Services/SupplierScorecardModelContract.cs`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api.Tests/SupplierScorecardOracle.cs`, `Api.Tests/SupplierScorecardOracleTests.cs`, `Klijent/clientapp/src/services/supplierDecisionHubApi.ts`, `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`, `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`, `MASTER_ROADMAP.md`, this addendum
+- Checks run: focused Supplier Decision Hub Vitest `17/17`; `npm run check:analytics-guardrails` passed (encoding, guardrail self-test, analytics guardrails and TypeScript); `git diff --check` passed; implementation commit `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8` pushed to the feature branch
+- Checks not run: `dotnet build` and PostgreSQL/Testcontainers SupplierScorecardOracle tests — `.NET` and Docker are unavailable in this workspace; full frontend build was previously passed before the final backend-only safety correction and remains unchanged by that correction
+- Run log: `.ai/runs/2026-10-01-RQ536-evidence.md`
+- Evidence state: pending until direct-main verification
+- Delivery mode: direct-main pending
+- Main commit SHA: `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8` pending fresh `origin/main` containment verification
+- Main verification: pending
+- Missed: backend compilation and real PostgreSQL parity proof remain outstanding; no score-policy decision was made
+- Follow-up: rerun `dotnet build` and the focused SupplierScorecardOracle/Testcontainers matrix in a backend-capable environment, then promote to `DONE` if green; RQ531 remains owner-gated for policy changes
+- Residual risk: C# compile/runtime compatibility and exact SQL contribution parity are not locally proven because the required backend tools are unavailable
+- Prompt defect / scope repair: none; status is `PARTIAL` solely for unavailable required backend proof and pending main delivery
 
