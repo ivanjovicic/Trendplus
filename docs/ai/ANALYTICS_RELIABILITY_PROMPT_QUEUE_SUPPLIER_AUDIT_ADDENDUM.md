@@ -1151,10 +1151,10 @@ RQ521 and RQ526 DONE. RQ531 consumes this baseline for later owner-approved poli
 - Checks run: focused Supplier Decision Hub Vitest `17/17`; `npm run check:analytics-guardrails` passed (encoding, guardrail self-test, analytics guardrails and TypeScript); `git diff --check` passed; implementation commit `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8` pushed to the feature branch
 - Checks not run: `dotnet build` and PostgreSQL/Testcontainers SupplierScorecardOracle tests — `.NET` and Docker are unavailable in this workspace; full frontend build was previously passed before the final backend-only safety correction and remains unchanged by that correction
 - Run log: `.ai/runs/2026-10-01-RQ536-evidence.md`
-- Evidence state: pending until direct-main verification
-- Delivery mode: direct-main pending
-- Main commit SHA: `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8` pending fresh `origin/main` containment verification
-- Main verification: pending
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8`
+- Main verification: fresh `origin/main` contains `7c2e6a546f6f5f58234c3318fe9f2110cf6eb2c8` after fast-forward push
 - Missed: backend compilation and real PostgreSQL parity proof remain outstanding; no score-policy decision was made
 - Follow-up: rerun `dotnet build` and the focused SupplierScorecardOracle/Testcontainers matrix in a backend-capable environment, then promote to `DONE` if green; RQ531 remains owner-gated for policy changes
 - Residual risk: C# compile/runtime compatibility and exact SQL contribution parity are not locally proven because the required backend tools are unavailable
