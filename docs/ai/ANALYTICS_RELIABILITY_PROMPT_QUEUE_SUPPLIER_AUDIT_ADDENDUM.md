@@ -3,9 +3,9 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none
-Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533 and RQ534 are DONE
-Queue reconciliation 2026-10-01: RQ534 DONE. The Pre/Post page spec uses the RQ520 effect statuses and current focus-chip labels (45/45), removing the 8 failures that kept Analytics Quality Gates red since `13a01ebd`. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval.
+Current READY prompt: RQ535
+Additional READY prompts: RQ536; RQ524, RQ527, RQ528, RQ533 and RQ534 are DONE
+Queue reconciliation 2026-10-01 (latest): owner reports Docker Desktop available and today's Render deploy successful. RQ534 is DONE and the Pre/Post spec CI regression is closed. Two non-duplicate lanes are now promoted: RQ535 (P0 primary) performs exact-SHA public deployed smoke/gate reclassification without DB/provider writes; RQ536 (P2 additional) versions/explains the current Supplier scorecard model without changing policy. Q83 is separately re-promoted in the SQL queue for the remaining price-direction/category fake-zero contract. RQ531 stays owner-gated for actual policy changes after RQ536.
 Queue registration 2026-10-01: RQ534 was registered from a red current-main CI classification. Analytics Quality Gates has failed since `13a01ebd` because `ProdajaPrePostNivelacijePage.spec.tsx` still uses the pre-RQ520 recommendation statuses and focus-chip labels. It was deduplicated against the existing queues, then promoted and claimed in the same idle-recovery run.
 Queue reconciliation 2026-10-01: RQ533 DONE. Assortment vendor and totals change percent are null without mature comparable evidence or a revenue baseline; the error fallback reports null instead of 0; cache key v7. No Supplier-audit prompt is runnable: RQ523, RQ529, RQ530 and RQ532 wait on RQ498, RQ499 and RQ500 (RQ474/RQ475 live access), and RQ531 waits on owner approval. Follow-up for the Q83 Pre/Post owner: price-direction and category change percent `?? 0m`.
 Queue registration 2026-10-01: RQ533 was registered from the RQ527 follow-up (Assortment fake 0% change percent without comparable evidence), deduplicated against the existing queues, and promoted and claimed in the same idle-recovery run.
@@ -757,10 +757,10 @@ RQ522 DONE, RQ500 DONE and RQ524 evidence; RQ474/RQ487 make Overview usable.
 
 ---
 
-## RQ531 - Govern and explain Supplier scorecard model weights and thresholds
+## RQ531 - Decide Supplier scorecard model weights and thresholds
 
 Status: WAITING
-Ready after: RQ526 DONE and product owner approves model-policy decisions
+Ready after: RQ536 DONE and product owner approves model-policy decisions
 Priority: P2
 Type: product/sql/frontend/docs/tests
 Feature family: supplier-scorecard-model-governance
@@ -777,7 +777,7 @@ Scorecard uses relative percentile ranks, absolute-stock exposure, strict covera
 
 ### Scope
 
-Model documentation, owner decision, formula versioning/explainability; no unapproved weight/threshold change.
+Policy decisions and any approved weight/threshold/gate changes only. Current-model documentation, formula versioning and explainability are owned by RQ536.
 
 ### Read first
 
@@ -785,19 +785,19 @@ RQ521/RQ526; current scorecard formula SQL/UI.
 
 ### Do
 
-Document every component/range/weight/penalty/gate/cutoff with rationale or owner-needed marker; expose contributions/rank population/clamping/formula version; owner approves or changes coverage gate, inventory normalization, confidence weights, cutoffs and period-scaled samples; make signed margin-share denominator explicit; label current-stock inputs honestly.
+Using the RQ536 baseline, obtain explicit owner decisions for coverage gate, inventory normalization, confidence weights, cutoffs and period-scaled samples. Apply only approved policy changes, bump the formula version, and update oracle/explainability evidence. Do not change a threshold merely because it is hard-coded.
 
 ### Tests
 
-Update RQ526 oracle to approved version plus explainability/version API/UI tests.
+Update the RQ526 oracle to the approved version and prove policy-version parity; RQ536 explainability tests must remain green.
 
 ### Acceptance
 
-Every model policy is versioned, explainable, owner-approved and oracle-matched.
+Every changed model policy is explicitly owner-approved, versioned and oracle-matched; unchanged policy remains exactly as documented by RQ536.
 
 ### Dependencies
 
-RQ526 DONE and explicit product-owner decision.
+RQ536 DONE and explicit product-owner decision.
 
 ---
 
@@ -999,3 +999,110 @@ RQ520 and RQ533 DONE.
 - Missed: intermittent `InventoryPage.queueStatus` and `InventoryPage.signalWindow` failures in some main runs are outside this scope.
 - Follow-up: an owner for Inventory spec flakiness if it recurs; the Q83 price-direction/category change-percent follow-up from RQ533 remains.
 - Residual risk: specs are not type-checked, so other specs may carry status values that are invalid for their contracts.
+
+---
+
+## RQ535 - Reclassify Supplier and Pre/Post gates on the successful Render deploy
+
+Status: READY
+Priority: P0
+Type: deployed-smoke/read-only/evidence
+Feature family: supplier-post-deploy-gate-reclassification
+Parallel-safe: yes
+Owner: Analytics Reliability / Runtime QA
+Commit suggestion: `test(analytics): reclassify supplier gates after deploy`
+
+### Trigger
+
+Operator report on 2026-10-01: Docker Desktop is available and the Render deploy completed successfully today. This is operator evidence, not yet exact-SHA runtime proof.
+
+### Problem
+
+RQ474/RQ475 and Q83/RQ491 still route from older live evidence (Overview 503, Scorecard MISSING_SCHEMA, Assortment contract missing). Since RQ518-RQ528 and RQ533/RQ534 have landed and a new deploy was reported, those gates may now be stale. Provider/database access must not be required merely to discover whether the public deployed contract is healthy.
+
+### Scope
+
+Read-only public/deployed HTTP evidence and queue reclassification only. No production DB connection, no provider mutation, no worker action, no schema write and no browser/export certification. RQ448 owns full browser/render/export reconciliation; RQ454/STAB16 own production raw-fact reconciliation and provider/worker proof.
+
+### Read first
+
+RQ474, RQ475, Q83, RQ491, RQ448, RQ454, RQ514; current runtime-version endpoint and Supplier/PrePost API clients.
+
+### Do
+
+1. Fetch `/ready` and `/api/runtime/version`; bind evidence to the exact deployed SHA. If the SHA is stale or unknown, stop with a stale-deploy classification.
+2. Read-only probe the canonical deployed endpoints for Supplier Overview, Supplier Scorecard, Supplier Assortment and Pre/Post using one explicit period/dataScope plus a valid alternate store/scope where supported.
+3. Record HTTP status, safe error code/correlation id, `meta.success`, requested/effective period, `scopeApplied`, readiness/error state and whether the semantic revenue-change contract is actually present.
+4. Reclassify, without guessing:
+   - RQ474: if Overview is now healthy, mark the historical 503 premise superseded/closure-ready; if 503 persists, keep it gated and attach the new correlation evidence for provider logs.
+   - RQ475: if Scorecard/Assortment are healthy on the exact deployed SHA, remove the stale live-readiness gate and promote the next dependency-complete Supplier UX prompt; if not, record the exact current missing/stale object state.
+   - Q83/RQ491: live Pre/Post success may satisfy runtime availability evidence, but Q83 repository-local semantic work remains governed by its SQL queue; never infer raw DB reconciliation from HTTP success.
+5. Regenerate/update exact-SHA analytics readiness evidence if the existing RQ514 snapshot is stale.
+6. Run idle recovery after classification and promote only dependency-complete, collision-safe successors (typically RQ498/RQ499 before RQ500).
+
+### Checks
+
+- read-only GETs only;
+- exact deployed SHA captured;
+- no credentials/secrets persisted;
+- queue/planning validators;
+- evidence file with request timestamps and current-main/deployed SHA comparison.
+
+### Acceptance
+
+The repository no longer routes Supplier work from September live evidence when the October deploy proves a different state. Every remaining live/provider gate names the exact evidence still missing. No production write or fake VERIFIED claim occurs.
+
+### Dependencies
+
+None beyond the operator-reported successful deploy; step 1 must independently verify the exact deployed SHA before any gate is considered satisfied.
+
+
+---
+
+## RQ536 - Version and explain the current Supplier scorecard model without changing policy
+
+Status: READY
+Priority: P2
+Type: backend/frontend/docs/tests
+Feature family: supplier-scorecard-model-explainability-baseline
+Parallel-safe: yes
+Owner: Analytics Product / Supplier Decision
+Commit suggestion: `feat(analytics): expose supplier scorecard model explanation`
+
+### Problem
+
+RQ531 mixes safe explainability/versioning work with owner-gated policy tuning. The current model can be made inspectable now without deciding whether any weight, threshold or gate should change.
+
+### Scope
+
+Current-behavior documentation and machine/UI explainability only. Do not change score weights, percentile formulas, coverage gates, inventory normalization, confidence thresholds, recommendation cutoffs or sample-size policy.
+
+### Read first
+
+RQ521, RQ526, RQ531; migration 029 scorecard formula; Supplier Decision Hub endpoint/page; SupplierScorecardOracle.
+
+### Do
+
+1. Freeze a formula/model version for the exact current behavior.
+2. Publish every current component, range, weight, penalty, clamp, gate and cutoff as machine-readable explainability metadata or a stable documented contract.
+3. Expose rank/reference population, clamping, current-stock versus historical inputs, and the signed margin-contribution denominator explicitly.
+4. Add a per-row contribution/explanation projection sufficient to reproduce the displayed score from the documented current formula.
+5. Mark policy choices that lack owner rationale as `owner_decision_pending`; do not alter their values.
+6. Update RQ526 oracle/golden proof so current production formula and explainability metadata are version-locked.
+
+### Tests
+
+- oracle reproduces the displayed score/component contributions for all-time/90d/180d fixtures;
+- formula version is present and stable;
+- contribution sum/clamping/gates match current SQL exactly;
+- changing a documented weight in the oracle fails parity until the formula version/contract is intentionally updated;
+- UI shows current-stock/relative-rank limitations without presenting them as causal facts.
+
+### Acceptance
+
+A reviewer can explain exactly why a Supplier score/recommendation has its current value and which policy constants require an owner decision, while all numeric policy behavior remains unchanged.
+
+### Dependencies
+
+RQ521 and RQ526 DONE. RQ531 consumes this baseline for later owner-approved policy changes.
+
