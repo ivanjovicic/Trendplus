@@ -1493,9 +1493,9 @@ The sticky header currently wraps many actions plus a second system-control stri
 - Checks not run: full 70-shot PNG responsive matrix (screenshot protocol timeouts); real iOS/iPad Safari
 - Run log: `.ai/runs/2026-10-01-P-UI-26-evidence.md`
 - Delivery mode: direct-main
-- Main commit SHA: pending delivery synchronization
-- Main verification: pending delivery synchronization
-- Evidence state: pending
+- Main commit SHA: `cb57deb02a6898d17a145f2fb847eadc1ac9fd8a`
+- Main verification: `origin/main` contains `cb57deb02a6898d17a145f2fb847eadc1ac9fd8a`; implementation commit `dd40e1f8` is an ancestor
+- Evidence state: synchronized
 - Missed: P-UI-27 primitives and later page-family migrations remain queued
 - Follow-up: promote P-UI-27 after fresh collision check
 - Residual risk: full-page Puppeteer captures remain environment-sensitive

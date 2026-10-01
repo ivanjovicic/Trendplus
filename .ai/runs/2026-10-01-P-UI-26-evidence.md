@@ -4,9 +4,9 @@ Date: 2026-10-01
 Agent/tool: ChatGPT + Vitest/Puppeteer
 Delivery target: main
 Working branch / PR: cursor/p-ui-26-responsive-shell-51d0 / pending
-Main commit SHA: pending delivery
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `cb57deb02a6898d17a145f2fb847eadc1ac9fd8a`
+Main verification: `origin/main` contains `cb57deb02a6898d17a145f2fb847eadc1ac9fd8a`; implementation commit `dd40e1f8` is an ancestor
+Evidence state: synchronized
 
 ## What was done
 - Promoted and claimed P-UI-26 after collision review (no active header/sidebar owner; Q83 PR does not touch shell paths).
