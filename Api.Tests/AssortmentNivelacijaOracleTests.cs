@@ -205,6 +205,51 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             await ReadViewRowsAsync(db.Connection));
     }
 
+    [Fact]
+    public async Task StartupView_ReappliesOverLegacyPlainNumericPostRevenue()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_assortment_legacy_type");
+        if (db is null)
+        {
+            return;
+        }
+
+        await ExecuteAsync(
+            db.Connection,
+            """
+            DROP VIEW vw_vendor_sales_nivelacija;
+            DROP VIEW vw_sales_post_nivelacija;
+            CREATE VIEW vw_sales_post_nivelacija AS
+            SELECT price_event_id, event_date, vendor_id, vendor_name, article_id, sku,
+                   article_name, category, old_price, new_price,
+                   NULL::numeric AS post_qty,
+                   NULL::numeric AS post_revenue,
+                   NULL::numeric AS coverage_post30,
+                   0::bigint AS valid_days_post30
+              FROM vw_sales_pre_nivelacija;
+            """);
+
+        await ExecuteAsync(db.Connection, ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql"));
+
+        Assert.Equal(
+            "numeric(18,2)",
+            await ScalarAsync<string>(
+                db.Connection,
+                """
+                SELECT format_type(a.atttypid, a.atttypmod)
+                  FROM pg_attribute a
+                 WHERE a.attrelid = 'vw_sales_post_nivelacija'::regclass
+                   AND a.attname = 'post_revenue';
+                """));
+
+        var fixture = GoldenFixture.Build(db.Anchor);
+        await SeedAsync(db.Connection, fixture);
+        AssertRowsEqual(
+            "vw_vendor_sales_nivelacija(after legacy type)",
+            AssortmentNivelacijaOracle.SourceRows(fixture, AssortmentSourceOptions.View(db.Anchor)),
+            await ReadViewRowsAsync(db.Connection));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData(1)]

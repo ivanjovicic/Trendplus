@@ -19,6 +19,7 @@ DECLARE
         'category','vendor_id','vendor_name','old_price','new_price',
         'pre_qty','pre_revenue','coverage_pre30','valid_days_pre30','is_low_signal'
     ];
+    _post_revenue_type text;
 BEGIN
     SELECT array_agg(c.column_name::text ORDER BY c.ordinal_position)
       INTO _actual
@@ -32,6 +33,24 @@ BEGIN
         DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
         DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
         DROP VIEW IF EXISTS vw_sales_pre_nivelacija CASCADE;
+    END IF;
+
+    -- Legacy definitions expose post_revenue as plain numeric; CREATE OR REPLACE VIEW
+    -- cannot change a column type (42P16), so rebuild the post/vendor views.
+    SELECT format_type(a.atttypid, a.atttypmod)
+      INTO _post_revenue_type
+      FROM pg_attribute a
+      JOIN pg_class c ON c.oid = a.attrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = current_schema()
+       AND c.relname = 'vw_sales_post_nivelacija'
+       AND a.attname = 'post_revenue'
+       AND NOT a.attisdropped;
+
+    IF _post_revenue_type IS NOT NULL AND _post_revenue_type <> 'numeric(18,2)' THEN
+        RAISE NOTICE '014: vw_sales_post_nivelacija post_revenue type % is outdated – dropping cascade', _post_revenue_type;
+        DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+        DROP VIEW IF EXISTS vw_sales_post_nivelacija CASCADE;
     END IF;
 END$$;
 
