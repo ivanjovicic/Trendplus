@@ -41,6 +41,9 @@ public sealed class VendorSalesNivelacijaNullabilityContractTests
             "RelationHasColumnAsync(connection, \"vw_vendor_sales_nivelacija\", \"change_percent_revenue_semantic\", ct)",
             endpoint);
         Assert.Contains("vendor_sales_nivelacija_contract_missing", endpoint);
+        Assert.Contains("pg_catalog.pg_attribute", endpoint);
+        Assert.Contains("to_regclass(@rel)", endpoint);
+        Assert.DoesNotContain("table_schema = 'public'", endpoint);
     }
 
     private static string FindRepoRoot()
