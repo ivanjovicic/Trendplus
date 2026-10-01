@@ -17,6 +17,7 @@ using Api.Services;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.Services;
+using Infrastructure.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -3959,13 +3960,18 @@ public static class AllEndpoints
                 await using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(ct);
 
-                var hasOldPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "old_price", ct);
-                var hasNewPrice = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "new_price", ct);
-                var hasPriceColumns = hasOldPrice && hasNewPrice;
-
-                var hasRevenueSemanticPercent = await RelationHasColumnAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic", ct);
-                if (!hasRevenueSemanticPercent)
+                var relationInspection = await PostgresRelationInspector.InspectAsync(
+                    connection,
+                    VendorSalesNivelacijaContractInspector.RelationName,
+                    ct);
+                var contractIssue = VendorSalesNivelacijaContractInspector.FindIssue(relationInspection);
+                if (contractIssue is not null)
                 {
+                    var errorMeta = AnalyticsResponseMetaFactory.Error(
+                        contractIssue.ErrorCode,
+                        contractIssue.ErrorMessage,
+                        correlationId);
+                    errorMeta.ContractDiagnostic = contractIssue.ToDto();
                     var missingContract = CreateVendorSalesNivelacijaFallbackResponse(
                         vendorId,
                         eventDateOnly,
@@ -3975,13 +3981,14 @@ public static class AllEndpoints
                         includeInactive,
                         storeId,
                         normalizedDataScope,
-                        "Missing semantic revenue baseline contract.",
-                        AnalyticsResponseMetaFactory.Error(
-                            "vendor_sales_nivelacija_contract_missing",
-                            "Pre/post nivelacija nema potvrđen ugovor za prihodnu promenu.",
-                            correlationId));
+                        contractIssue.ErrorMessage,
+                        errorMeta);
                     return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId));
                 }
+
+                var hasOldPrice = relationInspection.Columns.Contains("old_price", StringComparer.Ordinal);
+                var hasNewPrice = relationInspection.Columns.Contains("new_price", StringComparer.Ordinal);
+                var hasPriceColumns = hasOldPrice && hasNewPrice;
 
                 var rawCountSql = useScopedFactQuery
                     ? $"""
@@ -7757,7 +7764,8 @@ public static class AllEndpoints
             MetricProvenance = meta.MetricProvenance,
             Context = meta.Context,
             DecisionReadiness = meta.DecisionReadiness,
-            Basis = meta.Basis
+            Basis = meta.Basis,
+            ContractDiagnostic = meta.ContractDiagnostic
         };
     }
 

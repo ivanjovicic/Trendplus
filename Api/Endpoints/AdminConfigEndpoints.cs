@@ -3,6 +3,7 @@ using Api.Services;
 using Api.Services.Access;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
+using Infrastructure.Database;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -49,6 +50,14 @@ public static class AdminConfigEndpoints
             .Produces<AdminHealthCheckResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/analytics/nivelacija-contract", GetVendorSalesNivelacijaContractDiagnostic)
+            .WithName("GetVendorSalesNivelacijaContractDiagnostic")
+            .WithSummary("Inspect the Pre/Post Nivelacija relation resolved by the API search path")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status503ServiceUnavailable);
 
         group.MapGet("/demo-verification", DemoVerification)
             .WithName("DemoEnvironmentVerification")
@@ -261,6 +270,63 @@ public static class AdminConfigEndpoints
         }
 
         return TypedResults.Ok(response);
+    }
+
+    private static async Task<IResult> GetVendorSalesNivelacijaContractDiagnostic(
+        HttpContext context,
+        IConfiguration configuration,
+        TrendplusDbContext db,
+        ILogger<Program> logger,
+        CancellationToken ct = default)
+    {
+        var access = AdminAccessControl.GetDecision(context, configuration);
+        if (access is AdminAccessDecision.MissingCredential)
+            return Results.Unauthorized();
+        if (access is AdminAccessDecision.Forbidden)
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+        var connectionString = db.Database.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return Results.Problem(
+                title: "Pre/post contract inspection unavailable",
+                detail: "The configured analytics database connection is unavailable.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(ct);
+            var inspection = await PostgresRelationInspector.InspectAsync(
+                connection,
+                VendorSalesNivelacijaContractInspector.RelationName,
+                ct);
+            var issue = VendorSalesNivelacijaContractInspector.FindIssue(inspection);
+
+            return Results.Ok(new
+            {
+                relation = VendorSalesNivelacijaContractInspector.RelationName,
+                missingPart = issue?.MissingPart,
+                schema = issue?.Schema ?? inspection.ResolvedSchema,
+                missingColumn = issue?.MissingColumn,
+                currentUser = inspection.CurrentUser,
+                currentSchemas = inspection.CurrentSchemas,
+                toRegclass = inspection.ToRegclass,
+                resolvedSchema = inspection.ResolvedSchema,
+                schemasWithRelation = inspection.SchemasWithRelation,
+                hasSelectPrivilege = inspection.HasSelectPrivilege,
+                columns = inspection.Columns
+            });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Unable to inspect the vendor sales nivelacija database contract.");
+            return Results.Problem(
+                title: "Pre/post contract inspection unavailable",
+                detail: "The analytics database contract could not be inspected.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
     }
 
     private static IResult DemoVerification(

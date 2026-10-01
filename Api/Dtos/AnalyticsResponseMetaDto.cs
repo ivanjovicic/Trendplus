@@ -53,4 +53,6 @@ public class AnalyticsResponseMetaDto
     /// Optional per-tab counting basis for Supplier surfaces. Existing clients may omit this field.
     /// </summary>
     public SupplierTabBasisDto? Basis { get; set; }
+    /// <summary>Optional database contract diagnosis for analytics availability failures.</summary>
+    public AnalyticsContractDiagnosticDto? ContractDiagnostic { get; set; }
 }

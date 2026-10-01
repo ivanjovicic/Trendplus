@@ -5,7 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
-Current READY routing: RQ545 (NV-F9) is IN_PROGRESS after RQ547 completed and fresh recovery confirmed Q83/RQ535 dependencies are DONE with no active lock/branch/PR collision. RQ545 owns the residual endpoint diagnostic and PostgreSQL proof; production writes remain outside its scope. RQ475 remains WAITING pending its own fresh selection/collision pass.
+Current READY routing: none. RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -21,7 +21,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F6 | RQ542 | WAITING |
 | NV-F7 | RQ543 | WAITING |
 | NV-F8 | RQ544 | WAITING |
-| NV-F9 | RQ545 | IN_PROGRESS |
+| NV-F9 | RQ545 | PARTIAL |
 | NV-F10 | RQ546 | WAITING |
 | NV-P1 | RQ547 | DONE |
 | NV-P2 | RQ548 | WAITING |
@@ -491,7 +491,7 @@ NV-P1 (value inventory) as evidence input.
 
 ## RQ545 - NV-F9 - Diagnose the live Pre/Post `contract_missing` (schema/privilege mismatch hypothesis)
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Registration note: (Q83 is DONE; live application stays with RQ535/STAB16, so this is the code-side diagnosis lane)
 Priority: P1
 Type: backend/diagnostic/tests
@@ -541,6 +541,24 @@ The deployed endpoint either serves data or names the exact missing object, sche
 Q83 DONE (SQL contract); RQ535/STAB16 (live application).
 
 Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25cebfe81c5`; RQ547 is DONE, and Q83/RQ535 dependencies are DONE. No active RQ545 lock, branch or open PR owns the `nivelacija-live-contract` column-check helper. The audit integration run log sequences RQ545 after RQ547. RQ545 moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ545-codex.lock.md`. Scope is the code-side contract diagnostic and real-PostgreSQL proof; deployment verification remains read-only under the existing RQ535/STAB16 owner.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: PARTIAL
+- Completion: Delivered shared search-path-aware contract inspection, exact relation/schema/column/privilege classification, an admin-only read-only diagnostic and focused PostgreSQL proof.
+- Changed files: `Infrastructure/Database/PostgresRelationInspector.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `Api/Services/VendorSalesNivelacijaContractInspector.cs`, `Api/Dtos/AnalyticsContractDiagnosticDto.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/AdminConfigEndpoints.cs`, `Api.Tests/VendorSalesNivelacijaContractDiagnosticsTests.cs`, `Api.Tests/VendorSalesNivelacijaNullabilityContractTests.cs`, this addendum, `MASTER_ROADMAP.md` and `.ai/runs/2026-10-01-RQ545-evidence.md`.
+- Checks run: focused Release tests 40/40 including PostgreSQL Testcontainers; prompt-queue self-test passed; planning architecture self-test and full validation passed (79 tasks); `git diff --check` passed.
+- Checks not run: deployed endpoint/live database verification, owned by RQ535/STAB16; full backend suite. Full queue validation reports only unrelated P-UI-27 missing `Residual risk:`.
+- Run log: `.ai/runs/2026-10-01-RQ545-evidence.md`
+- Evidence state: pending delivery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: deployed acceptance has not yet shown whether the live endpoint serves data or names the exact live relation/schema/privilege issue.
+- Follow-up: RQ535/STAB16 to perform deployed read-only verification; refresh RQ545 acceptance evidence after that check.
+- Residual risk: live database role, view schema and connection search path are not verified.
+- Prompt defect / scope repair: no defect found; kept production changes and writes outside RQ545.
 
 ---
 

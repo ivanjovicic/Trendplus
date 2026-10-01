@@ -1,5 +1,6 @@
 using Infrastructure.DbContexts;
 using Infrastructure.Analytics;
+using Infrastructure.Database;
 using Domain.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -761,17 +762,25 @@ public static class DatabaseInitializer
 
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)
     {
-        if (!await AreRelationsReadyAsync(connectionString, "public.vw_vendor_sales_nivelacija"))
-        {
-            return false;
-        }
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        var inspection = await PostgresRelationInspector.InspectAsync(
+            connection,
+            "vw_vendor_sales_nivelacija");
 
-        return await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "price_event_id")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "old_price")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "new_price")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_pre30")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "coverage_post30")
-            && await RelationHasColumnAsync(connectionString, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic");
+        string[] requiredColumns =
+        [
+            "price_event_id",
+            "old_price",
+            "new_price",
+            "coverage_pre30",
+            "coverage_post30",
+            "change_percent_revenue_semantic"
+        ];
+
+        return inspection.IsResolved
+            && inspection.HasSelectPrivilege
+            && requiredColumns.All(column => inspection.Columns.Contains(column, StringComparer.Ordinal));
     }
 
     private static async Task<bool> AreVendorSalesNivelacijaDependenciesReadyAsync(string connectionString)
