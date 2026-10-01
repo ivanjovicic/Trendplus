@@ -5,7 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`
 Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
-Current READY routing: unchanged — RQ536 remains the Supplier-audit READY lane; canonical RQ474 remains separately READY; Q83 remains separately READY in the SQL queue. This addendum promotes **no** new prompt during registration.
+Current READY routing: RQ547 (NV-P1) is IN_PROGRESS after fresh recovery: Q83, RQ524 and RQ525 are DONE, and no active lock/branch/PR collision exists. RQ547 is the evidence-first read-only reconciliation pack recommended by the latest audit run log. RQ545 follows for residual endpoint diagnostics; RQ475 remains WAITING pending its own fresh selection/collision pass.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -591,7 +591,7 @@ None.
 
 ## RQ547 - NV-P1 - Read-only nivelacija reconciliation SQL pack
 
-Status: WAITING
+Status: IN_PROGRESS
 Registration note: (recommended first; unblocks hypotheses)
 Priority: P1
 Type: sql/tests/evidence
@@ -611,6 +611,26 @@ Several findings are hypotheses whose impact depends on the data:
 - the VAT basis of `cena` vs `NabavnaCena`;
 - the timestamp type of `datum_prodaje`;
 - the schema and privileges of the view.
+
+#### Evidence
+
+- The seven mapped findings (`NV-N09`, `NV-N12`, `NV-N14`, `NV-N15`, `NV-N16`, `NV-N19`, `NV-N20`) are explicitly marked as data/deployment hypotheses in `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md`.
+- The audit integration run log records that no live SQL/API/schema proof was run and recommends this pack as the first evidence step after fresh dependency/collision recovery.
+- RQ524/RQ525 are DONE and provide the read-only SQL/Testcontainers patterns; Q83 is DONE and owns the nullability behavior this pack must observe without changing.
+
+#### Scope
+
+- New files only under `scripts/sql/nivelacija-reconciliation/` and the minimum new Testcontainers bootstrap/test files needed to exercise them.
+- Each check returns stable `check_id`, `verdict`, `observed`, `expected`, `owner` and `detail` fields. Use `WARN` for unknown/ambiguous evidence; do not turn missing evidence into a healthy `PASS` or a fabricated zero.
+- No edits to product endpoints, existing views/migrations, recommendation semantics or production data. Production execution remains read-only and operator-only; this task creates and fixture-tests the pack but does not run it against production.
+
+#### Read first
+
+- `AGENTS.md` read-only/analytics evidence rules and `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- `docs/ai/NIVELACIJA_ANALYTICS_AUDIT_PROMPTS_2026-10-01.md` entries NV-N09/N12/N14/N15/N16/N19/N20
+- `.ai/runs/2026-10-01-nivelacija-analytics-audit-prompts-evidence.md`
+- `scripts/check_supplier_reconciliation_pack.sql`, `scripts/fixtures/supplier-reconciliation-pack-bootstrap.sql`, `Api.Tests/SupplierReconciliationPackTests.cs`, and `.ai/runs/2026-10-01-RQ524-evidence.md`
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql`, `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`, and `Database/Migrations/014_NormalizeNivelacijaEvents.sql`
 
 #### Do
 
@@ -637,6 +657,8 @@ Every **H** in this document has a check whose verdict can confirm or reject it.
 #### Dependencies
 
 The RQ524/RQ525 harness.
+
+Claim note 2026-10-01: fresh `origin/main` is `cde8307bb1579222f44a4da171f024127917781e`; Q83, RQ524 and RQ525 are DONE. No active task lock, `rq547` branch or open PR owns this new-files-only feature family. RQ547 moved `WAITING -> READY -> IN_PROGRESS` following the latest audit evidence's recommended first step. Local lock: `.ai/task-locks/RQ547-codex.lock.md`. Scope is limited to new read-only reconciliation SQL and fixture tests; no production database run or write is included.
 
 ---
 
