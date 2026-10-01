@@ -48,26 +48,6 @@ function parseArgs(argv) {
   return options;
 }
 
-function visible(element) {
-  const style = window.getComputedStyle(element);
-  const rect = element.getBoundingClientRect();
-  return style.display !== "none"
-    && style.visibility !== "hidden"
-    && Number.parseFloat(style.opacity || "1") > 0
-    && rect.width > 0
-    && rect.height > 0;
-}
-
-function serializeRect(rect) {
-  if (!rect) return null;
-  return {
-    x: Math.round(rect.x * 100) / 100,
-    y: Math.round(rect.y * 100) / 100,
-    width: Math.round(rect.width * 100) / 100,
-    height: Math.round(rect.height * 100) / 100,
-  };
-}
-
 export function assertNoRootOverflow(metrics) {
   const overflowing = metrics.scrollWidth > metrics.viewportWidth + 1
     || metrics.bodyScrollWidth > metrics.viewportWidth + 1;

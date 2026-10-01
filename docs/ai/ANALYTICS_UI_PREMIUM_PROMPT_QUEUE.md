@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-24` (IN_PROGRESS; responsive browser baseline; supplemental/path-safe and must not displace higher-priority RQ correctness work)
+Current READY prompt: `none` (P-UI-24 DONE; promote P-UI-25 only after a fresh collision check against active frontend owners)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -1229,8 +1229,8 @@ These prompts are presentation/browser-proof work only. They must not change ana
 
 ## P-UI-24 - Establish a measured responsive browser baseline with the existing toolchain
 
-Status: IN_PROGRESS
-Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-24-responsive-baseline-51d0`; local lock `.ai/task-locks/P-UI-24-chatgpt.lock.md`.
+Status: DONE
+Claimed: 2026-10-01 by ChatGPT on `cursor/p-ui-24-responsive-baseline-51d0`; completed on the same branch; local lock removed after delivery.
 Priority: P1
 Type: frontend/tests/evidence
 Feature family: responsive-ui-browser-baseline
@@ -1300,6 +1300,23 @@ The responsive audit contains several high-confidence source findings but also r
 - `P-UI-05` is DONE and supplies the existing visual-review contract.
 - Path collision check against current RQ/frontend work is required before claim.
 - This lower-priority P-UI task may run only when it does not displace active BCI/STAB/RQ correctness work.
+
+### Completion note
+
+- Date: 2026-10-01
+- Status: DONE
+- Completion: 100%
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/package.json`; `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`; `.ai/runs/2026-10-01-P-UI-24-evidence.md`; `MASTER_ROADMAP.md`
+- Contract/runtime behavior changed: added a deterministic Puppeteer fixture/connected-local responsive baseline command; no production UI, analytics semantics or API contract changes
+- Checks run: `npm run responsive:baseline -- --self-test` pass; bounded fixture matrix pass for 70 route/theme/viewport combinations with 0 page errors and 4 recorded root-overflow observations; `node --check scripts/responsive_baseline.mjs` pass; `npm run typecheck` pass; `npm run check:analytics-guardrails` pass; `npm run build` pass; queue/planning validators and `git diff --check` pass
+- Checks not run: real iOS/iPad Safari and coarse-pointer device capture not run; Chromium evidence cannot prove device behavior
+- Run log: `.ai/runs/2026-10-01-P-UI-24-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: pending final delivery synchronization
+- Main verification: pending final delivery synchronization
+- Evidence state: pending
+- Missed: 4 observed root-overflow cases remain as baseline findings on `/analytics/products` at 320/375px in both themes; they are intentionally not fixed by this measurement prompt
+- Next: promote/claim `P-UI-25` only after a fresh collision check against active frontend owners
 
 ---
 
