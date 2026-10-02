@@ -121,8 +121,9 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var smoothedUnits = BayesianSmoothing(units180, 180m, 0.05m);
 
         // Highlight scenario
-        var highlightBoost = 0.15m + (preNivelacijaScore / 100m) * 0.30m;
-        var highlightUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, highlightBoost);
+        var highlightUplift = 0.15m + (preNivelacijaScore / 100m) * 0.30m;
+        var highlightDemandMultiplier = 1m + highlightUplift;
+        var highlightUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, highlightDemandMultiplier);
         var highlightRevenue = highlightUnits * sellingPrice;
         var highlightMargin = hasReliableCost
             ? highlightUnits * Math.Max(0m, sellingPrice - purchasePrice)

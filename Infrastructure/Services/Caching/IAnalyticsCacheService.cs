@@ -475,7 +475,7 @@ public static class AnalyticsCacheKeys
         string? dataScope = null,
         DateTime? effectiveToUtc = null,
         int? storeId = null) =>
-        $"{Prefix}pre-nivelacija-priority:v8:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
+        $"{Prefix}pre-nivelacija-priority:v9:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
 }
 
 /// <summary>

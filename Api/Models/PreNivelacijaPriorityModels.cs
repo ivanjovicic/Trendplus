@@ -5,7 +5,7 @@ using Trendplus2.Dtos;
 public sealed class PreNivelacijaPriorityResponseDto
 {
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
-    public string FormulaVersion { get; set; } = "pre_nivelacija_v8";
+    public string FormulaVersion { get; set; } = "pre_nivelacija_v9";
     public string FormulaDescription { get; set; } = string.Empty;
     public PreNivelacijaModelEvidenceDto ModelEvidence { get; set; } = new();
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
@@ -29,7 +29,8 @@ public sealed class PreNivelacijaModelEvidenceDto
     public string ScoreReferencePopulation { get; set; } = "base_candidate_universe_before_dimension_filters";
     public string ScoreNormalization { get; set; } = "stock_and_velocity_divided_by_reference_population_max";
     public string ScenarioBasis { get; set; } = "heuristic_uncalibrated";
-    public string ScenarioParameterVersion { get; set; } = "pre_nivelacija_scenario_v1";
+    public string ScenarioParameterVersion { get; set; } = "pre_nivelacija_scenario_v2";
+    public string ScenarioAssumptions { get; set; } = "highlight demand multiplier 1.15–1.45 over smoothed baseline; markdown discount 8–35%; markdown elasticity 1.8; expected units capped by available stock";
     public string ScenarioDisclaimer { get; set; } = "heuristic_estimate_not_causal_or_calibrated_uplift";
 }
 
