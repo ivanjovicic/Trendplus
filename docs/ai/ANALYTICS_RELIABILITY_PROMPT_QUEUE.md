@@ -27452,10 +27452,10 @@ Current-main recheck narrows the older PS14 findings instead of replaying stale 
 - Checks run: focused backend tests 43/43 passed; disposable PostgreSQL/Testcontainers baseline and bounded-query parity passed for 30d/90d; queue, instruction and planning validators plus `git diff --check` passed.
 - Checks not run: full backend suite and live/deployed provider checks; not required for repository-local optimization and no production DB or writes were used.
 - Run log: `.ai/runs/2026-10-02-RQ487-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `66cdf5d09e973fad4e15f5300cd28526384aa6d6`
+- Main verification: fresh `origin/main` equals `66cdf5d09e973fad4e15f5300cd28526384aa6d6` and contains the RQ487 PARTIAL implementation.
 - Missed: acceptance still requires a seeded PostgreSQL Supplier endpoint parity fixture comparing complete rows/totals/trust/recommendation fields and an endpoint-level cache miss→hit request-time state test. The current PostgreSQL test proves query-result parity; the cache test proves storage hit behavior and evidence-key invalidation, but neither is a full HTTP endpoint parity fixture. Sale-line/timestamp grain and Product Decision `articleIds.Contains` query forms remain unchanged because a measured safe beneficial rewrite was not established. Full deployed 503/performance cause remains RQ454/STAB16.
 - Follow-up: complete the Supplier endpoint parity/cache fixture before promoting RQ487 to DONE. RQ530 remains PARTIAL for unavailable authoritative buyer metrics and is not upgraded by this endpoint optimization.
 - Residual risk: timings are synthetic local PostgreSQL evidence, not a deployed-latency claim; complete Supplier endpoint parity remains unproven.
