@@ -1,4 +1,6 @@
 using Infrastructure.Services.Caching;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Api.Tests;
@@ -27,6 +29,52 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.Equal(variants.Length, variants.Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("color-sales-stats:", baseline, StringComparison.Ordinal);
         Assert.Contains("color-sales-stats:v5:", baseline, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SupplierSalesStats_IntegrityEvidenceChangesCachedDecisionIdentityWithoutExposingId()
+    {
+        var first = AnalyticsCacheKeys.SupplierSalesStats(
+            FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing",
+            activeSnapshotBatchId: 7, integrityEvidenceId: "evidence-before-gate-change");
+        var same = AnalyticsCacheKeys.SupplierSalesStats(
+            FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing",
+            activeSnapshotBatchId: 7, integrityEvidenceId: "evidence-before-gate-change");
+        var afterGateChange = AnalyticsCacheKeys.SupplierSalesStats(
+            FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing",
+            activeSnapshotBatchId: 7, integrityEvidenceId: "evidence-after-gate-change");
+
+        Assert.Equal(first, same);
+        Assert.NotEqual(first, afterGateChange);
+        Assert.Contains("supplier-sales-stats:v7:", first, StringComparison.Ordinal);
+        Assert.Contains(":integrity:", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("evidence-before-gate-change", first, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SupplierSalesStats_CacheMissThenHitKeepsValuesAndGateChangeMissesOldPayload()
+    {
+        using var memory = new MemoryCache(new MemoryCacheOptions());
+        var cache = new InMemoryCacheService(memory, NullLogger<InMemoryCacheService>.Instance);
+        var beforeGateChange = AnalyticsCacheKeys.SupplierSalesStats(
+            FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing",
+            activeSnapshotBatchId: 7, integrityEvidenceId: "verified-evidence");
+        var requestTimeGateChange = AnalyticsCacheKeys.SupplierSalesStats(
+            FromUtc, ToUtc, storeId: 1, sezonaId: 2, dataScope: "existing",
+            activeSnapshotBatchId: 7, integrityEvidenceId: "unverified-evidence");
+
+        Assert.Null(await cache.GetAsync<AnalyticsJsonCachePayload>(beforeGateChange));
+
+        var payload = new AnalyticsJsonCachePayload
+        {
+            Json = "{\"totals\":{\"revenue\":123.45},\"generatedAt\":\"2026-10-02T10:00:00Z\"}"
+        };
+        await cache.SetAsync(beforeGateChange, payload);
+
+        var cacheHit = await cache.GetAsync<AnalyticsJsonCachePayload>(beforeGateChange);
+        Assert.NotNull(cacheHit);
+        Assert.Equal(payload.Json, cacheHit!.Json);
+        Assert.Null(await cache.GetAsync<AnalyticsJsonCachePayload>(requestTimeGateChange));
     }
 
     [Fact]

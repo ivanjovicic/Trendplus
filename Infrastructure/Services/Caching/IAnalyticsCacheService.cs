@@ -233,9 +233,9 @@ public static class AnalyticsCacheKeys
 
     public const string Stores = $"{Prefix}filters:stores";
 
-    // Keeps the historical heavy-endpoint key dimensions: period, store, season, data scope, and active snapshot batch.
-    public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}supplier-sales-stats:v6:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+    // Integrity evidence participates because a read-time gate change must not replay cached supplier actionability.
+    public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null, string? integrityEvidenceId = null) =>
+        $"{Prefix}supplier-sales-stats:v7:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}:integrity:{HashPart(integrityEvidenceId)}";
 
     public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
         $"{Prefix}shoe-type-sales-stats:v4:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";

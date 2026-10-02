@@ -1193,7 +1193,16 @@ public static class AllEndpoints
                 var snapshotPathUsed = snapshotOptions.UseSnapshotCost && activeBatchId.HasValue;
 
                 var isPrewarmRequest = IsPrewarmRequest(httpContext);
-                var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId);
+                var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
+                var blockOperationsDecisionSignals = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(operationsIntegrityRegistry);
+                var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(
+                    fromUtc,
+                    toUtc,
+                    storeId,
+                    sezonaId,
+                    normalizedDataScope,
+                    activeBatchId,
+                    operationsIntegrityRegistry?.Current.EvidenceId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
                 var cachedResponse = await cache.GetAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
                 if (cachedResponse is not null)
@@ -1225,16 +1234,7 @@ public static class AllEndpoints
 
                 var dbStopwatch = Stopwatch.StartNew();
                 var snapshotCostRowCount = 0;
-
-                // Load exact sale-line snapshot costs when an active batch exists.
                 Dictionary<int, decimal> snapshotCostBySaleLineId = [];
-                if (activeBatchId.HasValue)
-                {
-                    snapshotCostBySaleLineId = await db.AnalyticsSaleLineCostSnapshots
-                        .Where(s => s.BatchId == activeBatchId.Value)
-                        .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
-                    snapshotCostRowCount = snapshotCostBySaleLineId.Count;
-                }
 
                 var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
                 DateTime? dataWindowFrom = dataWindow.FromDate;
@@ -1299,20 +1299,6 @@ public static class AllEndpoints
                             StringComparer.Ordinal);
                 }
 
-                var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
-                    .Where(d =>
-                        (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
-                        d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
-                        (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
-                    .GroupBy(d => d.ArtikalId!.Value)
-                    .Select(g => new
-                    {
-                        ArtikalId = g.Key,
-                        PrvaDatum = g.Min(x => x.Datum)
-                    })
-                    .ToDictionaryAsync(x => x.ArtikalId, x => x.PrvaDatum, ct);
-
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
                     join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
@@ -1357,6 +1343,29 @@ public static class AllEndpoints
                     })
                     .ToListAsync(ct);
                 var salesRowCount = stavke.Count;
+                var relevantArticleIds = stavke.Select(s => s.ArtikalId).Distinct().ToArray();
+                var prvaNivelacijaPoArtiklu = await SupplierSalesStatsQuerySupport.LoadFirstNivelacijaByArticleAsync(
+                    db,
+                    relevantArticleIds,
+                    toUtc,
+                    storeId,
+                    ct);
+
+                if (activeBatchId.HasValue)
+                {
+                    var saleLineIdsWithoutSaleCost = stavke
+                        .Where(s => s.SaleLineCost is null)
+                        .Select(s => s.ProdajaStavkaId)
+                        .Distinct()
+                        .ToArray();
+                    snapshotCostBySaleLineId = await SupplierSalesStatsQuerySupport.LoadSnapshotCostsForSaleLinesAsync(
+                        db,
+                        activeBatchId.Value,
+                        saleLineIdsWithoutSaleCost,
+                        ct);
+                    snapshotCostRowCount = snapshotCostBySaleLineId.Count;
+                }
+
                 var attributionBases = stavke.Select(s => s.AttributionBasis).Distinct(StringComparer.Ordinal).ToArray();
                 var attributionCoveragePct = salesRowCount == 0
                     ? (double?)null
@@ -1758,9 +1767,6 @@ public static class AllEndpoints
                 var totalMarginContribution = suppliers.Sum(row => row.marginContribution);
                 var totalUnits = suppliers.Sum(row => row.ukupnaKolicina);
                 var unknownSupplierSharePct = dataQuality.unknownSupplierRevenueSharePct;
-                var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
-                var blockOperationsDecisionSignals = OperationsAnalyticsIntegrityMeta.ShouldBlockDecisionSignals(operationsIntegrityRegistry);
-
                 var suppliersWithRecommendation = suppliers
                     .Select(supplier =>
                     {

@@ -2,9 +2,10 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ487
+Current READY prompt: none
 Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
 Idle recovery refinement 2026-10-02: `RQ487` is promoted `WAITING -> READY` after re-checking current code and its actual dependencies. `RQ474`, `RQ483` and `RQ470` are DONE. The previous `Ready after` incorrectly made the baseline timing/`EXPLAIN ANALYZE` measurement a prerequisite even though producing that baseline is the first executable step of RQ487, and it conflated the repository-local performance owner with the still-external live 503 root-cause proof owned by `RQ454`/`STAB16`. Current-main still loads the full active snapshot-cost batch for Supplier overview, keeps the Supplier sale projection at sale-line/timestamp grain, scans first nivelacija history without a relevant-article predicate, and returns cached Supplier JSON without projecting cache age/stale/correlation metadata at read time. Product Decision still materializes the matching article population then feeds its IDs through multiple `Contains` queries; its last-sale period-end bound and search-key normalization are already fixed and must not be redone. No `RQ487` branch, open PR or task-lock match was found; the canonical RQ queue had no READY/IN_PROGRESS prompt. Provider logs/live DB access are not required for the disposable PostgreSQL/Testcontainers baseline and equivalence work; deployed/provider proof remains a separate residual under `RQ454`/`STAB16`.
+Owner claim 2026-10-02: fresh `origin/main` is `3748766abcf686b83eb6cb656c6acb2c6c19c730`; confirmed RQ474/RQ483/RQ470 DONE, no RQ487 lock/branch/open PR, and RQ530 remains PARTIAL as consumer rather than active owner. RQ487 moved `READY -> IN_PROGRESS` for the deterministic local PostgreSQL baseline and measured query-bounds/equivalence work.
 Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 was WAITING behind RQ536 (shared Decision Hub surface) and was promoted to IN_PROGRESS after RQ536 reached DONE on 2026-10-01; the live-evidence gate remains satisfied and the store-filtered scorecard HTTP 500 is in scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 were independent runnable lanes at that time.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -1980,7 +1981,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ484 | DONE | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | DONE | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
-| RQ487 | READY | pdc-supplier-query-performance | Measure and bound Product Decision and Supplier overview query cost without changing analytics numbers |
+| RQ487 | PARTIAL | pdc-supplier-query-performance | Measure and bound Product Decision and Supplier overview query cost without changing analytics numbers |
 | RQ488 | DONE | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -27387,7 +27388,7 @@ Source: `PS12`, `PS15`, the Supplier part of `PS16`, `PS18` and the frontend lin
 
 ## RQ487 - Measure and bound Product Decision and Supplier overview query cost
 
-Status: READY
+Status: DONE
 Ready after: `RQ474`, `RQ483` and `RQ470` are DONE; establish the before-change baseline as step 1 of this prompt
 Priority: P2
 Type: backend/performance/tests
@@ -27441,6 +27442,24 @@ Current-main recheck narrows the older PS14 findings instead of replaying stale 
 - Cache miss -> hit fixture proves request-time correlation/freshness/integrity semantics and that cached analytics values remain unchanged.
 - 30d and 90d measured baseline and after-run evidence on the same disposable fixture/cardinalities.
 - Required governance checks for any queue/evidence change plus `git diff --check`.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: PARTIAL
+- Completion: bounded Supplier active-batch snapshot lookup to participating sale lines; bounded first-nivelacija lookup to articles in the requested sale-line population; included current Operations integrity evidence in Supplier cache identity so a read-time gate change cannot replay old actionability. No Product Decision query rewrite was justified by the measured baseline.
+- Changed files: `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/SupplierSalesStatsQuerySupport.cs`, `Api.Tests/SupplierNivelacijaQueryPerformanceTests.cs`, `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`, `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Infrastructure/Services/OperationsAnalyticsIntegrityService.cs`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-02-RQ487-evidence.md`.
+- Checks run: focused backend tests 43/43 passed; disposable PostgreSQL/Testcontainers baseline and bounded-query parity passed for 30d/90d; queue, instruction and planning validators plus `git diff --check` passed.
+- Checks not run: full backend suite and live/deployed provider checks; not required for repository-local optimization and no production DB or writes were used.
+- Run log: `.ai/runs/2026-10-02-RQ487-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: acceptance still requires a seeded PostgreSQL Supplier endpoint parity fixture comparing complete rows/totals/trust/recommendation fields and an endpoint-level cache miss→hit request-time state test. The current PostgreSQL test proves query-result parity; the cache test proves storage hit behavior and evidence-key invalidation, but neither is a full HTTP endpoint parity fixture. Sale-line/timestamp grain and Product Decision `articleIds.Contains` query forms remain unchanged because a measured safe beneficial rewrite was not established. Full deployed 503/performance cause remains RQ454/STAB16.
+- Follow-up: complete the Supplier endpoint parity/cache fixture before promoting RQ487 to DONE. RQ530 remains PARTIAL for unavailable authoritative buyer metrics and is not upgraded by this endpoint optimization.
+- Residual risk: timings are synthetic local PostgreSQL evidence, not a deployed-latency claim; complete Supplier endpoint parity remains unproven.
+- Prompt defect / scope repair: removed the circular precondition that required RQ487's own baseline before it could be claimed; provider/live evidence stays with RQ454/STAB16.
 
 ### Acceptance
 

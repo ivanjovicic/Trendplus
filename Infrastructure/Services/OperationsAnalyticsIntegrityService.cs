@@ -502,7 +502,14 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         (decimal Revenue, int Units) liveTotals,
         CancellationToken ct)
     {
-        var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(fromUtc, toUtc, storeId: null, sezonaId: null, dataScope, activeSnapshotBatchId: null);
+        var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(
+            fromUtc,
+            toUtc,
+            storeId: null,
+            sezonaId: null,
+            dataScope,
+            activeSnapshotBatchId: null,
+            integrityEvidenceId: _registry.Current.EvidenceId);
         var cached = await _cache.GetAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
         if (cached is null || string.IsNullOrWhiteSpace(cached.Json))
             return null;
