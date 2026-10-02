@@ -116,6 +116,9 @@ For formal queue work:
 - resolve the owner/program from `MASTER_ROADMAP.md`, then select/claim through the canonical protocol;
 - treat `Current READY` as the primary/default pointer, not as a global mutex; execute one claimed prompt at a time **per agent/workspace**;
 - when `Current READY` is `none`, run the protocol's **Idle recovery** before reporting no work: re-evaluate stale dependency/status truth, relevant `PARTIAL/BLOCKED/WAITING` prompts and recent run-log `What was missed` / `Risks` / `Next`, then promote and claim only a genuinely runnable candidate;
+- classify blockers instead of accepting old wording at face value: distinguish true start gates from final/deployed evidence, external authority from repo-local proof, and circular prerequisites from artifacts the prompt itself should create;
+- when a prompt safely contains an executable same-owner repo-local slice plus an external final-proof residual, repair/narrow the prompt before claim rather than refusing the whole task; never lower business acceptance or fake deployed proof;
+- if the highest-priority candidate remains genuinely blocked, try a collision-safe candidate in the same program and then the next eligible program before reporting no work;
 - after completing a prompt, re-enter selection/recovery when the user asked to continue/claim-and-execute instead of stopping only because the pointer returned to `none`;
 - stop only for a genuine authority/gate/owner conflict or when the canonical router proves there is no safe repository-local action left.
 
