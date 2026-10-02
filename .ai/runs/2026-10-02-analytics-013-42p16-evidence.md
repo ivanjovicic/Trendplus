@@ -4,9 +4,9 @@ Date: 2026-10-02
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending fresh `origin/main` verification after push.
-Evidence state: pending
+Main commit SHA: `26e09e461f51fbb4e7563bceae3dba7d5cfab0f6`
+Main verification: pass - fresh `git fetch origin main` resolved `origin/main` to `26e09e461f51fbb4e7563bceae3dba7d5cfab0f6`; `git merge-base --is-ancestor` confirms the fix commit is contained in current `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 
@@ -24,6 +24,7 @@ Evidence state: pending
 
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~SupplierDecisionSchemaReadinessIntegrationTests.SupplierDecisionRepair_SeedsPostgres_RepeatsIdempotently_AndPreservesRefreshPrerequisites --logger "console;verbosity=minimal"` -> pass, 1 passed / 0 failed / 0 skipped, using disposable PostgreSQL/Testcontainers.
 - `git diff --check` -> pass.
+- `gh run list --commit 26e09e46 --limit 5 --json databaseId,name,status,conclusion,headSha,createdAt,url` -> no matching current-main Actions runs were discoverable at inspection time.
 
 ## Validation not run
 
