@@ -13,13 +13,15 @@ import os from "node:os";
 import path from "node:path";
 
 const REQUIRED_SNIPPETS = new Map([
-  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace", "Idle recovery"]],
-  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "PROMPT_QUEUE_PROTOCOL.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Idle recovery"]],
+  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace", "Idle recovery", "circular prerequisites", "final/deployed evidence"]],
+  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "PROMPT_QUEUE_PROTOCOL.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Idle recovery", "kružni prerequisite", "repo-local"]],
   ["MASTER_ROADMAP.md", ["primary/default READY", "additional READY", "Parallel-safe"]],
   ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY"]],
   ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md", "primary READY"]],
-  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Idle recovery"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "unfinished delivery", "What was missed", "WAITING -> READY", "no safe claimable task"]],
+  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Idle recovery", "Mandatory blocker decomposition", "no safe task"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "unfinished delivery", "What was missed", "WAITING -> READY", "no safe claimable task", "Mandatory blocker decomposition", "circular", "external/provider/deployed evidence", "Try another safe lane before refusing", "RQ487 precedent"]],
+  ["docs/ai/CODEX_TASK_CHECKLIST.md", ["Queue task checklist", "blocker class", "circular same-prompt artifact", "no safe task"]],
+  ["docs/ai/QUEUE_STATUS_TEMPLATE.md", ["Recovery classification", "True start gate or final acceptance only", "Safe repo-local slice available"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md"]],
@@ -128,6 +130,18 @@ function runSelfTest() {
     }
     if (!invalid.some((error) => error.includes("broken relative link"))) {
       throw new Error("expected broken-link failure");
+    }
+
+    const protocolPath = path.join(root, "docs/ai/PROMPT_QUEUE_PROTOCOL.md");
+    const protocol = fs.readFileSync(protocolPath, "utf8");
+    fs.writeFileSync(
+      protocolPath,
+      protocol.replace("Mandatory blocker decomposition", "removed blocker decomposition marker"),
+      "utf8",
+    );
+    const missingRecoveryGuard = validate(root);
+    if (!missingRecoveryGuard.some((error) => error.includes("Mandatory blocker decomposition"))) {
+      throw new Error("expected proactive-recovery marker failure");
     }
 
     console.log("agent instruction validator self-test: PASS");
