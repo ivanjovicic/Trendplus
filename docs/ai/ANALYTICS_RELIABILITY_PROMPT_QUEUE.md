@@ -2,8 +2,9 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (RQ475 is DONE; run fresh selector/recovery for the next cross-program pointer)
+Current READY prompt: RQ487
 Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
+Idle recovery refinement 2026-10-02: `RQ487` is promoted `WAITING -> READY` after re-checking current code and its actual dependencies. `RQ474`, `RQ483` and `RQ470` are DONE. The previous `Ready after` incorrectly made the baseline timing/`EXPLAIN ANALYZE` measurement a prerequisite even though producing that baseline is the first executable step of RQ487, and it conflated the repository-local performance owner with the still-external live 503 root-cause proof owned by `RQ454`/`STAB16`. Current-main still loads the full active snapshot-cost batch for Supplier overview, keeps the Supplier sale projection at sale-line/timestamp grain, scans first nivelacija history without a relevant-article predicate, and returns cached Supplier JSON without projecting cache age/stale/correlation metadata at read time. Product Decision still materializes the matching article population then feeds its IDs through multiple `Contains` queries; its last-sale period-end bound and search-key normalization are already fixed and must not be redone. No `RQ487` branch, open PR or task-lock match was found; the canonical RQ queue had no READY/IN_PROGRESS prompt. Provider logs/live DB access are not required for the disposable PostgreSQL/Testcontainers baseline and equivalence work; deployed/provider proof remains a separate residual under `RQ454`/`STAB16`.
 Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 was WAITING behind RQ536 (shared Decision Hub surface) and was promoted to IN_PROGRESS after RQ536 reached DONE on 2026-10-01; the live-evidence gate remains satisfied and the store-filtered scorecard HTTP 500 is in scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 were independent runnable lanes at that time.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -1979,7 +1980,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ484 | DONE | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
 | RQ485 | DONE | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
-| RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
+| RQ487 | READY | pdc-supplier-query-performance | Measure and bound Product Decision and Supplier overview query cost without changing analytics numbers |
 | RQ488 | DONE | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
@@ -27384,10 +27385,10 @@ Source: `PS12`, `PS15`, the Supplier part of `PS16`, `PS18` and the frontend lin
 
 ---
 
-## RQ487 - Bound Product Decision and Supplier overview query cost
+## RQ487 - Measure and bound Product Decision and Supplier overview query cost
 
-Status: WAITING
-Ready after: `RQ474` classifies the live Supplier overview 503 (read-only provider logs), and a baseline timing/`EXPLAIN ANALYZE` measurement exists
+Status: READY
+Ready after: `RQ474`, `RQ483` and `RQ470` are DONE; establish the before-change baseline as step 1 of this prompt
 Priority: P2
 Type: backend/performance/tests
 Feature family: pdc-supplier-query-performance
@@ -27395,45 +27396,72 @@ Parallel-safe: no (`Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision 
 Owner: Analytics Reliability / Performance
 Local lock: `.ai/task-locks/RQ487-<agent>.lock.md`
 Commit suggestion: `perf(analytics): bound product and supplier decision queries`
-Source: `PS14` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28)
+Source: `PS14` in `docs/ai/PRODUCTS_SUPPLIER_AUDIT_PROMPTS_2026-09-25.md` (de-dup 2026-09-28; current-main re-audit 2026-10-02)
 
-### Problem and evidence (at `c5a1937f`; product code unchanged on `5fe1f30b`)
+### Problem and current evidence
 
-- **Product Decision:**
-  - loads all matching articles and sends the full id list through `articleIds.Contains(...)` (`CachedAnalyticsEndpoints.cs:6030`, `:6059`, `:6079`);
-  - the last-sale query scans the whole history without an upper bound (`:6075-6090`; the period-end semantics are `RQ483`'s);
-  - the cache key includes the raw search string.
-- **Supplier overview:**
-  - the query groups at sale-line/timestamp grain;
-  - `prvaNivelacijaPoArtiklu` (`AllEndpoints.cs:1304`) scans the nivelacija history without an article filter;
-  - the endpoint returned HTTP 503 live on 2026-09-28 (cause unclassified; `RQ474`).
-- **Cache metadata:** cache-hit truth was addressed generally by `RQ141`/`RQ187` (DONE). Verify whether the supplier-sales-stats cache-hit path still returns the payload without age/stale/correlation metadata, and whether the `blockOperationsDecisionSignals` evaluation is baked into the cached payload. Fix only a proven gap.
+Current-main recheck narrows the older PS14 findings instead of replaying stale work:
+
+- **Product Decision residual:** the builder still materializes the matching article population and then uses the resulting `articleIds` in current-period, previous-period and last-sale queries. This may create large `IN` predicates for the full analyzed population. The last-sale lookup is already bounded by `periodToExclusiveUtc` from RQ483, and `AnalyticsCacheKeys.HashPart` already trims/lowercases search before hashing; do not redo those closed fixes.
+- **Supplier overview residual:** when snapshot cost is enabled, the endpoint still loads every row from the active snapshot batch into `snapshotCostBySaleLineId` before the period sale-line population is known. The current sales projection remains grouped at sale-line/timestamp grain, and `prvaNivelacijaPoArtiklu` is bounded by period end/store but not by the relevant article set.
+- **Supplier cache residual:** a cache hit reads `AnalyticsCacheEntryMetadata` only for logging and returns the stored JSON verbatim. Prove whether age/stale/correlation and the read-time Operations integrity gate can become stale or misleading; change only a demonstrated gap.
+- **Live 503 root cause is not this prompt's gate:** RQ474 already delivered safe SQL-state/error classification. Naming the exact deployed/provider cause still belongs to RQ454/STAB16 and must remain an explicit external evidence gap.
 
 ### Scope
 
-- Query shape, bounds and cache metadata; behaviour-preserving (identical results), with tests and measured numbers. No schema/index migration without separate approval (propose it in the run log).
+- Repository-local query profiling, query-shape bounds, cache-read truth and equivalence tests for Product Decision and Supplier overview.
+- PostgreSQL/Testcontainers or another disposable local PostgreSQL fixture is the default measurement environment. Never run `EXPLAIN ANALYZE`, schema changes or write probes against production under this prompt.
+- Preserve analytics population, denominators, attribution, cost precedence, recommendation/actionability, period semantics and response values. No schema/index migration without a separate approved owner.
+
+### Read first
+
+- `AGENTS.md` and `docs/ai/VALIDATION_SELECTOR.md`
+- RQ470, RQ474 and RQ483 completion evidence
+- `.ai/runs/2026-10-02-RQ530-evidence.md`
+- `docs/ANALYTICS_PERFORMANCE_SPRINT_PLAN.md`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision builder
+- `Api/Endpoints/AllEndpoints.cs` Supplier overview endpoint
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
 
 ### Do
 
-1. Product Decision: filter via joins/subqueries instead of huge `IN` lists; bound the last-sale lookup to the needed articles (and the period end once `RQ483` lands); normalize search in the cache key.
-2. Supplier overview: aggregate in SQL at the needed grain; restrict the nivelacija lookup to relevant articles.
-3. Close any proven cache-hit metadata gap (age/stale/correlation id; read-time decision-block evaluation).
-4. Record before/after timings on 30/90-day windows.
+1. **Measure before editing.** Build or reuse a deterministic PostgreSQL/Testcontainers fixture large enough to exercise 30-day and 90-day paths. Capture wall time plus query count/shape; where practical capture `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` on the disposable database. Record fixture cardinalities so before/after numbers are comparable.
+2. **Product Decision:** prove which `articleIds.Contains(...)` queries dominate before replacing them. Prefer database-side joins/subqueries or another bounded server-side shape only when the baseline demonstrates value. Keep the RQ483 period-end bound and the existing normalized/hash search-key behavior unchanged.
+3. **Supplier snapshot cost:** restrict active-batch cost loading to sale-line IDs that can participate in the requested/current-comparable population instead of materializing the entire active batch. Preserve exact sale-line cost precedence and coverage metrics.
+4. **Supplier nivelacija/query grain:** restrict first-nivelacija lookup to relevant article IDs and reduce sale-line/timestamp materialization only if row-for-row/totals parity proves the coarser SQL grain is equivalent. Do not merge rows that differ in attribution or cost evidence.
+5. **Cache-hit truth:** add a focused test around a miss followed by a hit. If the cached JSON can expose stale correlation/cache freshness/integrity-gate state, project those request-time fields on read or move them outside the cached decision payload. Do not duplicate generic RQ141/RQ187 behavior when current output is already correct.
+6. Re-run the exact same fixture and measurement commands. Report before/after for 30d and 90d, query/cardinality changes, cache miss/hit behavior and numeric equivalence. A slower or statistically indistinguishable rewrite is not an improvement; revert it.
+7. Update RQ530 evidence/routing only after RQ487 acceptance is met. Do not claim that RQ530's still-unavailable buyer metrics have become authoritative merely because this endpoint is faster.
 
 ### Tests
 
-- Builder integration tests prove identical results before and after.
-- A cache-hit metadata test if step 3 changes anything.
+- Focused Product Decision builder integration test: before/after rows, summary, analyzed/ignored counts, recommendation status/reasons and numeric fields are equivalent for the same fixture.
+- Focused Supplier overview PostgreSQL integration test: supplier rows/totals, previous-period values, cost coverage/source attribution, unknown bucket, data-quality/trust metadata and recommendation fields are equivalent.
+- Snapshot fixture with unrelated rows in the same active batch proves they are not loaded/needed for the requested period while participating sale-line costs remain identical.
+- Cache miss -> hit fixture proves request-time correlation/freshness/integrity semantics and that cached analytics values remain unchanged.
+- 30d and 90d measured baseline and after-run evidence on the same disposable fixture/cardinalities.
+- Required governance checks for any queue/evidence change plus `git diff --check`.
 
 ### Acceptance
 
-- A measured latency reduction with unchanged numbers; cache hits disclose their age where a gap was proven.
+- Same analytics numbers and categorical decisions for the deterministic parity fixtures.
+- At least one measured, reviewable reduction in the proven hot path (latency, rows materialized/read, query work or memory footprint); do not invent a percentage target before the baseline.
+- Supplier snapshot lookup is bounded to relevant sale lines rather than the whole active batch when snapshot costing is enabled.
+- First-nivelacija work is bounded to relevant articles, unless measurement proves that change unsafe/not useful and the run log records a PARTIAL outcome.
+- Cache hits expose truthful request-time correlation/freshness/integrity state wherever the focused test proves the old serialized payload could become stale.
+- Provider logs and production DB access are not required to mark the repository-local optimization DONE; any deployed latency/root-cause claim stays explicitly unverified until STAB16/RQ454 supplies it.
 
 ### Dependencies
 
-- `RQ474` (503 diagnosis), `RQ483` (last-sale period semantics), `RQ470` (search cache key). `RQ141`/`RQ187` are prior contracts.
-- Reliability contract: no numeric change; performance work must be proven equivalent.
+- DONE: `RQ474` (safe Supplier error classification), `RQ483` (period-end Product Decision semantics), `RQ470` (search/population contract), plus prior `RQ141`/`RQ187` cache truth contracts.
+- RQ530 is a consumer/follow-up: it remains PARTIAL until this prompt's repository-local baseline/equivalence acceptance is complete.
+- External deployed/provider root-cause proof remains owned by `RQ454`/`STAB16` and must not block or be impersonated by this prompt.
 
+### Stop conditions
+
+- Stop and record PARTIAL if the disposable PostgreSQL fixture cannot execute the relevant query path; do not substitute guessed performance claims.
+- Stop a rewrite if parity changes any business number, categorical decision, population or provenance field.
+- Stop before adding indexes/schema migrations or running production `EXPLAIN ANALYZE`/writes; route those as a separate approved task.
 ---
 
 ## RQ488 - Serbian copy and export values on Product Decision and decision-engine summaries
