@@ -10,6 +10,7 @@ const ROUTES = [
   { id: "prodaja", path: "/prodaja" },
   { id: "analytics", path: "/analytics" },
   { id: "supplier", path: "/analytics/supplier" },
+  { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "products", path: "/analytics/products" },
   { id: "actions", path: "/analytics/actions" },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
@@ -26,6 +27,9 @@ function parseArgs(argv) {
     outputDir: DEFAULT_OUTPUT_DIR,
     mode: "fixture",
     timeoutMs: DEFAULT_TIMEOUT_MS,
+    routeId: null,
+    viewportOnly: false,
+    theme: null,
     strict: false,
     selfTest: false,
   };
@@ -36,6 +40,9 @@ function parseArgs(argv) {
     else if (argument === "--output-dir") options.outputDir = path.resolve(argv[++index]);
     else if (argument === "--mode") options.mode = argv[++index];
     else if (argument === "--timeout-ms") options.timeoutMs = Number(argv[++index]);
+    else if (argument === "--route-id") options.routeId = argv[++index];
+    else if (argument === "--viewport-only") options.viewportOnly = true;
+    else if (argument === "--theme") options.theme = argv[++index];
     else if (argument === "--strict") options.strict = true;
     else if (argument === "--self-test") options.selfTest = true;
     else throw new Error(`Unknown argument: ${argument}`);
@@ -43,6 +50,12 @@ function parseArgs(argv) {
 
   if (!["fixture", "connected-local"].includes(options.mode)) {
     throw new Error(`Unsupported mode: ${options.mode}`);
+  }
+  if (options.routeId && !ROUTES.some((route) => route.id === options.routeId)) {
+    throw new Error(`Unknown responsive baseline route id: ${options.routeId}`);
+  }
+  if (options.theme && !THEMES.includes(options.theme)) {
+    throw new Error(`Unknown responsive baseline theme: ${options.theme}`);
   }
 
   return options;
@@ -159,7 +172,7 @@ async function collectGeometry(page, viewportWidth) {
       });
 
     const regions = [...document.querySelectorAll(
-      "table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
+      "[data-testid='analytics-control-bar'], [class*='control-bar'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
     )]
       .filter(isVisible)
       .slice(0, 40)
@@ -244,8 +257,14 @@ async function run(options) {
   const results = [];
 
   try {
-    for (const route of ROUTES) {
-      for (const theme of THEMES) {
+    const selectedRoutes = options.routeId
+      ? ROUTES.filter((route) => route.id === options.routeId)
+      : ROUTES;
+    const selectedThemes = options.theme
+      ? THEMES.filter((theme) => theme === options.theme)
+      : THEMES;
+    for (const route of selectedRoutes) {
+      for (const theme of selectedThemes) {
         for (const viewportWidth of VIEWPORTS) {
           const page = await browser.newPage();
           const consoleErrors = [];
@@ -289,6 +308,9 @@ async function run(options) {
           let navigationError = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
+            if (route.readySelector) {
+              await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
+            }
             await new Promise((resolve) => setTimeout(resolve, 250));
           } catch (error) {
             navigationError = String(error);
@@ -297,7 +319,7 @@ async function run(options) {
           const geometry = await collectGeometry(page, viewportWidth);
           const slug = `${safeFilePart(route.id)}__${theme}__${viewportWidth}`;
           const screenshotPath = path.join(options.outputDir, `${slug}.png`);
-          await page.screenshot({ path: screenshotPath, fullPage: true, timeout: options.timeoutMs });
+          await page.screenshot({ path: screenshotPath, fullPage: !options.viewportOnly, timeout: options.timeoutMs });
           results.push({
             routeId: route.id,
             route: route.path,

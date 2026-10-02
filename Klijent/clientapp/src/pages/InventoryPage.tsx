@@ -1459,12 +1459,25 @@ export default function InventoryPage() {
 
   // Filters and controls stay visible in error and empty states (and in reloads after the first settled load)
   // so the user can recover in place.
-  const renderInventoryControls = (showDataSummary: boolean) => (
+  const renderInventoryControls = (showDataSummary: boolean) => {
+    const selectedSupplierName = selectedSupplierId == null ? null : suppliers.find((supplier) => supplier.supplierId === selectedSupplierId)?.supplierName ?? null;
+    const inventoryMobileFilterSummary = [
+      periodPreset === "custom"
+        ? `Period ${draftPeriodFrom} – ${draftPeriodTo}`
+        : `Period ${ANALYTICS_PERIOD_PRESET_OPTIONS.find((option) => option.value === periodPreset)?.label ?? "izabran"}`,
+      `Prodavnica: ${selectedStoreId == null ? "sve" : selectedStoreName ?? "izabrana"}`,
+      `Dobavljač: ${selectedSupplierId == null ? "svi" : selectedSupplierName ?? "izabran"}`,
+      `Pretraga ${trimmedSearch ? "aktivna" : "isključena"}`,
+    ].join(" · ");
+
+    return (
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
         {storesLoadError ? (
           <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} />
         ) : null}
         <AnalyticsControlBar
+          responsiveFilterLayout
+          mobileFilterSummary={inventoryMobileFilterSummary}
           title="Filteri i akcije"
           description="Pretraži bilans, suzi lokaciju i ostavi operativne akcije sekundarnim u odnosu na pregled odluka."
           chips={showDataSummary ? [
@@ -1649,7 +1662,8 @@ export default function InventoryPage() {
         {exportStatus ? <div className="mt-3 rounded-2xl border border-[var(--info)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--info)]">{exportStatus}</div> : null}
         {showDataSummary && error ? <div className="mt-3 rounded-2xl border border-[var(--error)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--error)]">{error.message}</div> : null}
       </section>
-  );
+    );
+  };
 
   const blockingState = loading && !pageData && !balance
     ? <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>

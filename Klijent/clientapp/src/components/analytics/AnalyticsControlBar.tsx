@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import "./AnalyticsControlBar.css";
 
@@ -39,7 +39,15 @@ type AnalyticsControlBarProps = {
   primaryAction?: AnalyticsControlBarAction;
   secondaryActions?: AnalyticsControlBarAction[];
   fields?: AnalyticsControlBarField[];
+  responsiveFilterLayout?: boolean;
+  mobileFilterSummary?: string;
 };
+
+function isMobileFilterViewport(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(max-width: 640px)").matches;
+}
 
 function toneClassName(tone: AnalyticsControlBarTone = "neutral"): string {
   if (tone === "info") return "analytics-control-bar__chip--info";
@@ -78,10 +86,57 @@ export default function AnalyticsControlBar({
   primaryAction,
   secondaryActions = [],
   fields = [],
+  responsiveFilterLayout = false,
+  mobileFilterSummary = "Pregledaj filtere",
 }: AnalyticsControlBarProps) {
+  const [filterDisclosureOpen, setFilterDisclosureOpen] = useState(
+    () => !isMobileFilterViewport(),
+  );
+
+  useEffect(() => {
+    if (!responsiveFilterLayout || typeof window.matchMedia !== "function") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const updateDisclosure = () => setFilterDisclosureOpen(!mediaQuery.matches);
+    updateDisclosure();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", updateDisclosure);
+    } else {
+      mediaQuery.addListener?.(updateDisclosure);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", updateDisclosure);
+      } else {
+        mediaQuery.removeListener?.(updateDisclosure);
+      }
+    };
+  }, [responsiveFilterLayout]);
+
+  const fieldsContent = (
+    <div className="analytics-control-bar__fields">
+      {fields.map((field) => (
+        <label
+          key={field.key}
+          className={`analytics-control-bar__field ${
+            field.span === "wide"
+              ? "analytics-control-bar__field--wide"
+              : ""
+          }`.trim()}
+        >
+          <span className="analytics-control-bar__field-label">
+            {field.label}
+          </span>
+          {field.control}
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <section
-      className="analytics-control-bar"
+      className={`analytics-control-bar${responsiveFilterLayout ? " analytics-control-bar--responsive-pilot" : ""}`}
       aria-label={title}
       data-testid="analytics-control-bar"
     >
@@ -134,23 +189,21 @@ export default function AnalyticsControlBar({
       ) : null}
 
       {fields.length > 0 ? (
-        <div className="analytics-control-bar__fields">
-          {fields.map((field) => (
-            <label
-              key={field.key}
-              className={`analytics-control-bar__field ${
-                field.span === "wide"
-                  ? "analytics-control-bar__field--wide"
-                  : ""
-              }`.trim()}
-            >
-              <span className="analytics-control-bar__field-label">
-                {field.label}
+        responsiveFilterLayout ? (
+          <details
+            className="analytics-control-bar__mobile-filters"
+            open={filterDisclosureOpen}
+            onToggle={(event) => setFilterDisclosureOpen(event.currentTarget.open)}
+          >
+            <summary className="analytics-control-bar__mobile-filter-summary">
+              <span>Filteri</span>
+              <span className="analytics-control-bar__mobile-filter-context">
+                {mobileFilterSummary}
               </span>
-              {field.control}
-            </label>
-          ))}
-        </div>
+            </summary>
+            {fieldsContent}
+          </details>
+        ) : fieldsContent
       ) : null}
     </section>
   );
