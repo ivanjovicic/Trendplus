@@ -39,6 +39,7 @@ import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTo
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL, SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE } from "../utils/supplierMetricSemantics";
+import { SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES } from "../utils/supplierBuyingValueEvidence";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { AnalyticsMetaError } from "../utils/analyticsResponseMeta";
@@ -2076,10 +2077,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <details className="supplier-buying-value-limitations" data-testid="supplier-buying-value-limitations">
                   <summary>Metričke koje nisu potvrđene u ovom izvoru</summary>
                   <ul>
-                    <li>Dani pokrića i sell-through: dostupni su po artiklu u Inventory listi, ali nije potvrđen agregat po dobavljaču.</li>
-                    <li>Bruto stopa povrata: ReturnFact izvor nije spojen sa Supplier agregatom u ovom promptu.</li>
-                    <li>Trend marže i top/bottom artikli po prodaji: zahtevaju zaseban periodizovan Supplier izvor.</li>
-                    <li>PO, rok isporuke i lead-time: nema potvrđenog autoritativnog izvora, zato nisu prikazani.</li>
+                    {SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
                   </ul>
                 </details>
               </>

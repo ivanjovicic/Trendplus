@@ -7,7 +7,7 @@ Current READY prompt: none (RQ532 DONE — negative source path)
 Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
 Owner promotion/claim 2026-10-02: idle recovery verified RQ520, RQ527 and RQ500 DONE on current `main`, found no active RQ532 lock/branch/PR collision, and promoted/claimed RQ532 for source discovery. Local lock: `.ai/task-locks/RQ532-codex.lock.md`; branch: `cursor/rq532-supplier-size-curve-78b0`.
 Queue reconciliation 2026-10-02: RQ532 DONE on negative source path — repository-owned supplier × footwear-type sold/received/on-hand by size remains absent; explicit unavailable evidence is now pinned in backend contract/tests, Supplier Asortiman UI, and run log. Future aggregation requires owner-approved source + DiD maturity/control contract. Run log: `.ai/runs/2026-10-02-RQ532-evidence.md`.
-Queue reconciliation 2026-10-02: RQ529 DONE on `main` — consolidated Supplier tabs use explicit tab/tabpanel semantics, all Supplier sortable tables publish `aria-sort`, date formatting is stable Serbian/UTC, duplicate store names retain stable IDs, and supplier metric headers expose accessible terminology help. RQ530 remains gated by its named dependencies; RQ531 remains owner-gated. Run log: `.ai/runs/2026-10-02-RQ529-evidence.md`.
+Queue reconciliation 2026-10-02: RQ530 PARTIAL on `main` — Supplier Pregled exposes Inventory snapshot buying signals (on-hand, estimated value, aging) with explicit unavailable metrics for supplier-aggregated cover/sell-through, returns, period margin trend, PO/lead-time; backend contract/tests pin proven vs absent sources. Full acceptance remains gated on RQ487 overview query-cost baseline. Run log: `.ai/runs/2026-10-02-RQ530-evidence.md`.
 Queue reconciliation 2026-10-02: RQ523 DONE on `main` — Pregled keeps backend population share when a supplier is focused; revenue rank badges only for descending sort; Asortiman control chips reflect applied filters with Serbian data-quality labels; assortment category persists in URL/canonical filters. RQ529 unblocked on RQ523. Run log: `.ai/runs/2026-10-02-RQ523-evidence.md`.
 Queue reconciliation 2026-10-02: RQ500 DONE on `main` — Supplier Pregled/Skorkarta/Asortiman first-screen KPIs match each tab's question; scorecard quality/risk metrics and assortment type/coverage/elasticity are primary; generic revenue/concentration metrics moved to secondary `<details>`; consolidated shell shows cross-tab role cue. RQ523/RQ529 dependency on RQ499 unchanged; RQ530 and RQ532 unblocked on RQ500. Run log: `.ai/runs/2026-10-02-RQ500-evidence.md`.
 Queue reconciliation 2026-10-02: RQ499 DONE on `main` — consolidated Supplier shell exposes critical/pending trust states, tab-specific fallback sources, scorecard signal-only mode, and no stale cross-tab trust flash. RQ523 is dependency-complete after RQ499; RQ500 waits on RQ498/RQ499 (both DONE). Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`.
@@ -726,7 +726,7 @@ RQ523 DONE and RQ499 DONE.
 
 ## RQ530 - Add Supplier buying-value panel with independently proven metrics
 
-Status: WAITING
+Status: PARTIAL
 Ready after: RQ522 DONE, RQ500 DONE, RQ524 evidence available, and RQ474/RQ487 make Overview reliably usable
 Priority: P2
 Type: backend/frontend/product/tests
@@ -765,6 +765,22 @@ Every metric has source/formula/unit/coverage/missing behavior and independent p
 ### Dependencies
 
 RQ522 DONE, RQ500 DONE and RQ524 evidence; RQ474/RQ487 make Overview usable.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: PARTIAL
+- Completion: Inventory snapshot buying signals (on-hand units, estimated inventory value, SKU/aging buckets, top aged items) ship on Supplier Pregled using cached Inventory balance/insights with store/supplier/dataScope filters. Extended buyer metrics (supplier-aggregated cover/sell-through, gross return rate, equal-period margin trend, sales top/bottom, PO/lead-time) remain explicitly unavailable with pinned reason codes in `SupplierBuyingValueEvidenceContract`, contract tests, shared frontend copy, and the limitations panel. RQ487 (overview query-cost baseline) is still WAITING in the canonical queue.
+- Changed files: `Application/Analytics/SupplierBuyingValueEvidenceContract.cs`, `Api.Tests/SupplierBuyingValueEvidenceContractTests.cs`, `Klijent/clientapp/src/utils/supplierBuyingValueEvidence.ts`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/SupplierSalesStatsPage.css`, `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `.ai/runs/2026-10-02-RQ530-evidence.md`
+- Contract/runtime behavior changed: additive Inventory snapshot panel; no fake zero for missing buying metrics; no PO/lead-time or unproven aggregates.
+- Checks run: `SupplierBuyingValueEvidenceContractTests`, focused `SupplierSalesStatsPage.premium.spec.tsx`, `npm run check:analytics-guardrails`, `node scripts/check-prompt-queues.mjs` (after queue edit)
+- Checks not run: full backend/frontend suites; live RQ487 EXPLAIN/timing baseline.
+- Run log: `.ai/runs/2026-10-02-RQ530-evidence.md`
+- Evidence state: pending main SHA sync after delivery
+- Delivery mode: direct-main
+- Missed: supplier-aggregated cover/sell-through/returns/margin trend and PO/lead-time await authoritative endpoints and RQ487 performance acceptance.
+- Follow-up: promote RQ487 or a successor prompt for overview query bounds; extend buying panel when periodized supplier metrics are proven.
+- Residual risk: Inventory snapshot is current-state only and must not be read as period sales or as overriding Supplier recommendation semantics.
 
 ---
 
