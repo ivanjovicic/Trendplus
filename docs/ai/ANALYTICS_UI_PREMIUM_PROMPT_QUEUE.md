@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-27 DONE; P-UI-28 requires fresh collision check)
+Current READY prompt: none (P-UI-28 DONE; re-enter idle recovery)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -33,7 +33,7 @@ Use with:
 | P-UI-25 | DONE | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
 | P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
-| P-UI-28 | WAITING | responsive-filter-bar | Responsive filter pilot with semantics frozen |
+| P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
 | P-UI-29 | WAITING | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
@@ -1589,9 +1589,12 @@ Several shared primitives have viewport/touch problems: `Modal` has fixed minimu
 
 ---
 
+Owner promotion/claim 2026-10-02: canonical idle recovery found no claimable BCI/STAB/RQ/QDB/MT/GAI work; remaining higher-priority RQ/STAB items require provider access or owner decisions. P-UI-24 and P-UI-25 are DONE. Fresh collision check found no P-UI-28 lock, branch or open PR; InventoryPage's RQ427 ownership is DONE, and no current RQ prompt owns its filter layout. P-UI-28 moved WAITING -> READY -> IN_PROGRESS with InventoryPage as the one pilot; AnalyticsControlBar filter values, defaults, URL state and request mapping remain frozen. Local lock: `.ai/task-locks/P-UI-28-codex.lock.md`.
+
 ## P-UI-28 - Build a responsive FilterBar pilot without changing filter semantics
 
-Status: WAITING
+Status: DONE
+Claimed: 2026-10-02 by Codex after fresh path/branch/PR/lock collision check; pilot is InventoryPage.
 Ready after: P-UI-24 and P-UI-25
 Priority: P1
 Type: frontend/component/tests
@@ -1609,6 +1612,25 @@ Analytics pages duplicate compact 13px decision-field/filter CSS. On narrow scre
 - `AnalyticsControlBar.css` owns a shared 4/2/1-column control pattern but remains 13px.
 - Multiple decision pages duplicate field CSS.
 - Supplier filters already become non-sticky below 900px; the remaining issue is density/one-column length at <=768px, not a mobile sticky bug.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: delivered the InventoryPage responsive filter pilot. A mobile summary and accessible disclosure shorten the filter stack; pilot-only auto-fit sizing prevents control overflow. Filter values/defaults, URL state and request behavior remain unchanged.
+- Changed files: `AnalyticsControlBar.tsx`, `AnalyticsControlBar.css`, `InventoryPage.tsx`, `AnalyticsControlBar.spec.tsx`, `responsive_baseline.mjs`, and the P-UI queue/roadmap/evidence files.
+- Checks run: focused component/recovery tests 10/10; Inventory period/URL suite passed; one combined queue-status assertion timed out but its isolated rerun passed; typecheck, build, analytics guardrails, five-width light viewport baseline (0/5 root overflow; 0 page errors), queue/planning/instruction validators and `git diff --check` passed.
+- Checks not run: dark-theme and full-page Inventory browser captures (prior Puppeteer timeout); full frontend test suite (focused owner coverage was selected).
+- Run log: `.ai/runs/2026-10-02-P-UI-28-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `512f276a92f5cef539608f77a768c43cef286f71`
+- Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA.
+- Prompt defect / scope repair: responsive baseline runner lacked Inventory route isolation and viewport-only capture; targeted options were added to make browser evidence reliable.
+- Residual risk: dark-theme/full-page screenshot capture timed out in prior attempts; the final light-theme viewport-only matrix passed. Build retains its existing large `recharts` chunk warning.
+- Missed: no product behavior or filter semantics known to be missing.
+- Follow-up: canonical idle recovery and collision check for P-UI-29.
+- Next: canonical idle recovery and collision check for P-UI-29.
 
 ### Scope
 
