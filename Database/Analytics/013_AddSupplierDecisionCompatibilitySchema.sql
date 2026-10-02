@@ -126,11 +126,13 @@ SELECT
     slf."Qty" AS kolicina,
     slf."UnitPrice" AS cena,
     slf."NabavnaCena" AS nabavna_cena,
+    slf."DataOrigin" AS data_origin,
     -- Analytics fact history may predate sale-time supplier attribution.
     -- Keep the compatibility contract explicit; NULL means unknown evidence,
     -- never a fabricated current-supplier assignment.
-    NULL::integer AS supplier_id_at_sale,
-    slf."DataOrigin" AS data_origin
+    -- Keep new compatibility columns appended so CREATE OR REPLACE VIEW remains
+    -- compatible with databases that already have the legacy data_origin column.
+    NULL::integer AS supplier_id_at_sale
 FROM "SalesLineFacts" slf;
 
 CREATE OR REPLACE VIEW "DnevnikPromena" AS

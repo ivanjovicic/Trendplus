@@ -128,6 +128,8 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.True(await CanRefreshConcurrentlyAsync(
             connection,
             "mv_supplier_decision_score_cache_180d"));
+        Assert.Equal(7, await GetColumnOrdinalAsync(connection, "prodaja_stavke", "data_origin"));
+        Assert.Equal(8, await GetColumnOrdinalAsync(connection, "prodaja_stavke", "supplier_id_at_sale"));
     }
 
     [Fact]
@@ -289,6 +291,19 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
             VALUES (1, 1, 1001, 1, 80, 80, 40)
             ON CONFLICT DO NOTHING;
 
+            -- Existing analytics installations already have this legacy view.
+            -- Its data_origin column must keep its ordinal when new columns are appended.
+            CREATE VIEW prodaja_stavke AS
+            SELECT
+                "Id" AS id,
+                "SaleId" AS id_prodaja,
+                "ProductId" AS id_artikal,
+                "Qty" AS kolicina,
+                "UnitPrice" AS cena,
+                "NabavnaCena" AS nabavna_cena,
+                "DataOrigin" AS data_origin
+            FROM "SalesLineFacts";
+
             INSERT INTO "InventoryMovementFacts" (
                 "SourceId", "TipPromene", "Datum", "ArtikalId", "Kolicina",
                 "StaraProdajnaCena", "NovaProdajnaCena", "Iznos", "DobavljacId"
@@ -341,6 +356,24 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
                   AND table_name = @relationName
                   AND column_name = @columnName
             );
+            """,
+            ("relationName", relationName),
+            ("columnName", columnName));
+    }
+
+    private static Task<int> GetColumnOrdinalAsync(
+        NpgsqlConnection connection,
+        string relationName,
+        string columnName)
+    {
+        return ScalarAsync<int>(
+            connection,
+            """
+            SELECT ordinal_position
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = @relationName
+              AND column_name = @columnName;
             """,
             ("relationName", relationName),
             ("columnName", columnName));
