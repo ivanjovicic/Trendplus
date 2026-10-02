@@ -24,6 +24,7 @@ import {
   SUPPLIER_ASSORTMENT_POST_WINDOW_REVENUE_LABEL,
   SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE,
 } from "../utils/supplierMetricSemantics";
+import { SUPPLIER_ASSORTMENT_SECONDARY_KPI_TITLE } from "../utils/supplierTabInformationHierarchy";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -607,6 +608,32 @@ export default function SupplierFootwearAnalyticsPage({
     immature: sortedRows.filter((row) => row.status === "immature").length,
     insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
+  const topTypeSharePct = typeInsights.globalTypeShare[0]?.sharePct ?? null;
+  const top3TypeConcentrationPct = useMemo(
+    () => typeInsights.globalTypeShare.slice(0, 3).reduce((sum, item) => sum + (item.sharePct ?? 0), 0),
+    [typeInsights.globalTypeShare],
+  );
+  const comparableCoveragePct = normalizeMetricNumber(data?.dataQuality?.comparableSharePercent);
+  const activeArticlesSummary = data?.totals
+    ? `${data.totals.activeArticlesCount ?? 0} / ${data.totals.articlesCount ?? 0}`
+    : "N/A";
+  const weightedTypeElasticity = useMemo(() => {
+    if (data?.typeInsightsAuthoritative !== true) return null;
+    const weighted = sortedRows
+      .filter((row) => row.topFootwearTypeSharePct != null && row.avgElasticity != null)
+      .reduce(
+        (acc, row) => {
+          const weight = row.topFootwearTypeSharePct ?? 0;
+          acc.weight += weight;
+          acc.value += (row.avgElasticity ?? 0) * weight;
+          return acc;
+        },
+        { weight: 0, value: 0 },
+      );
+    if (weighted.weight <= 0) return null;
+    return weighted.value / weighted.weight;
+  }, [data?.typeInsightsAuthoritative, sortedRows]);
+  const assortmentEffectSummary = `Pozitivan ${vendorCounts.effective} | Neutralan ${vendorCounts.neutral} | Slab ${vendorCounts.ineffective} | U toku ${vendorCounts.immature} | Nedovoljno ${vendorCounts.insufficientData}`;
   const selectedRow = useMemo(() => (!expandedVendorKey ? null : sortedRows.find((row) => row.vendorRowKey === expandedVendorKey) ?? null), [expandedVendorKey, sortedRows]);
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
@@ -945,13 +972,25 @@ export default function SupplierFootwearAnalyticsPage({
             </div>
           )}
 
-          <section className="sf-decision-kpis">
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Zbir post-prozora prodaje uporedive kohorte nivelacija, ne sertifikovana prodaja u periodu."><span>{SUPPLIER_ASSORTMENT_POST_WINDOW_REVENUE_LABEL}</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note={SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE}><span>Udeo top 5 dobavljača (asortiman)</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće koji trenutno nosi najveći deo prometa."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>
+          <section className="sf-decision-kpis" data-testid="supplier-assortment-primary-kpis">
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće sa najvećim udelom u uporedivoj kohorti."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Udeo dominantnog tipa u post-prozoru uporedive kohorte."><span>Udeo dominantnog tipa</span><strong>{formatMetricDisplayValue({ value: topTypeSharePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliko prometa drže tri najjača tipa obuće."><span>Koncentracija top 3 tipa</span><strong>{formatMetricDisplayValue({ value: top3TypeConcentrationPct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Deo redova sa uporedivim pre/post prozorom prodaje."><span>Uporediva kohorta</span><strong>{formatMetricDisplayValue({ value: comparableCoveragePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Aktivni artikli sa prodajom u post-prozoru naspram ukupno analiziranih."><span>Aktivni / ukupno artikala</span><strong>{activeArticlesSummary}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Prosečna elastičnost tipa ponderisana udelom u dobavljačkom redu."><span>Prosečna elastičnost tipa</span><strong>{formatMetricDisplayValue({ value: weightedTypeElasticity, kind: "number", digits: 2 })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Raspodela efekta promene cene po dobavljaču u uporedivoj kohorti."><span>Efekat promene cene</span><strong className="sf-decision-kpi-signal-summary">{assortmentEffectSummary}</strong></article>
           </section>
+
+          <details className="sf-decision-kpi-secondary" data-testid="supplier-assortment-secondary-kpis">
+            <summary>{SUPPLIER_ASSORTMENT_SECONDARY_KPI_TITLE}</summary>
+            <div className="sf-decision-kpi-secondary-grid">
+              <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Zbir post-prozora prodaje uporedive kohorte."><span>{SUPPLIER_ASSORTMENT_POST_WINDOW_REVENUE_LABEL}</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
+              <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note={SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE}><span>Udeo top 5 dobavljača (asortiman)</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
+              <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
+              <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
+            </div>
+          </details>
 
           <section className="sf-decision-panels">
             <article className="sf-decision-card analytics-surface-panel">

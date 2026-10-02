@@ -3,6 +3,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import React, { useEffect, useRef } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
+import { SUPPLIER_TAB_ROLE_CUE } from "../../utils/supplierTabInformationHierarchy";
 import { getStores, getSupplierFilters } from "../../services/analyticsApi";
 
 vi.mock("../../services/analyticsApi", () => ({
@@ -205,6 +206,9 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
+    expect(screen.getByTestId("supplier-tab-role-cue")).toHaveTextContent(
+      SUPPLIER_TAB_ROLE_CUE[tab],
+    );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();

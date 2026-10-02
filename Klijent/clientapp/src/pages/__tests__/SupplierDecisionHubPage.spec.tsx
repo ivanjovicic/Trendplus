@@ -192,9 +192,24 @@ describe("SupplierDecisionHubPage", () => {
     renderPage();
 
     await screen.findByTestId("supplier-decision-hub-data-table");
-    expect(screen.getByText("500.000 RSD")).toBeInTheDocument();
-    expect(screen.getByText("123.456 RSD")).toBeInTheDocument();
-    expect(screen.getByText("40,0%")).toBeInTheDocument();
+    const secondary = screen.getByTestId("supplier-scorecard-secondary-kpis");
+    expect(within(secondary).getByText("500.000 RSD")).toBeInTheDocument();
+    expect(within(secondary).getByText("123.456 RSD")).toBeInTheDocument();
+    expect(within(secondary).getByText("40,0%")).toBeInTheDocument();
+  });
+
+  it("promotes scorecard quality metrics in the primary KPI band", async () => {
+    installFetchMock();
+
+    renderPage();
+
+    const primary = await screen.findByTestId("supplier-scorecard-primary-kpis");
+    expect(within(primary).getByText(/Udeo prodaje po punoj ceni/i)).toBeInTheDocument();
+    expect(within(primary).getByText(/Kapital u riziku/i)).toBeInTheDocument();
+    expect(within(primary).queryByText(/Prihod skorkarte/i)).not.toBeInTheDocument();
+
+    const secondary = screen.getByTestId("supplier-scorecard-secondary-kpis");
+    expect(within(secondary).getByText(/Kontekst kohorte skorkarte/i)).toBeInTheDocument();
   });
 
   it("hides standalone title, trust header and filters when embedded", async () => {

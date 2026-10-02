@@ -30,7 +30,7 @@ import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
 import SupplierFootwearAnalyticsPage from "./SupplierFootwearAnalyticsPage";
 import type { SupplierPeriodPreset, SupplierTab } from "./supplierSharedState";
 import type { SupplierTrustHeaderPayload } from "./supplierSharedState";
-import { SUPPLIER_TABS } from "./supplierSharedState";
+import { SUPPLIER_TAB_ROLE_CUE } from "../utils/supplierTabInformationHierarchy";
 import { useSupplierCanonicalState } from "./useSupplierCanonicalState";
 import "./SupplierConsolidatedPage.css";
 
@@ -484,6 +484,10 @@ export default function SupplierConsolidatedPage() {
           </button>
         ))}
       </nav>
+
+      <p className="supplier-tab-role-cue" data-testid="supplier-tab-role-cue">
+        {SUPPLIER_TAB_ROLE_CUE[currentTab]}
+      </p>
 
       <section className="supplier-consolidated-context" aria-label="Kako čitati ekran dobavljača">
         <article className="supplier-consolidated-context-card supplier-consolidated-context-card--primary">

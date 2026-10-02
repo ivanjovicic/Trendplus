@@ -325,6 +325,16 @@
   display: none;
 }
 
+.supplier-tab-role-cue {
+  margin: 0;
+  padding: 0.65rem 2rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background-color: var(--surface-default);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent);
+}
+
 .supplier-consolidated-context {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

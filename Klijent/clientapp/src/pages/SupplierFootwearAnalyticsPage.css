@@ -197,6 +197,37 @@
   margin-bottom: 14px;
 }
 
+.sf-decision-kpi-secondary {
+  margin: 0 0 14px;
+  border: 1px dashed color-mix(in srgb, var(--border-default) 70%, var(--text-secondary) 30%);
+  border-radius: 12px;
+  padding: 0.35rem 0.75rem 0.75rem;
+  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--text-secondary) 8%);
+}
+
+.sf-decision-kpi-secondary > summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0.35rem 0.15rem;
+  list-style-position: inside;
+}
+
+.sf-decision-kpi-secondary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-top: 0.5rem;
+}
+
+.sf-decision-kpi-signal-summary {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
 .sf-decision-kpi:not(.analytics-kpi-card) {
   background: linear-gradient(165deg, color-mix(in srgb, var(--surface-elevated) 86%, var(--success) 14%), var(--surface-darker));
   border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);

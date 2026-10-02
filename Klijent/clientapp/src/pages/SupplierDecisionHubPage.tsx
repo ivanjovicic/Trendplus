@@ -42,14 +42,14 @@ import {
 } from "../services/supplierDecisionHubApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
-import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, fmtSignedPctPoints, getPresetRange } from "../utils/analyticsFormatters";
+import { formatDate, fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, fmtSignedPctPoints, getPresetRange } from "../utils/analyticsFormatters";
 import {
   SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL,
   SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL,
   SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL,
   SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL,
-  SUPPLIER_TOP5_SHARE_SCORECARD_NOTE,
 } from "../utils/supplierMetricSemantics";
+import { SUPPLIER_SCORECARD_SECONDARY_KPI_TITLE } from "../utils/supplierTabInformationHierarchy";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
@@ -690,6 +690,12 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     reduce: sortedRows.filter((row) => row.status === "do_not_trust").length,
     insufficient: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
+  const scorecardSignalSummary = useMemo(() => {
+    if (!recommendationAllowed) {
+      return `Pomoćni signal: ${supplierCounts.insufficient} dobavljača | konačna odluka u Pregledu`;
+    }
+    return `Pojačaj ${supplierCounts.boost} | Zadrži ${supplierCounts.keep} | Oprez ${supplierCounts.caution} | Smanji ${supplierCounts.reduce} | Nedovoljno ${supplierCounts.insufficient}`;
+  }, [recommendationAllowed, supplierCounts]);
   const zeroStateExplanation = useMemo(() => {
     if (!summary || !ranking) return null;
 
@@ -1534,35 +1540,39 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <strong>Obuhvat podataka:</strong> {trustMetadata?.dataNote ?? summary.dataNote ?? ranking.dataNote}
             </div>
           ) : null}
-          <section className="sdh-decision-kpis">
+          <section className="sdh-decision-kpis" data-testid="supplier-scorecard-primary-kpis">
             <article className="sdh-decision-kpi">
               <span>
-                {SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL}
-                <InfoTip text="Zbir prihoda za sve učitane dobavljače u skorkarti. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od sertifikovane prodaje u tabu Pregled." />
+                Udeo prodaje po punoj ceni
+                <InfoTip text="Deo prihoda skorkarte ostvaren prodajom po punoj ceni u kohorti prve nivelacije." />
               </span>
-              <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
-              <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan prihod" />
+              <strong>{fmtPctFromRatio(summary.fullPriceRevenueShare, 1)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
-                Udeo top 5 dobavljača
-                <InfoTip text={`${SUPPLIER_TOP5_SHARE_SCORECARD_NOTE} Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera.`} />
+                Udeo prodaje iz nivelacija
+                <InfoTip text="Deo prihoda skorkarte vezan za prodaju posle sniženja (nivelacija)." />
               </span>
-              <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
-              <KpiExplainButton metricKey="topSupplierRevenueShare" />
+              <strong>{fmtPctFromRatio(summary.markdownRevenueShare, 1)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
-                {SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL}
-                <InfoTip text="Procena maržnog doprinosa u skorkarti: prihod od prodaje po punoj ceni ponderisan pre-markdown maržom. Nije isto što i maržni doprinos sertifikovane prodaje u tabu Pregled." />
+                Prodajnost po punoj ceni
+                <InfoTip text="Odnos prodaje po punoj ceni prema potencijalu punog asortimana u skorkarti." />
               </span>
-              <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
-              <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat ukupan maržni doprinos" />
+              <strong>{fmtPctFromRatio(summary.fullPriceSellthrough, 1)}</strong>
+            </article>
+            <article className="sdh-decision-kpi">
+              <span>
+                Marža pre sniženja
+                <InfoTip text="Prosečna marža pre prve nivelacije u kohorti skorkarte." />
+              </span>
+              <strong>{fmtPct(toSupplierDecisionMarginPercentUnits(summary.preMarkdownMarginPct), 1)}</strong>
             </article>
             <article className="sdh-decision-kpi">
               <span>
                 Kapital u riziku
-                <InfoTip text="Procena vrednosti neprodate ili sporo rotirajuće zalihe kod prikazanih dobavljača. Niža vrednost je bolja; visoka vrednost traži proveru nabavke i zaliha." />
+                <InfoTip text="Procena vrednosti neprodate ili sporo rotirajuće zalihe kod prikazanih dobavljača." />
               </span>
               <strong className="trend-down">{formatMetricDisplayValue({ value: summary.capitalAtRisk ?? null, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="stockAtRisk" ariaLabel="Kako je izračunat lager u riziku" />
@@ -1570,16 +1580,41 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 {SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL}
-                <InfoTip text="Razlika udela prodaje po punoj ceni u odnosu na prethodni isti period, izražena u procentnim poenima (pp). Npr. sa 58% na 62% = +4 pp, ne +4% rasta." />
+                <InfoTip text="Razlika udela prodaje po punoj ceni u odnosu na prethodni isti period, u procentnim poenima (pp)." />
               </span>
               <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPctPoints(fullPriceDeltaPctPoints)}</strong>
               <KpiExplainButton metricKey="fullPriceShareChange" ariaLabel="Kako je izračunata promena udela pune cene" />
             </article>
+            <article className="sdh-decision-kpi">
+              <span>
+                Signal skorkarte (raspodela)
+                <InfoTip text="Serverska raspodela signala skorkarte po dobavljačima; nije konačna poslovna preporuka iz Pregleda." />
+              </span>
+              <strong className="sdh-decision-kpi-signal-summary">{scorecardSignalSummary}</strong>
+            </article>
           </section>
+
+          <details className="sdh-decision-kpi-secondary" data-testid="supplier-scorecard-secondary-kpis">
+            <summary>{SUPPLIER_SCORECARD_SECONDARY_KPI_TITLE}</summary>
+            <div className="sdh-decision-kpi-secondary-grid">
+              <article className="sdh-decision-kpi">
+                <span>{SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL}</span>
+                <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
+              </article>
+              <article className="sdh-decision-kpi">
+                <span>Udeo top 5 dobavljača</span>
+                <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
+              </article>
+              <article className="sdh-decision-kpi">
+                <span>{SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL}</span>
+                <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
+              </article>
+            </div>
+          </details>
 
           <section className="sdh-decision-panels">
             <article className="sdh-decision-card">
-              <h2>Koncentracija prihoda</h2><p>Grafikon pokazuje koliko prihoda u skupu skorkarte nose najveći dobavljači. Visoka koncentracija znači da promena uslova ili kvaliteta kod jednog dobavljača može jače uticati na rezultat.</p>
+              <h2>Udeo dobavljača u skorkarti</h2><p>Prikazuje udeo prihoda u kohorti skorkarte, ne generičan promet iz taba Pregled.</p>
               {concentrationData.length > 0 ? (
                 <div className="sdh-decision-chart-wrap">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>

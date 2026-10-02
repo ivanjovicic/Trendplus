@@ -199,6 +199,22 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači i tipovi obuće" })).toBeInTheDocument();
   });
 
+  it("promotes type and coverage metrics in the primary KPI band", async () => {
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const primary = await screen.findByTestId("supplier-assortment-primary-kpis");
+    expect(within(primary).getByText("Dominantan tip obuće")).toBeInTheDocument();
+    expect(within(primary).getByText("Uporediva kohorta")).toBeInTheDocument();
+    expect(within(primary).queryByText(/Post-prozor promet/i)).not.toBeInTheDocument();
+
+    const secondary = screen.getByTestId("supplier-assortment-secondary-kpis");
+    expect(within(secondary).getByText(/Post-prozor promet/i)).toBeInTheDocument();
+  });
+
   it("does not derive type insights from truncated article detail", async () => {
     const baseResponse = await getVendorSalesNivelacija({});
     vi.mocked(getVendorSalesNivelacija).mockResolvedValueOnce({
