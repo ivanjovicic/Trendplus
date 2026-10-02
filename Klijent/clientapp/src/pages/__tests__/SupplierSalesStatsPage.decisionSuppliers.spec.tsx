@@ -108,6 +108,7 @@ describe("buildDecisionSuppliers", () => {
     }));
 
     const projection = buildSupplierSalesDisplayProjection([rows[0]!], {
+      basis: "visible_rows",
       positiveNetRevenueDenominator: 15000,
     });
 

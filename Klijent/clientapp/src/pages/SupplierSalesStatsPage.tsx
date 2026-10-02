@@ -760,13 +760,14 @@ export function buildSupplierSalesDisplayProjection(
   rows: readonly DecisionSupplier[],
   previousPeriodSource: SupplierSalesPreviousPeriodSource = { basis: "visible_rows" },
 ): SupplierSalesDisplayProjection {
+  const previousPeriodBasis = previousPeriodSource.basis ?? "visible_rows";
   const totalRevenue = sumFiniteDecisionMetric(rows, (row) => row.ukupanPromet);
   const totalUnits = sumFiniteDecisionMetric(rows, (row) => row.ukupnaKolicina);
   const totalCost = sumFiniteDecisionMetric(rows, (row) => row.totalCost);
   const totalMarginContribution = sumFiniteDecisionMetric(rows, (row) => row.marginContribution);
-  const previousPeriodRevenue = previousPeriodSource.basis === "response_totals"
+  const previousPeriodRevenue = previousPeriodBasis === "response_totals"
     ? finiteOrNull(previousPeriodSource.responsePreviousPeriodRevenue)
-    : previousPeriodSource.basis === "visible_rows"
+    : previousPeriodBasis === "visible_rows"
       ? sumFiniteDecisionMetric(rows, (row) => row.previousPeriodRevenue)
       : null;
   const totalRevenueDenominator = finiteOrNull(previousPeriodSource.positiveNetRevenueDenominator)
@@ -798,7 +799,7 @@ export function buildSupplierSalesDisplayProjection(
     totalCost,
     totalMarginContribution,
     previousPeriodRevenue,
-    previousPeriodBasis: previousPeriodSource.basis,
+    previousPeriodBasis,
     periodGrowthPct: calculateDisplayPopChange(totalRevenue, previousPeriodRevenue),
     displaySupplierCount: displayRows.length,
     knownSupplierCount: displayRows.filter((row) => !row.isUnknown).length,

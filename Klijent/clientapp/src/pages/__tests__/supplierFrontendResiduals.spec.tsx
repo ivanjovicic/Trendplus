@@ -35,7 +35,7 @@ describe("supplier frontend residuals (RQ523)", () => {
   it("keeps declared-population share when only one supplier row is projected", () => {
     const projection = buildSupplierSalesDisplayProjection(
       [{ ukupanPromet: 10_000, isUnknown: false, sharePct: 40 } as never],
-      { positiveNetRevenueDenominator: 15_000 },
+      { basis: "visible_rows", positiveNetRevenueDenominator: 15_000 },
     );
 
     expect(projection.rows[0]?.sharePct).toBeCloseTo(66.6667, 3);
@@ -49,16 +49,15 @@ describe("supplier frontend residuals (RQ523)", () => {
     );
 
     await waitFor(() => {
-      expect(getVendorSalesNivelacija).toHaveBeenCalled();
+      expect(getVendorSalesNivelacija).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "Patike" }),
+      );
     });
-
-    const categoryField = await screen.findByLabelText("Kategorija");
-    expect(categoryField).toHaveValue("Patike");
 
     fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
-    expect(within(controlBar).getByText(/Patike/)).toBeInTheDocument();
+    expect(within(controlBar).getByText("Patike")).toBeInTheDocument();
     expect(within(controlBar).queryByText(/^good$/i)).not.toBeInTheDocument();
   });
 

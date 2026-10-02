@@ -322,6 +322,12 @@ export default function SupplierFootwearAnalyticsPage({
   ), [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, category, fromDate, toDate, vendorId]);
 
   useEffect(() => {
+    if (sharedFilters) return;
+    const urlCategory = searchParams.get("category")?.trim() ?? "";
+    setCategory(urlCategory);
+  }, [searchParams, sharedFilters]);
+
+  useEffect(() => {
     if (embedded || sharedFilters?.dataScope || urlDataScopeParam) return;
     const handleScopeChange = () => {
       setPersistedDataScope(getDataScope());
