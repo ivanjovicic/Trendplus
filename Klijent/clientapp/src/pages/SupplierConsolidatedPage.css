@@ -379,6 +379,11 @@
   background: color-mix(in srgb, var(--danger, #ef4444) 10%, var(--surface-default));
 }
 
+.supplier-consolidated-context-card--neutral {
+  border-color: var(--border-default);
+  background: var(--surface-subtle, var(--surface-default));
+}
+
 .supplier-counting-basis {
   margin: 0.85rem 2rem 0;
   border: 1px solid var(--border-default);
