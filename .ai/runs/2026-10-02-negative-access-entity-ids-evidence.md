@@ -4,9 +4,10 @@ Date: 2026-10-02
 Agent/tool: Cursor agent
 Delivery target: main
 Working branch / PR: main (direct)
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 0360442dfa66ef4719a2f14718a573a0a5244dc2
+Main verification: passed - origin/main contains 0360442dfa66ef4719a2f14718a573a0a5244dc2 (rebased onto docs-only fc2d461d)
+CI at delivery: Analytics Quality Gates 37023569177 in_progress; Analytics Tests & Data Integrity 37023569561 in_progress
+Evidence state: synchronized
 
 ## What was done
 - Access "Random AutoNumber" IDs are negative for suppliers, shoe types and stores (e.g. Ž.Cipela -2004188974, store -598733481). Extended the Daily Sales supplier fix (1ed9c9e) to every analytics surface.
