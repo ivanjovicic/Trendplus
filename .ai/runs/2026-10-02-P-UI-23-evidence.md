@@ -36,11 +36,11 @@ Evidence state: synchronized
 - `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs` -> pass.
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (671 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (79 new planning tasks checked).
-- GitHub Actions run `37018019549` (`Analytics Quality Gates`) on SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` -> in_progress at inspection; no red failure to classify.
+- GitHub Actions run `37018019549` (`Analytics Quality Gates`) on SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` -> fail in `Run analytics tests`: 135 passed / 3 failed in `AnalyticsDashboard.tableSystem.spec.tsx`, `InventoryPage.queueStatus.spec.tsx`, and `InventoryPage.signalWindow.spec.tsx`. These page/spec paths are unchanged and outside P-UI-23; the queue-status spec also failed on earlier pre-P-UI-23 run `37015705322`.
 
 ## Validation not run
 - Full `npm run lint` after the selected repair -> not run; P-UI-23 explicitly limits work to the selected slice, and unrelated baseline errors are out of scope.
-- GitHub Actions completion -> not awaited; run `37018019549` was in progress at inspection and is recorded as residual risk, not as validation proof.
+- Remaining Analytics Quality Gates failures -> not repaired in this P-UI-23 lint slice; they belong to Dashboard and Inventory owners and need a separate classified follow-up.
 
 ## Documentation impact
 - Updated the owning P-UI queue and roadmap plus `MASTER_ROADMAP.md` to record DONE, exact before/after lint counts, delivery SHA, current READY none and P-UI-38 dependency truth.
@@ -51,7 +51,7 @@ Evidence state: synchronized
 ## Risks
 - Repository-wide lint still has 108 errors / 226 warnings from unrelated files.
 - Existing Recharts chunk-size build warning remains.
-- Current-main Analytics Quality Gates run `37018019549` was in progress when recorded.
+- Analytics Quality Gates is red on implementation SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` due three failures in unchanged Dashboard/Inventory specs; no touched P-UI-23 spec failed.
 - Physical-device behavior was not part of this lint task.
 
 ## Next

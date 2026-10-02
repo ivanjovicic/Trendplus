@@ -1156,7 +1156,7 @@ After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and 
 
 ## P-UI-23 - Reduce frontend lint errors in bounded trust-sensitive slices
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend/tests/hygiene
 Feature family: frontend-lint-baseline
@@ -1219,7 +1219,7 @@ The frontend lint command still reports a legacy backlog even though typecheck, 
 
 Owner promotion/claim 2026-10-02: after P-UI-37 delivery, fresh cross-program routing confirmed BCI has no READY/IN_PROGRESS prompt, STAB16 remains blocked on external provider evidence, RQ Current READY is none, and QDB/MT/GAI remain behind their named gates. `npm run lint` established 108 errors and 226 warnings; a structured diagnostic isolated seven Fast Refresh export errors and one unused-import warning in the shared Pilot Data Quality Intake Report component. No active RQ owner/lock/branch/PR overlaps this shared-component-only lint slice; prior RQ pilot-intake work is delivered. P-UI-23 moved WAITING -> READY -> IN_PROGRESS for the bounded component/helper extraction and its focused tests. Local lock `.ai/task-locks/P-UI-23-codex.lock.md` was removed before delivery.
 
-Owner completion 2026-10-02: P-UI-23 moved IN_PROGRESS -> DONE. The shared report exports/trust-state helpers were moved unchanged into `pilotDataQualityIntakeReportHelpers.ts`; the unused `KpiExplainButton` import was removed and nearest tests now import pure helpers from the `.ts` module. Baseline for selected files: 7 errors / 1 warning; after: 0 errors / 0 warnings. Full lint baseline remains 108 errors / 226 warnings; no unrelated lint slices were changed. Focused specs pass 14/14, analytics guardrails/typecheck/build pass, and `git diff --check` passes. Implementation SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` was pushed to and freshly verified on `origin/main`; Analytics Quality Gates run `37018019549` for this SHA was `in_progress` at inspection. Run log: `.ai/runs/2026-10-02-P-UI-23-evidence.md`. Evidence state: synchronized. P-UI-38 remains WAITING until P-UI-31/35/36 core migrations are DONE or an owner explicitly defers those slices.
+Owner completion 2026-10-02: P-UI-23 moved IN_PROGRESS -> DONE. The shared report exports/trust-state helpers were moved unchanged into `pilotDataQualityIntakeReportHelpers.ts`; the unused `KpiExplainButton` import was removed and nearest tests now import pure helpers from the `.ts` module. Baseline for selected files: 7 errors / 1 warning; after: 0 errors / 0 warnings. Full lint baseline remains 108 errors / 226 warnings; no unrelated lint slices were changed. Focused specs pass 14/14, analytics guardrails/typecheck/build pass, and `git diff --check` passes. Implementation SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` was pushed to and freshly verified on `origin/main`. Analytics Quality Gates run `37018019549` completed red at `Run analytics tests` (135 passed, 3 failed): `AnalyticsDashboard.tableSystem.spec.tsx`, `InventoryPage.queueStatus.spec.tsx`, and `InventoryPage.signalWindow.spec.tsx`. These specs and their owning page paths are outside P-UI-23; the queue-status failure is also present on earlier pre-P-UI-23 run `37015705322`. The two changed pilot-intake specs pass both locally and on the focused local run; no P-UI-23 regression is evidenced. Run log: `.ai/runs/2026-10-02-P-UI-23-evidence.md`. Evidence state: synchronized. P-UI-38 remains WAITING until P-UI-31/35/36 core migrations are DONE or an owner explicitly defers those slices.
 
 
 ---
