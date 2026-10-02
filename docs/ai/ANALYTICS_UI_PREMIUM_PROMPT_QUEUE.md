@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-33 (IN_PROGRESS; Central Actions responsive migration)
+Current READY prompt: P-UI-37 (IN_PROGRESS; Article List responsive migration)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -38,11 +38,11 @@ Use with:
 | P-UI-30 | DONE | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
-| P-UI-33 | IN_PROGRESS | central-actions-responsive | Central Actions responsive migration |
+| P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
-| P-UI-37 | WAITING | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
+| P-UI-37 | IN_PROGRESS | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 
 ---
@@ -1765,7 +1765,7 @@ Commit suggestion: `feat(analytics-ui): pilot responsive data table`
 
 ## P-UI-30 - Harden mobile data-entry workflows for sales, goods receipt and price changes
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-25 and P-UI-26
 Priority: P1
 Type: frontend/workflow/tests
@@ -1984,7 +1984,7 @@ Owner promotion/claim 2026-10-02: after P-UI-32, idle recovery reconciled stale 
 
 ## P-UI-33 - Migrate Central Actions to responsive filters, table and dialogs
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-27, P-UI-28 and P-UI-29
 Priority: P1
 Type: frontend/page/tests
@@ -2041,6 +2041,26 @@ Central Actions combines compact filters, a wide actions table and page-specific
 - No active action-queue correctness owner on the same paths.
 
 Owner promotion/claim 2026-10-02: P-UI-27's synchronized completion and P-UI-28/P-UI-29 delivery evidence satisfy all named dependencies. After P-UI-30 delivery, fresh RQ review found RQ47/RQ48 and adjacent RQ477-RQ482/RQ498-RQ500 action items WAITING, with no active Central Actions correctness owner, task lock, matching local/remote branch or open PR. P-UI-33 moved WAITING -> READY -> IN_PROGRESS as an independent presentation-only task. Local lock: `.ai/task-locks/P-UI-33-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: Central Actions now uses the shared horizontally scrollable table and responsive modal primitives. Phone filters and controls meet the target size; status/reason/action columns remain reachable. Filter, URL/request, eligibility and status semantics are unchanged. A bounded page grid fixes root overflow.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`, `Klijent/clientapp/src/pages/AnalyticsActionsPage.css`, `Klijent/clientapp/src/pages/AnalyticsActionsPage.spec.tsx`, `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`, `.ai/runs/2026-10-02-P-UI-33-evidence.md`.
+- Checks run: 35 focused Actions tests; analytics guardrails/encoding/typecheck; production build; strict Actions fixture matrix at 320/375/768 in light/dark; `git diff --check`; fresh current-main ancestry verification.
+- Checks not run: full frontend suite and physical mobile-device verification; see run log for scope/reasons.
+- Run log: `.ai/runs/2026-10-02-P-UI-33-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `987ec671894b5b77642674674d466159dd1d8bad`
+- Main verification: fresh `origin/main` equals the implementation SHA; no Actions run was returned for this commit at inspection.
+- Missed: none known.
+- Follow-up: P-UI-37 Article List responsive migration was promoted and claimed after confirming dependencies and path ownership.
+- Residual risk: physical mobile keyboard/zoom behavior was not tested; unrelated seasonal-image fixture requests still log HTTP 503; build retains its existing Recharts chunk warning.
+- Prompt defect / scope repair: the initial fixture omitted required `meta` envelopes and did not stub shared worker health, which obscured the route with errors. Corrected the deterministic fixture before final proof; no production API or business semantics changed.
+
+Owner promotion/claim 2026-10-02: after P-UI-33 was verified DONE on fresh `origin/main`, idle recovery confirmed BCI has no READY/IN_PROGRESS task, STAB16 remains externally blocked, RQ Current READY is none, and QDB/MT/GAI retain their documented gates. P-UI-37 dependencies P-UI-25/27/29 are DONE; a fresh path/branch/PR review found no Article List paging/correctness owner or overlapping change. P-UI-37 moved WAITING -> READY -> IN_PROGRESS for the required Article List slice only; optional long-tail work remains out of scope. Local lock: `.ai/task-locks/P-UI-37-codex.lock.md`.
 
 ---
 
@@ -2246,7 +2266,7 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-25, P-UI-27 and P-UI-29
 Priority: P2
 Type: frontend/pages/tests

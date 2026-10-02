@@ -47,7 +47,8 @@ Current queue truth on 2026-10-02:
 - `P-UI-34` is DONE on `main` at `c2874c9a6ce70a7a1fc38ec6477021c721852847`: Dashboard and Daily Sales have 0/5 root-overflow observations in both themes across 320/375/768/1024/1280, with unchanged analytics values and trust semantics.
 - `P-UI-26` and `P-UI-27` are DONE, reconciled from their synchronized prompt evidence.
 - `P-UI-30` is DONE on `main` at `d22e17f0e3f488286c7df933739a68305d78c669`: Sales/Goods Receipt controls meet the phone text/target contract, search panels track the visual viewport, and the mock Sales flow plus 320/375/768 light/dark geometry passed.
-- `P-UI-33` is IN_PROGRESS after P-UI-27/28/29 completion and a fresh collision review found its adjacent RQ action-source/pagination work WAITING with no active owner.
+- `P-UI-33` is DONE on `main` at `987ec671894b5b77642674674d466159dd1d8bad`: Central Actions uses the shared responsive table/modal patterns; its 320/375/768 light/dark matrix passed with 0 root overflow and the status/outcome dialog workflow reachable.
+- `P-UI-37` is IN_PROGRESS for the required Article List slice after dependencies and path ownership were verified; optional long-tail pages remain out of scope for this claim.
 - `P-UI-31` and `P-UI-35`..`P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
 - `P-UI-23` remains a separate WAITING lint-hygiene task.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
