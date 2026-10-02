@@ -3,10 +3,10 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: RQ532 (IN_PROGRESS)
+Current READY prompt: none (RQ532 BLOCKED on unavailable authoritative size evidence)
 Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
 Owner promotion/claim 2026-10-02: idle recovery verified RQ520, RQ527 and RQ500 DONE on current `main`, found no active RQ532 lock/branch/PR collision, and promoted/claimed RQ532 for source discovery. Local lock: `.ai/task-locks/RQ532-codex.lock.md`; branch: `cursor/rq532-supplier-size-curve-78b0`.
-Queue reconciliation 2026-10-02: RQ532 source discovery is now the active Supplier size-curve lane; the existing endpoint is SKU/store share-only and no repository-owned size-curve snapshot schema or supplier × footwear-type sold/received/on-hand contract is present. Controlled markdown data exposes descriptive pre/post plus optional `didRevenue`/`didQty`, but no maturity/control-population/confidence contract for a new size-curve surface. Runtime implementation must stop pending an authoritative source contract.
+Queue reconciliation 2026-10-02: RQ532 source discovery is BLOCKED with explicit unavailable evidence; the existing endpoint is SKU/store share-only and no repository-owned size-curve snapshot schema or supplier × footwear-type sold/received/on-hand contract is present. Controlled markdown data exposes descriptive pre/post plus optional `didRevenue`/`didQty`, but no maturity/control-population/confidence contract for a new size-curve surface. Runtime implementation stopped fail-closed pending an authoritative source contract.
 Queue reconciliation 2026-10-02: RQ529 DONE on `main` — consolidated Supplier tabs use explicit tab/tabpanel semantics, all Supplier sortable tables publish `aria-sort`, date formatting is stable Serbian/UTC, duplicate store names retain stable IDs, and supplier metric headers expose accessible terminology help. RQ530 remains gated by its named dependencies; RQ532 is now in source discovery; RQ531 remains owner-gated. Run log: `.ai/runs/2026-10-02-RQ529-evidence.md`.
 Queue reconciliation 2026-10-02: RQ523 DONE on `main` — Pregled keeps backend population share when a supplier is focused; revenue rank badges only for descending sort; Asortiman control chips reflect applied filters with Serbian data-quality labels; assortment category persists in URL/canonical filters. RQ529 unblocked on RQ523. Run log: `.ai/runs/2026-10-02-RQ523-evidence.md`.
 Queue reconciliation 2026-10-02: RQ500 DONE on `main` — Supplier Pregled/Skorkarta/Asortiman first-screen KPIs match each tab's question; scorecard quality/risk metrics and assortment type/coverage/elasticity are primary; generic revenue/concentration metrics moved to secondary `<details>`; consolidated shell shows cross-tab role cue. RQ523/RQ529 dependency on RQ499 unchanged; RQ530 and RQ532 unblocked on RQ500. Run log: `.ai/runs/2026-10-02-RQ500-evidence.md`.
@@ -814,8 +814,8 @@ RQ536 DONE and explicit product-owner decision.
 
 ## RQ532 - Add Supplier size-curve and controlled markdown effectiveness evidence
 
-Status: IN_PROGRESS
-Claimed: 2026-10-02 by Codex after dependency recovery; source discovery must prove availability before runtime implementation.
+Status: BLOCKED
+Claimed: 2026-10-02 by Codex after dependency recovery; source discovery found no authoritative supplier size-curve source contract.
 Ready after: RQ520, RQ527 and RQ500 DONE
 Priority: P3
 Type: backend/frontend/product/tests
@@ -854,6 +854,26 @@ Every insight states population, maturity/control basis; raw pre/post is never p
 ### Dependencies
 
 RQ520, RQ527 and RQ500 DONE.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: BLOCKED
+- Completion: Source discovery is complete. The existing `/api/analytics/cached/inventory/size-curve` path reads `analytics_size_curve_snapshot` with SKU/store, size-share and curve-quality fields only. No repository-owned schema/migration supplies supplier × footwear type sold/received/on-hand by size. Existing markdown evidence is descriptive pre/post with optional `didRevenue`/`didQty`; it does not provide the required maturity, control-population and confidence contract for a new causal surface.
+- Changed files: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `.ai/runs/2026-10-02-RQ532-evidence.md`
+- Contract/runtime behavior changed: none; runtime implementation was intentionally not started.
+- Checks run: governance validators, focused size-curve backend contract test, focused Pre/Post frontend contract test, source-availability static check, `git diff --check`
+- Checks not run: frontend guardrails/build and backend full build/test — no runtime files changed; not needed to prove the source-unavailable stop condition.
+- Run log: `.ai/runs/2026-10-02-RQ532-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main after branch transport
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: Supplier size-curve sold/received/on-hand aggregation and controlled uplift panel were not added because their authoritative source contract is absent.
+- Follow-up: Analytics Product / Supplier owner must provide or approve a repository-owned size-by-article/sale/receipt/on-hand contract and a maturity/control-population/confidence DiD contract before RQ532 can be promoted again.
+- Residual risk: the existing inventory size-curve remains a SKU/store signal and must not be presented as supplier × footwear-type evidence; existing optional DiD values must not be upgraded to causal uplift without population/maturity proof.
+- Next: none until the source-contract blocker is resolved; then re-open/promote RQ532 with fixture counterexamples.
+- Prompt defect / scope repair: none; the prompt explicitly required stopping with unavailable evidence when size availability cannot be proven.
 
 ---
 
