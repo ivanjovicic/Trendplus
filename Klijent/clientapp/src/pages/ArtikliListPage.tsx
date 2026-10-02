@@ -8,6 +8,7 @@ import type { Sezona } from "../types/Sezona";
 import type { Dobavljac } from "../types/Dobavljaci";
 import { getDataScope, setDataScope as persistDataScope } from "../utils/dataScope";
 import { InventoryKpiRow, InventoryPageShell, InventoryPanel, InventoryState } from "../components/inventory/InventoryPageShell";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 
 type ArtikalListItem = {
   id: number;
@@ -73,6 +74,19 @@ export default function ArtikliListPage() {
       ? <ArrowUp size={12} className="ml-1 inline text-[var(--info)]" />
       : <ArrowDown size={12} className="ml-1 inline text-[var(--info)]" />;
   };
+
+  const renderSortHeader = (column: SortCol, label: string, align: "left" | "right" = "left") => (
+    <th scope="col" className={`px-3 py-2 ${align === "right" ? "text-right" : "text-left"}`} aria-sort={sortBy === column ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        className={`flex min-h-11 items-center gap-1 font-semibold ${align === "right" ? "ml-auto justify-end" : ""}`}
+        aria-label={`Sortiraj po ${label}`}
+        onClick={() => handleSort(column)}
+      >
+        {label}{renderSortIndicator(column)}
+      </button>
+    </th>
+  );
 
   useEffect(() => {
     const handleScopeChange = () => {
@@ -185,8 +199,8 @@ export default function ArtikliListPage() {
         const data = await getArtikliPaged<ArtikalListItem>(pageNumber, pageSize, filters);
         if (aborted) return;
 
-        setArtikli(data.items ?? []);
-        setTotalCount(data.totalCount ?? 0);
+        setArtikli(data.items);
+        setTotalCount(data.totalCount);
 
         try {
           sessionStorage.setItem(CACHE_KEY_ARTIKLI_PAGED + filterKey, JSON.stringify(data.items));
@@ -241,7 +255,9 @@ export default function ArtikliListPage() {
       actions={
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="rounded-xl border border-muted surface-elevated px-3 py-2 text-xs font-semibold text-contrast"
+          className="min-h-11 min-w-11 rounded-xl border border-muted surface-elevated px-3 py-2 text-base font-semibold text-contrast sm:text-xs"
+          aria-expanded={showFilters}
+          aria-controls="article-list-filters"
         >
           {showFilters ? "Sakrij filtere" : `Filteri ${activeFiltersCount > 0 ? `(${activeFiltersCount})` : ""}`}
         </button>
@@ -257,23 +273,25 @@ export default function ArtikliListPage() {
       />
 
       <InventoryPanel>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="article-list-pagination mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Paginacija artikala">
           <button
-            className="flex items-center gap-1 rounded-lg border border-muted bg-surface px-3 py-1.5 text-xs text-contrast disabled:opacity-40"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-muted bg-surface px-3 py-1.5 text-base text-contrast disabled:opacity-40 sm:text-xs"
             disabled={pageNumber <= 1}
             onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
             title="Prethodna strana"
+            aria-label="Prethodna strana"
           >
             <ChevronLeft size={14} />
           </button>
           <div className="flex items-center gap-1">
             <span className="text-xs text-muted">Strana</span>
             <input
-              className="w-14 rounded-lg border border-muted bg-surface-darker px-2 py-1 text-center text-xs text-contrast"
+              className="min-h-11 w-16 rounded-lg border border-muted bg-surface-darker px-2 py-1 text-center text-base text-contrast sm:text-xs"
               type="number"
               min={1}
               max={totalPages}
               value={jumpTo}
+              aria-label="Broj strane"
               onChange={(e) => setJumpTo(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -287,18 +305,20 @@ export default function ArtikliListPage() {
             <span className="text-xs text-muted">/ {totalPages}</span>
           </div>
           <button
-            className="flex items-center gap-1 rounded-lg border border-muted bg-surface px-3 py-1.5 text-xs text-contrast disabled:opacity-40"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-muted bg-surface px-3 py-1.5 text-base text-contrast disabled:opacity-40 sm:text-xs"
             disabled={pageNumber >= totalPages}
             onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
             title="Sledeća strana"
+            aria-label="Sledeća strana"
           >
             <ChevronRight size={14} />
           </button>
           <span className="mx-1 text-muted">|</span>
           <span className="text-xs text-muted">Po strani</span>
           <select
-            className="rounded-lg border border-muted bg-surface-darker px-2 py-1 text-xs text-contrast"
+            className="min-h-11 rounded-lg border border-muted bg-surface-darker px-2 py-1 text-base text-contrast sm:text-xs"
             value={pageSize}
+            aria-label="Broj artikala po strani"
             onChange={(e) => {
               setPageSize(Number(e.target.value));
               setPageNumber(1);
@@ -311,12 +331,14 @@ export default function ArtikliListPage() {
         </div>
 
         {showFilters && (
-          <div className="mb-4 grid gap-3 rounded-xl border border-muted bg-surface-darker p-3 md:grid-cols-2 xl:grid-cols-4">
+          <div id="article-list-filters" className="mb-4 grid min-w-0 gap-3 rounded-xl border border-muted bg-surface-darker p-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Naziv</label>
+              <label htmlFor="article-filter-name" className="mb-1 block text-xs uppercase tracking-wide text-muted">Naziv</label>
               <input
+                id="article-filter-name"
                 type="text"
-                className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
+                aria-label="Filter po nazivu"
                 value={searchNaziv}
                 onChange={(e) => {
                   setSearchNaziv(e.target.value);
@@ -326,9 +348,10 @@ export default function ArtikliListPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sezona</label>
+              <label htmlFor="article-filter-season" className="mb-1 block text-xs uppercase tracking-wide text-muted">Sezona</label>
               <select
-                className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                id="article-filter-season"
+                className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                 value={filterSezona}
                 onChange={(e) => {
                   setFilterSezona(e.target.value ? Number(e.target.value) : "");
@@ -343,9 +366,10 @@ export default function ArtikliListPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dobavljac</label>
+              <label htmlFor="article-filter-supplier" className="mb-1 block text-xs uppercase tracking-wide text-muted">Dobavljac</label>
               <select
-                className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                id="article-filter-supplier"
+                className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                 value={filterDobavljac}
                 onChange={(e) => {
                   setFilterDobavljac(e.target.value ? Number(e.target.value) : "");
@@ -364,8 +388,9 @@ export default function ArtikliListPage() {
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                   value={filterMinCena}
+                  aria-label="Minimalna cena"
                   onChange={(e) => {
                     setFilterMinCena(e.target.value);
                     setPageNumber(1);
@@ -374,8 +399,9 @@ export default function ArtikliListPage() {
                 />
                 <input
                   type="number"
-                  className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                   value={filterMaxCena}
+                  aria-label="Maksimalna cena"
                   onChange={(e) => {
                     setFilterMaxCena(e.target.value);
                     setPageNumber(1);
@@ -390,8 +416,9 @@ export default function ArtikliListPage() {
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
-                  className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                   value={filterMinKolicina}
+                  aria-label="Minimalna količina"
                   onChange={(e) => {
                     setFilterMinKolicina(e.target.value);
                     setPageNumber(1);
@@ -400,8 +427,9 @@ export default function ArtikliListPage() {
                 />
                 <input
                   type="number"
-                  className="w-full rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-sm text-contrast"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-muted bg-surface-elevated px-2 py-2 text-base text-contrast sm:text-sm"
                   value={filterMaxKolicina}
+                  aria-label="Maksimalna količina"
                   onChange={(e) => {
                     setFilterMaxKolicina(e.target.value);
                     setPageNumber(1);
@@ -414,38 +442,38 @@ export default function ArtikliListPage() {
             <div className="xl:col-span-4 flex flex-wrap items-center gap-2">
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1 rounded-lg border border-muted bg-surface px-3 py-2 text-sm text-contrast hover:bg-surface-elevated"
+                className="flex min-h-11 items-center gap-1 rounded-lg border border-muted bg-surface px-3 py-2 text-base text-contrast hover:bg-surface-elevated sm:text-sm"
               >
                 <X size={13} /> Resetuj sve
               </button>
               {searchNaziv && (
                 <span className="flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                   Naziv: {searchNaziv}
-                  <button onClick={() => { setSearchNaziv(""); setPageNumber(1); }}><X size={11} /></button>
+                  <button type="button" className="min-h-11 min-w-11" aria-label="Ukloni filter naziva" onClick={() => { setSearchNaziv(""); setPageNumber(1); }}><X size={11} /></button>
                 </span>
               )}
               {filterSezona !== "" && (
                 <span className="flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                   Sezona: {sezone.find(s => s.id === filterSezona)?.naziv ?? filterSezona}
-                  <button onClick={() => { setFilterSezona(""); setPageNumber(1); }}><X size={11} /></button>
+                  <button type="button" className="min-h-11 min-w-11" aria-label="Ukloni filter sezone" onClick={() => { setFilterSezona(""); setPageNumber(1); }}><X size={11} /></button>
                 </span>
               )}
               {filterDobavljac !== "" && (
                 <span className="flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                   Dobavljač: {dobavljaci.find(d => d.id === Number(filterDobavljac))?.naziv ?? filterDobavljac}
-                  <button onClick={() => { setFilterDobavljac(""); setPageNumber(1); }}><X size={11} /></button>
+                  <button type="button" className="min-h-11 min-w-11" aria-label="Ukloni filter dobavljača" onClick={() => { setFilterDobavljac(""); setPageNumber(1); }}><X size={11} /></button>
                 </span>
               )}
               {(filterMinCena || filterMaxCena) && (
                 <span className="flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                   Cena: {filterMinCena || "0"} – {filterMaxCena || "∞"}
-                  <button onClick={() => { setFilterMinCena(""); setFilterMaxCena(""); setPageNumber(1); }}><X size={11} /></button>
+                  <button type="button" className="min-h-11 min-w-11" aria-label="Ukloni filter cene" onClick={() => { setFilterMinCena(""); setFilterMaxCena(""); setPageNumber(1); }}><X size={11} /></button>
                 </span>
               )}
               {(filterMinKolicina || filterMaxKolicina) && (
                 <span className="flex items-center gap-1 rounded-full border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
                   Kol: {filterMinKolicina || "0"} – {filterMaxKolicina || "∞"}
-                  <button onClick={() => { setFilterMinKolicina(""); setFilterMaxKolicina(""); setPageNumber(1); }}><X size={11} /></button>
+                  <button type="button" className="min-h-11 min-w-11" aria-label="Ukloni filter količine" onClick={() => { setFilterMinKolicina(""); setFilterMaxKolicina(""); setPageNumber(1); }}><X size={11} /></button>
                 </span>
               )}
             </div>
@@ -456,16 +484,16 @@ export default function ArtikliListPage() {
         {!loading && error && <InventoryState message={error} tone="danger" />}
 
         {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-muted">
+          <AnalyticsDataTable responsivePilot rowCount={artikli.length} testId="article-list-table">
             <table className="min-w-full divide-y divide-muted text-sm">
               <thead className="bg-surface-darker text-muted">
                 <tr>
-                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("id")}>ID{renderSortIndicator("id")}</th>
-                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Naziv{renderSortIndicator("naziv")}</th>
-                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("prodajnaCena")}>Prodajna{renderSortIndicator("prodajnaCena")}</th>
-                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("nabavnaCena")}>Nabavna{renderSortIndicator("nabavnaCena")}</th>
-                  <th className="cursor-pointer px-3 py-3 text-right" onClick={() => handleSort("kolicina")}>Kolicina{renderSortIndicator("kolicina")}</th>
-                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("dobavljac")}>Dobavljac{renderSortIndicator("dobavljac")}</th>
+                  {renderSortHeader("id", "ID")}
+                  {renderSortHeader("naziv", "Naziv")}
+                  {renderSortHeader("prodajnaCena", "Prodajna cena", "right")}
+                  {renderSortHeader("nabavnaCena", "Nabavna cena", "right")}
+                  {renderSortHeader("kolicina", "Količina", "right")}
+                  {renderSortHeader("dobavljac", "Dobavljač")}
                   <th className="px-3 py-3 text-left">Akcija</th>
                 </tr>
               </thead>
@@ -481,7 +509,7 @@ export default function ArtikliListPage() {
                     <td className="px-3 py-3">
                       <Link
                         to={`/artikli/${a.id}/edit`}
-                        className="rounded-md border border-info bg-info/10 px-2 py-1 text-xs font-semibold text-info hover:bg-info/20"
+                        className="inline-flex min-h-11 items-center rounded-md border border-info bg-info/10 px-3 py-2 text-sm font-semibold text-info hover:bg-info/20"
                       >
                         Izmeni
                       </Link>
@@ -521,7 +549,7 @@ export default function ArtikliListPage() {
                 )}
               </div>
             )}
-          </div>
+          </AnalyticsDataTable>
         )}
       </InventoryPanel>
     </InventoryPageShell>

@@ -17,6 +17,7 @@ const ROUTES = [
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
   { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap" },
   { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
+  { id: "articles", path: "/artikli/lista", readySelector: '[data-testid="article-list-table"]' },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
 ];
 
@@ -163,6 +164,11 @@ async function fixtureResponse(request, options) {
       { id: 22, naziv: "Sintetički dobavljač B", adresa: "Beograd", telefon: "0610000000" },
     ]) };
   }
+  if (url.pathname === "/api/sezone") {
+    return { status: 200, body: JSON.stringify([
+      { id: 31, naziv: "Sintetička sezona", datumOd: "2026-01-01T00:00:00Z", datumDo: "2026-12-31T23:59:59Z" },
+    ]) };
+  }
   if (url.pathname === "/api/workers/health") {
     return { status: 200, body: JSON.stringify({
       totalWorkers: 0, healthyWorkers: 0, runningWorkers: 0, errorWorkers: 0,
@@ -174,6 +180,16 @@ async function fixtureResponse(request, options) {
       { id: 101, naziv: "Sintetičke patike A", prodajnaCena: 7490, nabavnaCena: 4200, prvaProdajnaCena: 7990, kolicina: 8 },
       { id: 102, naziv: "Sintetičke patike B", prodajnaCena: 8290, nabavnaCena: 4700, prvaProdajnaCena: 8790, kolicina: 5 },
     ]) };
+  }
+  if (url.pathname === "/api/artikli" && request.method() === "GET") {
+    const pageNumber = Number(url.searchParams.get("pageNumber") ?? 1);
+    return { status: 200, body: JSON.stringify({
+      items: [{
+        id: 700 + pageNumber, naziv: `Sintetičke patike ${pageNumber}`, prodajnaCena: 7490,
+        kolicina: 8, nabavnaCena: 4200, dobavljacId: 21, dobavljacNaziv: "Sintetički dobavljač A",
+      }],
+      totalCount: 85, pageNumber, pageSize: Number(url.searchParams.get("pageSize") ?? 50),
+    }) };
   }
   if (url.pathname === "/api/prodaja" && request.method() === "POST") {
     return { status: 201, body: JSON.stringify({ id: 1, status: "fixture" }) };
@@ -820,6 +836,37 @@ async function run(options) {
               interactionStep = "close-outcome-dialog";
               await page.keyboard.press("Escape");
               interaction = { filtered: true, statusUpdatedAtFixtureBoundary: true, statusDialog, outcomeDialog, keyboardClose: true };
+            }
+            if (route.id === "articles") {
+              interactionStep = "wait-for-article-row";
+              await page.waitForSelector('[data-testid="article-list-table"] tbody tr', { timeout: options.timeoutMs });
+              interactionStep = "open-article-filters";
+              await page.locator("button[aria-controls='article-list-filters']").click();
+              await page.locator('input[aria-label="Filter po nazivu"]').fill("Sintetičke");
+              await page.select('select[aria-label="Broj artikala po strani"]', "25");
+              await page.waitForFunction(() => document.querySelector('[data-testid="article-list-table"] tbody tr')?.textContent?.includes("Sintetičke patike 1"), { timeout: options.timeoutMs });
+              interactionStep = "advance-article-page";
+              await page.locator('button[aria-label="Sledeća strana"]').click();
+              await page.waitForFunction(() => document.querySelector('[data-testid="article-list-table"] tbody tr')?.textContent?.includes("Sintetičke patike 2"), { timeout: options.timeoutMs });
+              interaction = await page.evaluate(() => {
+                const table = document.querySelector('[data-testid="article-list-table"]');
+                const region = table?.querySelector('[role="region"]');
+                const controls = [...document.querySelectorAll(".article-list-pagination button, .article-list-pagination input, .article-list-pagination select, #article-list-filters input, #article-list-filters select")]
+                  .filter((element) => element.getBoundingClientRect().width > 0)
+                  .map((element) => ({
+                    label: element.getAttribute("aria-label"),
+                    height: Math.round(element.getBoundingClientRect().height),
+                    fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+                  }));
+                return {
+                  filtersOpened: document.querySelector("button[aria-controls='article-list-filters']")?.getAttribute("aria-expanded") === "true",
+                  filterValue: document.querySelector('input[aria-label="Filter po nazivu"]')?.value,
+                  pageValue: document.querySelector('input[aria-label="Broj strane"]')?.value,
+                  tableRegionKeyboardFocusable: region?.getAttribute("tabindex") === "0",
+                  allColumnsReachable: ["ID", "Naziv", "Prodajna cena", "Nabavna cena", "Količina", "Dobavljač", "Akcija"].every((label) => table?.textContent?.includes(label)),
+                  controls,
+                };
+              });
             }
             await new Promise((resolve) => setTimeout(resolve, 250));
           } catch (error) {
