@@ -9,7 +9,7 @@ import SupplierSalesStatsPage, {
   describePopMetric,
   describePopUnitsMetric,
 } from "../SupplierSalesStatsPage";
-import { getStores } from "../../services/analyticsApi";
+import { getInventoryBalance, getInventoryInsights, getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
 import { fmtPct, formatDate } from "../../utils/analyticsFormatters";
 
@@ -25,6 +25,8 @@ vi.mock("../../services/analyticsApi", async () => {
   const actual = await vi.importActual<typeof import("../../services/analyticsApi")>("../../services/analyticsApi");
   return {
     ...actual,
+    getInventoryBalance: vi.fn(),
+    getInventoryInsights: vi.fn(),
     getStores: vi.fn(),
   };
 });
@@ -218,6 +220,70 @@ describe("SupplierSalesStatsPage premium controls", () => {
 
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
+  });
+
+  it("renders proven inventory buying evidence and explicit unavailable metrics", async () => {
+    vi.mocked(getInventoryBalance).mockResolvedValue({
+      totalSku: 3,
+      totalOnHand: 42,
+      lowStockCount: 1,
+      outOfStockCount: 0,
+      estimatedInventoryValue: 12_500,
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    vi.mocked(getInventoryInsights).mockResolvedValue({
+      totalItems: 3,
+      totalEstimatedValue: 12_500,
+      aging: [
+        { bucketKey: "90_plus", label: "90+ dana", itemCount: 2, totalUnits: 30, estimatedValue: 9_000 },
+      ],
+      abc: [],
+      topAgedItems: [{
+        id: 7,
+        naziv: "Patika 7",
+        supplierId: 1,
+        storeId: null,
+        quantity: 10,
+        minimum: 2,
+        reorderGap: 8,
+        estimatedValue: 3_000,
+        unitCost: 300,
+        costSource: "history",
+        costMissing: false,
+        daysSinceMovement: 120,
+        agingBucket: "90_plus",
+        agingLabel: "90+ dana",
+        abcClass: "B",
+        stockState: "stale",
+        stockCoverDays: null,
+        stockCoverStatus: "unavailable",
+        stockCoverStatusLabel: "Nije dostupno",
+        sellThroughRatio: null,
+        sellThroughStatus: "unavailable",
+        sellThroughStatusLabel: "Nije dostupno",
+        signalConfidencePct: 60,
+        recommendationAllowed: false,
+        dataQualityStatus: "warning",
+        reasonCodes: ["no_sales_baseline"],
+      }],
+      topCapitalLockedItems: [],
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const panel = await screen.findByTestId("supplier-buying-value-panel");
+    expect(within(panel).getByText("Buying signal: zaliha i kapital")).toBeInTheDocument();
+    expect(within(panel).getByText("42")).toBeInTheDocument();
+    expect(within(panel).getByText("12.500 RSD")).toBeInTheDocument();
+    expect(within(panel).getByText("Patika 7")).toBeInTheDocument();
+    fireEvent.click(within(panel).getByText("Metričke koje nisu potvrđene u ovom izvoru"));
+    expect(within(panel).getByText(/Bruto stopa povrata/)).toBeInTheDocument();
+    expect(within(panel).getByText(/PO, rok isporuke i lead-time/)).toBeInTheDocument();
   });
 
   it("publishes sortable-column direction for screen readers", async () => {

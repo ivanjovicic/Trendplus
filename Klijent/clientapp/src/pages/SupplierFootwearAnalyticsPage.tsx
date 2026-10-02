@@ -26,6 +26,14 @@ import {
   SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE,
 } from "../utils/supplierMetricSemantics";
 import { SUPPLIER_ASSORTMENT_SECONDARY_KPI_TITLE } from "../utils/supplierTabInformationHierarchy";
+import {
+  SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_REASONS,
+  SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_SUMMARY,
+  SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_TITLE,
+  SUPPLIER_SIZE_CURVE_UNAVAILABLE_REASONS,
+  SUPPLIER_SIZE_CURVE_UNAVAILABLE_SUMMARY,
+  SUPPLIER_SIZE_CURVE_UNAVAILABLE_TITLE,
+} from "../utils/supplierAssortmentSizeCurveEvidence";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -989,6 +997,29 @@ export default function SupplierFootwearAnalyticsPage({
           <span>Predlog: {suggestedRange.label}</span>
           <button type="button" onClick={handleApplySuggestedRange}>Primeni predlog perioda</button>
         </div>
+      ) : null}
+
+      {!loading && !error ? (
+        <section className="sf-decision-evidence-panels" data-testid="supplier-assortment-rq532-evidence">
+          <article className="sf-decision-message info" data-testid="supplier-assortment-size-curve-evidence">
+            <strong>{SUPPLIER_SIZE_CURVE_UNAVAILABLE_TITLE}</strong>
+            <p>{SUPPLIER_SIZE_CURVE_UNAVAILABLE_SUMMARY}</p>
+            <ul>
+              {SUPPLIER_SIZE_CURVE_UNAVAILABLE_REASONS.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </article>
+          <article className="sf-decision-message info" data-testid="supplier-assortment-controlled-markdown-evidence">
+            <strong>{SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_TITLE}</strong>
+            <p>{SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_SUMMARY}</p>
+            <ul>
+              {SUPPLIER_CONTROLLED_MARKDOWN_EVIDENCE_REASONS.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </article>
+        </section>
       ) : null}
 
       {!loading && data ? (

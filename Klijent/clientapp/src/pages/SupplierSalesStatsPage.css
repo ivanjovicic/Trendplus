@@ -374,6 +374,111 @@
   min-width: 0;
 }
 
+.supplier-buying-value-panel {
+  margin: 0 0 14px;
+  padding: 14px;
+}
+
+.supplier-buying-value-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.supplier-buying-value-header h2 {
+  color: var(--dashboard-text);
+  font-size: 17px;
+  font-weight: 760;
+  margin: 0 0 6px;
+}
+
+.supplier-buying-value-header p {
+  color: var(--dashboard-text-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 780px;
+}
+
+.supplier-buying-value-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.supplier-buying-value-card {
+  background: color-mix(in srgb, var(--dashboard-surface-card-top) 84%, var(--dashboard-secondary) 16%);
+  border: 1px solid var(--dashboard-border-soft);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 82px;
+  padding: 12px;
+}
+
+.supplier-buying-value-card span {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplier-buying-value-card strong {
+  color: var(--dashboard-text);
+  font-size: 20px;
+}
+
+.supplier-buying-value-aged {
+  margin-top: 14px;
+}
+
+.supplier-buying-value-aged h3 {
+  color: var(--dashboard-text);
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.supplier-buying-value-aged ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.supplier-buying-value-aged li {
+  align-items: baseline;
+  color: var(--dashboard-text);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.supplier-buying-value-aged small {
+  color: var(--dashboard-text-muted);
+  text-align: right;
+}
+
+.supplier-buying-value-limitations {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  margin-top: 14px;
+}
+
+.supplier-buying-value-limitations summary {
+  color: var(--dashboard-text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.supplier-buying-value-limitations ul {
+  line-height: 1.5;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
 .supplier-decision-card {
   background: linear-gradient(162deg, var(--dashboard-surface-card-top), var(--dashboard-surface-card-bottom));
   border: 1px solid var(--dashboard-border-soft);

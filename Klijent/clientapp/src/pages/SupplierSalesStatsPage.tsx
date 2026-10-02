@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { getStores } from "../services/analyticsApi";
+import { getInventoryBalance, getInventoryInsights, getStores } from "../services/analyticsApi";
 import {
   getSupplierSalesStats,
   type SupplierFootwearBreakdown,
@@ -18,7 +18,7 @@ import {
   type SupplierSalesStatsResponse,
 } from "../services/supplierSalesStatsApi";
 import { ApiHttpError } from "../services/analyticsHttp";
-import type { StoreOption } from "../types/analytics";
+import type { InventoryBalance, InventoryInsights, StoreOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsControlBar, {
@@ -39,6 +39,7 @@ import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTo
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL, SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE } from "../utils/supplierMetricSemantics";
+import { SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES } from "../utils/supplierBuyingValueEvidence";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { AnalyticsMetaError } from "../utils/analyticsResponseMeta";
@@ -66,6 +67,13 @@ type SupplierSalesStatsError = {
   message: string;
   errorCode: string | null;
   correlationId: string | null;
+};
+
+type SupplierBuyingEvidence = {
+  balance: InventoryBalance | null;
+  insights: InventoryInsights | null;
+  loading: boolean;
+  error: string | null;
 };
 
 function toSupplierSalesStatsError(reason: unknown): SupplierSalesStatsError {
@@ -908,6 +916,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   const [dataTrustRequestKey, setDataTrustRequestKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<SupplierSalesStatsError | null>(null);
+  const [buyingEvidence, setBuyingEvidence] = useState<SupplierBuyingEvidence>({
+    balance: null,
+    insights: null,
+    loading: false,
+    error: null,
+  });
   const [sortField, setSortField] = useState<SortField>("status");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedSupplierKey, setExpandedSupplierKey] = useState<string | null>(null);
@@ -1049,6 +1063,31 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     void load(activeFilters, controller.signal);
     return () => controller.abort();
   }, [activeFilters, load]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setBuyingEvidence({ balance: null, insights: null, loading: true, error: null });
+
+    Promise.allSettled([
+      getInventoryBalance(true, activeFilters.storeId, activeSupplierId, activeDataScope, controller.signal),
+      getInventoryInsights({
+        storeId: activeFilters.storeId,
+        supplierId: activeSupplierId,
+        dataScope: activeDataScope,
+        signal: controller.signal,
+      }),
+    ]).then(([balanceResult, insightsResult]) => {
+      if (controller.signal.aborted) return;
+      const balance = balanceResult.status === "fulfilled" ? balanceResult.value : null;
+      const insights = insightsResult.status === "fulfilled" ? insightsResult.value : null;
+      const error = balance == null && insights == null
+        ? "Inventarski buying signal trenutno nije dostupan."
+        : null;
+      setBuyingEvidence({ balance, insights, loading: false, error });
+    });
+
+    return () => controller.abort();
+  }, [activeDataScope, activeFilters.storeId, activeSupplierId]);
 
   const decisionSuppliers = useMemo(() => buildDecisionSuppliers(data), [data]);
 
@@ -1979,6 +2018,73 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               </div>
             </div>
           ) : null}
+
+          <section className="supplier-buying-value-panel analytics-surface-panel" data-testid="supplier-buying-value-panel">
+            <div className="supplier-buying-value-header">
+              <div>
+                <h2>Buying signal: zaliha i kapital</h2>
+                <p>
+                  Trenutni presek zaliha po dobavljaču/objektu. Ne predstavlja prodaju u periodu niti menja konačnu preporuku iz ovog pregleda.
+                </p>
+              </div>
+              <InfoTip text="Izvor: Inventory balance i Inventory insights. Vrednost zalihe koristi dostupnu nabavnu cenu; artikli bez cene nisu uključeni u procenjeni kapital." />
+            </div>
+            {buyingEvidence.loading ? (
+              <div className="supplier-decision-message loading" role="status">Učitavam buying signal zaliha...</div>
+            ) : (
+              <>
+                {buyingEvidence.error ? (
+                  <div className="supplier-decision-message warning" role="status">
+                    {buyingEvidence.error} Probajte ponovo ili otvorite Inventory za detalj.
+                  </div>
+                ) : null}
+                <div className="supplier-buying-value-grid">
+                  <article className="supplier-buying-value-card">
+                    <span>Zaliha na stanju <InfoTip text="Ukupan broj trenutno evidentiranih jedinica u izabranom opsegu." /></span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Procenjena vrednost zalihe <InfoTip text="Količina na stanju × dostupna nabavna cena. Nedostajuće cene se ne predstavljaju kao nula." /></span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? buyingEvidence.insights?.totalEstimatedValue ?? null, kind: "currency" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Artikli sa zalihom</span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.insights?.totalItems ?? buyingEvidence.balance?.totalSku ?? null, kind: "number" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Artikli 90+ dana bez kretanja <InfoTip text="Broj artikala iz Inventory aging bucket-a 90+ dana; trenutni presek, ne period prodaje." /></span>
+                    <strong>{formatMetricDisplayValue({
+                      value: buyingEvidence.insights?.aging
+                        .filter((bucket) => /90|stari|aged/i.test(`${bucket.bucketKey} ${bucket.label}`))
+                        .reduce((sum, bucket) => sum + bucket.itemCount, 0) ?? null,
+                      kind: "number",
+                    })}</strong>
+                  </article>
+                </div>
+                {buyingEvidence.insights?.topAgedItems.length ? (
+                  <div className="supplier-buying-value-aged">
+                    <h3>Najstariji artikli za proveru</h3>
+                    <ul>
+                      {buyingEvidence.insights.topAgedItems.slice(0, 5).map((item) => (
+                        <li key={item.id}>
+                          <span>{item.naziv}</span>
+                          <small>{item.agingLabel} · {fmtQty(item.quantity)} · {fmtRsd(item.estimatedValue)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <details className="supplier-buying-value-limitations" data-testid="supplier-buying-value-limitations">
+                  <summary>Metričke koje nisu potvrđene u ovom izvoru</summary>
+                  <ul>
+                    {SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              </>
+            )}
+          </section>
 
           <section className="supplier-decision-panels">
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
