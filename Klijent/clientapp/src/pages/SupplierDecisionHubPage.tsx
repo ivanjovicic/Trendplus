@@ -42,7 +42,14 @@ import {
 } from "../services/supplierDecisionHubApi";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { Sezona } from "../types/Sezona";
-import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { formatDate, fmtNumber, fmtPct, fmtRsd, fmtSignedPct, fmtSignedPctPoints, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL,
+  SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL,
+  SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL,
+  SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL,
+  SUPPLIER_TOP5_SHARE_SCORECARD_NOTE,
+} from "../utils/supplierMetricSemantics";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
@@ -173,7 +180,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
     dataType: "percent",
     getValue: (row) => toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct),
   },
-  { key: "qualityTrendPct", header: "Trend pune cene %", dataType: "percent" },
+  { key: "qualityTrendPct", header: `${SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} (pp)`, dataType: "percent" },
   { key: "status", header: "Signal skorkarte", dataType: "text" },
 ];
 
@@ -257,7 +264,7 @@ function buildStatusTooltip(row: DecisionRow): string {
   const hintText = recommendationReasonHints(row.reasonCodes)
     .map((hint) => hint.replace("Marza", "Marža").replace("potvrdjen", "potvrđen").replace("poredjenje", "poređenje"))
     .join(" | ");
-  return `${statusDisplayLabel(row.status)}: ${statusTooltip(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marža ${marginText} | Trend pune cene ${fmtSignedPct(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Kvalitet podataka ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
+  return `${statusDisplayLabel(row.status)}: ${statusTooltip(row.status)} | ${row.statusReason} | Udeo ${shareText} | Marža ${marginText} | ${SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} ${fmtSignedPctPoints(row.qualityTrendPct, 1)} | Sigurnost ${confidenceText} | Pouzdanost ${reliabilityText} | Kvalitet podataka ${qualityText}${hintText ? ` | Napomene: ${hintText}` : ""}`;
 }
 
 function toActionDataQualityStatus(value: RecommendationQualityStatus): AnalyticsActionDataQualityStatus {
@@ -1222,7 +1229,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <li><strong>Prihod:</strong> Ukupna vrednost prodaje dobavljača u periodu (samo artikli sa nivelacijom).</li>
                 <li><strong>Udeo:</strong> Koliki deo ukupnog prihoda dolazi od tog dobavljača.</li>
                 <li><strong>Marža:</strong> Razlika između prodajne i nabavne cene kao procenat.</li>
-                <li><strong>Trend pune cene:</strong> Pozitivan = veći udeo prodaje po punoj ceni od udela nivelacija; negativan = veća zavisnost od sniženja.</li>
+                <li><strong>{SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL}:</strong> Udeo prodaje po punoj ceni minus udeo nivelacija, u procentnim poenima (pp); nije vremenski trend.</li>
                 <li><strong>Signal skorkarte:</strong> Pojačaj, Zadrži, Oprez, Smanji / Ne veruj ili Nedovoljno podataka. Ovo nije konačna preporuka.</li>
               </ul>
               <p><strong>Zašto nema podataka?</strong> Najčešći razlozi: nema nivelacija u izabranom periodu, filteri su uski (kratak period ili specifična prodavnica), dobavljači nisu pravilno povezani sa artiklima, ili analitika nije osvežena (pokreni u Konfiguracija → Radnici).</p>
@@ -1530,8 +1537,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
           <section className="sdh-decision-kpis">
             <article className="sdh-decision-kpi">
               <span>
-                Ukupan prihod
-                <InfoTip text="Zbir prihoda za sve učitane dobavljače u skorkarti. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od ukupnog prometa u tabu Pregled." />
+                {SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL}
+                <InfoTip text="Zbir prihoda za sve učitane dobavljače u skorkarti. Osnova su artikli sa prvom nivelacijom u periodu, pa se može razlikovati od sertifikovane prodaje u tabu Pregled." />
               </span>
               <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan prihod" />
@@ -1539,15 +1546,15 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             <article className="sdh-decision-kpi">
               <span>
                 Udeo top 5 dobavljača
-                <InfoTip text="Udeo prihoda koji donosi pet najvećih dobavljača u skupu skorkarte. Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera." />
+                <InfoTip text={`${SUPPLIER_TOP5_SHARE_SCORECARD_NOTE} Veća vrednost znači veću koncentraciju i veći rizik oslanjanja na nekoliko partnera.`} />
               </span>
               <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
               <KpiExplainButton metricKey="topSupplierRevenueShare" />
             </article>
             <article className="sdh-decision-kpi">
               <span>
-                Ukupan maržni doprinos
-                <InfoTip text="Procena maržnog doprinosa: prihod od prodaje po punoj ceni ponderisan pre-markdown maržom. Viša vrednost je bolja, ali proveri je zajedno sa rizikom zaliha." />
+                {SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL}
+                <InfoTip text="Procena maržnog doprinosa u skorkarti: prihod od prodaje po punoj ceni ponderisan pre-markdown maržom. Nije isto što i maržni doprinos sertifikovane prodaje u tabu Pregled." />
               </span>
               <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
               <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat ukupan maržni doprinos" />
@@ -1562,10 +1569,10 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
             </article>
             <article className="sdh-decision-kpi">
               <span>
-                Promena udela pune cene
-                <InfoTip text="Razlika u udelu prodaje po punoj ceni u odnosu na prethodni isti period. Pozitivno znači zdraviji signal; negativno znači veću zavisnost od sniženja." />
+                {SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL}
+                <InfoTip text="Razlika udela prodaje po punoj ceni u odnosu na prethodni isti period, izražena u procentnim poenima (pp). Npr. sa 58% na 62% = +4 pp, ne +4% rasta." />
               </span>
-              <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPct(fullPriceDeltaPctPoints)}</strong>
+              <strong className={trendClass(fullPriceDeltaPctPoints)}>{fmtSignedPctPoints(fullPriceDeltaPctPoints)}</strong>
               <KpiExplainButton metricKey="fullPriceShareChange" ariaLabel="Kako je izračunata promena udela pune cene" />
             </article>
           </section>
@@ -1658,8 +1665,8 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       </th>
                       <th className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("qualityTrendPct")}>
-                          Trend pune cene %
-                          <InfoTip text="Udeo pune cene minus udeo nivelacija. Pozitivno znači zdraviju prodaju; negativno znači veću zavisnost od sniženja." />
+                          {SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} (pp)
+                          <InfoTip text="Udeo prodaje po punoj ceni minus udeo nivelacija, u procentnim poenima. Pozitivno = veći udeo pune cene; nije vremenski trend." />
                           {sortMarker("qualityTrendPct", sortField, sortDir)}
                         </button>
                       </th>
@@ -1698,7 +1705,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                             <td className="analytics-data-table__numeric text-secondary">{fmtRsd(row.revenue)}</td>
                             <td className="analytics-data-table__numeric text-secondary">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td className="analytics-data-table__numeric text-secondary">{fmtPct(toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct), 2)}</td>
-                            <td className={`analytics-data-table__numeric text-secondary ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPct(row.qualityTrendPct, 2)}</td>
+                            <td className={`analytics-data-table__numeric text-secondary ${trendClass(row.qualityTrendPct)}`}>{fmtSignedPctPoints(row.qualityTrendPct, 2)}</td>
                             <td>
                               <div className="sdh-decision-status-stack">
                                 <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{displayedStatusLabel}</span>

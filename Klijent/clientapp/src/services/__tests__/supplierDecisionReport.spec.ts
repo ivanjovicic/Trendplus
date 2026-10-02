@@ -4,6 +4,7 @@ import {
   buildSupplierDecisionReportSummaryText,
   type SupplierDecisionReportBuildInput,
 } from "../supplierDecisionReport";
+import { SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL } from "../../utils/supplierMetricSemantics";
 
 function buildInput(overrides: Partial<SupplierDecisionReportBuildInput> = {}): SupplierDecisionReportBuildInput {
   return {
@@ -148,7 +149,7 @@ describe("buildSupplierDecisionReportPayload", () => {
       rows: [{ ...base.rows[0], revenue: 100, fullPriceRevenueShare: 0.4, preMarkdownMarginPct: 0.3 }],
     });
 
-    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Maržni doprinos")?.value).toBe("12 RSD");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL)?.value).toBe("12 RSD");
     expect(payload.rows.find((row) => row.section === "supplier_negotiation_pack" && row.item === "Maržni doprinos")?.value).toBe("12 RSD");
     expect(payload.metadata.find((row) => row.key === "marginContributionEvidenceState")?.value).toBe("measured");
     expect(payload.metadata.find((row) => row.key === "marginContributionDefinition")?.value).toContain("Full-price prihod");
@@ -163,8 +164,8 @@ describe("buildSupplierDecisionReportPayload", () => {
       scorecardMeta: { success: true, dataQualityStatus: "good" },
     });
 
-    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene")?.value).toBe("+20,0%");
-    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene")?.secondary)
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene (pp)")?.value).toBe("+20,0 pp");
+    expect(payload.rows.find((row) => row.section === "KPI" && row.item === "Promena udela pune cene (pp)")?.secondary)
       .toContain("prethodnom istom periodu");
     expect(payload.metadata.find((row) => row.key === "fullPriceShareDeltaPctPoints")?.value).toBe(20);
   });

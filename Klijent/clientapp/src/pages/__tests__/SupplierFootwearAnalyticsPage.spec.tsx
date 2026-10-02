@@ -407,7 +407,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Ukupan promet")).toBeInTheDocument();
+    expect(await screen.findByText("Post-prozor promet (uporediva kohorta)")).toBeInTheDocument();
     expect(screen.getByText("Prethodni period nije dostupan.")).toBeInTheDocument();
     expect(screen.getByText("Rast/pad u odnosu na prethodni period")).toBeInTheDocument();
     expect(screen.queryByText("+20,00%")).not.toBeInTheDocument();
@@ -498,7 +498,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
-    expect(await screen.findByText("Ukupan promet")).toBeInTheDocument();
+    expect(await screen.findByText("Post-prozor promet (uporediva kohorta)")).toBeInTheDocument();
     expect(baseResponse.meta?.success).toBe(true);
   });
 
@@ -671,7 +671,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
       </MemoryRouter>
     );
 
-    const top5Article = (await screen.findByText("Udeo top 5 dobavljača")).closest("article");
+    const top5Article = (await screen.findByText("Udeo top 5 dobavljača (asortiman)")).closest("article");
     expect(top5Article).not.toBeNull();
     expect(within(top5Article!).getByText("Nije dostupno")).toBeInTheDocument();
 

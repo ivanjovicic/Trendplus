@@ -3,7 +3,8 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Owner promotion/claim 2026-10-01: fresh idle recovery verified `HEAD == origin/main == b0801f28`, confirmed RQ490 is DONE and Q83 is DONE on current `origin/main`, and found no active RQ491 task lock, branch or open PR. RQ491 moved `WAITING -> READY -> IN_PROGRESS` for the pre/post activity-versus-coverage contract. Local lock: `.ai/task-locks/RQ491-codex.lock.md`.
+Owner completion 2026-10-02: RQ498 moved `IN_PROGRESS -> DONE` and was delivered on `main` in merge `f262c936` (implementation c335a21e). Focused frontend proof and analytics guardrails pass. Run log: `.ai/runs/2026-10-02-RQ498-evidence.md`. Evidence state: synchronized.
+Owner promotion/claim 2026-10-02: idle recovery verified RQ474/RQ475/RQ476/RQ494/RQ495/RQ522 DONE on current `origin/main`, no active RQ498 lock/branch collision, and promoted/claimed RQ498 `WAITING -> READY -> IN_PROGRESS` for cross-tab Supplier metric labels/units. Local lock: `.ai/task-locks/RQ498-cursor.lock.md`.
 Owner completion 2026-10-01: RQ491 moved `IN_PROGRESS -> DONE` and was delivered directly to `main` in `eaa31629f82f46a5d05e318fb1496f34e620ad13`; fresh fetch verified `main == origin/main` at that SHA. Pre/Post now exposes backend-owned sale-day activity (active days and activity rate) while preserving legacy coverage aliases, reports data completeness as unavailable without an authoritative denominator, and uses activity wording in concentration/trust/tooltips/metadata. Focused backend proof is 6/6 plus the Pre/Post oracle 15/15; frontend proof is 52/52, guardrails/typecheck/build pass. Run log: `.ai/runs/2026-10-01-RQ491-evidence.md`; evidence state is synchronized. The queue validator still reports the unrelated historical P-UI-27 note missing `Residual risk:`.
 Owner promotion/claim 2026-09-30: fresh recovery verified `HEAD == origin/main == ce690bbf6df25cc14361299fc70fed6d6f80fc9a`, confirmed RQ501/RQ505/RQ507 are DONE, no active `analytics-plan-current-truth` lock/branch/open-PR owner exists, and moved `RQ508` `READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ508-codex.lock.md`.
 Owner completion 2026-09-30: `RQ508` moved `IN_PROGRESS -> DONE` on implementation SHA `50512ffefb2005c889cafecfec46c770fc5c46bf`; fresh fetch verified `HEAD == origin/main` at that SHA. The execution plan now has a verified current-truth contract for surface ownership, backend decision authority, dataScope, line-bound cost precedence and signed-share semantics; historical May 2026 proposals are explicitly non-live. A source-reference/current-truth guard is wired into Planning Governance. Run log: `.ai/runs/2026-09-30-RQ508-evidence.md`; evidence state is synchronized. Fresh recovery found no safe successor READY: the parent RQ pointer is `none`, RQ491 remains WAITING behind PARTIAL Q83 and other candidates retain their named gates.
@@ -2819,7 +2820,8 @@ Supplier cross-tab audit registration 2026-09-28: current-main review after RQ48
 
 ## RQ498 - Supplier tabs: make cohort, metric basis and percentage-point units explicit
 
-Status: WAITING  
+Status: DONE  
+Owner completion 2026-10-02: RQ498 delivered on `main` with tab-specific revenue/margin labels, full-price composition gap and share-delta pp formatting across UI/report/export; calculations unchanged. Run log: `.ai/runs/2026-10-02-RQ498-evidence.md`. Evidence state: synchronized after main verification.
 Ready after: `RQ474`, `RQ475`, `RQ476`, `RQ494` and `RQ495` are DONE or their final metric/population contracts are stable, and `RQ522` is DONE with machine-readable cross-tab basis metadata  
 Priority: P1  
 Type: frontend-contract/report-export/tests  

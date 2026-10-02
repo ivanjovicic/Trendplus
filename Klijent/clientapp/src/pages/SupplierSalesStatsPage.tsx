@@ -38,6 +38,7 @@ import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
+import { SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL, SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE } from "../utils/supplierMetricSemantics";
 import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { AnalyticsMetaError } from "../utils/analyticsResponseMeta";
@@ -1902,7 +1903,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           {!emptyStateHint ? (
             <section className="supplier-decision-kpis">
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
-                <span>Ukupan promet <InfoTip text="Ukupna vrednost prodaje svih dobavljača u izabranom periodu. Formula: zbir prodajnih vrednosti svih prodajnih stavki u periodu. U promet ne ulaze operativni troškovi." /></span>
+                <span>{SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL} <InfoTip text="Ukupna vrednost sertifikovane maloprodajne prodaje svih dobavljača u izabranom periodu (bez DUG/KOREKCIJA). Nije isto što i prihod skorkarte ili post-prozor asortimana." /></span>
                 <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan promet" />
               </article>
@@ -1941,7 +1942,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija pozitivnog neto prometa na najjačim partnerima.">
-                <span>Udeo top 5 dobavljača <InfoTip text="Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom. Uključuje Nepoznato kada je prikazano; negativni redovi su izuzeti iz ovog izvedenog pokazatelja." /></span>
+                <span>Udeo top 5 dobavljača <InfoTip text={`${SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE} Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom.`} /></span>
                 <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>

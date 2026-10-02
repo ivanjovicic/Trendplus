@@ -435,11 +435,12 @@ const operationalMetrics: Record<string, AnalyticsMetricDefinition> = {
     relatedScreens: ["/analytics/supplier"],
   }),
   fullPriceShareChange: defineMetric("fullPriceShareChange", {
-    label: "Promena udela pune cene",
-    shortDescription: "Razlika udela prodaje po punoj ceni između tekućeg i prethodnog perioda.",
-    formula: "full_price_share_now - full_price_share_previous",
+    label: "Promena udela pune cene (pp)",
+    shortDescription: "Razlika udela prodaje po punoj ceni između tekućeg i prethodnog istog perioda, u procentnim poenima.",
+    formula: "(full_price_share_now - full_price_share_previous) × 100 pp",
     dataSource: "Supplier decision materialized view",
-    interpretation: "Signal promene kvaliteta prodaje bez promo oslanjanja.",
+    interpretation: "Npr. 0,62 naspram 0,58 = +4 pp, ne +4% rasta.",
+    limitations: ["Nije isto što i razmak pune cene i nivelacija po dobavljaču u tabeli skorkarte."],
     relatedScreens: ["/analytics/supplier"],
   }),
   activeSkuShare: defineMetric("activeSkuShare", {
