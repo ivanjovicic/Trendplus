@@ -96,7 +96,10 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
             return;
         }
 
-        var baseUri = ResolveBaseUri();
+        var baseUri = ResolveBaseUri(
+            _configuration["AnalyticsPrewarm:BaseUrl"],
+            _configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS"),
+            Environment.GetEnvironmentVariable("PORT"));
         if (baseUri is null)
         {
             _logger.LogWarning("Analytics cache prewarm skipped because local base URL could not be resolved.");
@@ -291,15 +294,24 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
         }
     }
 
-    private Uri? ResolveBaseUri()
+    internal static Uri? ResolveBaseUri(
+        string? configuredBaseUrl,
+        string? urls,
+        string? port)
     {
-        var configuredBaseUrl = _configuration["AnalyticsPrewarm:BaseUrl"];
         if (TryCreateBaseUri(configuredBaseUrl, out var configuredUri))
         {
             return configuredUri;
         }
 
-        var urls = _configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+        // Program.cs binds Kestrel to PORT when set, even if ASPNETCORE_URLS
+        // advertises a different port. Probe the listener that is actually bound.
+        if (!string.IsNullOrWhiteSpace(port)
+            && TryCreateBaseUri($"http://127.0.0.1:{port}", out var portUri))
+        {
+            return portUri;
+        }
+
         if (!string.IsNullOrWhiteSpace(urls))
         {
             foreach (var rawUrl in urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -317,7 +329,6 @@ public sealed class AnalyticsCachePrewarmHostedService : BackgroundService
             }
         }
 
-        var port = Environment.GetEnvironmentVariable("PORT");
         return TryCreateBaseUri($"http://127.0.0.1:{(string.IsNullOrWhiteSpace(port) ? "8080" : port)}", out var fallbackUri)
             ? fallbackUri
             : null;

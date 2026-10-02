@@ -11,6 +11,18 @@ public sealed class AnalyticsCachePrewarmHostedServiceTests
 {
     [Trait("Category", "Unit")]
     [Fact]
+    public void ResolveBaseUri_PrefersPortUsedByKestrelOverConflictingAspNetCoreUrls()
+    {
+        var baseUri = AnalyticsCachePrewarmHostedService.ResolveBaseUri(
+            configuredBaseUrl: null,
+            urls: "http://0.0.0.0:8080",
+            port: "10000");
+
+        Assert.Equal(new Uri("http://127.0.0.1:10000/"), baseUri);
+    }
+
+    [Trait("Category", "Unit")]
+    [Fact]
     public async Task RunPrewarmOnceAsync_WhenLocalApiNeverBecomesReady_LogsSingleSkipWarningAndDoesNotWarmPaths()
     {
         var requests = new List<string>();
