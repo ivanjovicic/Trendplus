@@ -50,4 +50,4 @@ Evidence state: synchronized
 - A broader Inventory test showed one combined-run timeout/flaky queued-marker assertion; its isolated rerun passed. The production build still emits the pre-existing large `recharts` chunk warning. Analytics Quality Gates run `37005335044` was still `in_progress` when inspected.
 
 ## Next
-- Re-enter canonical idle recovery and collision-check P-UI-29 before claiming a successor.
+- P-UI-29 was promoted and claimed after a fresh collision check; the `ColorSalesStatsPage` table is the selected pilot.

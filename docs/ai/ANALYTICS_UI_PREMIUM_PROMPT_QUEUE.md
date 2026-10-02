@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-28 DONE; re-enter idle recovery)
+Current READY prompt: none (P-UI-29 DONE; re-enter idle recovery)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -34,7 +34,7 @@ Use with:
 | P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
 | P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
 | P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
-| P-UI-29 | WAITING | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
+| P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | WAITING | product-decision-responsive | Product Decision Center responsive + measured row rendering |
@@ -1675,9 +1675,12 @@ Analytics pages duplicate compact 13px decision-field/filter CSS. On narrow scre
 
 ---
 
+Owner promotion/claim 2026-10-02: after P-UI-28 delivery, canonical idle recovery selected P-UI-29. Collision check found no matching local task lock, branch or open PR, and no current READY/IN_PROGRESS RQ prompt owns AnalyticsDataTable or ColorSalesStatsPage. ColorSalesStatsPage is the single pilot because existing tests cover URL sort, visible sorting versus export population, and detail navigation. Shared callers remain outside this migration; only the chosen pilot opts into responsive behavior.
+
 ## P-UI-29 - Add a responsive AnalyticsDataTable pilot with explicit column priority
 
-Status: WAITING
+Status: DONE
+Claimed: 2026-10-02 by Codex after fresh shared-component/page collision check; pilot is ColorSalesStatsPage.
 Ready after: P-UI-24 and P-UI-25
 Priority: P1
 Type: frontend/component/tests
@@ -1736,6 +1739,25 @@ Commit suggestion: `feat(analytics-ui): pilot responsive data table`
 
 - P-UI-24 and P-UI-25 DONE.
 - Page migrations remain separate prompts.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: shipped the responsive `AnalyticsDataTable` Color Sales pilot. The complete table remains reachable through contained horizontal scrolling; the `Boja` key column stays visible, and keyboard users can focus the scroll region. No table columns, ordering, data, sort, export or detail behavior changed.
+- Changed files: `AnalyticsDataTable.tsx`, `AnalyticsDataTable.css`, `ColorSalesStatsPage.tsx`, the focused component/page specs, and `responsive_baseline.mjs` synthetic route fixture/capture support.
+- Checks run: component/page tests 25/25; five-width light browser baseline with 0 page errors and no root overflow at 320/375; typecheck, build, analytics guardrails, governance validators and `git diff --check` passed.
+- Checks not run: full frontend suite, dark theme/full-page browser captures and device Safari proof; see run log for reasons.
+- Run log: `.ai/runs/2026-10-02-P-UI-29-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `fee2c165233cc985c51365c4de3ce0ca0edb96b4`
+- Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA and equals `HEAD` at merge SHA `c13e1660719fbdc9f908e509a327994ca1e52d2d`.
+- Prompt defect / scope repair: the P-UI-24 runner did not render the Color Sales table in fail-closed fixture mode, so deterministic synthetic layout data and a table capture selector were added without loading customer data.
+- Missed: none known within the table scope; a pre-existing 1024px overflow from the `Sve sezone` filter select is recorded separately in the run log.
+- Residual risk: the unchanged 1024px filter-select overflow remains; current-main Analytics Quality Gates were still in progress when inspected.
+- Follow-up: canonical idle recovery for the next dependency-complete, path-safe UI prompt.
+- Next: re-enter canonical idle recovery.
 
 ---
 
