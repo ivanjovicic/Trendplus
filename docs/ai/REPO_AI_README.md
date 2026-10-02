@@ -41,6 +41,7 @@ If a summary doc disagrees with its owner, update or ignore the summary; do not 
 
 - Repo-wide agent behavior and question threshold: `AGENTS.md`
 - Queue routing/primary READY/full runnable set/global priority: `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- Idle/no-READY recovery and blocker decomposition: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not treat stale/circular/external-final-proof blockers as permanent without reclassification.
 - Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md` and `docs/ai/BACKEND_STANDARDS.md`
 - Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
@@ -115,6 +116,10 @@ Update docs when:
 - Keep canonical rules in one detailed doc and link to it from lighter docs.
 - `AGENTS.md` and `.github/copilot-instructions.md` should stay short and point to canonical docs.
 - Prefer updating the central doc over creating a contradictory duplicate.
+
+## Queue recovery principle
+
+When a queue has no current READY prompt, the expected behavior is proactive recovery, not early refusal. Follow the canonical protocol to re-check stale dependencies, split repo-local work from external final proof, detect circular prerequisites, try an independent lane, and only then report no safe task. Do not invent owner decisions or bypass production/security/tenant gates.
 
 ## Production and queue references
 
