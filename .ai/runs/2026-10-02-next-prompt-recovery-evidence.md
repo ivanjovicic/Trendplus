@@ -4,9 +4,9 @@ Date: 2026-10-02
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: d6834479fe986434e8a9489824c96a56b539512f
+Main verification: passed - fresh `git fetch origin main` verified `HEAD == origin/main == d6834479fe986434e8a9489824c96a56b539512f`; `git merge-base --is-ancestor` confirmed the delivery commit is contained.
+Evidence state: synchronized
 
 ## What was done
 - Ran canonical idle recovery after all current queue pointers reported none. No prompt was promoted or claimed because remaining higher-priority candidates are externally gated or depend on unfinished evidence.
@@ -28,6 +28,7 @@ Evidence state: pending
 - Summary/detail status consistency scan of `ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` -> pass; no mismatches remain.
 - Targeted search of `analyticsIntelligenceDerived.ts` for `?? 0`, `?? 100`, `999`, `Math.max(..., 1)` and `|| 0` -> no cited fallback pattern remains.
 - `git diff --check` -> pass.
+- GitHub Planning Governance run `37019333918` on `d6834479fe986434e8a9489824c96a56b539512f` -> in_progress at inspection; not treated as validation.
 
 ## Validation not run
 - Product/frontend/backend tests and builds -> not run; this run changes queue routing/evidence only.
