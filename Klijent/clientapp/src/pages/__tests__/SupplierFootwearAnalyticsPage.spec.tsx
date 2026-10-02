@@ -179,6 +179,24 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(toolbar).not.toHaveTextContent("Prozor (dani): 0");
   });
 
+  it("renders explicit unavailable size-curve and controlled-markdown evidence on Assortment", async () => {
+    render(
+      <MemoryRouter>
+        <SupplierFootwearAnalyticsPage />
+      </MemoryRouter>,
+    );
+
+    const panel = await screen.findByTestId("supplier-assortment-rq532-evidence");
+    expect(within(panel).getByTestId("supplier-assortment-size-curve-evidence")).toHaveTextContent(
+      "Raspodela veličina po dobavljaču × tip obuće nije dostupna",
+    );
+    expect(within(panel).getByTestId("supplier-assortment-controlled-markdown-evidence")).toHaveTextContent(
+      "Kontrolisani efekat nivelacije (DiD) nije prikazan kao uzročan uplift",
+    );
+    expect(panel).toHaveTextContent("recommendationAllowed=false");
+    expect(panel).not.toHaveTextContent("0 RSD");
+  });
+
   it("renders shared trust header, control bar, and data table chrome", async () => {
     render(
       <MemoryRouter>
