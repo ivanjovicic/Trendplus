@@ -191,7 +191,7 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByTestId("supplier-legacy-context")).toHaveTextContent(
       "Kompatibilna veza iz Operacija otvorila je glavni Pregled dobavljača, tab Asortiman",
     );
-    expect(screen.getByRole("button", { name: /Asortiman/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /Asortiman/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it.each([
@@ -213,7 +213,8 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
     expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: new RegExp(tabLabel, "i") })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: new RegExp(tabLabel, "i") })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", `supplier-tab-${tab}`);
     expect(screen.queryByText("Opseg i filteri")).not.toBeInTheDocument();
     expect(screen.queryByText("Kontrole asortimana")).not.toBeInTheDocument();
   });
@@ -313,12 +314,12 @@ describe("SupplierConsolidatedPage", () => {
     expect(await screen.findByTestId("mock-overview")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /Skorkarta/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Skorkarta/i }));
     expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /Asortiman/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Asortiman/i }));
     expect(await screen.findByTestId("mock-assortment")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -442,7 +443,7 @@ describe("SupplierConsolidatedPage", () => {
       expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Skorkarta/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Skorkarta/i }));
     expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
     expect(screen.queryByText("keš signala odluke dobavljača")).not.toBeInTheDocument();
 

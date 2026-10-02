@@ -78,7 +78,12 @@ export function formatDate(value: DateLikeValue, fallback = "-"): string {
     return fallback;
   }
 
-  return parsed.toLocaleDateString("sr-RS");
+  return parsed.toLocaleDateString("sr-RS", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function formatDateTime(value: DateLikeValue, fallback = "-"): string {
@@ -92,6 +97,7 @@ export function formatDateTime(value: DateLikeValue, fallback = "-"): string {
   return parsed.toLocaleString("sr-RS", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "UTC",
   });
 }
 

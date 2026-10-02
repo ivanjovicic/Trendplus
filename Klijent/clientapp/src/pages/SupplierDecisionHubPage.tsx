@@ -186,6 +186,10 @@ export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
 
 function clamp(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
+function sortAriaValue(field: SortField, activeField: SortField, dir: SortDir): "ascending" | "descending" | "none" {
+  if (field !== activeField) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+}
 function statusClass(status: DecisionStatus): string {
   const tone = recommendationStatusTone(status);
   if (tone === "boost") return "sdh-decision-status status-boost";
@@ -1670,42 +1674,42 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr>
-                      <th>
+                      <th aria-sort={sortAriaValue("supplierName", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("supplierName")}>
                           Dobavljač
                           <InfoTip text="Naziv dobavljača. Prazni nazivi se normalizuju na 'Dobavljač #ID' ili 'Nepoznat dobavljač' da tabela nema blank redove." />
                           {sortMarker("supplierName", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="analytics-data-table__numeric">
+                      <th aria-sort={sortAriaValue("revenue", sortField, sortDir)} className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("revenue")}>
                           Prihod
                           <InfoTip text="Prihod dobavljača u skupu skorkarte za izabrani period." />
                           {sortMarker("revenue", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="analytics-data-table__numeric">
+                      <th aria-sort={sortAriaValue("sharePct", sortField, sortDir)} className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("sharePct")}>
                           Udeo %
                           <InfoTip text="Udeo ovog dobavljača u ukupnom prihodu skorkarte. Veći udeo znači veći uticaj na ukupne pokazatelje." />
                           {sortMarker("sharePct", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="analytics-data-table__numeric">
+                      <th aria-sort={sortAriaValue("preMarkdownMarginPct", sortField, sortDir)} className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("preMarkdownMarginPct")}>
                           Marža %
                           <InfoTip text="Marža pre prvog sniženja: procenat zarade pre nivelacije. Viša marža je bolji signal, osim ako dolazi uz visok rizik zaliha." />
                           {sortMarker("preMarkdownMarginPct", sortField, sortDir)}
                         </button>
                       </th>
-                      <th className="analytics-data-table__numeric">
+                      <th aria-sort={sortAriaValue("qualityTrendPct", sortField, sortDir)} className="analytics-data-table__numeric">
                         <button type="button" onClick={() => handleSort("qualityTrendPct")}>
                           {SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} (pp)
                           <InfoTip text="Udeo prodaje po punoj ceni minus udeo nivelacija, u procentnim poenima. Pozitivno = veći udeo pune cene; nije vremenski trend." />
                           {sortMarker("qualityTrendPct", sortField, sortDir)}
                         </button>
                       </th>
-                      <th>
+                      <th aria-sort={sortAriaValue("status", sortField, sortDir)}>
                         <button type="button" onClick={() => handleSort("status")}>
                           {recommendationAllowed ? "Signal skorkarte" : "Pomoćni signal"}
                           <InfoTip text={recommendationAllowed

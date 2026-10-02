@@ -315,6 +315,11 @@ function isSortActive(field: SortField, activeField: SortField): boolean {
   return field === activeField;
 }
 
+function sortAriaValue(field: SortField, activeField: SortField, dir: SortDir): "ascending" | "descending" | "none" {
+  if (field !== activeField) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+}
+
 function statusClass(status: DecisionStatus): string {
   if (status === "increase_focus") return "supplier-decision-status status-boost";
   if (status === "maintain") return "supplier-decision-status status-keep";
@@ -2087,7 +2092,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <table>
                   <thead>
                     <tr>
-                      <th className={isSortActive("dobavljacNaziv", sortField) ? "is-sorted" : undefined}>
+                      <th aria-sort={sortAriaValue("dobavljacNaziv", sortField, sortDir)} className={isSortActive("dobavljacNaziv", sortField) ? "is-sorted" : undefined}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("dobavljacNaziv", sortField) ? "is-active" : ""}`}
@@ -2098,7 +2103,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Dobavljač <span className="sort-indicator" aria-hidden="true">{sortMarker("dobavljacNaziv", sortField, sortDir)}</span> <InfoTip text="Naziv dobavljača. Klikom sortirate abecedno." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("ukupanPromet", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("ukupanPromet", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("ukupanPromet", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupanPromet", sortField) ? "is-active" : ""}`}
@@ -2109,7 +2114,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Promet <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupanPromet", sortField, sortDir)}</span> <InfoTip text="Ukupna vrednost prodaje u izabranom periodu (RSD)." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("ukupnaKolicina", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("ukupnaKolicina", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("ukupnaKolicina", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("ukupnaKolicina", sortField) ? "is-active" : ""}`}
@@ -2120,7 +2125,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Količina <span className="sort-indicator" aria-hidden="true">{sortMarker("ukupnaKolicina", sortField, sortDir)}</span> <InfoTip text="Ukupan broj prodatih komada." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("totalCost", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("totalCost", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("totalCost", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("totalCost", sortField) ? "is-active" : ""}`}
@@ -2131,7 +2136,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("sharePct", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("sharePct", sortField) ? "is-active" : ""}`}
@@ -2142,7 +2147,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           Udeo pozitivnog prometa <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat pozitivnog neto prometa prikazane populacije čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / suma pozitivnog prometa prikazane populacije x 100. Negativan neto promet ostaje vidljiv u tabeli, ali nema pozitivan udeo." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("marginContribution", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginContribution", sortField) ? "is-active" : ""}`}
@@ -2153,7 +2158,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {canonicalTerms.marginContribution.label} <span className="sort-indicator" aria-hidden="true">{sortMarker("marginContribution", sortField, sortDir)}</span> <InfoTip text={canonicalTerms.marginContribution.desc} />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("marginPct", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("marginPct", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("marginPct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("marginPct", sortField) ? "is-active" : ""}`}
@@ -2164,7 +2169,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {canonicalTerms.marginPct.label} <span className="sort-indicator" aria-hidden="true">{sortMarker("marginPct", sortField, sortDir)}</span> <InfoTip text={analyticsMetricDescriptions.marginPct} />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("shareOfMarginContribution", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("shareOfMarginContribution", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("shareOfMarginContribution", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("shareOfMarginContribution", sortField) ? "is-active" : ""}`}
@@ -2175,7 +2180,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           {`Udeo u ${canonicalTerms.marginContribution.label}`} <span className="sort-indicator" aria-hidden="true">{sortMarker("shareOfMarginContribution", sortField, sortDir)}</span> <InfoTip text="Koliki procenat ukupnog maržnog doprinosa čini ovaj dobavljač. Formula: maržni doprinos dobavljača / ukupan maržni doprinos svih prikazanih dobavljača x 100. Ovo nije udeo u profitu niti u neto zaradi." />
                         </button>
                       </th>
-                      <th className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
+                      <th aria-sort={sortAriaValue("popRevenueChangePct", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("popRevenueChangePct", sortField) ? "is-active" : ""}`}
@@ -2186,7 +2191,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           PoP trend <span className="sort-indicator" aria-hidden="true">{popTrendSortMarker}</span> <InfoTip text={popTrendTooltip} />
                         </button>
                       </th>
-                      <th className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
+                      <th aria-sort={sortAriaValue("status", sortField, sortDir)} className={isSortActive("status", sortField) ? "is-sorted" : undefined}>
                         <button
                           type="button"
                           className={`sortable-header ${isSortActive("status", sortField) ? "is-active" : ""}`}

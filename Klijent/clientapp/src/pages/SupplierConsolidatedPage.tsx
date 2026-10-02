@@ -478,15 +478,17 @@ export default function SupplierConsolidatedPage() {
 
       {invalidRange ? <div className="supplier-consolidated-message error" role="alert">Datum od ne može biti posle datuma do.</div> : null}
 
-      <nav className="supplier-consolidated-tabs" aria-label="Kartice analitike dobavljača">
+      <nav className="supplier-consolidated-tabs" role="tablist" aria-label="Kartice analitike dobavljača">
         {SUPPLIER_TABS.map((tab) => (
           <button
             key={tab}
             type="button"
+            role="tab"
             className={`supplier-consolidated-tab ${currentTab === tab ? "active" : ""} ${tab === "overview" ? "primary" : ""}`}
             onClick={() => setTab(tab)}
             aria-selected={currentTab === tab}
-            aria-current={currentTab === tab ? "page" : undefined}
+            aria-controls={`supplier-tabpanel-${tab}`}
+            id={`supplier-tab-${tab}`}
           >
             <span className="supplier-tab-copy">
               <span className="supplier-tab-label">{tabLabels[tab]}</span>
@@ -542,17 +544,35 @@ export default function SupplierConsolidatedPage() {
 
       <div className="supplier-consolidated-content">
         {currentTab === "overview" && (
-          <div className="supplier-embedded-container supplier-embedded-overview">
+          <div
+            className="supplier-embedded-container supplier-embedded-overview"
+            role="tabpanel"
+            id="supplier-tabpanel-overview"
+            aria-labelledby="supplier-tab-overview"
+            tabIndex={0}
+          >
             <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "scorecard" && (
-          <div className="supplier-embedded-container supplier-embedded-scorecard">
+          <div
+            className="supplier-embedded-container supplier-embedded-scorecard"
+            role="tabpanel"
+            id="supplier-tabpanel-scorecard"
+            aria-labelledby="supplier-tab-scorecard"
+            tabIndex={0}
+          >
             <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}
         {currentTab === "assortment" && (
-          <div className="supplier-embedded-container supplier-embedded-assortment">
+          <div
+            className="supplier-embedded-container supplier-embedded-assortment"
+            role="tabpanel"
+            id="supplier-tabpanel-assortment"
+            aria-labelledby="supplier-tab-assortment"
+            tabIndex={0}
+          >
             <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
           </div>
         )}

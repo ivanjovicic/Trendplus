@@ -6,6 +6,7 @@ import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import InfoTip from "../components/ui/InfoTip";
 import { getDobavljaci } from "../services/dobavljaciApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
@@ -115,6 +116,10 @@ function fmtElasticity(value: number | null | undefined): string {
   return value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
+function sortAriaValue(field: SortField, activeField: SortField, dir: SortDir): "ascending" | "descending" | "none" {
+  if (field !== activeField) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+}
 function statusClass(status: DecisionStatus): string {
   if (status === "effective") return "sf-decision-status status-boost";
   if (status === "ineffective" || status === "insufficient_data") return "sf-decision-status status-reduce";
@@ -1055,12 +1060,12 @@ export default function SupplierFootwearAnalyticsPage({
                 <table className="sf-decision-table">
                   <thead>
                     <tr>
-                      <th><button type="button" onClick={() => handleSort("vendorName")}>Dobavljač{sortMarker("vendorName", sortField, sortDir)}</button></th>
-                      <th className="align-right"><button type="button" onClick={() => handleSort("postRevenue")}>Promet{sortMarker("postRevenue", sortField, sortDir)}</button></th>
-                      <th className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo{sortMarker("sharePct", sortField, sortDir)}</button></th>
-                      <th><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
-                      <th className="align-right"><button type="button" onClick={() => handleSort("trendPct")}>Trend{sortMarker("trendPct", sortField, sortDir)}</button></th>
-                      <th><button type="button" onClick={() => handleSort("status")}>Efekat promene cene{sortMarker("status", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("vendorName", sortField, sortDir)}><button type="button" onClick={() => handleSort("vendorName")}>Dobavljač<InfoTip text="Naziv dobavljača; klikom sortirate abecedno." />{sortMarker("vendorName", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("postRevenue", sortField, sortDir)} className="align-right"><button type="button" onClick={() => handleSort("postRevenue")}>Promet<InfoTip text="Promet u post-prozoru uporedive kohorte nivelacija, nije ukupan period promet." />{sortMarker("postRevenue", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("sharePct", sortField, sortDir)} className="align-right"><button type="button" onClick={() => handleSort("sharePct")}>Udeo<InfoTip text="Udeo post-prozora ovog dobavljača u prikazanoj uporedivoj kohorti." />{sortMarker("sharePct", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("topFootwearType", sortField, sortDir)}><button type="button" onClick={() => handleSort("topFootwearType")}>Glavni tip<InfoTip text="Tip obuće sa najvećim udelom u uporedivoj kohorti dobavljača." />{sortMarker("topFootwearType", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("trendPct", sortField, sortDir)} className="align-right"><button type="button" onClick={() => handleSort("trendPct")}>Trend<InfoTip text="Promena prometa u odnosu na uporedivi pre-prozor; nije konačna preporuka." />{sortMarker("trendPct", sortField, sortDir)}</button></th>
+                      <th aria-sort={sortAriaValue("status", sortField, sortDir)}><button type="button" onClick={() => handleSort("status")}>Efekat promene cene<InfoTip text="Serverski signal efekta promene cene; finalna poslovna preporuka ostaje u tabu Pregled." />{sortMarker("status", sortField, sortDir)}</button></th>
                       <th className="align-center">Detalj</th>
                     </tr>
                   </thead>
