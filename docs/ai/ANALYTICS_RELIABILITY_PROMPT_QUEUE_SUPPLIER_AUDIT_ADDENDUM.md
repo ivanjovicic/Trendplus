@@ -324,6 +324,7 @@ RQ519 and RQ521 DONE; RQ445/RQ473 prior authority.
 
 Status: DONE  
 Delivered: 2026-10-02 on `main` (see `.ai/runs/2026-10-02-RQ523-evidence.md`)  
+Audit follow-up 2026-10-03: added the missing rendered-UI assertion that revenue rank badges appear on descending sort and disappear on ascending sort; see `.ai/runs/2026-10-03-direct-other-commits-audit-evidence.md`.
 Ready after: RQ520 and RQ522 DONE  
 Priority: P3
 Type: frontend/copy/tests

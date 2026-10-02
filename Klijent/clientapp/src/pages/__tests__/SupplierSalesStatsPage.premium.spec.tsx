@@ -222,6 +222,23 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
 
+  it("shows revenue rank badges only for descending revenue sort", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("supplier-sales-stats-data-table");
+    const revenueSort = within(table).getByRole("button", { name: /Promet/ });
+
+    fireEvent.click(revenueSort);
+    expect(within(table).getByText("#1", { selector: ".supplier-rank-badge" })).toBeInTheDocument();
+
+    fireEvent.click(revenueSort);
+    expect(within(table).queryByText(/^#\d+$/, { selector: ".supplier-rank-badge" })).not.toBeInTheDocument();
+  });
+
   it("renders proven inventory buying evidence and explicit unavailable metrics", async () => {
     vi.mocked(getInventoryBalance).mockResolvedValue({
       totalSku: 3,
