@@ -5,6 +5,7 @@ Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
 Current READY prompt: none (RQ536 DONE)
 Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
+Queue reconciliation 2026-10-02: RQ523 DONE on `main` — Pregled keeps backend population share when a supplier is focused; revenue rank badges only for descending sort; Asortiman control chips reflect applied filters with Serbian data-quality labels; assortment category persists in URL/canonical filters. RQ529 unblocked on RQ523. Run log: `.ai/runs/2026-10-02-RQ523-evidence.md`.
 Queue reconciliation 2026-10-02: RQ500 DONE on `main` — Supplier Pregled/Skorkarta/Asortiman first-screen KPIs match each tab's question; scorecard quality/risk metrics and assortment type/coverage/elasticity are primary; generic revenue/concentration metrics moved to secondary `<details>`; consolidated shell shows cross-tab role cue. RQ523/RQ529 dependency on RQ499 unchanged; RQ530 and RQ532 unblocked on RQ500. Run log: `.ai/runs/2026-10-02-RQ500-evidence.md`.
 Queue reconciliation 2026-10-02: RQ499 DONE on `main` — consolidated Supplier shell exposes critical/pending trust states, tab-specific fallback sources, scorecard signal-only mode, and no stale cross-tab trust flash. RQ523 is dependency-complete after RQ499; RQ500 waits on RQ498/RQ499 (both DONE). Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`.
 Queue reconciliation 2026-10-02: RQ498 DONE on `main` — Supplier Pregled/Skorkarta/Asortiman headline labels and pp units are explicit in UI and scorecard report/export; calculations unchanged. RQ523 remains WAITING on RQ499; RQ529 on RQ523/RQ499; RQ530 on RQ500/RQ524/RQ474/RQ487; RQ532 on RQ500; RQ531 owner-gated. Run log: `.ai/runs/2026-10-02-RQ498-evidence.md`.
@@ -317,8 +318,9 @@ RQ519 and RQ521 DONE; RQ445/RQ473 prior authority.
 
 ## RQ523 - Fix Supplier frontend residuals without redefining metric policy
 
-Status: WAITING
-Ready after: RQ520 and RQ522 DONE
+Status: DONE  
+Delivered: 2026-10-02 on `main` (see `.ai/runs/2026-10-02-RQ523-evidence.md`)  
+Ready after: RQ520 and RQ522 DONE  
 Priority: P3
 Type: frontend/copy/tests
 Feature family: supplier-frontend-residuals
