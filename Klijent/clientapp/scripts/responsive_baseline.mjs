@@ -7,7 +7,9 @@ export const VIEWPORTS = [320, 375, 768, 1024, 1280];
 
 const ROUTES = [
   { id: "app_shell", path: "/analytics" },
-  { id: "prodaja", path: "/prodaja" },
+  { id: "prodaja", path: "/prodaja", readySelector: ".mobile-entry-form" },
+  { id: "unos_robe", path: "/unos-robe", readySelector: ".mobile-entry-form" },
+  { id: "nivelacija_cena", path: "/nivelacija", readySelector: ".form-page" },
   { id: "analytics", path: "/analytics", readySelector: '[data-testid="analytics-control-bar"]', expandSelector: ".details-expand", afterExpandSelector: ".analytics-chart-grid .chart-wrap", captureSelector: ".analytics-chart-grid" },
   { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
   { id: "supplier", path: "/analytics/supplier" },
@@ -30,6 +32,7 @@ function parseArgs(argv) {
     mode: "fixture",
     timeoutMs: DEFAULT_TIMEOUT_MS,
     routeId: null,
+    routeIds: [],
     viewportOnly: false,
     theme: null,
     strict: false,
@@ -45,6 +48,7 @@ function parseArgs(argv) {
     else if (argument === "--mode") options.mode = argv[++index];
     else if (argument === "--timeout-ms") options.timeoutMs = Number(argv[++index]);
     else if (argument === "--route-id") options.routeId = argv[++index];
+    else if (argument === "--route-ids") options.routeIds = argv[++index].split(",").filter(Boolean);
     else if (argument === "--viewport-only") options.viewportOnly = true;
     else if (argument === "--theme") options.theme = argv[++index];
     else if (argument === "--strict") options.strict = true;
@@ -59,6 +63,10 @@ function parseArgs(argv) {
   }
   if (options.routeId && !ROUTES.some((route) => route.id === options.routeId)) {
     throw new Error(`Unknown responsive baseline route id: ${options.routeId}`);
+  }
+  const unknownRouteIds = options.routeIds.filter((id) => !ROUTES.some((route) => route.id === id));
+  if (unknownRouteIds.length > 0) {
+    throw new Error(`Unknown responsive baseline route ids: ${unknownRouteIds.join(", ")}`);
   }
   if (options.theme && !THEMES.includes(options.theme)) {
     throw new Error(`Unknown responsive baseline theme: ${options.theme}`);
@@ -141,6 +149,28 @@ async function fixtureResponse(request, options) {
   const url = new URL(request.url());
   if (url.pathname === "/health" || url.pathname === "/ready") {
     return { status: 200, body: JSON.stringify({ status: "fixture" }) };
+  }
+
+  if (url.pathname === "/api/artikli/lookup") {
+    return { status: 200, body: JSON.stringify([
+      { id: 101, naziv: "Sintetičke patike A", cena: 7490, kolicina: 8 },
+      { id: 102, naziv: "Sintetičke patike B", cena: 8290, kolicina: 5 },
+    ]) };
+  }
+  if (url.pathname === "/api/dobavljaci") {
+    return { status: 200, body: JSON.stringify([
+      { id: 21, naziv: "Sintetički dobavljač A", adresa: "Novi Sad", telefon: "0600000000" },
+      { id: 22, naziv: "Sintetički dobavljač B", adresa: "Beograd", telefon: "0610000000" },
+    ]) };
+  }
+  if (url.pathname === "/artikli") {
+    return { status: 200, body: JSON.stringify([
+      { id: 101, naziv: "Sintetičke patike A", prodajnaCena: 7490, nabavnaCena: 4200, prvaProdajnaCena: 7990, kolicina: 8 },
+      { id: 102, naziv: "Sintetičke patike B", prodajnaCena: 8290, nabavnaCena: 4700, prvaProdajnaCena: 8790, kolicina: 5 },
+    ]) };
+  }
+  if (url.pathname === "/api/prodaja" && request.method() === "POST") {
+    return { status: 201, body: JSON.stringify({ id: 1, status: "fixture" }) };
   }
 
   if (url.pathname === "/api/analytics/color-sales-stats") {
@@ -618,8 +648,9 @@ async function run(options) {
   const results = [];
 
   try {
-    const selectedRoutes = options.routeId
-      ? ROUTES.filter((route) => route.id === options.routeId)
+    const selectedRouteIds = options.routeIds.length > 0 ? options.routeIds : options.routeId ? [options.routeId] : null;
+    const selectedRoutes = selectedRouteIds
+      ? ROUTES.filter((route) => selectedRouteIds.includes(route.id))
       : ROUTES;
     const selectedThemes = options.theme
       ? THEMES.filter((theme) => theme === options.theme)
@@ -669,6 +700,7 @@ async function run(options) {
 
           const url = `${options.baseUrl.replace(/\/$/, "")}${route.path}`;
           let navigationError = null;
+          let interaction = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
@@ -681,6 +713,28 @@ async function run(options) {
               }, { timeout: options.timeoutMs }, route.expandSelector);
               await page.click(route.expandSelector);
               await page.waitForSelector(route.afterExpandSelector, { timeout: options.timeoutMs });
+            }
+            if (route.id === "prodaja") {
+              await page.locator('input[placeholder="Broj racuna"]').fill("PUI30-001");
+              await page.locator('input[placeholder="Pretrazi artikle po nazivu..."]').fill("patike");
+              await page.waitForSelector(".mobile-entry-search-results button", { timeout: options.timeoutMs });
+              await page.click(".mobile-entry-search-results button");
+              await page.evaluate(() => {
+                const inputs = [...document.querySelectorAll('.mobile-entry-form input[type="number"]')];
+                const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+                for (const [index, value] of [[2, "2"], [3, "7290.5"]]) {
+                  setValue.call(inputs[index], value);
+                  inputs[index].dispatchEvent(new Event("input", { bubbles: true }));
+                  inputs[index].dispatchEvent(new Event("change", { bubbles: true }));
+                }
+              });
+              await page.evaluate(() => {
+                const button = [...document.querySelectorAll(".mobile-entry-form button")]
+                  .find((element) => element.textContent.trim() === "Sacuvaj prodaju");
+                button?.click();
+              });
+              await page.waitForFunction(() => document.body.innerText.includes("Prodaja uspesna"), { timeout: options.timeoutMs });
+              interaction = { salesSubmitted: true, boundary: "fixture POST /api/prodaja" };
             }
             await new Promise((resolve) => setTimeout(resolve, 250));
           } catch (error) {
@@ -736,6 +790,7 @@ async function run(options) {
             pageErrors,
             requestFailures,
             navigationError,
+            interaction,
             performance,
           });
           await page.close();
@@ -762,9 +817,12 @@ async function run(options) {
   await fs.writeFile(markdownPath, markdownReport(report), "utf8");
 
   if (options.strict) {
-    const failing = results.filter((result) => result.geometry.rootOverflow);
+    const failing = results.filter((result) => result.geometry.rootOverflow
+      || result.navigationError
+      || result.pageErrors.length > 0
+      || result.requestFailures.some((failure) => failure.error !== "net::ERR_ABORTED"));
     if (failing.length > 0) {
-      throw new Error(`responsive baseline strict mode found ${failing.length} root-overflow observations`);
+      throw new Error(`responsive baseline strict mode found ${failing.length} failing route observations`);
     }
   }
 

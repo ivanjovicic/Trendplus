@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { KreirajProdajuDto } from "../../types/prodaja/prodaja";
 import { useToast } from "../Toast";
+import { useViewportSearchPanel } from "../forms/useViewportSearchPanel";
 
 type ArtikalOption = { id: number; naziv: string; cena: number };
 
@@ -64,7 +65,9 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
     const [filteredArtikli, setFilteredArtikli] = useState<ArtikalOption[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const remoteSearchSeq = useRef(0);
+    const searchPanelStyle = useViewportSearchPanel(searchInputRef, showSearchResults && !!searchQuery.trim());
 
     useEffect(() => {
         setKnownArtikli((prev) => mergeArtikli(prev, artikli));
@@ -302,7 +305,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
     }, [canSubmit, handleSubmit]);
 
     return (
-        <div className="space-y-4">
+        <div className="mobile-entry-form space-y-4">
             <section className="rounded-xl border border-border bg-surface p-4">
                 <h2 className="mb-4 text-xl font-semibold text-foreground">Nova prodaja</h2>
                 <div className="mb-3 grid gap-2 md:grid-cols-3">
@@ -338,12 +341,13 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                         ))}
                     </div>
                 )}
-                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
+                <p className="keyboard-hint mt-2 text-xs text-muted">Tip: `Ctrl+Enter` cuva prodaju kada je forma validna.</p>
             </section>
 
             <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretrazi i dodaj artikal</label>
                 <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="Pretrazi artikle po nazivu..."
                     value={searchQuery}
@@ -357,7 +361,7 @@ export default function CreateProdajaForm({ artikli, onSearchArtikli, onSubmit }
                 />
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
+                    <div className="mobile-entry-search-results absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl" style={searchPanelStyle}>
                         {isSearching ? (
                             <div className="px-3 py-5 text-center text-sm text-muted">Pretrazujem...</div>
                         ) : filteredArtikli.length > 0 ? (

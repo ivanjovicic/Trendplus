@@ -561,3 +561,28 @@ textarea.form-control {
     min-height: var(--size-touch-target, 2.75rem);
   }
 }
+
+@media (max-width: 759px) {
+  .mobile-entry-form input,
+  .mobile-entry-form select,
+  .mobile-entry-form textarea {
+    font-size: var(--font-size-control-phone, 1rem) !important;
+    min-height: var(--size-touch-target, 2.75rem);
+  }
+
+  .mobile-entry-form button {
+    min-height: var(--size-touch-target, 2.75rem);
+  }
+}
+
+@media (max-width: 759px) and (pointer: coarse) and (hover: none) {
+  .mobile-entry-form .keyboard-hint {
+    display: none;
+  }
+
+  .mobile-entry-form .mobile-entry-search-results {
+    margin-top: 0;
+    right: auto;
+    z-index: 60;
+  }
+}

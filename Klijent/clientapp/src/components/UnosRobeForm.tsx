@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Circle, Clock3, Search, X } from "lucide-react";
+import { useViewportSearchPanel } from "./forms/useViewportSearchPanel";
 
 interface Dobavljac {
     id: number;
@@ -80,6 +81,8 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
     const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
     const searchRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const searchPanelStyle = useViewportSearchPanel(searchInputRef, showSearchResults && !!searchQuery.trim());
 
     useEffect(() => {
         setRecentDobavljaci(readRecentDobavljaci());
@@ -216,7 +219,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="mobile-entry-form space-y-4">
             <section className="rounded-xl border border-border bg-surface p-4">
                 <h2 className="mb-3 text-xl font-semibold text-foreground">Unos robe</h2>
                 <div className="grid gap-2 md:grid-cols-3">
@@ -259,7 +262,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                         </button>
                     ))}
                 </div>
-                <p className="mt-2 text-xs text-muted">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
+                <p className="keyboard-hint mt-2 text-xs text-muted">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
             </section>
 
             {recentDobavljaci.length > 0 && (
@@ -303,6 +306,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 <div className="relative">
                     <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                     <input
+                        ref={searchInputRef}
                         type="text"
                         placeholder="Naziv, adresa ili telefon..."
                         value={searchQuery}
@@ -319,7 +323,7 @@ export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
                 </div>
 
                 {showSearchResults && searchQuery.trim() && (
-                    <div className="absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
+                    <div className="mobile-entry-search-results absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl" style={searchPanelStyle}>
                         {filteredDobavljaci.length > 0 ? (
                             filteredDobavljaci.map((dobavljac, index) => (
                                 <button
