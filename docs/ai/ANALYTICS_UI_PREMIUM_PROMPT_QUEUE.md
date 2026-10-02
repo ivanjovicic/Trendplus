@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-34 DONE; re-enter canonical idle recovery)
+Current READY prompt: P-UI-30 (IN_PROGRESS; mobile data-entry workflows)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -31,14 +31,14 @@ Use with:
 | P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
 | P-UI-24 | DONE | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
 | P-UI-25 | DONE | responsive-ui-foundation | Responsive type/control/input/focus foundation |
-| P-UI-26 | WAITING | responsive-ui-shell | Compact mobile header and accessible drawer |
-| P-UI-27 | WAITING | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
+| P-UI-26 | DONE | responsive-ui-shell | Compact mobile header and accessible drawer |
+| P-UI-27 | DONE | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
 | P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
-| P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
+| P-UI-30 | IN_PROGRESS | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
-| P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
+| P-UI-33 | READY | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
@@ -1765,7 +1765,7 @@ Commit suggestion: `feat(analytics-ui): pilot responsive data table`
 
 ## P-UI-30 - Harden mobile data-entry workflows for sales, goods receipt and price changes
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-25 and P-UI-26
 Priority: P1
 Type: frontend/workflow/tests
@@ -1827,6 +1827,8 @@ Store workflows are high-frequency and currently use small labels/fields/quick c
 
 - P-UI-25 and P-UI-26 DONE.
 - No active owner collision in the data-entry paths.
+
+Owner promotion/claim 2026-10-02: after P-UI-34, idle recovery reconciled stale P-UI-26/P-UI-27 summary rows from WAITING to DONE using their synchronized completion notes/run logs. It also reconciled the RQ495 operations-accuracy summary row from IN_PROGRESS to DONE using `.ai/runs/2026-09-29-RQ495-evidence.md` and delivery SHA `d41ed2e77f7716a1095de1f2d588e3cb4ce0ca31`; its scope owns Supplier/Shoe Type analytics snapshot reads, not the P-UI-30 sales/goods/price-entry forms. P-UI-30 dependencies P-UI-25/P-UI-26 are DONE; no active RQ owner, lock, branch or open PR was found for the three form paths. P-UI-30 moved WAITING -> READY -> IN_PROGRESS. Local lock: `.ai/task-locks/P-UI-30-codex.lock.md`.
 
 ---
 
@@ -1962,7 +1964,7 @@ Owner promotion/claim 2026-10-02: after P-UI-32, idle recovery reconciled stale 
 
 ## P-UI-33 - Migrate Central Actions to responsive filters, table and dialogs
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-27, P-UI-28 and P-UI-29
 Priority: P1
 Type: frontend/page/tests
@@ -2017,6 +2019,8 @@ Central Actions combines compact filters, a wide actions table and page-specific
 
 - P-UI-27/28/29 DONE.
 - No active action-queue correctness owner on the same paths.
+
+Owner eligibility update 2026-10-02: P-UI-27's synchronized completion and P-UI-28/P-UI-29 delivery evidence satisfy all named dependencies. RQ review found no active action-queue correctness owner on the Central Actions paths; the remaining action-source/pagination items are WAITING. P-UI-33 moved WAITING -> READY as an independent presentation-only candidate while P-UI-30 is claimed.
 
 ---
 

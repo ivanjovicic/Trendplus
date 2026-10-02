@@ -182,7 +182,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ456 | DONE | P0 | operations-retail-sales-receipt-population | Canonicalize DUG/KOREKCIJA receipt exclusions across retail-sales populations |
 | RQ457 | DONE | P0 | shoetype-identity-pop-margin-semantics | Harden Shoe Type identity, PoP union and margin semantics after receipt population work |
 | RQ494 | DONE | P0 | operations-sales-header-data-scope | Bind certified analytics populations to sale-header data origin |
-| RQ495 | IN_PROGRESS | P0 | sale-line-snapshot-cost-binding | Bind snapshot cost evidence to the exact sale line |
+| RQ495 | DONE | P0 | sale-line-snapshot-cost-binding | Bind snapshot cost evidence to the exact sale line |
 | RQ496 | DONE | P1 | shoetype-signed-share-presentation-truth | Preserve signed share and ranking semantics across Shoe Type surfaces |
 | RQ497 | DONE | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
 

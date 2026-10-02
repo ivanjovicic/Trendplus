@@ -13,7 +13,7 @@ Evidence state: synchronized
 - Applied the existing accessible responsive filter disclosure to Dashboard and Daily Sales, with summaries that identify the affected period/store/supplier/top-N filters.
 - Made Daily Sales chart heights follow their panels' measured content width. Existing Recharts data series, labels, tooltips and anomaly/table behavior remain intact.
 - Extended the responsive fixture runner to cover Dashboard and Daily Sales with deterministic synthetic API data, open Dashboard's existing detailed-analysis disclosure for chart measurement, and report chart/grid geometry.
-- Idle recovery repaired a stale RQ468 summary row from READY to DONE using its synchronized completion note and run log; no RQ product code or correctness contract changed.
+- Idle recovery repaired stale RQ468 (`READY -> DONE`) and RQ495 (`IN_PROGRESS -> DONE`) summary rows using their synchronized completion notes/run logs; no RQ product code or correctness contract changed.
 
 ## Files changed
 - `Klijent/clientapp/scripts/responsive_baseline.mjs`
@@ -28,6 +28,7 @@ Evidence state: synchronized
 - `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`
 - `.ai/runs/2026-10-02-P-UI-32-evidence.md`
 - `.ai/runs/2026-10-02-P-UI-34-evidence.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`
 
 ## Validation run
 - `npm run test:run -- src/pages/__tests__/AnalyticsDashboard.tableSystem.spec.tsx src/pages/__tests__/AnalyticsDashboard.periodBoundary.spec.ts src/pages/__tests__/AnalyticsDashboard.operationalFallback.spec.tsx src/pages/__tests__/AnalyticsDashboard.integration.spec.tsx src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx src/pages/__tests__/DailySalesStatsPage.spec.tsx src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx src/pages/__tests__/DailySalesStatsPage.numericState.spec.ts` -> pass, 8 files / 77 tests.
@@ -63,4 +64,4 @@ Evidence state: synchronized
 - A first concurrent light-theme browser run wrote all screenshots but hung while closing Chromium; a standalone full five-width matrix completed successfully and is the recorded result.
 
 ## Next
-- Re-enter canonical idle recovery. P-UI-26 and P-UI-27 remain WAITING behind their documented owner/dependency checks; no other P-UI prompt is promoted by this completion note.
+- Idle recovery reconciled stale P-UI-26/P-UI-27 summary rows to DONE and stale RQ495 summary to DONE from synchronized main evidence. P-UI-30 was promoted and claimed after its P-UI-25/26 dependencies and form-path owner checks cleared; P-UI-33 was promoted to READY after P-UI-27/28/29 completion. Local lock: `.ai/task-locks/P-UI-30-codex.lock.md`.
