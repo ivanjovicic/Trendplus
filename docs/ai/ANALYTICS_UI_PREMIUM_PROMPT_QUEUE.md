@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-30 (IN_PROGRESS; mobile data-entry workflows)
+Current READY prompt: P-UI-33 (IN_PROGRESS; Central Actions responsive migration)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -35,10 +35,10 @@ Use with:
 | P-UI-27 | DONE | responsive-ui-primitives | Modal, InfoTip, tabs and touch-safe shared primitives |
 | P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
-| P-UI-30 | IN_PROGRESS | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
+| P-UI-30 | DONE | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
-| P-UI-33 | READY | central-actions-responsive | Central Actions responsive migration |
+| P-UI-33 | IN_PROGRESS | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
@@ -1830,6 +1830,26 @@ Store workflows are high-frequency and currently use small labels/fields/quick c
 
 Owner promotion/claim 2026-10-02: after P-UI-34, idle recovery reconciled stale P-UI-26/P-UI-27 summary rows from WAITING to DONE using their synchronized completion notes/run logs. It also reconciled the RQ495 operations-accuracy summary row from IN_PROGRESS to DONE using `.ai/runs/2026-09-29-RQ495-evidence.md` and delivery SHA `d41ed2e77f7716a1095de1f2d588e3cb4ce0ca31`; its scope owns Supplier/Shoe Type analytics snapshot reads, not the P-UI-30 sales/goods/price-entry forms. P-UI-30 dependencies P-UI-25/P-UI-26 are DONE; no active RQ owner, lock, branch or open PR was found for the three form paths. P-UI-30 moved WAITING -> READY -> IN_PROGRESS. Local lock: `.ai/task-locks/P-UI-30-codex.lock.md`.
 
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: Sales and Goods Receipt use readable, touch-sized phone controls; autocomplete stays within the visual viewport; the Sales mocked browser flow completes without changing validation or submitted numeric values.
+- Changed files: see `.ai/runs/2026-10-02-P-UI-30-evidence.md`.
+- Checks run: 3 focused suites / 3 tests, typecheck, build, strict responsive fixture matrix for `/prodaja`, `/unos-robe`, `/nivelacija` at 320/375/768 in light/dark, runner self-test, queue/instruction/planning validators, diff check.
+- Checks not run: full frontend suite and analytics guardrails (scope does not change analytics); real iOS/iPad keyboard/zoom proof unavailable.
+- Run log: `.ai/runs/2026-10-02-P-UI-30-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d22e17f0e3f488286c7df933739a68305d78c669`
+- Main verification: fresh fetch and ancestry check confirmed `origin/main` contains the implementation SHA; no Actions run was discoverable for it.
+- Missed: none known.
+- Follow-up: P-UI-33 (IN_PROGRESS)
+- Residual risk: real-device iOS keyboard/zoom behavior remains unverified.
+- Prompt defect / scope repair: stale P-UI-26/P-UI-27 summary rows and the RQ495 operations-accuracy row were reconciled from synchronized evidence before the claim; the RQ495 owner scope is analytics snapshot reads and does not overlap these form paths.
+
+---
+
 ---
 
 ## P-UI-31 - Migrate Supplier overview to the responsive primitives
@@ -1964,7 +1984,7 @@ Owner promotion/claim 2026-10-02: after P-UI-32, idle recovery reconciled stale 
 
 ## P-UI-33 - Migrate Central Actions to responsive filters, table and dialogs
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: P-UI-27, P-UI-28 and P-UI-29
 Priority: P1
 Type: frontend/page/tests
@@ -2020,7 +2040,7 @@ Central Actions combines compact filters, a wide actions table and page-specific
 - P-UI-27/28/29 DONE.
 - No active action-queue correctness owner on the same paths.
 
-Owner eligibility update 2026-10-02: P-UI-27's synchronized completion and P-UI-28/P-UI-29 delivery evidence satisfy all named dependencies. RQ review found no active action-queue correctness owner on the Central Actions paths; the remaining action-source/pagination items are WAITING. P-UI-33 moved WAITING -> READY as an independent presentation-only candidate while P-UI-30 is claimed.
+Owner promotion/claim 2026-10-02: P-UI-27's synchronized completion and P-UI-28/P-UI-29 delivery evidence satisfy all named dependencies. After P-UI-30 delivery, fresh RQ review found RQ47/RQ48 and adjacent RQ477-RQ482/RQ498-RQ500 action items WAITING, with no active Central Actions correctness owner, task lock, matching local/remote branch or open PR. P-UI-33 moved WAITING -> READY -> IN_PROGRESS as an independent presentation-only task. Local lock: `.ai/task-locks/P-UI-33-codex.lock.md`.
 
 ---
 
