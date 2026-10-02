@@ -8,7 +8,8 @@ export const VIEWPORTS = [320, 375, 768, 1024, 1280];
 const ROUTES = [
   { id: "app_shell", path: "/analytics" },
   { id: "prodaja", path: "/prodaja" },
-  { id: "analytics", path: "/analytics" },
+  { id: "analytics", path: "/analytics", readySelector: '[data-testid="analytics-control-bar"]', expandSelector: ".details-expand", afterExpandSelector: ".analytics-chart-grid .chart-wrap", captureSelector: ".analytics-chart-grid" },
+  { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
   { id: "supplier", path: "/analytics/supplier" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
@@ -98,6 +99,9 @@ export function evaluateGeometry(documentMetrics, viewportWidth) {
       : null,
     controls: documentMetrics.controls,
     relevantRegions: documentMetrics.relevantRegions,
+    overflowingElements: documentMetrics.overflowingElements,
+    chartRegions: documentMetrics.chartRegions,
+    responsiveGrids: documentMetrics.responsiveGrids,
   };
 }
 
@@ -110,6 +114,9 @@ function runSelfTest() {
     header: null,
     controls: [],
     relevantRegions: [],
+    overflowingElements: [],
+    chartRegions: [],
+    responsiveGrids: [],
   };
 
   let failedAsExpected = false;
@@ -209,6 +216,152 @@ async function fixtureResponse(request, options) {
         sezone: [],
       }),
     };
+  }
+
+  if (url.pathname === "/api/analytics/cached/dashboard/bootstrap") {
+    const fixtureEnd = new Date("2026-10-02T00:00:00Z");
+    const dailySales = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date(fixtureEnd);
+      date.setUTCDate(fixtureEnd.getUTCDate() - (13 - index));
+      return {
+        date: date.toISOString().slice(0, 10),
+        totalRevenue: 84000 + index * 2750,
+        transactionCount: 32 + index,
+        totalUnits: 58 + index * 2,
+      };
+    });
+    return {
+      status: 200,
+      body: JSON.stringify({
+        summary: { totalRevenue: 1380000, totalTransactions: 512, totalItems: 1082, supplierCount: 4 },
+        inventory: { totalSkuCount: 540, totalOnHand: 2180, outOfStockCount: 18, lowStockCount: 42 },
+        dailySales,
+        categoryData: [
+          { kategorija: "Patike", pol: "Ženski", totalRevenue: 640000, totalUnits: 420, transactionCount: 180 },
+          { kategorija: "Čizme", pol: "Muški", totalRevenue: 430000, totalUnits: 280, transactionCount: 126 },
+          { kategorija: "Sandale", pol: "Ženski", totalRevenue: 310000, totalUnits: 382, transactionCount: 206 },
+        ],
+        genderData: [
+          { pol: "Ženski", totalRevenue: 810000, totalUnits: 648, transactionCount: 290 },
+          { pol: "Muški", totalRevenue: 570000, totalUnits: 434, transactionCount: 222 },
+        ],
+        supplierData: [
+          { dobavljacId: 1, dobavljacNaziv: "Sintetički dobavljač A", totalRevenue: 620000, totalUnits: 390, transactionCount: 180 },
+          { dobavljacId: 2, dobavljacNaziv: "Sintetički dobavljač B", totalRevenue: 480000, totalUnits: 300, transactionCount: 140 },
+          { dobavljacId: 3, dobavljacNaziv: "Sintetički dobavljač C", totalRevenue: 280000, totalUnits: 220, transactionCount: 92 },
+        ],
+        supplierOptions: [
+          { supplierId: 1, supplierName: "Sintetički dobavljač A" },
+          { supplierId: 2, supplierName: "Sintetički dobavljač B" },
+        ],
+        weekdayData: [
+          { dayOfWeek: 0, dayName: "Ponedeljak", totalRevenue: 175000, transactionCount: 52 },
+          { dayOfWeek: 1, dayName: "Utorak", totalRevenue: 182000, transactionCount: 55 },
+          { dayOfWeek: 2, dayName: "Sreda", totalRevenue: 191000, transactionCount: 58 },
+          { dayOfWeek: 3, dayName: "Četvrtak", totalRevenue: 204000, transactionCount: 61 },
+          { dayOfWeek: 4, dayName: "Petak", totalRevenue: 230000, transactionCount: 68 },
+          { dayOfWeek: 5, dayName: "Subota", totalRevenue: 276000, transactionCount: 81 },
+          { dayOfWeek: 6, dayName: "Nedelja", totalRevenue: 122000, transactionCount: 37 },
+        ],
+        hourData: [
+          { hour: 9, totalRevenue: 82000, transactionCount: 31 }, { hour: 12, totalRevenue: 176000, transactionCount: 64 },
+          { hour: 15, totalRevenue: 211000, transactionCount: 76 }, { hour: 18, totalRevenue: 259000, transactionCount: 92 },
+        ],
+        paymentData: [
+          { nacinPlacanja: "Kartica", totalRevenue: 790000, transactionCount: 301 },
+          { nacinPlacanja: "Gotovina", totalRevenue: 410000, transactionCount: 169 },
+          { nacinPlacanja: "Ostalo", totalRevenue: 180000, transactionCount: 42 },
+        ],
+        quickInsights: null,
+        transactionStats: null,
+        advanced: null,
+        topAdvanced: null,
+        validationCompleteness: null,
+        validationFreshness: null,
+        validationLostSales: null,
+        decisionActions: [],
+        executive: null,
+        errors: [],
+        meta: { success: true, dataQualityStatus: "warning", warnings: ["Sintetički responsive fixture — vrednosti nisu stvarni podaci."] },
+      }),
+    };
+  }
+
+  if (url.pathname === "/api/analytics/daily-sales") {
+    const toDate = url.searchParams.get("toDate") || "2026-10-02";
+    const fromDate = url.searchParams.get("fromDate") || "2026-09-03";
+    const end = new Date(`${toDate.slice(0, 10)}T00:00:00Z`);
+    const dateRows = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date(end);
+      date.setUTCDate(end.getUTCDate() - (13 - index));
+      const key = date.toISOString().slice(0, 10);
+      const firstShift = 34 + index * 2;
+      const secondShift = 28 + index;
+      const firstSupplier = 18 + index;
+      const secondSupplier = 12 + index;
+      return {
+        date: key,
+        firstShiftTotalItems: firstShift,
+        secondShiftTotalItems: secondShift,
+        totalRevenue: 88000 + index * 3200,
+        topSupplierCounts: [firstSupplier, secondSupplier],
+        othersCount: 16,
+        totalItemsSold: firstShift + secondShift,
+      };
+    });
+    const topSuppliers = [
+      { supplierId: 11, supplierName: "Sintetički dobavljač A", isUnknown: false, totalQty: 390, totalRevenue: 620000 },
+      { supplierId: 12, supplierName: "Sintetički dobavljač B", isUnknown: false, totalQty: 300, totalRevenue: 480000 },
+    ];
+    return {
+      status: 200,
+      body: JSON.stringify({
+        requestedFrom: fromDate,
+        requestedTo: toDate,
+        storeId: null,
+        topN: 5,
+        dataScope: "all",
+        topSuppliers,
+        topSuppliersOrder: topSuppliers.map((supplier) => supplier.supplierName),
+        dateRows,
+        metadata: {
+          totalDays: 30,
+          uniqueSuppliersInRange: 2,
+          unknownSupplierPct: 0,
+          unknownSupplierItems: 0,
+          shiftAssignmentStatus: "measured",
+          shiftTimeZone: "Europe/Belgrade",
+          shiftTimestampBasis: "fixture",
+          shiftTimestampBasisKnownRows: 14,
+          shiftTimestampBasisUnknownRows: 0,
+          shiftTimestampBasisUnknownRevenue: 0,
+          offShiftItems: 4,
+          offShiftRevenue: 9200,
+          noTimeFallbackItems: 0,
+          noTimeFallbackRevenue: 0,
+          totalItemsInRange: 1100,
+          duplicateReceiptGroupCount: 0,
+          duplicateReceiptHeaderCount: 0,
+          receiptAmountMismatchCount: 0,
+          receiptAmountMismatchRevenue: 0,
+          receiptReconciliation: { status: "unavailable", reasonCode: "synthetic_fixture", matchedReceiptCount: 0, unmatchedReceiptCount: 0, unmatchedDnevnikReceiptCount: 0, mismatchCount: 0, mismatchAmount: 0 },
+          nonStandardReceiptCount: 0,
+          nonStandardReceiptRevenue: 0,
+          debtReceiptCount: 0,
+          debtReceiptRevenue: 0,
+          diagnosticsDataScope: "all",
+          availabilityDataScope: "all",
+          minAvailableDate: fromDate,
+          maxAvailableDate: toDate,
+          warnings: ["Sintetički responsive fixture — vrednosti nisu stvarni podaci."],
+        },
+        meta: { success: true, dataQualityStatus: "warning", warnings: ["Sintetički responsive fixture — vrednosti nisu stvarni podaci."] },
+      }),
+    };
+  }
+
+  if (url.pathname === "/api/analytics/cached/filters/stores") {
+    return { status: 200, body: JSON.stringify([{ storeId: 1, storeName: "Sintetička prodavnica" }]) };
   }
 
   if (url.pathname === "/api/analytics/cached/products/decision-center") {
@@ -331,7 +484,7 @@ async function collectGeometry(page, viewportWidth) {
       });
 
     const regions = [...document.querySelectorAll(
-      "[data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
+      "[data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], [class*='chart-grid'], [class*='chart-wrap'], [class*='card-grid'], [class*='daily-sales-kpis'], [class*='command-center__hero'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
     )]
       .filter(isVisible)
       .slice(0, 40)
@@ -344,6 +497,50 @@ async function collectGeometry(page, viewportWidth) {
         clientWidth: element.clientWidth,
       }));
 
+    const overflowingElements = [...document.querySelectorAll("body *")]
+      .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+      .filter(({ element, rect }) => rect.left < -1 || rect.right > window.innerWidth + 1 || element.scrollWidth > element.clientWidth + 1)
+      .sort((left, right) => Math.max(right.rect.right - window.innerWidth, right.element.scrollWidth - right.element.clientWidth) - Math.max(left.rect.right - window.innerWidth, left.element.scrollWidth - left.element.clientWidth))
+      .slice(0, 20)
+      .map(({ element, rect }) => ({
+        tag: element.tagName.toLowerCase(),
+        className: typeof element.className === "string" ? element.className.slice(0, 120) : null,
+        text: element.textContent?.trim().slice(0, 80) || null,
+        rect: rectValue(rect),
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        overflowX: window.getComputedStyle(element).overflowX,
+        ancestors: [...function* ancestors(node) {
+          for (let parent = node.parentElement; parent && parent !== document.body; parent = parent.parentElement) yield parent;
+        }(element)].slice(0, 5).map((parent) => ({
+          tag: parent.tagName.toLowerCase(),
+          className: typeof parent.className === "string" ? parent.className.slice(0, 100) : null,
+          rect: rectValue(parent.getBoundingClientRect()),
+          overflowX: window.getComputedStyle(parent).overflowX,
+        })),
+      }));
+    const chartRegions = [...document.querySelectorAll(".chart-wrap, .daily-sales-chart-wrap")]
+      .filter(isVisible)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        const chartSurface = element.querySelector(".recharts-surface");
+        return {
+          className: typeof element.className === "string" ? element.className : null,
+          rect: rectValue(rect),
+          chartSurface: chartSurface ? rectValue(chartSurface.getBoundingClientRect()) : null,
+          svgCount: element.querySelectorAll("svg.recharts-surface").length,
+        };
+      });
+    const responsiveGrids = [...document.querySelectorAll(
+      ".analytics-card-grid, .daily-sales-kpis, .analytics-chart-grid",
+    )]
+      .filter(isVisible)
+      .map((element) => ({
+        className: typeof element.className === "string" ? element.className : null,
+        rect: rectValue(element.getBoundingClientRect()),
+        columns: window.getComputedStyle(element).gridTemplateColumns,
+      }));
+
     return {
       viewportHeight: window.innerHeight,
       scrollWidth: document.documentElement.scrollWidth,
@@ -353,6 +550,9 @@ async function collectGeometry(page, viewportWidth) {
       ),
       controls,
       relevantRegions: regions,
+      overflowingElements,
+      chartRegions,
+      responsiveGrids,
     };
   });
 
@@ -378,7 +578,7 @@ function markdownReport(report) {
 - SHA/branch: ${report.gitSha ?? "not captured"} / ${report.branch ?? "not captured"}
 - Browser: Chromium via Puppeteer
 - Base URL: ${report.baseUrl}
-- Mode: ${report.mode} (API responses fail closed except deterministic synthetic Color Sales layout data; no customer metrics are loaded)
+- Mode: ${report.mode} (API responses fail closed except deterministic synthetic Color Sales, Dashboard, Daily Sales and Product Decision layout data; no customer metrics are loaded)
 - Viewports: ${VIEWPORTS.join(", ")}
 - Themes: ${THEMES.join(", ")}
 - Root overflow observations: ${overflowCount} of ${report.results.length}
@@ -436,7 +636,9 @@ async function run(options) {
           });
           page.on("pageerror", (error) => pageErrors.push(String(error)));
           page.on("requestfailed", (request) => {
-            if (request.url().includes("/api/")) requestFailures.push(request.url());
+            if (request.url().includes("/api/")) {
+              requestFailures.push({ url: request.url(), error: request.failure()?.errorText ?? "unknown" });
+            }
           });
 
           await page.setViewport({
@@ -471,6 +673,14 @@ async function run(options) {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
               await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
+            }
+            if (route.expandSelector) {
+              await page.waitForFunction((selector) => {
+                const button = document.querySelector(selector);
+                return button instanceof HTMLButtonElement && !button.disabled;
+              }, { timeout: options.timeoutMs }, route.expandSelector);
+              await page.click(route.expandSelector);
+              await page.waitForSelector(route.afterExpandSelector, { timeout: options.timeoutMs });
             }
             await new Promise((resolve) => setTimeout(resolve, 250));
           } catch (error) {

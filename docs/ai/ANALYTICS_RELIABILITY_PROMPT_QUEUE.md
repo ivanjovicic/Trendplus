@@ -1965,7 +1965,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ465 | DONE | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | DONE | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ467 | DONE | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
-| RQ468 | READY | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
+| RQ468 | DONE | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
 | RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
 | RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
 | RQ471 | WAITING | pdc-kpi-population-actionability | Align Product Decision KPI populations with row actionability |

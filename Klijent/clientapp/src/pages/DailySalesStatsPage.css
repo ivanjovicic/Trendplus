@@ -205,7 +205,14 @@
 
 .daily-sales-section-grid {
   display: grid;
+  min-width: 0;
   gap: 0.9rem;
+}
+
+.daily-sales-section-grid > *,
+.daily-sales-panel,
+.daily-sales-chart-wrap {
+  min-width: 0;
 }
 
 .daily-sales-section-grid--double {
@@ -217,6 +224,7 @@
 }
 
 .daily-sales-panel {
+  container-type: inline-size;
   border: 1px solid var(--border-default);
   background: var(--surface-card);
   border-radius: 14px;
@@ -295,7 +303,9 @@
 }
 
 .daily-sales-chart-wrap {
-  min-height: 320px;
+  height: 320px;
+  height: clamp(280px, 40cqi, 360px);
+  min-height: 0;
 }
 
 .daily-sales-compare-cards,
@@ -711,10 +721,6 @@
 }
 
 @media (max-width: 720px) {
-  .daily-sales-chart-wrap {
-    min-height: 280px;
-  }
-
   .daily-sales-mini-stats {
     grid-template-columns: 1fr;
   }

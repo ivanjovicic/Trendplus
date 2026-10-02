@@ -54,4 +54,4 @@ Evidence state: synchronized
 - Auxiliary APIs outside the Product Decision fixture still return the responsive runner's explicit 503 fixture response; they are not treated as successful empty analytics data. Product Decision fixture requests have no page errors.
 
 ## Next
-- Re-enter canonical idle recovery and promote the next P-UI prompt only after dependency and ownership checks pass.
+- P-UI-34 promoted and claimed after re-entering idle recovery; its scope is Dashboard/Daily Sales presentation-only responsiveness.

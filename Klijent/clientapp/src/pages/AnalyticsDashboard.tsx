@@ -1589,6 +1589,8 @@ export default function AnalyticsDashboard() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period, prodavnica i dobavljač"
       />
       {healthText ? <div className="analytics-health">{healthText}</div> : null}
       {filterValidationMessage ? (

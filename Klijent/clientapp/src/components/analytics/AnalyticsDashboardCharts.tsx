@@ -90,7 +90,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i transakcija po danima." /></h3>
           <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada, rasta i nestabilnosti.</p>
           <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailySales}>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis dataKey="date" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -117,7 +117,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Raspodela prihoda po kategorijama artikala.</p>
           {categoryPieData.length === 0 ? <div className="analytics-empty">Nema podataka za kategorije.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48} stroke="transparent">
                     {categoryPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
@@ -138,7 +138,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Donut prikaz pokazuje kome je prodaja najviše usmerena.</p>
           {genderPieData.length === 0 ? <div className="analytics-empty">Nema podataka za pol.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58} stroke="transparent">
                     {genderPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
@@ -159,7 +159,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Horizontalni pregled top 10 dobavljača po prihodu.</p>
           {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljače.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={340}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -180,7 +180,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Koji dan u nedelji pravi najviše prihoda.</p>
           {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={340}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -201,7 +201,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Prodajni ritam tokom dana od 00 do 23h.</p>
           {hourChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po satima.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={hourChartData}>
                   <defs>
                     <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
@@ -228,7 +228,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Brz pregled gotovine, kartice i ostalih nacina placanja.</p>
           {paymentChartData.length === 0 ? <div className="analytics-empty">Nema podataka po nacinu placanja.</div> : (
             <div className="chart-wrap">
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={paymentChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis dataKey="name" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />

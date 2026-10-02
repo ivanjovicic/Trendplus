@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-32 DONE; re-enter idle recovery)
+Current READY prompt: P-UI-34 (IN_PROGRESS; Analytics Dashboard and Daily Sales responsive presentation)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -39,7 +39,7 @@ Use with:
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
-| P-UI-34 | WAITING | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
+| P-UI-34 | IN_PROGRESS | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | WAITING | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
@@ -1956,6 +1956,8 @@ Product Decision Center uses a 1400px table, requests up to 1,200 rows and rende
 
 Completion 2026-10-02: Delivered to `main` in implementation commit `3c15311541dca7dad39824ca207cdb3e63222e3b`. The Product Decision table is keyboard-focusable and horizontally contained on narrow screens, its first column remains visible while scrolling, and the period notes no longer force root overflow. A measured 1,200-row response mounts 50 rows initially with an explicit continuation control; all filtered/sorted rows remain in the shared export toolbar and can be revealed in 50-row steps. Before/after at 375px: DOM 41,408 -> 2,311; sort interaction 3,199.7 ms -> 223.8 ms; responsive light/dark matrix is 0 overflow across 320/375/768/1024/1280. RQ decision semantics and action/export behavior remain unchanged. Focused Product Decision suites: 41/41; typecheck, analytics guardrails, build, browser matrix, governance validators and diff check pass. Current-main Actions: Analytics Quality Gates run `37008756835` and Planning Governance run `37008756713` were `in_progress` on implementation SHA at inspection. Run log: `.ai/runs/2026-10-02-P-UI-32-evidence.md`; Evidence state: synchronized.
 
+Owner promotion/claim 2026-10-02: after P-UI-32, idle recovery reconciled stale RQ468 summary status `READY -> DONE` from its synchronized completion note/run log; the canonical RQ READY pointer is `none`. P-UI-33 remains blocked on P-UI-27 and P-UI-30 on P-UI-26. P-UI-31 remains unsafe while Supplier RQ query-cost ownership is unresolved. P-UI-34 dependencies P-UI-25/P-UI-28 are DONE; no active Analytics Dashboard or Daily Sales RQ owner, lock, branch or open PR collision was found. RQ517 and the Daily Sales correctness contracts are DONE. P-UI-34 moved WAITING -> READY -> IN_PROGRESS for presentation-only Dashboard/Daily Sales work; preserve all metric, period, anomaly, store, export and trust semantics. Local lock: `.ai/task-locks/P-UI-34-codex.lock.md`.
+
 ---
 
 ## P-UI-33 - Migrate Central Actions to responsive filters, table and dialogs
@@ -2020,7 +2022,7 @@ Central Actions combines compact filters, a wide actions table and page-specific
 
 ## P-UI-34 - Make Analytics Dashboard and Daily Sales responsive using measured chart/control rules
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-25 and P-UI-28
 Priority: P2
 Type: frontend/pages/tests

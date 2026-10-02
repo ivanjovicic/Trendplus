@@ -214,13 +214,16 @@
 
 .analytics-command-center__hero {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
 
 .analytics-command-center__hero-copy {
+  flex: 1 1 420px;
   max-width: 70ch;
+  min-width: 0;
 }
 
 .analytics-command-center__hero-copy h2 {
@@ -240,8 +243,9 @@
 
 .analytics-command-center__hero-meta {
   display: grid;
+  flex: 1 1 240px;
   gap: 8px;
-  min-width: 240px;
+  min-width: 0;
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--panel-border);
@@ -730,7 +734,7 @@
 .analytics-skeleton-grid,
 .analytics-card-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -932,19 +936,35 @@
 
 .chart-wrap {
   width: 100%;
+  min-width: 0;
   min-height: 260px;
 }
 
 .analytics-chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  min-width: 0;
   gap: 12px;
   margin-bottom: 12px;
 }
 
+.analytics-chart-grid > * {
+  min-width: 0;
+}
+
+.analytics-panel {
+  container-type: inline-size;
+}
+
+.chart-wrap {
+  height: 320px;
+  height: clamp(280px, 42cqi, 340px);
+  min-height: 0;
+}
+
 .stock-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
   gap: 10px;
 }
 
@@ -1147,11 +1167,10 @@
 
   .analytics-skeleton-grid,
   .analytics-card-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   }
 
-  .analytics-filter-grid,
-  .analytics-chart-grid {
+  .analytics-filter-grid {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }
 
@@ -1168,9 +1187,6 @@
     grid-template-columns: 1fr;
   }
 
-  .stock-grid {
-    grid-template-columns: repeat(2, minmax(150px, 1fr));
-  }
 }
 
 @media (max-width: 920px) {
@@ -1204,11 +1220,6 @@
   }
 
   .analytics-custom-range {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-skeleton-grid,
-  .analytics-card-grid {
     grid-template-columns: 1fr;
   }
 

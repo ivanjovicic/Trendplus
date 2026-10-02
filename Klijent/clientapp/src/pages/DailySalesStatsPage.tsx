@@ -1981,6 +1981,8 @@ export default function DailySalesStatsPage() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period, objekat i top N"
       />
 
       {invalidRange ? (
@@ -2321,7 +2323,7 @@ export default function DailySalesStatsPage() {
             </div>
 
             <div className="daily-sales-chart-wrap">
-              <ResponsiveContainer width="100%" height={360}>
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis dataKey="label" tick={CHART_AXIS_TICK} interval={chartTickInterval} />
@@ -2363,7 +2365,7 @@ export default function DailySalesStatsPage() {
               </div>
 
               <div className="daily-sales-chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={shiftMixData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="label" tick={CHART_AXIS_TICK} interval={chartTickInterval} />
@@ -2427,7 +2429,7 @@ export default function DailySalesStatsPage() {
               ) : null}
 
               <div className="daily-sales-chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={supplierConcentration.displayChartData} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis type="number" tick={CHART_AXIS_TICK} tickFormatter={(value: number) => `${Math.round(value)}%`} />
@@ -2480,7 +2482,7 @@ export default function DailySalesStatsPage() {
               </div>
 
               <div className="daily-sales-chart-wrap">
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={weekdayData} margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="dayName" tick={CHART_AXIS_TICK} />
