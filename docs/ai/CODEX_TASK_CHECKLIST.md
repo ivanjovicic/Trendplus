@@ -70,7 +70,14 @@ Do not continue blind.
 
 - [ ] If this is a queue-driven task, I updated the queue status appropriately.
 - [ ] I treated `Current READY` as the primary/default pointer, not as proof that every other READY task is blocked.
+- [ ] If `Current READY` is `none`, I ran Idle recovery instead of stopping immediately.
+- [ ] For every candidate blocker I classified: stale/satisfied, circular same-prompt artifact, repo-local proof, external/provider/deployed evidence, product/security/tenant authority, or active owner/path collision.
+- [ ] I checked whether a prerequisite is circular (for example requiring a baseline before the prompt whose first job is to create that baseline).
+- [ ] I did not use provider/live/CI proof needed only for final acceptance as a blanket start blocker for independently safe repo-local work.
+- [ ] If a prompt mixed safe repo-local work with external final proof, I repaired/narrowed it before claim without changing business semantics or weakening acceptance.
+- [ ] If the first candidate remained genuinely blocked, I checked another collision-safe lane in the same program and then the next eligible program before reporting no work.
 - [ ] If multiple READY tasks exist, I selected one whose dependency, feature-family, path, owner and gate collision checks are clear; this agent/workspace still owns only one claimed prompt at a time.
+- [ ] A final "no safe task" report names candidates checked, blocker class, why no repo-local slice is safe, and the exact unblock event.
 - [ ] I added evidence: date, files changed, checks, risks, next step.
 - [ ] I did not execute an additional queue task unless explicitly instructed.
 
