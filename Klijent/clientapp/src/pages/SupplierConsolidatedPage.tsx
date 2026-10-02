@@ -9,6 +9,18 @@ import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import { buildSupplierTabBasisRows } from "../utils/supplierTabBasisLabels";
 import {
+  isSupplierTrustPayloadPending,
+  normalizeSupplierChildDataQualityStatus,
+  resolveSupplierConsolidatedDatasetLabel,
+  resolveSupplierConsolidatedContextToneClass,
+  resolveSupplierConsolidatedRecommendationNote,
+  resolveSupplierConsolidatedTrustDescription,
+  resolveSupplierConsolidatedTrustHeadline,
+  resolveSupplierConsolidatedTrustMode,
+  resolveSupplierConsolidatedTrustStatusLabel,
+  resolveSupplierTabFallbackDataSource,
+} from "../utils/supplierConsolidatedTrustState";
+import {
   resolveSupplierFilterFallbackState,
   SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
@@ -44,14 +56,6 @@ const dataScopeLabels: Record<string, string> = {
   all: "Svi podaci",
   existing: "Postojeći artikli",
   imported: "Uvezeni podaci",
-};
-
-const dataQualityLabels: Record<string, string> = {
-  good: "Pouzdani podaci",
-  warning: "Potreban oprez",
-  insufficient_data: "Nedovoljno podataka",
-  error: "Problem u podacima",
-  unknown: "Pouzdanost nije potvrđena",
 };
 
 const tabTakeaways: Record<SupplierTab, { title: string; description: string }> = {
@@ -139,6 +143,7 @@ export default function SupplierConsolidatedPage() {
   const trustRequestKeyRef = useRef("");
   trustRequestKeyRef.current = trustRequestKey;
   const trustPayload = trustState.key === trustRequestKey ? trustState.payload : null;
+  const trustPending = isSupplierTrustPayloadPending(trustPayload);
   const countingBasisRows = useMemo(
     () => buildSupplierTabBasisRows(trustPayload?.basis ?? null),
     [trustPayload?.basis],
@@ -174,27 +179,11 @@ export default function SupplierConsolidatedPage() {
   const effectivePeriodLabel = typeof trustPayload?.effectivePeriodLabel === "string"
     ? trustPayload.effectivePeriodLabel.trim()
     : null;
-  const effectiveDataset = typeof trustPayload?.effectiveDataset === "string"
-    ? trustPayload.effectiveDataset.trim()
-    : null;
-  const requestedDataset = typeof trustPayload?.requestedDataset === "string"
-    ? trustPayload.requestedDataset.trim()
-    : null;
   const activePeriodLabel = effectivePeriodLabel
     ? effectivePeriodLabel
     : `${canonicalFilters.fromDate} — ${canonicalFilters.toDate}`;
-  const datasetLabel = effectiveDataset
-    || requestedDataset
-    || "Aktivni skup podataka nije posebno označen";
-  const trustHeadline = trustPayload?.usedFallback
-    ? "Pomoćni ili suženi skup podataka je aktivan"
-    : trustPayload?.recommendationAllowed !== true
-      ? "Signal je informativan i traži proveru"
-      : currentTab === "overview"
-        ? "Pregled je glavni izvor preporuke"
-        : currentTab === "scorecard"
-          ? "Skorkarta je pomoćni signal"
-    : "Asortiman je objašnjenje i detaljna razrada";
+  const datasetLabel = resolveSupplierConsolidatedDatasetLabel(trustPayload);
+  const trustHeadline = resolveSupplierConsolidatedTrustHeadline(currentTab, trustPayload);
   const fallbackReasonText = trustPayload?.usedFallback
     ? getSafeAnalyticsErrorMessage(
       trustPayload.fallbackReason,
@@ -205,28 +194,22 @@ export default function SupplierConsolidatedPage() {
   const recommendationNoteText = typeof trustPayload?.recommendationNote === "string"
     ? getSafeAnalyticsErrorMessage(trustPayload.recommendationNote)
     : null;
-  const trustDescription = trustPayload?.usedFallback
-    ? fallbackReasonText
-    : recommendationNoteText
-      ?? (currentTab === "scorecard"
-        ? "Poređenje dobavljača čitaj uz finalnu preporuku iz taba Pregled."
-        : currentTab === "assortment"
-          ? "Koristi ovaj prikaz da razumeš uzrok rezultata, ne kao samostalnu finalnu preporuku."
-          : "Skorkarta i asortiman služe da potvrde ili objasne ono što vidiš u pregledu.");
-  const trustToneClass = trustPayload?.dataQualityStatus === "error"
-    ? "critical"
-    : (trustPayload?.usedFallback
-      || trustPayload?.recommendationAllowed !== true
-      || trustPayload?.dataQualityStatus === "warning"
-      || trustPayload?.dataQualityStatus === "insufficient_data")
-      ? "warning"
-      : "info";
-  const normalizedQualityStatus = typeof trustPayload?.dataQualityStatus === "string"
-    ? trustPayload.dataQualityStatus.trim().toLowerCase()
-    : null;
-  const trustStatusLabel = normalizedQualityStatus
-    ? (dataQualityLabels[normalizedQualityStatus] ?? "Pouzdanost nije potvrđena")
-    : "Pouzdanost nije potvrđena";
+  const trustDescription = resolveSupplierConsolidatedTrustDescription(
+    currentTab,
+    trustPayload,
+    recommendationNoteText,
+    fallbackReasonText,
+  );
+  const trustToneClass = resolveSupplierConsolidatedContextToneClass(trustPayload);
+  const trustStatusLabel = resolveSupplierConsolidatedTrustStatusLabel(trustPayload);
+  const resolvedDataQualityStatus = normalizeSupplierChildDataQualityStatus(trustPayload?.dataQualityStatus);
+  const consolidatedTrustMode = resolveSupplierConsolidatedTrustMode(currentTab);
+  const consolidatedDataSource = trustPayload?.dataSource ?? resolveSupplierTabFallbackDataSource(currentTab);
+  const consolidatedRecommendationNote = resolveSupplierConsolidatedRecommendationNote(
+    currentTab,
+    trustPayload,
+    recommendationNoteText,
+  );
 
   useEffect(() => {
     if (currentTab !== "scorecard") return;
@@ -294,9 +277,9 @@ export default function SupplierConsolidatedPage() {
         dataFreshnessStatus={trustPayload?.dataFreshnessStatus ?? "unknown"}
         refreshIsRunning={trustPayload?.refreshIsRunning ?? false}
         refreshCurrentStep={trustPayload?.refreshCurrentStep ?? null}
-        dataSource={trustPayload?.dataSource ?? "Materijalizovani prikaz skorkarte dobavljača"}
+        dataSource={consolidatedDataSource}
         provenanceBasis={trustPayload?.provenanceBasis ?? null}
-        dataQualityStatus={trustPayload?.dataQualityStatus ?? null}
+        dataQualityStatus={resolvedDataQualityStatus}
         dataQualitySummary={trustPayload?.dataQualitySummary}
         requestedDataset={trustPayload?.requestedDataset ?? null}
         effectiveDataset={trustPayload?.effectiveDataset ?? null}
@@ -304,21 +287,10 @@ export default function SupplierConsolidatedPage() {
         usedFallback={trustPayload?.usedFallback ?? false}
         fallbackReason={trustPayload?.fallbackReason ?? null}
         fallbackReasonCode={trustPayload?.fallbackReasonCode ?? null}
-        recommendationAllowed={trustPayload?.recommendationAllowed ?? null}
-        mode={
-          currentTab === "assortment"
-            ? "signal"
-            : currentTab === "scorecard"
-              ? (trustPayload?.recommendationAllowed === true ? "recommendation" : "signal")
-              : "recommendation"
-        }
-        recommendationNote={recommendationNoteText ?? (
-          currentTab === "scorecard"
-            ? (trustPayload?.recommendationAllowed === true
-              ? "Skorkarta je signalni sloj uz aktivnu konačnu preporuku."
-              : "Ovo je analitički signal. Konačna preporuka je u tabu Pregled.")
-            : (currentTab !== "assortment" ? "Pregled je konačna preporuka; asortiman i skorkarta su signalni slojevi." : undefined)
-        )}
+        recommendationAllowed={trustPending ? null : (trustPayload?.recommendationAllowed ?? null)}
+        trustPending={trustPending}
+        mode={consolidatedTrustMode}
+        recommendationNote={consolidatedRecommendationNote}
         emptyStateReason={trustPayload?.emptyStateReason ?? null}
         methodologyHref="/analytics/data-quality"
         dataQualityHref="/analytics/data-quality"

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import React, { useEffect, useRef } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import SupplierConsolidatedPage from "../SupplierConsolidatedPage";
@@ -60,18 +60,51 @@ vi.mock("../SupplierSalesStatsPage", () => ({
 }));
 
 vi.mock("../SupplierDecisionHubPage", () => ({
-  default: function MockSupplierDecisionHubPage() {
+  default: function MockSupplierDecisionHubPage(props: {
+    trustRequestKey?: string;
+    onTrustMetadataChange?: (payload: Record<string, unknown> | null) => void;
+  }) {
+    useEffect(() => {
+      props.onTrustMetadataChange?.({
+        requestKey: props.trustRequestKey,
+        dataSource: "Materijalizovani prikaz skorkarte dobavljača",
+        dataQualityStatus: "good",
+        recommendationAllowed: true,
+        dataFreshnessStatus: "fresh",
+      });
+    }, [props.onTrustMetadataChange, props.trustRequestKey]);
+
     return <div data-testid="mock-scorecard">Scorecard</div>;
   },
 }));
 
 vi.mock("../SupplierFootwearAnalyticsPage", () => ({
-  default: function MockSupplierFootwearAnalyticsPage() {
+  default: function MockSupplierFootwearAnalyticsPage(props: {
+    trustRequestKey?: string;
+    onTrustMetadataChange?: (payload: Record<string, unknown> | null) => void;
+  }) {
+    useEffect(() => {
+      props.onTrustMetadataChange?.({
+        requestKey: props.trustRequestKey,
+        dataSource: "Analitika asortimana (prodaja posle nivelacije)",
+        dataQualityStatus: "warning",
+        recommendationAllowed: false,
+        dataFreshnessStatus: "fresh",
+      });
+    }, [props.onTrustMetadataChange, props.trustRequestKey]);
+
     return <div data-testid="mock-assortment">Assortment</div>;
   },
 }));
 
 describe("SupplierConsolidatedPage", () => {
+  afterEach(() => {
+    vi.mocked(getSupplierFilters).mockReset();
+    vi.mocked(getSupplierFilters).mockResolvedValue([]);
+    vi.mocked(getStores).mockReset();
+    vi.mocked(getStores).mockResolvedValue([]);
+  });
+
   it("renders consolidated trust header and shows fallback banner when child reports fallback", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier"]}>
@@ -357,6 +390,60 @@ describe("SupplierConsolidatedPage", () => {
       expect(screen.getByText(/Lista dobavljača nije osvežena/i)).toBeInTheDocument();
       expect(screen.getByText(/Lista dobavljača je zastarela/i)).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "Dobavljač A" })).toBeDisabled();
+    });
+  });
+
+  it("shows pending trust and overview fallback source while filters change before child trust returns", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Period" }), { target: { value: "90d" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Učitavanje pouzdanosti")).toBeInTheDocument();
+      expect(screen.getByText("Analitika maloprodajne prodaje po dobavljačima")).toBeInTheDocument();
+      expect(screen.queryByText("Materijalizovani prikaz skorkarte dobavljača")).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps scorecard recommendationAllowed in signal mode for the trust header", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Analitički signal")).toBeInTheDocument();
+      expect(screen.queryByText("Preporuka sistema")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not reuse the previous tab trust payload after a tab switch until the new request resolves", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=overview"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Skorkarta/i }));
+    expect(await screen.findByTestId("mock-scorecard")).toBeInTheDocument();
+    expect(screen.queryByText("keš signala odluke dobavljača")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Materijalizovani prikaz skorkarte dobavljača")).toBeInTheDocument();
     });
   });
 });

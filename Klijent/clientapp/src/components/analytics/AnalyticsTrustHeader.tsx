@@ -45,6 +45,7 @@ type AnalyticsTrustHeaderProps = {
   fallbackReason?: string | null;
   fallbackReasonCode?: string | null;
   recommendationAllowed?: boolean | null;
+  trustPending?: boolean;
 };
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
@@ -197,10 +198,13 @@ export default function AnalyticsTrustHeader({
   fallbackReason,
   fallbackReasonCode,
   recommendationAllowed,
+  trustPending = false,
 }: AnalyticsTrustHeaderProps) {
-  const normalizedStatus = normalizeStatus(dataQualityStatus);
-  const tone = statusTone(normalizedStatus);
-  const statusLabel = normalizedStatus ? STATUS_LABELS[normalizedStatus] : "Status kvaliteta nije dostupan";
+  const normalizedStatus = trustPending ? null : normalizeStatus(dataQualityStatus);
+  const tone = trustPending ? "neutral" : statusTone(normalizedStatus);
+  const statusLabel = trustPending
+    ? "Učitavanje pouzdanosti"
+    : (normalizedStatus ? STATUS_LABELS[normalizedStatus] : "Status kvaliteta nije dostupan");
   const freshness = normalizeFreshness(dataFreshnessStatus);
   const safePeriodFrom = typeof periodFrom === "string" ? periodFrom.trim() : null;
   const safePeriodTo = typeof periodTo === "string" ? periodTo.trim() : null;
@@ -231,7 +235,7 @@ export default function AnalyticsTrustHeader({
     ? supplierDecisionReasonText(getSafeAnalyticsErrorMessage(fallbackReason, fallbackReasonCode, "Dodatni razlog pomoćnog skupa nije naveden."))
     : null;
   const showFallbackBanner = Boolean(usedFallback);
-  const showGatedBanner = mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
+  const showGatedBanner = !trustPending && mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
