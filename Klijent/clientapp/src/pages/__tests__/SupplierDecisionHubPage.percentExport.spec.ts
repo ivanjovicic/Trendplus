@@ -147,6 +147,8 @@ describe("Supplier Decision percent export/detail (RQ40)", () => {
     expect(payload.rows[0].sharePct).toBe(40);
     expect(payload.rows[0].qualityTrendPct).toBe(8);
     expect(payload.columns.find((c) => c.key === "preMarkdownMarginPct")?.dataType).toBe("percent");
+    expect(payload.columns.find((c) => c.key === "qualityTrendPct")?.header).toContain("(pp)");
+    expect(payload.columns.find((c) => c.key === "qualityTrendPct")?.dataType).toBe("number");
   });
 
   it("detail snapshot formats margin as 35.00% for ratio 0.35", () => {
@@ -169,5 +171,10 @@ describe("Supplier Decision percent export/detail (RQ40)", () => {
     expect(marginField?.value).not.toBe("0.35");
     expect(marginField?.value).not.toBe(fmtPct(0.35, 2));
     expect(marginField?.dataType).toBe("percent");
+
+    const compositionGapField = snapshot.fields.find((field) => field.key === "qualityTrendPct");
+    expect(compositionGapField?.value).not.toContain("%");
+    expect(compositionGapField?.dataType).toBe("number");
+    expect(compositionGapField?.label).toContain("(pp)");
   });
 });

@@ -181,7 +181,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionRow>[] = [
     dataType: "percent",
     getValue: (row) => toSupplierDecisionMarginPercentUnits(row.preMarkdownMarginPct),
   },
-  { key: "qualityTrendPct", header: `${SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} (pp)`, dataType: "percent" },
+  { key: "qualityTrendPct", header: `${SUPPLIER_FULL_PRICE_MARKDOWN_GAP_LABEL} (pp)`, dataType: "number" },
   { key: "status", header: "Signal skorkarte", dataType: "text" },
 ];
 

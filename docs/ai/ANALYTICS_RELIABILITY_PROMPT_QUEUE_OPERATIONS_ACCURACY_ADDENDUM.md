@@ -2831,6 +2831,7 @@ Supplier cross-tab audit registration 2026-09-28: current-main review after RQ48
 
 Status: DONE  
 Owner completion 2026-10-02: RQ498 delivered on `main` with tab-specific revenue/margin labels, full-price composition gap and share-delta pp formatting across UI/report/export; calculations unchanged. Run log: `.ai/runs/2026-10-02-RQ498-evidence.md`. Evidence state: synchronized after main verification.
+Audit follow-up 2026-10-03: corrected the Supplier scorecard table/detail export schema so the full-price/markdown composition gap remains a numeric pp value instead of being formatted as a percent. Added export/detail regression assertions; see `.ai/runs/2026-10-03-direct-other-commits-audit-evidence.md`.
 Ready after: `RQ474`, `RQ475`, `RQ476`, `RQ494` and `RQ495` are DONE or their final metric/population contracts are stable, and `RQ522` is DONE with machine-readable cross-tab basis metadata  
 Priority: P1  
 Type: frontend-contract/report-export/tests  
