@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-10-01
+Updated: 2026-10-02
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -34,7 +34,7 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
-Current queue truth on 2026-08-14:
+Current queue truth on 2026-10-02:
 
 - `P-UI-17` is DONE: PreNivelacijaPriorityPage chrome modernization.
 - `P-UI-18` is DONE: SupplierFootwearAnalyticsPage chrome modernization.
@@ -42,8 +42,9 @@ Current queue truth on 2026-08-14:
 - `P-UI-20` is DONE: grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages.
 - `P-UI-21` is DONE: empty success without KPI totals and shared Actions ErrorState.
 - `P-UI-22` is DONE: remaining decision-page empty/error chrome.
-- `P-UI-24` is READY as the path-safe responsive browser-baseline task registered from the 2026-10-01 verified responsive audit.
-- `P-UI-25`..`P-UI-38` are WAITING behind measured baseline/shared-primitives/page-family dependencies.
+- `P-UI-24`..`P-UI-29` are DONE; measured baseline, responsive foundation, Inventory filter and Color Sales table pilots are delivered.
+- `P-UI-32` is DONE on `main` (`3c15311541dca7dad39824ca207cdb3e63222e3b`): Product Decision Center is responsive with measured progressive rendering that keeps its complete result set available.
+- `P-UI-30`, `P-UI-31`, `P-UI-33`..`P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
 - `P-UI-23` remains a separate WAITING lint-hygiene task.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
 

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-32 (IN_PROGRESS; Product Decision responsive presentation/rendering)
+Current READY prompt: none (P-UI-32 DONE; re-enter idle recovery)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -37,7 +37,7 @@ Use with:
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
-| P-UI-32 | IN_PROGRESS | product-decision-responsive | Product Decision Center responsive + measured row rendering |
+| P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | WAITING | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
@@ -1894,7 +1894,7 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 
 ## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-24 and P-UI-29
 Priority: P1
 Type: frontend/page/perf-tests
@@ -1953,6 +1953,8 @@ Product Decision Center uses a 1400px table, requests up to 1,200 rows and rende
 
 - P-UI-24 and P-UI-29 DONE.
 - Active Product/RQ owner collision check required.
+
+Completion 2026-10-02: Delivered to `main` in implementation commit `3c15311541dca7dad39824ca207cdb3e63222e3b`. The Product Decision table is keyboard-focusable and horizontally contained on narrow screens, its first column remains visible while scrolling, and the period notes no longer force root overflow. A measured 1,200-row response mounts 50 rows initially with an explicit continuation control; all filtered/sorted rows remain in the shared export toolbar and can be revealed in 50-row steps. Before/after at 375px: DOM 41,408 -> 2,311; sort interaction 3,199.7 ms -> 223.8 ms; responsive light/dark matrix is 0 overflow across 320/375/768/1024/1280. RQ decision semantics and action/export behavior remain unchanged. Focused Product Decision suites: 41/41; typecheck, analytics guardrails, build, browser matrix, governance validators and diff check pass. Current-main Actions: Analytics Quality Gates run `37008756835` and Planning Governance run `37008756713` were `in_progress` on implementation SHA at inspection. Run log: `.ai/runs/2026-10-02-P-UI-32-evidence.md`; Evidence state: synchronized.
 
 ---
 

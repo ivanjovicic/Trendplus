@@ -4,9 +4,9 @@ Date: 2026-10-02
 Agent/tool: Codex + Puppeteer
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 3c15311541dca7dad39824ca207cdb3e63222e3b
+Main verification: passed - fresh fetch confirmed `origin/main` contains the implementation SHA and was `3c15311541dca7dad39824ca207cdb3e63222e3b` at implementation verification
+Evidence state: synchronized
 
 ## What was done
 - Re-entered canonical idle recovery after P-UI-29. Promoted and claimed P-UI-32 after confirming P-UI-24/P-UI-29 DONE, no P-UI-32 lock/branch/open PR, and no active Product Decision frontend owner. Supplier P-UI-31 was deferred because RQ530 is PARTIAL and RQ487 retains the owner-gated Supplier query-cost scope.
@@ -43,8 +43,8 @@ Evidence state: pending
 - Live API-backed performance timings - not run; measurements use explicit synthetic fixtures and prove DOM/render interaction behavior only.
 
 ## Documentation impact
-- Promoted/claimed P-UI-32 in the owning UI queue and updated the P-UI master-roadmap pointer. Queue completion and exact main SHA synchronization will be recorded after delivery.
-- Updated the P-UI-29 run log `Next` field to point to the active P-UI-32 claim.
+- Closed P-UI-32 in the owning UI queue, recorded the implementation SHA and refreshed the P-UI master-roadmap pointer after fresh `origin/main` verification.
+- Updated the P-UI-29 run log `Next` field to record the P-UI-32 completion and renewed idle recovery.
 
 ## What was missed
 - None known within the accepted presentation/rendering scope.
@@ -54,4 +54,4 @@ Evidence state: pending
 - Auxiliary APIs outside the Product Decision fixture still return the responsive runner's explicit 503 fixture response; they are not treated as successful empty analytics data. Product Decision fixture requests have no page errors.
 
 ## Next
-- Synchronize implementation and closure evidence on `main`, then re-enter canonical idle recovery.
+- Re-enter canonical idle recovery and promote the next P-UI prompt only after dependency and ownership checks pass.
