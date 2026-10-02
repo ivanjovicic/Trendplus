@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (P-UI-29 DONE; re-enter idle recovery)
+Current READY prompt: P-UI-32 (IN_PROGRESS; Product Decision responsive presentation/rendering)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -37,7 +37,7 @@ Use with:
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | WAITING | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
-| P-UI-32 | WAITING | product-decision-responsive | Product Decision Center responsive + measured row rendering |
+| P-UI-32 | IN_PROGRESS | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | WAITING | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
@@ -1677,6 +1677,8 @@ Analytics pages duplicate compact 13px decision-field/filter CSS. On narrow scre
 
 Owner promotion/claim 2026-10-02: after P-UI-28 delivery, canonical idle recovery selected P-UI-29. Collision check found no matching local task lock, branch or open PR, and no current READY/IN_PROGRESS RQ prompt owns AnalyticsDataTable or ColorSalesStatsPage. ColorSalesStatsPage is the single pilot because existing tests cover URL sort, visible sorting versus export population, and detail navigation. Shared callers remain outside this migration; only the chosen pilot opts into responsive behavior.
 
+Owner promotion/claim 2026-10-02: after P-UI-29 delivery, canonical idle recovery found no claimable higher-priority BCI/STAB/RQ/QDB/MT/GAI prompt. P-UI-30 remains dependency-blocked on P-UI-26. P-UI-31 is deferred because RQ530 is PARTIAL and RQ487 remains the owner-gated Supplier overview query-cost path. P-UI-32 dependencies P-UI-24/P-UI-29 are DONE; RQ485/RQ488 Product Decision frontend work is DONE, while RQ472/RQ487 backend/contract scopes remain untouched. No P-UI-32 lock, branch or open PR existed. P-UI-32 moved WAITING -> READY -> IN_PROGRESS as a presentation/rendering-only task; preserve all rows and decision/action/export/sort semantics. Local lock: `.ai/task-locks/P-UI-32-codex.lock.md`.
+
 ## P-UI-29 - Add a responsive AnalyticsDataTable pilot with explicit column priority
 
 Status: DONE
@@ -1892,7 +1894,7 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 
 ## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-24 and P-UI-29
 Priority: P1
 Type: frontend/page/perf-tests

@@ -114,11 +114,13 @@
 }
 
 .product-decision-filter-period-note {
+  display: block;
   color: var(--text-muted);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: normal;
   text-transform: none;
+  overflow-wrap: anywhere;
 }
 
 .product-decision-message {
@@ -142,6 +144,43 @@
 .product-decision-table-wrap {
   border-radius: 24px;
   overflow: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-decision-table-scroll-hint {
+  display: none;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.product-decision-table-wrap:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.product-decision-render-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.product-decision-render-summary button {
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .product-decision-table {
@@ -587,6 +626,31 @@
 }
 
 @media (max-width: 768px) {
+  .filter-grid label {
+    min-width: 0;
+  }
+
+  .product-decision-filter-period-note {
+    max-width: 100%;
+  }
+
+  .product-decision-table-scroll-hint {
+    display: block;
+  }
+
+  .product-decision-table th:first-child,
+  .product-decision-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--surface-default);
+    z-index: 2;
+  }
+
+  .product-decision-table th:first-child {
+    background: var(--surface-darker);
+    z-index: 3;
+  }
+
   .product-decision-header {
     flex-direction: column;
     border-radius: 22px;

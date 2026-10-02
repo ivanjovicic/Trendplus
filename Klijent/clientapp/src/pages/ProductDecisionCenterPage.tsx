@@ -91,6 +91,9 @@ type OptionalActionStatusWarning = {
   message: string;
 };
 
+const PRODUCT_DECISION_INITIAL_RENDER_LIMIT = 50;
+const PRODUCT_DECISION_RENDER_BATCH_SIZE = 50;
+
 export type ProductDecisionSignalFields = {
   stockCoverDays?: number | null;
   stockCoverStatus?: string | null;
@@ -809,6 +812,7 @@ export default function ProductDecisionCenterPage() {
   const [serverSearch, setServerSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>(initialUrlState.sortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialUrlState.sortDir);
+  const [visibleRowLimit, setVisibleRowLimit] = useState(PRODUCT_DECISION_INITIAL_RENDER_LIMIT);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [timelineByProductId, setTimelineByProductId] = useState<Record<number, ProductDecisionTimelineFilterResponse | null>>({});
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
@@ -1042,6 +1046,11 @@ export default function ProductDecisionCenterPage() {
     });
     return copy;
   }, [filteredRows, sortDir, sortField]);
+  const visibleRows = useMemo(() => sortedRows.slice(0, visibleRowLimit), [sortedRows, visibleRowLimit]);
+
+  useEffect(() => {
+    setVisibleRowLimit(PRODUCT_DECISION_INITIAL_RENDER_LIMIT);
+  }, [dataScope, fromDate, recommendationFilter, dataQualityFilter, search, serverSearch, sortField, sortDir, storeId, supplierId, toDate]);
 
   const actionStatusLookupItems = useMemo(() => {
     const candidates = filteredRows.map((row) => {
@@ -1765,7 +1774,17 @@ export default function ProductDecisionCenterPage() {
       ) : null}
 
       {!loading && !hasBlockingError && sortedRows.length > 0 ? (
-        <div className="product-decision-table-wrap">
+        <>
+        <p className="product-decision-table-scroll-hint" id="product-decision-table-scroll-hint">
+          Na užem ekranu prevucite tabelu horizontalno da pregledate sve kolone.
+        </p>
+        <div
+          className="product-decision-table-wrap"
+          role="region"
+          aria-label="Odluke o proizvodima; pomerajte horizontalno da pregledate sve kolone"
+          aria-describedby="product-decision-table-scroll-hint"
+          tabIndex={0}
+        >
           <table className="product-decision-table">
             <thead>
               <tr>
@@ -1785,7 +1804,7 @@ export default function ProductDecisionCenterPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((row) => {
+              {visibleRows.map((row) => {
                   const expanded = expandedProductId === row.productId;
                   const queueSpec = buildProductQueueSpec(row);
                   const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
@@ -2324,6 +2343,18 @@ export default function ProductDecisionCenterPage() {
             </tbody>
           </table>
         </div>
+        <div className="product-decision-render-summary">
+          <span role="status" aria-live="polite">Prikazano {visibleRows.length} od {sortedRows.length} redova.</span>
+          {visibleRows.length < sortedRows.length ? (
+            <button
+              type="button"
+              onClick={() => setVisibleRowLimit((current) => Math.min(current + PRODUCT_DECISION_RENDER_BATCH_SIZE, sortedRows.length))}
+            >
+              Prikaži još {Math.min(PRODUCT_DECISION_RENDER_BATCH_SIZE, sortedRows.length - visibleRows.length)}
+            </button>
+          ) : null}
+        </div>
+        </>
       ) : null}
     </section>
   );

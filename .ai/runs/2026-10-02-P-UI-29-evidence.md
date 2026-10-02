@@ -51,4 +51,4 @@ Evidence state: synchronized
 - The existing 1024px root overflow from the `Sve sezone` filter select remains unchanged and is outside the table-only prompt. Analytics Quality Gates run `37006809710` was `in_progress` when inspected.
 
 ## Next
-- Re-enter canonical idle recovery; promote another P-UI prompt only after its dependency and ownership checks pass.
+- P-UI-32 promoted and claimed after dependency and Product Decision owner-collision checks; see `.ai/task-locks/P-UI-32-codex.lock.md` while active.

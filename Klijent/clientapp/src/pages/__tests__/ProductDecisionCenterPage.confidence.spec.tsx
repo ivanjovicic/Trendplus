@@ -27,7 +27,9 @@ vi.mock("../../services/analyticsApi", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
-vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ rows }: { rows: unknown[] }) => <div data-testid="analytics-table-toolbar" data-row-count={rows.length} />,
+}));
 vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({ default: () => null }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
   default: ({
@@ -330,6 +332,36 @@ beforeEach(() => {
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
+  it("renders the complete result progressively and keeps remaining rows reachable", async () => {
+    const rows = Array.from({ length: 120 }, (_, index) => makeRow({
+      productId: index + 101,
+      recommendationId: `product:${index + 101}:REPLENISH:20260427:20260526`,
+      sourceKey: `product:${index + 101}`,
+      sku: `SKU-${index + 101}`,
+      productName: `Model ${index + 101}`,
+    }));
+    getProductDecisionCenterMock.mockResolvedValueOnce(buildResponse(rows, "good"));
+    const { container } = render(<ProductDecisionCenterPage />);
+
+    expect(await screen.findByText(/Prikazano 50 od 120 redova\./)).toBeInTheDocument();
+    expect(container.querySelectorAll("tr.data-row")).toHaveLength(50);
+    expect(screen.getByTestId("analytics-table-toolbar")).toHaveAttribute("data-row-count", "120");
+    expect(screen.getByRole("region", { name: /Odluke o proizvodima.*pomerajte horizontalno/i })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByText(/prevucite tabelu horizontalno/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prikaži još 50" }));
+    expect(await screen.findByText(/Prikazano 100 od 120 redova\./)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prikaži još 20" }));
+
+    expect(await screen.findByText(/Prikazano 120 od 120 redova\./)).toBeInTheDocument();
+    expect(container.querySelectorAll("tr.data-row")).toHaveLength(120);
+    expect(screen.getByText("Model 220")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("columnheader", { name: "Artikal" }));
+    expect(await screen.findByText(/Prikazano 50 od 120 redova\./)).toBeInTheDocument();
+    expect(container.querySelectorAll("tr.data-row")).toHaveLength(50);
+    expect(screen.getByTestId("analytics-table-toolbar")).toHaveAttribute("data-row-count", "120");
+  });
+
   it("explains Decision Timeline filter scope and keeps empty results explicit", async () => {
     render(<ProductDecisionCenterPage />);
 

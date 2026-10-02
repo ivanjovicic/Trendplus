@@ -12,7 +12,7 @@ const ROUTES = [
   { id: "supplier", path: "/analytics/supplier" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
-  { id: "products", path: "/analytics/products" },
+  { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap" },
   { id: "actions", path: "/analytics/actions" },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
 ];
@@ -33,6 +33,8 @@ function parseArgs(argv) {
     theme: null,
     strict: false,
     selfTest: false,
+    productRowCount: 1200,
+    viewportWidth: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -46,6 +48,8 @@ function parseArgs(argv) {
     else if (argument === "--theme") options.theme = argv[++index];
     else if (argument === "--strict") options.strict = true;
     else if (argument === "--self-test") options.selfTest = true;
+    else if (argument === "--product-row-count") options.productRowCount = Number(argv[++index]);
+    else if (argument === "--viewport-width") options.viewportWidth = Number(argv[++index]);
     else throw new Error(`Unknown argument: ${argument}`);
   }
 
@@ -59,6 +63,12 @@ function parseArgs(argv) {
     throw new Error(`Unknown responsive baseline theme: ${options.theme}`);
   }
 
+  if (!Number.isInteger(options.productRowCount) || options.productRowCount < 1 || options.productRowCount > 1200) {
+    throw new Error("Product Decision fixture row count must be an integer between 1 and 1200");
+  }
+  if (options.viewportWidth != null && !VIEWPORTS.includes(options.viewportWidth)) {
+    throw new Error(`Unsupported viewport width: ${options.viewportWidth}`);
+  }
   return options;
 }
 
@@ -120,7 +130,7 @@ function runSelfTest() {
   };
 }
 
-async function fixtureResponse(request) {
+async function fixtureResponse(request, options) {
   const url = new URL(request.url());
   if (url.pathname === "/health" || url.pathname === "/ready") {
     return { status: 200, body: JSON.stringify({ status: "fixture" }) };
@@ -199,6 +209,79 @@ async function fixtureResponse(request) {
         sezone: [],
       }),
     };
+  }
+
+  if (url.pathname === "/api/analytics/cached/products/decision-center") {
+    const rows = Array.from({ length: options.productRowCount }, (_, index) => {
+      const productId = index + 1;
+      return {
+        productId,
+        recommendationId: `product:${productId}:REPLENISH:20260903:20261002`,
+        sourceType: "product",
+        sourceKey: `product:${productId}`,
+        recommendationType: "REPLENISH",
+        sku: `FIX-${String(productId).padStart(4, "0")}`,
+        productName: `Sintetički model ${String(productId).padStart(4, "0")}`,
+        supplierId: 1,
+        supplierName: "Sintetički dobavljač",
+        category: "Obuća",
+        revenue: 120000 - index,
+        unitsSold: 40,
+        velocityUnitsPerDay: 1.2,
+        marginContribution: 24000,
+        marginPct: 24,
+        marginQualityLabel: "Dobro",
+        marginCoveragePct: 90,
+        currentStock: 10,
+        minStock: 5,
+        stockGap: 0,
+        trendPct: 3,
+        lostSalesEstimate: 25000,
+        slowStockCapital: 0,
+        stockCoverDays: 5,
+        stockCoverStatus: "low_cover",
+        stockCoverStatusLabel: "Niska pokrivenost",
+        sellThroughRatio: 0.6,
+        sellThroughStatus: "good",
+        sellThroughStatusLabel: "Dobra prodajnost",
+        confidencePct: 88,
+        reliabilityPct: 80,
+        confidenceLevel: "high",
+        confidenceScore: 88,
+        recommendationAllowed: true,
+        dataQualityStatus: "good",
+        recommendationStatus: "REPLENISH",
+        recommendationLabel: "Dopuni",
+        recommendationReason: "Sintetički razlog za responsive merenje.",
+        reasonCodes: ["fixture"],
+        warningCodes: [],
+        primaryDrivers: ["sales_velocity"],
+        expectedImpactRsd: 25000,
+        impactWindowDays: 14,
+        explainabilityText: "Sintetički dokaz; nije stvarna preporuka.",
+        inputFreshnessStatus: "fresh",
+        recommendedAction: "Dopuni zalihe",
+        daysSinceLastSale: 12,
+      };
+    });
+    return {
+      status: 200,
+      body: JSON.stringify({
+        generatedAtUtc: "2026-10-02T00:00:00Z",
+        periodFromUtc: "2026-09-03T00:00:00Z",
+        periodToUtc: "2026-10-02T23:59:59Z",
+        totalRows: rows.length,
+        analyzedRows: rows.length,
+        ignoredRowsCount: 0,
+        summary: { replenishCount: rows.length, markdownCount: 0, highPotentialCount: rows.length, badDataCount: 0, actionableCount: rows.length, blockedCount: 0, lostSalesEstimate: 30000000, slowStockCapital: 0 },
+        rows,
+        meta: { success: true, dataQualityStatus: "good", requestedPeriodFromUtc: "2026-09-03T00:00:00Z", requestedPeriodToUtc: "2026-10-02T23:59:59Z", effectivePeriodFromUtc: "2026-09-03T00:00:00Z", effectivePeriodToUtc: "2026-10-02T23:59:59Z" },
+      }),
+    };
+  }
+
+  if (url.pathname.includes("source-statuses")) {
+    return { status: 200, body: JSON.stringify({ items: [] }) };
   }
 
   return {
@@ -343,7 +426,7 @@ async function run(options) {
       : THEMES;
     for (const route of selectedRoutes) {
       for (const theme of selectedThemes) {
-        for (const viewportWidth of VIEWPORTS) {
+        for (const viewportWidth of (options.viewportWidth ? [options.viewportWidth] : VIEWPORTS)) {
           const page = await browser.newPage();
           const consoleErrors = [];
           const pageErrors = [];
@@ -373,7 +456,7 @@ async function run(options) {
                 request.continue();
                 return;
               }
-              const response = await fixtureResponse(request);
+              const response = await fixtureResponse(request, options);
               request.respond({
                 status: response.status,
                 contentType: "application/json",
@@ -395,6 +478,36 @@ async function run(options) {
           }
 
           const geometry = await collectGeometry(page, viewportWidth);
+          const performance = route.id === "products" ? await page.evaluate(async (requestedFixtureRows) => {
+            const table = document.querySelector(".product-decision-table");
+            const wrapper = document.querySelector(".product-decision-table-wrap");
+            const rowsBeforeSort = table?.querySelectorAll("tbody > tr.data-row").length ?? 0;
+            const domNodeCount = document.querySelectorAll("*").length;
+            const renderSummary = document.querySelector(".product-decision-render-summary")?.textContent ?? "";
+            const renderCounts = renderSummary.match(/Prikazano\s+(\d+)\s+od\s+(\d+)\s+redova/);
+            const sortHeader = table?.querySelector("thead th");
+            let sortInteractionMs = null;
+            if (sortHeader) {
+              const startedAt = performance.now();
+              sortHeader.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+              await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+              sortInteractionMs = Math.round((performance.now() - startedAt) * 100) / 100;
+            }
+            return {
+              syntheticFixture: true,
+              requestedFixtureRows,
+              renderedRowsBeforeSort: rowsBeforeSort,
+              renderedRowsAfterSort: table?.querySelectorAll("tbody > tr.data-row").length ?? 0,
+              totalRowsAvailable: renderCounts ? Number(renderCounts[2]) : null,
+              loadMoreAvailable: Boolean(document.querySelector(".product-decision-render-summary button")),
+              domNodeCount,
+              sortInteractionMs,
+              tableScrollWidth: wrapper?.scrollWidth ?? null,
+              tableClientWidth: wrapper?.clientWidth ?? null,
+              firstRowReachable: Boolean(table?.querySelector("tbody > tr.data-row:first-child")),
+              lastRowReachable: Boolean(table?.querySelector("tbody > tr.data-row:last-child")),
+            };
+          }, options.productRowCount) : null;
           const slug = `${safeFilePart(route.id)}__${theme}__${viewportWidth}`;
           const screenshotPath = path.join(options.outputDir, `${slug}.png`);
           if (route.captureSelector) {
@@ -413,6 +526,7 @@ async function run(options) {
             pageErrors,
             requestFailures,
             navigationError,
+            performance,
           });
           await page.close();
         }
