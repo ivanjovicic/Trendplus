@@ -186,6 +186,13 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ495 | DONE | P0 | sale-line-snapshot-cost-binding | Bind snapshot cost evidence to the exact sale line |
 | RQ496 | DONE | P1 | shoetype-signed-share-presentation-truth | Preserve signed share and ranking semantics across Shoe Type surfaces |
 | RQ497 | DONE | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
+| RQ560 | WAITING | P0 | analytics-negative-id-sentinel-safety | Remove collision-prone numeric sentinels now that negative Access IDs are valid |
+| RQ561 | WAITING | P0 | operations-six-screen-certification | Re-certify the six current Operations screens on one adversarial fixture |
+| RQ562 | WAITING | P0 | operations-grain-aware-integrity | Detect bucket drift even when grand totals still match |
+| RQ563 | WAITING | P0 | inventory-independent-integrity-probe | Register and execute the missing independent Inventory family probe |
+| RQ564 | WAITING | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
+| RQ565 | WAITING | P0 | operations-six-screen-deployed-reconciliation | Reconcile all six current screens through deployed API/browser/export |
+| RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
 
 ---
 
