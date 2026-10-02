@@ -3,9 +3,11 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none (RQ536 DONE)
+Current READY prompt: RQ532 (IN_PROGRESS)
 Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
-Queue reconciliation 2026-10-02: RQ529 DONE on `main` — consolidated Supplier tabs use explicit tab/tabpanel semantics, all Supplier sortable tables publish `aria-sort`, date formatting is stable Serbian/UTC, duplicate store names retain stable IDs, and supplier metric headers expose accessible terminology help. RQ530/RQ532 remain gated by their named dependencies; RQ531 remains owner-gated. Run log: `.ai/runs/2026-10-02-RQ529-evidence.md`.
+Owner promotion/claim 2026-10-02: idle recovery verified RQ520, RQ527 and RQ500 DONE on current `main`, found no active RQ532 lock/branch/PR collision, and promoted/claimed RQ532 for source discovery. Local lock: `.ai/task-locks/RQ532-codex.lock.md`; branch: `cursor/rq532-supplier-size-curve-78b0`.
+Queue reconciliation 2026-10-02: RQ532 source discovery is now the active Supplier size-curve lane; the existing endpoint is SKU/store share-only and no repository-owned size-curve snapshot schema or supplier × footwear-type sold/received/on-hand contract is present. Controlled markdown data exposes descriptive pre/post plus optional `didRevenue`/`didQty`, but no maturity/control-population/confidence contract for a new size-curve surface. Runtime implementation must stop pending an authoritative source contract.
+Queue reconciliation 2026-10-02: RQ529 DONE on `main` — consolidated Supplier tabs use explicit tab/tabpanel semantics, all Supplier sortable tables publish `aria-sort`, date formatting is stable Serbian/UTC, duplicate store names retain stable IDs, and supplier metric headers expose accessible terminology help. RQ530 remains gated by its named dependencies; RQ532 is now in source discovery; RQ531 remains owner-gated. Run log: `.ai/runs/2026-10-02-RQ529-evidence.md`.
 Queue reconciliation 2026-10-02: RQ523 DONE on `main` — Pregled keeps backend population share when a supplier is focused; revenue rank badges only for descending sort; Asortiman control chips reflect applied filters with Serbian data-quality labels; assortment category persists in URL/canonical filters. RQ529 unblocked on RQ523. Run log: `.ai/runs/2026-10-02-RQ523-evidence.md`.
 Queue reconciliation 2026-10-02: RQ500 DONE on `main` — Supplier Pregled/Skorkarta/Asortiman first-screen KPIs match each tab's question; scorecard quality/risk metrics and assortment type/coverage/elasticity are primary; generic revenue/concentration metrics moved to secondary `<details>`; consolidated shell shows cross-tab role cue. RQ523/RQ529 dependency on RQ499 unchanged; RQ530 and RQ532 unblocked on RQ500. Run log: `.ai/runs/2026-10-02-RQ500-evidence.md`.
 Queue reconciliation 2026-10-02: RQ499 DONE on `main` — consolidated Supplier shell exposes critical/pending trust states, tab-specific fallback sources, scorecard signal-only mode, and no stale cross-tab trust flash. RQ523 is dependency-complete after RQ499; RQ500 waits on RQ498/RQ499 (both DONE). Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`.
@@ -812,7 +814,8 @@ RQ536 DONE and explicit product-owner decision.
 
 ## RQ532 - Add Supplier size-curve and controlled markdown effectiveness evidence
 
-Status: WAITING
+Status: IN_PROGRESS
+Claimed: 2026-10-02 by Codex after dependency recovery; source discovery must prove availability before runtime implementation.
 Ready after: RQ520, RQ527 and RQ500 DONE
 Priority: P3
 Type: backend/frontend/product/tests
