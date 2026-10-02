@@ -36,6 +36,9 @@ Kanonska selekcija, claim, paralelnost, takeover i **Idle recovery** su u `docs/
 - `Current READY` je primary/default kandidat, ne globalni lock.
 - Jedan agent/workspace radi jedan claim odjednom; drugi agenti mogu raditi nezavisne collision-safe READY promptove po kanonskom protokolu.
 - Ako je pointer `none`, ne završavaj sa “nema prompta”. Proveri stale dependency/status, recent run logs i non-DONE backlog kroz Idle recovery; promoviši i claim-uj samo ono što je dokazano runnable.
+- Pre nego što kažeš da je kandidat blokiran, razdvoji: stvarni start gate vs final/deployed dokaz, eksterni/provider dokaz vs repo-local rad, aktivni owner vs stale metadata, i kružni prerequisite vs artefakt koji prompt sam treba da napravi.
+- Ako je bezbedan same-owner repo-local deo izvršiv, popravi/suzi prompt pre claim-a i ostavi provider/live/owner-gated dokaz kao eksplicitan residual; ne izmišljaj odluke i ne spuštaj acceptance.
+- Ako prvi kandidat ostane stvarno blokiran, traži collision-safe kandidat u istom programu pa sledeći dozvoljeni program. “Nema rada” je poslednji rezultat, ne prvi.
 - Posle završenog prompta, ako korisnik traži `continue` ili `claim and execute`, ponovo pokreni selekciju/recovery umesto da staneš zato što se pointer vratio na `none`.
 
 Pre nego što kreneš:
