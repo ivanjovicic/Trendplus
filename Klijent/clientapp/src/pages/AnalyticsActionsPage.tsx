@@ -12,7 +12,9 @@ import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/ana
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import RecommendationMeasurementStatisticsReview from "../components/analytics/RecommendationMeasurementStatisticsReview";
+import Modal from "../components/Modal";
 import type {
   AnalyticsActionItem,
   AnalyticsActionImpactLedger,
@@ -297,9 +299,9 @@ function getOutcomeSummaryEmptyState(summary: AnalyticsActionOutcomeSummaryRespo
   message: string;
 } {
   const reason = getOutcomeSummaryEmptyReason(summary?.meta.emptyReason);
-  if (reason === "no_measured_outcomes" || reason === "no_measured_closed_outcomes") {
-    const actionCount = fmtNumber(summary?.totals.createdCount ?? 0, 0, "0");
-    const pendingCount = fmtNumber(summary?.totals.pendingOutcomeCount ?? 0, 0, "0");
+  if (summary && (reason === "no_measured_outcomes" || reason === "no_measured_closed_outcomes")) {
+    const actionCount = fmtNumber(summary.totals.createdCount, 0, "0");
+    const pendingCount = fmtNumber(summary.totals.pendingOutcomeCount, 0, "0");
     return {
       kind: "no-measurement",
       title: "Analiza ishoda još nije spremna",
@@ -614,6 +616,16 @@ export default function AnalyticsActionsPage() {
   const [writeAccessMessage, setWriteAccessMessage] = useState<string | null>(null);
   const itemsRequestSeqRef = useRef(0);
   const outcomeSummaryRequestSeqRef = useRef(0);
+  const statusModalBusyRef = useRef(statusModalBusy);
+  const outcomeModalBusyRef = useRef(outcomeModalBusy);
+  statusModalBusyRef.current = statusModalBusy;
+  outcomeModalBusyRef.current = outcomeModalBusy;
+  const closeStatusModal = useCallback(() => {
+    if (!statusModalBusyRef.current) setStatusModal(null);
+  }, []);
+  const closeOutcomeModal = useCallback(() => {
+    if (!outcomeModalBusyRef.current) setOutcomeModal(null);
+  }, []);
 
   const loadItems = useCallback(async (f: AnalyticsActionFilters) => {
     const requestSeq = ++itemsRequestSeqRef.current;
@@ -1282,7 +1294,7 @@ export default function AnalyticsActionsPage() {
         </div>
       ) : (
         <>
-          <div className="aaq-table-wrap">
+          <AnalyticsDataTable responsivePilot rowCount={items.length} testId="analytics-actions-data-table">
             <table className="aaq-table">
               <thead>
                 <tr>
@@ -1577,7 +1589,7 @@ export default function AnalyticsActionsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </AnalyticsDataTable>
 
           {totalPages > 1 && (
             <div className="aaq-pagination">
@@ -1604,15 +1616,23 @@ export default function AnalyticsActionsPage() {
       )}
 
       {statusModal && (
-        <div className="aaq-modal-backdrop" role="presentation" onClick={() => !statusModalBusy && setStatusModal(null)}>
-          <div
-            className="aaq-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="aaq-note-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="aaq-note-modal-title">Napomena uz status</h2>
+        <Modal
+          isOpen={!!statusModal}
+          onClose={closeStatusModal}
+          title="Napomena uz status"
+          size="md"
+          footer={(
+            <div className="aaq-modal-actions">
+              <button type="button" className="btn-page" onClick={closeStatusModal} disabled={statusModalBusy}>
+                Otkaži
+              </button>
+              <button type="button" className="btn-action btn-done" onClick={() => void submitStatusModal()} disabled={statusModalBusy}>
+                {statusModalBusy ? "Čuvanje..." : "Potvrdi"}
+              </button>
+            </div>
+          )}
+        >
+          <div className="aaq-modal-form">
             <p className="aaq-modal-subtitle">
               Menjate status akcije na <strong>{STATUS_LABELS[statusModal.status]}</strong>:
             </p>
@@ -1626,28 +1646,28 @@ export default function AnalyticsActionsPage() {
               placeholder="Unesite kratku napomenu..."
               disabled={statusModalBusy}
             />
-            <div className="aaq-modal-actions">
-              <button type="button" className="btn-page" onClick={() => setStatusModal(null)} disabled={statusModalBusy}>
-                Otkaži
-              </button>
-              <button type="button" className="btn-action btn-done" onClick={() => void submitStatusModal()} disabled={statusModalBusy}>
-                {statusModalBusy ? "Čuvanje..." : "Potvrdi"}
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {outcomeModal && (
-        <div className="aaq-modal-backdrop" role="presentation" onClick={() => !outcomeModalBusy && setOutcomeModal(null)}>
-          <div
-            className="aaq-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="aaq-outcome-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="aaq-outcome-modal-title">Ažuriraj ishod</h2>
+        <Modal
+          isOpen={!!outcomeModal}
+          onClose={closeOutcomeModal}
+          title="Ažuriraj ishod"
+          size="md"
+          footer={(
+            <div className="aaq-modal-actions">
+              <button type="button" className="btn-page" onClick={closeOutcomeModal} disabled={outcomeModalBusy}>
+                Otkaži
+              </button>
+              <button type="button" className="btn-action btn-done" onClick={() => void submitOutcomeModal()} disabled={outcomeModalBusy}>
+                {outcomeModalBusy ? "Čuvanje..." : "Ažuriraj ishod"}
+              </button>
+            </div>
+          )}
+        >
+          <div className="aaq-modal-form">
             <p className="aaq-modal-subtitle">
               Beležite ishod za akciju <strong>{outcomeModal.title}</strong>. Status određuje da li su merljiva polja obavezna, opciona ili namerno nedostupna.
             </p>
@@ -1748,16 +1768,8 @@ export default function AnalyticsActionsPage() {
               placeholder="Kratko zabeležite šta se desilo..."
               disabled={outcomeModalBusy}
             />
-            <div className="aaq-modal-actions">
-              <button type="button" className="btn-page" onClick={() => setOutcomeModal(null)} disabled={outcomeModalBusy}>
-                Otkaži
-              </button>
-              <button type="button" className="btn-action btn-done" onClick={() => void submitOutcomeModal()} disabled={outcomeModalBusy}>
-                {outcomeModalBusy ? "Čuvanje..." : "Ažuriraj ishod"}
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

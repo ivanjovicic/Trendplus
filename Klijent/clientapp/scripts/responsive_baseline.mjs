@@ -16,7 +16,7 @@ const ROUTES = [
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
   { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap" },
-  { id: "actions", path: "/analytics/actions" },
+  { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
 ];
 
@@ -163,6 +163,12 @@ async function fixtureResponse(request, options) {
       { id: 22, naziv: "Sintetički dobavljač B", adresa: "Beograd", telefon: "0610000000" },
     ]) };
   }
+  if (url.pathname === "/api/workers/health") {
+    return { status: 200, body: JSON.stringify({
+      totalWorkers: 0, healthyWorkers: 0, runningWorkers: 0, errorWorkers: 0,
+      stoppedWorkers: 0, staleWorkers: 0, hasCriticalIssues: false, workers: [],
+    }) };
+  }
   if (url.pathname === "/artikli") {
     return { status: 200, body: JSON.stringify([
       { id: 101, naziv: "Sintetičke patike A", prodajnaCena: 7490, nabavnaCena: 4200, prvaProdajnaCena: 7990, kolicina: 8 },
@@ -171,6 +177,43 @@ async function fixtureResponse(request, options) {
   }
   if (url.pathname === "/api/prodaja" && request.method() === "POST") {
     return { status: 201, body: JSON.stringify({ id: 1, status: "fixture" }) };
+  }
+  if (url.pathname === "/api/analytics/actions" && request.method() === "GET") {
+    return { status: 200, body: JSON.stringify({ items: [
+      {
+        id: 330, sourceType: "inventory", sourceKey: "responsive-fixture-330", sourceId: 330,
+        title: "Sintetička akcija za responsive test", description: "Fixture akcija za filter, pregled i modal.",
+        recommendationStatus: "REPLENISH", priority: "P1", impactEstimateRsd: 12000, dueAtUtc: "2026-10-10T10:00:00Z",
+        expectedImpactRsd: 8000, measuredImpactRsd: null, outcomeStatus: "pending", outcomeMeasuredAtUtc: null,
+        outcomeNotes: null, confidencePct: 82, reliabilityPct: 76, dataQualityStatus: "good", status: "new",
+        actionUrl: "/analytics/inventory", metadataJson: null, ledgerSnapshot: null, impactLedger: null,
+        createdAtUtc: "2026-10-01T08:00:00Z", updatedAtUtc: "2026-10-01T08:00:00Z", resolvedAtUtc: null,
+        createdByUserId: "fixture", updatedByUserId: null, updatedByUserName: null, notes: [],
+      },
+    ], totalCount: 1, page: 1, pageSize: 50, totalPages: 1, meta: { success: true, dataQualityStatus: "good" } }) };
+  }
+  if (url.pathname === "/api/analytics/actions/counts") {
+    return { status: 200, body: JSON.stringify({ new: 1, accepted: 0, deferred: 0, rejected: 0, done: 0, p1Open: 1, meta: { success: true, dataQualityStatus: "good" } }) };
+  }
+  if (url.pathname === "/api/analytics/actions/outcomes/summary") {
+    return { status: 200, body: JSON.stringify({
+      meta: { success: true, periodMode: "created", generatedAtUtc: "2026-10-02T00:00:00Z", sampleSize: 1, measuredSampleSize: 0, warnings: [], emptyReason: null },
+      totals: { createdCount: 1, closedCount: 0, openCount: 1 },
+      impact: { expectedImpactRsd: null, measuredImpactRsd: null, measuredImpactSampleCount: 0 },
+      bySourceType: [], byPriority: [], byOutcomeStatus: [], byDataQuality: [], byConfidenceBucket: [], byReliabilityBucket: [],
+    }) };
+  }
+  if (/^\/api\/analytics\/actions\/\d+\/status$/.test(url.pathname) && request.method() === "PATCH") {
+    return { status: 200, body: JSON.stringify({
+      id: 330, sourceType: "inventory", sourceKey: "responsive-fixture-330", sourceId: 330,
+      title: "Sintetička akcija za responsive test", description: "Fixture akcija za filter, pregled i modal.",
+      recommendationStatus: "REPLENISH", priority: "P1", impactEstimateRsd: 12000, dueAtUtc: "2026-10-10T10:00:00Z",
+      expectedImpactRsd: 8000, measuredImpactRsd: null, outcomeStatus: "pending", outcomeMeasuredAtUtc: null,
+      outcomeNotes: null, confidencePct: 82, reliabilityPct: 76, dataQualityStatus: "good", status: "deferred",
+      actionUrl: "/analytics/inventory", metadataJson: null, ledgerSnapshot: null, impactLedger: null,
+      createdAtUtc: "2026-10-01T08:00:00Z", updatedAtUtc: "2026-10-02T00:00:00Z", resolvedAtUtc: null,
+      createdByUserId: "fixture", updatedByUserId: "fixture", updatedByUserName: "Fixture", notes: [],
+    }) };
   }
 
   if (url.pathname === "/api/analytics/color-sales-stats") {
@@ -700,6 +743,7 @@ async function run(options) {
 
           const url = `${options.baseUrl.replace(/\/$/, "")}${route.path}`;
           let navigationError = null;
+          let interactionStep = null;
           let interaction = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
@@ -736,9 +780,50 @@ async function run(options) {
               await page.waitForFunction(() => document.body.innerText.includes("Prodaja uspesna"), { timeout: options.timeoutMs });
               interaction = { salesSubmitted: true, boundary: "fixture POST /api/prodaja" };
             }
+            if (route.id === "actions") {
+              interactionStep = "wait-for-action-row";
+              await page.waitForSelector(".aaq-table tbody tr.aaq-row", { timeout: options.timeoutMs });
+              interactionStep = "filter-actions";
+              await page.locator('input[aria-label="Pretraži akcije"]').fill("Sintetička");
+              await page.waitForSelector(".aaq-table tbody tr.aaq-row", { timeout: options.timeoutMs });
+              interactionStep = "open-status-dialog";
+              await page.locator(".aaq-table .td-actions .btn-defer").click();
+              await page.waitForSelector('.modal-content[role="dialog"]', { timeout: options.timeoutMs });
+              interactionStep = "measure-status-dialog";
+              const statusDialog = await page.$eval(".modal-content", (dialog) => {
+                const body = dialog.querySelector(".modal-body");
+                const footer = dialog.querySelector(".modal-footer");
+                const dialogRect = dialog.getBoundingClientRect();
+                const footerRect = footer?.getBoundingClientRect();
+                return {
+                  height: Math.round(dialogRect.height),
+                  withinViewport: dialogRect.top >= 0 && dialogRect.bottom <= window.innerHeight,
+                  contentScrollable: Boolean(body && body.scrollHeight > body.clientHeight),
+                  footerReachable: Boolean(footerRect && footerRect.bottom <= window.innerHeight),
+                };
+              });
+              interactionStep = "confirm-status-update";
+              await page.evaluate(() => {
+                const button = [...document.querySelectorAll(".modal-content button")]
+                  .find((element) => element.textContent.trim() === "Potvrdi");
+                button?.click();
+              });
+              await page.waitForFunction(() => document.body.innerText.includes("Odloženo"), { timeout: options.timeoutMs });
+              interactionStep = "open-outcome-dialog";
+              await page.locator(".aaq-table .td-actions .btn-details").click();
+              await page.waitForSelector('.modal-content[role="dialog"]', { timeout: options.timeoutMs });
+              interactionStep = "measure-outcome-dialog";
+              const outcomeDialog = await page.$eval(".modal-content", (dialog) => {
+                const footer = dialog.querySelector(".modal-footer")?.getBoundingClientRect();
+                return { withinViewport: dialog.getBoundingClientRect().top >= 0 && dialog.getBoundingClientRect().bottom <= window.innerHeight, footerReachable: Boolean(footer && footer.bottom <= window.innerHeight) };
+              });
+              interactionStep = "close-outcome-dialog";
+              await page.keyboard.press("Escape");
+              interaction = { filtered: true, statusUpdatedAtFixtureBoundary: true, statusDialog, outcomeDialog, keyboardClose: true };
+            }
             await new Promise((resolve) => setTimeout(resolve, 250));
           } catch (error) {
-            navigationError = String(error);
+            navigationError = `${interactionStep ?? "navigation"}: ${String(error)}`;
           }
 
           const geometry = await collectGeometry(page, viewportWidth);
@@ -790,6 +875,7 @@ async function run(options) {
             pageErrors,
             requestFailures,
             navigationError,
+            interactionStep,
             interaction,
             performance,
           });

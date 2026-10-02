@@ -469,6 +469,23 @@ describe("AnalyticsActionsPage", () => {
     })));
   });
 
+  it("keeps all action columns in a keyboard-scrollable table region and closes outcome dialog with Escape", async () => {
+    renderPage();
+    await screen.findByText("Dopuni kritičan artikal");
+
+    const tableRegion = screen.getByRole("region", { name: "Tabela sa vodoravnim pomeranjem" });
+    expect(tableRegion).toHaveAttribute("tabindex", "0");
+    expect(within(tableRegion).getByRole("columnheader", { name: "Status akcije" })).toBeInTheDocument();
+    expect(within(tableRegion).getByRole("columnheader", { name: "Akcije" })).toBeInTheDocument();
+    expect(within(tableRegion).getByRole("columnheader", { name: "Detalji" })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("Tabela se pomera vodoravno");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
+    expect(await screen.findByRole("dialog", { name: "Ažuriraj ishod" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Ažuriraj ishod" })).not.toBeInTheDocument());
+  });
+
   it("submits measured successful outcome with parsed impact and note", async () => {
     renderPage();
     await screen.findByText("Dopuni kritičan artikal");
