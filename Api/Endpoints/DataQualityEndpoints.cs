@@ -673,7 +673,7 @@ public static class DataQualityEndpoints
 
         var totalArticles = await articleQuery.CountAsync(ct);
         var totalSuppliers = await articleQuery
-            .Where(x => x.IDDobavljac.HasValue && x.IDDobavljac.Value > 0)
+            .Where(x => x.IDDobavljac.HasValue && x.IDDobavljac.Value != 0)
             .Select(x => x.IDDobavljac!.Value)
             .Distinct()
             .CountAsync(ct);
@@ -725,7 +725,7 @@ public static class DataQualityEndpoints
             .CountAsync(ct);
         var missingSupplierNameArticleIds = await (
             from article in articleQuery
-            where article.IDDobavljac.HasValue && article.IDDobavljac.Value > 0
+            where article.IDDobavljac.HasValue && article.IDDobavljac.Value != 0
             join supplier in trendDb.Dobavljaci.AsNoTracking() on article.IDDobavljac equals supplier.Id into supplierJoin
             from supplier in supplierJoin.DefaultIfEmpty()
             where supplier == null || string.IsNullOrWhiteSpace(supplier.Naziv)

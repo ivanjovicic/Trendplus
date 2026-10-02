@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatEntityFallbackLabel } from "../validation/entityId";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -945,7 +946,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
     }
 
     const matched = sortedRows.find((row) => row.supplierId === activeFilters.supplierId);
-    return matched?.supplierName ?? `Dobavljač #${activeFilters.supplierId}`;
+    return matched?.supplierName ?? formatEntityFallbackLabel("supplier", activeFilters.supplierId);
   }, [activeFilters.supplierId, sortedRows]);
 
   const reportPayload = useMemo(() => {

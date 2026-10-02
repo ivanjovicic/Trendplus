@@ -610,6 +610,36 @@ describe("analytics response schemas", () => {
     }).success).toBe(false);
   });
 
+  it("accepts negative Access shoe type, store and season identifiers on Color, Shoe Type and Supplier stats", () => {
+    const negativeSeason = { id: -7, naziv: "Arhivska sezona", datumOd: "2025-01-01", datumDo: "2025-06-30" };
+    const shoe = shoeTypeSalesStatsResponseSchema.safeParse({
+      ...validShoeResponse,
+      storeId: -598733481,
+      sezone: [negativeSeason],
+      shoeTypes: [{ ...validShoeResponse.shoeTypes[0], tipObuceId: -2004188974, tipObuceNaziv: "Ž.Cipela" }],
+    });
+    expect(shoe.success).toBe(true);
+
+    expect(colorSalesStatsResponseSchema.safeParse({
+      ...validColorResponse,
+      storeId: -598733481,
+      sezonaId: -7,
+      lineage: { ...validColorResponse.lineage, storeId: -598733481 },
+      sezone: [negativeSeason],
+    }).success).toBe(true);
+
+    expect(supplierSalesStatsResponseSchema.safeParse({
+      ...validSupplierResponse,
+      storeId: -598733481,
+      sezone: [negativeSeason],
+    }).success).toBe(true);
+
+    expect(shoeTypeSalesStatsResponseSchema.safeParse({
+      ...validShoeResponse,
+      shoeTypes: [{ ...validShoeResponse.shoeTypes[0], tipObuceId: -2004188974.5 }],
+    }).success).toBe(false);
+  });
+
   it("validates Shoe Type decision fields and preserves unavailable margin as null", () => {
     expect(shoeTypeSalesStatsResponseSchema.safeParse(validShoeResponse).success).toBe(true);
     expect(shoeTypeSalesStatsResponseSchema.safeParse({
@@ -880,6 +910,47 @@ describe("analytics response schemas", () => {
     });
 
     expect(result.success).toBe(true);
+
+    if (result.success) {
+      const negativeIds = preNivelacijaPriorityResponseSchema.safeParse({
+        ...result.data,
+        filterFacets: {
+          seasons: [{ id: -7, label: "Arhivska sezona" }],
+          footwearTypes: [{ id: -2004188974, label: "Ž.Cipela" }],
+          stores: [{ id: -598733481, label: "Objekat sa negativnim ID" }],
+          suppliers: [{ id: -2122024036, label: "BIS" }],
+        },
+        candidates: [{
+          ...result.data.candidates[0],
+          storeId: -598733481,
+          supplierId: -2122024036,
+          seasonId: -7,
+          footwearTypeId: -2004188974,
+        }],
+        queues: {
+          highlightNow: [{
+            artikalId: 1,
+            sku: "SKU-1",
+            storeId: -598733481,
+            storeName: "Objekat sa negativnim ID",
+            supplierName: "BIS",
+            preNivelacijaScore: 75,
+            priorityBand: "high",
+            owner: "merch",
+            status: "open",
+            dueDateUtc: "2026-07-08T08:00:00Z",
+          }],
+          monitor: [],
+          likelyMarkdownSoon: [],
+        },
+      });
+      expect(negativeIds.success).toBe(true);
+
+      expect(preNivelacijaPriorityResponseSchema.safeParse({
+        ...result.data,
+        candidates: [{ ...result.data.candidates[0], footwearTypeId: -1.5 }],
+      }).success).toBe(false);
+    }
 
     expect(preNivelacijaPriorityResponseSchema.safeParse({
       ...result.success ? result.data : {},

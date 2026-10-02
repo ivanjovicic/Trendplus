@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
@@ -275,7 +275,7 @@ public static class AnalyticsCacheKeys
     public static string InventoryStoreComparison(int[]? compareStoreIds = null, int? supplierId = null, string? search = null, string? dataScope = null)
     {
         var normalizedStoreIds = compareStoreIds is { Length: > 0 }
-            ? string.Join(',', compareStoreIds.Where(id => id > 0).Distinct().OrderBy(id => id))
+            ? string.Join(',', compareStoreIds.Distinct().OrderBy(id => id))
             : "auto";
 
         return $"{Prefix}inventory-store-comparison:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:search:{HashPart(search)}";
@@ -284,7 +284,7 @@ public static class AnalyticsCacheKeys
     public static string InventoryDataset(int? storeId = null, int? supplierId = null, string? search = null, int[]? storeIds = null, bool applyAbcClassification = true, string? dataScope = null)
     {
         var normalizedStoreIds = storeIds is { Length: > 0 }
-            ? string.Join(',', storeIds.Where(id => id > 0).Distinct().OrderBy(id => id))
+            ? string.Join(',', storeIds.Distinct().OrderBy(id => id))
             : "none";
 
         return $"{Prefix}inventory-dataset:store:{(storeId.HasValue ? storeId.Value.ToString() : "all")}:stores:{normalizedStoreIds}:supplier:{(supplierId.HasValue ? supplierId.Value.ToString() : "all")}:scope:{NormalizeDataScope(dataScope)}:search:{HashPart(search)}:abc:{applyAbcClassification}";
@@ -475,7 +475,7 @@ public static class AnalyticsCacheKeys
         string? dataScope = null,
         DateTime? effectiveToUtc = null,
         int? storeId = null) =>
-        $"{Prefix}pre-nivelacija-priority:v9:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
+        $"{Prefix}pre-nivelacija-priority:v10:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
 }
 
 /// <summary>

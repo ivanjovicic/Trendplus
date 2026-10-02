@@ -383,6 +383,23 @@ public static class AccessImportEndpoints
         .RequireRateLimiting("writes")
         .WithName("DeleteAccessImportBatch");
 
+        group.MapPost("/analytics/repair-negative-id-dimensions", async (
+            HttpContext httpContext,
+            IConfiguration configuration,
+            IAccessImportService service,
+            CancellationToken ct = default) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } rejected)
+            {
+                return rejected;
+            }
+
+            var result = await service.RepairNegativeIdDimensionsAsync(ct);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("writes")
+        .WithName("RepairNegativeIdAnalyticsDimensions");
+
         // --- Cleanup endpoints: preview & execute deletion of rows NOT originating from Access ---
         group.MapPost("/cleanup/preview", async (
             TrendplusDbContext trendDb,

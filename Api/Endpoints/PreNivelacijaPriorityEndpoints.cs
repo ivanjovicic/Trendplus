@@ -174,7 +174,7 @@ public static class PreNivelacijaPriorityEndpoints
                     try
                     {
                         var storeIds = artikli
-                            .Where(x => x.StoreId is > 0)
+                            .Where(x => x.StoreId.HasValue)
                             .Select(x => x.StoreId!.Value)
                             .Distinct()
                             .ToArray();
@@ -183,7 +183,7 @@ public static class PreNivelacijaPriorityEndpoints
                             .Where(x => storeIds.Contains(x.StoreId))
                             .ToDictionaryAsync(
                                 x => x.StoreId,
-                                x => string.IsNullOrWhiteSpace(x.StoreName) ? $"Objekat #{x.StoreId}" : x.StoreName.Trim(),
+                                x => string.IsNullOrWhiteSpace(x.StoreName) ? EntityIdentity.FallbackLabel(EntityKind.Store, x.StoreId) : x.StoreName.Trim(),
                                 ct);
                     }
                     catch (Exception ex)
@@ -1199,12 +1199,12 @@ public static class PreNivelacijaPriorityEndpoints
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates)
     {
         return candidates
-            .Where(candidate => candidate.StoreId is > 0)
+            .Where(candidate => candidate.StoreId.HasValue)
             .GroupBy(candidate => candidate.StoreId!.Value)
             .Select(group => new PreNivelacijaFilterOptionDto
             {
                 Id = group.Key,
-                Label = group.Select(item => string.IsNullOrWhiteSpace(item.StoreName) ? $"Objekat #{group.Key}" : item.StoreName.Trim()).First(),
+                Label = group.Select(item => string.IsNullOrWhiteSpace(item.StoreName) ? EntityIdentity.FallbackLabel(EntityKind.Store, group.Key) : item.StoreName.Trim()).First(),
                 Count = group.Count()
             })
             .OrderBy(option => option.Label, StringComparer.Create(new System.Globalization.CultureInfo("sr-Latn-RS"), ignoreCase: true))
@@ -1215,7 +1215,7 @@ public static class PreNivelacijaPriorityEndpoints
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates)
     {
         return candidates
-            .Where(candidate => candidate.SupplierId is > 0
+            .Where(candidate => candidate.SupplierId.HasValue
                 && !string.IsNullOrWhiteSpace(candidate.SupplierName)
                 && !string.Equals(candidate.SupplierName, "N/A", StringComparison.OrdinalIgnoreCase))
             .GroupBy(candidate => candidate.SupplierId!.Value)
@@ -1235,7 +1235,7 @@ public static class PreNivelacijaPriorityEndpoints
         var seasons = new Dictionary<int, (string Label, int Count)>();
         foreach (var candidate in candidates)
         {
-            if (candidate.SeasonId is not > 0
+            if (!candidate.SeasonId.HasValue
                 || string.IsNullOrWhiteSpace(candidate.Season)
                 || string.Equals(candidate.Season, "N/A", StringComparison.OrdinalIgnoreCase))
             {
@@ -1269,7 +1269,7 @@ public static class PreNivelacijaPriorityEndpoints
         var footwearTypes = new Dictionary<int, (string Label, int Count)>();
         foreach (var candidate in candidates)
         {
-            if (candidate.FootwearTypeId is not > 0
+            if (!candidate.FootwearTypeId.HasValue
                 || string.IsNullOrWhiteSpace(candidate.FootwearType)
                 || string.Equals(candidate.FootwearType, "N/A", StringComparison.OrdinalIgnoreCase))
             {
@@ -1352,9 +1352,9 @@ public static class PreNivelacijaPriorityEndpoints
 
     private static string ResolveStoreName(int? storeId, IReadOnlyDictionary<int, string> storeNames)
     {
-        return storeId is > 0 && storeNames.TryGetValue(storeId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
+        return storeId.HasValue && storeNames.TryGetValue(storeId.Value, out var name) && !string.IsNullOrWhiteSpace(name)
             ? name.Trim()
-            : storeId is > 0 ? $"Objekat #{storeId.Value}" : "N/A";
+            : storeId.HasValue ? EntityIdentity.FallbackLabel(EntityKind.Store, storeId) : "N/A";
     }
 
     private static decimal ResolveSeasonRecencyBoost(int? seasonId, IReadOnlyDictionary<int, SeasonLite> seasons, DateTime maxSaleDate)

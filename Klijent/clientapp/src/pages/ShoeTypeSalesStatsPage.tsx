@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseEntityIdParam } from "../validation/entityId";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -390,12 +391,6 @@ function parseShoeTypeDate(value: string | null): string | null {
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
 }
 
-function parseShoeTypePositiveInteger(value: string | null): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function parseShoeTypePeriodPreset(value: string | null): PeriodPreset | null {
   return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
     ? value
@@ -414,8 +409,8 @@ function resolveShoeTypeUrlState(searchParams: URLSearchParams): { preset: Perio
     filters: {
       fromDate: range.fromDate,
       toDate: range.toDate,
-      sezonaId: parseShoeTypePositiveInteger(searchParams.get("sezonaId")),
-      storeId: parseShoeTypePositiveInteger(searchParams.get("storeId")),
+      sezonaId: parseEntityIdParam(searchParams.get("sezonaId")),
+      storeId: parseEntityIdParam(searchParams.get("storeId")),
     },
   };
 }

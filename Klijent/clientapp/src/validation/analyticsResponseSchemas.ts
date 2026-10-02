@@ -1,16 +1,14 @@
 import { z } from "zod";
+import { entityId, nullableEntityId } from "./entityId";
 
 const finiteNumber = z.number().finite();
 const nonNegativeNumber = finiteNumber.min(0);
 const nonNegativeInteger = finiteNumber.int().min(0);
-/** Access Random AutoNumber and archived placeholders may be negative; treat as identifiers. */
-const supplierIdentifier = finiteNumber.int();
 const percentage = finiteNumber.min(-100).max(100);
 const nonNegativePercentage = finiteNumber.min(0).max(100);
 const validDate = z.string().min(1).refine((value) => Number.isFinite(Date.parse(value)), "Must be a valid date.");
 const nullableNumber = finiteNumber.nullable();
 const nullableSignedInteger = finiteNumber.int().nullable();
-const nullableSupplierIdentifier = supplierIdentifier.nullable();
 const nullableNonNegativeNumber = nonNegativeNumber.nullable();
 const nullableNonNegativeInteger = nonNegativeInteger.nullable();
 const nullablePercentage = percentage.nullable();
@@ -290,7 +288,7 @@ const shoeDataQualitySchema = z.object({
 });
 
 const seasonSchema = z.object({
-  id: nonNegativeInteger,
+  id: entityId,
   naziv: z.string(),
   datumOd: validDate,
   datumDo: validDate,
@@ -303,11 +301,11 @@ export const colorSalesStatsResponseSchema = z.object({
   toDate: validDate.nullable(),
   dataWindowFrom: validDate.nullable(),
   dataWindowTo: validDate.nullable(),
-  sezonaId: nonNegativeInteger.nullable(),
-  storeId: nonNegativeInteger.nullable(),
+  sezonaId: nullableEntityId,
+  storeId: nullableEntityId,
   dataScope: z.enum(["all", "existing", "imported"]),
   lineage: z.object({
-    storeId: nonNegativeInteger.nullable(),
+    storeId: nullableEntityId,
     dataScope: z.string(),
     sourceFamily: z.string().trim().min(1).optional(),
     sourceLabel: z.string().trim().min(1).optional(),
@@ -339,11 +337,11 @@ export const shoeTypeSalesStatsResponseSchema = z.object({
   toDate: validDate.nullable(),
   dataWindowFrom: validDate.nullable(),
   dataWindowTo: validDate.nullable(),
-  sezonaId: nonNegativeInteger.nullable(),
-  storeId: nonNegativeInteger.nullable(),
+  sezonaId: nullableEntityId,
+  storeId: nullableEntityId,
   dataScope: z.string().nullable().optional(),
   shoeTypes: z.array(z.object({
-    tipObuceId: nonNegativeInteger.nullable(),
+    tipObuceId: nullableEntityId,
     tipObuceNaziv: z.string(),
     isUnknown: z.boolean(),
     ...salesStatSchema,
@@ -419,7 +417,7 @@ const supplierRecommendationSchema = z.object({
 }).passthrough();
 
 const supplierFootwearBreakdownSchema = z.object({
-  tipObuceId: nullableSignedInteger,
+  tipObuceId: nullableEntityId,
   tipObuceNaziv: z.string(),
   ukupanPromet: finiteNumber,
   ukupnaKolicina: finiteNumber,
@@ -448,7 +446,7 @@ const supplierFootwearBreakdownSchema = z.object({
 }).passthrough();
 
 const supplierSalesStatSchema = {
-  dobavljacId: nullableSignedInteger,
+  dobavljacId: nullableEntityId,
   dobavljacNaziv: z.string(),
   isUnknown: z.boolean(),
   preNivelacijePromet: finiteNumber,
@@ -543,8 +541,8 @@ export const supplierSalesStatsResponseSchema = z.object({
   toDate: validDate.nullable(),
   dataWindowFrom: validDate.nullable(),
   dataWindowTo: validDate.nullable(),
-  sezonaId: nonNegativeInteger.nullable(),
-  storeId: nonNegativeInteger.nullable(),
+  sezonaId: nullableEntityId,
+  storeId: nullableEntityId,
   dataScope: z.enum(["all", "existing", "imported"]),
   provenanceBasis: z.string().nullable().optional(),
   recommendationAllowed: z.boolean().nullable().optional(),
@@ -628,7 +626,7 @@ const vendorSalesNivelacijaRecommendationSchema = z.object({
 }).passthrough();
 
 const vendorSalesNivelacijaVendorSchema = z.object({
-  vendorId: nullableSignedInteger,
+  vendorId: nullableEntityId,
   vendorName: z.string(),
   preQty: finiteNumber,
   preRevenue: finiteNumber,
@@ -664,7 +662,7 @@ const vendorSalesNivelacijaVendorSchema = z.object({
 
 const vendorSalesNivelacijaArticleSchema = z.object({
   eventDate: validDate,
-  vendorId: nullableSignedInteger,
+  vendorId: nullableEntityId,
   vendorName: z.string(),
   sku: z.string(),
   articleName: z.string(),
@@ -798,13 +796,13 @@ const vendorSalesNivelacijaInsightSchema = z.object({
 export const vendorSalesNivelacijaResponseSchema = z.object({
   generatedAt: validDate,
   windowDays: nullableNonNegativeInteger,
-  vendorId: nullableSignedInteger,
+  vendorId: nullableEntityId,
   eventDate: validDate.nullable(),
   from: validDate.nullable(),
   to: validDate.nullable(),
   category: z.string().nullable(),
   includeInactive: z.boolean(),
-  storeId: nullableSignedInteger,
+  storeId: nullableEntityId,
   dataScope: z.enum(["all", "existing", "imported"]),
   scopeApplied: z.boolean(),
   categories: z.array(z.string()),
@@ -895,11 +893,11 @@ const dailySalesMetadataSchema = z.object({
 export const dailySalesTableResponseSchema = z.object({
   requestedFrom: validDate,
   requestedTo: validDate,
-  storeId: nonNegativeInteger.nullable(),
+  storeId: nullableEntityId,
   topN: nonNegativeInteger,
   dataScope: z.string(),
   topSuppliers: z.array(z.object({
-    supplierId: nullableSupplierIdentifier,
+    supplierId: nullableEntityId,
     supplierName: z.string(),
     isUnknown: z.boolean(),
     unknownReason: dailySalesUnknownReasonSchema.nullable().optional(),
@@ -959,13 +957,13 @@ const preNivelacijaRecommendationSchema = z.object({
 }).passthrough();
 
 const preNivelacijaCandidateSchema = z.object({
-  artikalId: nonNegativeInteger,
+  artikalId: entityId,
   sku: z.string().trim().min(1),
-  storeId: nonNegativeInteger.nullable(),
+  storeId: nullableEntityId,
   storeName: z.string().trim().min(1),
-  supplierId: nullableSupplierIdentifier,
-  seasonId: nonNegativeInteger.nullable(),
-  footwearTypeId: nonNegativeInteger.nullable(),
+  supplierId: nullableEntityId,
+  seasonId: nullableEntityId,
+  footwearTypeId: nullableEntityId,
   supplierName: z.string().trim().min(1),
   category: z.string().trim().min(1),
   footwearType: z.string().trim().min(1),
@@ -1006,7 +1004,7 @@ const preNivelacijaCandidateSchema = z.object({
 }).passthrough();
 
 const preNivelacijaSupplierSchema = z.object({
-  supplierId: nullableSupplierIdentifier,
+  supplierId: nullableEntityId,
   supplierName: z.string().trim().min(1),
   highPrioritySkuCount: nonNegativeInteger,
   candidateSkuCount: nonNegativeInteger,
@@ -1019,9 +1017,9 @@ const preNivelacijaSupplierSchema = z.object({
 }).passthrough();
 
 const preNivelacijaQueueItemSchema = z.object({
-  artikalId: nonNegativeInteger,
+  artikalId: entityId,
   sku: z.string().trim().min(1),
-  storeId: nonNegativeInteger.nullable(),
+  storeId: nullableEntityId,
   storeName: z.string().trim().min(1),
   supplierName: z.string().trim().min(1),
   preNivelacijaScore: nonNegativePercentage,
@@ -1036,7 +1034,7 @@ const preNivelacijaAlertSchema = z.object({
   severity: z.enum(["critical", "warning", "info"]),
   message: z.string().trim().min(1),
   supplierName: z.string().trim().min(1).nullable(),
-  artikalId: nonNegativeInteger.nullable(),
+  artikalId: nullableEntityId,
 }).passthrough();
 
 const preNivelacijaModelEvidenceSchema = z.object({
@@ -1049,7 +1047,7 @@ const preNivelacijaModelEvidenceSchema = z.object({
 }).passthrough();
 
 const preNivelacijaFilterOptionSchema = z.object({
-  id: nonNegativeInteger,
+  id: entityId,
   label: z.string().trim().min(1),
   count: nonNegativeInteger.optional(),
 }).passthrough();
@@ -1125,7 +1123,7 @@ const inventoryMetaFields = {
 };
 
 const inventoryListItemSchema = z.object({
-  id: nonNegativeInteger,
+  id: entityId,
   naziv: z.string(),
   kolicina: nullableNumber.optional(),
   minimalnaKolicina: nullableNumber.optional(),
@@ -1153,9 +1151,9 @@ export const inventoryPagedResponseSchema = z.object({
 }).passthrough();
 
 const inventoryInsightItemSchema = z.object({
-  id: nonNegativeInteger,
-  storeId: z.number().int().nonnegative().nullable(),
-  supplierId: nullableSupplierIdentifier,
+  id: entityId,
+  storeId: nullableEntityId,
+  supplierId: nullableEntityId,
   quantity: nonNegativeNumber,
   minimum: nonNegativeNumber,
   reorderGap: finiteNumber,
@@ -1187,7 +1185,7 @@ export const inventoryInsightsResponseSchema = z.object({
 }).passthrough();
 
 export const inventoryDetailResponseSchema = z.object({
-  id: nonNegativeInteger,
+  id: entityId,
   estimatedValue: nonNegativeNumber,
   updatedAt: validDate,
   movementCount: nonNegativeInteger,
@@ -1359,7 +1357,7 @@ export const inventorySignalResponseSchema = z.object({
 export const inventoryStoreComparisonResponseSchema = z.object({
   generatedAtUtc: validDate,
   stores: z.array(z.object({
-    storeId: nonNegativeInteger,
+    storeId: entityId,
     storeName: z.string(),
     totalSku: nonNegativeInteger,
     totalOnHand: finiteNumber,

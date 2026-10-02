@@ -1,4 +1,5 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { formatEntityFallbackLabel } from "../../validation/entityId";
 import type { ForecastDto, ForecastRowDto, StoreOption } from "../../types/analytics";
 import { fmtNumber, fmtPctFromRatio } from "../../utils/analyticsFormatters";
 import { formatSignalCountBadge, resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
@@ -131,7 +132,7 @@ export function DemandForecastPanel({
               {highOosItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
                 const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
-                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
+                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? formatEntityFallbackLabel("store", item.storeId);
                 const oosRisk = item.probabilityOfOOSIn7d!;
                 const forecastDisabled = item.forecast7d == null || item.probabilityOfOOSIn7d == null;
                 const tone = oosRisk > 0.7 ? TONE.severity.critical : oosRisk > 0.4 ? TONE.severity.warning : TONE.severity.info;
@@ -177,7 +178,7 @@ export function DemandForecastPanel({
               {overstockItems.map((item) => {
                 const matchingRow = findForecastRow(rows, item);
                 const name = matchingRow?.naziv ?? `Artikal #${item.skuId}`;
-                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? `Objekat #${item.storeId}`;
+                const store = stores.find((entry) => entry.storeId === item.storeId)?.storeName ?? matchingRow?.storeName ?? formatEntityFallbackLabel("store", item.storeId);
                 const overstockRisk = item.overstockRisk!;
 
                 return (

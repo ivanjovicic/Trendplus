@@ -124,21 +124,21 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
-    public void InventoryStoreComparison_NormalizesStoreOrderDuplicatesAndInvalidIds()
+    public void InventoryStoreComparison_NormalizesStoreOrderDuplicatesAndKeepsNegativeAccessIds()
     {
         var first = AnalyticsCacheKeys.InventoryStoreComparison(
-            compareStoreIds: [3, 1, 3, -1, 2, 0],
+            compareStoreIds: [3, 1, 3, -598733481, 2],
             supplierId: 8,
             search: "Model A",
             dataScope: "existing");
         var equivalent = AnalyticsCacheKeys.InventoryStoreComparison(
-            compareStoreIds: [2, 3, 1],
+            compareStoreIds: [2, -598733481, 3, 1],
             supplierId: 8,
             search: " model a ",
             dataScope: "EXISTING");
 
         Assert.Equal(first, equivalent);
-        Assert.Contains("stores:1,2,3", first, StringComparison.Ordinal);
+        Assert.Contains("stores:-598733481,1,2,3", first, StringComparison.Ordinal);
         Assert.DoesNotContain("Model A", first, StringComparison.Ordinal);
     }
 
@@ -276,7 +276,7 @@ public sealed class AnalyticsScreenCacheKeyContractTests
         Assert.NotEqual(storeOne, storeTwo);
         Assert.Contains("store:1", storeOne, StringComparison.Ordinal);
         Assert.Contains("store:2", storeTwo, StringComparison.Ordinal);
-        Assert.Contains("pre-nivelacija-priority:v9", storeOne, StringComparison.Ordinal);
+        Assert.Contains("pre-nivelacija-priority:v10", storeOne, StringComparison.Ordinal);
     }
 
     [Fact]

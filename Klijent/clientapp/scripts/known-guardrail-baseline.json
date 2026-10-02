@@ -5,19 +5,19 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 723,
+      "line": 718,
       "reason": "Backend decisionScore is only normalized for display and is exposed only when backend recommendationAllowed === true; gating and non-finite handling are covered by PreNivelacijaPriorityPage.spec."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1320,
+      "line": 1321,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1321,
+      "line": 1322,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -83,7 +83,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 939,
+      "line": 928,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
@@ -95,25 +95,25 @@
     {
       "file": "src/pages/PovracajPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 28,
+      "line": 29,
       "reason": "Existing returns-page fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 684,
+      "line": 685,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 151,
+      "line": 152,
       "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 684,
+      "line": 685,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
@@ -191,7 +191,7 @@
     {
       "file": "src/components/inventory/inventoryUtils.ts",
       "rule": "fake_zero_fallback",
-      "line": 603,
+      "line": 604,
       "reason": "Existing inventory utility fallback requires a reviewed unknown-value exception."
     },
     {

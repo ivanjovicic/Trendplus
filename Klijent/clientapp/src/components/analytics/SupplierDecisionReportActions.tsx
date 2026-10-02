@@ -12,6 +12,7 @@ import {
   openSupplierDecisionPrintPreview,
 } from "../../services/supplierDecisionReport";
 import { saveBrowserPreviewPayload } from "../../services/analyticsTableState";
+import { parseEntityIdParam } from "../../validation/entityId";
 
 type SupplierDecisionReportActionsProps = {
   payload: ResolvedAnalyticsTablePayload | null;
@@ -35,10 +36,10 @@ function readPayloadValue(payload: ResolvedAnalyticsTablePayload | null, key: st
 function parseSupplierId(payload: ResolvedAnalyticsTablePayload | null): number | null {
   const supplierValue = readPayloadValue(payload, "supplierId") ?? readPayloadValue(payload, "supplier");
   if (!supplierValue) return null;
-  const idMatch = supplierValue.match(/\d+/);
-  if (!idMatch) return null;
-  const parsed = Number(idMatch[0]);
-  return Number.isFinite(parsed) ? parsed : null;
+  const exact = parseEntityIdParam(supplierValue);
+  if (exact != null) return exact;
+  const idMatch = supplierValue.match(/-?\d+/);
+  return idMatch ? parseEntityIdParam(idMatch[0]) : null;
 }
 
 function parseRecommendationAllowed(payload: ResolvedAnalyticsTablePayload | null): boolean {

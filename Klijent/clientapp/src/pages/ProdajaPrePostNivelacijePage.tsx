@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseEntityIdParam } from "../validation/entityId";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -123,12 +124,6 @@ function parsePrePostDate(value: string | null): string | null {
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
 }
 
-function parsePrePostPositiveInteger(value: string | null): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function parsePrePostPeriodPreset(value: string | null): PeriodPreset | null {
   return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
     ? value
@@ -147,9 +142,9 @@ function resolvePrePostUrlState(searchParams: URLSearchParams): { preset: Period
     filters: {
       fromDate: range.fromDate,
       toDate: range.toDate,
-      vendorId: parsePrePostPositiveInteger(searchParams.get("vendorId")),
+      vendorId: parseEntityIdParam(searchParams.get("vendorId")),
       category: searchParams.get("category") ?? "",
-      storeId: parsePrePostPositiveInteger(searchParams.get("storeId")),
+      storeId: parseEntityIdParam(searchParams.get("storeId")),
     },
   };
 }

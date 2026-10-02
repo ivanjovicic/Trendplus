@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { parseEntityIdParam } from "../validation/entityId";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -149,12 +150,6 @@ function formatQueueHeading(title: string, shown: number, total: number | null |
   }
 
   return `${title} (prikazano ${shown} od ${total})`;
-}
-
-function parseOptionalPositiveInteger(value: string | null): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function parseBoundedInteger(value: string | null, fallback: number, min: number, max: number): number {
@@ -530,10 +525,10 @@ export default function PreNivelacijaPriorityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryDataScope = normalizeDataScope(searchParams.get("dataScope") ?? getDataScope());
   const queryFilters = useMemo<ActiveFilters>(() => ({
-    supplierId: parseOptionalPositiveInteger(searchParams.get("supplierId")),
-    seasonId: parseOptionalPositiveInteger(searchParams.get("seasonId")),
-    footwearTypeId: parseOptionalPositiveInteger(searchParams.get("footwearTypeId")),
-    storeId: parseOptionalPositiveInteger(searchParams.get("storeId")),
+    supplierId: parseEntityIdParam(searchParams.get("supplierId")),
+    seasonId: parseEntityIdParam(searchParams.get("seasonId")),
+    footwearTypeId: parseEntityIdParam(searchParams.get("footwearTypeId")),
+    storeId: parseEntityIdParam(searchParams.get("storeId")),
     minScore: parseBoundedInteger(searchParams.get("minScore"), DEFAULT_MIN_SCORE, 0, 100),
     noSaleDaysMin: parseNonNegativeInteger(searchParams.get("noSaleDaysMin"), DEFAULT_NO_SALE_DAYS_MIN),
   }), [searchParams]);

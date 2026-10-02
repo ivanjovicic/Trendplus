@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { formatEntityFallbackLabel } from "../validation/entityId";
 import { ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
 import PovracajWizard from "../components/povracaj/PovracajWizard";
 import { getPovracaji } from "../services/povracajApi";
@@ -178,7 +179,7 @@ export default function PovracajPage() {
                         <tr key={p.id} className="hover:bg-[var(--surface-light)]">
                           <td className="px-3 py-3 font-mono font-semibold">{p.brojZapisnika}</td>
                           <td className="whitespace-nowrap px-3 py-3">{formatDate(p.datumPovracaja)}</td>
-                          <td className="px-3 py-3">{p.dobavljacNaziv ?? `#${p.dobavljacId}`}</td>
+                          <td className="px-3 py-3">{p.dobavljacNaziv ?? formatEntityFallbackLabel("supplier", p.dobavljacId)}</td>
                           <td className="px-3 py-3">{p.status}</td>
                           <td className="px-3 py-3 text-right font-semibold">{p.ukupanIznos.toFixed(2)} RSD</td>
                           <td className="px-3 py-3 text-center">{p.brojStavki ?? "-"}</td>

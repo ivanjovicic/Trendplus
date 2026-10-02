@@ -353,7 +353,7 @@ describe("SupplierConsolidatedPage", () => {
 
   it("removes invalid scorecard filters from the canonical URL instead of sending them to the backend", async () => {
     render(
-      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard&gender=nepoznato&seasonId=-1&minRevenue=-20&onlyHighConfidence=maybe&excludeOosBeforeMarkdown=false"]}>
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard&gender=nepoznato&seasonId=1x&minRevenue=-20&onlyHighConfidence=maybe&excludeOosBeforeMarkdown=false"]}>
         <LocationProbe />
         <SupplierConsolidatedPage />
       </MemoryRouter>,

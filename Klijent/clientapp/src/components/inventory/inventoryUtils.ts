@@ -1,4 +1,5 @@
 import type { AnalyticsResponseMeta, ForecastRowDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryInsightItem, InventoryListItem, InventoryReportScheduleInput, InventorySnapshotRowState, StoreOption, SupplierFilterOption } from "../../types/analytics";
+import { formatEntityFallbackLabel } from "../../validation/entityId";
 import type { DataScope } from "../../utils/dataScope";
 import { getAnalyticsMetaMessage, isAnalyticsMetaEmpty, isAnalyticsMetaError, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../../utils/analyticsResponseMeta";
 import type { InventoryRow } from "./types";
@@ -339,10 +340,10 @@ export function buildInventoryRow(item: InventoryListItemWithSignals, stores: St
       : item.minimalnaKolicina;
   const supplierName = suppliers.find((entry) => entry.supplierId === item.idDobavljac)?.supplierName
     ?? item.supplierName
-    ?? (item.idDobavljac != null ? `Dobavljač #${item.idDobavljac}` : "Neraspoređen");
+    ?? (item.idDobavljac != null ? formatEntityFallbackLabel("supplier", item.idDobavljac) : "Neraspoređen");
   const storeName = stores.find((entry) => entry.storeId === item.idObjekat)?.storeName
     ?? item.storeName
-    ?? (item.idObjekat != null ? `Objekat #${item.idObjekat}` : "Sve lokacije");
+    ?? (item.idObjekat != null ? formatEntityFallbackLabel("store", item.idObjekat) : "Sve lokacije");
   const unitCost = item.nabavnaCena ?? null;
   // Missing cost + missing backend estimate must stay unknown (not fake zero capital),
   // except when on-hand quantity is already a measured zero (true zero capital).

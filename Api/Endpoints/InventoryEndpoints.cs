@@ -1,3 +1,4 @@
+using Api.Services;
 using System.Globalization;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
@@ -852,7 +853,6 @@ public static class InventoryEndpoints
         string? dataScope = null)
     {
         var normalizedStoreIds = storeIds?
-            .Where(id => id > 0)
             .Distinct()
             .OrderBy(id => id)
             .ToArray();
@@ -883,7 +883,7 @@ public static class InventoryEndpoints
         }
         else if (storeIds is { Count: > 0 })
         {
-            var normalizedStoreIds = storeIds.Where(id => id > 0).Distinct().ToArray();
+            var normalizedStoreIds = storeIds.Distinct().ToArray();
             if (normalizedStoreIds.Length > 0)
             {
                 query = query.Where(a => a.IDObjekat.HasValue && normalizedStoreIds.Contains(a.IDObjekat.Value));
@@ -1259,7 +1259,6 @@ public static class InventoryEndpoints
     {
         var selectedStoreIds = (compareStoreIds ?? [])
             .Distinct()
-            .Where(id => id > 0)
             .ToList();
 
         if (selectedStoreIds.Count == 0)
@@ -1299,7 +1298,7 @@ public static class InventoryEndpoints
 
                 return new InventoryStoreComparisonItemDto(
                     storeId,
-                    storeNames.GetValueOrDefault(storeId, $"Objekat #{storeId}"),
+                    storeNames.GetValueOrDefault(storeId, EntityIdentity.FallbackLabel(EntityKind.Store, storeId)),
                     totalSku,
                     totalOnHand,
                     lowStock,
@@ -1856,7 +1855,7 @@ public static class InventoryEndpoints
         var fallback = await trendDb.Dobavljaci
             .AsNoTracking()
             .Where(x => missingIds.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id, x => x.Naziv ?? $"Dobavljac #{x.Id}", ct);
+            .ToDictionaryAsync(x => x.Id, x => x.Naziv ?? EntityIdentity.FallbackLabel(EntityKind.Supplier, x.Id), ct);
 
         foreach (var entry in fallback)
         {

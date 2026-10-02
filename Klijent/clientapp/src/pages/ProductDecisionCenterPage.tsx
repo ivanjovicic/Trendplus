@@ -1,4 +1,5 @@
-﻿import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseEntityIdParam } from "../validation/entityId";
 import { Link } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -305,8 +306,8 @@ function readProductDecisionUrlState(fallback: { fromDate: string; toDate: strin
     periodPreset,
     fromDate: isDateInputValue(params.get("from")) ? params.get("from")! : fallback.fromDate,
     toDate: isDateInputValue(params.get("to")) ? params.get("to")! : fallback.toDate,
-    storeId: params.get("store") && /^\d+$/.test(params.get("store")!) ? Number(params.get("store")) : null,
-    supplierId: params.get("supplier") && /^\d+$/.test(params.get("supplier")!) ? Number(params.get("supplier")) : null,
+    storeId: parseEntityIdParam(params.get("store")),
+    supplierId: parseEntityIdParam(params.get("supplier")),
     recommendationFilter: validRecommendations ? recommendation! : "all",
     dataQualityFilter: validQuality ? quality! : "all",
     search: params.get("search") ?? "",

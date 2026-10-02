@@ -1,4 +1,4 @@
-﻿using Application.Analytics.Queries.GetInventoryStatus;
+using Application.Analytics.Queries.GetInventoryStatus;
 using Application.Analytics.Queries.GetSalesSummary;
 using Application.Analytics.Queries.GetInventoryForecast;
 using Application.Analytics.Queries.GetForecastBaselineBacktest;
@@ -1033,7 +1033,6 @@ public static class CachedAnalyticsEndpoints
             CancellationToken ct) =>
         {
             var normalizedCompareStoreIds = (compareStoreIds ?? [])
-                .Where(id => id > 0)
                 .Distinct()
                 .ToArray();
             var effectiveCompareStoreIds = normalizedCompareStoreIds.Length == 0 ? null : normalizedCompareStoreIds;

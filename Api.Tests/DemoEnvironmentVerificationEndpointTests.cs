@@ -452,5 +452,8 @@ public sealed class DemoEnvironmentVerificationEndpointTests
 
         public Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)
             => Task.FromResult<DeleteBatchResult>(null!);
+
+        public Task<NegativeIdDimensionRepairResult> RepairNegativeIdDimensionsAsync(CancellationToken ct = default)
+            => throw new NotSupportedException();
     }
 }

@@ -202,6 +202,9 @@ public sealed class AccessImportRunEndpointTests
 
         public Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default)
             => throw new NotSupportedException();
+
+        public Task<NegativeIdDimensionRepairResult> RepairNegativeIdDimensionsAsync(CancellationToken ct = default)
+            => throw new NotSupportedException();
     }
 
     private sealed class AccessImportRunTestHost : IAsyncDisposable

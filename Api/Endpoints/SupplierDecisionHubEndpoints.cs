@@ -2618,7 +2618,8 @@ public static class SupplierDecisionHubEndpoints
             return supplierName.Trim();
         }
 
-        return supplierId > 0
+        // GetInt32 maps NULL to 0; negative Access AutoNumber IDs are real suppliers.
+        return supplierId != 0
             ? $"Dobavljač #{supplierId.ToString(CultureInfo.InvariantCulture)}"
             : "Nepoznat dobavljač";
     }

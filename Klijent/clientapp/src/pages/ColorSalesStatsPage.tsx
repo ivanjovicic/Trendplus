@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseEntityIdParam } from "../validation/entityId";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -317,12 +318,6 @@ function parseColorDate(value: string | null): string | null {
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
 }
 
-function parseColorPositiveInteger(value: string | null): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function parseColorPeriodPreset(value: string | null): PeriodPreset | null {
   return value === "30d" || value === "90d" || value === "180d" || value === "365d" || value === "custom"
     ? value
@@ -341,8 +336,8 @@ function resolveColorUrlState(searchParams: URLSearchParams): { preset: PeriodPr
     filters: {
       fromDate: range.fromDate,
       toDate: range.toDate,
-      sezonaId: parseColorPositiveInteger(searchParams.get("sezonaId")),
-      storeId: parseColorPositiveInteger(searchParams.get("storeId")),
+      sezonaId: parseEntityIdParam(searchParams.get("sezonaId")),
+      storeId: parseEntityIdParam(searchParams.get("storeId")),
     },
   };
 }

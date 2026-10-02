@@ -1104,7 +1104,7 @@ describe("PreNivelacijaPriorityPage", () => {
 
   it("fails safely to defaults and canonicalizes invalid query values", async () => {
     render(
-      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=bad&seasonId=-4&footwearTypeId=0&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=bad&seasonId=1.5&footwearTypeId=--4&minScore=101&noSaleDaysMin=-1&focus=unknown&page=0&dataScope=unknown"]}>
         <LocationProbe />
         <PreNivelacijaPriorityPage />
       </MemoryRouter>,
@@ -1127,6 +1127,24 @@ describe("PreNivelacijaPriorityPage", () => {
     await waitFor(() => expect(screen.getByTestId("location-search")).toHaveTextContent("minScore=40"));
     expect(screen.getByTestId("location-search")).not.toHaveTextContent("focus=unknown");
     expect(screen.getByTestId("location-search")).not.toHaveTextContent("supplierId=bad");
+  });
+
+  it("keeps negative Access entity IDs from the URL in the request", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=-2122024036&seasonId=-7&footwearTypeId=-2004188974&storeId=-598733481"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      supplierId: -2122024036,
+      seasonId: -7,
+      footwearTypeId: -2004188974,
+      storeId: -598733481,
+    }));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("supplierId=-2122024036");
   });
 
   it("keeps URL context and snapshot metadata through focus and detail navigation", async () => {

@@ -1,4 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { formatEntityFallbackLabel, parseEntityIdParam } from "../validation/entityId";
 import { Warehouse } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryReport, getAnalyticsActionSourceStatuses, getForecast, getInventoryActionSuggestions, getInventoryAlerts, getInventoryBalance, getInventoryInsights, getInventoryItemDetail, getInventoryList, getInventoryReportSchedules, getInventoryStoreComparison, getRebalanceSuggestions, getSizeCurve, getStores, getSupplierFilters, previewInventoryReport, printBlankInventoryForm, runInventoryReportScheduleNow, saveInventoryActionDecision, upsertAnalyticsActionWithResult } from "../services/analyticsApi";
@@ -69,8 +70,8 @@ function parseInventoryPageSize(value: string | null): number {
 function parseInventoryCompareStores(value: string | null): number[] {
   if (!value) return [];
   return Array.from(new Set(value.split(",")
-    .map((entry) => Number(entry))
-    .filter((entry) => Number.isInteger(entry) && entry > 0)));
+    .map((entry) => parseEntityIdParam(entry))
+    .filter((entry): entry is number => entry != null)));
 }
 
 function parseInventorySort(value: string | null): string {
@@ -413,14 +414,8 @@ export default function InventoryPage() {
   const [storesLoadError, setStoresLoadError] = useState(false);
   const [storesReloadNonce, setStoresReloadNonce] = useState(0);
   const [searchInput, setSearchInput] = useState(() => searchParams.get("search") ?? "");
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
-    const parsed = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
-    return parsed > 0 ? parsed : null;
-  });
-  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(() => {
-    const parsed = parseInventoryPositiveInt(searchParams.get("supplierId"), 0);
-    return parsed > 0 ? parsed : null;
-  });
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => parseEntityIdParam(searchParams.get("storeId")));
+  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(() => parseEntityIdParam(searchParams.get("supplierId")));
   const [compareStoreIds, setCompareStoreIds] = useState<number[]>(() => parseInventoryCompareStores(searchParams.get("compareStores")));
   const [sortBy, setSortBy] = useState(() => parseInventorySort(searchParams.get("sortBy")));
   const [pageNumber, setPageNumber] = useState(() => parseInventoryPositiveInt(searchParams.get("page"), 1));
@@ -472,22 +467,16 @@ export default function InventoryPage() {
   const selectedStoreName = selectedStoreId == null ? null : stores.find((store) => store.storeId === selectedStoreId)?.storeName ?? null;
   const rebalanceScopeLabel = selectedStoreId == null
     ? "za sve prodavnice"
-    : `za prodavnicu ${selectedStoreName ?? `#${selectedStoreId}`}`;
+    : `za prodavnicu ${selectedStoreName ?? formatEntityFallbackLabel("store", selectedStoreId)}`;
   const mountedRef = useRef(true);
 
   useEffect(() => {
     const nextSearch = searchParams.get("search") ?? "";
-    const nextStore = parseInventoryPositiveInt(searchParams.get("storeId"), 0);
-    const nextSupplier = parseInventoryPositiveInt(searchParams.get("supplierId"), 0);
+    const nextStore = parseEntityIdParam(searchParams.get("storeId"));
+    const nextSupplier = parseEntityIdParam(searchParams.get("supplierId"));
     setSearchInput((current) => current === nextSearch ? current : nextSearch);
-    setSelectedStoreId((current) => {
-      const next = nextStore > 0 ? nextStore : null;
-      return current === next ? current : next;
-    });
-    setSelectedSupplierId((current) => {
-      const next = nextSupplier > 0 ? nextSupplier : null;
-      return current === next ? current : next;
-    });
+    setSelectedStoreId((current) => current === nextStore ? current : nextStore);
+    setSelectedSupplierId((current) => current === nextSupplier ? current : nextSupplier);
     setCompareStoreIds((current) => {
       const next = parseInventoryCompareStores(searchParams.get("compareStores"));
       return current.length === next.length && current.every((value, index) => value === next[index]) ? current : next;

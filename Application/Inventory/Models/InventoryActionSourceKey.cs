@@ -50,7 +50,7 @@ public static class InventoryActionSourceKey
     }
 
     private static string FormatStore(int? storeId)
-        => storeId is > 0
+        => storeId.HasValue
             ? storeId.Value.ToString(CultureInfo.InvariantCulture)
             : "all";
 

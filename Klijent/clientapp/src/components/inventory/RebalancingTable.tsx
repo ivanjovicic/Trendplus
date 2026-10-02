@@ -1,4 +1,5 @@
-﻿import { ArrowRightLeft } from "lucide-react";
+import { ArrowRightLeft } from "lucide-react";
+import { formatEntityFallbackLabel } from "../../validation/entityId";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
 import { fmtNumber } from "../../utils/analyticsFormatters";
 import { formatCurrency, formatSignalCountBadge, getRebalanceUrgencyTone, inventorySnapshotRowReasonLabel, inventorySnapshotRowStatusLabel, resolveInventorySignalPanelMessage, resolveInventorySignalPanelState } from "./inventoryUtils";
@@ -97,8 +98,8 @@ export function RebalancingTable({
               <tbody>
                 {items.slice(0, displayCount).map((item, index) => {
                   const name = rows.find((row) => row.id === item.skuId)?.naziv ?? `SKU #${item.skuId}`;
-                  const fromStore = stores.find((store) => store.storeId === item.fromStoreId)?.storeName ?? `#${item.fromStoreId}`;
-                  const toStore = stores.find((store) => store.storeId === item.toStoreId)?.storeName ?? `#${item.toStoreId}`;
+                  const fromStore = stores.find((store) => store.storeId === item.fromStoreId)?.storeName ?? formatEntityFallbackLabel("store", item.fromStoreId);
+                  const toStore = stores.find((store) => store.storeId === item.toStoreId)?.storeName ?? formatEntityFallbackLabel("store", item.toStoreId);
                   const urgencyLabel = item.urgency === "urgent" ? "Hitno" : item.urgency === "recommended" ? "Preporučeno" : item.urgency === "optional" ? "Opciono" : "Nepoznato";
                   const urgencyTone = item.urgency ? getRebalanceUrgencyTone(item.urgency) : "border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]";
 

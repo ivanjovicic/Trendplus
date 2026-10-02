@@ -155,6 +155,13 @@ namespace Api.Models
         public Dictionary<string, int> LogCountByTable { get; set; } = new();
     }
 
+    public sealed class NegativeIdDimensionRepairResult
+    {
+        public int SuppliersUpserted { get; set; }
+        public int SeasonsUpserted { get; set; }
+        public int FootwearTypesUpserted { get; set; }
+    }
+
     public sealed class DeleteBatchResult
     {
         public bool Found { get; set; }

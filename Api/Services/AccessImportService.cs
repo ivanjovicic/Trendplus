@@ -38,6 +38,7 @@ using NpgsqlTypes;
         Task<bool> RequestCancellationAsync(long batchId, CancellationToken ct = default);
         Task MarkBatchInterruptedAsync(long batchId, CancellationToken ct = default);
         Task<DeleteBatchResult> DeleteBatchAsync(long batchId, bool includeAnalytics = true, CancellationToken ct = default);
+        Task<NegativeIdDimensionRepairResult> RepairNegativeIdDimensionsAsync(CancellationToken ct = default);
     }
 
     public sealed class AccessImportService : IAccessImportService
@@ -1228,25 +1229,25 @@ using NpgsqlTypes;
 
     private void TrackAnalyticsSupplierId(int? supplierId)
     {
-        if (supplierId is > 0)
+        if (supplierId.HasValue)
             _analyticsDeltaSupplierIds.Add(supplierId.Value);
     }
 
     private void TrackAnalyticsSeasonId(int? seasonId)
     {
-        if (seasonId is > 0)
+        if (seasonId.HasValue)
             _analyticsDeltaSeasonIds.Add(seasonId.Value);
     }
 
     private void TrackAnalyticsTypeId(int? typeId)
     {
-        if (typeId is > 0)
+        if (typeId.HasValue)
             _analyticsDeltaTypeIds.Add(typeId.Value);
     }
 
     private void TrackAnalyticsStoreId(int? storeId)
     {
-        if (storeId is > 0)
+        if (storeId.HasValue)
             _analyticsDeltaStoreIds.Add(storeId.Value);
     }
 
@@ -7568,10 +7569,10 @@ using NpgsqlTypes;
         var productIds = _analyticsDeltaProductIds.Where(x => x > 0).Distinct().ToArray();
         var saleIds = _analyticsDeltaSaleIds.Where(x => x > 0).Distinct().ToArray();
         var movementIds = _analyticsDeltaMovementIds.Where(x => x > 0).Distinct().ToArray();
-        var supplierIds = _analyticsDeltaSupplierIds.Where(x => x > 0).Distinct().ToArray();
-        var seasonIds = _analyticsDeltaSeasonIds.Where(x => x > 0).Distinct().ToArray();
-        var typeIds = _analyticsDeltaTypeIds.Where(x => x > 0).Distinct().ToArray();
-        var storeIds = _analyticsDeltaStoreIds.Where(x => x > 0).Distinct().ToArray();
+        var supplierIds = _analyticsDeltaSupplierIds.Distinct().ToArray();
+        var seasonIds = _analyticsDeltaSeasonIds.Distinct().ToArray();
+        var typeIds = _analyticsDeltaTypeIds.Distinct().ToArray();
+        var storeIds = _analyticsDeltaStoreIds.Distinct().ToArray();
 
         if (productIds.Length == 0 &&
             saleIds.Length == 0 &&
@@ -7737,7 +7738,6 @@ using NpgsqlTypes;
         }
 
         var effectiveStoreIds = _analyticsDeltaStoreIds
-            .Where(x => x > 0)
             .Concat(storeIds)
             .Concat(salesFacts.Select(x => x.StoreId))
             .Distinct()
@@ -7858,6 +7858,47 @@ using NpgsqlTypes;
             existingProductIds,
             existingStoreIds,
             existingSaleIds);
+    }
+
+    /// <summary>
+    /// Before negative Access Random AutoNumber IDs were tracked, the incremental sync never upserted
+    /// negative suppliers, seasons or shoe types into the analytics dimensions. Idempotent; never deletes.
+    /// Stores are excluded because their dimension rows are already projected from sales facts.
+    /// </summary>
+    public async Task<NegativeIdDimensionRepairResult> RepairNegativeIdDimensionsAsync(CancellationToken ct = default)
+    {
+        var supplierIds = await _trendDb.Dobavljaci.AsNoTracking().Where(x => x.Id < 0).Select(x => x.Id).ToArrayAsync(ct);
+        var seasonIds = await _trendDb.Sezone.AsNoTracking().Where(x => x.Id < 0).Select(x => x.Id).ToArrayAsync(ct);
+        var typeIds = await _trendDb.TipoviObuce.AsNoTracking().Where(x => x.Id < 0).Select(x => x.Id).ToArrayAsync(ct);
+
+        var payload = await BuildAnalyticsFastPayloadAsync([], [], [], supplierIds, seasonIds, typeIds, [], ct);
+
+        if (payload.Suppliers.Count > 0 || payload.Seasons.Count > 0 || payload.Types.Count > 0)
+        {
+            await using var connection = new NpgsqlConnection(GetAnalyticsConnectionString());
+            await connection.OpenAsync(ct);
+            await using var transaction = await connection.BeginTransactionAsync(ct);
+            if (payload.Suppliers.Count > 0)
+                await UpsertSuppliersDimBulkAsync(connection, transaction, payload.Suppliers, ct);
+            if (payload.Seasons.Count > 0)
+                await UpsertSeasonsDimBulkAsync(connection, transaction, payload.Seasons, ct);
+            if (payload.Types.Count > 0)
+                await UpsertFootwearTypesDimBulkAsync(connection, transaction, payload.Types, ct);
+            await transaction.CommitAsync(ct);
+        }
+
+        _logger.LogInformation(
+            "Negative-ID analytics dimension repair upserted Suppliers: {Suppliers}. Seasons: {Seasons}. FootwearTypes: {Types}.",
+            payload.Suppliers.Count,
+            payload.Seasons.Count,
+            payload.Types.Count);
+
+        return new NegativeIdDimensionRepairResult
+        {
+            SuppliersUpserted = payload.Suppliers.Count,
+            SeasonsUpserted = payload.Seasons.Count,
+            FootwearTypesUpserted = payload.Types.Count
+        };
     }
 
     private async Task ApplyAnalyticsFastPayloadAsync(

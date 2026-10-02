@@ -4,12 +4,7 @@ import { getPresetRange } from "../utils/analyticsFormatters";
 import { getDataScope, normalizeDataScope, setDataScope as persistDataScope } from "../utils/dataScope";
 import type { SupplierCanonicalFilters, SupplierPeriodPreset, SupplierTab } from "./supplierSharedState";
 import { SUPPLIER_TABS } from "./supplierSharedState";
-
-function parseNullableInt(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
-}
+import { parseEntityIdParam } from "../validation/entityId";
 
 function parseNullableNumber(value: string | null): number | null {
   if (!value) return null;
@@ -57,11 +52,11 @@ export function useSupplierCanonicalState() {
     fromDate: parseDateOrDefault(searchParams.get("fromDate"), defaultRange.fromDate),
     toDate: parseDateOrDefault(searchParams.get("toDate"), defaultRange.toDate),
     dataScope: normalizeDataScope(searchParams.get("dataScope") ?? getDataScope()),
-    storeId: parseNullableInt(searchParams.get("storeId")),
-    supplierId: parseNullableInt(searchParams.get("supplierId")),
+    storeId: parseEntityIdParam(searchParams.get("storeId")),
+    supplierId: parseEntityIdParam(searchParams.get("supplierId")),
     category: parseNullableText(searchParams.get("category")),
     gender: parseGender(searchParams.get("gender")),
-    seasonId: parseNullableInt(searchParams.get("seasonId")),
+    seasonId: parseEntityIdParam(searchParams.get("seasonId")),
     minRevenue: parseNullableNumber(searchParams.get("minRevenue")),
     onlyHighConfidence: searchParams.get("onlyHighConfidence") === "true",
     excludeOosBeforeMarkdown: searchParams.get("excludeOosBeforeMarkdown") === "true",
@@ -183,7 +178,7 @@ export function useSupplierCanonicalState() {
 
   const setSeason = (value: string) => {
     updateParams((next) => {
-      const parsed = parseNullableInt(value);
+      const parsed = parseEntityIdParam(value);
       if (parsed != null) next.set("seasonId", String(parsed));
       else next.delete("seasonId");
     });

@@ -37,6 +37,16 @@ public sealed class InventoryActionSourceKeyTests
     }
 
     [Fact]
+    public void Build_KeepsNegativeAccessStoreIdDistinctFromAllStores()
+    {
+        var negativeStore = InventoryActionSourceKey.Build("dopuna", 501, -598733481, "42", "all", "rolling-30d", "rolling-30d", "snapshot-17");
+        var allStores = InventoryActionSourceKey.Build("dopuna", 501, null, "42", "all", "rolling-30d", "rolling-30d", "snapshot-17");
+
+        Assert.Contains("store=-598733481", negativeStore, StringComparison.Ordinal);
+        Assert.NotEqual(allStores, negativeStore);
+    }
+
+    [Fact]
     public void Build_MarksUnavailableSnapshotAsUnknown()
     {
         var key = InventoryActionSourceKey.Build("dopuna", 501, 12, null, "all", "rolling-30d", "rolling-30d", null);

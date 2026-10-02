@@ -104,6 +104,25 @@ public sealed class AccessImportAdminAuthorizationTests
     }
 
     [Fact]
+    public async Task RepairNegativeIdDimensions_RequiresAdminKey_AndInvokesService()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        using var anonymous = await host.Client.PostAsync("/api/access-import/analytics/repair-negative-id-dimensions", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        Assert.Equal(0, host.Service.RepairNegativeIdDimensionsCallCount);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/analytics/repair-negative-id-dimensions");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(1, host.Service.RepairNegativeIdDimensionsCallCount);
+        var body = await response.Content.ReadFromJsonAsync<NegativeIdDimensionRepairResult>();
+        Assert.Equal(40, body!.SuppliersUpserted);
+    }
+
+    [Fact]
     public async Task EnqueueJob_RejectsRequestWithoutAdminKey()
     {
         await using var host = await TestHost.CreateAsync(withAdminKey: true);
@@ -386,6 +405,14 @@ public sealed class AccessImportAdminAuthorizationTests
                 BatchId = batchId,
                 IncludeAnalytics = includeAnalytics
             });
+        }
+
+        public int RepairNegativeIdDimensionsCallCount { get; private set; }
+
+        public Task<NegativeIdDimensionRepairResult> RepairNegativeIdDimensionsAsync(CancellationToken ct = default)
+        {
+            RepairNegativeIdDimensionsCallCount++;
+            return Task.FromResult(new NegativeIdDimensionRepairResult { SuppliersUpserted = 40 });
         }
     }
 
