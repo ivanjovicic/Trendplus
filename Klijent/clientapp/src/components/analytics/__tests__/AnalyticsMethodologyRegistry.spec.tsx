@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import SupplierDecisionReport from "../SupplierDecisionReport";
-import PilotDataQualityIntakeReport, { impactSignalState, issueSignalState } from "../PilotDataQualityIntakeReport";
+import PilotDataQualityIntakeReport from "../PilotDataQualityIntakeReport";
+import { impactSignalState, issueSignalState } from "../pilotDataQualityIntakeReportHelpers";
 import type { ResolvedAnalyticsTablePayload } from "../../../types/analyticsTable";
 import type { PilotDataQualityIntakeReport as PilotReport } from "../../../types/analytics";
 

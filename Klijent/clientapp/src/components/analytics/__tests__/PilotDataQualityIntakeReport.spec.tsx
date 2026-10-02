@@ -2,13 +2,14 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../../../types/analytics";
-import PilotDataQualityIntakeReportPanel, {
+import PilotDataQualityIntakeReportPanel from "../PilotDataQualityIntakeReport";
+import {
   buildCsv,
   buildDurableCsv,
   buildExportPayload,
   buildPilotCsvFilename,
   buildSummary,
-} from "../PilotDataQualityIntakeReport";
+} from "../pilotDataQualityIntakeReportHelpers";
 
 function emptyIntakeReport(): PilotDataQualityIntakeReport {
   return {
