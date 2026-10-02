@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-37 (IN_PROGRESS; Article List responsive migration)
+Current READY prompt: P-UI-23 (IN_PROGRESS; bounded frontend lint cleanup)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -28,7 +28,7 @@ Use with:
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
-| P-UI-23 | WAITING | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
+| P-UI-23 | IN_PROGRESS | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
 | P-UI-24 | DONE | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
 | P-UI-25 | DONE | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | DONE | responsive-ui-shell | Compact mobile header and accessible drawer |
@@ -42,7 +42,7 @@ Use with:
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
-| P-UI-37 | IN_PROGRESS | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
+| P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 
 ---
@@ -1156,7 +1156,7 @@ After P-UI-21, Executive Decision Board, Product Decision Center, Inventory and 
 
 ## P-UI-23 - Reduce frontend lint errors in bounded trust-sensitive slices
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/tests/hygiene
 Feature family: frontend-lint-baseline
@@ -1216,6 +1216,8 @@ The frontend lint command still reports a legacy backlog even though typecheck, 
 
 - P-UI-22 is DONE.
 - This is a later hygiene follow-up and must not displace BCI/STAB/RQ work.
+
+Owner promotion/claim 2026-10-02: after P-UI-37 delivery, fresh cross-program routing confirmed BCI has no READY/IN_PROGRESS prompt, STAB16 remains blocked on external provider evidence, RQ Current READY is none, and QDB/MT/GAI remain behind their named gates. `npm run lint` established 108 errors and 226 warnings; a structured diagnostic isolated seven Fast Refresh export errors and one unused-import warning in the shared Pilot Data Quality Intake Report component. No active RQ owner/lock/branch/PR overlaps this shared-component-only lint slice; prior RQ pilot-intake work is delivered. P-UI-23 moved WAITING -> READY -> IN_PROGRESS for the bounded component/helper extraction and its focused tests. Local lock: `.ai/task-locks/P-UI-23-codex.lock.md`.
 
 
 ---
@@ -2266,7 +2268,7 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-25, P-UI-27 and P-UI-29
 Priority: P2
 Type: frontend/pages/tests
@@ -2321,6 +2323,24 @@ Article List has small pagination/input controls and a table without an explicit
 
 - P-UI-25/27/29 DONE.
 - Execute disjoint slices only after collision checks.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: Article List pagination/filter controls meet the phone target contract, all columns remain reachable in the shared keyboard-scrollable table, and sort controls are keyboard accessible. Server paging/filter/sort semantics remain unchanged.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`, `Klijent/clientapp/src/pages/ArtikliListPage.tsx`, `Klijent/clientapp/src/pages/ArtikliListPage.spec.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`, `.ai/runs/2026-10-02-P-UI-37-evidence.md`.
+- Checks run: Article List focused tests 2/2; analytics guardrails/encoding/typecheck; production build; strict 320/375/768 light/dark browser matrix; `git diff --check`; governance validators; fresh current-main ancestry verification.
+- Checks not run: full frontend suite and physical mobile-device verification. GitHub Actions discovery returned HTTP 503.
+- Run log: `.ai/runs/2026-10-02-P-UI-37-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `46f9587f6b2424e1238bac7b76be7a87c2ea5c6b`
+- Main verification: fresh `origin/main` equals the implementation SHA.
+- Missed: no required acceptance item; optional long-tail pages were not included.
+- Follow-up: P-UI-23 is promoted and claimed for a bounded shared analytics component lint slice.
+- Residual risk: physical-device keyboard/zoom behavior and GitHub Actions status are unavailable; unrelated seasonal-image fixture requests log HTTP 503; existing Recharts build warning remains.
+- Prompt defect / scope repair: none.
 
 ---
 
