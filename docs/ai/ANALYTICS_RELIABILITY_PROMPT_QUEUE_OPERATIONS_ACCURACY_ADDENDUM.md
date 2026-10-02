@@ -3,6 +3,7 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner audit 2026-10-02: current Operations navigation contains six primary surfaces after RQ507: Inventory, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color and Pre-Nivelacija Priorities. Current-main review found strong deterministic/contract evidence, but not complete production certification. Registered RQ560-RQ566 as non-duplicative residual reliability work: negative-ID sentinel safety, six-screen adversarial recertification, grain-aware continuous integrity, Inventory family probe, Nivelacija family probe, exact deployed/browser/export six-screen proof, and post-deploy negative-ID repair/config verification. All remain WAITING pending their declared collision/dependency checks; parent RQ487 remains the current repository-local READY owner. RQ451 detail status was reconciled back to WAITING because the summary/certification plan remain WAITING and no implementation run log or frontend evidence reader was found.
 Owner completion 2026-10-02: RQ499 moved `IN_PROGRESS -> DONE` and was delivered on `main` in merge `84b90e5f` (implementation `7bc796ad`). Supplier consolidated shell now maps `critical`, tab-specific fallback sources, pending trust state, scorecard always as signal mode, and no stale cross-tab trust flash. Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-10-02: idle recovery verified RQ474/RQ475/RQ498 DONE on current `origin/main`, no active RQ499 lock/branch collision, and promoted/claimed RQ499 `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ499-cursor.lock.md`.
 Owner completion 2026-10-02: RQ498 moved `IN_PROGRESS -> DONE` and was delivered on `main` in merge `f262c936` (implementation c335a21e). Focused frontend proof and analytics guardrails pass. Run log: `.ai/runs/2026-10-02-RQ498-evidence.md`. Evidence state: synchronized.
@@ -42,7 +43,7 @@ Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `R
 Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE on current `origin/main`. RQ448 remains gated on authenticated browser/API environment; RQ453 still lists RQ448/RQ452 dependencies. `RQ450` is dependency-complete (RQ413/RQ449) with no active Access-import integrity probe owner. `RQ450` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ450-cursor.lock.md`.
-Main RQ current READY prompt: none
+Main RQ current READY prompt: RQ487
 
 Idle recovery 2026-09-26: `RQ448` remains `WAITING`, not claimed. RQ447/RQ442/RQ413/RQ449 dependencies are complete, but this workspace has no authenticated browser/API session or deployment access and the local Docker/PostgreSQL host is unavailable; mocked frontend tests would not satisfy the raw-facts-to-render/detail/export acceptance.
 
@@ -1794,7 +1795,7 @@ Wire successful Access-import completion to invalidate caches, persist an unveri
 
 ## RQ451 - Show Verified status and inspectable evidence in both screens
 
-Status: DONE
+Status: WAITING
 Ready after: RQ445, RQ448 and RQ449 expose stable evidence fields
 Priority: P1
 Type: frontend/contract/tests
@@ -3817,3 +3818,279 @@ Do not change journal/live/provider/schema semantics, recommendation scoring, ow
 - Requires repair commit `0aba65a74748f98115d263261ce4de6eb009ed61` on current main.
 - No live database, provider, browser, seed-owner or product-owner decision is required for this repository-local certification pass.
 - Q83 remains PARTIAL and RQ491 remains WAITING.
+
+
+---
+
+## RQ560 - Remove negative Access-ID sentinel collisions from analytics and nivelacija SQL
+
+Status: WAITING
+Ready after: fresh collision check with RQ487/RQ545 and the active nivelacija query owners; no production access is required for the repository-local slice
+Priority: P0
+Type: backend/sql/tests
+Feature family: analytics-negative-id-sentinel-safety
+Parallel-safe: no with shared AllEndpoints/nivelacija SQL owners
+Owner: Analytics Reliability / Data Semantics
+Commit suggestion: fix(analytics): remove entity id sentinel collisions
+
+### Problem
+
+Access Random AutoNumber legitimately produces negative entity IDs. The 2026-10-02 negative-ID repair removed sign-based validation from the application, but the delivery evidence explicitly left magic sentinels such as `COALESCE(vendor_id, -1)`, `COALESCE("IDObjekat", -1)` and snapshot/store sentinel values for a later proof. A real entity whose ID equals a sentinel can be grouped, filtered, cached or compared as if it were NULL/all-store.
+
+### Scope
+
+- Inventory/nivelacija/analytics SQL and C# query paths that use numeric entity-ID sentinels;
+- cache/context keys derived from those expressions;
+- fixture/oracle coverage for NULL, `-1`, other negative IDs and zero where zero has an explicitly documented missing meaning.
+
+Do not change article-ID positivity rules unless the article source contract itself disproves them. Do not perform production writes.
+
+### Do
+
+1. Inventory every numeric entity-ID sentinel in analytics paths and classify NULL/missing/all-store semantics.
+2. Add an adversarial fixture where `-1` is a real supplier/store/type ID next to NULL and another negative ID.
+3. Replace collision-prone numeric sentinels with null-safe predicates, explicit discriminators or structured keys.
+4. Prove grouping, filter, URL/cache identity, detail lookup and nivelacija joins cannot merge the real `-1` entity with missing/all.
+5. Keep the 2026-10-02 `NegativeEntityIdGuardTests` and extend it to reject newly introduced collision-prone sentinel patterns where mechanically safe.
+
+### Tests / acceptance
+
+- Real `-1`, NULL and other negative IDs remain distinct through API aggregation and cache keys.
+- No total/bucket changes occur for datasets without sentinel collisions.
+- The task records any remaining intentional zero sentinel with its source contract.
+- Production SQL verification is a later acceptance layer, never inferred from fixture success.
+
+### Dependencies
+
+- 2026-10-02 negative Access entity-ID delivery `0360442d`.
+- Coordinate shared query files with RQ487 and nivelacija RQ541-RQ545; external STAB16/RQ454 proof must not block the local repair.
+
+---
+
+## RQ561 - Re-certify the six current Operations screens on one adversarial fixture
+
+Status: WAITING
+Ready after: RQ560 or an explicit proof that sentinel collisions cannot affect the fixture; current semantic owners are stable
+Priority: P0
+Type: integration-tests/evidence
+Feature family: operations-six-screen-certification
+Parallel-safe: no with shared certification fixture owners
+Owner: Analytics Reliability / QA
+Commit suggestion: test(analytics): certify current Operations surfaces
+
+### Problem
+
+RQ407/RQ447 proved the older cross-screen route set, while RQ507 later reduced the primary Operations menu to six surfaces and subsequent contracts changed dataScope, negative-ID handling, sale-line cost identity, signed shares, shift time and nivelacija semantics. We need one current-topology proof that cannot go green merely because older routes still pass.
+
+### Scope
+
+Reuse and extend the existing RQ407/RQ447/RQ512 fixture/oracle infrastructure; do not create a second seed system. Execute the current six primary routes:
+
+- `/analytics/inventory`
+- `/analytics/shoe-type-sales-stats`
+- `/analytics/daily-sales`
+- `/analytics/nivelacije-pre-post`
+- `/analytics/color-sales-stats`
+- `/analytics/pre-nivelacija-prioriteti`
+
+Include negative entity IDs (including `-1` when safe), signed returns, DUG/KOREKCIJA, all/imported/existing scope, multiple stores, exact date boundaries, Access wall-clock/UTC timestamp cases, missing/historical cost, previous-only categories and nivelacija maturity/overlap cases.
+
+### Tests / acceptance
+
+- Each of the six current routes has expected=executed counts and a machine-readable verdict.
+- Totals, visible buckets, denominators, requested/effective period, store, dataScope, provenance and unavailable states are checked.
+- Known unresolved nivelacija semantics must report BLOCKED/UNVERIFIED, never a false green.
+- Zero skipped tests are required for the certification job.
+- Historical Supplier aliases are not counted as independent current menu products.
+
+### Dependencies
+
+- Reuse RQ407/RQ447/RQ512 assets.
+- Consume current contracts RQ489-RQ505 and RQ537; do not redefine business policy.
+- This is repository/CI certification, not production/browser proof (RQ566/RQ454).
+
+---
+
+## RQ562 - Make continuous Operations integrity grain-aware instead of total-only
+
+Status: WAITING
+Ready after: RQ561 defines the current six-screen certification dimensions
+Priority: P0
+Type: backend/integrity/oracle/tests
+Feature family: operations-grain-aware-integrity
+Parallel-safe: no with OperationsAnalyticsIntegrityService family/probe owners
+Owner: Analytics Reliability / Runtime Integrity
+Commit suggestion: feat(analytics): detect bucket drift with equal totals
+
+### Problem
+
+The current bounded Supplier/Shoe Type and Sales Dashboard integrity path proves aggregate revenue/units against an independent raw-fact oracle. Equal grand totals can still hide a wrong supplier, shoe type, color, day/shift or unknown bucket assignment. A dimension swap can therefore be materially wrong while the aggregate delta remains zero.
+
+### Scope
+
+Extend the existing RQ513 integrity framework, evidence model and raw-fact oracle. Do not introduce a second registry or redefine metrics.
+
+### Do
+
+1. Define bounded canonical reconciliation grains for supplier, shoe type, color and Daily day/shift/store where the source contract is authoritative.
+2. Compare bucket identity + signed units/revenue, not just grand totals.
+3. Treat missing/extra/misassigned material buckets as `drift_detected` even when total revenue/units match.
+4. Persist compact delta evidence without raw customer sale lines.
+5. Add a fixture that deliberately swaps two bucket identities while preserving exact grand totals.
+
+### Tests / acceptance
+
+- Same-total/wrong-bucket fixture fails closed.
+- Legitimate signed negative and unknown buckets remain distinguishable.
+- Probe row/window bounds are preserved.
+- Evidence identifies the dimension and affected bucket without leaking sensitive raw rows.
+
+### Dependencies
+
+- RQ513 evidence lifecycle, RQ561 current-route manifest, RQ494 sale-header dataScope and RQ497 time semantics.
+
+---
+
+## RQ563 - Register and execute an independent Inventory integrity family probe
+
+Status: WAITING
+Ready after: fresh collision check with active Inventory owners; no product-owner or production gate
+Priority: P0
+Type: backend/oracle/runtime-integrity/tests
+Feature family: inventory-independent-integrity-probe
+Parallel-safe: yes when no Inventory query/probe owner is active
+Owner: Analytics Reliability / Inventory
+Commit suggestion: feat(analytics): add inventory integrity oracle
+
+### Problem
+
+RQ513 enrolled the `inventory` family but explicitly leaves it `unverified` when no family-owned independent probe is registered. Inventory therefore has strong contract tests without a bounded runtime proof that its source identity, stock/value and sales-derived signals still reconcile after imports/cache invalidation.
+
+### Scope
+
+Implement `IOperationsAnalyticsIntegrityFamilyProbe` for Inventory using independently derived bounded facts. Reuse context fingerprint/source-generation/evidence persistence.
+
+### Do
+
+1. Pick the smallest authoritative Inventory fact set that can independently prove SKU/store identity, on-hand quantity and one sales-derived signal without calling the production aggregation being certified.
+2. Respect article/store dataScope and requested/effective signal window.
+3. Verify negative store IDs and unknown/missing identities remain distinct.
+4. Mark the family verified only after an executed independent probe; missing prerequisites stay unverified/degraded.
+5. Make import/cache generation changes invalidate stale evidence.
+
+### Tests / acceptance
+
+- Deliberate stock, store-identity and sell-through drift are detected.
+- A cache clear/import makes old evidence non-current.
+- Missing probe/data is never interpreted as zero or verified.
+- Runtime bounds prevent an unbounded full-database scan.
+
+### Dependencies
+
+- RQ513, RQ414-RQ418/RQ426 and current negative-ID contract.
+- Does not require RQ454 production credentials for local implementation.
+
+---
+
+## RQ564 - Add a dedicated Nivelacija runtime-integrity family for Pre/Post and Priorities
+
+Status: WAITING
+Ready after: RQ541-RQ544 semantic fixes and RQ548-RQ550 independent oracles are DONE, or an owner explicitly narrows this prompt to already-stable fields
+Priority: P0
+Type: backend/oracle/runtime-integrity/tests
+Feature family: nivelacija-runtime-integrity
+Parallel-safe: no with nivelacija SQL/view/oracle owners
+Owner: Analytics Reliability / Nivelacija
+Commit suggestion: feat(analytics): add nivelacija integrity family
+
+### Problem
+
+The current RQ513 families do not contain a dedicated nivelacija family. Pre/Post and Pre-Nivelacija Priorities are decision-relevant Operations screens with event/cohort semantics that cannot be certified by Supplier/Shoe aggregate totals. Open RQ541-RQ544 findings also mean a premature generic green state would be misleading.
+
+### Scope
+
+After the canonical nivelacija semantics stabilize, add one explicit family whose probe is backed by the RQ547-RQ550 reconciliation/oracle assets. Cover event identity, direction, maturity, cohort/window, store/dataScope and the minimal decision-driving outputs shared by Pre/Post and Priorities.
+
+### Tests / acceptance
+
+- Missing or stale nivelacija oracle evidence is UNVERIFIED, never VERIFIED.
+- Event/store/cohort drift produces `drift_detected` and blocks decision/action signals designated by the family contract.
+- Markup/markdown, overlapping/immature events and NULL/negative IDs are adversarially covered.
+- Probe evidence is generation/context bound and bounded in rows/time.
+
+### Dependencies
+
+- RQ541-RQ544, RQ547-RQ550 and RQ545 deployed-contract diagnostics.
+- Production application remains RQ454/STAB16; local family implementation must not wait on provider access once semantic/oracle dependencies are stable.
+
+---
+
+## RQ565 - Reconcile all six current Operations screens through deployed API, browser and export
+
+Status: WAITING
+Ready after: RQ561 is green for repository/CI semantics and an authenticated deployed test environment is available
+Priority: P0
+Type: e2e/browser/evidence
+Feature family: operations-six-screen-deployed-reconciliation
+Parallel-safe: no with RQ448/RQ454 deployed certification owners
+Owner: Analytics Reliability / E2E QA
+Commit suggestion: test(analytics): reconcile deployed Operations screens
+
+### Problem
+
+RQ448 is scoped to Supplier/Shoe Type. The six current primary Operations screens still lack one exact-deployed-SHA proof from authoritative facts through API payload, rendered KPI/table/detail state and export. Deterministic tests materially reduce risk but are not proof of the current production database, migrations, runtime config or browser bundle.
+
+### Scope
+
+Extend existing browser/reconciliation tooling instead of creating a parallel certification system. Bind evidence to exact deployed app SHA, schema/contract generation, fixture/window, store and dataScope.
+
+### Tests / acceptance
+
+- For every current Operations route, API and rendered values reconcile to the approved oracle for the same context.
+- Exports use the same population/evidence context as the screen.
+- Error, partial, stale, unverified and drift states render truthfully and cannot receive a green certification result.
+- Capture machine-readable evidence plus browser artifacts.
+- Unavailable auth/provider/DB access is recorded as NOT RUN, never PASS.
+
+### Dependencies
+
+- RQ561, RQ562-RQ564 as applicable, RQ448 patterns and exact deployed build evidence.
+- Read-only production reconciliation remains RQ454/STAB16; a staging/pilot environment may satisfy this browser layer without production writes.
+
+---
+
+## RQ566 - Verify negative-ID repair, sync worker and Daily Sales timezone after deployment
+
+Status: WAITING
+Ready after: a deployment containing `0360442d` is available and operator/admin read access is approved
+Priority: P1
+Type: deployed-readiness/evidence
+Feature family: negative-id-post-deploy-verification
+Parallel-safe: yes with repository-only analytics work
+Owner: Analytics Reliability / Operations
+Commit suggestion: docs(analytics): record negative id deploy verification
+
+### Problem
+
+The 2026-10-02 negative-ID delivery explicitly did not run its read-only production SQL, did not invoke the idempotent negative-dimension repair endpoint on a real analytics database, and did not verify the Render sync worker/SourceSyncCheckpoints or `DailySales__TimeZoneId=Europe/Belgrade`. The code fix can therefore be correct while deployed dimensions/configuration remain stale.
+
+### Scope / do
+
+1. Confirm exact deployed SHA contains `0360442d`.
+2. Run the documented read-only negative-ID/sentinel inventory against the approved environment.
+3. With explicit admin authorization, execute the idempotent negative-dimension repair once if counts prove it is needed; record before/after counts and never delete rows.
+4. Verify sync worker health and SourceSyncCheckpoints freshness.
+5. Verify Daily Sales business timezone is `Europe/Belgrade` and run one DST/wall-clock smoke case.
+6. Re-run the bounded integrity/readiness evidence after repair/config changes.
+
+### Acceptance
+
+- Negative suppliers/shoe types/seasons present in source are not silently absent from analytics dimensions.
+- No sentinel collision remains unexplained.
+- Worker/checkpoint and timezone state are captured against exact deployed SHA.
+- Any inaccessible provider/DB step remains NOT RUN/BLOCKED, never inferred green.
+
+### Dependencies
+
+- Negative-ID implementation `0360442d`; RQ560 for sentinel-collision interpretation.
+- Provider/admin actions require the existing STAB16/operator authority; no new secrets are introduced.
