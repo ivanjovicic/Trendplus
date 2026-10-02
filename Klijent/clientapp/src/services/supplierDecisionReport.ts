@@ -11,7 +11,12 @@ import type { AnalyticsNamedValue, ResolvedAnalyticsTablePayload } from "../type
 import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
 import type { RecommendationCode, SummaryResponse } from "./supplierDecisionHubApi";
 import { dataQualityStatusLabel, normalizeDataQualityStatus } from "../utils/analyticsQuality";
-import { fmtPct, fmtRsd, fmtSignedPct } from "../utils/analyticsFormatters";
+import { fmtPct, fmtRsd, fmtSignedPctPoints } from "../utils/analyticsFormatters";
+import {
+  SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL,
+  SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL,
+  SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL,
+} from "../utils/supplierMetricSemantics";
 import { buildPeriodLineageLabel } from "../utils/analyticsPeriodLineage";
 import { formatMetricDisplayValue, isFiniteMetricNumber } from "../utils/analyticsMetricValue";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
@@ -251,8 +256,8 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     buildSectionRow("Filteri", "Minimalni prihod", input.minRevenue == null ? "Nije postavljeno" : fmtRsd(input.minRevenue), "", ""),
     buildSectionRow("Filteri", "Samo visoka pouzdanost", input.onlyHighConfidence === true ? "Da" : "Ne", "", ""),
     buildSectionRow("Filteri", "Isključi artikle bez zaliha pre sniženja", input.excludeOosBeforeMarkdown === true ? "Da" : "Ne", "", ""),
-    buildSectionRow("KPI", "Prihod", fmtRsd(input.totalRevenue), "", ""),
-    buildSectionRow("KPI", "Maržni doprinos", fmtRsd(resolvedMarginContribution), "", numericStateLimitation("maržnog doprinosa", marginContributionEvidenceState)),
+    buildSectionRow("KPI", SUPPLIER_SCORECARD_COHORT_REVENUE_LABEL, fmtRsd(input.totalRevenue), "", ""),
+    buildSectionRow("KPI", SUPPLIER_SCORECARD_MARGIN_ESTIMATE_LABEL, fmtRsd(resolvedMarginContribution), "", numericStateLimitation("maržnog doprinosa", marginContributionEvidenceState)),
     buildSectionRow("KPI", "Broj dobavljača", String(input.summary?.supplierCount ?? input.rows.length), "", ""),
     buildSectionRow("KPI", "Prodate jedinice", formatMetricDisplayValue({ value: totalUnits, kind: "qty" }), "", numericStateLimitation("prodatih jedinica", unitsEvidenceState)),
     buildSectionRow("KPI", "Rizik zaliha", fmtRsd(totalStockRisk), "", ""),
@@ -269,14 +274,14 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     ),
     buildSectionRow(
       "KPI",
-      "Promena udela pune cene",
+      SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL,
       input.fullPriceShareDeltaPctPoints == null || !Number.isFinite(input.fullPriceShareDeltaPctPoints)
         ? "Nije dostupno"
-        : fmtSignedPct(input.fullPriceShareDeltaPctPoints),
-      "Procentni poeni prema prethodnom istom periodu",
+        : fmtSignedPctPoints(input.fullPriceShareDeltaPctPoints),
+      "Procentni poeni prema prethodnom istom periodu skorkarte",
       input.fullPriceShareDeltaPctPoints == null || !Number.isFinite(input.fullPriceShareDeltaPctPoints)
         ? "Prethodni period ili validan udeo pune cene nije dostupan."
-        : "Ne predstavlja trend markdown zavisnosti po dobavljaču.",
+        : "Ne predstavlja razmak pune cene i nivelacija po dobavljaču u tabeli.",
     ),
     buildSectionRow(
       "Preporuke",
@@ -521,7 +526,7 @@ export function buildSupplierDecisionReportPayload(input: SupplierDecisionReport
     { key: "marginContributionEvidenceState", label: "Stanje maržnog doprinosa", value: marginContributionEvidenceState },
     { key: "marginContributionDefinition", label: "Definicija maržnog doprinosa", value: SUPPLIER_MARGIN_CONTRIBUTION_DEFINITION },
     { key: "aggregatePopulation", label: "Skup agregata", value: "Serverski sažetak za aktivne filtere; tabela prikazuje iste redove" },
-    { key: "fullPriceShareDeltaPctPoints", label: "Promena udela pune cene", value: input.fullPriceShareDeltaPctPoints ?? null },
+    { key: "fullPriceShareDeltaPctPoints", label: SUPPLIER_FULL_PRICE_SHARE_DELTA_PP_LABEL, value: input.fullPriceShareDeltaPctPoints ?? null },
     { key: "requestedDataset", label: "Traženi skup podataka", value: trust?.requestedDataset ?? null },
     { key: "effectiveDataset", label: "Efektivni skup podataka", value: trust?.effectiveDataset ?? null },
     { key: "requestedPeriodFromUtc", label: "Traženi period od", value: requestedFromUtc },

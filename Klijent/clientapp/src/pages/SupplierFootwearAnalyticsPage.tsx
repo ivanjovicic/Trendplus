@@ -20,6 +20,10 @@ import type { Dobavljac } from "../types/Dobavljaci";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import type { AnalyticsFreshnessStatus, AnalyticsResponseMeta } from "../types/analytics";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import {
+  SUPPLIER_ASSORTMENT_POST_WINDOW_REVENUE_LABEL,
+  SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE,
+} from "../utils/supplierMetricSemantics";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
@@ -942,8 +946,8 @@ export default function SupplierFootwearAnalyticsPage({
           )}
 
           <section className="sf-decision-kpis">
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih dobavljača u izabranom periodu."><span>Ukupan promet</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
-            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Koliki deo prometa drži pet najjačih dobavljača."><span>Udeo top 5 dobavljača</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Zbir post-prozora prodaje uporedive kohorte nivelacija, ne sertifikovana prodaja u periodu."><span>{SUPPLIER_ASSORTMENT_POST_WINDOW_REVENUE_LABEL}</span><strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong></article>
+            <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note={SUPPLIER_TOP5_SHARE_ASSORTMENT_NOTE}><span>Udeo top 5 dobavljača (asortiman)</span><strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Apsolutna promena prometa u odnosu na pre period."><span>Ukupna promena prometa</span><strong className={trendClass(totalChangeRevenue)}>{formatMetricDisplayValue({ value: totalChangeRevenue, kind: "currency" })}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Relativna promena prema prethodnom uporedivom periodu."><span>Rast/pad u odnosu na prethodni period</span><strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong></article>
             <article className="sf-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Tip obuće koji trenutno nosi najveći deo prometa."><span>Dominantan tip obuće</span><strong>{dominantTypeSummary}</strong></article>

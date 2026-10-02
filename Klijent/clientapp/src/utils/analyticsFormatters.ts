@@ -53,6 +53,18 @@ export function fmtSignedPct(value: number | null | undefined, digits = 1): stri
   return `${sign}${fmtPct(value, digits)}`;
 }
 
+/** Percentage-point deltas (1 = one percentage point, not 1% relative growth). */
+export function fmtSignedPctPoints(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${fmtNumber(value, digits)} pp`;
+}
+
+export function fmtPctPoints(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  return `${fmtNumber(value, digits)} pp`;
+}
+
 export function fmtQty(value: number | null | undefined, digits = 0, fallback = "N/A"): string {
   const formatted = fmtNumber(value, digits, fallback);
   return formatted === fallback ? fallback : `${formatted} kom`;
