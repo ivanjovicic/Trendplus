@@ -107,7 +107,9 @@ describe("buildDecisionSuppliers", () => {
       ukupnaKolicina: 15,
     }));
 
-    const projection = buildSupplierSalesDisplayProjection([rows[0]!]);
+    const projection = buildSupplierSalesDisplayProjection([rows[0]!], {
+      positiveNetRevenueDenominator: 15000,
+    });
 
     expect(rows[0]?.sharePct).toBeCloseTo(66.6667, 3);
     expect(projection.totalRevenue).toBe(10000);
@@ -115,7 +117,7 @@ describe("buildDecisionSuppliers", () => {
     expect(projection.totalMarginContribution).toBe(4000);
     expect(projection.previousPeriodRevenue).toBe(8000);
     expect(projection.periodGrowthPct).toBe(25);
-    expect(projection.rows[0]?.sharePct).toBe(100);
+    expect(projection.rows[0]?.sharePct).toBeCloseTo(66.6667, 3);
     expect(projection.rows[0]?.shareOfMarginContribution).toBe(100);
     expect(projection.rows[0]?.shareOfUnits).toBe(100);
     expect(projection.rows[0]?.status).toBe("maintain");

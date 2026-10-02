@@ -738,6 +738,8 @@ export type SupplierSalesPreviousPeriodBasis = "response_totals" | "visible_rows
 export interface SupplierSalesPreviousPeriodSource {
   basis: SupplierSalesPreviousPeriodBasis;
   responsePreviousPeriodRevenue?: number | null;
+  /** Whole-population positive net revenue denominator from backend totals; keeps row share when the table is focused. */
+  positiveNetRevenueDenominator?: number | null;
 }
 
 export interface SupplierSalesDisplayProjection {
@@ -767,9 +769,10 @@ export function buildSupplierSalesDisplayProjection(
     : previousPeriodSource.basis === "visible_rows"
       ? sumFiniteDecisionMetric(rows, (row) => row.previousPeriodRevenue)
       : null;
-  const totalRevenueDenominator = rows.every((row) => Number.isFinite(row.ukupanPromet))
-    ? sumPositiveRevenue(rows)
-    : null;
+  const totalRevenueDenominator = finiteOrNull(previousPeriodSource.positiveNetRevenueDenominator)
+    ?? (rows.every((row) => Number.isFinite(row.ukupanPromet))
+      ? sumPositiveRevenue(rows)
+      : null);
   const totalMarginDenominator = totalMarginContribution != null && totalMarginContribution > 0
     ? totalMarginContribution
     : null;
@@ -1109,8 +1112,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     () => buildSupplierSalesDisplayProjection(filteredSuppliers, {
       basis: previousPeriodBasis,
       responsePreviousPeriodRevenue,
+      positiveNetRevenueDenominator: finiteOrNull(data?.totals.positiveNetRevenueDenominator),
     }),
-    [filteredSuppliers, previousPeriodBasis, responsePreviousPeriodRevenue],
+    [data?.totals.positiveNetRevenueDenominator, filteredSuppliers, previousPeriodBasis, responsePreviousPeriodRevenue],
   );
   const visibleSuppliers = displayProjection.rows;
 
@@ -2207,7 +2211,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     ) : (
                       visibleSuppliers.map((supplier, index) => {
                         const rowKey = supplierKey(supplier);
-                        const rank = sortField === "ukupanPromet" ? index + 1 : null;
+                        const rank = sortField === "ukupanPromet" && sortDir === "desc" ? index + 1 : null;
                         const isExpanded = expandedSupplierKey === rowKey;
                         const popMetric = describePopMetric(supplier);
                         const contributionVsRevenueMismatch = !supplier.isUnknown

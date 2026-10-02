@@ -134,7 +134,7 @@ export default function SupplierConsolidatedPage() {
           canonicalFilters.excludeOosBeforeMarkdown ? "1" : "0",
         );
       } else if (currentTab === "assortment") {
-        key.push(canonicalFilters.supplierId ?? "");
+        key.push(canonicalFilters.supplierId ?? "", canonicalFilters.category ?? "");
       }
       return key.join("|");
     },
@@ -457,6 +457,18 @@ export default function SupplierConsolidatedPage() {
               <span>Isključi artikle bez zaliha pre sniženja iz skorkarte</span>
             </label>
           </>
+        ) : null}
+
+        {currentTab === "assortment" ? (
+          <label className="supplier-consolidated-field">
+            <span>Kategorija asortimana</span>
+            <input
+              type="text"
+              value={canonicalFilters.category ?? ""}
+              placeholder="npr. Patike"
+              onChange={(event) => setCategory(event.target.value)}
+            />
+          </label>
         ) : null}
 
         <div className="supplier-consolidated-actions">

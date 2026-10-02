@@ -36,6 +36,7 @@ import {
   SUPPLIER_PREVIOUS_PERIOD_FAILURE_NOTE,
 } from "../utils/supplierPreviousPeriodComparison";
 import { projectVendorSalesDataQuality } from "../utils/vendorSalesDataQuality";
+import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import {
   buildSupplierVendorDetailRecordId,
   buildSupplierVendorKeys,
@@ -266,7 +267,7 @@ export default function SupplierFootwearAnalyticsPage({
 }: SupplierEmbeddedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestIdRef = useRef(0);
   const initialRange = useMemo(() => getPresetRange("30d"), []);
   const urlDataScopeParam = searchParams.get("dataScope");
@@ -283,12 +284,13 @@ export default function SupplierFootwearAnalyticsPage({
   const [fromDate, setFromDate] = useState(sharedFilters?.fromDate ?? initialRange.fromDate);
   const [toDate, setToDate] = useState(sharedFilters?.toDate ?? initialRange.toDate);
   const [vendorId, setVendorId] = useState<number | null>(sharedFilters?.supplierId ?? null);
-  const [category, setCategory] = useState("");
+  const initialCategory = sharedFilters?.category ?? searchParams.get("category")?.trim() ?? "";
+  const [category, setCategory] = useState(initialCategory);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     fromDate: sharedFilters?.fromDate ?? initialRange.fromDate,
     toDate: sharedFilters?.toDate ?? initialRange.toDate,
     vendorId: sharedFilters?.supplierId ?? null,
-    category: "",
+    category: initialCategory,
     storeId: sharedFilters?.storeId ?? null,
     dataScope: sharedFilters?.dataScope
       ? normalizeDataScope(sharedFilters.dataScope)
@@ -354,6 +356,7 @@ export default function SupplierFootwearAnalyticsPage({
     setFromDate(sharedFilters.fromDate);
     setToDate(sharedFilters.toDate);
     setVendorId(sharedFilters.supplierId);
+    setCategory(sharedFilters.category ?? "");
     setActiveFilters((current) => {
       const next = {
         ...current,
@@ -361,12 +364,14 @@ export default function SupplierFootwearAnalyticsPage({
         toDate: sharedFilters.toDate,
         vendorId: sharedFilters.supplierId,
         storeId: sharedFilters.storeId,
+        category: sharedFilters.category ?? "",
         dataScope: normalizeDataScope(sharedFilters.dataScope),
       };
       return current.fromDate === next.fromDate
         && current.toDate === next.toDate
         && current.vendorId === next.vendorId
         && current.storeId === next.storeId
+        && current.category === next.category
         && current.dataScope === next.dataScope
         ? current
         : next;
@@ -390,6 +395,7 @@ export default function SupplierFootwearAnalyticsPage({
       || filters.toDate !== sharedFilters.toDate
       || filters.vendorId !== sharedFilters.supplierId
       || filters.storeId !== sharedFilters.storeId
+      || filters.category !== (sharedFilters.category ?? "")
       || filters.dataScope !== normalizeDataScope(sharedFilters.dataScope)
     )) {
       requestIdRef.current += 1;
@@ -660,20 +666,22 @@ export default function SupplierFootwearAnalyticsPage({
     {
       key: "period",
       label: "Period",
-      value: `${fromDate} → ${toDate}`,
+      value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
       tone: "info",
     },
     {
       key: "vendor",
       label: "Dobavljač",
-      value: vendorId == null ? "Svi" : vendors.find((vendor) => vendor.id === vendorId)?.naziv ?? String(vendorId),
-      tone: vendorId == null ? "neutral" : "success",
+      value: activeFilters.vendorId == null
+        ? "Svi"
+        : vendors.find((vendor) => vendor.id === activeFilters.vendorId)?.naziv ?? String(activeFilters.vendorId),
+      tone: activeFilters.vendorId == null ? "neutral" : "success",
     },
     {
       key: "category",
       label: "Kategorija",
-      value: category || "Sve",
-      tone: category ? "warning" : "neutral",
+      value: activeFilters.category.trim() || "Sve",
+      tone: activeFilters.category.trim() ? "warning" : "neutral",
     },
     {
       key: "rows",
@@ -684,10 +692,10 @@ export default function SupplierFootwearAnalyticsPage({
     {
       key: "signal",
       label: "Signal",
-      value: showMetaWarning ? "Delimičan" : (dataQualityStatus ?? "Nepoznat"),
+      value: showMetaWarning ? "Delimičan" : dataQualityStatusLabel(dataQualityStatus),
       tone: showMetaWarning ? "warning" : dataQualityStatus === "good" ? "success" : dataQualityStatus === "warning" ? "warning" : dataQualityStatus === "critical" ? "critical" : "neutral",
     },
-  ], [category, dataQualityStatus, fromDate, showMetaWarning, sortedRows.length, toDate, vendorId, vendors]);
+  ], [activeFilters.category, activeFilters.fromDate, activeFilters.toDate, activeFilters.vendorId, dataQualityStatus, showMetaWarning, sortedRows.length, vendors]);
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(() => [
     {
       key: "periodPreset",
@@ -826,14 +834,23 @@ export default function SupplierFootwearAnalyticsPage({
   };
   const handleApplyFilters = () => {
     if (!invalidRange) {
+      const nextCategory = category.trim();
       setActiveFilters({
         fromDate,
         toDate,
         vendorId,
-        category,
+        category: nextCategory,
         storeId: sharedFilters?.storeId ?? null,
         dataScope: effectiveDataScope,
       });
+      if (!embedded && !sharedFilters) {
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          if (nextCategory) next.set("category", nextCategory);
+          else next.delete("category");
+          return next;
+        }, { replace: true });
+      }
     }
   };
   const handleResetFilters = () => {
