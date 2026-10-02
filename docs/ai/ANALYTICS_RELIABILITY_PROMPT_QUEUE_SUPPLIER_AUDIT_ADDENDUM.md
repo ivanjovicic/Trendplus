@@ -867,8 +867,8 @@ RQ520, RQ527 and RQ500 DONE.
 - Run log: `.ai/runs/2026-10-02-RQ532-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main after branch transport
-- Main commit SHA: `2af0021d094589df645d99fe5501f78745d3b674`
-- Main verification: `origin/main` and workspace `HEAD` both resolve to `2af0021d094589df645d99fe5501f78745d3b674`
+- Main commit SHA: `db19ffde6cd9b16de36d2880824ef8d4077a8825`
+- Main verification: `origin/main` contains `db19ffde6cd9b16de36d2880824ef8d4077a8825`; the final evidence-sync commit is layered on top.
 - Missed: Supplier size-curve sold/received/on-hand aggregation and controlled uplift panel were not added because their authoritative source contract is absent.
 - Follow-up: Analytics Product / Supplier owner must provide or approve a repository-owned size-by-article/sale/receipt/on-hand contract and a maturity/control-population/confidence DiD contract before RQ532 can be promoted again.
 - Residual risk: the existing inventory size-curve remains a SKU/store signal and must not be presented as supplier × footwear-type evidence; existing optional DiD values must not be upgraded to causal uplift without population/maturity proof.
