@@ -49,8 +49,8 @@ Current queue truth on 2026-10-02:
 - `P-UI-30` is DONE on `main` at `d22e17f0e3f488286c7df933739a68305d78c669`: Sales/Goods Receipt controls meet the phone text/target contract, search panels track the visual viewport, and the mock Sales flow plus 320/375/768 light/dark geometry passed.
 - `P-UI-33` is DONE on `main` at `987ec671894b5b77642674674d466159dd1d8bad`: Central Actions uses the shared responsive table/modal patterns; its 320/375/768 light/dark matrix passed with 0 root overflow and the status/outcome dialog workflow reachable.
 - `P-UI-37` is DONE on `main` at `46f9587f6b2424e1238bac7b76be7a87c2ea5c6b`: Article List passes the 320/375/768 light/dark fixture matrix with 0 root overflow and keeps server paging/sort semantics unchanged.
-- `P-UI-23` is IN_PROGRESS for the bounded shared Pilot Data Quality Intake component lint slice; the current global baseline is 108 errors / 226 warnings.
-- `P-UI-31` and `P-UI-35`..`P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
+- `P-UI-23` is DONE on `main` at `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff`: the selected shared Pilot Data Quality Intake component slice went from 7 errors / 1 warning to 0 / 0; global lint baseline remains 108 / 226.
+- `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
 
 The queue remains authoritative for exact task status and acceptance. P-UI remains supplemental and must not displace higher-priority RQ/SQL correctness work.

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-23 (IN_PROGRESS; bounded frontend lint cleanup)
+Current READY prompt: none
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -28,7 +28,7 @@ Use with:
 | P-UI-20 | DONE | analytics-ui-trust-state-proof | Grouped ErrorState/EmptyState/TrustHeader proof on Daily/Color/ShoeType/Supplier/Actions pages |
 | P-UI-21 | DONE | analytics-ui-empty-kpi-honesty | Hide KPI totals on empty success; use shared ErrorState on Actions list failure |
 | P-UI-22 | DONE | analytics-ui-remaining-trust-chrome | Remaining decision pages empty/error chrome after P-UI-21 |
-| P-UI-23 | IN_PROGRESS | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
+| P-UI-23 | DONE | frontend-lint-baseline | Reduce lint errors in bounded, trust-sensitive slices without broad rewrites |
 | P-UI-24 | DONE | responsive-ui-browser-baseline | Establish measured 320/375/768/1024/1280 browser evidence using existing Puppeteer |
 | P-UI-25 | DONE | responsive-ui-foundation | Responsive type/control/input/focus foundation |
 | P-UI-26 | DONE | responsive-ui-shell | Compact mobile header and accessible drawer |
@@ -1170,7 +1170,7 @@ The frontend lint command still reports a legacy backlog even though typecheck, 
 
 ### Evidence
 
-- The current lint run reports approximately 37 errors and 167 warnings.
+- The exact pre-change `npm run lint` baseline for this run reported 108 errors and 226 warnings; the selected component had seven Fast Refresh errors and one unused-import warning.
 - The dependency/build cleanup is already complete and must not be mixed with an unrelated repository-wide lint rewrite.
 - Analytics correctness remains backend-owned; lint cleanup must not recreate scoring or fallback logic in the client.
 
@@ -1210,14 +1210,16 @@ The frontend lint command still reports a legacy backlog even though typecheck, 
 - The selected files have zero new lint errors and no unexplained warning increase.
 - Existing UI behavior and analytics trust semantics are unchanged unless a test proves the prior behavior was invalid.
 - The final note reports before/after counts and the next bounded slice.
-- The queue remains `Current READY: none` until explicitly promoted.
+- After this completed bounded slice, `Current READY` returns to `none`; another slice requires fresh idle recovery and a collision-safe evidence-backed claim.
 
 ### Dependencies
 
 - P-UI-22 is DONE.
 - This is a later hygiene follow-up and must not displace BCI/STAB/RQ work.
 
-Owner promotion/claim 2026-10-02: after P-UI-37 delivery, fresh cross-program routing confirmed BCI has no READY/IN_PROGRESS prompt, STAB16 remains blocked on external provider evidence, RQ Current READY is none, and QDB/MT/GAI remain behind their named gates. `npm run lint` established 108 errors and 226 warnings; a structured diagnostic isolated seven Fast Refresh export errors and one unused-import warning in the shared Pilot Data Quality Intake Report component. No active RQ owner/lock/branch/PR overlaps this shared-component-only lint slice; prior RQ pilot-intake work is delivered. P-UI-23 moved WAITING -> READY -> IN_PROGRESS for the bounded component/helper extraction and its focused tests. Local lock: `.ai/task-locks/P-UI-23-codex.lock.md`.
+Owner promotion/claim 2026-10-02: after P-UI-37 delivery, fresh cross-program routing confirmed BCI has no READY/IN_PROGRESS prompt, STAB16 remains blocked on external provider evidence, RQ Current READY is none, and QDB/MT/GAI remain behind their named gates. `npm run lint` established 108 errors and 226 warnings; a structured diagnostic isolated seven Fast Refresh export errors and one unused-import warning in the shared Pilot Data Quality Intake Report component. No active RQ owner/lock/branch/PR overlaps this shared-component-only lint slice; prior RQ pilot-intake work is delivered. P-UI-23 moved WAITING -> READY -> IN_PROGRESS for the bounded component/helper extraction and its focused tests. Local lock `.ai/task-locks/P-UI-23-codex.lock.md` was removed before delivery.
+
+Owner completion 2026-10-02: P-UI-23 moved IN_PROGRESS -> DONE. The shared report exports/trust-state helpers were moved unchanged into `pilotDataQualityIntakeReportHelpers.ts`; the unused `KpiExplainButton` import was removed and nearest tests now import pure helpers from the `.ts` module. Baseline for selected files: 7 errors / 1 warning; after: 0 errors / 0 warnings. Full lint baseline remains 108 errors / 226 warnings; no unrelated lint slices were changed. Focused specs pass 14/14, analytics guardrails/typecheck/build pass, and `git diff --check` passes. Implementation SHA `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff` was pushed to and freshly verified on `origin/main`; Analytics Quality Gates run `37018019549` for this SHA was `in_progress` at inspection. Run log: `.ai/runs/2026-10-02-P-UI-23-evidence.md`. Evidence state: synchronized. P-UI-38 remains WAITING until P-UI-31/35/36 core migrations are DONE or an owner explicitly defers those slices.
 
 
 ---
