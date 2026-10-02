@@ -860,15 +860,15 @@ RQ520, RQ527 and RQ500 DONE.
 - Date: 2026-10-02
 - Status: DONE
 - Completion: Negative-path acceptance is complete. Size availability at supplier × footwear-type sold/received/on-hand grain is absent; the repo pins that fact in `SupplierAssortmentSizeCurveEvidenceContract`, fixture contract tests, and explicit unavailable panels on Supplier Asortiman. Descriptive pre/post remains non-actionable; controlled DiD uplift is not presented as causal without maturity/control/confidence metadata. Full aggregation panel remains a follow-up when an owner-approved source contract lands.
-- Changed files: `Application/Analytics/SupplierAssortmentSizeCurveEvidenceContract.cs`, `Api.Tests/SupplierAssortmentSizeCurveEvidenceContractTests.cs`, `Klijent/clientapp/src/utils/supplierAssortmentSizeCurveEvidence.ts`, `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`, `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.css`, `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `.ai/runs/2026-10-02-RQ532-evidence.md`
+- Changed files: `Application/Analytics/SupplierAssortmentSizeCurveEvidenceContract.cs`, `Api.Tests/SupplierAssortmentSizeCurveEvidenceContractTests.cs`, `Klijent/clientapp/src/utils/supplierAssortmentSizeCurveEvidence.ts`, `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`, `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.css`, `Klijent/clientapp/src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `.ai/runs/2026-10-02-RQ532-evidence.md`
 - Contract/runtime behavior changed: additive unavailable-evidence contract and UI only; no invented size-curve KPIs or causal uplift.
 - Checks run: governance validators, `SupplierAssortmentSizeCurveEvidenceContractTests`, focused Supplier Footwear spec, guardrails/typecheck as recorded in run log, `git diff --check`
 - Checks not run: full backend/frontend suites — not required for this bounded negative-path delivery.
 - Run log: `.ai/runs/2026-10-02-RQ532-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `819afb3ac753911e28f3e279493f075705ea7d83`
+- Main verification: `origin/main` contains `819afb3ac753911e28f3e279493f075705ea7d83`; implementation commit `3a1d0978` is ancestor
 - Missed: sold/received/on-hand by size per supplier × footwear type and mature controlled-uplift panel await an authoritative backend source contract.
 - Follow-up: register/promote a new prompt when repository-owned size/receipt/on-hand + approved DiD population/maturity metadata exist.
 - Residual risk: inventory SKU/store size-curve must not be repurposed as supplier assortment evidence; optional article-level `didRevenue` must not be labeled causal on Assortment.
