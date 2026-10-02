@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-09-24
+Updated: 2026-10-02
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -179,11 +179,20 @@ If a line cannot be answered, do not guess the runtime contract.
 Queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not maintain a second selector algorithm here.
 
 1. Resolve the owner program from `MASTER_ROADMAP.md` and use the protocol to select/claim a collision-safe `READY` prompt.
-2. If `Current READY` is `none`, run the protocol's **Idle recovery** sequence before reporting that no work is available. Re-check stale dependencies/statuses, recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program; promote and claim a now-runnable `WAITING` prompt when evidence supports it.
-3. Once claimed, identify the source of truth, nearest shared contract/helper and focused proof; run the tenant/analytics safety gate where relevant.
-4. Implement the smallest owned change and validate it through `docs/ai/VALIDATION_SELECTOR.md`.
-5. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record remote CI separately unless the prompt explicitly gates on it.
-6. Close/synchronize queue, evidence and roadmap truth; then, when the user asked to continue executing prompts, re-enter selection/recovery rather than ending merely because the just-finished prompt returned the pointer to `none`.
+2. If `Current READY` is `none`, run the protocol's **Idle recovery** sequence before reporting that no work is available. Re-check stale dependencies/statuses, recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program.
+3. Before leaving a candidate blocked, perform the protocol's **Mandatory blocker decomposition**:
+   - is the dependency already satisfied/stale?
+   - is it a true start gate or only final/deployed acceptance evidence?
+   - is it external/provider/owner authority, or can repo-local proof proceed?
+   - is the "missing prerequisite" actually an artifact this prompt owns creating (circular prerequisite)?
+   - can the prompt be safely narrowed to a same-owner executable slice without changing business semantics?
+4. Repair stale/circular routing first. Promote and claim a now-runnable prompt in the same run; if the first candidate remains genuinely blocked, try a collision-safe candidate in the same program and then the next eligible program.
+5. Once claimed, identify the source of truth, nearest shared contract/helper and focused proof; run the tenant/analytics safety gate where relevant.
+6. Implement the smallest owned change and validate it through `docs/ai/VALIDATION_SELECTOR.md`.
+7. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record remote CI separately unless the prompt explicitly gates on it.
+8. Close/synchronize queue, evidence and roadmap truth; then, when the user asked to continue executing prompts, re-enter selection/recovery rather than ending merely because the just-finished prompt returned the pointer to `none`.
+
+A final "no safe task" result must name the candidates checked, classify each blocker and explain why no safe repository-local slice or alternate lane exists. A bare `Current READY: none` is never enough.
 
 ## Stop rules
 
