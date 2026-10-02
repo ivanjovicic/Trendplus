@@ -1,4 +1,5 @@
 using Api.Models;
+using Api.Services;
 using Trendplus2.Endpoints;
 using Xunit;
 
@@ -45,6 +46,68 @@ public sealed class PreNivelacijaKpiDefinitionTests
         Assert.Equal(500m, summary.ExpectedHighlightRevenueUplift);
         Assert.Equal(1, summary.ExpectedHighlightRevenueUpliftCoverageEligible);
         Assert.Equal(3, summary.ExpectedHighlightRevenueUpliftCoverageTotal);
+    }
+
+    [Fact]
+    public void BuildSummary_ExcludesNegativeRevenueDeltaFromHighlightUplift()
+    {
+        var candidate = CreateCandidate(
+            artikalId: 1,
+            priorityBand: "high",
+            status: "increase_focus",
+            recommendationAllowed: true,
+            stockUnits: 10,
+            revenueDelta: -500m,
+            marginDelta: -100m,
+            hasCompleteEvidence: true);
+
+        var summary = PreNivelacijaPriorityEndpoints.BuildSummary([candidate], []);
+
+        Assert.Null(summary.ExpectedHighlightRevenueUplift);
+        Assert.Equal(0, summary.ExpectedHighlightRevenueUpliftCoverageEligible);
+        Assert.Equal(1, summary.ExpectedHighlightRevenueUpliftCoverageTotal);
+    }
+
+    [Fact]
+    public void BuildSummary_IncludesCorrectedScenarioRevenueDelta()
+    {
+        var scoring = new PreNivelacijaScoringService();
+        var (highlight, markdown, confidence) = scoring.SimulateScenarios(
+            stockUnits: 1000,
+            units180: 180,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            sellingPrice: 5200m,
+            purchasePrice: 2600m,
+            preNivelacijaScore: 100m);
+        var revenueDelta = highlight.ExpectedRevenue30d - markdown.ExpectedRevenue30d;
+        var recommendation = scoring.EvaluateRecommendation(new IPreNivelacijaScoringService.RecommendationInput(
+            PreNivelacijaScore: 100m,
+            RevenueDelta: revenueDelta,
+            MinRevenueDelta: 0m,
+            MaxRevenueDelta: revenueDelta,
+            DaysSinceLastSale: 0,
+            PriorityBand: "high",
+            Confidence: confidence,
+            Units180: 180,
+            StockUnits: 1000,
+            HasCompleteEvidence: true));
+        var candidate = CreateCandidate(
+            artikalId: 1,
+            priorityBand: "high",
+            status: recommendation.Recommendation.Status,
+            recommendationAllowed: recommendation.Recommendation.RecommendationAllowed,
+            stockUnits: 1000,
+            revenueDelta: revenueDelta,
+            marginDelta: highlight.ExpectedMargin30d - markdown.ExpectedMargin30d,
+            hasCompleteEvidence: true);
+
+        var summary = PreNivelacijaPriorityEndpoints.BuildSummary([candidate], []);
+
+        Assert.True(revenueDelta > 0m);
+        Assert.Equal("increase_focus", recommendation.Recommendation.Status);
+        Assert.Equal(revenueDelta, summary.ExpectedHighlightRevenueUplift);
+        Assert.Equal(1, summary.ExpectedHighlightRevenueUpliftCoverageEligible);
     }
 
     [Fact]

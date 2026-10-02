@@ -81,6 +81,48 @@ public sealed class PreNivelacijaScoringServiceTests
         Assert.Contains(confidence, new[] { "Low", "Medium", "High" });
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public void SimulateScenarios_WithUnconstrainedStock_KeepsBothScenariosAtOrAboveSmoothedBaseline(int score)
+    {
+        var service = new PreNivelacijaScoringService();
+        var baselineUnits = (int)Math.Round((double)(((180m + 0.05m) / 181m) * 30m), MidpointRounding.AwayFromZero);
+
+        var (highlight, markdown, _) = service.SimulateScenarios(
+            stockUnits: 1000,
+            units180: 180,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            sellingPrice: 5200m,
+            purchasePrice: 2600m,
+            preNivelacijaScore: score);
+
+        Assert.True(highlight.ExpectedUnits30d > baselineUnits);
+        Assert.True(markdown.ExpectedUnits30d >= baselineUnits);
+    }
+
+    [Fact]
+    public void SimulateScenarios_WhenStockCapsBothScenarios_RevenueDeltaIsPriceOnly()
+    {
+        var service = new PreNivelacijaScoringService();
+
+        var (highlight, markdown, _) = service.SimulateScenarios(
+            stockUnits: 10,
+            units180: 180,
+            markdownEvents: 0,
+            avgMarkdownPct: 0m,
+            sellingPrice: 5200m,
+            purchasePrice: 2600m,
+            preNivelacijaScore: 100m);
+
+        Assert.Equal(10, highlight.ExpectedUnits30d);
+        Assert.Equal(highlight.ExpectedUnits30d, markdown.ExpectedUnits30d);
+        Assert.Equal(
+            highlight.ExpectedUnits30d * (highlight.EffectivePrice - markdown.EffectivePrice),
+            highlight.ExpectedRevenue30d - markdown.ExpectedRevenue30d);
+    }
+
     [Fact]
     public void SimulateScenarios_WithNoStock_DoesNotInventOneExpectedUnit()
     {
