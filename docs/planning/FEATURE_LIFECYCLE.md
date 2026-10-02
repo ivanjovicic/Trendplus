@@ -1,6 +1,6 @@
 # Trendplus Feature Lifecycle
 
-Updated: 2026-09-22
+Updated: 2026-10-02
 Status: canonical planning lifecycle
 
 Every meaningful Trendplus feature follows this lifecycle:
@@ -60,6 +60,9 @@ Rules:
 - do not duplicate another queue's feature family;
 - do not make a task READY just because it is high priority;
 - current READY must be explicitly declared near the queue top; it is a routing pointer, not a global mutex.
+- when no READY work exists but non-DONE prompts remain, run canonical Idle recovery; blocker text must be re-verified against current evidence rather than treated as permanent.
+- distinguish a true start gate from final/deployed acceptance evidence. A prerequisite produced by the prompt itself (baseline, fixture, measurement, contract report) is circular and belongs in the prompt steps, not in `Ready after`.
+- a prompt that mixes safe same-owner repo-local work with external/provider final proof may be repaired/narrowed before promotion, provided business semantics and safety acceptance are not weakened.
 - when multiple READY/IN_PROGRESS prompts share a feature family, every active task in that family must explicitly be `Parallel-safe: yes`; `Parallel-safe: no` is family/surface exclusivity, not program-wide serialization.
 - analytics prompts must name the authoritative data contract and prove that observed, reconstructed, estimated and unavailable inputs cannot be confused.
 
