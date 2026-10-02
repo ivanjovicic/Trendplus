@@ -609,14 +609,22 @@ export default function SupplierFootwearAnalyticsPage({
     insufficientData: sortedRows.filter((row) => row.status === "insufficient_data").length,
   }), [sortedRows]);
   const topTypeSharePct = typeInsights.globalTypeShare[0]?.sharePct ?? null;
-  const top3TypeConcentrationPct = useMemo(
-    () => typeInsights.globalTypeShare.slice(0, 3).reduce((sum, item) => sum + (item.sharePct ?? 0), 0),
-    [typeInsights.globalTypeShare],
-  );
+  const top3TypeConcentrationPct = useMemo(() => {
+    const shares = typeInsights.globalTypeShare
+      .slice(0, 3)
+      .map((item) => item.sharePct)
+      .filter((value): value is number => value != null);
+    if (shares.length === 0) return null;
+    return shares.reduce((sum, value) => sum + value, 0);
+  }, [typeInsights.globalTypeShare]);
   const comparableCoveragePct = normalizeMetricNumber(data?.dataQuality?.comparableSharePercent);
-  const activeArticlesSummary = data?.totals
-    ? `${data.totals.activeArticlesCount ?? 0} / ${data.totals.articlesCount ?? 0}`
-    : "N/A";
+  const activeArticlesSummary = useMemo(() => {
+    if (!data?.totals) return "N/A";
+    const active = data.totals.activeArticlesCount;
+    const total = data.totals.articlesCount;
+    if (active == null || total == null) return "N/A";
+    return `${active} / ${total}`;
+  }, [data?.totals]);
   const weightedTypeElasticity = useMemo(() => {
     if (data?.typeInsightsAuthoritative !== true) return null;
     const weighted = sortedRows

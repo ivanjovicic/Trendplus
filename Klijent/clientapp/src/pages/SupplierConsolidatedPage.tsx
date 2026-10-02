@@ -29,7 +29,7 @@ import SupplierSalesStatsPage from "./SupplierSalesStatsPage";
 import SupplierDecisionHubPage from "./SupplierDecisionHubPage";
 import SupplierFootwearAnalyticsPage from "./SupplierFootwearAnalyticsPage";
 import type { SupplierPeriodPreset, SupplierTab } from "./supplierSharedState";
-import type { SupplierTrustHeaderPayload } from "./supplierSharedState";
+import { SUPPLIER_TABS, type SupplierTrustHeaderPayload } from "./supplierSharedState";
 import { SUPPLIER_TAB_ROLE_CUE } from "../utils/supplierTabInformationHierarchy";
 import { useSupplierCanonicalState } from "./useSupplierCanonicalState";
 import "./SupplierConsolidatedPage.css";

@@ -137,7 +137,7 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getAllByText(/Skorkarta dobavljač/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/meri Skorkarta/i)).toBeInTheDocument();
     expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
-    expect(await screen.findByText(/Koncentracija prihoda/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Udeo dobavljača u skorkarti/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Razmak pune cene i nivelacija/i).length).toBeGreaterThan(0);
     expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);

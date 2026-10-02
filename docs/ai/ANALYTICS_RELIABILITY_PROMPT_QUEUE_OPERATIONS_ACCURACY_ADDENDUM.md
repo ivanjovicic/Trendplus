@@ -2985,7 +2985,8 @@ Do not change child API calls, recommendation decisions, scorecard eligibility, 
 
 ## RQ500 - Supplier information hierarchy: promote unique Scorecard/Assortment evidence and demote duplicate overview KPIs
 
-Status: WAITING  
+Status: DONE  
+Delivered: 2026-10-02 on `main` (see run log `.ai/runs/2026-10-02-RQ500-evidence.md`)  
 Ready after: `RQ498` and `RQ499` are DONE, and `RQ474`/`RQ475`/`RQ476` are stable  
 Priority: P2  
 Type: frontend/product-analytics/tests  

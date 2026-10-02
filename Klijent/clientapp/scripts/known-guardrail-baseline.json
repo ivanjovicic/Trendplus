@@ -11,13 +11,13 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1310,
+      "line": 1316,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1311,
+      "line": 1317,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -119,19 +119,19 @@
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 340,
+      "line": 341,
       "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 525,
+      "line": 526,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 516,
+      "line": 517,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
