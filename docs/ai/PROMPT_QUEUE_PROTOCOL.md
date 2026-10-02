@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-09-24
+Updated: 2026-10-02
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -38,6 +38,31 @@ Future planning programs:
 
 `Current READY prompt: none` is a routing state, not a reason to stop. For a user instruction such as `next`, `continue`, `claim`, or `claim and execute`, the agent must run this recovery sequence before reporting that no work is available.
 
+**Default bias: find safe progress, not a reason to refuse.** A blocker written in an old prompt is a claim to verify, not an eternal fact. The agent must distinguish:
+- a true start gate from evidence needed only for final/deployed acceptance;
+- external/provider/business authority from repository-local work that can proceed independently;
+- a dependency that another task owns from evidence/artifacts this same prompt is supposed to create;
+- a real owner collision from stale lock/branch/status metadata;
+- an unsafe broad scope from a safe same-owner bounded slice that preserves the product contract.
+
+A prerequisite is **circular** when it requires an artifact that the prompt itself owns creating (for example, requiring a performance baseline before the performance prompt whose first step is to produce that baseline). Repair that routing defect instead of treating it as a blocker.
+
+### Mandatory blocker decomposition
+
+Before leaving any candidate `WAITING`, `BLOCKED` or `PARTIAL` during idle recovery, classify every named blocker into one of these buckets:
+
+| Blocker class | What to do |
+|---|---|
+| already satisfied / stale metadata | repair status/dependency text from current code, commits and synchronized evidence |
+| same-prompt artifact (circular prerequisite) | move artifact creation into the prompt's executable steps; do not require it before promotion |
+| repository-local proof | run or define the bounded proof (focused test, disposable DB measurement, static/runtime fixture, contract reconciliation) and promote when the start gate is then satisfied |
+| external/provider/deployed evidence | keep it as residual/final acceptance unless the implementation is unsafe without it; do not block independent repo-local work merely because deployed verification is still missing |
+| product/business/security/tenant decision | stop that decision-dependent slice; do not invent authority; search for another collision-safe prompt/slice |
+| active owner/path collision | respect the owner; try another independent candidate/program |
+| genuine missing owner/work item | de-duplicate first, then add the smallest prompt in the existing owner queue; promote immediately only if dependency-complete |
+
+If a prompt mixes executable repo-local work with external final proof, the agent may **repair/narrow the prompt before claim** so the repo-local acceptance is explicit and the external proof remains a named residual/follow-up. This is permitted only when the owner, business semantics and safety boundaries do not change. Do not silently lower acceptance or mark deployed behavior verified.
+
 ### Recovery order
 
 1. **Refresh routing truth.** Read current `main`, `MASTER_ROADMAP.md`, the owning queue header/addenda and all current `READY` / `IN_PROGRESS` rows. Do not trust an older audit's “next” sentence.
@@ -47,18 +72,22 @@ Future planning programs:
    - Do not steal a live claim from another owner.
    - If an `IN_PROGRESS` row is only stale metadata and current `main` plus its run log already prove delivery, reconcile it to the truthful terminal status before selecting new work.
    - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting lock/branch/PR/owner. Record the takeover evidence.
-3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** Inspect `PARTIAL`, `BLOCKED` and `WAITING` candidates in current program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence.
+3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** Inspect `PARTIAL`, `BLOCKED` and `WAITING` candidates in current program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence, then apply the Mandatory blocker decomposition above.
    - If a dependency is already satisfied, repair the stale dependency/status text.
-   - If a blocker was repository-local and can be removed by bounded evidence work (for example a focused test, status/evidence reconciliation, missing contract note or same-owner queue repair), do that work in the same run.
-   - If a `WAITING` prompt is now dependency-complete, collision-safe and authorized by its existing scope, promote `WAITING -> READY` and claim it in the same run. This is an evidence-based promotion, not arbitrary auto-promotion.
+   - Detect circular prerequisites: if the missing baseline/report/fixture/measurement is an output this prompt itself owns, make it step 1 of the prompt rather than a precondition.
+   - Separate external final proof from safe repo-local work. Provider logs, production browser proof, exact-deployed SHA checks or remote CI may remain residual acceptance without blocking local implementation when the implementation can be proved safely on deterministic repository-owned fixtures.
+   - If a blocker was repository-local and can be removed by bounded evidence work (for example a focused test, disposable PostgreSQL/Testcontainers measurement, status/evidence reconciliation, missing contract note or same-owner queue repair), do that work in the same run.
+   - If the prompt is too broad but one same-owner slice is independently safe, rewrite the prompt before claim to make that slice explicit, preserve the unchanged business contract, and leave the external/owner-gated remainder as residual or follow-up.
+   - If a `WAITING` prompt is now dependency-complete, collision-safe and authorized by its repaired/current scope, promote `WAITING -> READY` and claim it in the same run. This is an evidence-based promotion, not arbitrary auto-promotion.
 4. **Read the latest relevant agent evidence.** For the candidate owner/family, inspect the newest applicable `.ai/runs/*-evidence.md` files and their `What was missed`, `Risks` and `Next` sections.
    - If a concrete unfinished same-owner acceptance item already has a prompt, use that prompt.
    - If a concrete repo-local follow-up is not queued, first prove it is not a duplicate, then add the smallest prompt to the existing owning queue.
    - A newly added prompt may be promoted immediately only when its dependencies are already satisfied and collision/gate checks are clear.
 5. **Audit remaining queue truth.** Check non-DONE prompts for stale dependencies, delivered-but-not-closed work, obsolete duplicates, contradictory ownership, missing evidence links and prompts left `WAITING` only because of an old one-READY convention. Repair same-owner governance defects before declaring the queue empty.
 6. **Try the next eligible program.** If the current program is genuinely exhausted or externally blocked, continue through the cross-program priority in `MASTER_ROADMAP.md`. Do not resurrect historical ledgers or lower-priority runtime work that bypasses a higher-priority gate.
-7. **Use productive unblock work when runtime execution is impossible.** A queue-execution request authorizes bounded repository-local analysis/tests/docs that can remove a blocker or produce a well-scoped next prompt. Do not manufacture cosmetic busywork merely to avoid an empty queue.
-8. **Stop only after the router is truly exhausted.** “No prompt” by itself is not an acceptable final result. The agent may report **no safe claimable task** only after the recovery sequence proves that every remaining candidate requires unresolved external/business/security/tenant/production authority, unavailable secrets/provider access, or a genuine conflicting active owner. Report the exact candidates and blockers.
+7. **Use productive unblock work when runtime execution is impossible.** A queue-execution request authorizes bounded repository-local analysis/tests/docs that can remove a blocker or produce a well-scoped next prompt. Prefer work that changes readiness truth: a deterministic reproducer, fixture, baseline, contract proof, stale-gate repair, collision classification or missing owner prompt. Do not manufacture cosmetic busywork merely to avoid an empty queue.
+8. **Try another safe lane before refusing.** If the highest-priority candidate still needs real external/owner authority, search the same program for a disjoint dependency-complete lane, then the next eligible program. A blocked P0 does not automatically forbid unrelated repository-local work unless the master roadmap says the gate is globally exclusive.
+9. **Stop only after the router is truly exhausted.** “No prompt” by itself is not an acceptable final result. The agent may report **no safe claimable task** only after the recovery sequence proves that every remaining candidate requires unresolved external/business/security/tenant/production authority, unavailable secrets/provider access, or a genuine conflicting active owner. The final report must include the candidates checked, blocker class for each, why no repo-local slice is safe, and what exact event would unblock the next action.
 
 ### Promotion preference during idle recovery
 
@@ -71,6 +100,16 @@ When several `WAITING` prompts become runnable, prefer:
 5. presentation/polish only after correctness work of the same owner is clear.
 
 Do not promote two overlapping prompts merely to keep multiple agents busy. Independent prompts may both be READY only when the normal parallel-safety rules are satisfied.
+
+
+### Anti-overblocking examples
+
+- **Performance baseline:** if a performance prompt says "Ready after baseline exists" but its scope says to measure before/after, that baseline is a same-prompt artifact. Move it into step 1 and promote if the other dependencies are satisfied. Do not invent a speedup target before measuring.
+- **Provider logs vs repo-local fix:** if provider logs are needed to name the exact production root cause, but current code already exposes a safely testable error contract/query-shape/cache defect, execute the repo-local prompt and leave provider/deployed root-cause proof under the STAB/operations owner.
+- **Pending CI:** queued/in-progress CI is not a start blocker unless the prompt names that exact remote check as a gate. Classify already-red relevant CI, but do not refuse unrelated local work merely because CI has not finished.
+- **Owner decision:** when a threshold/policy decision is genuinely owner-gated, do not invent it. Look for explainability, characterization, fixture, parity or unrelated-path work that does not choose the policy.
+- **PARTIAL prompt:** do not resume a PARTIAL prompt blindly. Identify what acceptance remains; if the remainder is external but a separate same-owner repo-local follow-up is executable, repair/split routing and promote the executable owner rather than declaring the whole queue blocked.
+- **RQ487 precedent (2026-10-02):** provider logs remained a STAB residual while the repository-local performance baseline/query-bounds work was promoted. The baseline was moved from a circular `Ready after` clause into the prompt's first step.
 
 ## Status model
 
@@ -193,15 +232,17 @@ Canonical owner for the full policy: `AGENTS.md` section 7 and `docs/ai/AGENT_RU
 
 ## Collision rules
 
-Do not start when:
+Do not start **implementation** when:
 
 - another active owner holds the same task/feature family;
 - the prompt is not READY;
 - the task overlaps a higher-priority exclusive path;
-- required dependency is not DONE/accepted;
+- a **true start dependency** is not DONE/accepted after blocker decomposition;
 - runtime work is being inferred from a planning-only READY;
 - the task would duplicate another queue's owner family;
-- production/deploy/auth/tenant decisions are required but absent.
+- production/deploy/auth/tenant decisions are required to make the implementation safe and are absent.
+
+These rules do not forbid the read-only/metadata recovery needed to determine whether a blocker is stale, circular, external-only or owner-gated. Repair routing truth first; then promote before implementation.
 
 ## Reliability rules
 
