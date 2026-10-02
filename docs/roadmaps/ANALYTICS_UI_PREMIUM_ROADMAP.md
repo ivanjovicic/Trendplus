@@ -44,7 +44,7 @@ Current queue truth on 2026-10-02:
 - `P-UI-22` is DONE: remaining decision-page empty/error chrome.
 - `P-UI-24`..`P-UI-29` are DONE; measured baseline, responsive foundation, Inventory filter and Color Sales table pilots are delivered.
 - `P-UI-32` is DONE on `main` (`3c15311541dca7dad39824ca207cdb3e63222e3b`): Product Decision Center is responsive with measured progressive rendering that keeps its complete result set available.
-- `P-UI-34` is IN_PROGRESS for Dashboard and Daily Sales presentation-only responsiveness after its dependencies and RQ owner collisions were checked.
+- `P-UI-34` is DONE on `main` at `c2874c9a6ce70a7a1fc38ec6477021c721852847`: Dashboard and Daily Sales have 0/5 root-overflow observations in both themes across 320/375/768/1024/1280, with unchanged analytics values and trust semantics.
 - `P-UI-30`, `P-UI-31`, `P-UI-33`, and `P-UI-35`..`P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
 - `P-UI-23` remains a separate WAITING lint-hygiene task.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-34 (IN_PROGRESS; Analytics Dashboard and Daily Sales responsive presentation)
+Current READY prompt: none (P-UI-34 DONE; re-enter canonical idle recovery)
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -39,7 +39,7 @@ Use with:
 | P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | WAITING | central-actions-responsive | Central Actions responsive migration |
-| P-UI-34 | IN_PROGRESS | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
+| P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | WAITING | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
@@ -2022,7 +2022,7 @@ Central Actions combines compact filters, a wide actions table and page-specific
 
 ## P-UI-34 - Make Analytics Dashboard and Daily Sales responsive using measured chart/control rules
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-25 and P-UI-28
 Priority: P2
 Type: frontend/pages/tests
@@ -2078,6 +2078,26 @@ Dashboard and Daily Sales use compact controls and desktop-oriented grids. Dashb
 
 - P-UI-25 and P-UI-28 DONE.
 - Current analytics correctness owner collision check required.
+
+### Completion note
+
+- Date: 2026-10-02
+- Status: DONE
+- Completion: Dashboard and Daily Sales controls, KPI grids, charts and stock summary now size to their available content width. Metric, period, anomaly, store, export, data-quality and trust semantics are unchanged.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`, `Klijent/clientapp/src/components/analytics/AnalyticsDashboardCharts.tsx`, `Klijent/clientapp/src/pages/AnalyticsDashboard.css`, `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/DailySalesStatsPage.css`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`, `.ai/runs/2026-10-02-P-UI-34-evidence.md`.
+- Checks run: 8 focused suites, 77/77 tests; analytics guardrails and typecheck; production build; four responsive fixture matrices; queue, instruction and planning validators; `git diff --check`.
+- Checks not run: physical iOS/iPad Safari; no device/browser access was available. No Actions run was returned for the implementation SHA.
+- Run log: `.ai/runs/2026-10-02-P-UI-34-evidence.md`
+- Evidence state: synchronized after the closure note and run log are delivered to `main`.
+- Delivery mode: direct-main
+- Main commit SHA: `c2874c9a6ce70a7a1fc38ec6477021c721852847`
+- Main verification: implementation SHA is an ancestor of freshly fetched `origin/main`.
+- Missed: none known.
+- Follow-up: re-enter canonical idle recovery; P-UI-26 and P-UI-27 remain WAITING behind their documented owner/dependency gates.
+- Residual risk: real iOS/iPad Safari behavior was not verified; Vite still reports the existing Recharts chunk above 500 kB.
+- Prompt defect / scope repair: idle recovery reconciled the stale RQ468 summary `READY -> DONE` from synchronized completion evidence. Responsive fixtures now use Dashboard/Daily Sales DTO field names and the Dashboard fixture explicitly opens its existing detailed-analysis disclosure; product data semantics and user interaction remain unchanged.
+
+Completion 2026-10-02: Implemented in `c2874c9a6ce70a7a1fc38ec6477021c721852847`; fresh `origin/main` contains the SHA. Before: Dashboard overflowed by 117px at 1280px; Daily Sales overflowed by 8px at 320px and 87px at 1024px. After: both routes recorded 0/5 root-overflow observations in light and dark themes at 320/375/768/1024/1280, with 0 browser page errors. The runner mounted 7 Dashboard and 4 Daily Sales chart containers and recorded chart heights from 280–340px and 280–358px respectively. Focused page tests passed 77/77. Run log: `.ai/runs/2026-10-02-P-UI-34-evidence.md`; Evidence state: synchronized.
 
 ---
 
