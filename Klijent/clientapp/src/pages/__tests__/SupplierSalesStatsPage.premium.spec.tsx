@@ -220,6 +220,26 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.getByText("Prioritetna lista dobavljača")).toBeInTheDocument();
   });
 
+  it("publishes sortable-column direction for screen readers", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const table = await screen.findByTestId("supplier-sales-stats-data-table");
+    const revenueHeader = within(table).getByRole("columnheader", { name: /Promet/ });
+    const recommendationHeader = within(table).getByRole("columnheader", { name: /Preporuka/ });
+
+    expect(recommendationHeader).toHaveAttribute("aria-sort", "descending");
+    expect(revenueHeader).toHaveAttribute("aria-sort", "none");
+
+    fireEvent.click(within(revenueHeader).getByRole("button", { name: /Promet/ }));
+    expect(revenueHeader).toHaveAttribute("aria-sort", "descending");
+    fireEvent.click(within(revenueHeader).getByRole("button", { name: /Promet/ }));
+    expect(revenueHeader).toHaveAttribute("aria-sort", "ascending");
+  });
+
   it("exports the visible supplier population count", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
