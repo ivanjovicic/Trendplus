@@ -4,9 +4,9 @@ Date: 2026-10-02
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending fresh `origin/main` verification after push.
-Evidence state: pending
+Main commit SHA: `17875d5a83eea9d49ce5faf52735b393e2fa34c2`
+Main verification: pass - fresh `git fetch origin main` resolved `origin/main` to `17875d5a83eea9d49ce5faf52735b393e2fa34c2`; `git merge-base --is-ancestor` confirms the fix commit is contained in current `origin/main`.
+Evidence state: synchronized
 
 ## What was done
 
@@ -24,6 +24,7 @@ Evidence state: pending
 
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~AnalyticsCachePrewarmHostedServiceTests --logger "console;verbosity=minimal"` -> pass, 4 passed / 0 failed / 0 skipped.
 - `git diff --check` -> pass.
+- `gh run list --commit 17875d5a --limit 5 --json databaseId,name,status,conclusion,headSha,createdAt,url` -> no matching current-main Actions runs were discoverable at inspection time.
 
 ## Validation not run
 
