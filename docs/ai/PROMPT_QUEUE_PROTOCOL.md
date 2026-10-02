@@ -283,17 +283,19 @@ Caller-provided tenant/store/source/path identity is not authorization by itself
 
 ## Stop conditions
 
-Mark BLOCKED/PARTIAL rather than guessing when:
+After Mandatory blocker decomposition, mark BLOCKED/PARTIAL rather than guessing when:
 
-- business contract is unclear;
-- source of truth is unclear;
+- business contract is unclear and no same-owner characterization/explainability slice avoids choosing that contract;
+- source of truth is unclear and cannot be resolved from current code/tests/evidence;
 - tenant/authorization source is unclear;
-- required evidence cannot be produced;
-- fix needs unrelated files/programs;
-- two queues define inconsistent ownership;
-- a real dataset/provider decision is required but unavailable;
+- evidence required to make the **current executable slice** safe cannot be produced, and no narrower truthful acceptance exists;
+- fix needs unrelated files/programs and cannot be split into an owned follow-up;
+- two queues define inconsistent ownership that current evidence cannot reconcile;
+- a real dataset/provider decision is required **before implementation can be safe**, not merely for later deployed verification;
 - implementation would hide unknown as zero/green/fresh/measured;
 - performance/security/AI work would weaken correctness or release gates.
+
+Do not use this section to re-create broad blockers already decomposed into external final proof plus independently safe repository-local work.
 
 ## Completion note
 
