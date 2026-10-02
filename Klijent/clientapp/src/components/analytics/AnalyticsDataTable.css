@@ -81,6 +81,21 @@
   border-bottom: 0;
 }
 
+.analytics-data-table__scroll-hint {
+  display: none;
+}
+
+.analytics-data-table--responsive-pilot .analytics-data-table__scroll {
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--info) var(--surface-darker);
+  scrollbar-width: thin;
+}
+
+.analytics-data-table--responsive-pilot .analytics-data-table__scroll:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
+}
+
 .analytics-data-table__row--interactive {
   cursor: pointer;
   transition: background-color 160ms ease, transform 160ms ease;
@@ -110,5 +125,37 @@
 @media (max-width: 900px) {
   .analytics-data-table__meta {
     justify-content: flex-start;
+  }
+
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll {
+    cursor: grab;
+    touch-action: pan-x pan-y;
+  }
+
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll:active {
+    cursor: grabbing;
+  }
+
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll > table thead th:first-child {
+    left: 0;
+    position: sticky;
+    z-index: 4;
+    background: var(--surface-darker);
+  }
+
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll > table tbody td:first-child {
+    left: 0;
+    position: sticky;
+    z-index: 2;
+    background: var(--surface-elevated);
+    box-shadow: 5px 0 8px -7px var(--text-primary);
+  }
+
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll-hint {
+    display: block;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
   }
 }

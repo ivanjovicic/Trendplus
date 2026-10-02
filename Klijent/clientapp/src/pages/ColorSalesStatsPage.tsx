@@ -1218,6 +1218,7 @@ export default function ColorSalesStatsPage() {
               </div>
 
               <AnalyticsDataTable
+                responsivePilot
                 rowCount={sortedRows.length}
                 toolbar={(
                   <AnalyticsTableToolbar

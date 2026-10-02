@@ -11,6 +11,7 @@ const ROUTES = [
   { id: "analytics", path: "/analytics" },
   { id: "supplier", path: "/analytics/supplier" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
+  { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
   { id: "products", path: "/analytics/products" },
   { id: "actions", path: "/analytics/actions" },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
@@ -125,6 +126,81 @@ async function fixtureResponse(request) {
     return { status: 200, body: JSON.stringify({ status: "fixture" }) };
   }
 
+  if (url.pathname === "/api/analytics/color-sales-stats") {
+    const colors = [
+      {
+        boja: "Crna", preNivelacijePromet: 90000, preNivelacijeKolicina: 9,
+        posleNivelacijePromet: 30000, posleNivelacijeKolicina: 3, ukupanPromet: 120000,
+        ukupnaKolicina: 12, previousPeriodRevenue: 80000, previousPeriodUnits: 8,
+        brojArtikalaSaNivelacijom: 5, brojArtikalaUkupno: 8, revenueWithCost: 100000,
+        estimatedCostRevenue: 20000, marginContribution: 46000, marginDataCoveragePct: 83.3,
+        fallbackCostCoveragePct: 16.7, marginPct: 38.3, revenueWithNivelacijaSplit: 100000,
+        comparablePreRevenue: 90000, comparablePostRevenue: 30000, comparablePreQuantity: 9,
+        comparablePostQuantity: 3, popRevenueChangePct: 50, popUnitsChangePct: 20,
+        prePostNivelacijaRevenueImpactPct: -12.5, prePostNivelacijaUnitsImpactPct: -10,
+        prePostNivelacijaRevenueCoveragePct: 75, prePostSignalNote: "Fixture: uporediv signal.",
+        prePostComparableArticleCount: 5, sharePct: 60, recommendation: {
+          status: "increase_focus", label: "Povećaj fokus", summary: "Sintetički fixture red.",
+          confidencePct: 88, reliabilityPct: 82, dataQualityStatus: "good",
+          recommendationAllowed: true, reasonCodes: ["fixture"],
+        },
+      },
+      {
+        boja: "Bež", preNivelacijePromet: 30000, preNivelacijeKolicina: 3,
+        posleNivelacijePromet: 15000, posleNivelacijeKolicina: 2, ukupanPromet: 45000,
+        ukupnaKolicina: 5, previousPeriodRevenue: 56000, previousPeriodUnits: 6,
+        brojArtikalaSaNivelacijom: 2, brojArtikalaUkupno: 4, revenueWithCost: 40000,
+        estimatedCostRevenue: 5000, marginContribution: 12000, marginDataCoveragePct: 80,
+        fallbackCostCoveragePct: 10, marginPct: 30, revenueWithNivelacijaSplit: 40000,
+        comparablePreRevenue: 30000, comparablePostRevenue: 15000, comparablePreQuantity: 3,
+        comparablePostQuantity: 2, popRevenueChangePct: -20, popUnitsChangePct: -10,
+        prePostNivelacijaRevenueImpactPct: -8, prePostNivelacijaUnitsImpactPct: -5,
+        prePostNivelacijaRevenueCoveragePct: 60, prePostSignalNote: "Fixture: manji uzorak.",
+        prePostComparableArticleCount: 2, sharePct: 22.5, recommendation: {
+          status: "review", label: "Pregledaj", summary: "Sintetički fixture red.",
+          confidencePct: 61, reliabilityPct: 70, dataQualityStatus: "warning",
+          recommendationAllowed: false, reasonCodes: ["fixture"],
+        },
+      },
+    ];
+    const rowValues = colors.map((color) => color.ukupanPromet);
+    return {
+      status: 200,
+      body: JSON.stringify({
+        generatedAt: "2026-10-02T00:00:00Z",
+        meta: { success: true, requestedPeriodFromUtc: "2026-09-03T00:00:00Z", requestedPeriodToUtc: "2026-10-02T23:59:59Z", effectivePeriodFromUtc: "2026-09-03T00:00:00Z", effectivePeriodToUtc: "2026-10-02T23:59:59Z", dataQualityStatus: "warning" },
+        fromDate: "2026-09-03T00:00:00Z", toDate: "2026-10-02T23:59:59Z",
+        dataWindowFrom: "2024-01-01T00:00:00Z", dataWindowTo: "2026-10-02T23:59:59Z",
+        sezonaId: null, storeId: null, dataScope: "all", colors,
+        lineage: {
+          storeId: null, dataScope: "all", sourceFamily: "fixture", sourceLabel: "Responsive test fixture — sintetički podaci",
+          eventCount: 2, eventArticleCount: 2, salesArticleCount: 12, salesArticlesWithMatchingNivelacija: 7,
+          storePolicy: "fixture", originPolicy: "fixture",
+        },
+        totals: {
+          ukupanPromet: rowValues.reduce((sum, value) => sum + value, 0), ukupanMarzniDoprinos: 58000,
+          prePromet: 120000, poslePromet: 45000, ukupnaKolicina: 17, preKolicina: 12, posleKolicina: 5,
+          previousPeriodRevenue: 136000, previousPeriodUnits: 14, popRevenueChangePct: 21,
+          popUnitsChangePct: 18, prePostNivelacijaRevenueImpactPct: -8, prePostNivelacijaUnitsImpactPct: -6,
+          comparablePreRevenue: 120000, comparablePostRevenue: 45000, comparablePreQuantity: 12,
+          comparablePostQuantity: 5, comparableArticleCount: 10, comparableRevenueCoveragePct: 75,
+          prePostSignalNote: "Sintetički layout fixture.", observedPreRevenue: 120000, observedPostRevenue: 45000,
+          observedPreQuantity: 12, observedPostQuantity: 5, weightedKnownMarginPct: 35,
+          weightedKnownMarginRevenue: 100000,
+          recommendationSummary: { increaseFocus: 1, maintain: 0, review: 1, doNotTrust: 0, insufficientData: 0 },
+        },
+        dataQuality: {
+          missingCostRevenue: 5000, missingCostRevenueSharePct: 3, estimatedCostRevenue: 25000,
+          estimatedCostRevenueSharePct: 15, unknownColorRevenue: 0, unknownColorRevenueSharePct: 0,
+          revenueWithNivelacijaSplit: 140000, revenueWithNivelacijaSplitSharePct: 85,
+          observedRevenueWithNivelacijaSplit: 140000, observedRevenueWithNivelacijaSplitSharePct: 85,
+          weightedKnownMarginPct: 35, weightedKnownMarginRevenue: 100000,
+        },
+        sezone: [],
+      }),
+    };
+  }
+
   return {
     status: 503,
     body: JSON.stringify({
@@ -172,7 +248,7 @@ async function collectGeometry(page, viewportWidth) {
       });
 
     const regions = [...document.querySelectorAll(
-      "[data-testid='analytics-control-bar'], [class*='control-bar'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
+      "[data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
     )]
       .filter(isVisible)
       .slice(0, 40)
@@ -181,6 +257,8 @@ async function collectGeometry(page, viewportWidth) {
         testId: element.getAttribute("data-testid"),
         className: typeof element.className === "string" ? element.className.slice(0, 120) : null,
         rect: rectValue(element.getBoundingClientRect()),
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
       }));
 
     return {
@@ -217,7 +295,7 @@ function markdownReport(report) {
 - SHA/branch: ${report.gitSha ?? "not captured"} / ${report.branch ?? "not captured"}
 - Browser: Chromium via Puppeteer
 - Base URL: ${report.baseUrl}
-- Mode: ${report.mode} (fixture responses intentionally fail closed; no customer metrics are loaded)
+- Mode: ${report.mode} (API responses fail closed except deterministic synthetic Color Sales layout data; no customer metrics are loaded)
 - Viewports: ${VIEWPORTS.join(", ")}
 - Themes: ${THEMES.join(", ")}
 - Root overflow observations: ${overflowCount} of ${report.results.length}
@@ -319,6 +397,9 @@ async function run(options) {
           const geometry = await collectGeometry(page, viewportWidth);
           const slug = `${safeFilePart(route.id)}__${theme}__${viewportWidth}`;
           const screenshotPath = path.join(options.outputDir, `${slug}.png`);
+          if (route.captureSelector) {
+            await page.$eval(route.captureSelector, (element) => element.scrollIntoView({ block: "center" }));
+          }
           await page.screenshot({ path: screenshotPath, fullPage: !options.viewportOnly, timeout: options.timeoutMs });
           results.push({
             routeId: route.id,

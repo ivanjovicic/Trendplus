@@ -20,10 +20,18 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../../components/analytics/AnalyticsDataTable", () => ({
-  default: ({ toolbar, children, testId }: { toolbar?: ReactNode; children?: ReactNode; testId?: string }) => (
-    <section data-testid={testId ?? "analytics-data-table"}>
+  default: ({ toolbar, children, testId, responsivePilot }: { toolbar?: ReactNode; children?: ReactNode; testId?: string; responsivePilot?: boolean }) => (
+    <section
+      data-testid={testId ?? "analytics-data-table"}
+      className={responsivePilot ? "analytics-data-table--responsive-pilot" : undefined}
+    >
       {toolbar}
-      {children}
+      {responsivePilot ? (
+        <>
+          <p role="note">Tabela se pomera vodoravno — prevucite ili skrolujte za ostale kolone.</p>
+          <div role="region" aria-label="Tabela sa vodoravnim pomeranjem">{children}</div>
+        </>
+      ) : children}
     </section>
   ),
 }));
@@ -509,6 +517,9 @@ describe("ColorSalesStatsPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("analytics-toolbar")).toBeInTheDocument();
     }, { timeout: 5000 });
+
+    expect(screen.getByRole("region", { name: "Tabela sa vodoravnim pomeranjem" })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("ostale kolone");
 
     const table = getDecisionTable();
     const revenueButton = within(table).getAllByRole("button").find((button) => button.textContent?.startsWith("Promet"));

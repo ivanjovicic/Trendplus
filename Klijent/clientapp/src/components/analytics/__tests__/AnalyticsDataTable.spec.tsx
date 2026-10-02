@@ -38,4 +38,28 @@ describe("AnalyticsDataTable", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByText("Red 2")).toBeInTheDocument();
   });
+
+  it("opts a table into keyboard-accessible contained horizontal scrolling", () => {
+    render(
+      <AnalyticsDataTable responsivePilot rowCount={1}>
+        <table>
+          <thead><tr><th>Boja</th><th>Promet</th></tr></thead>
+          <tbody><tr><td>Crna</td><td>120.000 RSD</td></tr></tbody>
+        </table>
+      </AnalyticsDataTable>,
+    );
+
+    expect(screen.getByTestId("analytics-data-table")).toHaveClass(
+      "analytics-data-table--responsive-pilot",
+    );
+    expect(screen.getByRole("region", { name: "Tabela sa vodoravnim pomeranjem" })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "prevucite ili skrolujte za ostale kolone",
+    );
+    expect(screen.getByRole("columnheader", { name: "Boja" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Promet" })).toBeInTheDocument();
+  });
 });
