@@ -3,6 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none (RQ475 is DONE; run fresh selector/recovery for the next cross-program pointer)
+Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
 Post-deploy reclassification 2026-10-01 (RQ535): read-only GETs on exact deployed SHA `3a6a6886` show the Supplier overview 503 persists and is a catch-all `NpgsqlException` mapping. RQ474 is now DONE on `a5939460`; the live root cause stays a provider-log evidence gap. RQ475 was WAITING behind RQ536 (shared Decision Hub surface) and was promoted to IN_PROGRESS after RQ536 reached DONE on 2026-10-01; the live-evidence gate remains satisfied and the store-filtered scorecard HTTP 500 is in scope. RQ487 stays WAITING on the 503 root cause.
 Owner claim 2026-10-01: fresh `origin/main` review found no RQ474 lock, branch or open-PR collision. RQ474 moved READY -> IN_PROGRESS for the Supplier overview SQL-state/error-code contract and frontend error/empty/retry presentation; local lock `.ai/task-locks/RQ474-chatgpt.lock.md`. RQ536 and Q83 were independent runnable lanes at that time.
 Recovery routing 2026-09-30: direct current-main review repaired the repository-local `DecisionBoardEndpoints.cs` -> `AnalyticsActionItemService.ListAsync` signature drift in `0aba65a74748f98115d263261ce4de6eb009ed61`. The previously recorded owner decisions for RQ505/RQ507 were present but their section-level gates were stale; the Operations Accuracy addendum now reflects those decisions. `RQ516` in that addendum is the sole READY prompt for exact-main backend re-certification; this canonical file keeps its own READY pointer at `none` because queue governance requires a pointer to name a prompt defined in the same queue of the API tests that were blocked by the compile defect. After RQ516 closes, prefer RQ505, then RQ507, then RQ508 after fresh collision checks. Q83 remains PARTIAL and RQ491 remains WAITING.
@@ -1960,26 +1961,26 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ460 | DONE | analytics-quality-gates-copy-spec-drift | Restore green Analytics Quality Gates after RQ325 localized copy |
 | RQ461 | DONE | supplier-decision-durable-report-render-contract | Align the Supplier report durable renderer with the backend report payload |
 | RQ462 | DONE | pilot-intake-durable-report-render | Render the durable Pilot intake report instead of the permanent empty state |
-| RQ463 | WAITING | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
-| RQ464 | WAITING | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
+| RQ463 | DONE | supplier-decision-requested-window-truth | Make the Supplier report requested window, labels and provenance truthful |
+| RQ464 | DONE | supplier-decision-report-metric-basis | Align Supplier report KPIs with the Supplier overview and use one scoring model |
 | RQ465 | DONE | supplier-decision-report-actions-negotiation | Fix Supplier report actions, negotiation pack and page-level defects |
 | RQ466 | DONE | pilot-intake-backend-scope-period-truth | Make the Pilot intake backend honour scope, requested period and refresh truth |
 | RQ467 | DONE | pilot-intake-readiness-score-semantics | Pilot intake readiness score semantics and business-date default period |
 | RQ468 | DONE | supplier-report-pilot-intake-serbian-copy | Complete Serbian copy on the Supplier report and Pilot intake screens |
-| RQ469 | WAITING | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
-| RQ470 | WAITING | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
-| RQ471 | WAITING | pdc-kpi-population-actionability | Align Product Decision KPI populations with row actionability |
+| RQ469 | DONE | pdc-action-status-batch-contract | Keep Product Decision action-status lookups within the backend batch contract |
+| RQ470 | DONE | pdc-search-population-contract | Restore Product Decision server-side search and make the analyzed population visible |
+| RQ471 | DONE | pdc-kpi-population-actionability | Align Product Decision KPI populations with row actionability |
 | RQ472 | WAITING | pdc-journal-evidence-gate | Replace the hard-coded Product Decision journal gate with proven evidence |
-| RQ473 | WAITING | analytics-margin-basis-parity | Align Product and Supplier margin cost/coverage semantics |
-| RQ474 | WAITING | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
-| RQ475 | WAITING | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
-| RQ476 | WAITING | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
+| RQ473 | DONE | analytics-margin-basis-parity | Align Product and Supplier margin cost/coverage semantics |
+| RQ474 | DONE | supplier-overview-error-empty-contract | Separate Supplier overview failure, empty and retry states |
+| RQ475 | DONE | supplier-analytics-schema-readiness | Make Supplier scorecard/assortment semantic-data readiness operationally actionable |
+| RQ476 | DONE | supplier-share-denominator-contract | Unify Supplier raw API, display, recommendation and export share semantics |
 | RQ483 | DONE | pdc-decision-rule-reachability | Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy |
 | RQ484 | DONE | operations-recommendation-gate-policy | Apply the approved Operations recommendation gate policy for nivelacija evidence and the unknown bucket |
-| RQ485 | WAITING | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
+| RQ485 | DONE | pdc-page-state-hygiene | Product Decision page hygiene: duplicate header block, URL state, deterministic sorting and local dates |
 | RQ486 | DONE | supplier-shell-overview-hygiene | Supplier page shell and overview hygiene: trust header, date validation, stores, layout, sorting and badges |
 | RQ487 | WAITING | pdc-supplier-query-performance | Bound Product Decision and Supplier overview query cost |
-| RQ488 | WAITING | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
+| RQ488 | DONE | pdc-decision-engine-copy-export | Serbian copy and export values on Product Decision and decision-engine summaries |
 | RQ176 | DONE | inventory-snapshot-freshness-provenance | Keep query time separate from inventory snapshot freshness and last successful refresh |
 | RQ177 | DONE | size-curve-empty-error-state | Preserve missing, empty and partial size-curve states in the panel |
 | RQ178 | DONE | inventory-snapshot-safe-actionability | Add backend-owned actionability and safe user copy to inventory signal snapshots |
@@ -4694,7 +4695,7 @@ Do not change recommendation thresholds, financial calculations, Product Decisio
 
 ## RQ128 - Prove Product Decision actionability parity on the exact deployed runtime
 
-Status: DONE
+Status: WAITING
 Ready after: `STAB16` is DONE with worker/freshness evidence and read-only reconciliation on the canonical Render runtime
 Priority: P0
 Type: backend-frontend-contract/live-evidence
