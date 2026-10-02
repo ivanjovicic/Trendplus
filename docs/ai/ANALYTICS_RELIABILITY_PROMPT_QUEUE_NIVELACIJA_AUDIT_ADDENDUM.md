@@ -108,12 +108,12 @@ None. NV-P2 adds the end-to-end oracle.
 - Completion: Restored highlight scenario uplift to 1.15–1.45× smoothed baseline based on original git-history semantics; documented scenario assumptions, bumped formula/cache versions, and verified the revenue-uplift KPI consumes the corrected positive delta.
 - Changed files: scoring service, Pre-Nivelacija model/endpoint metadata, analytics cache-key builder, focused scoring/KPI/cache tests, queue/roadmap routing and `.ai/runs/2026-10-02-RQ537-evidence.md`.
 - Checks run: focused API tests 36/36; prompt queue governance 671 tasks; `git diff --check`.
-- Checks not run: live PostgreSQL/API/browser proof and remote CI; this repository-local scenario arithmetic prompt did not name them as acceptance gates.
+- Checks not run: live PostgreSQL/API/browser proof; these were not assigned acceptance gates for the repository-local arithmetic change.
 - Run log: `.ai/runs/2026-10-02-RQ537-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `4759ad66bb7102252e6312fb2fda6539fa356fd3`
+- Main verification: fresh `git fetch origin main` confirmed exact `HEAD == origin/main == 4759ad66bb7102252e6312fb2fda6539fa356fd3`; `git merge-base --is-ancestor` passed.
 - Missed: live runtime/browser proof; no in-scope local acceptance remains.
 - Follow-up: fresh RQ selector/recovery.
 - Residual risk: heuristic scenarios remain uncalibrated and do not establish causal uplift.
