@@ -776,8 +776,10 @@ RQ522 DONE, RQ500 DONE and RQ524 evidence; RQ474/RQ487 make Overview usable.
 - Checks run: `SupplierBuyingValueEvidenceContractTests`, focused `SupplierSalesStatsPage.premium.spec.tsx`, `npm run check:analytics-guardrails`, `node scripts/check-prompt-queues.mjs` (after queue edit)
 - Checks not run: full backend/frontend suites; live RQ487 EXPLAIN/timing baseline.
 - Run log: `.ai/runs/2026-10-02-RQ530-evidence.md`
-- Evidence state: pending main SHA sync after delivery
+- Evidence state: synchronized
 - Delivery mode: direct-main
+- Main commit SHA: `d61297cd2b9af7d4180a66352821efeed8df25f6`
+- Main verification: `git fetch origin main` then `HEAD == origin/main == d61297cd2b9af7d4180a66352821efeed8df25f6`
 - Missed: supplier-aggregated cover/sell-through/returns/margin trend and PO/lead-time await authoritative endpoints and RQ487 performance acceptance.
 - Follow-up: promote RQ487 or a successor prompt for overview query bounds; extend buying panel when periodized supplier metrics are proven.
 - Residual risk: Inventory snapshot is current-state only and must not be read as period sales or as overriding Supplier recommendation semantics.
