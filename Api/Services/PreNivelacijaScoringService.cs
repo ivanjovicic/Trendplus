@@ -126,7 +126,7 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var highlightUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, highlightDemandMultiplier);
         var highlightRevenue = highlightUnits * sellingPrice;
         var highlightMargin = hasReliableCost
-            ? highlightUnits * Math.Max(0m, sellingPrice - purchasePrice)
+            ? highlightUnits * (sellingPrice - purchasePrice)
             : 0m;
 
         // Markdown scenario
@@ -136,7 +136,7 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
         var markdownUnits = CalculateScenarioUnits(smoothedUnits, stockUnits, markdownDemandBoost);
         var markdownRevenue = markdownUnits * markdownPrice;
         var markdownMargin = hasReliableCost
-            ? markdownUnits * Math.Max(0m, markdownPrice - purchasePrice)
+            ? markdownUnits * (markdownPrice - purchasePrice)
             : 0m;
 
         // Confidence level

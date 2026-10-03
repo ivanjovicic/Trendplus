@@ -43,8 +43,8 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         AssertGoldenFacts("all", allOracle);
         AssertEndpointMatchesOracle(all.RootElement, allOracle);
         AssertScoringAndScenarioOracle(all.RootElement, allOracle);
-        Assert.Equal(12, all.RootElement.GetProperty("summary").GetProperty("candidatesCount").GetInt32());
-        Assert.Equal(12, all.RootElement.GetProperty("totalCandidates").GetInt32());
+        Assert.Equal(8, all.RootElement.GetProperty("summary").GetProperty("candidatesCount").GetInt32());
+        Assert.Equal(8, all.RootElement.GetProperty("totalCandidates").GetInt32());
         Assert.Equal(2, all.RootElement.GetProperty("evidenceWindow").GetProperty("candidatesWithReturns").GetInt32());
         Assert.Equal("certified_retail_excludes_trimmed_case_insensitive_dug_korekcija",
             all.RootElement.GetProperty("evidenceWindow").GetProperty("receiptPopulationPolicy").GetString());
@@ -56,7 +56,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         var storeOracle = await ReadIndependentOracleAsync(connectionString, "all", storeId: 1);
         AssertGoldenFacts("store1", storeOracle);
         AssertEndpointMatchesOracle(oneStore.RootElement, storeOracle);
-        Assert.Equal(6, oneStore.RootElement.GetProperty("totalCandidates").GetInt32());
+        Assert.Equal(4, oneStore.RootElement.GetProperty("totalCandidates").GetInt32());
         Assert.All(oneStore.RootElement.GetProperty("candidates").EnumerateArray(),
             item => Assert.Equal(1, item.GetProperty("storeId").GetInt32()));
 
@@ -64,7 +64,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         var importedOracle = await ReadIndependentOracleAsync(connectionString, "imported", storeId: null);
         AssertGoldenFacts("imported", importedOracle);
         AssertEndpointMatchesOracle(imported.RootElement, importedOracle);
-        Assert.Equal(6, imported.RootElement.GetProperty("totalCandidates").GetInt32());
+        Assert.Equal(4, imported.RootElement.GetProperty("totalCandidates").GetInt32());
         Assert.All(imported.RootElement.GetProperty("candidates").EnumerateArray(),
             item => Assert.Equal(1, item.GetProperty("storeId").GetInt32()));
     }
@@ -96,8 +96,43 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
 
         using var recovered = await GetJsonAsync(client, "all");
         Assert.True(recovered.RootElement.GetProperty("meta").GetProperty("success").GetBoolean());
-        Assert.Equal(12, recovered.RootElement.GetProperty("totalCandidates").GetInt32());
+        Assert.Equal(8, recovered.RootElement.GetProperty("totalCandidates").GetInt32());
         Assert.True(cache.GetFootprintSnapshot().TrackedKeyCount > 0);
+    }
+
+    [Fact]
+    public async Task PreNivelacijaEndpoint_UnknownReceiptAndSalesHistoryIsExplicitlyBlocked()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        await ExecuteAsync(connectionString, """
+            INSERT INTO "Artikli"
+                ("Id", "PLU", "Naziv", "NabavnaCena", "NabavnaCenaDin", "PrvaProdajnaCena", "ProdajnaCena",
+                 "IDDobavljac", "IDTipObuce", "UpdatedAt", "Kolicina", "IDObjekat", "Kategorija", "DataOrigin")
+            VALUES
+                (107, 'RQ539-S1-UNKNOWN', 'RQ539 unknown receipt and sales', 50, 50, 100, 100,
+                 1, 1, CURRENT_TIMESTAMP - INTERVAL '200 days', 9, 1, 'Obuca', 'access');
+            SELECT setval(pg_get_serial_sequence('"Artikli"', 'Id'), 207, true);
+            """);
+
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache);
+        using var client = factory.CreateClient();
+
+        using var response = await GetJsonAsync(client, "all", storeId: 1);
+        var candidate = response.RootElement.GetProperty("candidates").EnumerateArray()
+            .Single(item => item.GetProperty("sku").GetString() == "RQ539-S1-UNKNOWN");
+        Assert.Equal(JsonValueKind.Null, candidate.GetProperty("firstReceiptDateUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, candidate.GetProperty("daysSinceLastSale").ValueKind);
+        Assert.Equal("unknown", candidate.GetProperty("receiptEvidenceStatus").GetString());
+        Assert.Equal("never_sold", candidate.GetProperty("salesHistoryStatus").GetString());
+        Assert.False(candidate.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.Contains("receipt_date_unknown", candidate.GetProperty("recommendation").GetProperty("reasonCodes")
+            .EnumerateArray().Select(code => code.GetString()));
     }
 
     private async Task<string> CreateSeededDatabaseAsync()
@@ -244,10 +279,14 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
     {
         var candidates = root.GetProperty("candidates").EnumerateArray().ToDictionary(
             item => item.GetProperty("artikalId").GetInt32());
-        Assert.Equal(oracle.Count, root.GetProperty("totalCandidates").GetInt32());
-        Assert.Equal(oracle.Count, candidates.Count);
+        var actionableOracle = oracle.Where(row => !row.Sku.EndsWith("-NEW", StringComparison.Ordinal)
+            && !row.Sku.EndsWith("-EXCLUDED", StringComparison.Ordinal)).ToArray();
+        var newStock = root.GetProperty("queues").GetProperty("newStock").EnumerateArray().ToArray();
+        Assert.Equal(oracle.Count - actionableOracle.Length, newStock.Length);
+        Assert.Equal(actionableOracle.Length, root.GetProperty("totalCandidates").GetInt32());
+        Assert.Equal(actionableOracle.Length, candidates.Count);
 
-        foreach (var expected in oracle)
+        foreach (var expected in actionableOracle)
         {
             var candidate = candidates[expected.ArticleId];
             Assert.Equal(expected.Sku, candidate.GetProperty("sku").GetString());
@@ -256,7 +295,15 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             Assert.Equal(expected.Units180, candidate.GetProperty("units180").GetInt32());
             Assert.Equal(expected.PositiveUnits180, candidate.GetProperty("positiveUnits180").GetInt32());
             Assert.Equal(expected.NegativeUnits180, candidate.GetProperty("negativeUnits180").GetInt32());
-            Assert.Equal(expected.DaysSinceLastSale, candidate.GetProperty("daysSinceLastSale").GetInt32());
+            if (expected.DaysSinceLastSale == 999)
+            {
+                Assert.Equal(JsonValueKind.Null, candidate.GetProperty("daysSinceLastSale").ValueKind);
+                Assert.Equal("never_sold", candidate.GetProperty("salesHistoryStatus").GetString());
+            }
+            else
+            {
+                Assert.Equal(expected.DaysSinceLastSale, candidate.GetProperty("daysSinceLastSale").GetInt32());
+            }
             Assert.Equal(expected.MarkdownEvents, candidate.GetProperty("markdownEvents").GetInt32());
             Assert.Equal(expected.AverageMarkdownPct, candidate.GetProperty("avgMarkdownPct").GetDecimal());
             var expectedSalesStatus = expected.SalesRowCount == 0 ? "no_sales_in_window" : "positive_net_sales";
@@ -266,22 +313,24 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
 
     private static void AssertScoringAndScenarioOracle(JsonElement root, IReadOnlyList<OracleRow> rows)
     {
-        var maxStock = rows.Max(row => row.StockUnits);
-        var maxVelocity = rows.Max(row => row.Units180 / 180m);
+        var actionableRows = rows.Where(row => !row.Sku.EndsWith("-NEW", StringComparison.Ordinal)
+            && !row.Sku.EndsWith("-EXCLUDED", StringComparison.Ordinal)).ToArray();
+        var maxStock = actionableRows.Max(row => row.StockUnits);
+        var maxVelocity = actionableRows.Max(row => row.Units180 / 180m);
         var candidates = root.GetProperty("candidates").EnumerateArray().ToDictionary(
             item => item.GetProperty("artikalId").GetInt32());
 
-        foreach (var row in rows)
+        foreach (var row in actionableRows)
         {
             var item = candidates[row.ArticleId];
             var velocity = Round2Or4(row.Units180 / 180m, 4);
             var grossMargin = row.SellingPrice <= 0m || row.PurchasePrice <= 0m
                 ? 0m
-                : Round2(Math.Clamp((row.SellingPrice - row.PurchasePrice) / row.SellingPrice * 100m, 0m, 100m));
+                : Round2((row.SellingPrice - row.PurchasePrice) / row.SellingPrice * 100m);
             var breakdown = item.GetProperty("scoreBreakdown");
             var stockPressure = Clamp(row.StockUnits * 100m / maxStock);
             var velocityRisk = 100m - Clamp(velocity * 100m / maxVelocity);
-            var recencyRisk = Clamp(row.DaysSinceLastSale * 100m / 180m);
+            var recencyRisk = Clamp(Math.Min(row.DaysSinceLastSale, 180) * 100m / 180m);
             var markdownOpportunity = Clamp(100m - (row.MarkdownEvents * 20m + row.AverageMarkdownPct * 0.5m));
             var hasCompleteEvidence = row.SalesRowCount > 0
                 && row.Units180 > 0
@@ -324,14 +373,26 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
     {
         var candidates = root.GetProperty("candidates").EnumerateArray().ToDictionary(
             item => item.GetProperty("sku").GetString()!);
-        var newStock = candidates["RQ548-S1-NEW"];
-        Assert.Equal(999, newStock.GetProperty("daysSinceLastSale").GetInt32());
-        Assert.Equal("insufficient_data", newStock.GetProperty("recommendation").GetProperty("status").GetString());
-        Assert.Equal("medium", newStock.GetProperty("priorityBand").GetString());
+        Assert.DoesNotContain(candidates.Keys, sku => sku.EndsWith("-NEW", StringComparison.Ordinal)
+            || sku.EndsWith("-EXCLUDED", StringComparison.Ordinal));
+        var newStock = root.GetProperty("queues").GetProperty("newStock").EnumerateArray()
+            .Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
+        Assert.Equal(3, newStock.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.Equal("new_stock", newStock.GetProperty("reasonCode").GetString());
+        var neverSold = candidates["RQ548-S1-NEVER"];
+        Assert.Equal(JsonValueKind.Null, neverSold.GetProperty("daysSinceLastSale").ValueKind);
+        Assert.Equal("never_sold", neverSold.GetProperty("salesHistoryStatus").GetString());
+        Assert.Equal("high", neverSold.GetProperty("priorityBand").GetString());
 
         var belowCost = candidates["RQ548-S1-BELOW"];
-        Assert.Equal(0m, belowCost.GetProperty("grossMarginPctEst").GetDecimal());
+        Assert.Equal(-25m, belowCost.GetProperty("grossMarginPctEst").GetDecimal());
+        Assert.True(belowCost.GetProperty("belowCost").GetBoolean());
         Assert.True(belowCost.GetProperty("hasCompleteEvidence").GetBoolean());
+        Assert.True(belowCost.GetProperty("scenarioHighlightNow").GetProperty("expectedMargin30d").GetDecimal() < 0m);
+        Assert.True(belowCost.GetProperty("scenarioMarkdownNow").GetProperty("expectedMargin30d").GetDecimal() < 0m);
+        Assert.True(belowCost.GetProperty("marginDeltaHighlightVsMarkdown").GetDecimal() > 0m);
+        Assert.True(root.GetProperty("summary").GetProperty("estimatedAvoidableMarkdownLossCoverageEligible").GetInt32() > 0);
+        Assert.True(root.GetProperty("summary").GetProperty("estimatedAvoidableMarkdownLoss").GetDecimal() > 0m);
     }
 
     private static void AssertSummaryAndQueuesAreBoundToTheCandidatePopulation(JsonElement root)

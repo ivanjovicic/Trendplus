@@ -53,10 +53,16 @@ export interface PreNivelacijaSkuCandidate {
   positiveUnits180: number;
   negativeUnits180: number;
   velocity180: number;
-  daysSinceLastSale: number;
+  daysSinceLastSale: number | null;
+  salesHistoryStatus?: "never_sold" | "no_sale_in_window" | "sold" | string;
+  firstReceiptDateUtc?: string | null;
+  daysSinceReceipt?: number | null;
+  receiptEvidenceStatus?: "received" | "first_sale_fallback" | "unknown" | string;
   markdownEvents: number;
   avgMarkdownPct: number;
-  grossMarginPctEst: number;
+  grossMarginPctEst: number | null;
+  grossMarginPctSigned?: number | null;
+  belowCost?: boolean | null;
   seasonRecencyBoost: number;
   preNivelacijaScore: number;
   priorityBand: "high" | "medium" | "low" | string;
@@ -143,7 +149,26 @@ export interface PreNivelacijaQueueItem {
   dueDateUtc: string;
 }
 
+export interface PreNivelacijaNewStockQueueItem {
+  artikalId: number;
+  sku: string;
+  storeId: number | null;
+  supplierId: number | null;
+  seasonId: number | null;
+  footwearTypeId: number | null;
+  storeName: string;
+  supplierName: string;
+  stockUnits: number;
+  firstReceiptDateUtc: string;
+  daysSinceReceipt: number;
+  daysSinceLastSale: number | null;
+  salesHistoryStatus: "never_sold" | "no_sale_in_window" | "sold" | string;
+  reasonCode: string;
+}
+
 export interface PreNivelacijaQueues {
+  newStock?: PreNivelacijaNewStockQueueItem[];
+  newStockTotal?: number | null;
   highlightNow: PreNivelacijaQueueItem[];
   highlightNowTotal?: number | null;
   monitor: PreNivelacijaQueueItem[];

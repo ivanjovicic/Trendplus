@@ -3,6 +3,7 @@ using Api.Models;
 using Api.Services;
 using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
+using Domain.Model;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
@@ -23,6 +24,8 @@ public static class PreNivelacijaPriorityEndpoints
         public DateTime? LastPositiveSaleDateUtc { get; init; }
     }
 
+    private sealed record SalesHistoryLite(DateTime FirstPositiveSaleDateUtc, DateTime LastPositiveSaleDateUtc);
+
     private sealed class SeasonLite
     {
         public string Naziv { get; init; } = "N/A";
@@ -33,7 +36,7 @@ public static class PreNivelacijaPriorityEndpoints
     private sealed class PreNivelacijaPriorityBaseCacheEntry
     {
         public DateTime GeneratedAtUtc { get; init; }
-        public string FormulaVersion { get; init; } = "pre_nivelacija_v9";
+        public string FormulaVersion { get; init; } = "pre_nivelacija_v10";
         public string FormulaDescription { get; init; } = string.Empty;
         public PreNivelacijaModelEvidenceDto ModelEvidence { get; init; } = new();
         public PreNivelacijaSummaryDto Summary { get; init; } = new();
@@ -44,6 +47,7 @@ public static class PreNivelacijaPriorityEndpoints
         /// </summary>
         public List<PreNivelacijaSkuCandidateDto> Candidates { get; init; } = [];
         public List<PreNivelacijaSkuCandidateDto> FacetUniverseCandidates { get; init; } = [];
+        public List<PreNivelacijaNewStockQueueItemDto> NewStockCandidates { get; init; } = [];
         public PreNivelacijaQueuesDto Queues { get; init; } = new();
         public List<PreNivelacijaAlertDto> Alerts { get; init; } = [];
         public PreNivelacijaEvidenceWindowDto EvidenceWindow { get; init; } = new();
@@ -60,6 +64,7 @@ public static class PreNivelacijaPriorityEndpoints
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
             ILoggerFactory loggerFactory,
+            IConfiguration configuration,
             int? supplierId = null,
             int? seasonId = null,
             int? footwearTypeId = null,
@@ -78,6 +83,7 @@ public static class PreNivelacijaPriorityEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
             var normalizedDataScope = NormalizeDataScope(dataScope);
+            var minimumNewStockAgeDays = ResolveMinimumNewStockAgeDays(configuration);
 
             try
             {
@@ -94,7 +100,8 @@ public static class PreNivelacijaPriorityEndpoints
                 marginFloor,
                 normalizedDataScope,
                 requestNowUtc.Date,
-                storeId);
+                storeId,
+                minimumNewStockAgeDays);
 
             var baseEntry = await cache.GetOrSetAsync(
                 cacheKey,
@@ -167,7 +174,7 @@ public static class PreNivelacijaPriorityEndpoints
 
                     if (artikli.Count == 0)
                     {
-                        return BuildEmptyBaseEntry(nowUtc);
+                        return BuildEmptyBaseEntry(nowUtc, minimumNewStockAgeDays: minimumNewStockAgeDays);
                     }
 
                     Dictionary<int, string> storeNames;
@@ -311,15 +318,153 @@ public static class PreNivelacijaPriorityEndpoints
                             ex);
                     }
 
-                    var maxStock = Math.Max(1, artikli.Max(x => x.StockUnits));
-                    var maxVelocity = artikli
+                    Dictionary<(int ArtikalId, int? StoreId), DateTime> firstReceiptByArtikal;
+                    try
+                    {
+                        var receipts = await db.DnevnikPromena
+                            .AsNoTracking()
+                            .Where(dp => dp.ArtikalId.HasValue
+                                && artikalIds.Contains(dp.ArtikalId.Value)
+                                && dp.TipPromene == TipPromeneConstants.UlazRobe
+                                && (normalizedDataScope == "all"
+                                    || (normalizedDataScope == "imported" && dp.DataOrigin == "access")
+                                    || (normalizedDataScope == "existing" && (dp.DataOrigin == "existing" || dp.DataOrigin == null || dp.DataOrigin == ""))))
+                            .GroupBy(dp => new { ArtikalId = dp.ArtikalId!.Value, StoreId = dp.IDObjekat })
+                            .Select(group => new
+                            {
+                                group.Key.ArtikalId,
+                                group.Key.StoreId,
+                                FirstReceiptDateUtc = group.Min(dp => dp.Datum)
+                            })
+                            .ToListAsync(ct);
+
+                        firstReceiptByArtikal = receipts.ToDictionary(
+                            receipt => (receipt.ArtikalId, receipt.StoreId),
+                            receipt => receipt.FirstReceiptDateUtc);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                            .LogWarning(ex, "Pre-nivelacija receipt evidence query failed.");
+                        throw new PreNivelacijaQueryFailedException(
+                            salesQueryFailed: false,
+                            markdownQueryFailed: false,
+                            ex,
+                            receiptQueryFailed: true);
+                    }
+
+                    Dictionary<(int ArtikalId, int? StoreId), SalesHistoryLite> salesHistoryByArtikal;
+                    try
+                    {
+                        var salesHistory = await (
+                            from ps in db.ProdajaStavke.AsNoTracking()
+                            join p in db.ProdajaZaglavlja.AsNoTracking()
+                                    .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                                on ps.IdProdaja equals p.Id
+                            where artikalIds.Contains(ps.IdArtikal)
+                                && ps.Kolicina > 0
+                                && p.DatumProdaje <= nowUtc
+                                && (normalizedDataScope == "all"
+                                    || (normalizedDataScope == "imported" && p.DataOrigin == "access")
+                                    || (normalizedDataScope == "existing" && (p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")))
+                            group p by new { ArtikalId = ps.IdArtikal, StoreId = p.IDObjekat } into historyGroup
+                            select new
+                            {
+                                historyGroup.Key.ArtikalId,
+                                historyGroup.Key.StoreId,
+                                FirstPositiveSaleDateUtc = historyGroup.Min(header => header.DatumProdaje),
+                                LastPositiveSaleDateUtc = historyGroup.Max(header => header.DatumProdaje)
+                            })
+                            .ToListAsync(ct);
+
+                        salesHistoryByArtikal = salesHistory.ToDictionary(
+                            history => (history.ArtikalId, history.StoreId),
+                            history => new SalesHistoryLite(history.FirstPositiveSaleDateUtc, history.LastPositiveSaleDateUtc));
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        loggerFactory.CreateLogger("PreNivelacijaPriorityEndpoints")
+                            .LogWarning(ex, "Pre-nivelacija historical sales evidence query failed.");
+                        throw new PreNivelacijaQueryFailedException(
+                            salesQueryFailed: true,
+                            markdownQueryFailed: false,
+                            ex);
+                    }
+
+                    var newStockCandidates = new List<PreNivelacijaNewStockQueueItemDto>();
+                    var actionableArticles = new List<(int Id, string? PLU, int? SupplierId, int? SeasonId, int? FootwearTypeId,
+                        int? StoreId, int StockUnits, string? Kategorija, decimal? SellingPrice, decimal? PurchasePrice)>();
+                    foreach (var article in artikli)
+                    {
+                        var salesKey = (article.Id, article.StoreId);
+                        salesHistoryByArtikal.TryGetValue(salesKey, out var salesHistory);
+                        firstReceiptByArtikal.TryGetValue(salesKey, out var firstReceipt);
+                        DateTime? firstReceiptDate = firstReceipt != default
+                            ? firstReceipt
+                            : salesHistory?.FirstPositiveSaleDateUtc;
+
+                        if (firstReceiptDate.HasValue)
+                        {
+                            var daysSinceReceipt = Math.Max(0, (todayUtc - firstReceiptDate.Value.Date).Days);
+                            if (daysSinceReceipt < minimumNewStockAgeDays)
+                            {
+                                var sku = !string.IsNullOrWhiteSpace(article.PLU)
+                                    ? article.PLU.Trim()
+                                    : article.Id.ToString(CultureInfo.InvariantCulture);
+                                var lastSaleDate = salesHistory?.LastPositiveSaleDateUtc;
+                                newStockCandidates.Add(new PreNivelacijaNewStockQueueItemDto
+                                {
+                                    ArtikalId = article.Id,
+                                    Sku = sku,
+                                    StoreId = article.StoreId,
+                                    SupplierId = article.SupplierId,
+                                    SeasonId = article.SeasonId,
+                                    FootwearTypeId = article.FootwearTypeId,
+                                    StoreName = ResolveStoreName(article.StoreId, storeNames),
+                                    SupplierName = ResolveSupplierName(article.SupplierId, suppliers),
+                                    StockUnits = article.StockUnits,
+                                    FirstReceiptDateUtc = DateTime.SpecifyKind(firstReceiptDate.Value, DateTimeKind.Utc),
+                                    DaysSinceReceipt = daysSinceReceipt,
+                                    DaysSinceLastSale = lastSaleDate.HasValue
+                                        ? Math.Max(0, (todayUtc - lastSaleDate.Value.Date).Days)
+                                        : null,
+                                    SalesHistoryStatus = ResolveSalesHistoryStatus(lastSaleDate, from180Utc),
+                                    ReasonCode = "new_stock"
+                                });
+                                continue;
+                            }
+                        }
+
+                        actionableArticles.Add((
+                            article.Id,
+                            article.PLU,
+                            article.SupplierId,
+                            article.SeasonId,
+                            article.FootwearTypeId,
+                            article.StoreId,
+                            article.StockUnits,
+                            article.Kategorija,
+                            article.SellingPrice,
+                            article.PurchasePrice));
+                    }
+
+                    var maxStock = Math.Max(1, actionableArticles.Select(article => article.StockUnits).DefaultIfEmpty(1).Max());
+                    var maxVelocity = actionableArticles
                         .Select(x => salesByArtikal.TryGetValue((x.Id, x.StoreId), out var salesLite) ? (decimal)salesLite.Units180 / 180m : 0m)
                         .DefaultIfEmpty(0m)
                         .Max();
 
-                    var allCandidates = new List<PreNivelacijaSkuCandidateDto>(artikli.Count);
+                    var allCandidates = new List<PreNivelacijaSkuCandidateDto>(actionableArticles.Count);
 
-                    foreach (var a in artikli)
+                    foreach (var a in actionableArticles)
                     {
                         var sku = !string.IsNullOrWhiteSpace(a.PLU) ? a.PLU.Trim() : a.Id.ToString(CultureInfo.InvariantCulture);
                         var supplierName = ResolveSupplierName(a.SupplierId, suppliers);
@@ -328,14 +473,29 @@ public static class PreNivelacijaPriorityEndpoints
 
                         var salesKey = (a.Id, a.StoreId);
                         var salesLite = salesByArtikal.GetValueOrDefault(salesKey);
+                        salesHistoryByArtikal.TryGetValue(salesKey, out var salesHistory);
                         var units180 = salesLite?.Units180 ?? 0;
                         var velocity180 = decimal.Round(units180 / 180m, 4);
-                        var lastSaleDate = salesLite?.LastPositiveSaleDateUtc;
-                        var daysSinceLastSale = lastSaleDate.HasValue
+                        var lastSaleDate = salesHistory?.LastPositiveSaleDateUtc;
+                        int? daysSinceLastSale = lastSaleDate.HasValue
                             ? Math.Max(0, (nowUtc.Date - lastSaleDate.Value.Date).Days)
-                            : 999;
+                            : null;
+                        var salesHistoryStatus = ResolveSalesHistoryStatus(lastSaleDate, from180Utc);
+                        firstReceiptByArtikal.TryGetValue(salesKey, out var firstReceipt);
+                        DateTime? firstReceiptDate = firstReceipt != default
+                            ? firstReceipt
+                            : salesHistory?.FirstPositiveSaleDateUtc;
+                        var receiptEvidenceStatus = firstReceipt != default
+                            ? "received"
+                            : salesHistory is not null ? "first_sale_fallback" : "unknown";
+                        var daysSinceReceipt = firstReceiptDate.HasValue
+                            ? Math.Max(0, (todayUtc - firstReceiptDate.Value.Date).Days)
+                            : (int?)null;
 
-                        if (noSaleDaysMin.HasValue && daysSinceLastSale < noSaleDaysMin.Value)
+                        var noSaleDaysForFilter = daysSinceLastSale
+                            ?? (salesHistoryStatus == "never_sold" ? 180 : (int?)null);
+                        if (noSaleDaysMin.HasValue
+                            && (!noSaleDaysForFilter.HasValue || noSaleDaysForFilter.Value < noSaleDaysMin.Value))
                             continue;
 
                         var markdownLite = markdownByArtikal.GetValueOrDefault(salesKey);
@@ -349,7 +509,9 @@ public static class PreNivelacijaPriorityEndpoints
                             salesLite?.NegativeUnits180 ?? 0);
                         var sellingPrice = marginEvidence.SellingPriceForScenarios;
                         var purchasePrice = marginEvidence.PurchasePriceForScenarios;
-                        var hasCompleteEvidence = marginEvidence.HasCompleteEvidence && salesEvidence.IsComplete;
+                        var hasCompleteEvidence = marginEvidence.HasCompleteEvidence
+                            && salesEvidence.IsComplete
+                            && firstReceiptDate.HasValue;
                         var grossMarginPct = marginEvidence.GrossMarginPctEst ?? 0m;
 
                         if (marginFloor.HasValue)
@@ -362,7 +524,7 @@ public static class PreNivelacijaPriorityEndpoints
                         var breakdown = scoring.ComputeScoreBreakdown(
                             a.StockUnits,
                             velocity180,
-                            daysSinceLastSale,
+                            daysSinceLastSale ?? 180,
                             markdownEvents,
                             avgMarkdownPct,
                             hasCompleteEvidence ? grossMarginPct : 0m,
@@ -384,7 +546,13 @@ public static class PreNivelacijaPriorityEndpoints
                             preNivelacijaScore,
                             hasReliableCost: marginEvidence.HasCompleteEvidence);
 
-                        var evidenceReasons = new[] { marginEvidence.EvidenceReason, salesEvidence.Reason }
+                        var evidenceReasons = new[]
+                            {
+                                marginEvidence.EvidenceReason,
+                                salesEvidence.Reason,
+                                firstReceiptDate.HasValue ? null : "receipt_date_unknown",
+                                marginEvidence.BelowCost == true ? "below_cost" : null
+                            }
                             .Where(reason => !string.IsNullOrWhiteSpace(reason))
                             .ToArray();
 
@@ -407,9 +575,17 @@ public static class PreNivelacijaPriorityEndpoints
                             NegativeUnits180 = salesLite?.NegativeUnits180 ?? 0,
                             Velocity180 = velocity180,
                             DaysSinceLastSale = daysSinceLastSale,
+                            SalesHistoryStatus = salesHistoryStatus,
+                            FirstReceiptDateUtc = firstReceiptDate.HasValue
+                                ? DateTime.SpecifyKind(firstReceiptDate.Value, DateTimeKind.Utc)
+                                : null,
+                            DaysSinceReceipt = daysSinceReceipt,
+                            ReceiptEvidenceStatus = receiptEvidenceStatus,
                             MarkdownEvents = markdownEvents,
                             AvgMarkdownPct = decimal.Round(avgMarkdownPct, 2),
-                            GrossMarginPctEst = grossMarginPct,
+                            GrossMarginPctEst = marginEvidence.GrossMarginPctEst,
+                            GrossMarginPctSigned = marginEvidence.GrossMarginPctEst,
+                            BelowCost = marginEvidence.BelowCost,
                             SeasonRecencyBoost = seasonRecencyBoost,
                             PreNivelacijaScore = preNivelacijaScore,
                             PriorityBand = ResolvePriorityBand(preNivelacijaScore),
@@ -432,7 +608,10 @@ public static class PreNivelacijaPriorityEndpoints
 
                     if (allCandidates.Count == 0)
                     {
-                        return BuildEmptyBaseEntry(nowUtc);
+                        return BuildEmptyBaseEntry(
+                            nowUtc,
+                            newStockCandidates: newStockCandidates,
+                            minimumNewStockAgeDays: minimumNewStockAgeDays);
                     }
 
                     var minRevenueDelta = allCandidates.Min(x => x.RevenueDeltaHighlightVsMarkdown);
@@ -445,7 +624,7 @@ public static class PreNivelacijaPriorityEndpoints
                             candidate.RevenueDeltaHighlightVsMarkdown,
                             minRevenueDelta,
                             maxRevenueDelta,
-                            candidate.DaysSinceLastSale,
+                            candidate.DaysSinceLastSale ?? 180,
                             candidate.PriorityBand,
                             candidate.Confidence,
                             candidate.Units180,
@@ -456,6 +635,20 @@ public static class PreNivelacijaPriorityEndpoints
                         candidate.DecisionScore = recommendation.DecisionScore;
                         candidate.ReliabilityPct = recommendation.ReliabilityPct;
                         candidate.Recommendation = recommendation.Recommendation;
+                        if (candidate.BelowCost == true)
+                        {
+                            candidate.Recommendation.ReasonCodes = candidate.Recommendation.ReasonCodes
+                                .Append("below_cost")
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToArray();
+                        }
+                        if (candidate.ReceiptEvidenceStatus == "unknown")
+                        {
+                            candidate.Recommendation.ReasonCodes = candidate.Recommendation.ReasonCodes
+                                .Append("receipt_date_unknown")
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToArray();
+                        }
                         if (!candidate.StoreId.HasValue)
                         {
                             candidate.Recommendation = new PreNivelacijaRecommendationDto
@@ -488,18 +681,19 @@ public static class PreNivelacijaPriorityEndpoints
                     return new PreNivelacijaPriorityBaseCacheEntry
                     {
                         GeneratedAtUtc = nowUtc,
-                        FormulaVersion = "pre_nivelacija_v9",
-                        FormulaDescription = BuildFormulaDescription(),
+                        FormulaVersion = "pre_nivelacija_v10",
+                        FormulaDescription = BuildFormulaDescription(minimumNewStockAgeDays),
                         ModelEvidence = BuildModelEvidence(),
                         Summary = new PreNivelacijaSummaryDto(),
                         SupplierLeaderboard = [],
                         Candidates = allCandidates,
                         FacetUniverseCandidates = allCandidates,
+                        NewStockCandidates = newStockCandidates,
                         Queues = new PreNivelacijaQueuesDto(),
                         Alerts = [],
                         EvidenceWindow = BuildEvidenceWindow(from180Utc, nowUtc, allCandidates, []),
                         TotalCandidates = allCandidates.Count,
-                        RecommendationAllowed = allCandidates.All(x => x.Recommendation.RecommendationAllowed)
+                        RecommendationAllowed = allCandidates.Count > 0 && allCandidates.All(x => x.Recommendation.RecommendationAllowed)
                     };
                 },
                 CacheExpiration.HeavyAnalytics,
@@ -526,7 +720,8 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 var unavailable = BuildEmptyBaseEntry(
                     DateTime.UtcNow,
-                    BuildQueryFailureMeta(ex.SalesQueryFailed, ex.MarkdownQueryFailed));
+                    BuildQueryFailureMeta(ex.SalesQueryFailed, ex.MarkdownQueryFailed, ex.ReceiptQueryFailed),
+                    minimumNewStockAgeDays: minimumNewStockAgeDays);
                 return Results.Ok(BuildResponse(
                     unavailable,
                     page,
@@ -549,7 +744,8 @@ public static class PreNivelacijaPriorityEndpoints
                     AnalyticsResponseMetaFactory.Error(
                         "pre_nivelacija_unavailable",
                         "Pre-nivelacija podaci trenutno nisu dostupni.",
-                        null));
+                        null),
+                    minimumNewStockAgeDays: minimumNewStockAgeDays);
                 return Results.Ok(BuildResponse(
                     unavailable,
                     page,
@@ -564,9 +760,9 @@ public static class PreNivelacijaPriorityEndpoints
         .RequireRateLimiting("analytics");
     }
 
-    private static string BuildFormulaDescription()
+    private static string BuildFormulaDescription(int minimumNewStockAgeDays)
     {
-        return "Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; pritisak zalihe i rizik brzine su relativni prema maksimumu osnovne referentne kohorte, nisu percentile ni apsolutni pragovi. Preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Scenario pretpostavke: highlight povećava zaglađenu baznu tražnju za 15–45% (množilac 1,15–1,45); markdown je 8–35%, sa elastičnošću tražnje 1,8; očekivane jedinice su ograničene raspoloživom zalihom. Scenario brojevi su heuristička, nekalibrisana procena bez kauzalne garancije. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.";
+        return $"Skor pre-nivelacije = 0,30*pritisak_zalihe + 0,25*rizik_brzine_prodaje + 0,20*rizik_svežine + 0,10*prilika_za_sniženje + 0,10*potencijal_marže + 0,05*sezonski_signal; pritisak zalihe i rizik brzine su relativni prema maksimumu osnovne referentne kohorte, nisu percentile ni apsolutni pragovi. Preporuka = 0,50*skor + 0,20*razlika_scenarija + 0,15*rizik_zastarelosti + 0,15*pouzdanost. Scenario pretpostavke: highlight povećava zaglađenu baznu tražnju za 15–45% (množilac 1,15–1,45); markdown je 8–35%, sa elastičnošću tražnje 1,8; očekivane jedinice su ograničene raspoloživom zalihom. Scenario brojevi su heuristička, nekalibrisana procena bez kauzalne garancije. Prozor prodaje i nivelacija: poslednjih 180 dana u UTC; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju. Roba primljena pre manje od {minimumNewStockAgeDays} dana je izdvojena iz prioriteta; starost se računa iz prvog prijema, uz prvu pozitivnu prodaju kao rezervni dokaz. Marža ispod nabavne ostaje negativna u scenarijima.";
     }
 
     private static PreNivelacijaModelEvidenceDto BuildModelEvidence()
@@ -642,7 +838,19 @@ public static class PreNivelacijaPriorityEndpoints
         return normalized is "existing" or "imported" ? normalized : "all";
     }
 
-    internal static AnalyticsResponseMetaDto BuildQueryFailureMeta(bool salesQueryFailed, bool markdownQueryFailed)
+    internal static int ResolveMinimumNewStockAgeDays(IConfiguration configuration)
+    {
+        const int defaultDays = 30;
+        var configured = configuration["Analytics:PreNivelacija:MinimumNewStockAgeDays"];
+        return int.TryParse(configured, NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
+            ? Math.Clamp(days, 0, 3650)
+            : defaultDays;
+    }
+
+    internal static AnalyticsResponseMetaDto BuildQueryFailureMeta(
+        bool salesQueryFailed,
+        bool markdownQueryFailed,
+        bool receiptQueryFailed = false)
     {
         if (salesQueryFailed)
         {
@@ -670,6 +878,19 @@ public static class PreNivelacijaPriorityEndpoints
                 repairPath: "Nivelacija evidence");
         }
 
+        if (receiptQueryFailed)
+        {
+            return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                AnalyticsResponseMetaFactory.Error(
+                    "pre_nivelacija_receipt_unavailable",
+                    "Podatak o prvom prijemu robe za pre-nivelacija skor trenutno nije dostupan.",
+                    null),
+                "recommendation",
+                reasonCodes: ["pre_nivelacija_receipt_unavailable"],
+                evidenceReferences: ["pre_nivelacija.receiptEvidence"],
+                repairPath: "Receipt data quality");
+        }
+
         return AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
             AnalyticsResponseMetaFactory.Success(),
             "recommendation",
@@ -682,7 +903,8 @@ public static class PreNivelacijaPriorityEndpoints
         string? EvidenceReason,
         decimal? GrossMarginPctEst,
         decimal SellingPriceForScenarios,
-        decimal PurchasePriceForScenarios);
+        decimal PurchasePriceForScenarios,
+        bool? BelowCost);
 
     internal readonly record struct PreNivelacijaSalesEvidence(
         bool IsComplete,
@@ -717,6 +939,16 @@ public static class PreNivelacijaPriorityEndpoints
             true,
             "positive_net_sales",
             negativeUnits180 < 0 ? "signed_sales_return" : null);
+    }
+
+    internal static string ResolveSalesHistoryStatus(DateTime? lastPositiveSaleDateUtc, DateTime windowStartUtc)
+    {
+        if (!lastPositiveSaleDateUtc.HasValue)
+            return "never_sold";
+
+        return lastPositiveSaleDateUtc.Value < windowStartUtc
+            ? "no_sale_in_window"
+            : "sold";
     }
 
     internal static decimal? CalculateWeekOverWeekRiskDelta(int last7Units, int previous7Units)
@@ -762,12 +994,12 @@ public static class PreNivelacijaPriorityEndpoints
 
         if (!hasSellingPrice && !hasReliableCost)
         {
-            return new PreNivelacijaMarginEvidence(false, "missing_price_baseline", null, 0m, 0m);
+            return new PreNivelacijaMarginEvidence(false, "missing_price_baseline", null, 0m, 0m, null);
         }
 
         if (!hasSellingPrice)
         {
-            return new PreNivelacijaMarginEvidence(false, "missing_selling_price", null, 0m, purchasePrice!.Value);
+            return new PreNivelacijaMarginEvidence(false, "missing_selling_price", null, 0m, purchasePrice!.Value, null);
         }
 
         if (!hasReliableCost)
@@ -775,27 +1007,27 @@ public static class PreNivelacijaPriorityEndpoints
             var reason = !purchasePrice.HasValue
                 ? "missing_purchase_cost"
                 : "non_positive_purchase_cost";
-            return new PreNivelacijaMarginEvidence(false, reason, null, sellingPrice!.Value, 0m);
+            return new PreNivelacijaMarginEvidence(false, reason, null, sellingPrice!.Value, 0m, null);
         }
 
         var sell = sellingPrice!.Value;
         var cost = purchasePrice!.Value;
-        var grossMarginPct = decimal.Round(
-            Math.Clamp(((sell - cost) / sell) * 100m, 0m, 100m),
-            2);
+        var grossMarginPct = decimal.Round(((sell - cost) / sell) * 100m, 2);
 
-        return new PreNivelacijaMarginEvidence(true, null, grossMarginPct, sell, cost);
+        return new PreNivelacijaMarginEvidence(true, null, grossMarginPct, sell, cost, cost > sell);
     }
 
     private static PreNivelacijaPriorityBaseCacheEntry BuildEmptyBaseEntry(
         DateTime nowUtc,
-        AnalyticsResponseMetaDto? meta = null)
+        AnalyticsResponseMetaDto? meta = null,
+        List<PreNivelacijaNewStockQueueItemDto>? newStockCandidates = null,
+        int minimumNewStockAgeDays = 30)
     {
         return new PreNivelacijaPriorityBaseCacheEntry
         {
             GeneratedAtUtc = nowUtc,
-            FormulaVersion = "pre_nivelacija_v9",
-            FormulaDescription = BuildFormulaDescription(),
+            FormulaVersion = "pre_nivelacija_v10",
+            FormulaDescription = BuildFormulaDescription(minimumNewStockAgeDays),
             ModelEvidence = BuildModelEvidence(),
             Summary = new PreNivelacijaSummaryDto
             {
@@ -816,7 +1048,8 @@ public static class PreNivelacijaPriorityEndpoints
             SupplierLeaderboard = [],
             Candidates = [],
             FacetUniverseCandidates = [],
-            Queues = new PreNivelacijaQueuesDto(),
+            NewStockCandidates = newStockCandidates ?? [],
+            Queues = BuildQueues([], nowUtc, newStockCandidates),
             Alerts = [],
             EvidenceWindow = BuildEvidenceWindow(nowUtc.AddDays(-180), nowUtc, [], []),
             TotalCandidates = 0,
@@ -1005,9 +1238,15 @@ public static class PreNivelacijaPriorityEndpoints
             ? universeEntry.FacetUniverseCandidates
             : universeEntry.Candidates;
         var filtered = ApplyDimensionFilters(universe, supplierId, seasonId, footwearTypeId, storeId);
+        var filteredNewStock = ApplyNewStockDimensionFilters(
+            universeEntry.NewStockCandidates,
+            supplierId,
+            seasonId,
+            footwearTypeId,
+            storeId);
         var leaderboard = BuildSupplierLeaderboard(filtered);
         var summary = BuildSummary(filtered, leaderboard);
-        var queues = BuildQueues(filtered, universeEntry.GeneratedAtUtc);
+        var queues = BuildQueues(filtered, universeEntry.GeneratedAtUtc, filteredNewStock);
         var alerts = BuildAlerts(filtered, leaderboard);
         var evidenceWindow = BuildEvidenceWindow(
             universeEntry.EvidenceWindow.SalesWindowFromUtc,
@@ -1025,6 +1264,7 @@ public static class PreNivelacijaPriorityEndpoints
             SupplierLeaderboard = leaderboard,
             Candidates = filtered,
             FacetUniverseCandidates = universe.ToList(),
+            NewStockCandidates = filteredNewStock,
             Queues = queues,
             Alerts = alerts,
             EvidenceWindow = evidenceWindow,
@@ -1068,6 +1308,21 @@ public static class PreNivelacijaPriorityEndpoints
             query = query.Where(candidate => candidate.StoreId == storeId.Value);
         }
 
+        return query.ToList();
+    }
+
+    private static List<PreNivelacijaNewStockQueueItemDto> ApplyNewStockDimensionFilters(
+        IReadOnlyList<PreNivelacijaNewStockQueueItemDto> candidates,
+        int? supplierId,
+        int? seasonId,
+        int? footwearTypeId,
+        int? storeId)
+    {
+        IEnumerable<PreNivelacijaNewStockQueueItemDto> query = candidates;
+        if (supplierId.HasValue) query = query.Where(x => x.SupplierId == supplierId.Value);
+        if (seasonId.HasValue) query = query.Where(x => x.SeasonId == seasonId.Value);
+        if (footwearTypeId.HasValue) query = query.Where(x => x.FootwearTypeId == footwearTypeId.Value);
+        if (storeId.HasValue) query = query.Where(x => x.StoreId == storeId.Value);
         return query.ToList();
     }
 
@@ -1116,7 +1371,8 @@ public static class PreNivelacijaPriorityEndpoints
 
     internal static PreNivelacijaQueuesDto BuildQueues(
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        IReadOnlyList<PreNivelacijaNewStockQueueItemDto>? newStockCandidates = null)
     {
         var highlightNow = candidates
             .Where(x => IsHighPriorityCandidate(x) && x.Recommendation.RecommendationAllowed)
@@ -1133,6 +1389,8 @@ public static class PreNivelacijaPriorityEndpoints
 
         return new PreNivelacijaQueuesDto
         {
+            NewStockTotal = newStockCandidates?.Count ?? 0,
+            NewStock = newStockCandidates?.Take(30).ToList() ?? [],
             HighlightNowTotal = highlightNow.Count,
             HighlightNow = highlightNow
                 .Take(30)
@@ -1452,14 +1710,18 @@ internal sealed class PreNivelacijaQueryFailedException : Exception
     public PreNivelacijaQueryFailedException(
         bool salesQueryFailed,
         bool markdownQueryFailed,
-        Exception innerException)
+        Exception innerException,
+        bool receiptQueryFailed = false)
         : base("Pre-nivelacija query failed.", innerException)
     {
         SalesQueryFailed = salesQueryFailed;
         MarkdownQueryFailed = markdownQueryFailed;
+        ReceiptQueryFailed = receiptQueryFailed;
     }
 
     public bool SalesQueryFailed { get; }
 
     public bool MarkdownQueryFailed { get; }
+
+    public bool ReceiptQueryFailed { get; }
 }

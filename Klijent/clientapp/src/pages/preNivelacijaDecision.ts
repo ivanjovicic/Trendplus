@@ -77,7 +77,18 @@ export const decisionColumns: AnalyticsTableColumn<DecisionCandidate>[] = [
   { key: "supplierName", header: "Dobavljač", dataType: "text" },
   { key: "preNivelacijaScore", header: "Skor nivelacije", dataType: "number" },
   { key: "stockUnits", header: "Zaliha (kom)", dataType: "number" },
-  { key: "daysSinceLastSale", header: "Dana bez prodaje", dataType: "number" },
+  {
+    key: "salesHistoryStatus",
+    header: "Istorija prodaje",
+    dataType: "text",
+    getValue: (row) => row.salesHistoryStatus === "never_sold"
+      ? "Nikad prodato"
+      : row.salesHistoryStatus === "no_sale_in_window"
+        ? "Nema prodaje u 180 d"
+        : row.salesHistoryStatus === "sold" && row.daysSinceLastSale != null
+          ? `${row.daysSinceLastSale} dana`
+          : "Nije dostupno",
+  },
   { key: "revenueDelta", header: "Heuristička procena: isticanje vs sniženje (prihod)", dataType: "currency", getValue: (row) => row.recommendationAllowed ? row.revenueDelta : null },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent", getValue: (row) => row.reliabilityAvailable ? row.reliabilityPct : null },
   { key: "decisionScore", header: "Ocena preporuke", dataType: "number", getValue: (row) => row.decisionScoreAvailable ? row.decisionScore : null },

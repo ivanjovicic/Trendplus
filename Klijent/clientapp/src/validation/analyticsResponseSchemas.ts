@@ -973,10 +973,16 @@ const preNivelacijaCandidateSchema = z.object({
   positiveUnits180: nonNegativeInteger,
   negativeUnits180: finiteNumber.int(),
   velocity180: finiteNumber,
-  daysSinceLastSale: nonNegativeInteger,
+  daysSinceLastSale: nullableNonNegativeInteger,
+  salesHistoryStatus: z.enum(["never_sold", "no_sale_in_window", "sold"]).optional(),
+  firstReceiptDateUtc: validDate.nullable().optional(),
+  daysSinceReceipt: nullableNonNegativeInteger.optional(),
+  receiptEvidenceStatus: z.enum(["received", "first_sale_fallback", "unknown"]).optional(),
   markdownEvents: nonNegativeInteger,
   avgMarkdownPct: nonNegativePercentage,
-  grossMarginPctEst: percentage,
+  grossMarginPctEst: nullableNumber,
+  grossMarginPctSigned: nullableNumber.optional(),
+  belowCost: z.boolean().nullable().optional(),
   seasonRecencyBoost: percentage,
   preNivelacijaScore: nonNegativePercentage,
   priorityBand: preNivelacijaPriorityBandSchema,
@@ -1027,6 +1033,23 @@ const preNivelacijaQueueItemSchema = z.object({
   owner: z.string().trim().min(1),
   status: z.string().trim().min(1),
   dueDateUtc: validDate,
+}).passthrough();
+
+const preNivelacijaNewStockQueueItemSchema = z.object({
+  artikalId: entityId,
+  sku: z.string().trim().min(1),
+  storeId: nullableEntityId,
+  supplierId: nullableEntityId,
+  seasonId: nullableEntityId,
+  footwearTypeId: nullableEntityId,
+  storeName: z.string().trim().min(1),
+  supplierName: z.string().trim().min(1),
+  stockUnits: nonNegativeInteger,
+  firstReceiptDateUtc: validDate,
+  daysSinceReceipt: nonNegativeInteger,
+  daysSinceLastSale: nullableNonNegativeInteger,
+  salesHistoryStatus: z.enum(["never_sold", "no_sale_in_window", "sold"]),
+  reasonCode: z.literal("new_stock"),
 }).passthrough();
 
 const preNivelacijaAlertSchema = z.object({
@@ -1086,6 +1109,8 @@ export const preNivelacijaPriorityResponseSchema = z.object({
   }).passthrough(),
   candidates: z.array(preNivelacijaCandidateSchema),
   queues: z.object({
+    newStock: z.array(preNivelacijaNewStockQueueItemSchema).optional(),
+    newStockTotal: nonNegativeInteger.optional().nullable(),
     highlightNow: z.array(preNivelacijaQueueItemSchema),
     highlightNowTotal: nonNegativeInteger.optional().nullable(),
     monitor: z.array(preNivelacijaQueueItemSchema),

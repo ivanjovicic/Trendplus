@@ -726,6 +726,7 @@ export default function PreNivelacijaPriorityPage() {
         markdownEvents: normalizeNonNegativeNumber(item.markdownEvents),
         avgMarkdownPct: normalizePreNivelacijaPercentagePoints(item.avgMarkdownPct),
         grossMarginPctEst: normalizeFiniteNumber(item.grossMarginPctEst),
+        grossMarginPctSigned: normalizeFiniteNumber(item.grossMarginPctSigned),
         seasonRecencyBoost: normalizeFiniteNumber(item.seasonRecencyBoost),
         preNivelacijaScore: normalizeBoundedNumber(item.preNivelacijaScore, 0, 100),
         scoreBreakdown: normalizeScoreBreakdown(item.scoreBreakdown),
@@ -883,9 +884,10 @@ export default function PreNivelacijaPriorityPage() {
   const canGoNext = pageSize != null && totalCandidates != null ? page * pageSize < totalCandidates : false;
   const dataMeta = data?.meta ?? null;
   const dataMetaMessage = getAnalyticsMetaMessage(dataMeta);
+  const hasNewStockQueue = (data?.queues?.newStock?.length ?? 0) > 0;
   const showMetaWarning = !loading && !error && isAnalyticsMetaWarning(dataMeta);
   const showFilteredOutState = !loading && !error && Boolean(data) && focusFilter !== "all" && totalCandidates != null && totalCandidates === 0;
-  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState);
+  const showEmptyState = !loading && !error && Boolean(data) && (decisionRows.length === 0 || showFilteredOutState) && !hasNewStockQueue;
   const showInsufficientEmptyState = shouldShowAnalyticsEmptyState(dataMeta, decisionRows.length) && isAnalyticsMetaInsufficient(dataMeta);
   const emptyStateVariant: "no_data" | "insufficient_data" | "filtered_out" =
     showInsufficientEmptyState
@@ -1497,7 +1499,7 @@ export default function PreNivelacijaPriorityPage() {
                         <InfoTip text="Tekuća raspoloživa zaliha ovog SKU u komadima. Viša zaliha uz nisku prodaju = veći rizik i veći prioritet za akciju." />
                       </th>
                       <th className="align-right" aria-sort={sortAriaValue("daysSinceLastSale", sortField, sortDir)}>
-                        <button type="button" onClick={() => handleSort("daysSinceLastSale")}>Dana bez prod. {sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("daysSinceLastSale")}>Istorija prodaje {sortMarker("daysSinceLastSale", sortField, sortDir)}</button>
                         <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. Veći broj = jači signal stagnacije zalihe. Vrednosti > 30 dana zaslužuju prioritetnu pažnju." />
                       </th>
                       <th className="align-right" aria-sort={sortAriaValue("revenueDelta", sortField, sortDir)}>
@@ -1526,7 +1528,7 @@ export default function PreNivelacijaPriorityPage() {
                         const reliability = reliabilitySignalDisplay(row);
                         return (
                           <tr key={`${row.artikalId}-${row.storeId ?? "missing"}`} className={expanded ? "expanded-row" : ""}>
-                            <td>{row.sku}</td>
+                            <td>{row.sku}{row.belowCost ? <span className="pnp-decision-status status-reduce" title="Prodajna cena je ispod nabavne"> Ispod nabavne</span> : null}</td>
                             <td title={row.supplierName}>{row.supplierName}</td>
                             <td title={row.storeName}>{row.storeName}{row.storeId != null ? ` (ID ${row.storeId})` : ""}</td>
                             <td className="align-right">
@@ -1542,7 +1544,7 @@ export default function PreNivelacijaPriorityPage() {
                               </div>
                             </td>
                             <td className="align-right">{formatNonNegativeNumber(row.stockUnits)}</td>
-                            <td className="align-right">{formatNonNegativeNumber(row.daysSinceLastSale)}</td>
+                            <td className="align-right">{salesHistoryLabel(row.salesHistoryStatus, row.daysSinceLastSale)}</td>
                             <td className={`align-right ${deltaTrendClass(row.recommendationAllowed, row.revenueDelta)}`}>{formatGatedRsd(row.recommendationAllowed, row.revenueDelta)}</td>
                             <td className="align-center">
                               <span
@@ -1631,8 +1633,15 @@ export default function PreNivelacijaPriorityPage() {
                   <strong>{formatNonNegativeNumber(selectedRow.stockUnits)}</strong>
                 </article>
                 <article>
-                  <span>Dana bez prodaje</span>
-                  <strong>{formatNonNegativeNumber(selectedRow.daysSinceLastSale)}</strong>
+                  <span>Istorija prodaje</span>
+                  <strong>{salesHistoryLabel(selectedRow.salesHistoryStatus, selectedRow.daysSinceLastSale)}</strong>
+                </article>
+                <article>
+                  <span>Bruto marža</span>
+                  <strong className={selectedRow.belowCost ? "trend-down" : ""}>
+                    {selectedRow.grossMarginPctSigned == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtPct(selectedRow.grossMarginPctSigned, 1)}
+                    {selectedRow.belowCost ? " · Ispod nabavne" : ""}
+                  </strong>
                 </article>
                 <article>
                   <span>Ocena preporuke</span>
@@ -1724,13 +1733,28 @@ export default function PreNivelacijaPriorityPage() {
             </section>
           ) : null}
 
-          {data.queues && (data.queues.highlightNow.length > 0 || data.queues.monitor.length > 0 || data.queues.likelyMarkdownSoon.length > 0) ? (
+          {data.queues && ((data.queues.newStock?.length ?? 0) > 0 || data.queues.highlightNow.length > 0 || data.queues.monitor.length > 0 || data.queues.likelyMarkdownSoon.length > 0) ? (
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
                 <InfoTip text="SKU su raspoređeni po statusu preporuke sa serverskog sloja (Pojačaj, Zadrži, Pregledaj, Ne veruj, Nedovoljno podataka) i pomoćnim prioritetnim signalima." />
               </h2>
               <div className="pnp-queues-grid">
+                {(data.queues.newStock?.length ?? 0) > 0 ? (
+                  <article className="pnp-queue-panel pnp-queue-panel--keep">
+                    <h3>{formatQueueHeading("Nova roba", data.queues.newStock?.length ?? 0, data.queues.newStockTotal)}</h3>
+                    {(data.queues.newStock ?? []).map((item) => (
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName}</div>
+                          <div className="pnp-queue-item-supplier">Primljeno pre {item.daysSinceReceipt} dana · {salesHistoryLabel(item.salesHistoryStatus, item.daysSinceLastSale)}</div>
+                        </div>
+                        <span className="pnp-decision-status status-keep">Za proveru posle praga</span>
+                      </div>
+                    ))}
+                  </article>
+                ) : null}
                 <article className="pnp-queue-panel pnp-queue-panel--boost">
                   <h3>{formatQueueHeading("Odmah istaknuti", data.queues.highlightNow.length, data.queues.highlightNowTotal)}</h3>
                   {data.queues.highlightNow.length === 0 ? (
@@ -1795,4 +1819,9 @@ export default function PreNivelacijaPriorityPage() {
   );
 }
 
-
+function salesHistoryLabel(status: string | null | undefined, daysSinceLastSale: number | null): string {
+  if (status === "never_sold") return "Nikad prodato";
+  if (status === "no_sale_in_window") return "Nema prodaje u 180 d";
+  if (status === "sold" && daysSinceLastSale != null) return `${fmtNumber(daysSinceLastSale, 0)} dana`;
+  return "Nije dostupno";
+}

@@ -474,8 +474,9 @@ public static class AnalyticsCacheKeys
         decimal? marginFloor,
         string? dataScope = null,
         DateTime? effectiveToUtc = null,
-        int? storeId = null) =>
-        $"{Prefix}pre-nivelacija-priority:v10:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
+        int? storeId = null,
+        int? minimumNewStockAgeDays = null) =>
+        $"{Prefix}pre-nivelacija-priority:v11:supplier:{FormatNullable(supplierId)}:season:{FormatNullable(seasonId)}:footwear:{FormatNullable(footwearTypeId)}:store:{FormatNullable(storeId)}:stock-min:{FormatNullable(stockMin)}:stock-max:{FormatNullable(stockMax)}:no-sale:{FormatNullable(noSaleDaysMin)}:min-score:{FormatNullable(minScore)}:margin-floor:{FormatNullable(marginFloor)}:new-stock-age:{FormatNullable(minimumNewStockAgeDays)}:scope:{NormalizeDataScope(dataScope)}:effective-to:{FormatInstant(effectiveToUtc)}";
 }
 
 /// <summary>

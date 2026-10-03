@@ -5,7 +5,7 @@ using Trendplus2.Dtos;
 public sealed class PreNivelacijaPriorityResponseDto
 {
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
-    public string FormulaVersion { get; set; } = "pre_nivelacija_v9";
+    public string FormulaVersion { get; set; } = "pre_nivelacija_v10";
     public string FormulaDescription { get; set; } = string.Empty;
     public PreNivelacijaModelEvidenceDto ModelEvidence { get; set; } = new();
     public PreNivelacijaSummaryDto Summary { get; set; } = new();
@@ -145,12 +145,32 @@ public sealed class PreNivelacijaSupplierActionDto
 
 public sealed class PreNivelacijaQueuesDto
 {
+    public List<PreNivelacijaNewStockQueueItemDto> NewStock { get; set; } = [];
+    public int NewStockTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> HighlightNow { get; set; } = [];
     public int HighlightNowTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> Monitor { get; set; } = [];
     public int MonitorTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> LikelyMarkdownSoon { get; set; } = [];
     public int LikelyMarkdownSoonTotal { get; set; }
+}
+
+public sealed class PreNivelacijaNewStockQueueItemDto
+{
+    public int ArtikalId { get; set; }
+    public string Sku { get; set; } = string.Empty;
+    public int? StoreId { get; set; }
+    public int? SupplierId { get; set; }
+    public int? SeasonId { get; set; }
+    public int? FootwearTypeId { get; set; }
+    public string StoreName { get; set; } = "N/A";
+    public string SupplierName { get; set; } = "N/A";
+    public int StockUnits { get; set; }
+    public DateTime FirstReceiptDateUtc { get; set; }
+    public int DaysSinceReceipt { get; set; }
+    public int? DaysSinceLastSale { get; set; }
+    public string SalesHistoryStatus { get; set; } = "unknown";
+    public string ReasonCode { get; set; } = "new_stock";
 }
 
 public sealed class PreNivelacijaQueueItemDto
@@ -194,10 +214,16 @@ public sealed class PreNivelacijaSkuCandidateDto
     public int PositiveUnits180 { get; set; }
     public int NegativeUnits180 { get; set; }
     public decimal Velocity180 { get; set; }
-    public int DaysSinceLastSale { get; set; }
+    public int? DaysSinceLastSale { get; set; }
+    public string SalesHistoryStatus { get; set; } = "unknown";
+    public DateTime? FirstReceiptDateUtc { get; set; }
+    public int? DaysSinceReceipt { get; set; }
+    public string ReceiptEvidenceStatus { get; set; } = "unknown";
     public int MarkdownEvents { get; set; }
     public decimal AvgMarkdownPct { get; set; }
-    public decimal GrossMarginPctEst { get; set; }
+    public decimal? GrossMarginPctEst { get; set; }
+    public decimal? GrossMarginPctSigned { get; set; }
+    public bool? BelowCost { get; set; }
     public decimal SeasonRecencyBoost { get; set; }
     public decimal PreNivelacijaScore { get; set; }
     public string PriorityBand { get; set; } = "neutral";

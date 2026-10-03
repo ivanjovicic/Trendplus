@@ -98,9 +98,15 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     units180: 24,
     velocity180: 0.8,
     daysSinceLastSale: 45,
+    salesHistoryStatus: "sold",
+    firstReceiptDateUtc: "2026-01-01T00:00:00Z",
+    daysSinceReceipt: 90,
+    receiptEvidenceStatus: "received",
     markdownEvents: 1,
     avgMarkdownPct: 12,
     grossMarginPctEst: 34,
+    grossMarginPctSigned: 34,
+    belowCost: false,
     seasonRecencyBoost: 18,
     preNivelacijaScore: 86,
     priorityBand: "high",
@@ -527,6 +533,88 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.queryByText("Visoko")).not.toBeInTheDocument();
     expect(screen.queryByText("Srednje")).not.toBeInTheDocument();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("renders never-sold history, below-cost margin and the separate new-stock queue", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([makeCandidate({
+        daysSinceLastSale: null,
+        salesHistoryStatus: "never_sold",
+        grossMarginPctEst: -25,
+        grossMarginPctSigned: -25,
+        belowCost: true,
+      })]),
+      queues: {
+        highlightNow: [],
+        monitor: [],
+        likelyMarkdownSoon: [],
+        newStockTotal: 1,
+        newStock: [{
+          artikalId: 202,
+          sku: "SKU-NEW",
+          storeId: 2,
+          supplierId: 11,
+          seasonId: 7,
+          footwearTypeId: 4,
+          storeName: "Objekat 2",
+          supplierName: "Dobavljac A",
+          stockUnits: 5,
+          firstReceiptDateUtc: "2026-06-17T00:00:00Z",
+          daysSinceReceipt: 3,
+          daysSinceLastSale: null,
+          salesHistoryStatus: "never_sold",
+          reasonCode: "new_stock",
+        }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Nikad prodato")).toBeInTheDocument();
+    expect(screen.getAllByText("Ispod nabavne").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Nova roba (1)" })).toBeInTheDocument();
+    expect(screen.getByText("Primljeno pre 3 dana · Nikad prodato")).toBeInTheDocument();
+  });
+
+  it("keeps the new-stock queue visible when there are no actionable candidates", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([]),
+      queues: {
+        highlightNow: [],
+        monitor: [],
+        likelyMarkdownSoon: [],
+        newStockTotal: 1,
+        newStock: [{
+          artikalId: 203,
+          sku: "SKU-NEW-ONLY",
+          storeId: 2,
+          supplierId: 11,
+          seasonId: 7,
+          footwearTypeId: 4,
+          storeName: "Objekat 2",
+          supplierName: "Dobavljac A",
+          stockUnits: 5,
+          firstReceiptDateUtc: "2026-06-17T00:00:00Z",
+          daysSinceReceipt: 3,
+          daysSinceLastSale: null,
+          salesHistoryStatus: "never_sold",
+          reasonCode: "new_stock",
+        }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("SKU-NEW-ONLY")).toBeInTheDocument();
+    expect(screen.queryByText("Nema kandidata za pre-nivelaciju.")).not.toBeInTheDocument();
   });
 
   it.each([
