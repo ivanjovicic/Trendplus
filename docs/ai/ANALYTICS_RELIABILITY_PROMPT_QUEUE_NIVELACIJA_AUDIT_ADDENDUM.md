@@ -7,7 +7,8 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: none. RQ537 is DONE on `main`; see completion note below. RQ545 (NV-F9) is PARTIAL on `main`: the code-side diagnosis and PostgreSQL proof are delivered, while deployed endpoint acceptance remains with RQ535/STAB16. RQ475 remains WAITING pending its own fresh selection/collision pass.
+Current READY routing: primary `RQ548`; additional parallel-safe READY lanes: `RQ546`, `RQ549`, `RQ550`; additional bounded UI READY: `RQ554`. RQ537/RQ540/RQ547 are DONE. RQ545 (NV-F9) is PARTIAL only for deployed endpoint acceptance with RQ535/STAB16. RQ538/RQ539 stay WAITING until the RQ548 pre-change oracle baseline is captured; RQ541 follows proof-first RQ550; RQ543/RQ542 follow proof-first RQ549 so the oracle cannot be rewritten around the fix.
+Owner recovery 2026-10-03 after RQ563: the prior "no safe RQ prompt" conclusion was superseded by a deeper dependency audit. RQ548 depends only on DONE RQ525; RQ546 has no dependencies; RQ554's required backend error states are already delivered by the code-side portion of PARTIAL RQ545 and its remaining deployed acceptance is not a start gate. Two circular queue defects were also found: RQ542<->RQ549 and RQ541<->RQ550. Both are repaired proof-first: RQ549/RQ550 must pin current defects before RQ542/RQ541 change semantics. Fresh GitHub checks found no open PR or matching RQ538-RQ550 task branch/lock. Primary READY is RQ548; additional READY lanes are RQ546/RQ549/RQ550/RQ554.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -15,24 +16,24 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 
 | Audit id | Queue id | Initial status |
 |---|---|---|
-| NV-F1 | RQ537 | WAITING |
+| NV-F1 | RQ537 | DONE |
 | NV-F2 | RQ538 | WAITING |
 | NV-F3 | RQ539 | WAITING |
-| NV-F4 | RQ540 | WAITING |
+| NV-F4 | RQ540 | DONE |
 | NV-F5 | RQ541 | WAITING |
 | NV-F6 | RQ542 | WAITING |
 | NV-F7 | RQ543 | WAITING |
 | NV-F8 | RQ544 | WAITING |
 | NV-F9 | RQ545 | PARTIAL |
-| NV-F10 | RQ546 | WAITING |
+| NV-F10 | RQ546 | READY |
 | NV-P1 | RQ547 | DONE |
-| NV-P2 | RQ548 | WAITING |
-| NV-P3 | RQ549 | WAITING |
-| NV-P4 | RQ550 | WAITING |
+| NV-P2 | RQ548 | READY |
+| NV-P3 | RQ549 | READY |
+| NV-P4 | RQ550 | READY |
 | NV-I1 | RQ551 | WAITING |
 | NV-I2 | RQ552 | WAITING |
 | NV-I3 | RQ553 | WAITING |
-| NV-I4 | RQ554 | WAITING |
+| NV-I4 | RQ554 | READY |
 | NV-I5 | RQ555 | WAITING |
 | NV-E1 | RQ556 | WAITING |
 | NV-E2 | RQ557 | WAITING |
@@ -185,7 +186,7 @@ The same event is counted identically, for the same store filter, by Pre/Post, P
 
 #### Dependencies
 
-None. Keep the Q83 nullability contract when touching the scoped SQL.
+No hard implementation dependency. Routing rule: capture the independent RQ548 pre-change oracle/golden baseline first because RQ538 changes the same event/store semantics that the oracle must prove. Keep the Q83 nullability contract when touching the scoped SQL.
 
 ---
 
@@ -242,7 +243,7 @@ There are no 999 values in the API or UI, new arrivals are not ranked as markdow
 
 #### Dependencies
 
-NV-F1 (same files; land it first, or in one PR).
+RQ537/NV-F1 is DONE. Route after RQ548 captures the never-sold/new-stock/below-cost baseline; the configurable minimum-age policy remains explicit rather than silently hard-coded by the test.
 
 ---
 
@@ -340,7 +341,7 @@ A flat daily sales rate always reads as ≈0% effect, and every surface names it
 
 #### Dependencies
 
-NV-P4 (oracle), and the RQ528 parity contract as context.
+RQ550/NV-P4 proof-first oracle, plus the DONE RQ528 parity contract as context.
 
 ---
 
@@ -397,7 +398,7 @@ No row has `control_article_id = article_id`, DiD is event-specific, and a singl
 
 #### Dependencies
 
-NV-P3; RQ532 consumes the corrected DiD.
+RQ549/NV-P3 proof-first oracle. After the oracle lands, RQ543 should establish direction/maturity/overlap fields before RQ542 consumes them. RQ532 consumes the corrected DiD.
 
 ---
 
@@ -587,7 +588,7 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 
 ## RQ546 - NV-F10 - Do not swallow failed lazy-route imports in chunk-load recovery
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: frontend-chunk-recovery
@@ -725,7 +726,7 @@ Claim note 2026-10-01: fresh `origin/main` is `cde8307bb1579222f44a4da171f024127
 
 ## RQ548 - NV-P2 - Independent Pre-Nivelacija oracle and golden fixture
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: tests
 Feature family: pre-nivelacija-oracle
@@ -759,7 +760,7 @@ The RQ525 harness. Land it before NV-F1/NV-F3, or in the same PR.
 
 ## RQ549 - NV-P3 - DiD/control and optional-metric mapper oracle on real PostgreSQL
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: tests/sql
 Feature family: nivelacija-did-oracle
@@ -780,7 +781,7 @@ The current defects are pinned (expected to fail) and NV-F6 flips them. The quer
 
 #### Dependencies
 
-RQ527; NV-F6.
+RQ527. This is the proof-first lane for NV-F6/RQ542: pin the current defects and independent expected values before changing the implementation. RQ542 depends on this oracle; do not make RQ549 depend on RQ542.
 
 ---
 
@@ -788,7 +789,7 @@ RQ527; NV-F6.
 
 ## RQ550 - NV-P4 - Nivelacija split oracle and cross-surface parity
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: tests
 Feature family: nivelacija-split-oracle
@@ -808,7 +809,7 @@ The flat-rate counterexample fails on current main and passes after NV-F5.
 
 #### Dependencies
 
-NV-F5; the RQ528 parity contract.
+RQ528 parity contract. This is the proof-first lane for NV-F5/RQ541: the flat-rate and cross-surface counterexamples must be captured on current main before the split implementation changes. RQ541 depends on this oracle; do not make RQ550 depend on RQ541.
 
 ---
 
@@ -936,7 +937,7 @@ RQ529 (supplier a11y) for shared components.
 
 ## RQ554 - NV-I4 - Failure-state truth on both nivelacija screens
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: frontend/tests
 Feature family: nivelacija-failure-state
