@@ -978,6 +978,7 @@ const preNivelacijaCandidateSchema = z.object({
   firstReceiptDateUtc: validDate.nullable().optional(),
   daysSinceReceipt: nullableNonNegativeInteger.optional(),
   receiptEvidenceStatus: z.enum(["received", "first_sale_fallback", "unknown"]).optional(),
+  stockAgeStatus: z.enum(["new_stock", "established", "unknown"]).optional(),
   markdownEvents: nonNegativeInteger,
   avgMarkdownPct: nonNegativePercentage,
   grossMarginPctEst: nullableNumber,
@@ -1049,6 +1050,7 @@ const preNivelacijaNewStockQueueItemSchema = z.object({
   daysSinceReceipt: nonNegativeInteger,
   daysSinceLastSale: nullableNonNegativeInteger,
   salesHistoryStatus: z.enum(["never_sold", "no_sale_in_window", "sold"]),
+  stockAgeStatus: z.literal("new_stock"),
   reasonCode: z.literal("new_stock"),
 }).passthrough();
 

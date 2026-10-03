@@ -170,6 +170,7 @@ public sealed class PreNivelacijaNewStockQueueItemDto
     public int DaysSinceReceipt { get; set; }
     public int? DaysSinceLastSale { get; set; }
     public string SalesHistoryStatus { get; set; } = "unknown";
+    public string StockAgeStatus { get; set; } = "new_stock";
     public string ReasonCode { get; set; } = "new_stock";
 }
 
@@ -219,6 +220,7 @@ public sealed class PreNivelacijaSkuCandidateDto
     public DateTime? FirstReceiptDateUtc { get; set; }
     public int? DaysSinceReceipt { get; set; }
     public string ReceiptEvidenceStatus { get; set; } = "unknown";
+    public string StockAgeStatus { get; set; } = "unknown";
     public int MarkdownEvents { get; set; }
     public decimal AvgMarkdownPct { get; set; }
     public decimal? GrossMarginPctEst { get; set; }

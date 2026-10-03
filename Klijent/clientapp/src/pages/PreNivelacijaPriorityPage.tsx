@@ -1559,7 +1559,10 @@ export default function PreNivelacijaPriorityPage() {
                               </div>
                             </td>
                             <td className="align-right">{formatNonNegativeNumber(row.stockUnits)}</td>
-                            <td className="align-right">{salesHistoryLabel(row.salesHistoryStatus, row.daysSinceLastSale)}</td>
+                            <td className="align-right">
+                              {salesHistoryLabel(row.salesHistoryStatus, row.daysSinceLastSale)}
+                              {row.stockAgeStatus === "unknown" ? <small className="pnp-decision-status"> · Starost robe nepoznata</small> : null}
+                            </td>
                             <td className={`align-right ${deltaTrendClass(row.recommendationAllowed, row.revenueDelta)}`}>{formatGatedRsd(row.recommendationAllowed, row.revenueDelta)}</td>
                             <td className="align-center">
                               <span

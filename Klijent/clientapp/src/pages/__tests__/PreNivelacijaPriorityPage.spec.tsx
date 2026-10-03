@@ -112,6 +112,7 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     firstReceiptDateUtc: "2026-01-01T00:00:00Z",
     daysSinceReceipt: 90,
     receiptEvidenceStatus: "received",
+    stockAgeStatus: "established",
     markdownEvents: 1,
     avgMarkdownPct: 12,
     grossMarginPctEst: 34,
@@ -546,10 +547,14 @@ describe("PreNivelacijaPriorityPage", () => {
   });
 
   it("renders never-sold history, below-cost margin and the separate new-stock queue", async () => {
-    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
       ...makeResponse([makeCandidate({
         daysSinceLastSale: null,
         salesHistoryStatus: "never_sold",
+        firstReceiptDateUtc: null,
+        daysSinceReceipt: null,
+        receiptEvidenceStatus: "unknown",
+        stockAgeStatus: "unknown",
         grossMarginPctEst: -25,
         grossMarginPctSigned: -25,
         belowCost: true,
@@ -573,6 +578,7 @@ describe("PreNivelacijaPriorityPage", () => {
           daysSinceReceipt: 3,
           daysSinceLastSale: null,
           salesHistoryStatus: "never_sold",
+          stockAgeStatus: "new_stock",
           reasonCode: "new_stock",
         }],
       },
@@ -585,6 +591,7 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     expect(await screen.findByText("Nikad prodato")).toBeInTheDocument();
+    expect(screen.getByText(/Starost robe nepoznata/)).toBeInTheDocument();
     expect(screen.getAllByText("Ispod nabavne").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Nova roba (1)" })).toBeInTheDocument();
     expect(screen.getByText("Primljeno pre 3 dana · Nikad prodato")).toBeInTheDocument();
@@ -612,6 +619,7 @@ describe("PreNivelacijaPriorityPage", () => {
           daysSinceReceipt: 3,
           daysSinceLastSale: null,
           salesHistoryStatus: "never_sold",
+          stockAgeStatus: "new_stock",
           reasonCode: "new_stock",
         }],
       },

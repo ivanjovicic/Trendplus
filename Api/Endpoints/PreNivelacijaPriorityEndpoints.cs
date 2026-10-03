@@ -14,6 +14,8 @@ namespace Trendplus2.Endpoints;
 
 public static class PreNivelacijaPriorityEndpoints
 {
+    internal const int DefaultMinimumNewStockAgeDays = 30;
+
     private sealed class SalesLite
     {
         public int Units180 { get; init; }
@@ -314,6 +316,7 @@ public static class PreNivelacijaPriorityEndpoints
                             .Where(dp => dp.ArtikalId.HasValue
                                 && artikalIds.Contains(dp.ArtikalId.Value)
                                 && dp.TipPromene == TipPromeneConstants.UlazRobe
+                                && dp.Datum <= nowUtc
                                 && (normalizedDataScope == "all"
                                     || (normalizedDataScope == "imported" && dp.DataOrigin == "access")
                                     || (normalizedDataScope == "existing" && (dp.DataOrigin == "existing" || dp.DataOrigin == null || dp.DataOrigin == ""))))
@@ -425,6 +428,7 @@ public static class PreNivelacijaPriorityEndpoints
                                         ? Math.Max(0, (todayUtc - lastSaleDate.Value.Date).Days)
                                         : null,
                                     SalesHistoryStatus = ResolveSalesHistoryStatus(lastSaleDate, from180Utc),
+                                    StockAgeStatus = "new_stock",
                                     ReasonCode = "new_stock"
                                 });
                                 continue;
@@ -479,9 +483,12 @@ public static class PreNivelacijaPriorityEndpoints
                         var daysSinceReceipt = firstReceiptDate.HasValue
                             ? Math.Max(0, (todayUtc - firstReceiptDate.Value.Date).Days)
                             : (int?)null;
+                        var stockAgeStatus = daysSinceReceipt.HasValue
+                            ? "established"
+                            : "unknown";
 
                         var noSaleDaysForFilter = daysSinceLastSale
-                            ?? (salesHistoryStatus == "never_sold" ? 180 : (int?)null);
+                            ?? (salesHistoryStatus == "never_sold" ? daysSinceReceipt : null);
                         if (noSaleDaysMin.HasValue
                             && (!noSaleDaysForFilter.HasValue || noSaleDaysForFilter.Value < noSaleDaysMin.Value))
                             continue;
@@ -521,10 +528,11 @@ public static class PreNivelacijaPriorityEndpoints
                         }
 
                         var seasonRecencyBoost = ResolveSeasonRecencyBoost(a.SeasonId, seasons, todayUtc);
+                        var recencyDaysForScore = daysSinceLastSale ?? daysSinceReceipt ?? 0;
                         var breakdown = scoring.ComputeScoreBreakdown(
                             a.StockUnits,
                             velocity180,
-                            daysSinceLastSale ?? 180,
+                            recencyDaysForScore,
                             markdownEvents,
                             avgMarkdownPct,
                             hasCompleteEvidence ? grossMarginPct : 0m,
@@ -581,6 +589,7 @@ public static class PreNivelacijaPriorityEndpoints
                                 : null,
                             DaysSinceReceipt = daysSinceReceipt,
                             ReceiptEvidenceStatus = receiptEvidenceStatus,
+                            StockAgeStatus = stockAgeStatus,
                             MarkdownEvents = markdownEvents,
                             AvgMarkdownPct = decimal.Round(avgMarkdownPct, 2),
                             GrossMarginPctEst = marginEvidence.GrossMarginPctEst,
@@ -624,7 +633,7 @@ public static class PreNivelacijaPriorityEndpoints
                             candidate.RevenueDeltaHighlightVsMarkdown,
                             minRevenueDelta,
                             maxRevenueDelta,
-                            candidate.DaysSinceLastSale ?? 180,
+                            candidate.DaysSinceLastSale ?? candidate.DaysSinceReceipt ?? 0,
                             candidate.PriorityBand,
                             candidate.Confidence,
                             candidate.Units180,
@@ -840,11 +849,10 @@ public static class PreNivelacijaPriorityEndpoints
 
     internal static int ResolveMinimumNewStockAgeDays(IConfiguration configuration)
     {
-        const int defaultDays = 30;
         var configured = configuration["Analytics:PreNivelacija:MinimumNewStockAgeDays"];
         return int.TryParse(configured, NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
             ? Math.Clamp(days, 0, 3650)
-            : defaultDays;
+            : DefaultMinimumNewStockAgeDays;
     }
 
     internal static AnalyticsResponseMetaDto BuildQueryFailureMeta(
@@ -1021,7 +1029,7 @@ public static class PreNivelacijaPriorityEndpoints
         DateTime nowUtc,
         AnalyticsResponseMetaDto? meta = null,
         List<PreNivelacijaNewStockQueueItemDto>? newStockCandidates = null,
-        int minimumNewStockAgeDays = 30)
+        int minimumNewStockAgeDays = DefaultMinimumNewStockAgeDays)
     {
         return new PreNivelacijaPriorityBaseCacheEntry
         {

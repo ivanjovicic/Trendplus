@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text.Json;
 using System.Net.Http.Json;
 using Application.Artikli.Common.Interfaces;
@@ -131,8 +132,11 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.Equal(JsonValueKind.Null, candidate.GetProperty("firstReceiptDateUtc").ValueKind);
         Assert.Equal(JsonValueKind.Null, candidate.GetProperty("daysSinceLastSale").ValueKind);
         Assert.Equal("unknown", candidate.GetProperty("receiptEvidenceStatus").GetString());
+        Assert.Equal("unknown", candidate.GetProperty("stockAgeStatus").GetString());
         Assert.Equal("never_sold", candidate.GetProperty("salesHistoryStatus").GetString());
         Assert.False(candidate.GetProperty("recommendationAllowed").GetBoolean());
+        Assert.NotEqual("high", candidate.GetProperty("priorityBand").GetString());
+        Assert.Equal(0, candidate.GetProperty("scoreBreakdown").GetProperty("recencyRisk").GetDecimal());
         Assert.Contains("receipt_date_unknown", candidate.GetProperty("recommendation").GetProperty("reasonCodes")
             .EnumerateArray().Select(code => code.GetString()));
     }
@@ -332,6 +336,16 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                        OR (@scope = 'imported' AND p.data_origin = 'access')
                        OR (@scope = 'existing' AND COALESCE(p.data_origin, '') IN ('', 'existing')))
                 GROUP BY ps.id_artikal, p.id_objekat
+            ), receipts AS (
+                SELECT dp."ArtikalId" AS article_id,
+                       dp."IDObjekat" AS store_id,
+                       MIN(dp."Datum") AS first_receipt
+                FROM "DnevnikPromena" dp
+                WHERE dp."TipPromene" = 'Ulaz robe'
+                  AND (@scope = 'all'
+                       OR (@scope = 'imported' AND dp."DataOrigin" = 'access')
+                       OR (@scope = 'existing' AND COALESCE(dp."DataOrigin", '') IN ('', 'existing')))
+                GROUP BY dp."ArtikalId", dp."IDObjekat"
             ), markdown AS (
                 SELECT a."Id" AS article_id,
                        COUNT(dp."Id")::integer AS markdown_events,
@@ -356,14 +370,17 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             SELECT a."Id", a."PLU", a."IDObjekat", a."Kolicina",
                    COALESCE(s.units_180, 0), COALESCE(s.positive_units_180, 0),
                    COALESCE(s.negative_units_180, 0), COALESCE(s.sales_row_count, 0),
-                   CASE WHEN s.latest_positive_sale IS NULL THEN 999
+                   CASE WHEN s.latest_positive_sale IS NULL THEN NULL
                         ELSE (CURRENT_DATE - s.latest_positive_sale::date)::integer END,
                    COALESCE(m.markdown_events, 0), COALESCE(m.average_markdown_pct, 0),
                    COALESCE(a."ProdajnaCena", a."PrvaProdajnaCena"),
-                   COALESCE(a."NabavnaCenaDin", a."NabavnaCena"), a."DataOrigin"
+                   COALESCE(a."NabavnaCenaDin", a."NabavnaCena"), a."DataOrigin",
+                   CASE WHEN r.first_receipt IS NULL THEN NULL
+                        ELSE (CURRENT_DATE - r.first_receipt::date)::integer END
             FROM "Artikli" a
             LEFT JOIN sales s ON s.id_artikal = a."Id" AND s.store_id IS NOT DISTINCT FROM a."IDObjekat"
             LEFT JOIN markdown m ON m.article_id = a."Id"
+            LEFT JOIN receipts r ON r.article_id = a."Id" AND r.store_id IS NOT DISTINCT FROM a."IDObjekat"
             WHERE COALESCE(a."Kolicina", 0) > 0
               AND (@scope = 'all'
                    OR (@scope = 'imported' AND a."DataOrigin" = 'access')
@@ -387,8 +404,8 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             rows.Add(new OracleRow(
                 reader.GetInt32(0), reader.GetString(1), reader.GetInt32(2), reader.GetInt32(3),
                 reader.GetInt32(4), reader.GetInt32(5), reader.GetInt32(6), reader.GetInt32(7),
-                reader.GetInt32(8), reader.GetInt32(9), reader.GetDecimal(10), reader.GetDecimal(11),
-                reader.GetDecimal(12), reader.GetString(13)));
+                reader.IsDBNull(8) ? null : reader.GetInt32(8), reader.GetInt32(9), reader.GetDecimal(10), reader.GetDecimal(11),
+                reader.GetDecimal(12), reader.GetString(13), reader.IsDBNull(14) ? null : reader.GetInt32(14)));
         }
 
         return rows;
@@ -413,7 +430,11 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             Assert.Equal(row.GetProperty("positiveUnits180").GetInt32(), observed.PositiveUnits180);
             Assert.Equal(row.GetProperty("negativeUnits180").GetInt32(), observed.NegativeUnits180);
             Assert.Equal(row.GetProperty("salesRows180").GetInt32(), observed.SalesRowCount);
-            Assert.Equal(row.GetProperty("daysSinceLastSale").GetInt32(), observed.DaysSinceLastSale);
+            var expectedDaysSinceLastSale = row.GetProperty("daysSinceLastSale");
+            Assert.Equal(expectedDaysSinceLastSale.ValueKind == JsonValueKind.Null
+                    ? null
+                    : expectedDaysSinceLastSale.GetInt32(),
+                observed.DaysSinceLastSale);
             Assert.Equal(row.GetProperty("markdownEvents").GetInt32(), observed.MarkdownEvents);
             Assert.Equal(row.GetProperty("averageMarkdownPct").GetDecimal(), observed.AverageMarkdownPct);
             Assert.Equal(row.GetProperty("sellingPrice").GetDecimal(), observed.SellingPrice);
@@ -442,14 +463,14 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             Assert.Equal(expected.Units180, candidate.GetProperty("units180").GetInt32());
             Assert.Equal(expected.PositiveUnits180, candidate.GetProperty("positiveUnits180").GetInt32());
             Assert.Equal(expected.NegativeUnits180, candidate.GetProperty("negativeUnits180").GetInt32());
-            if (expected.DaysSinceLastSale == 999)
+            if (!expected.DaysSinceLastSale.HasValue)
             {
                 Assert.Equal(JsonValueKind.Null, candidate.GetProperty("daysSinceLastSale").ValueKind);
                 Assert.Equal("never_sold", candidate.GetProperty("salesHistoryStatus").GetString());
             }
             else
             {
-                Assert.Equal(expected.DaysSinceLastSale, candidate.GetProperty("daysSinceLastSale").GetInt32());
+                Assert.Equal(expected.DaysSinceLastSale.Value, candidate.GetProperty("daysSinceLastSale").GetInt32());
             }
             Assert.Equal(expected.MarkdownEvents, candidate.GetProperty("markdownEvents").GetInt32());
             Assert.Equal(expected.AverageMarkdownPct, candidate.GetProperty("avgMarkdownPct").GetDecimal());
@@ -477,7 +498,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             var breakdown = item.GetProperty("scoreBreakdown");
             var stockPressure = Clamp(row.StockUnits * 100m / maxStock);
             var velocityRisk = 100m - Clamp(velocity * 100m / maxVelocity);
-            var recencyRisk = Clamp(Math.Min(row.DaysSinceLastSale, 180) * 100m / 180m);
+            var recencyRisk = Clamp(Math.Min(row.DaysSinceLastSale ?? row.DaysSinceReceipt ?? 0, 180) * 100m / 180m);
             var markdownOpportunity = Clamp(100m - (row.MarkdownEvents * 20m + row.AverageMarkdownPct * 0.5m));
             var hasCompleteEvidence = row.SalesRowCount > 0
                 && row.Units180 > 0
@@ -525,11 +546,16 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         var newStock = root.GetProperty("queues").GetProperty("newStock").EnumerateArray()
             .Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
         Assert.Equal(3, newStock.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.Equal("new_stock", newStock.GetProperty("stockAgeStatus").GetString());
         Assert.Equal("new_stock", newStock.GetProperty("reasonCode").GetString());
         var neverSold = candidates["RQ548-S1-NEVER"];
         Assert.Equal(JsonValueKind.Null, neverSold.GetProperty("daysSinceLastSale").ValueKind);
         Assert.Equal("never_sold", neverSold.GetProperty("salesHistoryStatus").GetString());
+        Assert.Equal("established", neverSold.GetProperty("stockAgeStatus").GetString());
         Assert.Equal("high", neverSold.GetProperty("priorityBand").GetString());
+        var firstSaleFallback = candidates["RQ548-S1-NET"];
+        Assert.Equal("first_sale_fallback", firstSaleFallback.GetProperty("receiptEvidenceStatus").GetString());
+        Assert.True(firstSaleFallback.GetProperty("daysSinceReceipt").GetInt32() >= 90);
 
         var belowCost = candidates["RQ548-S1-BELOW"];
         Assert.Equal(-25m, belowCost.GetProperty("grossMarginPctEst").GetDecimal());
@@ -540,6 +566,62 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.True(belowCost.GetProperty("marginDeltaHighlightVsMarkdown").GetDecimal() > 0m);
         Assert.True(root.GetProperty("summary").GetProperty("estimatedAvoidableMarkdownLossCoverageEligible").GetInt32() > 0);
         Assert.True(root.GetProperty("summary").GetProperty("estimatedAvoidableMarkdownLoss").GetDecimal() > 0m);
+    }
+
+    [Fact]
+    public async Task PreNivelacijaEndpoint_ConfiguredNewStockAgeThresholdChangesClassification()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache, minimumNewStockAgeDays: 2);
+        using var client = factory.CreateClient();
+
+        using var response = await GetJsonAsync(client, "all", storeId: 1);
+        var candidates = response.RootElement.GetProperty("candidates").EnumerateArray().ToArray();
+        var threeDayOld = candidates.Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
+        Assert.Equal("established", threeDayOld.GetProperty("stockAgeStatus").GetString());
+        Assert.Equal(3, threeDayOld.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.DoesNotContain(response.RootElement.GetProperty("queues").GetProperty("newStock").EnumerateArray(),
+            item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
+    }
+
+    [Fact]
+    public async Task PreNivelacijaEndpoint_ReceiptOlderThanDefaultThresholdIsNotProtectedAsNewStock()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        await ExecuteAsync(connectionString, """
+            INSERT INTO "Artikli"
+                ("Id", "PLU", "Naziv", "NabavnaCena", "NabavnaCenaDin", "PrvaProdajnaCena", "ProdajnaCena",
+                 "IDDobavljac", "IDTipObuce", "UpdatedAt", "Kolicina", "IDObjekat", "Kategorija", "DataOrigin")
+            VALUES
+                (108, 'RQ539-S1-OLDER', 'RQ539 receipt older than threshold', 50, 50, 100, 100,
+                 1, 1, CURRENT_TIMESTAMP - INTERVAL '40 days', 9, 1, 'Obuca', 'access');
+            INSERT INTO "DnevnikPromena"
+                ("TipPromene", "Datum", "Iznos", "ArtikalId", "IDObjekat", "DataOrigin")
+            VALUES ('Ulaz robe', CURRENT_TIMESTAMP - INTERVAL '40 days', 0, 108, 1, 'access');
+            """);
+
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache);
+        using var client = factory.CreateClient();
+
+        using var response = await GetJsonAsync(client, "all", storeId: 1);
+        var candidate = response.RootElement.GetProperty("candidates").EnumerateArray()
+            .Single(item => item.GetProperty("sku").GetString() == "RQ539-S1-OLDER");
+        Assert.Equal("established", candidate.GetProperty("stockAgeStatus").GetString());
+        Assert.Equal(40, candidate.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.DoesNotContain(response.RootElement.GetProperty("queues").GetProperty("newStock").EnumerateArray(),
+            item => item.GetProperty("sku").GetString() == "RQ539-S1-OLDER");
     }
 
     private static void AssertSummaryAndQueuesAreBoundToTheCandidatePopulation(JsonElement root)
@@ -618,22 +700,28 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         int PositiveUnits180,
         int NegativeUnits180,
         int SalesRowCount,
-        int DaysSinceLastSale,
+        int? DaysSinceLastSale,
         int MarkdownEvents,
         decimal AverageMarkdownPct,
         decimal SellingPrice,
         decimal PurchasePrice,
-        string DataOrigin);
+        string DataOrigin,
+        int? DaysSinceReceipt);
 
     private sealed class PreNivelacijaEndpointFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _connectionString;
         private readonly IAnalyticsCacheService _cache;
+        private readonly int? _minimumNewStockAgeDays;
 
-        public PreNivelacijaEndpointFactory(string connectionString, IAnalyticsCacheService cache)
+        public PreNivelacijaEndpointFactory(
+            string connectionString,
+            IAnalyticsCacheService cache,
+            int? minimumNewStockAgeDays = null)
         {
             _connectionString = connectionString;
             _cache = cache;
+            _minimumNewStockAgeDays = minimumNewStockAgeDays;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -652,7 +740,12 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                     ["ConnectionStrings:AnalyticsConnection"] = _connectionString,
                     ["ConnectionStrings:OpenProductTrainingConnection"] = _connectionString,
                     ["PerformanceLogging:CaptureHttpRequests"] = "false"
-                }));
+                }.Concat(_minimumNewStockAgeDays.HasValue
+                    ? new Dictionary<string, string?>
+                    {
+                        ["Analytics:PreNivelacija:MinimumNewStockAgeDays"] = _minimumNewStockAgeDays.Value.ToString(CultureInfo.InvariantCulture)
+                    }
+                    : new Dictionary<string, string?>())));
 
             builder.ConfigureServices(services =>
             {

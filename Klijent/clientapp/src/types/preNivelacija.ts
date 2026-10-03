@@ -61,6 +61,7 @@ export interface PreNivelacijaSkuCandidate {
   firstReceiptDateUtc?: string | null;
   daysSinceReceipt?: number | null;
   receiptEvidenceStatus?: "received" | "first_sale_fallback" | "unknown" | string;
+  stockAgeStatus?: "new_stock" | "established" | "unknown" | string;
   markdownEvents: number;
   avgMarkdownPct: number;
   grossMarginPctEst: number | null;
@@ -166,6 +167,7 @@ export interface PreNivelacijaNewStockQueueItem {
   daysSinceReceipt: number;
   daysSinceLastSale: number | null;
   salesHistoryStatus: "never_sold" | "no_sale_in_window" | "sold" | string;
+  stockAgeStatus: "new_stock";
   reasonCode: string;
 }
 
