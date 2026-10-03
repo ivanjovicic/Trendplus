@@ -24,6 +24,7 @@ Evidence state: synchronized
 - `npm run test -- --run src/pages/__tests__/SupplierSalesStatsPage.premium.spec.tsx` -> pass, 32/32.
 - `npm run check:analytics-guardrails` -> pass; encoding, scanner and TypeScript checks passed. Existing baseline now reports 39 known findings and 2 removed.
 - `git diff --check` -> pass before delivery.
+- Current-main GitHub Actions `Analytics Quality Gates`, run `37100716928` on implementation SHA `950d2fd5bc038e558168a025b4f4d31d55ba612c` -> `in_progress` at inspection.
 
 ## Validation not run
 - Full frontend/backend suites -> not run; focused regression plus analytics guardrails/typecheck cover this UI-only repair.
@@ -37,6 +38,7 @@ Evidence state: synchronized
 
 ## Risks
 - The warning distinguishes request failure of one source; completeness metadata inside a fulfilled Inventory response continues to follow that source's existing response contract.
+- Analytics Quality Gates run `37100716928` was still in progress at inspection; local focused proof passed, and the task does not wait on remote CI.
 
 ## Next
 - None for this audit; RQ530's separate authoritative-metric follow-up remains with its existing owner/gates.
