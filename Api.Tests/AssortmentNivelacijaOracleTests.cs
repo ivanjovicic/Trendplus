@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Api.Models;
 using Npgsql;
 using NpgsqlTypes;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Api.Tests;
 
@@ -14,10 +16,12 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     private static readonly DateOnly PureAnchor = new(2026, 10, 1);
 
     private readonly PostgresContainerFixture _fixture;
+    private readonly ITestOutputHelper _output;
 
-    public AssortmentNivelacijaOracleTests(PostgresContainerFixture fixture)
+    public AssortmentNivelacijaOracleTests(PostgresContainerFixture fixture, ITestOutputHelper output)
     {
         _fixture = fixture;
+        _output = output;
     }
 
     // ------------------------------------------------------------------
@@ -412,6 +416,110 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     }
 
     [Fact]
+    public async Task DidControlAndOptionalMappers_ArePinnedAgainstRealPostgresFixture()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_nivelacija_did_oracle");
+        if (db is null)
+        {
+            return;
+        }
+
+        var fixture = new AssortmentFixture();
+        fixture.Vendors.Add(new AssortmentVendor(301, "Oracle vendor"));
+        fixture.Articles.Add(new AssortmentArticle(3011, 301, "Patike", "SHARED-PLU"));
+        fixture.Articles.Add(new AssortmentArticle(3012, 301, "Patike", "SHARED-PLU"));
+        fixture.Articles.Add(new AssortmentArticle(3021, 301, "Patike", "CONTROL-NO-STOCK"));
+        fixture.Articles.Add(new AssortmentArticle(3022, 301, "Patike", "CONTROL-STOCK"));
+        fixture.Articles.Add(new AssortmentArticle(3031, 301, "Patike", "POST-BACKFILL-MARKDOWN"));
+        fixture.Events.Add(new AssortmentEvent(301, 3011, db.Anchor.AddDays(-40), 100m, 80m, 1));
+        fixture.Events.Add(new AssortmentEvent(302, 3011, db.Anchor.AddDays(-20), 80m, 90m, 1)); // markup, immature
+        fixture.Events.Add(new AssortmentEvent(303, 3031, db.Anchor.AddDays(-15), 120m, 90m, 1)); // persisted after the backfill
+        fixture.Sales.Add(new AssortmentSale(301, "T-PRE", db.Anchor.AddDays(-50), 3011, 10, 100m, 1));
+        fixture.Sales.Add(new AssortmentSale(302, "T-POST-1", db.Anchor.AddDays(-35), 3011, 4, 80m, 1));
+        fixture.Sales.Add(new AssortmentSale(303, "T-PRE-2", db.Anchor.AddDays(-25), 3011, 4, 80m, 1));
+        fixture.Sales.Add(new AssortmentSale(304, "T-POST-2", db.Anchor.AddDays(-10), 3011, 2, 90m, 1));
+        fixture.Sales.Add(new AssortmentSale(305, "CONTROL-PRE", db.Anchor.AddDays(-50), 3022, 10, 95m, 1));
+        fixture.Sales.Add(new AssortmentSale(306, "CONTROL-POST", db.Anchor.AddDays(-35), 3022, 7, 95m, 1));
+        fixture.Sales.Add(new AssortmentSale(307, "SECOND-SIZE", db.Anchor.AddDays(-35), 3012, 20, 80m, 1));
+        await SeedAsync(db.Connection, fixture);
+        await SeedDidMapperViewsAsync(db.Connection);
+        await ExecuteAsync(db.Connection, ReadRepoFile("Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql"));
+
+        var controls = await ReadStringSetAsync(db.Connection, "SELECT article_id::text FROM vw_nivelacija_kontrolna_grupa ORDER BY article_id;");
+        Assert.Equal(new[] { "3012", "3021", "3022" }, controls);
+
+        var did = await ReadDidRowsAsync(db.Connection);
+        Assert.Equal(new long[] { 301, 302, 303 }, did.Select(x => x.EventId).Order());
+        Assert.All(did, row => Assert.NotEqual(row.ArticleId, row.ControlArticleId));
+        Assert.Equal(3022, did.Single(row => row.EventId == 301).ControlArticleId);
+        var firstEvent = did.Single(row => row.EventId == 301);
+        Assert.Equal(10m, firstEvent.PreQty);
+        Assert.Equal(1000m, firstEvent.PreRevenue);
+        Assert.Equal(8m, firstEvent.PostQty);
+        Assert.Equal(640m, firstEvent.PostRevenue);
+        Assert.Equal(10m, firstEvent.ControlPreQty);
+        Assert.Equal(950m, firstEvent.ControlPreRevenue);
+        Assert.Equal(7m, firstEvent.ControlPostQty);
+        Assert.Equal(665m, firstEvent.ControlPostRevenue);
+        Assert.Equal(-75m, did.Single(row => row.EventId == 301).DidRevenue);
+        Assert.Equal(1m, did.Single(row => row.EventId == 301).DidQty);
+        // Baseline includes all overlapping sales windows and the immature partial window; RQ542 owns semantic correction.
+        var secondEvent = did.Single(row => row.EventId == 302);
+        Assert.Equal(3022, secondEvent.ControlArticleId);
+        Assert.Equal(18m, secondEvent.PreQty);
+        Assert.Equal(1640m, secondEvent.PreRevenue);
+        Assert.Equal(2m, secondEvent.PostQty);
+        Assert.Equal(180m, secondEvent.PostRevenue);
+        Assert.Equal(17m, secondEvent.ControlPreQty);
+        Assert.Equal(1615m, secondEvent.ControlPreRevenue);
+        Assert.Equal(0m, secondEvent.ControlPostQty);
+        Assert.Equal(0m, secondEvent.ControlPostRevenue);
+        Assert.Equal(155m, secondEvent.DidRevenue);
+        Assert.Equal(1m, secondEvent.DidQty);
+        var postBackfillEvent = did.Single(row => row.EventId == 303);
+        Assert.Equal(3021, postBackfillEvent.ControlArticleId);
+        Assert.Null(postBackfillEvent.DidRevenue);
+        Assert.Null(postBackfillEvent.DidQty);
+
+        var explain = await ReadExplainAsync(db.Connection);
+        var planEvidence = explain.Split(Environment.NewLine)
+            .Where(line => line.Contains("Index Scan using idx_mv_daily_sales_facts_pk", StringComparison.Ordinal)
+                || line.Contains("Planning Time:", StringComparison.Ordinal)
+                || line.Contains("Execution Time:", StringComparison.Ordinal));
+        _output.WriteLine("DiD bounded query plan evidence: {0}", string.Join(" | ", planEvidence));
+        Assert.Contains("Execution Time:", explain, StringComparison.Ordinal);
+
+        await SeedOptionalMapperViewsAsync(db.Connection);
+
+        var articles = new List<VendorSalesNivelacijaArticleStatDto>
+        {
+            new() { ArticleId = 3011, PriceEventId = 301, Sku = "SHARED-PLU", PriceChangePercent = -20m, PreQty = 10, PostQty = 4, PostRevenue = 320m },
+            new() { ArticleId = 3012, PriceEventId = 0, Sku = "SHARED-PLU", PriceChangePercent = 0m, PreQty = 20, PostQty = 20, PostRevenue = 1600m },
+            new() { ArticleId = 3011, PriceEventId = 302, Sku = "SHARED-PLU", PriceChangePercent = 12.5m, PreQty = 4, PostQty = 2, PostRevenue = 180m, IsPostWindowMature = false }
+        };
+
+        var rollingWarning = await InvokeOptionalMapperAsync("MapRollingAndMomentumToNivelacijaArticlesAsync", articles, db.Connection, db.Anchor.AddDays(-40).ToDateTime(TimeOnly.MinValue));
+        var didWarning = await InvokeOptionalMapperAsync("MapOosAndDidToNivelacijaArticlesAsync", articles, db.Connection);
+        InvokeElasticityMapper(articles);
+
+        // Pin today's SKU-level aggregation/overwrite behavior before the independent mapper fix.
+        Assert.Contains("No momentum data (view missing)", rollingWarning, StringComparison.Ordinal);
+        Assert.Contains("OOS lookup failed", didWarning, StringComparison.Ordinal);
+        Assert.All(articles, article =>
+        {
+            Assert.Equal(90m, article.Rolling7dPreRevenue);
+            Assert.Equal(180m, article.Rolling7dPostRevenue);
+            Assert.Null(article.MomentumRevenue);
+            Assert.Null(article.OOSRate);
+            Assert.Equal(40m, article.DidRevenue);
+            Assert.Null(article.LostSalesOOS);
+        });
+        Assert.Equal(3m, articles[0].PriceElasticity);
+        Assert.Null(articles[1].PriceElasticity);
+        Assert.Equal(-4m, articles[2].PriceElasticity); // markup + immature post window currently still produces elasticity
+    }
+
+    [Fact]
     public void EndpointVendorEffectReceivesComparableIncludingImmatureArticles()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
@@ -637,6 +745,118 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         public DateOnly Anchor { get; } = anchor;
 
         public ValueTask DisposeAsync() => Connection.DisposeAsync();
+    }
+
+    private sealed record DidRow(
+        long EventId, int ArticleId, decimal? PreQty, decimal? PostQty, decimal? PreRevenue, decimal? PostRevenue,
+        int ControlArticleId, decimal? ControlPreQty, decimal? ControlPostQty, decimal? ControlPreRevenue,
+        decimal? ControlPostRevenue, decimal? DidRevenue, decimal? DidQty);
+
+    private static Task SeedDidMapperViewsAsync(NpgsqlConnection connection)
+    {
+        return ExecuteAsync(
+            connection,
+            """
+            CREATE VIEW price_history AS
+            SELECT "Id" AS id, "ArtikalId" AS article_id, "Datum"::date AS event_date,
+                   "StaraProdajnaCena" AS old_price, "NovaProdajnaCena" AS new_price
+              FROM "DnevnikPromena"
+             WHERE "TipPromene" IN ('Nivelacija', 'Nivelacija cena');
+            CREATE TABLE mv_daily_sales_facts (
+                article_id integer NOT NULL,
+                day date NOT NULL,
+                units bigint NOT NULL,
+                revenue numeric NOT NULL
+            );
+            CREATE UNIQUE INDEX idx_mv_daily_sales_facts_pk ON mv_daily_sales_facts (article_id, day);
+            CREATE INDEX idx_mv_daily_sales_facts_day ON mv_daily_sales_facts (day);
+            INSERT INTO mv_daily_sales_facts(article_id, day, units, revenue)
+            SELECT ps.id_artikal, pz.datum_prodaje::date,
+                   SUM(ps.kolicina)::bigint, SUM(ps.kolicina * ps.cena)::numeric
+              FROM prodaja_stavke ps
+              JOIN prodaja_zaglavlje pz ON pz.id = ps.id_prodaja
+             GROUP BY ps.id_artikal, pz.datum_prodaje::date;
+            """);
+    }
+
+    private static Task SeedOptionalMapperViewsAsync(NpgsqlConnection connection) => ExecuteAsync(
+        connection,
+        """
+        CREATE TABLE vw_sales_rolling_7d (article_id integer, day date, ma7_revenue numeric);
+        INSERT INTO vw_sales_rolling_7d VALUES
+            (3011, CURRENT_DATE - 50, 100),
+            (3011, CURRENT_DATE - 35, 200),
+            (3012, CURRENT_DATE - 50, 80),
+            (3012, CURRENT_DATE - 35, 160);
+        CREATE TABLE vw_sales_momentum (article_id integer, last_day date, momentum_revenue numeric);
+        CREATE TABLE vw_stock_red_zone (sku text, is_oos boolean);
+        INSERT INTO vw_stock_red_zone VALUES ('SHARED-PLU', true), ('SHARED-PLU', false);
+        """);
+
+    private static async Task<List<DidRow>> ReadDidRowsAsync(NpgsqlConnection connection)
+    {
+        const string sql = """
+            SELECT price_event_id, article_id, pre_qty, post_qty, pre_revenue, post_revenue,
+                   control_article_id, control_pre_qty, control_post_qty, control_pre_revenue,
+                   control_post_revenue, did_revenue, did_qty
+              FROM vw_nivelacija_did
+             ORDER BY price_event_id;
+            """;
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var rows = new List<DidRow>();
+        while (await reader.ReadAsync())
+        {
+            decimal? Dec(int ordinal) => reader.IsDBNull(ordinal) ? null : reader.GetDecimal(ordinal);
+            rows.Add(new DidRow(
+                reader.GetInt64(0), reader.GetInt32(1), Dec(2), Dec(3), Dec(4), Dec(5), reader.GetInt32(6),
+                Dec(7), Dec(8), Dec(9), Dec(10), Dec(11), Dec(12)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<string[]> ReadStringSetAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var rows = new List<string>();
+        while (await reader.ReadAsync()) rows.Add(reader.GetString(0));
+        return rows.ToArray();
+    }
+
+    private static async Task<string> ReadExplainAsync(NpgsqlConnection connection)
+    {
+        await using var command = new NpgsqlCommand(
+            "EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) SELECT * FROM vw_nivelacija_did WHERE event_date >= CURRENT_DATE - INTERVAL '45 days' AND event_date < CURRENT_DATE;",
+            connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var lines = new List<string>();
+        while (await reader.ReadAsync()) lines.Add(reader.GetString(0));
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static async Task<string?> InvokeOptionalMapperAsync(
+        string methodName,
+        List<VendorSalesNivelacijaArticleStatDto> articles,
+        NpgsqlConnection connection,
+        DateTime? eventDate = null)
+    {
+        var method = typeof(Trendplus2.Endpoints.AllEndpoints).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException($"Mapper {methodName} not found.");
+        var arguments = methodName == "MapRollingAndMomentumToNivelacijaArticlesAsync"
+            ? new object?[] { articles, connection, eventDate, CancellationToken.None }
+            : new object?[] { articles, connection, CancellationToken.None };
+        return await (Task<string?>)(method.Invoke(null, arguments)
+            ?? throw new InvalidOperationException($"Mapper {methodName} returned no task."));
+    }
+
+    private static void InvokeElasticityMapper(List<VendorSalesNivelacijaArticleStatDto> articles)
+    {
+        var method = typeof(Trendplus2.Endpoints.AllEndpoints).GetMethod(
+            "MapElasticityAndLostSalesToNivelacijaArticles", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Elasticity mapper not found.");
+        method.Invoke(null, [articles]);
     }
 
     private async Task<AssortmentDatabase?> TryCreateDatabaseAsync(string prefix)
