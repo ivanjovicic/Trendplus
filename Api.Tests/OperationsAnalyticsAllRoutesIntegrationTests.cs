@@ -442,7 +442,8 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             var path = request.RequestUri?.AbsolutePath;
             if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(path))
             {
-                counts[path] = counts.GetValueOrDefault(path) + 1;
+                counts.TryGetValue(path, out var currentCount);
+                counts[path] = currentCount + 1;
             }
 
             return response;
