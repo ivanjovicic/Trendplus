@@ -4,9 +4,9 @@ Date: 2026-10-03
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 950d2fd5bc038e558168a025b4f4d31d55ba612c
+Main verification: passed - freshly fetched `origin/main` equals `950d2fd5bc038e558168a025b4f4d31d55ba612c` and contains the implementation commit.
+Evidence state: synchronized
 
 ## What was done
 - Compared remaining 2026-10-02 C# and React implementation families against their owner prompt acceptance notes and focused evidence: RQ499/RQ500/RQ529/RQ530/RQ532/RQ537, P-UI-28/29/30/32/33/34/37, plus the prior negative entity-ID and RQ487/startup/migration evidence.
