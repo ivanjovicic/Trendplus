@@ -3,6 +3,7 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Post-RQ563 recovery 2026-10-03: deeper queue inspection supersedes the RQ563 run-log statement that no safe RQ prompt exists. The Nivelacija addendum contains runnable proof/UI lanes after repairing two circular dependencies. This Operations queue keeps RQ564-RQ566 gated as documented and registers RQ567-RQ568 for two uncovered reliability gaps: current pages do not consume the delivered RQ515 decision-readiness / Operations integrity evidence, and RQ561 still reports Pre/Post UNVERIFIED because its disposable schema lacks the canonical compatibility view/oracle path.
 Owner promotion/claim 2026-10-03: RQ560 was delivered and verified DONE on current `main` at `2fe461557f781d4a5652294396c39d4726d18a7a`. Fresh recovery found RQ561 dependency-complete, with no RQ561 lock, branch or open PR; existing unrelated worktrees are clean. Promoted RQ561 to READY and claimed it for current six-screen adversarial certification. Local lock: `.ai/task-locks/RQ561-codex.lock.md`.
 Owner completion 2026-10-03: RQ561 is PARTIAL on current `main` at `56c56c83c1aaecb7d64aa1c1916d1a0e2dfcda34`; fresh fetch verified `origin/main` at the same SHA. Its disposable PostgreSQL certification executes all six current web/API route pairs without skips and emits machine-readable expected/executed counts and verdicts. Pre/Post Nivelacija is explicitly UNVERIFIED because the compatibility view is unavailable and maturity/overlap semantics remain uncertified. The wider same-fixture matrix for provenance, store/dataScope, cost and cross-screen totals remains incomplete. Run log: `.ai/runs/2026-10-03-RQ561-evidence.md`; evidence state synchronized.
 Owner continuation/closure 2026-10-03: RQ561 is DONE on final implementation SHA `60f086e02a78c3aaf865c41cfbf5588586b3038a`, freshly verified on `origin/main`. The same disposable PostgreSQL fixture measures all six current routes and 26 successful API executions with expected/executed counts; checks cover half-open and adjacent dates, signed returns, excluded DUG/KOREKCIJA, previous-only Shoe Type, cost coverage, bucket denominators, store/dataScope, RQ494 header-origin provenance, UTC and legacy Access timestamp bases, and distinct NULL/real -1 identities. Pre/Post is `UNVERIFIED` because its compatibility view and maturity/overlap proof are unavailable. Focused route proof 1/1, supporting timestamp/negative-ID tests 41/41, zero skips. Actions run 37103534105 failed at superseded SHA `d729347c` on CS0411 in the request counter; the portable `TryGetValue` fix is delivered at `60f086e0`. Run log `.ai/runs/2026-10-03-RQ561-evidence.md`; evidence synchronized.
@@ -201,6 +202,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ564 | WAITING | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
 | RQ565 | WAITING | P0 | operations-six-screen-deployed-reconciliation | Reconcile all six current screens through deployed API/browser/export |
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
+| RQ567 | WAITING | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
+| RQ568 | WAITING | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
 
 ---
 
@@ -4105,7 +4108,7 @@ After the canonical nivelacija semantics stabilize, add one explicit family whos
 
 ### Dependencies
 
-- RQ541-RQ544, RQ547-RQ550 and RQ545 deployed-contract diagnostics.
+- RQ541-RQ544, RQ547-RQ550, RQ568 certification-schema parity, and the code-side RQ545 contract diagnostics.
 - Production application remains RQ454/STAB16; local family implementation must not wait on provider access once semantic/oracle dependencies are stable.
 
 ---
@@ -4139,7 +4142,7 @@ Extend existing browser/reconciliation tooling instead of creating a parallel ce
 
 ### Dependencies
 
-- RQ561, RQ562-RQ564 as applicable, RQ448 patterns and exact deployed build evidence.
+- RQ561 plus RQ567/RQ568 and RQ562-RQ564 as applicable, RQ448 patterns and exact deployed build evidence.
 - Read-only production reconciliation remains RQ454/STAB16; a staging/pilot environment may satisfy this browser layer without production writes.
 
 ---
@@ -4179,3 +4182,97 @@ The 2026-10-02 negative-ID delivery explicitly did not run its read-only product
 
 - Negative-ID implementation `0360442d`; RQ560 for sentinel-collision interpretation.
 - Provider/admin actions require the existing STAB16/operator authority; no new secrets are introduced.
+
+
+---
+
+## RQ567 - Expose one trustworthy readiness and integrity surface across current Operations screens
+
+Status: WAITING
+Ready after: RQ554 closes the shared Nivelacija failure-state UI collision; RQ562 and RQ563 are already DONE
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: operations-visible-trust-readiness
+Parallel-safe: no with current Operations trust-header/page-state owners
+Owner: Analytics Reliability / UX
+Commit suggestion: feat(analytics): show Operations readiness evidence
+
+### Problem
+
+RQ515 delivered backend-owned categorical `decisionReadiness` plus frontend readers, and RQ513/RQ562/RQ563 deliver durable Operations integrity states/evidence. Current production pages do not actually consume the shared frontend readiness helper, and `operationsIntegrityStatus` / checked time / evidence id are not rendered as a coherent user-visible contract. The backend can therefore know that a surface is `unverified`, `drift_detected`, `blocked` or `signal_only` while the page still looks normally trustworthy.
+
+This is especially important now that Inventory has an independent family probe and Sales/Shoe/Color have grain-aware integrity evidence. Missing Nivelacija family proof must be shown as not verified, not silently omitted.
+
+### Scope
+
+- Reuse `AnalyticsTrustHeader`, `analyticsDecisionReadiness.ts`, the existing meta schema and evidence endpoint.
+- Wire current primary Operations screens: Inventory, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color, Pre-Nivelacija Priorities.
+- Add backend meta propagation only where a current endpoint still fails to expose the already-owned family snapshot; do not invent a second readiness score or second integrity registry.
+
+### Do
+
+1. Show one categorical state derived from backend authority: `decision_ready`, `signal_only`, `blocked`, `unavailable`, alongside integrity `verified`, `unverified`, `degraded`, `drift_detected`.
+2. Render checked-at time and evidence id when present, with an inspectable evidence action; never call missing evidence “verified”.
+3. For a family without an independent probe (notably Nivelacija until RQ564), render “Nije nezavisno provereno” and keep actionability governed by the backend decision-readiness contract.
+4. A stale context/source generation must not reuse a green badge from a previous filter/import/cache generation.
+5. Keep business recommendation/status semantics unchanged; this prompt exposes trust, it does not create recommendations.
+
+### Tests / acceptance
+
+- Every six-screen page spec covers verified, unverified/degraded and drift/blocked states.
+- `drift_detected` cannot render a green trust state.
+- Missing integrity evidence renders explicitly unverified.
+- The displayed evidence id/context matches response meta and the evidence drawer/API record.
+- Frontend code uses the shared RQ515 helper rather than re-deriving readiness differently per page.
+
+### Dependencies
+
+- RQ515, RQ562, RQ563 are DONE.
+- RQ554 first to avoid conflicting edits on the two Nivelacija pages.
+- RQ564 is not a start gate: until it lands, Nivelacija must truthfully render missing-family proof as unverified.
+
+---
+
+## RQ568 - Execute the canonical Pre/Post compatibility view in current six-route certification
+
+Status: WAITING
+Ready after: RQ550 captures the current split/parity counterexamples, then RQ541 and RQ543 stabilize split/event semantics
+Priority: P1
+Type: integration-tests/test-infrastructure/evidence
+Feature family: prepost-certification-schema-parity
+Parallel-safe: no with canonical Nivelacija view/test-harness owners
+Owner: Analytics Reliability / QA
+Commit suggestion: test(analytics): certify PrePost canonical view
+
+### Problem
+
+RQ561 executes all six current Operations routes, but Pre/Post remains machine-reported `UNVERIFIED` because its Testcontainers schema does not install the canonical compatibility view and there is no authoritative maturity/overlap oracle in that harness. That is an intentional safe failure, but it leaves one of the six primary screens outside the otherwise strong same-fixture certification.
+
+A simplified test-only view would be dangerous because it could pass while production SQL is wrong. The harness must execute the real repository SQL and the same semantic contracts used by runtime startup.
+
+### Scope
+
+- Existing RQ561/RQ447 Testcontainers bootstrap and route report.
+- Canonical `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql` / required compatibility objects and the finalized RQ541/RQ543 semantics.
+- Reuse RQ550 oracle/parity assertions; do not create a second Pre/Post formula.
+
+### Do
+
+1. Install the canonical repository view/bootstrap path in the disposable certification database using the same prerequisite ordering as startup.
+2. Seed mature markdown, markup, immature and overlapping events plus store/dataScope variants from existing adversarial fixtures.
+3. Execute the real Pre/Post endpoint in the RQ561 six-route run and reconcile totals/cohort/maturity/basis to the proof-first RQ550 expectations.
+4. Keep an explicit negative fixture where the compatibility object is intentionally absent and verify the endpoint reports contract-missing/unverified truthfully.
+5. Update the machine-readable route report so Pre/Post can be VERIFIED only when canonical SQL, oracle and endpoint all executed successfully.
+
+### Tests / acceptance
+
+- RQ561 current-route report still has 6/6 routes and zero skipped, but Pre/Post is no longer UNVERIFIED merely because the test schema omitted its canonical view.
+- Canonical SQL/view initialization is used verbatim or through the production bootstrap helper; no simplified shadow implementation.
+- Mature/immature/overlap and store/dataScope cases reconcile with zero unexplained delta.
+- Missing-object negative-path remains explicit and non-green.
+
+### Dependencies
+
+- RQ550 proof baseline, then RQ541 and RQ543 semantic fixes.
+- Consume RQ545 diagnostics but do not wait for its deployed/provider acceptance.
+- RQ454/STAB16 remain production-only and do not block disposable PostgreSQL certification.
