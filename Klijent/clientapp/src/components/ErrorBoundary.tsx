@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { isChunkLoadError } from "../utils/chunkLoadRecovery";
 
 interface Props {
     children: ReactNode;
@@ -30,6 +31,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
     public render() {
         if (this.state.hasError) {
+            if (this.state.error && isChunkLoadError(this.state.error)) {
+                return (
+                    <div className="flex flex-col items-center justify-center" style={{ minHeight: 400, padding: "2rem", textAlign: "center" }}>
+                        <div className="rounded-lg p-8" style={{ background: "var(--surface-elevated)", border: "2px solid var(--info)", maxWidth: 600 }}>
+                            <h2 className="text-xl font-bold mb-3" style={{ color: "var(--text-primary)" }}>Nova verzija aplikacije je dostupna</h2>
+                            <p className="mb-4 text-sm text-muted">Osveži aplikaciju da nastaviš sa radom.</p>
+                            <button onClick={() => window.location.reload()} className="rounded-md px-4 py-3 font-semibold" style={{ background: "var(--info)", color: "var(--text-on-primary)", border: "none" }}>
+                                Osveži aplikaciju
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
             if (this.props.fallback) {
                 return this.props.fallback;
             }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { installChunkLoadRecovery, isChunkLoadError, recoverFromChunkLoadError } from "../chunkLoadRecovery";
+import { ChunkLoadError, installChunkLoadRecovery, isChunkLoadError, recoverFromChunkLoadError, retryLazyImport } from "../chunkLoadRecovery";
 
 describe("chunkLoadRecovery", () => {
   beforeEach(() => {
@@ -23,6 +23,40 @@ describe("chunkLoadRecovery", () => {
     currentTime = 2_000;
     expect(recoverFromChunkLoadError(new TypeError("Failed to fetch dynamically imported module"), reload, now)).toBe(false);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed lazy import once with a cache-busted chunk URL", async () => {
+    const importer = vi.fn().mockRejectedValue(new TypeError("Failed to fetch dynamically imported module: /assets/Route-abc.js"));
+    const retryImporter = vi.fn().mockResolvedValue({ default: "route" });
+    const reload = vi.fn();
+    const result = await retryLazyImport(importer, reload, () => 1234, retryImporter);
+
+    expect(result).toEqual({ default: "route" });
+    expect(importer).toHaveBeenCalledTimes(1);
+    expect(retryImporter).toHaveBeenCalledTimes(1);
+    expect(retryImporter.mock.calls[0][0]).toBe(`${window.location.origin}/assets/Route-abc.js?__trendplus_retry=1234`);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("lets lazy import failures reach the retry helper and reloads after retry failure", async () => {
+    const reload = vi.fn();
+    const now = vi.fn(() => 50_000);
+    const importer = vi.fn().mockImplementation(async () => {
+      const event = new CustomEvent("vite:preloadError", {
+        cancelable: true,
+        detail: new TypeError("Failed to fetch dynamically imported module: /assets/Route-abc.js"),
+      });
+      expect(window.dispatchEvent(event)).toBe(true);
+      expect(event.defaultPrevented).toBe(false);
+      throw event.detail;
+    });
+    const retryImporter = vi.fn().mockRejectedValue(new TypeError("Failed to fetch dynamically imported module"));
+    const cleanup = installChunkLoadRecovery(reload, now);
+
+    await expect(retryLazyImport(importer, reload, now, retryImporter)).rejects.toBeInstanceOf(ChunkLoadError);
+    expect(retryImporter).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+    cleanup();
   });
 
   it("prevents preload default only when a reload is actually scheduled", () => {
