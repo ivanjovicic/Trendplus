@@ -38,6 +38,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
+import { getSupplierOptionLabels, resolveNivelacijaErrorDetails } from "../utils/nivelacijaErrorPresentation";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
@@ -713,6 +714,8 @@ export default function ProdajaPrePostNivelacijePage() {
     void loadVendors();
   }, [loadVendors]);
 
+  const vendorOptions = useMemo(() => getSupplierOptionLabels(vendors), [vendors]);
+
   useEffect(() => {
     let cancelled = false;
     const previousStores = stores;
@@ -812,6 +815,7 @@ export default function ProdajaPrePostNivelacijePage() {
     initialLoading,
     refetching,
     error: queryError,
+    errorReason,
     staleWarning,
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
@@ -827,6 +831,9 @@ export default function ProdajaPrePostNivelacijePage() {
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
   const previousComparisonError = querySnapshot?.previousError ?? null;
+  const queryErrorDetails = errorReason
+    ? resolveNivelacijaErrorDetails(errorReason, "Greška pri učitavanju pre/post analitike.")
+    : null;
   const loading = initialLoading || refetching;
   useEffect(() => {
     if (!data) return;
@@ -1250,7 +1257,7 @@ const advancedSignals = useMemo(
         key: "vendorId",
         label: "Dobavljač",
         value: activeFilters.vendorId != null
-          ? vendors.find((vendor) => vendor.id === activeFilters.vendorId)?.naziv ?? activeFilters.vendorId
+          ? vendorOptions.find((vendor) => vendor.id === activeFilters.vendorId)?.displayName ?? activeFilters.vendorId
           : "Svi",
       },
       { key: "category", label: "Kategorija", value: activeFilters.category },
@@ -1265,7 +1272,7 @@ const advancedSignals = useMemo(
       { key: "dataScope", label: "Opseg podataka", value: dataScopeLabel(dataScope) },
       { key: "focusFilter", label: "Brzi fokus", value: focusFilterLabel(focusFilter) },
     ],
-    [activeFilters.category, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, dataScope, focusFilter, periodPreset, stores, vendors]
+    [activeFilters.category, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.vendorId, dataScope, focusFilter, periodPreset, stores, vendorOptions]
   );
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(
@@ -1460,9 +1467,9 @@ const advancedSignals = useMemo(
         control: (
           <select value={vendorId ?? ""} onChange={(event) => setVendorId(event.target.value ? Number(event.target.value) : null)}>
             <option value="">Svi</option>
-            {vendors.map((vendor) => (
+            {vendorOptions.map((vendor) => (
               <option key={vendor.id} value={vendor.id}>
-                {vendor.naziv}
+                {vendor.displayName}
               </option>
             ))}
           </select>
@@ -1502,7 +1509,7 @@ const advancedSignals = useMemo(
         ),
       },
     ],
-    [category, data?.categories, dataScope, fromDate, handlePresetChange, periodPreset, storeId, stores, storesLoadError, storesScope, storesStale, toDate, vendorId, vendors]
+    [category, data?.categories, dataScope, fromDate, handlePresetChange, periodPreset, storeId, stores, storesLoadError, storesScope, storesStale, toDate, vendorId, vendorOptions]
   );
 
   const openVendorDetail = (row: DecisionVendor) => {
@@ -1603,7 +1610,10 @@ const advancedSignals = useMemo(
       {queryError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"
-          message={queryError || "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+          message={queryErrorDetails?.message ?? queryError ?? "Ne prikazujemo nule jer nije potvrđeno da je period stvarno prazan."}
+          errorCode={queryErrorDetails?.errorCode}
+          showErrorCode
+          correlationId={queryErrorDetails?.correlationId}
           onRetry={refetch}
           helpHref="/analytics/data-quality"
         />

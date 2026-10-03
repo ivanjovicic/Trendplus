@@ -20,13 +20,14 @@ import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../services/preNivelacijaApi";
 import type { AnalyticsNamedValue } from "../types/analyticsTable";
-import type { PreNivelacijaPriorityResponse } from "../types/preNivelacija";
+import { PRE_NIVELACIJA_SALES_WINDOW_DAYS, type PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { decisionColumns, type DecisionCandidate, type DecisionStatus, type FiniteNumber, type NormalizedScenario } from "./preNivelacijaDecision";
 import { CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
+import { getNivelacijaBusinessErrorMessage } from "../utils/nivelacijaErrorPresentation";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
@@ -87,11 +88,12 @@ function getPreNivelacijaErrorDetails(reason: unknown): {
     ?? (typeof maybeError.message === "string" ? maybeError.message : null);
 
   return {
-    message: getSafeAnalyticsErrorMessage(
-      preNivelacijaError ? rawMessage : null,
-      errorCode,
-      fallbackMessage,
-    ),
+    message: getNivelacijaBusinessErrorMessage(errorCode)
+      ?? getSafeAnalyticsErrorMessage(
+        preNivelacijaError ? rawMessage : null,
+        errorCode,
+        fallbackMessage,
+      ),
     errorCode,
     correlationId,
   };
@@ -1111,6 +1113,16 @@ export default function PreNivelacijaPriorityPage() {
         value: selectedFootwearType?.label ?? "Svi",
       },
       {
+        key: "sales-window",
+        label: "Prozor modela",
+        value: `Poslednjih ${PRE_NIVELACIJA_SALES_WINDOW_DAYS} dana (UTC)`,
+      },
+      {
+        key: "no-sale-days-min",
+        label: "Min. dana bez prodaje",
+        value: `${activeFilters.noSaleDaysMin} dana`,
+      },
+      {
         key: "high-priority",
         label: "Visok prioritet (globalno)",
         value: data?.summary.highPriorityCount.toLocaleString("sr-RS") ?? RECOMMENDATION_SIGNAL_UNAVAILABLE,
@@ -1125,7 +1137,7 @@ export default function PreNivelacijaPriorityPage() {
         tone: "warning",
       },
     ];
-  }, [data?.summary.highPriorityCount, footwearTypeId, footwearTypeOptions, globalStatusCounts, seasonId, seasonOptions, supplierId, supplierOptions]);
+  }, [activeFilters.noSaleDaysMin, data?.summary.highPriorityCount, footwearTypeId, footwearTypeOptions, globalStatusCounts, seasonId, seasonOptions, supplierId, supplierOptions]);
 
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(() => [
     {
@@ -1307,6 +1319,7 @@ export default function PreNivelacijaPriorityPage() {
             Operativna podrška za odluke po SKU pre faze sniženja: gde treba pojačati izlaganje,
             šta zadržati pod nadzorom i šta spustiti iz fokusa.
           </p>
+          <p data-testid="pnp-fixed-sales-window">Model koristi poslednjih {PRE_NIVELACIJA_SALES_WINDOW_DAYS} dana (UTC); prag dana bez prodaje je zaseban filter kandidata.</p>
         </div>
         <div className="pnp-decision-generated">
           Generisano: {data?.generatedAtUtc ? new Date(data.generatedAtUtc).toLocaleString("sr-RS") : "-"}
@@ -1318,7 +1331,9 @@ export default function PreNivelacijaPriorityPage() {
           title="Podaci trenutno nisu dostupni"
           message={error.message}
           errorCode={error.errorCode}
+          showErrorCode
           correlationId={error.correlationId}
+          contextMessage={`Prozor: poslednjih ${PRE_NIVELACIJA_SALES_WINDOW_DAYS} dana (UTC). Min. dana bez prodaje je poseban filter kandidata.`}
           onRetry={refetch}
           helpHref="/analytics/data-quality"
         />

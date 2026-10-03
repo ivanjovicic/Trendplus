@@ -64,10 +64,20 @@ vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
   ),
 }));
 vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
-  default: ({ title, message }: { title: string; message: string }) => (
+  default: ({ title, message, errorCode, showErrorCode, correlationId, contextMessage }: {
+    title: string;
+    message: string;
+    errorCode?: string | null;
+    showErrorCode?: boolean;
+    correlationId?: string | null;
+    contextMessage?: string | null;
+  }) => (
     <div role="alert">
       <strong>{title}</strong>
       <span>{message}</span>
+      {correlationId ? <span>Correlation ID: {correlationId}</span> : null}
+      {showErrorCode && errorCode ? <span>{errorCode}</span> : null}
+      {contextMessage ? <span>{contextMessage}</span> : null}
     </div>
   ),
 }));
@@ -1102,9 +1112,35 @@ describe("PreNivelacijaPriorityPage", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Servis je privremeno nedostupan.");
-    expect(alert).not.toHaveTextContent("PRE_NIVELACIJA_BACKEND_TIMEOUT");
+    expect(alert).toHaveTextContent("Correlation ID: corr-pnp-295");
+    expect(alert).toHaveTextContent("PRE_NIVELACIJA_BACKEND_TIMEOUT");
+    expect(alert).toHaveTextContent("Prozor: poslednjih 180 dana (UTC)");
+    expect(screen.getByTestId("pnp-fixed-sales-window")).toHaveTextContent("poslednjih 180 dana (UTC)");
+    expect(screen.getByText("Poslednjih 180 dana (UTC)")).toBeInTheDocument();
+    expect(screen.getByText("14 dana")).toBeInTheDocument();
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
     expect(screen.queryByText("Nisko")).not.toBeInTheDocument();
+  });
+
+  it("maps the known sales-unavailable state while retaining support identifiers", async () => {
+    getPreNivelacijaPrioritetiMock.mockRejectedValueOnce(
+      new PreNivelacijaApiError(
+        "pre_nivelacija_sales_unavailable",
+        "pre_nivelacija_sales_unavailable",
+        "corr-pnp-sales",
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Prodaja za skor trenutno nije dostupna.");
+    expect(alert).toHaveTextContent("pre_nivelacija_sales_unavailable");
+    expect(alert).toHaveTextContent("Correlation ID: corr-pnp-sales");
   });
 
   it("does not expose raw technical errors from unexpected fetch failures", async () => {

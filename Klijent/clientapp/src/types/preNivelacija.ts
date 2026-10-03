@@ -1,5 +1,8 @@
 import type { AnalyticsResponseMeta } from "./analytics";
 
+/** Fixed sales lookback in the Pre-Nivelacija backend response contract. */
+export const PRE_NIVELACIJA_SALES_WINDOW_DAYS = 180;
+
 export interface PreNivelacijaScoreBreakdown {
   stockPressure: number;
   velocityRisk: number;

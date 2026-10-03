@@ -9,6 +9,7 @@ type AnalyticsErrorStateProps = {
   title: string;
   message: string;
   errorCode?: string | null;
+  showErrorCode?: boolean;
   correlationId?: string | null;
   readinessId?: string | null;
   recoveryInstruction?: string | null;
@@ -39,6 +40,7 @@ export default function AnalyticsErrorState({
   title,
   message,
   errorCode,
+  showErrorCode = false,
   correlationId,
   readinessId,
   recoveryInstruction,
@@ -64,6 +66,12 @@ export default function AnalyticsErrorState({
       {recoveryInstruction ? <p>{recoveryInstruction}</p> : null}
       {contextMessage ? <p>{contextMessage}</p> : null}
       {correlationId ? <p className="aes-code">Correlation ID: {correlationId}</p> : null}
+      {showErrorCode && errorCode ? (
+        <details className="aes-code">
+          <summary>Kod greške za podršku</summary>
+          <p>{errorCode}</p>
+        </details>
+      ) : null}
       {resolvedSuggestions.length > 0 ? (
         <ul className="aes-suggestions">
           {resolvedSuggestions.map((item) => (
