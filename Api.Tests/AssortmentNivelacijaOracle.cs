@@ -155,8 +155,8 @@ internal static class AssortmentNivelacijaOracle
             .Where(e => articles.ContainsKey(e.ArticleId))
             .Where(e => options.StoreId is null || e.StoreId == options.StoreId)
             .GroupBy(e => options.PartitionEventsByStore
-                ? (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: e.StoreId ?? -1)
-                : (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: 0))
+                ? (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: e.StoreId)
+                : (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: (int?)0))
             .Select(g => g.MaxBy(e => e.Id)!)
             .ToList();
 
@@ -221,7 +221,7 @@ internal static class AssortmentNivelacijaOracle
     {
         var asOfUtc = asOf.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var deduplicated = sourceRows
-            .GroupBy(r => (r.EventDate, Vendor: r.VendorId ?? -1, r.ArticleId, r.OldPrice, r.NewPrice))
+            .GroupBy(r => (r.EventDate, r.VendorId, r.ArticleId, r.OldPrice, r.NewPrice))
             .Select(g => g.MaxBy(r => r.PriceEventId)!)
             .ToList();
 

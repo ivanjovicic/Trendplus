@@ -16,6 +16,10 @@ public sealed class NegativeEntityIdGuardTests
         @"((Supplier|Dobavljac|Store|Objekat|Season|Sezona|TipObuce|ShoeType|FootwearType|Vendor)I[dD]\w*|ID(Dobavljac|Objekat|Sezona|TipObuce))(\.Value)?\)?\s*(is\s*(not\s*)?)?(>|>=|<=|<)\s*0\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex NullableEntitySentinelCheck = new(
+        "COALESCE\\s*\\(\\s*(?:vendor_id|(?:[A-Za-z_]\\w*\\.)?\\\"IDObjekat\\\")\\s*,\\s*-1\\s*\\)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static readonly string[] AllowList =
     [
     ];
@@ -54,6 +58,25 @@ public sealed class NegativeEntityIdGuardTests
         Assert.True(
             violations.Count == 0,
             "Entity IDs may be negative (Access Random AutoNumber). Use HasValue / master-row lookup instead of a sign check:\n"
+            + string.Join('\n', violations));
+    }
+
+    [Fact]
+    public void AnalyticsSqlDoesNotMapNullableEntityIdsToNegativeOne()
+    {
+        var repoRoot = FindRepoRoot();
+        var files = Directory.EnumerateFiles(Path.Combine(repoRoot, "Api"), "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(repoRoot, "Database", "Analytics"), "*.sql", SearchOption.AllDirectories));
+        var violations = files
+            .SelectMany(file => File.ReadAllLines(file)
+                .Select((line, index) => (file, line, index))
+                .Where(item => NullableEntitySentinelCheck.IsMatch(item.line)))
+            .Select(item => $"{Path.GetRelativePath(repoRoot, item.file).Replace('\\', '/') }:{item.index + 1}: {item.line.Trim()}")
+            .ToList();
+
+        Assert.True(
+            violations.Count == 0,
+            "Nullable entity IDs must remain distinct from real negative IDs; use native NULL-safe grouping/joins:\n"
             + string.Join('\n', violations));
     }
 

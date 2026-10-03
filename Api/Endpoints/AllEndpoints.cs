@@ -902,7 +902,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id,
                                         old_price,
                                         new_price
@@ -945,7 +945,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id,
                                         old_price,
                                         new_price
@@ -985,7 +985,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id
                                     ORDER BY price_event_id DESC
                                 ) AS rn
@@ -4154,7 +4154,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id,
                                         old_price,
                                         new_price
@@ -4229,7 +4229,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id,
                                         old_price,
                                         new_price
@@ -4303,7 +4303,7 @@ public static class AllEndpoints
                                 ROW_NUMBER() OVER (
                                     PARTITION BY
                                         event_date::date,
-                                        COALESCE(vendor_id, -1),
+                                        vendor_id,
                                         article_id
                                     ORDER BY price_event_id DESC
                                 ) AS rn
@@ -8014,7 +8014,7 @@ public static class AllEndpoints
                                      COALESCE(src."Datum", d."Datum"),
                                      d."StaraProdajnaCena",
                                      d."NovaProdajnaCena",
-                                     COALESCE(d."IDObjekat", -1),
+                                     d."IDObjekat",
                                      COALESCE(NULLIF(d."DataOrigin", ''), 'existing')
                         ORDER BY d."Id" DESC
                     ) AS rn

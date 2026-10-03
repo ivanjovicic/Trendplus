@@ -615,7 +615,7 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
                     HAVING COUNT(*) > 1
                 ) duplicates) AS imported_duplicate_groups,
                 (SELECT COUNT(*) FROM (
-                    SELECT event_date::date, COALESCE(vendor_id, -1), article_id, old_price, new_price, COUNT(*)
+                    SELECT event_date::date, vendor_id, article_id, old_price, new_price, COUNT(*)
                     FROM ""vw_vendor_sales_nivelacija""
                     GROUP BY 1, 2, 3, 4, 5
                     HAVING COUNT(*) > 1

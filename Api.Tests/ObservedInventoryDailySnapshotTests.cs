@@ -78,6 +78,7 @@ public sealed class ObservedInventoryDailySnapshotTests
 
         Assert.Contains("CREATE TABLE IF NOT EXISTS analytics_intel.inventory_observed_daily_snapshot", sql, StringComparison.Ordinal);
         Assert.Contains("analytics_intel.vw_inventory_daily_stock_v1", sql, StringComparison.Ordinal);
+        Assert.Contains("0 means unspecified/company-level observation (current ProductsDim path)", sql, StringComparison.Ordinal);
         Assert.Contains("'observed'", sql, StringComparison.Ordinal);
         Assert.Contains("'reconstructed'", sql, StringComparison.Ordinal);
         Assert.Contains("'mixed'", sql, StringComparison.Ordinal);

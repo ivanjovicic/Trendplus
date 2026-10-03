@@ -3,7 +3,8 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
-Audit reconciliation 2026-10-03: RQ487 is DONE on current `main`; the main Analytics Reliability queue's current READY pointer is `none`. RQ560-RQ566 remain WAITING behind their declared dependency/collision gates and retain their separate evidence owners.
+Owner promotion/claim 2026-10-03: after RQ487 completed, fresh collision/dependency review found RQ560 runnable. RQ545's remaining scope is deployed acceptance owned by RQ535/STAB16; RQ541-RQ544 and RQ548-RQ550 remain WAITING. No open PR, active local lock or branch owner existed for the sentinel paths. RQ560 was promoted and claimed for the bounded repository-local repair; production verification remains later acceptance.
+Idle recovery 2026-10-03: RQ487 is DONE on current `main`; fresh checks found no open PR, active local lock, or branch owner for RQ560/RQ545/RQ541-RQ544/RQ548-RQ550. RQ545 is PARTIAL only for deployed acceptance owned by RQ535/STAB16; RQ541-RQ544 and RQ548-RQ550 are WAITING. Promoted and claimed RQ560 for repository-local sentinel analysis/repair; production verification remains later acceptance. Local lock `.ai/task-locks/RQ560-codex.lock.md`.
 Owner audit 2026-10-02: current Operations navigation contains six primary surfaces after RQ507: Inventory, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color and Pre-Nivelacija Priorities. Current-main review found strong deterministic/contract evidence, but not complete production certification. Registered RQ560-RQ566 as non-duplicative residual reliability work: negative-ID sentinel safety, six-screen adversarial recertification, grain-aware continuous integrity, Inventory family probe, Nivelacija family probe, exact deployed/browser/export six-screen proof, and post-deploy negative-ID repair/config verification. All remain WAITING pending their declared collision/dependency checks; parent RQ487 remains the current repository-local READY owner. RQ451 detail status was reconciled back to WAITING because the summary/certification plan remain WAITING and no implementation run log or frontend evidence reader was found.
 Owner completion 2026-10-02: RQ499 moved `IN_PROGRESS -> DONE` and was delivered on `main` in merge `84b90e5f` (implementation `7bc796ad`). Supplier consolidated shell now maps `critical`, tab-specific fallback sources, pending trust state, scorecard always as signal mode, and no stale cross-tab trust flash. Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-10-02: idle recovery verified RQ474/RQ475/RQ498 DONE on current `origin/main`, no active RQ499 lock/branch collision, and promoted/claimed RQ499 `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ499-cursor.lock.md`.
@@ -187,7 +188,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ495 | DONE | P0 | sale-line-snapshot-cost-binding | Bind snapshot cost evidence to the exact sale line |
 | RQ496 | DONE | P1 | shoetype-signed-share-presentation-truth | Preserve signed share and ranking semantics across Shoe Type surfaces |
 | RQ497 | DONE | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
-| RQ560 | WAITING | P0 | analytics-negative-id-sentinel-safety | Remove collision-prone numeric sentinels now that negative Access IDs are valid |
+| RQ560 | DONE | P0 | analytics-negative-id-sentinel-safety | Remove collision-prone numeric sentinels now that negative Access IDs are valid |
 | RQ561 | WAITING | P0 | operations-six-screen-certification | Re-certify the six current Operations screens on one adversarial fixture |
 | RQ562 | WAITING | P0 | operations-grain-aware-integrity | Detect bucket drift even when grand totals still match |
 | RQ563 | WAITING | P0 | inventory-independent-integrity-probe | Register and execute the missing independent Inventory family probe |
@@ -3833,8 +3834,8 @@ Do not change journal/live/provider/schema semantics, recommendation scoring, ow
 
 ## RQ560 - Remove negative Access-ID sentinel collisions from analytics and nivelacija SQL
 
-Status: WAITING
-Ready after: fresh collision check with RQ545 and the active nivelacija query owners; RQ487 is DONE and its current-main implementation is the baseline for this slice. No production access is required for the repository-local slice.
+Status: IN_PROGRESS
+Ready after: RQ487 DONE; fresh collision check with RQ545 and active nivelacija query owners completed 2026-10-03. RQ545 deployed acceptance remains with RQ535/STAB16 and does not block this repository-local slice. No production access is required for the repository-local slice.
 Priority: P0
 Type: backend/sql/tests
 Feature family: analytics-negative-id-sentinel-safety
@@ -3873,8 +3874,6 @@ Do not change article-ID positivity rules unless the article source contract its
 
 - 2026-10-02 negative Access entity-ID delivery `0360442d`.
 - Coordinate shared query files with RQ487 and nivelacija RQ541-RQ545; external STAB16/RQ454 proof must not block the local repair.
-
----
 
 ## RQ561 - Re-certify the six current Operations screens on one adversarial fixture
 

@@ -95,11 +95,11 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(3, totals.VendorsCount);
         Assert.Equal(9, totals.ArticlesCount);
 
-        var vendors = aggregate.Vendors.ToDictionary(v => v.VendorId ?? -1);
+        var vendors = aggregate.Vendors.ToDictionary(v => (HasId: v.VendorId.HasValue, Id: v.VendorId.GetValueOrDefault()));
 
         // Alfa is partially comparable: an immature row (A2017), a missing-window row (A2018)
         // and a netted zero baseline (A2019) stay out of Pre/Post/Change.
-        var alfa = vendors[201];
+        var alfa = vendors[(true, 201)];
         Assert.Equal(1590m, alfa.PreRevenue);
         Assert.Equal(1518m, alfa.PostRevenue);
         Assert.Equal(-72m, alfa.ChangeRevenue);
@@ -110,17 +110,17 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(4, alfa.DecreasedPriceArticles);
         Assert.Equal("neutral", alfa.EffectStatus);
 
-        Assert.Equal(30.43m, vendors[202].SemanticChangePercentRevenue);
-        Assert.Equal("effective", vendors[202].EffectStatus);
+        Assert.Equal(30.43m, vendors[(true, 202)].SemanticChangePercentRevenue);
+        Assert.Equal("effective", vendors[(true, 202)].EffectStatus);
 
         // Gama has only an immature comparable row: the state is explicit, not "insufficient".
-        Assert.Equal(0, vendors[203].MatureComparableRows);
-        Assert.Equal(1, vendors[203].ImmatureComparableRows);
-        Assert.Equal("immature", vendors[203].EffectStatus);
-        Assert.Null(vendors[203].SemanticChangePercentRevenue);
+        Assert.Equal(0, vendors[(true, 203)].MatureComparableRows);
+        Assert.Equal(1, vendors[(true, 203)].ImmatureComparableRows);
+        Assert.Equal("immature", vendors[(true, 203)].EffectStatus);
+        Assert.Null(vendors[(true, 203)].SemanticChangePercentRevenue);
 
         // Unresolved vendor 999 and a missing vendor share one unknown bucket.
-        var unknown = vendors[-1];
+        var unknown = vendors[(false, 0)];
         Assert.Equal("Nepoznato", unknown.VendorName);
         Assert.Equal(2, unknown.MatureComparableRows);
         Assert.Equal("insufficient_data", unknown.EffectStatus);
@@ -322,6 +322,44 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             $"scoped_vendor_sales_nivelacija(storeId={storeId?.ToString(CultureInfo.InvariantCulture) ?? "null"})",
             AssortmentNivelacijaOracle.SourceRows(fixture, AssortmentSourceOptions.Scoped(db.Anchor, storeId)),
             await ReadScopedRowsAsync(db.Connection, storeId));
+    }
+
+    [Fact]
+    public async Task ScopedSource_KeepsNullStoreDistinctFromRealNegativeOneStore()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_assortment_negative_store_sentinel");
+        if (db is null)
+        {
+            return;
+        }
+
+        const int articleId = 9001;
+        var fixture = new AssortmentFixture();
+        fixture.Vendors.Add(new AssortmentVendor(-1, "Dobavljač -1"));
+        fixture.Articles.Add(new AssortmentArticle(articleId, -1, "Patike", "SKU-9001"));
+        fixture.Events.Add(new AssortmentEvent(1, articleId, db.Anchor.AddDays(-50), 100m, 80m, -1));
+        fixture.Events.Add(new AssortmentEvent(2, articleId, db.Anchor.AddDays(-50), 100m, 80m, null));
+        fixture.Events.Add(new AssortmentEvent(3, articleId, db.Anchor.AddDays(-50), 100m, 80m, -2));
+        fixture.Sales.Add(new AssortmentSale(1, "R-PRE", db.Anchor.AddDays(-60), articleId, 2, 100m, -1));
+        fixture.Sales.Add(new AssortmentSale(2, "R-POST", db.Anchor.AddDays(-40), articleId, 3, 80m, -1));
+        await SeedAsync(db.Connection, fixture);
+
+        var expected = AssortmentNivelacijaOracle.SourceRows(
+            fixture,
+            AssortmentSourceOptions.Scoped(db.Anchor, storeId: null));
+        var actual = await ReadScopedRowsAsync(db.Connection, storeId: null);
+
+        Assert.Equal(new long[] { 1, 2, 3 }, expected.Select(row => row.PriceEventId).Order());
+        Assert.Equal(new long[] { 1, 2, 3 }, actual.Select(row => row.PriceEventId).Order());
+        AssertRowsEqual("scoped source with null and real -1 store", expected, actual);
+        Assert.Contains(actual, row => row.VendorId == -1);
+
+        var negativeStoreOnly = await ReadScopedRowsAsync(db.Connection, storeId: -1);
+        Assert.Equal(new long[] { 1 }, negativeStoreOnly.Select(row => row.PriceEventId).Order());
+
+        var negativeVendor = actual.First(row => row.VendorId == -1);
+        var missingVendor = negativeVendor with { PriceEventId = 3, VendorId = null, VendorName = null };
+        Assert.Equal(2, EndpointDedup([negativeVendor, missingVendor]).Count);
     }
 
     [Fact]
@@ -568,7 +606,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     }
 
     private static IReadOnlyList<AssortmentSourceRow> EndpointDedup(IEnumerable<AssortmentSourceRow> rows) =>
-        rows.GroupBy(r => (r.EventDate, Vendor: r.VendorId ?? -1, r.ArticleId, r.OldPrice, r.NewPrice))
+        rows.GroupBy(r => (r.EventDate, r.VendorId, r.ArticleId, r.OldPrice, r.NewPrice))
             .Select(g => g.MaxBy(r => r.PriceEventId)!)
             .OrderBy(r => r.PriceEventId)
             .ToList();

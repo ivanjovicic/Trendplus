@@ -347,10 +347,14 @@ public sealed class AnalyticsScreenCacheKeyContractTests
             7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, 1, "imported");
         var allStores = AnalyticsCacheKeys.VendorSalesNivelacija(
             7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, null, "all");
+        var negativeStore = AnalyticsCacheKeys.VendorSalesNivelacija(
+            7, FromUtc, FromUtc, ToUtc, "Patike", false, 5000, -1, "all");
 
         Assert.NotEqual(baseline, differentStore);
         Assert.NotEqual(baseline, differentScope);
         Assert.NotEqual(baseline, allStores);
+        Assert.NotEqual(negativeStore, allStores);
+        Assert.Contains("store:-1", negativeStore, StringComparison.Ordinal);
         Assert.Contains("store:1", baseline, StringComparison.Ordinal);
         Assert.Contains("scope:existing", baseline, StringComparison.Ordinal);
     }
