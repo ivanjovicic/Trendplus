@@ -4,9 +4,9 @@ Date: 2026-10-03
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: e5402f89314488f917df2bbc5e4dea503891dfd2
+Main verification: fresh `origin/main` fetch plus successful `git merge-base --is-ancestor e5402f89314488f917df2bbc5e4dea503891dfd2 origin/main`
+Evidence state: synchronized
 
 ## What was done
 - Applied the user-confirmed 30-day default as a configurable business threshold (`Analytics:PreNivelacija:MinimumNewStockAgeDays`) with one backend fallback constant.
@@ -38,20 +38,20 @@ Evidence state: pending
 - `node scripts/check-prompt-queues.mjs` -> pass (671 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` -> pass.
 - `node scripts/check-planning-architecture.mjs` -> pass (79 planning tasks).
-- `git diff --check` -> pass before evidence/roadmap updates; rerun after all edits.
+- `git diff --check` -> pass after source, roadmap, and run-log edits.
 
 ## Validation not run
 - Full backend/frontend suites -> not run; focused tests cover the scoped contract.
-- GitHub Actions status -> not inspected yet; inspect after push if a run for the delivered SHA is already discoverable.
+- `gh run list --commit e5402f89314488f917df2bbc5e4dea503891dfd2 --limit 10 --json databaseId,status,conclusion,workflowName,url,event,headSha` -> no current-main Actions runs discoverable for the implementation SHA.
 
 ## Documentation impact
 - Added this run log and a direct follow-up note in `MASTER_ROADMAP.md`; RQ539 remains historically DONE and no queue prompt was claimed or reopened.
 
 ## What was missed
-- None known; delivery and fresh `origin/main` verification remain to be recorded.
+- None known.
 
 ## Risks
 - The passing frontend build retains the existing Vite >500 kB chunk warning; the user explicitly scoped bundle work out of this task.
 
 ## Next
-- Commit and push directly to `main`, verify fresh `origin/main`, then synchronize this evidence.
+- None; implementation and synchronized evidence are on `main`.
