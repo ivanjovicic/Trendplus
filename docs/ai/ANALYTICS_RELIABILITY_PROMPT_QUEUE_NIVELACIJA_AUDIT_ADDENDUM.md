@@ -7,11 +7,13 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ539` (IN_PROGRESS; claimed in this workspace); additional parallel-safe READY lanes: `RQ546`, `RQ549`, `RQ550`; additional bounded UI READY: `RQ554`. RQ537/RQ540/RQ547/RQ548 are DONE. RQ538 remains WAITING while its shared Pre-Nivelacija endpoint path overlaps RQ539. RQ545 (NV-F9) is PARTIAL only for deployed endpoint acceptance with RQ535/STAB16. RQ541 follows proof-first RQ550; RQ543/RQ542 follow proof-first RQ549 so the oracle cannot be rewritten around the fix.
+Current READY routing: primary `RQ538` (IN_PROGRESS; claimed in this workspace); additional parallel-safe READY lanes: `RQ546`, `RQ549`, `RQ550`; additional bounded UI READY: `RQ554`. RQ537/RQ539/RQ540/RQ547/RQ548 are DONE. RQ545 (NV-F9) is PARTIAL only for deployed endpoint acceptance with RQ535/STAB16. RQ541 follows proof-first RQ550; RQ543/RQ542 follow proof-first RQ549 so the oracle cannot be rewritten around the fix.
 Owner recovery 2026-10-03 after RQ563: the prior "no safe RQ prompt" conclusion was superseded by a deeper dependency audit. RQ548 depends only on DONE RQ525; RQ546 has no dependencies; RQ554's required backend error states are already delivered by the code-side portion of PARTIAL RQ545 and its remaining deployed acceptance is not a start gate. Two circular queue defects were also found: RQ542<->RQ549 and RQ541<->RQ550. Both are repaired proof-first: RQ549/RQ550 must pin current defects before RQ542/RQ541 change semantics. Fresh GitHub checks found no open PR or matching RQ538-RQ550 task branch/lock. Primary READY is RQ548; additional READY lanes are RQ546/RQ549/RQ550/RQ554.
 Owner claim 2026-10-03: refreshed `origin/main` to `e21c72624fabf259f64be727f820b87d746da45a`; RQ525 is DONE and its harness SHA is an ancestor of current main. No RQ548 lock, matching branch or open PR exists. RQ548 moved `READY -> IN_PROGRESS` as the primary Nivelacija lane to establish the independent Pre-Nivelacija baseline before RQ538/RQ539 change semantics. Local lock: `.ai/task-locks/RQ548-codex.lock.md`.
 Owner completion 2026-10-03: RQ548 moved `IN_PROGRESS -> DONE` with the independent PostgreSQL oracle, static all/store/imported source-fact golden fixture and real-cache failure/retry integration test. Focused Testcontainers proof passed 2/2. The existing 999 no-sale sentinel, below-cost margin clamp/completeness and chain-wide markdown exclusion are captured as pre-change values for RQ539/RQ538 to flip; they were not changed by this proof-only task. RQ539 moved `WAITING -> READY` after RQ548 baseline completion and is the new primary; RQ538 remains WAITING while the endpoint path overlaps RQ539. Run log: `.ai/runs/2026-10-03-RQ548-evidence.md`; evidence state: synchronized.
 Owner claim 2026-10-03: refreshed `origin/main` to `31aff121a515459f3486a1cf706f0576cce0e03d`; RQ539 is READY after its RQ537 and RQ548 dependencies completed. No RQ539 task lock, matching branch or open PR exists. Claimed the primary Pre-Nivelacija candidate-truth prompt; RQ538 remains WAITING for this shared endpoint owner to finish. Local lock: `.ai/task-locks/RQ539-codex.lock.md`.
+Owner completion 2026-10-03: RQ539 moved `IN_PROGRESS -> DONE` and was delivered on `main` at `ffd2f52d0d558778df52054027205b4a775dc793`; fresh fetch verified `origin/main` contains that SHA. The proposed configurable 30-day new-stock threshold was used under the owner's repeated instruction to finish the assigned prompt. API oracle tests passed 3/3, frontend tests 54/54, analytics guardrails and frontend build passed; current-main Actions runs 37151372747 (Analytics Quality Gates) is queued and 37151372735/37151372737 are in progress. Run log: `.ai/runs/2026-10-03-RQ539-evidence.md`; evidence state: synchronized.
+Owner promotion/claim 2026-10-03: RQ538's RQ548 baseline prerequisite is satisfied and the RQ539 endpoint owner has completed. Fresh collision check found no RQ538 lock, matching branch or open PR. Promoted RQ538 `WAITING -> READY -> IN_PROGRESS` as primary Pre-Nivelacija event-scope work. Local lock: `.ai/task-locks/RQ538-codex.lock.md`.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -20,8 +22,8 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | Audit id | Queue id | Initial status |
 |---|---|---|
 | NV-F1 | RQ537 | DONE |
-| NV-F2 | RQ538 | WAITING |
-| NV-F3 | RQ539 | IN_PROGRESS |
+| NV-F2 | RQ538 | IN_PROGRESS |
+| NV-F3 | RQ539 | DONE |
 | NV-F4 | RQ540 | DONE |
 | NV-F5 | RQ541 | WAITING |
 | NV-F6 | RQ542 | WAITING |
@@ -129,7 +131,7 @@ None. NV-P2 adds the end-to-end oracle.
 
 ## RQ538 - NV-F2 - Attribute, validate and consistently scope application-created nivelacija events
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/sql/tests
 Feature family: nivelacija-event-provenance
@@ -189,7 +191,7 @@ The same event is counted identically, for the same store filter, by Pre/Post, P
 
 #### Dependencies
 
-No hard implementation dependency. Routing rule: capture the independent RQ548 pre-change oracle/golden baseline first because RQ538 changes the same event/store semantics that the oracle must prove. Keep the Q83 nullability contract when touching the scoped SQL.
+No hard implementation dependency. The independent RQ548 pre-change oracle/golden baseline is now delivered; RQ539 has completed the shared Pre-Nivelacija endpoint ownership. Keep the Q83 nullability contract when touching the scoped SQL.
 
 ---
 
@@ -197,7 +199,7 @@ No hard implementation dependency. Routing rule: capture the independent RQ548 p
 
 ## RQ539 - NV-F3 - Stop ranking new arrivals and below-cost items as markdown priorities
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/frontend/tests
 Feature family: pre-nivelacija-candidate-truth
@@ -205,6 +207,7 @@ Parallel-safe: no (`PreNivelacijaPriorityEndpoints.cs`, `PreNivelacijaScoringSer
 Owner: Analytics Reliability / Pricing
 Findings: NV-N04, NV-N05
 Commit suggestion: `fix(analytics): separate never-sold and new stock from stale stock in pre-nivelacija`
+Completion: delivered on `main` at `ffd2f52d0d558778df52054027205b4a775dc793`; current `origin/main` freshly verified to contain the implementation SHA. The configurable `Analytics:PreNivelacija:MinimumNewStockAgeDays` setting uses the proposed 30-day default under the owner's repeated instruction to finish the prompt. API oracle tests 3/3, frontend tests 54/54, analytics guardrails and frontend build pass. Current-main Actions: run `37151372747` Analytics Quality Gates is queued; runs `37151372735` Planning Governance and `37151372737` Analytics Tests & Data Integrity are in progress. Run log: `.ai/runs/2026-10-03-RQ539-evidence.md`; evidence state: synchronized.
 
 #### Problem
 
