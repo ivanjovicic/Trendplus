@@ -1080,9 +1080,13 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       if (controller.signal.aborted) return;
       const balance = balanceResult.status === "fulfilled" ? balanceResult.value : null;
       const insights = insightsResult.status === "fulfilled" ? insightsResult.value : null;
-      const error = balance == null && insights == null
+      const balanceUnavailable = balanceResult.status === "rejected";
+      const insightsUnavailable = insightsResult.status === "rejected";
+      const error = balanceUnavailable && insightsUnavailable
         ? "Inventarski buying signal trenutno nije dostupan."
-        : null;
+        : balanceUnavailable || insightsUnavailable
+          ? "Deo inventarskih buying signala trenutno nije dostupan; prikazane vrednosti su nepotpune."
+          : null;
       setBuyingEvidence({ balance, insights, loading: false, error });
     });
 

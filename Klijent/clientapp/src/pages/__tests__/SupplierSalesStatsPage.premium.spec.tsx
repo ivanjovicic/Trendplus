@@ -303,6 +303,28 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(panel).getByText(/PO, rok isporuke i lead-time/)).toBeInTheDocument();
   });
 
+  it("marks the buying panel as incomplete when only one inventory source fails", async () => {
+    vi.mocked(getInventoryBalance).mockResolvedValue({
+      totalSku: 3,
+      totalOnHand: 42,
+      lowStockCount: 1,
+      outOfStockCount: 0,
+      estimatedInventoryValue: 12_500,
+      meta: { success: true, dataQualityStatus: "good" },
+    });
+    vi.mocked(getInventoryInsights).mockRejectedValue(new Error("insights unavailable"));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const panel = await screen.findByTestId("supplier-buying-value-panel");
+    expect(await within(panel).findByRole("status")).toHaveTextContent("vrednosti su nepotpune");
+    expect(within(panel).getByText("42")).toBeInTheDocument();
+  });
+
   it("publishes sortable-column direction for screen readers", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>

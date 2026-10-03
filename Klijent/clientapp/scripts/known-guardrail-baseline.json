@@ -137,7 +137,7 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1979,
+      "line": 1983,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
