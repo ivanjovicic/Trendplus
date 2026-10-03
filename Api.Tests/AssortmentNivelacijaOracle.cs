@@ -153,7 +153,7 @@ internal static class AssortmentNivelacijaOracle
         var events = fixture.Events
             .Where(e => NivelacijaTypes.Contains(e.TipPromene, StringComparer.Ordinal))
             .Where(e => articles.ContainsKey(e.ArticleId))
-            .Where(e => options.StoreId is null || e.StoreId == options.StoreId)
+            .Where(e => NivelacijaEventScopePolicy.AppliesToStore(e.StoreId, options.StoreId))
             .GroupBy(e => options.PartitionEventsByStore
                 ? (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: e.StoreId)
                 : (e.ArticleId, e.Day, e.OldPrice, e.NewPrice, Store: (int?)0))

@@ -26,6 +26,8 @@ public static class PreNivelacijaPriorityEndpoints
 
     private sealed record SalesHistoryLite(DateTime FirstPositiveSaleDateUtc, DateTime LastPositiveSaleDateUtc);
 
+    private sealed record MarkdownEventLite(int? StoreId, decimal? OldPrice, decimal? NewPrice);
+
     private sealed class SeasonLite
     {
         public string Naziv { get; init; } = "N/A";
@@ -260,7 +262,7 @@ public static class PreNivelacijaPriorityEndpoints
                             ex);
                     }
 
-                    Dictionary<(int ArtikalId, int? StoreId), (int MarkdownEvents, decimal AvgMarkdownPct)> markdownByArtikal;
+                    Dictionary<int, MarkdownEventLite[]> markdownByArtikal;
                     try
                     {
                         // Keep the relational query simple and perform the small
@@ -280,29 +282,15 @@ public static class PreNivelacijaPriorityEndpoints
                             .Select(dp => new
                             {
                                 ArtikalId = dp.ArtikalId!.Value,
-                                StoreId = dp.IDObjekat,
-                                dp.StaraProdajnaCena,
-                                dp.NovaProdajnaCena
+                                Event = new MarkdownEventLite(dp.IDObjekat, dp.StaraProdajnaCena, dp.NovaProdajnaCena)
                             })
                             .ToListAsync(ct);
 
                         markdownByArtikal = markdownRows
-                            .GroupBy(x => (x.ArtikalId, x.StoreId))
+                            .GroupBy(x => x.ArtikalId)
                             .ToDictionary(
                                 g => g.Key,
-                                g =>
-                                (
-                                    MarkdownEvents: g.Count(),
-                                    AvgMarkdownPct: decimal.Round(
-                                        g
-                                            .Where(x => x.StaraProdajnaCena.HasValue
-                                                        && x.NovaProdajnaCena.HasValue
-                                                        && x.StaraProdajnaCena.Value > 0m
-                                                        && x.NovaProdajnaCena.Value < x.StaraProdajnaCena.Value)
-                                            .Select(x => ((x.StaraProdajnaCena!.Value - x.NovaProdajnaCena!.Value) / x.StaraProdajnaCena!.Value) * 100m)
-                                            .DefaultIfEmpty(0m)
-                                            .Average(),
-                                        2)));
+                                g => g.Select(x => x.Event).ToArray());
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
@@ -498,9 +486,21 @@ public static class PreNivelacijaPriorityEndpoints
                             && (!noSaleDaysForFilter.HasValue || noSaleDaysForFilter.Value < noSaleDaysMin.Value))
                             continue;
 
-                        var markdownLite = markdownByArtikal.GetValueOrDefault(salesKey);
-                        var markdownEvents = markdownLite.MarkdownEvents;
-                        var avgMarkdownPct = markdownLite.AvgMarkdownPct;
+                        var scopedMarkdownEvents = markdownByArtikal
+                            .GetValueOrDefault(a.Id, [])
+                            .Where(item => NivelacijaEventScopePolicy.AppliesToStore(item.StoreId, a.StoreId))
+                            .ToArray();
+                        var markdownEvents = scopedMarkdownEvents.Length;
+                        var avgMarkdownPct = decimal.Round(
+                            scopedMarkdownEvents
+                                .Where(item => item.OldPrice.HasValue
+                                    && item.NewPrice.HasValue
+                                    && item.OldPrice.Value > 0m
+                                    && item.NewPrice.Value < item.OldPrice.Value)
+                                .Select(item => ((item.OldPrice!.Value - item.NewPrice!.Value) / item.OldPrice!.Value) * 100m)
+                                .DefaultIfEmpty(0m)
+                                .Average(),
+                            2);
 
                         var marginEvidence = ResolveMarginEvidence(a.SellingPrice, a.PurchasePrice);
                         var salesEvidence = ResolveSalesEvidence(

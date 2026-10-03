@@ -1,4 +1,5 @@
 using Domain.Model;
+using Application.Analytics;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,13 +19,14 @@ internal static class SupplierSalesStatsQuerySupport
             return Task.FromResult(new Dictionary<int, DateTime>());
         }
 
-        return db.DnevnikPromena.AsNoTracking()
+        var events = db.DnevnikPromena.AsNoTracking()
             .Where(d =>
                 (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                 d.ArtikalId.HasValue &&
                 relevantArticleIds.Contains(d.ArtikalId.Value) &&
-                (!toUtc.HasValue || d.Datum < toUtc.Value) &&
-                (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
+                (!toUtc.HasValue || d.Datum < toUtc.Value));
+
+        return NivelacijaEventScopePolicy.ApplyStoreScope(events, storeId)
             .GroupBy(d => d.ArtikalId!.Value)
             .Select(g => new
             {

@@ -342,16 +342,16 @@
   },
   "Store1": {
     "Totals": {
-      "PreQty": 19,
-      "PreRevenue": 1990,
-      "PostQty": 23,
-      "PostRevenue": 1998,
-      "ChangeQty": 4,
-      "ChangeRevenue": 8,
-      "SemanticChangePercentRevenue": 0.40,
-      "ComparableRows": 8,
+      "PreQty": 21,
+      "PreRevenue": 2150,
+      "PostQty": 26,
+      "PostRevenue": 2178,
+      "ChangeQty": 5,
+      "ChangeRevenue": 28,
+      "SemanticChangePercentRevenue": 1.30,
+      "ComparableRows": 9,
       "VendorsCount": 3,
-      "ArticlesCount": 8
+      "ArticlesCount": 9
     },
     "Vendors": [
       {
@@ -374,18 +374,18 @@
       {
         "VendorId": 202,
         "VendorName": "Beta",
-        "PreQty": 2,
-        "PreRevenue": 200,
-        "PostQty": 4,
-        "PostRevenue": 280,
-        "ChangeQty": 2,
-        "ChangeRevenue": 80,
-        "SemanticChangePercentRevenue": 40.0,
-        "ComparableArticles": 1,
-        "MatureComparableRows": 1,
+        "PreQty": 4,
+        "PreRevenue": 360,
+        "PostQty": 7,
+        "PostRevenue": 460,
+        "ChangeQty": 3,
+        "ChangeRevenue": 100,
+        "SemanticChangePercentRevenue": 27.78,
+        "ComparableArticles": 2,
+        "MatureComparableRows": 2,
         "ImmatureComparableRows": 0,
         "IncreasedPriceArticles": 0,
-        "DecreasedPriceArticles": 1,
+        "DecreasedPriceArticles": 2,
         "EffectStatus": "effective"
       },
       {
@@ -434,6 +434,7 @@
       11,
       12,
       13,
+      15,
       16,
       17,
       18,
@@ -592,6 +593,23 @@
         "RevenueBaselineReason": null,
         "SemanticChangePercentRevenue": 40.0,
         "PriceChangePercent": -30.0
+      },
+      {
+        "PriceEventId": 15,
+        "ArticleId": 2022,
+        "EventDayOffset": -50,
+        "VendorId": 202,
+        "VendorName": "Beta",
+        "PreQty": 2,
+        "PreRevenue": 160,
+        "PostQty": 3,
+        "PostRevenue": 180,
+        "IsPostWindowMature": true,
+        "PostWindowDaysElapsed": 30,
+        "HasComparableSalesWindow": true,
+        "RevenueBaselineReason": null,
+        "SemanticChangePercentRevenue": 12.50,
+        "PriceChangePercent": -25.00
       },
       {
         "PriceEventId": 16,

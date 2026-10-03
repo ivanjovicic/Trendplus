@@ -1,7 +1,9 @@
 export interface NivelacijaItem {
   id: number;
   datum: string;
+  tipPromene: "Nivelacija" | "Nivelacija cena" | string;
   artikalId: number | null;
+  idObjekat: number | null;
   artikalNaziv?: string | null;
   staraProdajnaCena: number | null;
   novaProdajnaCena: number | null;

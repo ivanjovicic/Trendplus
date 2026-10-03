@@ -95,6 +95,10 @@ export default function NivelacijePage() {
         ]}
       />
 
+      <p className="rounded-lg border border-info/30 bg-info/5 px-3 py-2 text-sm text-muted">
+        Promena cene bez izabrane prodavnice je lančana i važi za sve prodavnice.
+      </p>
+
       <InventoryPanel>
         <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div>
@@ -124,9 +128,10 @@ export default function NivelacijePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Od datuma</label>
+            <label htmlFor="nivelacije-from-date" className="mb-1 block text-xs uppercase tracking-wide text-muted">Od datuma (Beograd)</label>
             <input
-              type="datetime-local"
+              id="nivelacije-from-date"
+              type="date"
               className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={fromDate}
               onChange={(e) => {
@@ -137,9 +142,10 @@ export default function NivelacijePage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Do datuma</label>
+            <label htmlFor="nivelacije-to-date" className="mb-1 block text-xs uppercase tracking-wide text-muted">Do datuma, uključujući ceo dan</label>
             <input
-              type="datetime-local"
+              id="nivelacije-to-date"
+              type="date"
               className="w-full rounded-xl border border-muted bg-surface-darker px-3 py-2 text-sm text-contrast outline-none transition focus:border-[var(--focus-ring)]"
               value={toDate}
               onChange={(e) => {
@@ -206,7 +212,9 @@ export default function NivelacijePage() {
               <thead className="bg-surface-darker text-muted">
                 <tr>
                   <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("datum")}>Datum<SortIcon field="datum" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="px-3 py-3 text-left">Tip</th>
                   <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("artikalid")}>Artikal<SortIcon field="artikalid" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th className="px-3 py-3 text-left">Prodavnica</th>
                   <th className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("naziv")}>Naziv<SortIcon field="naziv" sortBy={sortBy} sortDir={sortDir} /></th>
                   <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-contrast" onClick={() => toggleSort("stara")}>Stara cena<SortIcon field="stara" sortBy={sortBy} sortDir={sortDir} /></th>
                   <th className="cursor-pointer select-none px-3 py-3 text-right hover:text-contrast" onClick={() => toggleSort("nova")}>Nova cena<SortIcon field="nova" sortBy={sortBy} sortDir={sortDir} /></th>
@@ -218,7 +226,9 @@ export default function NivelacijePage() {
                 {items.map((it) => (
                   <tr key={it.id} className="hover:bg-surface">
                     <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-muted">{new Date(it.datum).toLocaleString("sr-RS")}</td>
+                    <td className="px-3 py-3">{it.tipPromene === "Nivelacija" ? "Uvezena nivelacija" : "Promena cene"}</td>
                     <td className="px-3 py-3">{it.artikalId ?? "-"}</td>
+                    <td className="px-3 py-3">{it.idObjekat == null ? "Sve prodavnice (lančano)" : `Prodavnica #${it.idObjekat}`}</td>
                     <td className="px-3 py-3">{it.artikalNaziv ?? ""}</td>
                     <td className="px-3 py-3 text-right text-secondary">{it.staraProdajnaCena ?? "-"}</td>
                     <td className="px-3 py-3 text-right font-semibold text-emerald-300">{it.novaProdajnaCena ?? "-"}</td>
@@ -257,4 +267,3 @@ export default function NivelacijePage() {
     </InventoryPageShell>
   );
 }
-

@@ -151,17 +151,17 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     }
 
     [Fact]
-    public void StoreScopedAggregate_ExcludesChainEventsAndOtherStoreSales()
+    public void StoreScopedAggregate_IncludesChainEventsAndExcludesOtherStoreSales()
     {
         var aggregate = Aggregate(GoldenFixture.Build(PureAnchor), AssortmentSourceOptions.Scoped(PureAnchor, storeId: 1));
 
-        Assert.DoesNotContain(15L, aggregate.CohortEventIds);
+        Assert.Contains(15L, aggregate.CohortEventIds);
         var beta = aggregate.Vendors.Single(v => v.VendorId == 202);
-        Assert.Equal(200m, beta.PreRevenue);
-        Assert.Equal(280m, beta.PostRevenue);
-        Assert.Equal(40.00m, beta.SemanticChangePercentRevenue);
-        Assert.Equal(1990m, aggregate.Totals.PreRevenue);
-        Assert.Equal(1998m, aggregate.Totals.PostRevenue);
+        Assert.Equal(360m, beta.PreRevenue);
+        Assert.Equal(460m, beta.PostRevenue);
+        Assert.Equal(27.78m, beta.SemanticChangePercentRevenue);
+        Assert.Equal(2150m, aggregate.Totals.PreRevenue);
+        Assert.Equal(2178m, aggregate.Totals.PostRevenue);
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Contains(actual, row => row.VendorId == -1);
 
         var negativeStoreOnly = await ReadScopedRowsAsync(db.Connection, storeId: -1);
-        Assert.Equal(new long[] { 1 }, negativeStoreOnly.Select(row => row.PriceEventId).Order());
+        Assert.Equal(new long[] { 1, 2 }, negativeStoreOnly.Select(row => row.PriceEventId).Order());
 
         var negativeVendor = actual.First(row => row.VendorId == -1);
         var missingVendor = negativeVendor with { PriceEventId = 3, VendorId = null, VendorName = null };

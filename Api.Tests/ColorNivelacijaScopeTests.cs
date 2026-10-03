@@ -7,7 +7,7 @@ namespace Api.Tests;
 public sealed class ColorNivelacijaScopeTests
 {
     [Fact]
-    public void ApplyColorNivelacijaEventScope_RequiresExactStoreAndOrigin()
+    public void ApplyColorNivelacijaEventScope_IncludesChainWideEventsAndKeepsOriginFilter()
     {
         var events = new[]
         {
@@ -15,6 +15,7 @@ public sealed class ColorNivelacijaScopeTests
             new DnevnikPromena { Id = 2, ArtikalId = 102, IDObjekat = 7, DataOrigin = "existing" },
             new DnevnikPromena { Id = 3, ArtikalId = 103, IDObjekat = null, DataOrigin = "existing" },
             new DnevnikPromena { Id = 4, ArtikalId = 104, IDObjekat = 8, DataOrigin = "access" },
+            new DnevnikPromena { Id = 5, ArtikalId = 105, IDObjekat = 8, DataOrigin = "existing" },
         }.AsQueryable();
 
         var importedAtStore = ApplyScope(events, 7, "imported");
@@ -22,8 +23,8 @@ public sealed class ColorNivelacijaScopeTests
         var allStores = ApplyScope(events, null, "all");
 
         Assert.Equal([1], importedAtStore);
-        Assert.Equal([2], existingAtStore);
-        Assert.Equal([1, 2, 3, 4], allStores);
+        Assert.Equal([2, 3], existingAtStore);
+        Assert.Equal([1, 2, 3, 4, 5], allStores);
     }
 
     private static int[] ApplyScope(

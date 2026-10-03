@@ -199,11 +199,17 @@ export function clearArtikliClientCaches(): void {
     }
 }
 
-export async function nivelacijaCena(artikalId: number, novaProdajnaCena: number, komentar?: string): Promise<void> {
+export async function nivelacijaCena(
+    artikalId: number,
+    novaProdajnaCena: number,
+    komentar?: string,
+    storeId: number | null = null,
+    overrideMaximumMarkdown = false,
+): Promise<void> {
     const resp = await fetch(apiUrl("/api/nivelacija"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artikalId, novaProdajnaCena, komentar: komentar ?? null }),
+        body: JSON.stringify({ artikalId, novaProdajnaCena, komentar: komentar ?? null, storeId, overrideMaximumMarkdown }),
     });
 
     if (!resp.ok) {

@@ -6683,18 +6683,67 @@ public static class AllEndpoints
         app.MapPost("/api/nivelacija", async (
             ITrendplusDbContext db,
             ILogger<Program> logger,
+            IConfiguration configuration,
+            HttpContext httpContext,
             NivelacijaRequest request,
             CancellationToken ct) =>
         {
             try
             {
-                logger.LogInformation("Nivelacija cene za artikal {ArtikalId}", request.ArtikalId);
+                var accessError = AdminAccessControl.RejectIfUnauthorized(httpContext, configuration);
+                if (accessError is not null)
+                {
+                    return accessError;
+                }
+
+                var maximumMarkdownPercent = configuration.GetValue<decimal?>("Pricing:Nivelacija:MaximumMarkdownPercent") ?? 35m;
+                if (maximumMarkdownPercent is < 0m or > 100m)
+                {
+                    logger.LogError("Invalid Pricing:Nivelacija:MaximumMarkdownPercent configuration value {MaximumMarkdownPercent}", maximumMarkdownPercent);
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status500InternalServerError,
+                        title: "Nivelacija nije sačuvana",
+                        detail: "Podešavanje maksimalnog sniženja nije ispravno.");
+                }
 
                 var artikal = await db.Artikli.FindAsync(new object[] { request.ArtikalId }, ct);
                 if (artikal == null)
                     return Results.NotFound(new { message = "Artikal nije pronađen" });
 
                 var staraCena = artikal.ProdajnaCena;
+                var validationCode = NivelacijaPriceChangePolicy.Validate(
+                    staraCena,
+                    request.NovaProdajnaCena,
+                    maximumMarkdownPercent,
+                    request.OverrideMaximumMarkdown);
+                if (validationCode is not null)
+                {
+                    var validationMessage = validationCode switch
+                    {
+                        "nivelacija_new_price_must_be_positive" => "Nova cena mora biti veća od nule.",
+                        "nivelacija_price_unchanged" => "Nova cena mora biti različita od postojeće.",
+                        _ => $"Sniženje prelazi podešeni maksimum od {maximumMarkdownPercent:0.##}%. Potrebno je izričito odobrenje za izuzetak."
+                    };
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        title: "Provera nivelacije nije prošla",
+                        detail: validationMessage,
+                        extensions: new Dictionary<string, object?> { ["errorCode"] = validationCode });
+                }
+
+                var markdownPercent = NivelacijaPriceChangePolicy.CalculateMarkdownPercent(staraCena, request.NovaProdajnaCena);
+                var overrideApplied = markdownPercent > maximumMarkdownPercent && request.OverrideMaximumMarkdown;
+                var comment = overrideApplied
+                    ? $"[Override maksimalnog sniženja: {markdownPercent:0.##}% iznad {maximumMarkdownPercent:0.##}%] {request.Komentar}".Trim()
+                    : request.Komentar;
+
+                logger.LogInformation(
+                    "Nivelacija cene za artikal {ArtikalId}, store {StoreId}, override {OverrideApplied}, actor {Actor}",
+                    request.ArtikalId,
+                    request.StoreId,
+                    overrideApplied,
+                    httpContext.User.Identity?.Name);
+
                 artikal.ProdajnaCena = request.NovaProdajnaCena;
 
                 db.DnevnikPromena.Add(new DnevnikPromena
@@ -6703,20 +6752,34 @@ public static class AllEndpoints
                     Datum = DateTime.UtcNow,
                     Iznos = 0,
                     ArtikalId = artikal.Id,
+                    DobavljacId = artikal.IDDobavljac,
+                    IDObjekat = request.StoreId,
                     StaraProdajnaCena = staraCena,
                     NovaProdajnaCena = request.NovaProdajnaCena,
-                    Komentar = request.Komentar,
-                    KorisnikIme = "System"
+                    Komentar = comment,
+                    KorisnikIme = httpContext.User.Identity?.IsAuthenticated == true
+                        ? httpContext.User.Identity.Name
+                        : "admin-api-key",
+                    DataOrigin = "existing"
                 });
 
                 await db.SaveChangesAsync(ct);
 
                 return Results.Ok(new { success = true, message = "Cena uspešno nivelirana" });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Greška pri nivelaciji cene");
-                return Results.Problem(detail: ex.Message, statusCode: 500, title: "Greška pri nivelaciji cene");
+                var correlationId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+                logger.LogError(ex, "Nivelacija price update failed. CorrelationId={CorrelationId}", correlationId);
+                return Results.Problem(
+                    detail: $"Promena cene nije sačuvana. Referentni ID: {correlationId}.",
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Greška pri nivelaciji cene",
+                    extensions: new Dictionary<string, object?> { ["correlationId"] = correlationId });
             }
         })
         .RequireRateLimiting("writes");
@@ -6728,29 +6791,35 @@ public static class AllEndpoints
             int pageSize = 50,
             int? artikalId = null,
             string? naziv = null,
-            DateTime? fromDate = null,
-            DateTime? toDate = null,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
             string sortBy = "datum",
             string sortDir = "desc",
             CancellationToken ct = default) =>
         {
             try
             {
-                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                pageNumber = Math.Max(1, pageNumber);
+                pageSize = Math.Clamp(pageSize, 1, 200);
+                var fromUtc = fromDate.HasValue
+                    ? BelgradeCalendarDatePolicy.StartOfDateUtc(fromDate.Value)
+                    : (DateTime?)null;
+                var toExclusiveUtc = toDate.HasValue
+                    ? BelgradeCalendarDatePolicy.EndOfDateExclusiveUtc(toDate.Value)
+                    : (DateTime?)null;
 
                 var query = from dp in db.DnevnikPromena.AsNoTracking()
                             join a in db.Artikli.AsNoTracking() on dp.ArtikalId equals a.Id into artikli
                             from artikal in artikli.DefaultIfEmpty()
                             where dp.TipPromene == TipPromeneConstants.NivelacijaCena
+                                || dp.TipPromene == TipPromeneConstants.Nivelacija
                             select new
                             {
                                 dp.Id,
                                 dp.Datum,
+                                TipPromene = dp.TipPromene,
                                 dp.ArtikalId,
+                                dp.IDObjekat,
                                 ArtikalNaziv = artikal != null ? artikal.Naziv : null,
                                 dp.StaraProdajnaCena,
                                 dp.NovaProdajnaCena,
@@ -6764,11 +6833,11 @@ public static class AllEndpoints
                 if (!string.IsNullOrWhiteSpace(naziv))
                     query = query.Where(x => x.ArtikalNaziv != null && x.ArtikalNaziv.Contains(naziv));
 
-                if (fromDate.HasValue)
-                    query = query.Where(x => x.Datum >= fromDate.Value);
+                if (fromUtc.HasValue)
+                    query = query.Where(x => x.Datum >= fromUtc.Value);
 
-                if (toDate.HasValue)
-                    query = query.Where(x => x.Datum <= toDate.Value);
+                if (toExclusiveUtc.HasValue)
+                    query = query.Where(x => x.Datum < toExclusiveUtc.Value);
 
                 query = sortBy.ToLower(CultureInfo.InvariantCulture) switch
                 {
@@ -6781,7 +6850,7 @@ public static class AllEndpoints
                 var total = await query.CountAsync(ct);
                 var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
-                return Results.Ok(new { items, totalCount = total, pageNumber, pageSize });
+                return Results.Ok(new { items, totalCount = total, pageNumber, pageSize, sortBy, sortDir });
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -7823,10 +7892,7 @@ public static class AllEndpoints
         int? storeId,
         string normalizedDataScope)
     {
-        if (storeId.HasValue)
-        {
-            query = query.Where(d => d.IDObjekat == storeId.Value);
-        }
+        query = NivelacijaEventScopePolicy.ApplyStoreScope(query, storeId);
 
         if (string.Equals(normalizedDataScope, "imported", StringComparison.OrdinalIgnoreCase))
         {
@@ -7994,7 +8060,7 @@ public static class AllEndpoints
         });
     }
 
-    private static string BuildVendorSalesNivelacijaScopedSourceSql() => """
+    private static string BuildVendorSalesNivelacijaScopedSourceSql() => $$"""
         WITH nivelacija_events AS (
             SELECT *
             FROM (
@@ -8030,7 +8096,7 @@ public static class AllEndpoints
                 WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
                   AND d."ArtikalId" IS NOT NULL
                   AND COALESCE(src."Datum", d."Datum") IS NOT NULL
-                  AND (@storeId IS NULL OR d."IDObjekat" = @storeId::int)
+                  AND {{NivelacijaEventScopePolicy.VendorSqlStorePredicate}}
                   AND (
                         @dataScope::text = 'all'
                         OR (@dataScope::text = 'imported' AND d."DataOrigin" = 'access')
@@ -8753,7 +8819,12 @@ public sealed record LogEntryPropertiesDto(
     string? CorrelationId);
 
 // Fix NivelacijaRequest DTO (use Komentar)
-public record NivelacijaRequest(int ArtikalId, decimal NovaProdajnaCena, string? Komentar);
+public record NivelacijaRequest(
+    int ArtikalId,
+    decimal NovaProdajnaCena,
+    string? Komentar,
+    int? StoreId = null,
+    bool OverrideMaximumMarkdown = false);
 
 // DTO for import
 public record ProductDto(string Name, string Brand, decimal Price, string? ImageUrl, string? Url);

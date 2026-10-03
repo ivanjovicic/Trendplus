@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Net.Http.Json;
 using Application.Artikli.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using NpgsqlTypes;
 using Testcontainers.PostgreSql;
+using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Api.Tests;
@@ -135,6 +137,150 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             .EnumerateArray().Select(code => code.GetString()));
     }
 
+    [Fact]
+    public async Task NivelacijaWrite_ValidatesPriceRequiresAdminAndRecordsChainWideAuditFields()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        await ExecuteAsync(connectionString, """
+            INSERT INTO "DnevnikPromena"
+                ("TipPromene", "Datum", "Iznos", "ArtikalId", "StaraProdajnaCena", "NovaProdajnaCena", "IDObjekat", "DataOrigin")
+            VALUES ('Nivelacija', CURRENT_TIMESTAMP - INTERVAL '100 days', 0, 202, 100, 80, NULL, 'existing');
+            """);
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache);
+        using var client = factory.CreateClient();
+
+        var payload = new
+        {
+            artikalId = 202,
+            novaProdajnaCena = 60m,
+            komentar = "test override",
+            storeId = (int?)null,
+            overrideMaximumMarkdown = true
+        };
+        var rejectedPayload = new
+        {
+            artikalId = 202,
+            novaProdajnaCena = 60m,
+            komentar = "over limit",
+            storeId = (int?)null,
+            overrideMaximumMarkdown = false
+        };
+        var invalidPricePayload = new
+        {
+            artikalId = 202,
+            novaProdajnaCena = 0m,
+            komentar = "invalid",
+            storeId = (int?)null,
+            overrideMaximumMarkdown = true
+        };
+
+        using (var unauthorized = await client.PostAsJsonAsync("/api/nivelacija", payload))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        }
+
+        client.DefaultRequestHeaders.Add("X-Admin-Key", "rq538-test-key");
+        using (var rejected = await client.PostAsJsonAsync("/api/nivelacija", rejectedPayload))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+            var rejectedBody = await rejected.Content.ReadAsStringAsync();
+            Assert.Contains("nivelacija_markdown_limit_exceeded", rejectedBody, StringComparison.Ordinal);
+        }
+
+        using (var invalidPrice = await client.PostAsJsonAsync("/api/nivelacija", invalidPricePayload))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, invalidPrice.StatusCode);
+        }
+
+        using (var accepted = await client.PostAsJsonAsync("/api/nivelacija", payload))
+        {
+            Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        }
+
+        await using var db = new TrendplusDbContext(
+            new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options);
+        var article = await db.Artikli.AsNoTracking().SingleAsync(item => item.Id == 202);
+        Assert.Equal(60m, article.ProdajnaCena);
+        var supplierSplitEvents = await SupplierSalesStatsQuerySupport.LoadFirstNivelacijaByArticleAsync(
+            db,
+            [202],
+            toUtc: null,
+            storeId: 2,
+            CancellationToken.None);
+        Assert.True(supplierSplitEvents[202] < DateTime.UtcNow.AddDays(-99));
+
+        var priceEvent = await db.DnevnikPromena.AsNoTracking()
+            .Where(item => item.ArtikalId == 202 && item.TipPromene == "Nivelacija cena")
+            .OrderByDescending(item => item.Id)
+            .FirstAsync();
+        Assert.Null(priceEvent.IDObjekat);
+        Assert.Equal(1, priceEvent.DobavljacId);
+        Assert.Equal("admin-api-key", priceEvent.KorisnikIme);
+        Assert.Equal("existing", priceEvent.DataOrigin);
+        Assert.Contains("Override maksimalnog sniženja", priceEvent.Komentar, StringComparison.Ordinal);
+
+        await ExecuteAsync(connectionString, "ALTER TABLE \"DnevnikPromena\" RENAME TO rq538_unavailable_events;");
+        using var failedWrite = await client.PostAsJsonAsync("/api/nivelacija", new
+        {
+            artikalId = 202,
+            novaProdajnaCena = 70m,
+            komentar = "failure path",
+            storeId = (int?)null,
+            overrideMaximumMarkdown = false
+        });
+        Assert.Equal(HttpStatusCode.InternalServerError, failedWrite.StatusCode);
+        var failureBody = await failedWrite.Content.ReadAsStringAsync();
+        Assert.Contains("correlationId", failureBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("rq538_unavailable_events", failureBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NivelacijeHistory_ListsBothEventTypesAndUsesBelgradeHalfOpenCalendarDays()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        await ExecuteAsync(connectionString, """
+            INSERT INTO "DnevnikPromena"
+                ("TipPromene", "Datum", "Iznos", "ArtikalId", "StaraProdajnaCena", "NovaProdajnaCena", "IDObjekat", "DataOrigin", "Komentar")
+            VALUES
+                ('Nivelacija',      TIMESTAMPTZ '2026-03-28 22:59:59+00', 0, 102, 100, 90, NULL, 'access', 'before-start'),
+                ('Nivelacija',      TIMESTAMPTZ '2026-03-28 23:00:00+00', 0, 102, 100, 90, NULL, 'access', 'start'),
+                ('Nivelacija cena', TIMESTAMPTZ '2026-03-29 21:59:59+00', 0, 102, 100, 90, 1, 'existing', 'last-inside'),
+                ('Nivelacija cena', TIMESTAMPTZ '2026-03-29 22:00:00+00', 0, 102, 100, 90, 1, 'existing', 'exclusive-end');
+            """);
+
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache);
+        using var client = factory.CreateClient();
+
+        using var allResponse = await client.GetAsync("/api/nivelacije?pageNumber=1&pageSize=50");
+        Assert.Equal(HttpStatusCode.OK, allResponse.StatusCode);
+        using var allJson = JsonDocument.Parse(await allResponse.Content.ReadAsStringAsync());
+        var rows = allJson.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Contains(rows, row => row.GetProperty("tipPromene").GetString() == "Nivelacija");
+        Assert.Contains(rows, row => row.GetProperty("tipPromene").GetString() == "Nivelacija cena");
+        Assert.Contains(rows, row => row.GetProperty("idObjekat").ValueKind == JsonValueKind.Null);
+
+        using var dayResponse = await client.GetAsync(
+            "/api/nivelacije?pageNumber=1&pageSize=50&fromDate=2026-03-29&toDate=2026-03-29");
+        Assert.Equal(HttpStatusCode.OK, dayResponse.StatusCode);
+        using var dayJson = JsonDocument.Parse(await dayResponse.Content.ReadAsStringAsync());
+        var comments = dayJson.RootElement.GetProperty("items").EnumerateArray()
+            .Select(row => row.GetProperty("komentar").GetString())
+            .ToArray();
+        Assert.Equal(["last-inside", "start"], comments.OrderBy(comment => comment, StringComparer.Ordinal).ToArray());
+    }
+
     private async Task<string> CreateSeededDatabaseAsync()
     {
         var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
@@ -187,24 +333,25 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                        OR (@scope = 'existing' AND COALESCE(p.data_origin, '') IN ('', 'existing')))
                 GROUP BY ps.id_artikal, p.id_objekat
             ), markdown AS (
-                SELECT dp."ArtikalId" AS article_id,
-                       dp."IDObjekat" AS store_id,
-                       COUNT(*)::integer AS markdown_events,
+                SELECT a."Id" AS article_id,
+                       COUNT(dp."Id")::integer AS markdown_events,
                        COALESCE(ROUND(AVG(
                            ((dp."StaraProdajnaCena" - dp."NovaProdajnaCena") / dp."StaraProdajnaCena") * 100
                        ) FILTER (
                            WHERE dp."StaraProdajnaCena" > 0
                              AND dp."NovaProdajnaCena" < dp."StaraProdajnaCena"
                        ), 2), 0)::numeric AS average_markdown_pct
-                FROM "DnevnikPromena" dp
-                WHERE dp."ArtikalId" IS NOT NULL
-                  AND dp."Datum" >= CURRENT_TIMESTAMP - INTERVAL '180 days'
-                  AND dp."Datum" <= CURRENT_TIMESTAMP
-                  AND dp."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
-                  AND (@scope = 'all'
-                       OR (@scope = 'imported' AND dp."DataOrigin" = 'access')
-                       OR (@scope = 'existing' AND COALESCE(dp."DataOrigin", '') IN ('', 'existing')))
-                GROUP BY dp."ArtikalId", dp."IDObjekat"
+                FROM "Artikli" a
+                LEFT JOIN "DnevnikPromena" dp
+                  ON dp."ArtikalId" = a."Id"
+                 AND (dp."IDObjekat" IS NULL OR dp."IDObjekat" IS NOT DISTINCT FROM a."IDObjekat")
+                 AND dp."Datum" >= CURRENT_TIMESTAMP - INTERVAL '180 days'
+                 AND dp."Datum" <= CURRENT_TIMESTAMP
+                 AND dp."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
+                 AND (@scope = 'all'
+                      OR (@scope = 'imported' AND dp."DataOrigin" = 'access')
+                      OR (@scope = 'existing' AND COALESCE(dp."DataOrigin", '') IN ('', 'existing')))
+                GROUP BY a."Id"
             )
             SELECT a."Id", a."PLU", a."IDObjekat", a."Kolicina",
                    COALESCE(s.units_180, 0), COALESCE(s.positive_units_180, 0),
@@ -216,7 +363,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                    COALESCE(a."NabavnaCenaDin", a."NabavnaCena"), a."DataOrigin"
             FROM "Artikli" a
             LEFT JOIN sales s ON s.id_artikal = a."Id" AND s.store_id IS NOT DISTINCT FROM a."IDObjekat"
-            LEFT JOIN markdown m ON m.article_id = a."Id" AND m.store_id IS NOT DISTINCT FROM a."IDObjekat"
+            LEFT JOIN markdown m ON m.article_id = a."Id"
             WHERE COALESCE(a."Kolicina", 0) > 0
               AND (@scope = 'all'
                    OR (@scope = 'imported' AND a."DataOrigin" = 'access')
@@ -498,6 +645,8 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                     ["StartupReadiness:GateApiTraffic"] = "false",
                     ["PROCESS_TYPE"] = "web",
                     ["Workers:Enabled"] = "false",
+                    ["Admin:ApiKey"] = "rq538-test-key",
+                    ["Pricing:Nivelacija:MaximumMarkdownPercent"] = "35",
                     ["Caching:Provider"] = "disabled",
                     ["ConnectionStrings:DefaultConnection"] = _connectionString,
                     ["ConnectionStrings:AnalyticsConnection"] = _connectionString,
