@@ -77,10 +77,10 @@ public static class PreNivelacijaPriorityEndpoints
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
+            var normalizedDataScope = NormalizeDataScope(dataScope);
 
             try
             {
-            var normalizedDataScope = NormalizeDataScope(dataScope);
             var requestNowUtc = DateTime.UtcNow;
 
             var cacheKey = AnalyticsCacheKeys.PreNivelacijaPriorityBase(
@@ -510,6 +510,7 @@ public static class PreNivelacijaPriorityEndpoints
                 page,
                 pageSize,
                 focus,
+                normalizedDataScope,
                 BuildFilterFacets(
                     baseEntry.FacetUniverseCandidates.Count > 0
                         ? baseEntry.FacetUniverseCandidates
@@ -531,6 +532,7 @@ public static class PreNivelacijaPriorityEndpoints
                     page,
                     pageSize,
                     focus,
+                    normalizedDataScope,
                     new PreNivelacijaFilterFacetsDto()));
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -553,6 +555,7 @@ public static class PreNivelacijaPriorityEndpoints
                     page,
                     pageSize,
                     focus,
+                    normalizedDataScope,
                     new PreNivelacijaFilterFacetsDto()));
             }
         })
@@ -941,6 +944,7 @@ public static class PreNivelacijaPriorityEndpoints
         int page,
         int pageSize,
         string? focus = null,
+        string dataScope = "all",
         PreNivelacijaFilterFacetsDto? filterFacets = null)
     {
         var filteredCandidates = FilterCandidatesByFocus(baseEntry.Candidates, focus);
@@ -972,6 +976,9 @@ public static class PreNivelacijaPriorityEndpoints
         };
 
         response.Meta!.RecommendationAllowed = response.RecommendationAllowed;
+        response.Meta.RequestedDataScope = dataScope;
+        response.Meta.EffectiveDataScope = response.Meta.Success ? dataScope : null;
+        response.Meta.DataScopeSource = "pre_nivelacija_product_origin_filter";
         response.Meta.RequestedPeriodFromUtc = baseEntry.EvidenceWindow.SalesWindowFromUtc;
         response.Meta.RequestedPeriodToUtc = baseEntry.EvidenceWindow.SalesWindowToUtc;
         response.Meta.EffectivePeriodFromUtc = baseEntry.EvidenceWindow.SalesWindowFromUtc;
