@@ -3,6 +3,8 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Owner promotion/claim 2026-10-03: RQ560 was delivered and verified DONE on current `main` at `2fe461557f781d4a5652294396c39d4726d18a7a`. Fresh recovery found RQ561 dependency-complete, with no RQ561 lock, branch or open PR; existing unrelated worktrees are clean. Promoted RQ561 to READY and claimed it for current six-screen adversarial certification. Local lock: `.ai/task-locks/RQ561-codex.lock.md`.
+Owner completion 2026-10-03: RQ561 is PARTIAL. Its disposable PostgreSQL certification now executes all six current web/API route pairs without skips and emits machine-readable expected/executed counts and verdicts. Pre/Post Nivelacija is explicitly UNVERIFIED because the compatibility view is unavailable and maturity/overlap semantics remain uncertified. The wider same-fixture matrix for provenance, store/dataScope, cost and cross-screen totals remains incomplete. Run log: `.ai/runs/2026-10-03-RQ561-evidence.md`; evidence state pending main delivery.
 Owner promotion/claim 2026-10-03: after RQ487 completed, fresh collision/dependency review found RQ560 runnable. RQ545's remaining scope is deployed acceptance owned by RQ535/STAB16; RQ541-RQ544 and RQ548-RQ550 remain WAITING. No open PR, active local lock or branch owner existed for the sentinel paths. RQ560 was promoted and claimed for the bounded repository-local repair; production verification remains later acceptance.
 Idle recovery 2026-10-03: RQ487 is DONE on current `main`; fresh checks found no open PR, active local lock, or branch owner for RQ560/RQ545/RQ541-RQ544/RQ548-RQ550. RQ545 is PARTIAL only for deployed acceptance owned by RQ535/STAB16; RQ541-RQ544 and RQ548-RQ550 are WAITING. Promoted and claimed RQ560 for repository-local sentinel analysis/repair; production verification remains later acceptance. Local lock `.ai/task-locks/RQ560-codex.lock.md`.
 Owner audit 2026-10-02: current Operations navigation contains six primary surfaces after RQ507: Inventory, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color and Pre-Nivelacija Priorities. Current-main review found strong deterministic/contract evidence, but not complete production certification. Registered RQ560-RQ566 as non-duplicative residual reliability work: negative-ID sentinel safety, six-screen adversarial recertification, grain-aware continuous integrity, Inventory family probe, Nivelacija family probe, exact deployed/browser/export six-screen proof, and post-deploy negative-ID repair/config verification. All remain WAITING pending their declared collision/dependency checks; parent RQ487 remains the current repository-local READY owner. RQ451 detail status was reconciled back to WAITING because the summary/certification plan remain WAITING and no implementation run log or frontend evidence reader was found.
@@ -189,7 +191,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ496 | DONE | P1 | shoetype-signed-share-presentation-truth | Preserve signed share and ranking semantics across Shoe Type surfaces |
 | RQ497 | DONE | P1 | daily-sales-shift-business-time | Expose source timestamp and business-time semantics for shift assignment |
 | RQ560 | DONE | P0 | analytics-negative-id-sentinel-safety | Remove collision-prone numeric sentinels now that negative Access IDs are valid |
-| RQ561 | WAITING | P0 | operations-six-screen-certification | Re-certify the six current Operations screens on one adversarial fixture |
+| RQ561 | PARTIAL | P0 | operations-six-screen-certification | Re-certify the six current Operations screens on one adversarial fixture |
 | RQ562 | WAITING | P0 | operations-grain-aware-integrity | Detect bucket drift even when grand totals still match |
 | RQ563 | WAITING | P0 | inventory-independent-integrity-probe | Register and execute the missing independent Inventory family probe |
 | RQ564 | WAITING | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
@@ -3834,7 +3836,7 @@ Do not change journal/live/provider/schema semantics, recommendation scoring, ow
 
 ## RQ560 - Remove negative Access-ID sentinel collisions from analytics and nivelacija SQL
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Ready after: RQ487 DONE; fresh collision check with RQ545 and active nivelacija query owners completed 2026-10-03. RQ545 deployed acceptance remains with RQ535/STAB16 and does not block this repository-local slice. No production access is required for the repository-local slice.
 Priority: P0
 Type: backend/sql/tests
@@ -3895,7 +3897,7 @@ Do not change article-ID positivity rules unless the article source contract its
 
 ## RQ561 - Re-certify the six current Operations screens on one adversarial fixture
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ560 or an explicit proof that sentinel collisions cannot affect the fixture; current semantic owners are stable
 Priority: P0
 Type: integration-tests/evidence
@@ -3934,6 +3936,24 @@ Include negative entity IDs (including `-1` when safe), signed returns, DUG/KORE
 - Reuse RQ407/RQ447/RQ512 assets.
 - Consume current contracts RQ489-RQ505 and RQ537; do not redefine business policy.
 - This is repository/CI certification, not production/browser proof (RQ566/RQ454).
+
+### Completion note
+
+- Date: 2026-10-03
+- Status: PARTIAL
+- Completion: Reworked the shared RQ407 integration proof into a disposable Testcontainers run for the six current Operations screens. All six current routes executed; the test emits a machine-readable route report with expected/executed counts. Five route checks passed their bounded fixture assertions; Pre/Post Nivelacija is marked UNVERIFIED when its compatibility contract is unavailable and the remaining maturity/overlap semantics are unresolved.
+- Changed files: `.ai/runs/2026-10-03-RQ561-evidence.md` lists all changed files.
+- Checks run: focused `OperationsAnalyticsAllRoutesIntegrationTests` passed 1/1, 0 skipped; prompt queue, planning architecture and agent instruction validators; `git diff --check`.
+- Checks not run: full API suite, six-screen full adversarial matrix, React tests, deployed/browser/export proof.
+- Run log: `.ai/runs/2026-10-03-RQ561-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: same-fixture provenance, all/effective scope and multi-store parity, full cost/freshness/unavailable matrix and complete cross-screen denominator reconciliation remain unverified.
+- Follow-up: resume RQ561 with the remaining six-route adversarial matrix; do not promote RQ562 until RQ561 has defined and synchronized the final dimensions.
+- Residual risk: this run proves route execution and bounded fixture results, not full six-screen certification. The levelation endpoint correctly reports unavailable metadata when the compatibility view is absent.
+- Prompt defect / scope repair: the older eight-route proof counted Supplier as a current menu product and depended on an external configured database. Reused its single seed, removed the legacy Supplier route from the certification count, and moved execution onto disposable Postgres/Testcontainers; the Pre/Post route maps to its vendor-sales endpoint and carries UNVERIFIED status.
 
 ---
 

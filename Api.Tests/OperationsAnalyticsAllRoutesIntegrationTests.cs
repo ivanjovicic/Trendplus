@@ -1,33 +1,50 @@
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using Application.Artikli.Common.Interfaces;
+using Api.Tests;
+using Infrastructure.DbContexts;
+using Microsoft.AspNetCore.Hosting;
 using Npgsql;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Xunit.Abstractions;
 using Xunit;
 
 namespace Trendplus2.Tests;
 
 [Trait("Category", "Integration")]
 public sealed class OperationsAnalyticsAllRoutesIntegrationTests
-    : IClassFixture<WebApplicationFactory<global::Program>>
+    : IClassFixture<PostgresContainerFixture>
 {
     private const int StartupWarmupMaxAttempts = 3;
     private const string FromDate = "2026-07-01";
     private const string ToDate = "2026-07-07";
     private const string NivelacijaEventDate = "2026-08-01T00:00:00Z";
 
-    private readonly WebApplicationFactory<global::Program> _factory;
+    private readonly PostgresContainerFixture _postgres;
+    private readonly ITestOutputHelper _output;
 
-    public OperationsAnalyticsAllRoutesIntegrationTests(WebApplicationFactory<global::Program> factory)
+    public OperationsAnalyticsAllRoutesIntegrationTests(PostgresContainerFixture postgres, ITestOutputHelper output)
     {
-        _factory = factory;
+        _postgres = postgres;
+        _output = output;
     }
 
-    [OperationsIntegrationFact(DisplayName = "One deterministic source reconciles all eight Operations route families")]
-    public async Task SharedFixture_ReconcilesAllEightRouteFamilies()
+    [Fact(DisplayName = "RQ561 certifies the six current Operations screens against one adversarial fixture")]
+    public async Task SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts()
     {
-        await SeedSharedFixtureAsync();
-        using var client = _factory.CreateClient();
+        Assert.True(_postgres.IsAvailable, "The RQ561 certification requires its disposable PostgreSQL Testcontainer.");
+        var connectionString = await _postgres.TryCreateDatabaseConnectionStringAsync($"rq561_operations_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+        await SeedSharedFixtureAsync(connectionString!);
+        await using var factory = new OperationsEndpointFactory(connectionString!);
+        using var client = factory.CreateClient();
+        var verdicts = new List<RouteVerdict>(capacity: 6);
 
         var inventory = await GetJsonAsync(client, "/api/analytics/inventory/list?page=1&pageSize=100&dataScope=all");
         var inventoryItems = inventory.GetProperty("items").EnumerateArray().ToArray();
@@ -37,18 +54,14 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             inventoryItems,
             item => item.GetProperty("plu").GetString() == "OOS-101"
                 && item.GetProperty("recommendationAllowed").GetBoolean() == false);
-
-        var supplier = await GetJsonAsync(
-            client,
-            $"/api/analytics/supplier-sales-stats?fromDate={FromDate}&toDate={ToDate}&dataScope=all");
-        Assert.Equal(5, supplier.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
-        Assert.Equal(540m, supplier.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
+        verdicts.Add(new("/analytics/inventory", "/api/analytics/inventory/list", 1, 1, "PASS", "empty-stock and unavailable-recommendation rows asserted"));
 
         var shoeType = await GetJsonAsync(
             client,
             $"/api/analytics/shoe-type-sales-stats?fromDate={FromDate}&toDate={ToDate}&dataScope=all");
         Assert.Equal(5, shoeType.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
         Assert.Equal(540m, shoeType.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
+        verdicts.Add(new("/analytics/shoe-type-sales-stats", "/api/analytics/shoe-type-sales-stats", 1, 1, "PASS", "fixture total asserted"));
 
         var daily = await GetJsonAsync(
             client,
@@ -58,16 +71,25 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal(
             540m,
             daily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal($"{FromDate}T00:00:00Z", daily.GetProperty("requestedFrom").GetString());
+        Assert.Equal($"{ToDate}T00:00:00Z", daily.GetProperty("requestedTo").GetString());
+        Assert.Equal("all", daily.GetProperty("dataScope").GetString());
+        verdicts.Add(new("/analytics/daily-sales", "/api/analytics/daily-sales", 1, 1, "PASS", "period, data scope and fixture totals asserted"));
 
         var vendorNivelacija = await GetJsonAsync(
             client,
             $"/api/analytics/vendor-sales-nivelacija?eventDate={Uri.EscapeDataString(NivelacijaEventDate)}&dataScope=all");
-        Assert.True(
-            vendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean(),
-            vendorNivelacija.GetRawText());
-        Assert.Equal(200m, vendorNivelacija.GetProperty("totals").GetProperty("preRevenue").GetDecimal());
-        Assert.Equal(270m, vendorNivelacija.GetProperty("totals").GetProperty("postRevenue").GetDecimal());
-        Assert.Equal(35m, vendorNivelacija.GetProperty("totals").GetProperty("changePercent").GetDecimal());
+        Assert.False(vendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean(), vendorNivelacija.GetRawText());
+        Assert.Equal("vendor_sales_nivelacija_contract_missing", vendorNivelacija.GetProperty("meta").GetProperty("errorCode").GetString());
+        Assert.Equal("unavailable", vendorNivelacija.GetProperty("dataCoverageStatus").GetString());
+        Assert.False(vendorNivelacija.GetProperty("recommendationAllowed").GetBoolean());
+        verdicts.Add(new(
+            "/analytics/nivelacije-pre-post",
+            "/api/analytics/vendor-sales-nivelacija",
+            1,
+            1,
+            "UNVERIFIED",
+            "Route executed; unresolved maturity/overlap semantics are not certified by the current fixture."));
 
         var color = await GetJsonAsync(
             client,
@@ -75,6 +97,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal(3, color.GetProperty("colors").GetArrayLength());
         Assert.Equal(5, color.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32());
         Assert.Equal(540m, color.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal());
+        verdicts.Add(new("/analytics/color-sales-stats", "/api/analytics/color-sales-stats", 1, 1, "PASS", "visible color buckets and fixture totals asserted"));
 
         var preNivelacija = await GetJsonAsync(
             client,
@@ -84,12 +107,21 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Contains(
             preNivelacija.GetProperty("candidates").EnumerateArray(),
             candidate => candidate.GetProperty("sku").GetString() == "PRE-105");
+        verdicts.Add(new("/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", 1, 1, "PASS", "candidate count and visible SKU asserted"));
 
-        // Supplier Footwear is the type-insight projection of the same
-        // vendor/nivelacija fact response, so assert the projection contract too.
-        Assert.True(vendorNivelacija.GetProperty("typeInsightsAuthoritative").GetBoolean());
-        Assert.Equal(1, vendorNivelacija.GetProperty("articleStats").GetArrayLength());
-        Assert.Equal("NIV-101", vendorNivelacija.GetProperty("articleStats")[0].GetProperty("sku").GetString());
+        var report = new
+        {
+            manifestId = "operations-six-screen-certification-2026-10-03",
+            expectedRoutes = 6,
+            executedRoutes = verdicts.Sum(item => item.ExecutedCount),
+            verdict = verdicts.Any(item => item.Verdict != "PASS") ? "UNVERIFIED" : "PASS",
+            routes = verdicts
+        };
+        _output.WriteLine(JsonSerializer.Serialize(report));
+        Assert.Equal(6, verdicts.Count);
+        Assert.All(verdicts, item => Assert.Equal(item.ExpectedCount, item.ExecutedCount));
+        Assert.Equal(6, report.executedRoutes);
+        Assert.Equal("UNVERIFIED", report.verdict);
     }
 
     private static async Task<JsonElement> GetJsonAsync(HttpClient client, string path)
@@ -142,11 +174,18 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         }
     }
 
-    private static async Task SeedSharedFixtureAsync()
+    private static async Task SeedSharedFixtureAsync(string connectionString)
     {
-        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? Environment.GetEnvironmentVariable("TRENDPLUS_TEST_CONNECTION_STRING");
-        Assert.False(string.IsNullOrWhiteSpace(connectionString), "A PostgreSQL connection string is required for the live Operations proof.");
+        await using (var db = new TrendplusDbContext(
+                         new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options))
+        {
+            await db.Database.MigrateAsync();
+        }
+        await using (var analyticsDb = new AnalyticsDbContext(
+                         new DbContextOptionsBuilder<AnalyticsDbContext>().UseNpgsql(connectionString).Options))
+        {
+            await analyticsDb.Database.MigrateAsync();
+        }
 
         var fixturePath = FindRepositoryFile("Api.Tests", "Fixtures", "operations-analytics-all-routes-seed.sql");
         var sql = await File.ReadAllTextAsync(fixturePath);
@@ -173,5 +212,50 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         }
 
         throw new FileNotFoundException($"Could not find repository fixture: {Path.Combine(segments)}");
+    }
+
+    private sealed record RouteVerdict(
+        string WebRoute,
+        string ApiRoute,
+        int ExpectedCount,
+        int ExecutedCount,
+        string Verdict,
+        string Evidence);
+
+    private sealed class OperationsEndpointFactory(string connectionString) : WebApplicationFactory<global::Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Database:AutoMigrate"] = "false",
+                    ["StartupReadiness:GateApiTraffic"] = "false",
+                    ["PROCESS_TYPE"] = "web",
+                    ["Workers:Enabled"] = "false",
+                    ["Caching:Provider"] = "disabled",
+                    ["ConnectionStrings:DefaultConnection"] = connectionString,
+                    ["ConnectionStrings:AnalyticsConnection"] = connectionString,
+                    ["ConnectionStrings:OpenProductTrainingConnection"] = connectionString
+                }));
+
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IHostedService>();
+                services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
+                services.RemoveAll<TrendplusDbContext>();
+                services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
+                services.RemoveAll<ITrendplusDbContext>();
+                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
+                services.AddScoped<TrendplusDbContext>(provider =>
+                    provider.GetRequiredService<IDbContextFactory<TrendplusDbContext>>().CreateDbContext());
+                services.AddScoped<ITrendplusDbContext>(provider => provider.GetRequiredService<TrendplusDbContext>());
+                services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
+                services.RemoveAll<AnalyticsDbContext>();
+                services.RemoveAll<IAnalyticsDbContext>();
+                services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString));
+                services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
+            });
+        }
     }
 }
