@@ -3875,6 +3875,24 @@ Do not change article-ID positivity rules unless the article source contract its
 - 2026-10-02 negative Access entity-ID delivery `0360442d`.
 - Coordinate shared query files with RQ487 and nivelacija RQ541-RQ545; external STAB16/RQ454 proof must not block the local repair.
 
+### Completion note
+
+- Date: 2026-10-03
+- Status: DONE
+- Completion: Removed collision-prone `-1` sentinels from nullable supplier/store deduplication, corrected the independent oracle, and verified NULL, -1 and -2 through the scoped PostgreSQL source. Cache identity distinguishes real negative store IDs from all-store scope. The Inventory `store_id = 0` marker remains documented as company-level because the current ProductsDim source has no store grain.
+- Changed files: `.ai/runs/2026-10-03-RQ560-evidence.md` lists all changed files.
+- Checks run: focused API tests 54/54; prompt queue, planning architecture and agent instruction validators; `git diff --check`.
+- Checks not run: full backend suite; production SQL verification, which is a later acceptance layer.
+- Run log: `.ai/runs/2026-10-03-RQ560-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `2fe461557f781d4a5652294396c39d4726d18a7a`
+- Main verification: fresh `git fetch origin main`; `origin/main` resolved to `2fe461557f781d4a5652294396c39d4726d18a7a` and contains the implementation commit.
+- Missed: production sentinel inventory remains later acceptance; no repository-local RQ560 requirement is known incomplete.
+- Follow-up: fresh collision check for RQ561.
+- Residual risk: production sentinel inventory was not run; the company-level zero marker remains safe while this source stays storeless.
+- Prompt defect / scope repair: RQ545's deployed acceptance is owned by RQ535/STAB16 and does not block the bounded repository-local RQ560 slice.
+
 ## RQ561 - Re-certify the six current Operations screens on one adversarial fixture
 
 Status: WAITING
