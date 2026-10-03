@@ -661,12 +661,13 @@ None.
 - Completion: All 58 route lazy imports now retry once with a cache-busted same-origin chunk URL; retry failure schedules reload when allowed or surfaces typed chunk failure. ErrorBoundary shows the application refresh prompt for typed and legacy `reading 'default'` failures. Vercel config roles and parity are documented.
 - Changed files: `Klijent/clientapp/src/App.tsx`, `src/components/ErrorBoundary.tsx`, `src/components/__tests__/ErrorBoundary.chunkLoad.spec.tsx`, `src/utils/chunkLoadRecovery.ts`, `src/utils/__tests__/chunkLoadRecovery.spec.ts`, `docs/Frontend/VERCEL_DEPLOYMENT.md`, queue, roadmap and run log.
 - Checks run: chunk-recovery/ErrorBoundary tests 7/7; typecheck, analytics guardrails, frontend build, prompt governance and `git diff --check` passed.
-- Checks not run: deployed/browser verification; GitHub Actions discovery pending delivery.
+- Checks not run: deployed/browser verification; no deployed session was available or required by the repo-local acceptance.
 - Run log: `.ai/runs/2026-10-03-RQ546-evidence.md`
-- Evidence state: pending delivery.
+- Evidence state: synchronized.
 - Delivery mode: direct-main.
-- Main commit SHA: pending.
-- Main verification: pending fresh fetch after push.
+- Main commit SHA: `e371b8ddfc133d54e9697475a9d39972d67af6ea`.
+- Main verification: fresh fetch confirmed `HEAD == origin/main == e371b8ddfc133d54e9697475a9d39972d67af6ea`; ancestry check passed.
+- Actions: no runs discoverable for implementation SHA at evidence sync.
 - Missed: no live deployment session was available for stale chunk verification.
 - Follow-up: RQ554 (P1) is primary READY; RQ549 and RQ550 remain additional READY lanes.
 - Residual risk: if a runtime omits the failed module URL, recovery falls back to the typed refresh prompt; the existing `recharts` chunk warning remains.
