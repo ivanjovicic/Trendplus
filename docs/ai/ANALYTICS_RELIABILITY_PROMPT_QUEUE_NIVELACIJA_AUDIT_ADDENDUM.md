@@ -1039,12 +1039,13 @@ Owner claim 2026-10-03: RQ545 repo-local backend error states are already delive
 - Completion: Both screens preserve mapped backend failure truth and support identifiers. Prioriteti shows its 180-day UTC model window separately from the no-sale-days filter; Pre/Post supplier dropdown and summary labels distinguish duplicate names with IDs and Serbian sorting.
 - Changed files: both Nivelacija screens, shared analytics error state, frontend Pre-Nivelacija contract constant, focused page/helper tests, moved existing analytics-guardrail line anchor, queue, roadmap and run log.
 - Checks run: focused tests 61/61, analytics guardrails, typecheck and frontend build passed; `git diff --check` passed.
-- Checks not run: full frontend suite, .NET tests (no backend changes), deployed/browser verification and GitHub Actions discovery pending delivery.
+- Checks not run: full frontend suite, .NET tests (no backend changes) and deployed/browser verification (no deployed session was available or required for repository-local acceptance).
 - Run log: `.ai/runs/2026-10-03-RQ554-evidence.md`
-- Evidence state: pending delivery.
+- Evidence state: synchronized.
 - Delivery mode: direct-main.
-- Main commit SHA: pending.
-- Main verification: pending fresh fetch after push.
+- Main commit SHA: `a83cea46acf366ac3a7bf49865ef290afe550f7f`.
+- Main verification: fresh fetch confirmed `HEAD == origin/main == a83cea46acf366ac3a7bf49865ef290afe550f7f`; ancestry check passed.
+- Actions: no runs discoverable for implementation SHA at evidence sync.
 - Missed: no deployed screenshot/browser proof was available; production/provider acceptance remains with RQ535/STAB16.
 - Follow-up: RQ549 is primary READY; RQ550 remains an additional parallel-safe READY lane.
 - Residual risk: unknown backend codes keep safe generic copy; existing `recharts` chunk warning remains.
