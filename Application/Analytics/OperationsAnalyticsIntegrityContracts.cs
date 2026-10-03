@@ -87,39 +87,46 @@ public sealed record OperationsAnalyticsIntegrityProbeResult(
     string Status,
     string Summary,
     IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> Deltas,
-    bool BlocksDecisionSignals)
+    bool BlocksDecisionSignals,
+    int? ProbeRowCount = null)
 {
     public static OperationsAnalyticsIntegrityProbeResult Verified(
         string summary,
-        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta>? deltas = null)
+        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta>? deltas = null,
+        int? probeRowCount = null)
         => new(
             OperationsAnalyticsIntegrityStates.Verified,
             summary,
             deltas ?? Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: false);
+            BlocksDecisionSignals: false,
+            ProbeRowCount: probeRowCount);
 
-    public static OperationsAnalyticsIntegrityProbeResult Unverified(string summary)
+    public static OperationsAnalyticsIntegrityProbeResult Unverified(string summary, int? probeRowCount = null)
         => new(
             OperationsAnalyticsIntegrityStates.Unverified,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: false);
+            BlocksDecisionSignals: false,
+            ProbeRowCount: probeRowCount);
 
-    public static OperationsAnalyticsIntegrityProbeResult Degraded(string summary)
+    public static OperationsAnalyticsIntegrityProbeResult Degraded(string summary, int? probeRowCount = null)
         => new(
             OperationsAnalyticsIntegrityStates.Degraded,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: false);
+            BlocksDecisionSignals: false,
+            ProbeRowCount: probeRowCount);
 
     public static OperationsAnalyticsIntegrityProbeResult DriftDetected(
         string summary,
-        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> deltas)
+        IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> deltas,
+        int? probeRowCount = null)
         => new(
             OperationsAnalyticsIntegrityStates.DriftDetected,
             summary,
             deltas,
-            BlocksDecisionSignals: true);
+            BlocksDecisionSignals: true,
+            ProbeRowCount: probeRowCount);
 }
 
 /// <summary>

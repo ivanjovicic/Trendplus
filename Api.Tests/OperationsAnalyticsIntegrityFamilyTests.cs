@@ -50,6 +50,23 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
     }
 
     [Fact]
+    public void AccessImportInvalidation_RotatesInventoryEvidenceGeneration()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var before = registry.GetGeneration(OperationsAnalyticsIntegrityFamilies.Inventory);
+
+        registry.MarkUnverified(
+            "access_import",
+            "Inventory source changed.",
+            OperationsAnalyticsIntegrityFamilies.ResolveAffected("access_import"));
+
+        Assert.NotEqual(before, registry.GetGeneration(OperationsAnalyticsIntegrityFamilies.Inventory));
+        Assert.Equal(
+            OperationsAnalyticsIntegrityStates.Unverified,
+            registry.GetCurrent(OperationsAnalyticsIntegrityFamilies.Inventory).Status);
+    }
+
+    [Fact]
     public async Task ProbeWithoutDatabase_PublishesExplicitNonVerifiedStateForEveryEnrolledFamily()
     {
         var dbOptions = new DbContextOptionsBuilder<TrendplusDbContext>()

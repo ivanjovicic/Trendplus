@@ -259,7 +259,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                     result.Deltas,
                     result.BlocksDecisionSignals,
                     result.Status == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
-                    null);
+                    result.ProbeRowCount);
                 await StoreAsync(snapshot, filters, ct);
             }
 
