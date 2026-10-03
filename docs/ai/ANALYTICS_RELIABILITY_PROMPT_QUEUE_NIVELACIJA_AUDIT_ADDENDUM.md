@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ549` (IN_PROGRESS); additional parallel-safe READY lane: `RQ550`. RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ541 follows proof-first RQ550; RQ543/RQ542 follow proof-first RQ549 so the oracle cannot be rewritten around the fix.
+Current READY routing: primary `RQ550` (RQ549 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ549 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ541 follows proof-first RQ550; RQ543 then RQ542 follow the RQ550/RQ549 oracle sequence.
 Owner claim 2026-10-03: refreshed `origin/main` to `11e644c4c354928ad440a49215e62602183092e8`; RQ527 is DONE and its independent fixture is available. No RQ549 lock, matching branch or open PR exists. RQ549 moved `READY -> IN_PROGRESS` as the primary RQ lane; the independent RQ550 READY lane remains unchanged. Local lock: `.ai/task-locks/RQ549-codex.lock.md`.
 Owner recovery 2026-10-03 after RQ563: the prior "no safe RQ prompt" conclusion was superseded by a deeper dependency audit. RQ548 depends only on DONE RQ525; RQ546 has no dependencies; RQ554's required backend error states are already delivered by the code-side portion of PARTIAL RQ545 and its remaining deployed acceptance is not a start gate. Two circular queue defects were also found: RQ542<->RQ549 and RQ541<->RQ550. Both are repaired proof-first: RQ549/RQ550 must pin current defects before RQ542/RQ541 change semantics. Fresh GitHub checks found no open PR or matching RQ538-RQ550 task branch/lock. Primary READY is RQ548; additional READY lanes are RQ546/RQ549/RQ550/RQ554.
 Owner claim 2026-10-03: refreshed `origin/main` to `e21c72624fabf259f64be727f820b87d746da45a`; RQ525 is DONE and its harness SHA is an ancestor of current main. No RQ548 lock, matching branch or open PR exists. RQ548 moved `READY -> IN_PROGRESS` as the primary Nivelacija lane to establish the independent Pre-Nivelacija baseline before RQ538/RQ539 change semantics. Local lock: `.ai/task-locks/RQ548-codex.lock.md`.
@@ -34,7 +34,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F10 | RQ546 | DONE |
 | NV-P1 | RQ547 | DONE |
 | NV-P2 | RQ548 | DONE |
-| NV-P3 | RQ549 | IN_PROGRESS |
+| NV-P3 | RQ549 | DONE |
 | NV-P4 | RQ550 | READY |
 | NV-I1 | RQ551 | WAITING |
 | NV-I2 | RQ552 | WAITING |
@@ -813,7 +813,7 @@ The RQ525 harness. Land it before NV-F1/NV-F3, or in the same PR.
 
 ## RQ549 - NV-P3 - DiD/control and optional-metric mapper oracle on real PostgreSQL
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: tests/sql
 Feature family: nivelacija-did-oracle
@@ -839,18 +839,18 @@ RQ527. This is the proof-first lane for NV-F6/RQ542: pin the current defects and
 ### Completion note
 
 - Date: 2026-10-03
-- Status: IN_PROGRESS
+- Status: DONE
 - Completion: Added a real-PostgreSQL fixture that pins control/treatment membership, repeated-event DiD windows, same-PLU mapper behavior and current optional-metric gaps. The query plan uses `idx_mv_daily_sales_facts_pk`; measured planning time was 3.238 ms and execution time 1.781 ms.
 - Changed files: `Api.Tests/AssortmentNivelacijaOracleTests.cs`; this addendum; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-03-RQ549-evidence.md`.
 - Checks run: focused RQ527/NV-P3 PostgreSQL oracle passed 17/17; targeted DiD/control/mappers proof passed 1/1 with Testcontainers; queue, instruction and planning validators; `git diff --check`.
 - Checks not run: broader backend/frontend suites are outside this SQL/oracle proof scope.
 - Run log: `.ai/runs/2026-10-03-RQ549-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: 8d1fbe42ed3cc9246c466fab3c5bc11e53374105
+- Main verification: fresh `git fetch origin main` and `git merge-base --is-ancestor` confirm `origin/main` contains implementation SHA `8d1fbe42ed3cc9246c466fab3c5bc11e53374105`.
 - Missed: Runtime semantic corrections remain with RQ542/NV-F6.
-- Follow-up: RQ550 is the next primary READY lane; RQ542/RQ543 remain behind this proof.
+- Follow-up: RQ550 is promoted as the next primary READY lane; RQ543 follows RQ550, then RQ542 consumes the RQ549 oracle.
 - Residual risk: The assertions deliberately preserve the current wrong/partial mapper and DiD outputs until their owning fix prompt changes them.
 - Prompt defect / scope repair: Replaced “expected to fail” with green baseline assertions of current defects, as required for a usable proof-first oracle.
 
