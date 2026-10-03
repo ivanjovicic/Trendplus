@@ -3,6 +3,7 @@
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none
+Audit reconciliation 2026-10-03: RQ487 is DONE on current `main`; the main Analytics Reliability queue's current READY pointer is `none`. RQ560-RQ566 remain WAITING behind their declared dependency/collision gates and retain their separate evidence owners.
 Owner audit 2026-10-02: current Operations navigation contains six primary surfaces after RQ507: Inventory, Shoe Type, Daily Sales, Pre/Post Nivelacija, Color and Pre-Nivelacija Priorities. Current-main review found strong deterministic/contract evidence, but not complete production certification. Registered RQ560-RQ566 as non-duplicative residual reliability work: negative-ID sentinel safety, six-screen adversarial recertification, grain-aware continuous integrity, Inventory family probe, Nivelacija family probe, exact deployed/browser/export six-screen proof, and post-deploy negative-ID repair/config verification. All remain WAITING pending their declared collision/dependency checks; parent RQ487 remains the current repository-local READY owner. RQ451 detail status was reconciled back to WAITING because the summary/certification plan remain WAITING and no implementation run log or frontend evidence reader was found.
 Owner completion 2026-10-02: RQ499 moved `IN_PROGRESS -> DONE` and was delivered on `main` in merge `84b90e5f` (implementation `7bc796ad`). Supplier consolidated shell now maps `critical`, tab-specific fallback sources, pending trust state, scorecard always as signal mode, and no stale cross-tab trust flash. Run log: `.ai/runs/2026-10-02-RQ499-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-10-02: idle recovery verified RQ474/RQ475/RQ498 DONE on current `origin/main`, no active RQ499 lock/branch collision, and promoted/claimed RQ499 `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ499-cursor.lock.md`.
@@ -43,7 +44,7 @@ Owner promotion/claim 2026-09-28: idle recovery verified `RQ390`, `RQ432` and `R
 Owner completion 2026-09-28: `RQ489` moved IN_PROGRESS -> DONE and was delivered directly to `main` in `63787f0b24a946e3ce8efa1abb1fa8f1509d7c1b`. Pre-Nivelacija now uses the canonical trimmed/case-insensitive DUG/KOREKCIJA receipt population, keeps positive-net signed returns actionable, computes recency from the latest positive retail sale, exposes receipt/return/recency provenance, and bumps the cache/formula version to v6. Focused proof: backend 44/44; frontend 74/74; analytics guardrails, typecheck and production build pass; governance validators pass. Live PostgreSQL endpoint execution was not run because no isolated test database was assigned. Run log: `.ai/runs/2026-09-28-RQ489-evidence.md`. Evidence state: synchronized.
 Owner completion 2026-09-26: `RQ450` was delivered for post-Access-import Operations integrity probing. Successful analytics imports schedule exactly one post-commit bounded probe linked to `access_import:{batchId}` and suppress the duplicate cache_clear probe on the import path. Run log: `.ai/runs/2026-09-26-RQ450-evidence.md`. Evidence state: synchronized.
 Owner promotion/claim 2026-09-26: idle recovery after RQ447/RQ449 DONE on current `origin/main`. RQ448 remains gated on authenticated browser/API environment; RQ453 still lists RQ448/RQ452 dependencies. `RQ450` is dependency-complete (RQ413/RQ449) with no active Access-import integrity probe owner. `RQ450` moved `WAITING -> READY -> IN_PROGRESS` in this workspace; local lock `.ai/task-locks/RQ450-cursor.lock.md`.
-Main RQ current READY prompt: RQ487
+Main RQ current READY prompt: none
 
 Idle recovery 2026-09-26: `RQ448` remains `WAITING`, not claimed. RQ447/RQ442/RQ413/RQ449 dependencies are complete, but this workspace has no authenticated browser/API session or deployment access and the local Docker/PostgreSQL host is unavailable; mocked frontend tests would not satisfy the raw-facts-to-render/detail/export acceptance.
 
@@ -3833,7 +3834,7 @@ Do not change journal/live/provider/schema semantics, recommendation scoring, ow
 ## RQ560 - Remove negative Access-ID sentinel collisions from analytics and nivelacija SQL
 
 Status: WAITING
-Ready after: fresh collision check with RQ487/RQ545 and the active nivelacija query owners; no production access is required for the repository-local slice
+Ready after: fresh collision check with RQ545 and the active nivelacija query owners; RQ487 is DONE and its current-main implementation is the baseline for this slice. No production access is required for the repository-local slice.
 Priority: P0
 Type: backend/sql/tests
 Feature family: analytics-negative-id-sentinel-safety

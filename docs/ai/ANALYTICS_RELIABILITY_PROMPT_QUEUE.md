@@ -27390,7 +27390,7 @@ Source: `PS12`, `PS15`, the Supplier part of `PS16`, `PS18` and the frontend lin
 
 ## RQ487 - Measure and bound Product Decision and Supplier overview query cost
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ474`, `RQ483` and `RQ470` are DONE; establish the before-change baseline as step 1 of this prompt
 Priority: P2
 Type: backend/performance/tests
@@ -27456,8 +27456,8 @@ Current-main recheck narrows the older PS14 findings instead of replaying stale 
 - Run log: `.ai/runs/2026-10-02-RQ487-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending final delivery verification
-- Main verification: pending fresh `origin/main` verification after push.
+- Main commit SHA: `39de6ecad0c45b5dac8ee42bf6a8d1064ca36f04`
+- Main verification: current `origin/main` contains the implementation SHA `39de6ecad0c45b5dac8ee42bf6a8d1064ca36f04`; it was freshly fetched and verified during the 2026-10-03 residual commit audit.
 - Missed: Product Decision `articleIds.Contains` query forms and Supplier sale-line/timestamp grain remain unchanged because a measured safe beneficial rewrite was not established. Full deployed 503/performance cause remains RQ454/STAB16; RQ530's authoritative buyer metrics remain unavailable.
 - Follow-up: none for RQ487. RQ530 remains PARTIAL for unavailable authoritative buyer metrics; deployed Supplier 503/root-cause proof remains RQ454/STAB16.
 - Residual risk: timings are synthetic local PostgreSQL evidence, not a deployed-latency claim; deployed performance and the 503 root cause remain unverified.
