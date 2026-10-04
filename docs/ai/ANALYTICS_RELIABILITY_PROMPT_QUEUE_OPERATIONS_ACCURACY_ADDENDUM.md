@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ568
+Current READY prompt: RQ567
+Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The active user-reported Daily Sales issue is being completed before RQ567 is claimed.
 Owner promotion 2026-10-04: RQ568 moved WAITING -> READY after RQ550, RQ541 and RQ543 completed on main. RQ561 six-route harness is DONE; Q83 is DONE with focused backend/PostgreSQL proof, and its historical branch has no commits outside origin/main. No RQ568 lock, matching branch, or open PR exists. RQ545 deployed/provider acceptance and RQ454/STAB16 remain final/deployed evidence, not start gates for the disposable local certification harness.
 Post-RQ563 recovery 2026-10-03: deeper queue inspection supersedes the RQ563 run-log statement that no safe RQ prompt exists. The Nivelacija addendum contains runnable proof/UI lanes after repairing two circular dependencies. This Operations queue keeps RQ564-RQ566 gated as documented and registers RQ567-RQ568 for two uncovered reliability gaps: current pages do not consume the delivered RQ515 decision-readiness / Operations integrity evidence, and RQ561 still reports Pre/Post UNVERIFIED because its disposable schema lacks the canonical compatibility view/oracle path.
 Owner promotion/claim 2026-10-03: RQ560 was delivered and verified DONE on current `main` at `2fe461557f781d4a5652294396c39d4726d18a7a`. Fresh recovery found RQ561 dependency-complete, with no RQ561 lock, branch or open PR; existing unrelated worktrees are clean. Promoted RQ561 to READY and claimed it for current six-screen adversarial certification. Local lock: `.ai/task-locks/RQ561-codex.lock.md`.
@@ -203,8 +204,8 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ564 | WAITING | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
 | RQ565 | WAITING | P0 | operations-six-screen-deployed-reconciliation | Reconcile all six current screens through deployed API/browser/export |
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
-| RQ567 | WAITING | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
-| RQ568 | WAITING | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
+| RQ567 | READY | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
+| RQ568 | DONE | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
 
 ---
 
@@ -4189,7 +4190,7 @@ The 2026-10-02 negative-ID delivery explicitly did not run its read-only product
 
 ## RQ567 - Expose one trustworthy readiness and integrity surface across current Operations screens
 
-Status: WAITING
+Status: READY
 Ready after: RQ554 closes the shared Nivelacija failure-state UI collision; RQ562 and RQ563 are already DONE
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -4236,7 +4237,7 @@ This is especially important now that Inventory has an independent family probe 
 
 ## RQ568 - Execute the canonical Pre/Post compatibility view in current six-route certification
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ550 captures the current split/parity counterexamples, then RQ541 and RQ543 stabilize split/event semantics
 Priority: P1
 Type: integration-tests/test-infrastructure/evidence
@@ -4284,4 +4285,23 @@ A simplified test-only view would be dangerous because it could pass while produ
 - Refreshed origin/main at 3d12251a1720d19d4711878bc767df29c4d3dcb4. RQ550, RQ541, RQ543, RQ561 and Q83 are DONE.
 - No RQ568 lock, matching branch or open PR existed before claim. Q83's historical branch has no commits outside origin/main; its synchronized SQL queue and re-entry evidence show DONE.
 - Reuse the existing RQ561 harness and canonical SQL/bootstrap; do not add a simplified shadow view. RQ545 deployed acceptance and RQ454/STAB16 remain later evidence owners, not disposable-harness start gates.
-- RQ568 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/RQ568-codex.lock.md.
+- RQ568 moved READY -> IN_PROGRESS. RQ568 was claimed on branch `codex/queue-next-2026-10-04`; its local task lock was removed after synchronized completion.
+
+
+#### Completion note
+
+- Date: 2026-10-04
+- Status: DONE
+- Completion: Canonical Pre/Post SQL, independent raw-fixture oracle, six endpoint cases, and explicit missing-view negative path are now part of the six-route certification. Pre/Post reports VERIFIED only when all required evidence flags and all six endpoint executions pass.
+- Changed files: `Api.Tests/OperationsAnalyticsAllRoutesIntegrationTests.cs`; `Api.Tests/Fixtures/rq568-prepost-adversarial.sql`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-04-RQ568-evidence.md`.
+- Checks run: focused Testcontainers certification passed 1/1 with zero skips and machine report 6/6 routes, 31/31 cases, zero skipped, overall PASS, Pre/Post VERIFIED; `node scripts/check-prompt-queues.mjs` passed (671 tasks); `node scripts/check-planning-architecture.mjs` passed (79 tasks); `node scripts/check-agent-instructions.mjs` passed (14 files); `git diff --check` passed.
+- Checks not run: full `Api.Tests` suite and deployed API/browser validation; GitHub Actions status was not inspected.
+- Run log: `.ai/runs/2026-10-04-RQ568-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `4906915cef2d9e89bc314a8c7ce1a7c8d5d038a2`
+- Main verification: passed; fresh `git fetch origin main` resolved `origin/main` to the implementation SHA and `git merge-base --is-ancestor` succeeded.
+- Missed: no known omission in the RQ568 disposable PostgreSQL certification scope; production deployment/browser proof remains outside this prompt.
+- Follow-up: RQ567 promoted WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE and fresh RQ567 branch/lock/open-PR checks returned none. The earlier user-reported live Daily Sales query/validator issue remains active and is handled before claiming RQ567.
+- Residual risk: the test host emits non-fatal performance-log persistence errors because the disposable schema lacks the optional `PerformanceLogs` table; certification assertions and route verdicts pass. CI was not inspected.
+- Prompt defect / scope repair: RQ561's prior negative-path fixture became incomplete after adding RQ568 rows; explicit IDs were moved to a disjoint range. The 019 dashboard index script was excluded because it depends on an unrelated startup-core summary table and is not part of the canonical Pre/Post view contract.
