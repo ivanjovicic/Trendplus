@@ -685,6 +685,16 @@ describe("analytics response schemas", () => {
     }).success).toBe(false);
   });
 
+  it("accepts older Shoe Type payloads without row-level margin presentation fields", () => {
+    const { marginQualityTier, marginQualityShortLabel, marginQualityTooltip, ...legacyRow } = validShoeResponse.shoeTypes[0];
+    const result = shoeTypeSalesStatsResponseSchema.safeParse({
+      ...validShoeResponse,
+      shoeTypes: [legacyRow],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("validates Supplier Sales decision and cost-quality fields without hiding signed margin evidence", () => {
     expect(supplierSalesStatsResponseSchema.safeParse(validSupplierResponse).success).toBe(true);
 

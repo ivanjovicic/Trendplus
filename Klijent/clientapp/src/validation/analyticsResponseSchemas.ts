@@ -367,9 +367,11 @@ export const shoeTypeSalesStatsResponseSchema = z.object({
     noCostCoveragePct: nullableNonNegativePercentage,
     isEstimatedMargin: z.boolean(),
     marginQualityLabel: z.string().nullable(),
-    marginQualityTier: z.string().nullable(),
-    marginQualityShortLabel: z.string().nullable(),
-    marginQualityTooltip: z.string().nullable(),
+    // Older cached/API payloads may omit row-level margin presentation fields.
+    // Recommendation and response-level data quality remain authoritative.
+    marginQualityTier: z.string().nullable().optional(),
+    marginQualityShortLabel: z.string().nullable().optional(),
+    marginQualityTooltip: z.string().nullable().optional(),
     recommendation: shoeTypeRecommendationSchema,
     comparableRevenueWithNivelacijaSplit: nonNegativeNumber,
     comparablePreRevenue: nonNegativeNumber,

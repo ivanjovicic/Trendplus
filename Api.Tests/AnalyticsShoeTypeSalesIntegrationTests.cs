@@ -144,6 +144,9 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
             Assert.True(firstItem.TryGetProperty("historicalCostCoveragePct", out _), "Missing 'historicalCostCoveragePct' field");
             Assert.True(firstItem.TryGetProperty("noCostCoveragePct", out _), "Missing 'noCostCoveragePct' field");
             Assert.True(firstItem.TryGetProperty("sharePct", out _), "Missing 'sharePct' field");
+            Assert.True(firstItem.TryGetProperty("marginQualityTier", out _), "Missing 'marginQualityTier' field");
+            Assert.True(firstItem.TryGetProperty("marginQualityShortLabel", out _), "Missing 'marginQualityShortLabel' field");
+            Assert.True(firstItem.TryGetProperty("marginQualityTooltip", out _), "Missing 'marginQualityTooltip' field");
 
             var recommendation = firstItem.GetProperty("recommendation");
             Assert.True(recommendation.TryGetProperty("status", out _), "Missing recommendation 'status' field");
