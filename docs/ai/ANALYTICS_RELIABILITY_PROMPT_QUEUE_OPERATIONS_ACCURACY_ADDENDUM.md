@@ -4410,3 +4410,9 @@ Cover the six current Operations screens:
 
 - RQ514/RQ515 readiness evidence, RQ567 visible trust surface, and RQ564 Nivelacija integrity family.
 - RQ566 later verifies real worker/checkpoint/timezone state after deployment; RQ569 must remain repository-local and must not require production access.
+
+### Addendum 2026-10-04 (all-screen re-audit, live evidence only — no scope change)
+
+- Production runtime `02f99158` (build 2026-10-04T16:56:14Z): Daily/Supplier/Shoe Type/Color for `2026-09-04..2026-10-04` return zero rows/totals with `dataWindowTo=2026-08-05T00:00:00Z`; `/api/analytics/cached/validation/freshness` → `lastImport=2026-08-12T10:30:04Z`, `freshnessHours=1279.6`; `/api/analytics/refresh-status` → all jobs `unknown`.
+- For the in-horizon window `2026-07-07..2026-08-06T00:00:00Z` the six-screen family reconciles: Daily, Supplier, Shoe Type, Color, dated Dashboard summary and KPI snapshot all return 1,561,120 RSD / 307 units.
+- Related follow-ups registered outside this prompt so RQ569 scope stays unchanged: `RQ570` (horizon-anchored defaults and beyond-horizon PoP suppression on all surfaces), `RQ571` (Pre-Nivelacija anchor), `RQ579` (non-vacuous integrity), `RQ583` (freshness SLA/banner), `RQ584` (Daily `toDate` contract).

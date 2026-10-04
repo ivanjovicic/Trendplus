@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this parent file; live routing is owned by addenda — primary `RQ569` (Operations source horizon/freshness), additional parallel-safe `RQ553` (copy/a11y), then `RQ552` and `RQ453` in that order after `RQ564` DONE on current `main`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Current READY prompt: none as primary in this parent file (additional parallel-safe READY lanes registered here by the 2026-10-04 all-screen re-audit: `RQ578`, `RQ580`, `RQ581`); live routing is owned by addenda — primary `RQ569` (Operations source horizon/freshness), additional parallel-safe `RQ553` (copy/a11y), then `RQ552` and `RQ453` in that order after `RQ564` DONE on current `main`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585` at the end of this file: READY parallel-safe lanes `RQ578` (Data Quality health truth), `RQ580` (supplier report period label), `RQ581` (Insight Studio mojibake); all others WAITING on RQ569 and/or explicit owner decisions (RQ570, RQ574, RQ576, RQ577, RQ582, RQ583). Dated live-evidence addenda added to RQ479, RQ545, RQ553, RQ556 and RQ569 without scope change. Primary routing stays `RQ569`.
 Owner post-close routing recovery 2026-10-04 after RQ564 hardening: full active RQ queue/addenda review confirms RQ569 is primary READY; RQ552 waits until RQ569 is DONE, and RQ453 waits until RQ552 is DONE. RQ553 remains an additional parallel-safe READY lane. Recovery base and collision checks are recorded in `.ai/runs/2026-10-04-RQ564-evidence.md`.
 Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
 Idle recovery refinement 2026-10-02: `RQ487` is promoted `WAITING -> READY` after re-checking current code and its actual dependencies. `RQ474`, `RQ483` and `RQ470` are DONE. The previous `Ready after` incorrectly made the baseline timing/`EXPLAIN ANALYZE` measurement a prerequisite even though producing that baseline is the first executable step of RQ487, and it conflated the repository-local performance owner with the still-external live 503 root-cause proof owned by `RQ454`/`STAB16`. Current-main still loads the full active snapshot-cost batch for Supplier overview, keeps the Supplier sale projection at sale-line/timestamp grain, scans first nivelacija history without a relevant-article predicate, and returns cached Supplier JSON without projecting cache age/stale/correlation metadata at read time. Product Decision still materializes the matching article population then feeds its IDs through multiple `Contains` queries; its last-sale period-end bound and search-key normalization are already fixed and must not be redone. No `RQ487` branch, open PR or task-lock match was found; the canonical RQ queue had no READY/IN_PROGRESS prompt. Provider logs/live DB access are not required for the disposable PostgreSQL/Testcontainers baseline and equivalence work; deployed/provider proof remains a separate residual under `RQ454`/`STAB16`.
@@ -26866,6 +26867,12 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 
 ---
 
+### Addendum 2026-10-04 (all-screen re-audit, live evidence)
+
+- `GET /api/analytics/actions` still returns smoke fixtures in the operational list (e.g. id 3 `Smoke Inventory Final`, `sourceKey inventory:smoke:final:20260522151551`, description `smoke`); `GET /api/analytics/actions/counts` → `new=3`, `done=1`, `p1Open=1`.
+- The Decision Board counts them (`Otvorene akcije 3`, `Ishodi na čekanju 1`) and shows source `Analytics actions` as `good` with `generatedAtUtc 2026-05-22T13:16:17Z`.
+- No scope change; this is fresh proof that the quarantine is still needed. Source: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`.
+
 ## RQ480 - Surface Decision Pulse partial-source failures and provide retry
 
 Status: DONE
@@ -28342,3 +28349,864 @@ Do not change Daily Sales backend aggregation, response schema, data-scope meani
 - Follow-up: inspect the post-push Analytics Quality Gates run, then re-enter canonical recovery.
 - Residual risk: existing Vite large-chunk warning; no known correctness residual in the owned scope.
 - Prompt defect / scope repair: guardrail baseline line moved from 924 to 926 because the validator stores line-numbered known violations; no new semantic violation was introduced.
+
+## Re-audit registration 2026-10-04 (all analytics screens, fresh main)
+
+Source audit: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`. Base: `origin/main` `7de14c18`; production runtime `02f9915887f99115348bd241590da581dafee45d` (build 2026-10-04T16:56:14Z). All live proof below is read-only GET against `https://trendplus-api.onrender.com` on 2026-10-04 between 18:04Z and 18:12Z. De-duplicated against every RQ (incl. DONE), the eleven addenda, STAB16 and the 2026-08-19 production-value backlog. Primary routing is unchanged (`RQ569` in the Operations Accuracy addendum); the READY prompts below are additional parallel-safe lanes in their own feature families.
+
+## RQ570 - Anchor default analysis periods to the observed data horizon and suppress beyond-horizon comparisons
+
+Status: WAITING
+Ready after: owner answers the decision below AND `RQ569` is DONE (reuses its observed-horizon/source-freshness contract)
+Priority: P1
+Type: backend/frontend/contract/tests
+Feature family: analytics-horizon-default-period
+Parallel-safe: no
+Owner: Analytics Reliability / Period truth
+Commit suggestion: `fix(analytics): anchor default periods to the observed data horizon`
+
+### Problem
+
+Production source sales end on 2026-08-05 (last import 2026-08-12T10:30Z), but most decision screens still default to "last N days ending today". On 2026-10-04 that makes the default view empty or misleading on every screen except Pilot intake (RQ467 already anchors to `MAX(DatumProdaje)`):
+- Product Decision default `2026-09-05..2026-10-04` analyses 12,422 articles with zero sales; Dashboard default shows zeros; Decision Board uses `2026-04-08..2026-10-04`; Decision Pulse `2026-09-05..2026-10-04` returns no items; Supplier hub defaults to 180 days ending today.
+- Period-over-period comparisons across the horizon produce fake collapses: Shoe Type for `2026-09-04..2026-10-04` returns `Ž.Cipela` previous 6,980 RSD → current 0 → `popRevenueChangePct = -100` (also `Sandala`, `Papuca`), although no source data exists for the current window.
+
+### Evidence
+
+- `GET /api/analytics/shoe-type-sales-stats?fromDate=2026-09-04&toDate=2026-10-04` → `dataWindowTo=2026-08-05T00:00:00Z`, rows with `previousPeriodRevenue` 6980/5490/7780 and `popRevenueChangePct=-100`.
+- `GET /api/analytics/cached/products/decision-center` (no dates) → `periodFromUtc=2026-09-05`, `periodToUtc=2026-10-04`, `summary.actionableCount=0`.
+- `GET /api/analytics/decision-board` → `periodFromUtc=2026-04-08`, `periodToUtc=2026-10-04`; `GET /api/analytics/decision-pulse` → `items=[]`, `suppressedCount=124`.
+- `GET /api/analytics/reports/pilot-intake` (no dates) → `pir-20260707-20260805` (RQ467 behaviour, correct reference).
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:2322-2323` (bootstrap default `toDate ?? DateTime.UtcNow.Date`, `-29` days); Product Decision default in `BuildProductDecisionCenterAsync`.
+
+### Owner decision needed
+
+Question: Should every decision screen (Dashboard, Product Decision, Supplier overview/hub/report, Decision Board, Decision Pulse, Inventory sales-derived signals) use the RQ467 rule as its default period — last 30 days ending at `MAX(DatumProdaje)` of the active store/dataScope — with a visible "Podaci zaključno sa <datum>" banner, while explicitly chosen dates are never moved?
+
+Recommendation: Yes. It is the same rule the owner already approved for Pilot intake; screens open on real data, and staleness stays visible through RQ569 freshness instead of being hidden behind empty pages.
+
+### Scope
+
+- Default-period resolution for the surfaces listed above (backend default + frontend initial URL state).
+- Beyond-horizon comparison state for PoP/trend fields on Supplier, Shoe Type, Color, Daily, Product Decision and Dashboard.
+- No change to explicit user-selected ranges, to RQ467 Pilot intake semantics, or to metric formulas.
+
+### Read first
+
+- `RQ467` owner decision and completion note; `RQ569` contract (observed horizon, source freshness).
+- `RQ137` (PARTIAL requested/effective/observed period truth) — consume, do not duplicate.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` (bootstrap, Product Decision), `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api/Endpoints/DecisionPulseEndpoints.cs`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`.
+
+### Do
+
+1. Add one shared resolver "default period = last 30 days ending at the observed source horizon for the active scope" (reuse RQ467's implementation; do not create a second horizon query).
+2. Apply it to undated requests on the listed surfaces; echo `requested`, `effective` and `observed` periods plus a `defaultPeriodBasis = source_horizon` marker in meta.
+3. When the current window lies entirely or partly beyond the observed horizon, return PoP/trend as `unavailable` with reason `beyond_source_horizon` (never `-100` or `0`).
+4. Frontend: initial URL state uses the server-resolved default; show the "Podaci zaključno sa" banner from RQ569 metadata.
+
+### Tests
+
+- Backend: undated request with fixture horizon 2026-08-05 resolves `2026-07-07..2026-08-05` on each listed endpoint; explicit dates are echoed unchanged.
+- Backend: Shoe Type/Supplier/Color window `2026-09-04..2026-10-04` with previous-period sales returns `popRevenueChangePct = null` + `beyond_source_horizon`.
+- Frontend: page specs for Dashboard and Product Decision render the banner and keep explicit URL dates.
+- `dotnet test` focused suites; `npm run test:analytics`; `npm run typecheck`; validators; `git diff --check`.
+
+### Acceptance
+
+- No decision screen opens on an empty "today" window when source data exists before it.
+- No -100% / 0% comparison is produced for a window beyond the source horizon.
+- Explicit dates are never rewritten.
+
+### Dependencies
+
+- `RQ569` DONE (observed horizon + freshness metadata); `RQ467` reference behaviour; coordinate with `RQ572` (bootstrap) and `RQ571` (Pre-Nivelacija) — run sequentially if they share files.
+
+## RQ571 - Pre-Nivelacija: anchor the 180-day window and recency to the source horizon, not to "now"
+
+Status: WAITING
+Ready after: `RQ569` DONE (shared Pre-Nivelacija trust/freshness metadata); claim sequentially with `RQ552`/`RQ556` (same endpoint/service files)
+Priority: P1
+Type: backend/tests
+Feature family: pre-nivelacija-horizon-anchor
+Parallel-safe: no
+Owner: Analytics Reliability / Nivelacija
+Commit suggestion: `fix(analytics): anchor Pre-Nivelacija windows to the source horizon`
+
+### Problem
+
+Pre-Nivelacija computes its sales/markdown window and recency from `DateTime.UtcNow`. With source data ending 2026-08-05, 60 of the 180 window days are "no data", so velocity is diluted by about one third and `daysSinceLastSale` is inflated by 60 days. Alerts say e.g. "155 (Lanterna) nema prodaju 157 dana" — measured from today; from the data horizon it is about 97 days. Stock pressure, velocity risk and recency risk (75% of the score weight) are biased upward for every article. This contradicts the owner principle already applied to Product Decision in RQ483 (measure from period end, not from today).
+
+### Evidence
+
+- `GET /api/analytics/pre-nivelacija-prioriteti` → `evidenceWindow.salesWindowFromUtc=2026-04-07T18:04:46Z`, `salesWindowToUtc=2026-10-04T18:04:46Z`; alerts "nema prodaju 157 dana", "5559 dana".
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:98` (`requestNowUtc = DateTime.UtcNow`), `:118` (`nowUtc = DateTime.UtcNow`), `:738`, `:763`.
+- Source horizon: Supplier/Shoe Type/Color `dataWindowTo=2026-08-05`; `/api/analytics/cached/validation/freshness` `lastImport=2026-08-12T10:30:04Z`.
+
+### Scope
+
+- Window end, recency, receipt age and "new stock" age in the Pre-Nivelacija endpoint/scoring service; meta that declares the anchor.
+- No formula-weight change (that is RQ556), no copy work (RQ553), no query-cost work (RQ552).
+
+### Read first
+
+- `RQ483` owner decision; `RQ489`, `RQ492`, `RQ539` completion notes; `RQ548` oracle; `RQ569`.
+- `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api/Services/PreNivelacijaScoringService.cs`, `Api.Tests/PreNivelacijaPriorityOracleIntegrationTests.cs`.
+
+### Do
+
+1. Resolve `anchorUtc = min(now, observed source horizon end for the active scope)` once per request (reuse RQ569's horizon source).
+2. Use it for the 180-day sales and markdown windows, `daysSinceLastSale`, `daysSinceReceipt`, new-stock age and due dates.
+3. Expose `evidenceWindow.anchorBasis = source_horizon|now` and the horizon date; alert text uses the anchored day count.
+4. Extend the RQ548 oracle/golden fixture with a stale-horizon case.
+
+### Tests
+
+- Oracle fixture with horizon 60 days before now: velocity and `daysSinceLastSale` equal the anchored values; score ordering matches the oracle.
+- Fresh-horizon fixture: behaviour unchanged.
+- `dotnet test --filter PreNivelacija`; frontend Pre-Nivelacija spec still green; validators; `git diff --check`.
+
+### Acceptance
+
+- No Pre-Nivelacija number counts days after the observed source horizon as "no sales".
+- The anchor is visible in the response and on the page methodology.
+
+### Dependencies
+
+- `RQ569` DONE; sequential with `RQ552` and `RQ556`; `RQ548` oracle exists (DONE).
+
+## RQ572 - Dashboard bootstrap: one resolved period for every section, truthful Pilot Readiness, executive suppliers from real revenue
+
+Status: WAITING
+Ready after: `RQ569` DONE (shared `CachedAnalyticsEndpoints.cs`/meta builders); executive part after `RQ573` DONE
+Priority: P1
+Type: backend/frontend/tests
+Feature family: dashboard-bootstrap-period-truth
+Parallel-safe: no
+Owner: Analytics Reliability / Dashboard
+Commit suggestion: `fix(analytics): resolve one period for all dashboard bootstrap sections`
+
+### Problem
+
+`/api/analytics/cached/dashboard/bootstrap` computes a requested period for meta but passes the raw nullable `fromDate/toDate` to every section. An undated call (Pilot Readiness always sends one) therefore mixes populations under one label:
+- meta says requested `2026-09-05..2026-10-04`, but `summary` = 836,350 RSD / 15 "transakcija" / 145 kom from `2026-04-05..2026-04-21` (observed);
+- `paymentData`, `weekdayData`, `hourData`, `quickInsights`, `transactionStats` are all-time (5,550 transactions, 240.6M RSD "Nepoznato" payment, best day "Petak" 41.9M RSD);
+- `executive.topSuppliers` lists suppliers with `revenue: 0` (olihem, Gemeli, Leon, Metos-trade...) even for a dated July window where 15 suppliers have revenue — it is built from the Product Decision top rows, which are zero-revenue FIX_DATA rows (see RQ573);
+- `summary.avgBasketValue = 0` when there are no transactions (should be unavailable).
+The same 836,350 / 15 / 145 figures were already reported by the 2026-08-19 production-value audit (PROD-AN-11) and are still live.
+
+### Evidence
+
+- `GET /api/analytics/cached/dashboard/bootstrap` (no dates) → `meta.requestedPeriodFromUtc=2026-09-05`, `observedPeriodFromUtc=2026-04-05`, `observedPeriodToUtc=2026-04-21`, `summary.totalRevenue=836350`, `transactionStats.totalTransactions=5550`.
+- Same endpoint with `fromDate=2026-07-07&toDate=2026-08-06` → `summary.totalRevenue=1561120` (matches Daily/Supplier/Shoe Type), but `executive.topSuppliers[*].revenue=0`.
+- With `fromDate=2026-09-05&toDate=2026-10-04` → `summary.avgBasketValue=0`, `totalTransactions=0`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:2322-2323` (requested period), `:2374-2380`, `:2444-2492` (sections receive raw `fromDate/toDate`), `:2536-2543` (`BuildExecutiveDashboardSnapshot(productDecisionSnapshot, ...)`).
+- `Klijent/clientapp/src/pages/PilotReadinessPage.tsx:681` (`getDashboardBootstrap(undefined, undefined, true)`).
+
+### Scope
+
+- Bootstrap period resolution and section inputs; executive supplier ranking source; Pilot Readiness request; `avgBasketValue`/`avgItemPrice` unavailable state.
+- No change to section formulas beyond the period input.
+
+### Read first
+
+- `RQ509`/`RQ510` context fingerprint and provenance; `RQ137`; `RQ570` (default period rule); `RQ573`.
+- `docs/qa/ANALYTICS_PRODUCTION_VALUE_AUDIT_2026-08-19.md` (P0 same-context screens).
+
+### Do
+
+1. Resolve the effective period once (RQ570 rule when undated) and pass the resolved bounds to every section, including weekday/hour/payment/quickInsights/transactionStats.
+2. Build `executive.topSuppliers` from the period's supplier revenue population (the same population as `supplierData`/Supplier overview), not from the Product Decision top-N rows.
+3. Pilot Readiness requests the bootstrap with the resolved period it displays (or uses the server default and renders the echoed period).
+4. Return `avgBasketValue`/`avgItemPrice` as null/unavailable when the denominator is 0.
+5. Add a bootstrap invariant test: sum of `dailySales` == `summary.totalRevenue`; every section declares the same effective period.
+
+### Tests
+
+- Backend fixture: undated bootstrap → all sections share one period; weekday/hour/payment totals equal summary revenue for that period.
+- Backend: dated July fixture → `executive.topSuppliers` equals top suppliers by revenue from `supplierData`.
+- Frontend: Pilot Readiness shows the echoed period; no all-time value under a 30-day label.
+- Focused `dotnet test`, `npm run test:analytics`, typecheck, validators, `git diff --check`.
+
+### Acceptance
+
+- No dashboard/pilot-readiness section is computed on a different period than the one displayed.
+- Executive top suppliers never shows zero-revenue suppliers while revenue-bearing suppliers exist in the period.
+
+### Dependencies
+
+- `RQ569` DONE (file overlap); `RQ570` owner answer for the undated default; `RQ573` for executive input independence (or implement step 2 first, which removes the coupling).
+
+## RQ573 - Product Decision: stop FIX_DATA rows from hiding sold articles and bound the payload
+
+Status: WAITING
+Ready after: `RQ569` DONE (shared `CachedAnalyticsEndpoints.cs`); may be promoted earlier if RQ569's delivered diff does not touch the Product Decision region
+Priority: P1
+Type: backend/frontend/performance/tests
+Feature family: product-decision-row-ordering-payload
+Parallel-safe: no
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): rank Product Decision rows by decision value, not by FIX_DATA`
+
+### Problem
+
+Product Decision sorts rows by `RecommendationPriority` where `FIX_DATA = 7` is the highest, then by confidence, then revenue, and only then applies `top` (default 500). Production has 1,078 articles without valid cost, so the default response is 500 FIX_DATA rows with zero revenue and zero stock (e.g. "GUMA ZA ANTILOP"); none of the 132 articles that actually sold in July is returned. Summary counts are computed on returned rows (`countDenominatorScope=returned_rows`), so the page reports `actionableCount=0`, `badDataCount=500`. The same rows feed the Dashboard executive panel (RQ572).
+
+The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `evidenceSnapshotPreview` ~7.2 KB, `evidenceChain` ~4.7 KB) and takes 9-10 s warm.
+
+### Evidence
+
+- `GET /api/analytics/cached/products/decision-center?fromDate=2026-07-07&toDate=2026-08-06` → 13,256,489 B, 9.05 s, 500 rows all `FIX_DATA`, sum revenue 0.
+- Same with `top=2000` → `FIX_DATA` 1,078, `INSUFFICIENT_DATA` 662, `WATCH` 260; 132 rows with sales (e.g. `70136-7` UnA plus 44,730 RSD/7 kom; `109300/36` Planika 61,910 RSD/9 kom) all ranked after the 1,078 FIX_DATA rows.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:6623-6628` (ordering + `Take(top)`), `:8446-8455` (`FIX_DATA => 7`).
+
+### Scope
+
+- Server ordering and top-N selection; split of data-fix rows into their own queue/count; per-row payload slimming (lazy detail).
+- No change to recommendation rules/thresholds (RQ483 owns them) and no change to data-quality policy (RQ574).
+
+### Read first
+
+- `RQ470`, `RQ471`, `RQ483`, `RQ485`, `RQ487` completion notes; `docs/qa/PDC_IGNORED_ROWS_CONTRACT.md`.
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs` (`BuildProductDecisionCenterAsync`, `ApplyDecisionEvidenceSnapshotPreview`), `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`.
+
+### Do
+
+1. Rank decision rows by decision value: actionable statuses first (BOOST/REPLENISH/MARKDOWN/DO_NOT_ORDER), then WATCH/INSUFFICIENT_DATA by revenue/stock at risk; FIX_DATA rows ordered by revenue/stock value at risk, and a zero-revenue zero-stock FIX_DATA row never outranks a row with sales or stock.
+2. Return data-fix rows as a separate bounded list/count (or a `status` filter) so they cannot consume the decision top-N; keep `analyzedRows`/`ignoredRowsMeaning` truthful.
+3. Move `whyPanel`, `evidenceSnapshotPreview`, `evidenceChain`, `confidenceBreakdown` to the existing detail/timeline call (or a `detail=full` flag); the list carries ids and short reasons only.
+4. Record before/after payload size and latency in the run log (RQ487 harness).
+
+### Tests
+
+- Backend fixture: 1,000 zero-revenue FIX_DATA rows + 50 sold rows with `top=500` → all 50 sold rows returned; data-fix list/count separate.
+- Contract: list row JSON ≤ 3 KB median; detail endpoint still returns the full why/evidence payload.
+- Frontend: Product Decision spec renders sold rows first and a separate "Za ispravku podataka" count.
+- Focused `dotnet test`, `npm run test:analytics`, typecheck, build, validators, `git diff --check`.
+
+### Acceptance
+
+- Default Product Decision view for a period with sales shows the sold/at-risk articles, not zero-revenue FIX_DATA rows.
+- List payload for 500 rows < 2 MB and warm latency measurably lower (recorded).
+
+### Dependencies
+
+- `RQ569` DONE (file overlap); independent of `RQ574` (policy) but both change what the owner sees — run RQ573 first.
+
+## RQ574 - Missing category must not block 100% of Product Decision recommendations
+
+Status: WAITING
+Ready after: owner decision below
+Priority: P1
+Type: backend/policy/tests
+Feature family: product-decision-data-quality-blocker-policy
+Parallel-safe: no
+Owner: Analytics Reliability / Product Decision
+Commit suggestion: `fix(analytics): treat missing category as a quality warning when footwear type is known`
+
+### Problem
+
+`ProductDecisionReasoningHelper.BuildReasonCodes` adds `data_quality_blocker` whenever `MissingCategory || MissingVariantData`. In production all 12,422 articles have no category (Pilot intake: "12422 artikala nema kategoriju"), so every row in Product Decision carries `data_quality_blocker` and no article can ever become actionable (top-2000 sample: 2,000/2,000 rows with the code, 0 actionable). Footwear type (`TipObuce`) is populated and is the real assortment dimension (Shoe Type screen works on it). The Dashboard completeness card shows 0% for the same reason.
+
+### Evidence
+
+- `Application/Analytics/ProductDecisionReasoningHelper.cs:181-182` (`MissingCategory || MissingVariantData` → `DataQualityBlocker`), `:184-185` (`MinStock == null` → `stock_evidence_unavailable`).
+- `GET /api/analytics/reports/pilot-intake` → recommended action "12422 artikala nema kategoriju".
+- `GET /api/analytics/cached/products/decision-center?fromDate=2026-07-07&toDate=2026-08-06&top=2000` → reason-code counts `data_quality_blocker` 2000, `minimum_stock_not_configured` 2000, `actionableCount` 0.
+- `GET /api/analytics/cached/dashboard/bootstrap` → `validationCompleteness.score=0`, "Missing: 12422/12422".
+
+### Owner decision needed
+
+Question: Is `Kategorija` (and `Pol`) expected to be filled in Access for Trendplus, or is `TipObuce` the authoritative assortment dimension?
+
+Recommendation: Treat `TipObuce` as the authoritative dimension; a missing category becomes a non-blocking quality warning (`category_missing_type_known`, reduced confidence) whenever `TipObuce` is present, and stays a blocker only when both are missing. Missing supplier and missing cost keep their existing owner-approved semantics (cost: excluded from margin evidence, never 0 RSD). Also confirm that RQ483's MinStock=0/null decision (reduced-confidence velocity/cover path) means `stock_evidence_unavailable` must not block by itself.
+
+### Scope
+
+- Blocker classification in the reasoning helper and its callers; Dashboard completeness definition alignment (which fields count as "core").
+- No threshold changes (RQ483) and no ordering change (RQ573).
+
+### Read first
+
+- `RQ483` owner decision; `RQ471`/`RQ473`; `Application/Analytics/ProductDecisionReasoningHelper.cs`; Data Quality completeness definitions.
+
+### Do
+
+1. Implement the approved classification; emit the new warning reason code with Serbian label.
+2. Verify MinStock=0/null rows follow RQ483 (reduced confidence, `lostSalesEstimate=null`) and are not blocked solely by `stock_evidence_unavailable`.
+3. Align Dashboard `validationCompleteness` core-field list with the same decision.
+
+### Tests
+
+- Unit: category missing + type present → warning, not blocker; both missing → blocker; cost missing semantics unchanged.
+- Fixture: sold article with type, cost, stock and no category can reach REPLENISH/BOOST under RQ483 thresholds.
+- Focused `dotnet test`; validators; `git diff --check`.
+
+### Acceptance
+
+- On a production-like fixture, Product Decision returns actionable rows when sales/stock/cost evidence exists.
+- No unknown/missing value is converted into a fake measurement.
+
+### Dependencies
+
+- Owner decision; `RQ573` preferably first (ordering), not required.
+
+## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
+
+Status: WAITING
+Ready after: `RQ569` DONE (Color page trust/freshness surface) and owner answer in `RQ574` for category/gender
+Priority: P2
+Type: backend/frontend/tests
+Feature family: categorical-dimension-coverage-gate
+Parallel-safe: no
+Owner: Analytics Reliability / Categorical analytics
+Commit suggestion: `fix(analytics): gate categorical analyses on source dimension coverage`
+
+### Problem
+
+Several analyses render a single bucket holding 100% of revenue as if it were a finding:
+- Color (`/analytics/color-sales-stats`) for July: one row `Nepoznato` = 1,540,870 RSD / 301 kom, 128 articles (100%).
+- Dashboard category/gender: `Ostalo`/`Neodređeno` 100%; payment method `Nepoznato` 100% in July; hour chart: 5,530 of 5,550 receipts at hour 0 (no time in source).
+- Insight Studio category intelligence: `Ostalo` revShare 100.
+The owner cannot learn anything from these charts; they look like real distributions.
+
+### Evidence
+
+- `GET /api/analytics/color-sales-stats?fromDate=2026-07-07&toDate=2026-08-05` → `colors=[{boja:"Nepoznato", isUnknown:true, ukupanPromet:1540870, ...}]`.
+- `GET /api/analytics/cached/dashboard/bootstrap?fromDate=2026-07-07&toDate=2026-08-06` → `categoryData=[Ostalo/Neodređeno 100%]`, `paymentData=[Nepoznato 1561120]`; undated → `hourData` hour 0 = 240,603,523.64 RSD / 5,530.
+- `GET /api/analytics/advanced/category-intelligence` → `byCategory=[Ostalo revShare 100]`.
+
+### Scope
+
+- A shared coverage rule: when the known share of a categorical dimension is below a declared coverage floor (start: 0% known ⇒ unavailable; any non-zero floor needs owner approval), the endpoint returns `dimensionCoverageState = not_populated_in_source` and the UI shows an explanatory empty state instead of chart/table/share/recommendation.
+- Color, Dashboard category/gender/payment/hour, Insight Studio category.
+
+### Read first
+
+- `RQ288`, `RQ501`, `RQ505` (Color contracts); `RQ55` (hidden-unknown denominators); `RQ569`.
+
+### Do
+
+1. Add `knownCoveragePct` + `dimensionCoverageState` to the listed responses (no new numeric threshold beyond "0% known").
+2. UI: render a Serbian empty state ("Boja nije popunjena u izvoru podataka (0% prometa sa poznatom bojom)") and suppress recommendations for that dimension.
+3. Keep raw unknown totals available in export/detail for audit.
+
+### Tests
+
+- Backend fixtures: 0% known → `not_populated_in_source`; mixed → unchanged.
+- Frontend specs for Color and Dashboard: empty state, no chart, no recommendation.
+- Validators; `git diff --check`.
+
+### Acceptance
+
+- No screen presents a 100% unknown bucket as a distribution or recommendation.
+
+### Dependencies
+
+- `RQ569` DONE; `RQ574` owner answer (category/gender wording).
+
+## RQ576 - Inventory: truthful stock valuation and aging (no import-time "movement", no 0-cost value)
+
+Status: WAITING
+Ready after: owner decision below AND `RQ569` DONE (Inventory trust surface)
+Priority: P1
+Type: backend/frontend/tests
+Feature family: inventory-valuation-aging-truth
+Parallel-safe: no
+Owner: Analytics Reliability / Inventory
+Commit suggestion: `fix(analytics): value and age inventory from real cost and real movements`
+
+### Problem
+
+- Inventory value is `Σ Artikli.NabavnaCena × Kolicina` = 93,389 RSD for 3,566 units on hand (≈26 RSD/unit), while sale-line historical cost in the same data is ≈1,200-4,700 RSD per unit (UnA plus 3,038; Planika 3,443; Rieker 4,612). Example: article 21644 "70126.1" (UnA plus) master cost 245 RSD, retail 5,700→3,990 RSD. The master cost scale is not trustworthy for valuation; missing value also falls back to `?? 0m`.
+- Aging: all 12,422 articles fall into "31-60 dana" because the Access import wrote an "Ulaz robe" movement at import time (2026-08-12T10:31:51Z, `iznos 0`, `novaCena 0`) and `LastMovementAt = max(any movement)`. `daysSinceMovement = 53` for everything.
+- Cross-screen: `lowStockCount` 0 in `/api/analytics/inventory/balance` vs 213 in Dashboard bootstrap inventory.
+
+### Evidence
+
+- `GET /api/analytics/inventory/balance` → `totalOnHand=3566`, `estimatedInventoryValue=93389.0`, `lowStockCount=0`, `outOfStockCount=11885`.
+- `GET /api/analytics/inventory/insights` → `aging=[{bucketKey:"31-60", itemCount:12422}]`.
+- `GET /api/analytics/inventory/21644/detail` → `nabavnaCena=245`, history `Ulaz robe 2026-08-12T10:31:51Z iznos 0`, `Nivelacija 2026-08-01 5700→3990`.
+- `GET /api/analytics/supplier-sales-stats?fromDate=2026-07-07&toDate=2026-08-06T00:00:00Z` → cost/unit per supplier (see above).
+- `Api/Endpoints/InventoryEndpoints.cs:56-58` (`NabavnaCena * Kolicina`), `:365` (`estimatedValue ?? 0m`), `:1005-1013` (`LastMovementAt = g.Max(x => x.Datum)` over all movement types).
+
+### Owner decision needed
+
+Question: Which cost should value current stock: (a) last receipt/purchase cost per article from Access documents, (b) latest sale-line historical cost, (c) `Artikli.NabavnaCena` only after a data fix? And should import-generated "Ulaz robe" rows (amount 0, at import time) be excluded from movement/aging?
+
+Recommendation: (a) when available, else (b) flagged as estimated, never (c) while its scale is unverified; value coverage shown; missing cost never valued at 0. Exclude import-synthetic movements from aging and use first receipt / last positive sale as the age basis, as Pre-Nivelacija already does (RQ539).
+
+### Scope
+
+- Valuation source and coverage metadata; movement filter for aging; low-stock predicate parity between Inventory and Dashboard.
+
+### Read first
+
+- `RQ272`, `RQ274`, `RQ563` (Inventory integrity family); `RQ539` age basis; owner missing-cost decision (RQ464/RQ473).
+
+### Do
+
+1. Implement the approved valuation source with `valuationBasis` and `valueCoveragePct`; unknown cost → excluded + counted, not 0.
+2. Exclude import-synthetic movements (type "Ulaz robe" with zero amount at the import batch timestamp, or the import batch id) from `LastMovementAt`; fall back to first receipt / last positive sale.
+3. Use one low-stock predicate for Inventory and Dashboard.
+4. Add a data-quality check that flags master cost below e.g. the minimum observed sale-line cost ratio (report only, no auto-correction).
+
+### Tests
+
+- Fixture with master cost 245 and sale-line cost 3,000 → valuation uses the approved source; coverage reported.
+- Fixture with import-synthetic receipt → aging uses real receipt/sale dates.
+- Inventory vs Dashboard low-stock parity test.
+- Focused `dotnet test`, Inventory frontend spec, validators, `git diff --check`.
+
+### Acceptance
+
+- Inventory value and aging are explainable from real cost and real movements; no bucket contains 100% of articles because of the import timestamp.
+
+### Dependencies
+
+- Owner decision; `RQ569` DONE; `RQ563` integrity family must be updated with the new value basis.
+
+## RQ577 - Decide and label the sale-header grain before showing basket metrics
+
+Status: WAITING
+Ready after: owner decision below
+Priority: P1
+Type: contract/backend/frontend
+Feature family: sales-header-grain-basket-metrics
+Parallel-safe: no
+Owner: Analytics Reliability / Sales contracts
+Commit suggestion: `fix(analytics): label daily sale documents and gate basket metrics`
+
+### Problem
+
+`ProdajaZaglavlja` rows behave like daily (per store) sale documents, not customer receipts: 5,550 headers since 2011 (≈1 per open day), 25 headers for 307 units in July 2026 (12.28 lines per "transaction"), 0/1/3 headers per day in April. The UI and API still present "Transakcije", "Prosečna korpa" (62,444.80 RSD), "Stavki po transakciji" (12.28), basket affinity ("totalMultiItemTransactions":25, no pairs) and weekly heatmap transaction counts as customer-basket metrics. If the grain is a daily document, these are not basket KPIs and must not drive decisions.
+
+### Evidence
+
+- `GET /api/analytics/cached/dashboard/bootstrap?fromDate=2026-07-07&toDate=2026-08-06` → `summary.totalTransactions=25`, `avgBasketValue=62444.8`; `transactionStats.avgItemsPerTransaction=12.28`.
+- Undated bootstrap → `transactionStats.totalTransactions=5550` (all-time); `dailySales` April: 0/1/3 headers per day.
+- `GET /api/analytics/advanced/v2/basket-affinity?...` → `pairs=[]`, `totalMultiItemTransactions=25`.
+- `docs/qa/TRANSACTION_STATS_SEMANTICS_CONTRACT.md:15-22` defines receipt = `prodaja_zaglavlje` (assumption, not verified against the source grain).
+
+### Owner decision needed
+
+Question: In Access, does one `ProdajaZaglavlje` represent one customer receipt (fiskalni račun) or a daily/shift sales document per store?
+
+Recommendation: If it is a daily document (the data strongly suggests this), rename the unit to "prodajni dokument (dnevni)", hide/disable average basket, items-per-transaction, basket affinity and transaction heatmap until a receipt-grain source exists, and keep revenue/units metrics unchanged.
+
+### Scope
+
+- Contract doc update, labels, and gating of basket metrics on Dashboard, Insight Studio V2 and any export.
+
+### Read first
+
+- `docs/qa/TRANSACTION_STATS_SEMANTICS_CONTRACT.md`; `RQ14`, `RQ15` (Advanced heatmap/affinity, WAITING); `RQ456` receipt population.
+
+### Do
+
+1. Record the owner answer in the contract doc.
+2. If daily document: relabel and gate the basket metrics with reason `receipt_grain_unavailable`; fold RQ14/RQ15 into this outcome (mark them OBSOLETE with a pointer if fully covered).
+3. If customer receipt: add a data-quality check explaining the low receipt counts (import completeness) and close this prompt.
+
+### Tests
+
+- Contract test for the chosen grain; frontend specs show the new label/gated state; validators; `git diff --check`.
+
+### Acceptance
+
+- No basket KPI is presented unless the receipt grain is proven.
+
+### Dependencies
+
+- Owner decision; coordinates with `RQ572` (bootstrap) — run sequentially if both edit bootstrap.
+
+## RQ578 - Data Quality health: stop reporting "100 / excellent" on stale and incomplete data
+
+Status: READY
+Priority: P2
+Type: backend/frontend/tests
+Feature family: data-quality-health-truth
+Parallel-safe: yes (Data Quality health/list endpoints and page only; does not touch Operations trust metadata owned by RQ569)
+Owner: Analytics Reliability / Data Quality
+Commit suggestion: `fix(analytics): make Data Quality health honest about scope, horizon and open issues`
+
+### Problem
+
+`/api/analytics/data-quality/health` returns `score=100`, `scoreStatus=excellent`, `dataQualityStatus=good` while the same production data has: sales ending 2026-08-05 with last import 2026-08-12 (1,279.6 h old, Dashboard freshness critical), 1,078 articles without valid cost and 12,422 without category (Pilot intake readiness 67/100), Dashboard completeness 0%. `/api/analytics/data-quality/list` returns `total=0`, "Nema otvorenih data quality problema". Decision Board shows "Data quality health: excellent" next to `overallDataQualityStatus=critical`. The context also claims `dateBoundaryConvention=half_open_utc` with `windowTo/effective/observedPeriodToUtc = 2026-10-04T23:59:59.9999999Z`, i.e. it claims observation through today although no data exists after 2026-08-05.
+
+### Evidence
+
+- `GET /api/analytics/data-quality/health` → `score:100`, `scoreStatus:"excellent"`, `windowTo:"2026-10-04T23:59:59.9999999Z"`, `context.observedPeriodToUtc:"2026-10-04T23:59:59.9999999Z"`, `dateBoundaryConvention:"half_open_utc"`.
+- `GET /api/analytics/data-quality/list` → `total:0`, `emptyReason:"no_open_issues"`.
+- `GET /api/analytics/reports/pilot-intake` → readiness 67, "1078 artikala nema važeću nabavnu cenu", "12422 artikala nema kategoriju".
+- `GET /api/analytics/cached/validation/freshness` → `status:"critical"`, `freshnessHours:1279.6`.
+- `Api/Endpoints/DataQualityEndpoints.cs:21-125` (health), `:126-197` (list).
+
+### Scope
+
+- Truthful labelling and metadata of the existing health score (it measures revenue-risk only); half-open bound; observed horizon; issue-list population. No new score weights or thresholds.
+
+### Read first
+
+- `RQ515` (decision readiness per screen), `RQ467` (Pilot intake readiness semantics), `RQ74`-`RQ80` (Executive DQ addendum, WAITING), `Api/Endpoints/DataQualityEndpoints.cs`, `Klijent/clientapp/src/pages/DataQualityPage.tsx`.
+
+### Do
+
+1. Use an exclusive `windowTo` (next UTC midnight) consistent with `half_open_utc`; set `observedPeriodToUtc` from the actual last sale in the window, not from the requested end.
+2. Rename/label the score as "Rizik prometa (cena/dobavljač)" and show freshness and master-data completeness (cost, category, supplier counts from the same source as Pilot intake) as separate badges that can be critical even when the revenue-risk score is 100. Do not fold them into the score.
+3. Make `/data-quality/list` include the open article-level issues the Pilot intake counts (missing cost, missing category/type, missing supplier) or return an explicit `issue_list_not_materialized` state instead of "no open issues".
+4. Decision Board source state uses the worst of the badges, not the revenue-risk score alone.
+
+### Tests
+
+- Backend: stale fixture (last sale 60 days before window end) → badges show stale/critical; observed end = last sale; `windowTo` exclusive.
+- Backend: articles missing cost → list non-empty or explicit not-materialized state; never "no open issues".
+- Frontend Data Quality spec + Decision Board spec for the combined state.
+- Focused `dotnet test --filter DataQuality`, `npm run test:analytics`, typecheck, validators, `git diff --check`.
+
+### Acceptance
+
+- Data Quality can no longer show "excellent / no open issues" while Pilot intake, Dashboard freshness or Decision Board report critical problems on the same data.
+
+### Dependencies
+
+- None blocking. Must not change Pilot intake readiness math (RQ467) or Operations trust metadata (RQ569).
+
+## RQ579 - Integrity "verified" must require a non-empty, matched population
+
+Status: WAITING
+Ready after: `RQ569` DONE (shared Operations integrity/freshness metadata)
+Priority: P2
+Type: backend/tests
+Feature family: integrity-nonvacuous-verification
+Parallel-safe: no
+Owner: Analytics Reliability / Integrity
+Commit suggestion: `fix(analytics): never mark empty integrity comparisons as verified`
+
+### Problem
+
+Integrity evidence currently reports success on vacuous comparisons:
+- operations-integrity family `supplier_shoe_type`: summary "Aggregate totals reconciled" with `endpointOrLiveRevenue=0`, `oracleRevenue=0`, units 0 = 0 (probe window beyond the source horizon).
+- Daily Sales `receiptReconciliation.status = "verified"` with `matchedReceiptCount=0`, `unmatchedReceiptCount=25`.
+- `sales_dashboard` is "verified" against a source that stopped 2026-08-05 (freshness is RQ569's job; emptiness is this prompt's).
+
+### Evidence
+
+- `GET /api/analytics/operations-integrity` → `deltas=[{endpointOrLiveRevenue:0, oracleRevenue:0, ...}]`, summary "Aggregate totals reconciled...".
+- `GET /api/analytics/daily-sales?fromDate=2026-07-07&toDate=2026-08-05` → `metadata.receiptReconciliation = {status:"verified", matchedReceiptCount:0, unmatchedReceiptCount:25, ...}`.
+- Owners of the probes: `Api/Endpoints/OperationsAnalyticsIntegrityEndpoints.cs`, `Api/Services/DailySalesStatsService.cs` (receipt reconciliation, RQ-delivered in `DailySalesReceiptReconciliationTests`).
+
+### Scope
+
+- Status rules for integrity families and the Daily receipt reconciliation: `verified` only when compared population > 0 and matched coverage meets the existing contract; otherwise `unverified` with reason `empty_population` / `no_matches`.
+
+### Read first
+
+- `RQ449`, `RQ450`, `RQ513`, `RQ562`, `RQ564`, `RQ567` completion notes; `Api.Tests/DailySalesReceiptReconciliationTests.cs`.
+
+### Do
+
+1. Add `comparedRows`/`comparedRevenue` to each family delta; zero ⇒ `unverified:empty_population`.
+2. Daily receipt reconciliation: `matched=0 && unmatched>0` ⇒ `unverified:no_matches`; expose counts.
+3. Choose the bounded probe window inside the observed source horizon (consume RQ569 horizon).
+
+### Tests
+
+- Unit: zero-vs-zero comparison → unverified; matched=0/unmatched=25 → unverified; normal case unchanged.
+- Focused `dotnet test`; validators; `git diff --check`.
+
+### Acceptance
+
+- No integrity or reconciliation surface reports verified on an empty or unmatched population.
+
+### Dependencies
+
+- `RQ569` DONE.
+
+## RQ580 - Supplier report/hub: do not call an explicit date range "Poslednjih N dana"
+
+Status: READY
+Priority: P2
+Type: backend/tests
+Feature family: supplier-report-period-label
+Parallel-safe: yes (label helpers in `SupplierDecisionHubEndpoints.cs` only; no READY prompt owns this file)
+Owner: Analytics Reliability / Supplier
+Commit suggestion: `fix(analytics): label explicit Supplier report ranges by their dates`
+
+### Problem
+
+`BuildRequestedPeriodLabel` returns "Poslednjih 30/90/180 dana" for any explicit range whose length is 30/90/180 days. The durable Supplier report for 2026-06-01..2026-06-30 is therefore titled "Poslednjih 30 dana" (it is not the last 30 days), and the hub summary for 2026-07-07..2026-08-06 shows `effectivePeriodLabel = "Poslednjih 90 dana"`. RQ463 (DONE) made the requested window truthful, but this label helper is still length-based and is used on the error report path and in the hub trust metadata. This was also the original RQ463 evidence (queue line ~25567) and is still live.
+
+### Evidence
+
+- `GET /api/analytics/reports/supplier-decision?fromDate=2026-06-01&toDate=2026-06-30&scope=all` → `period.label:"Poslednjih 30 dana"`, `errorCode: MISSING_OBJECT`.
+- `GET /api/analytics/suppliers/decision-hub/summary?fromDate=2026-07-07&toDate=2026-08-06` → `trustMetadata.effectivePeriodLabel:"Poslednjih 90 dana"`.
+- `Api/Endpoints/SupplierDecisionHubEndpoints.cs:3260-3274` (`BuildRequestedPeriodLabel`), `:1148-1170` (error report uses it), `:3244` (`BuildEffectivePeriodLabel`).
+
+### Scope
+
+- Label helpers only: explicit ranges render `dd.MM.yyyy - dd.MM.yyyy`; dataset labels ("skup podataka 90 dana") stay separate from the period label.
+
+### Read first
+
+- `RQ463`, `RQ465`, `RQ468` completion notes.
+
+### Do
+
+1. Explicit ranges always render their dates; "Poslednjih N dana" only for undated/rolling requests.
+2. Effective dataset window is described as "skup podataka: 90 dana", never as the period label.
+3. Apply on success and error report paths and hub trust metadata.
+
+### Tests
+
+- Unit: explicit 30/90/180-day ranges → date labels; undated → rolling label; error report label equals success label.
+- `dotnet test --filter SupplierDecision`; validators; `git diff --check`.
+
+### Acceptance
+
+- No explicit range is labelled as "last N days" anywhere in Supplier report/hub payloads.
+
+### Dependencies
+
+- None. Does not touch the MISSING_OBJECT root cause (STAB16/RQ545/RQ518 lane).
+
+## RQ581 - Fix the mojibake "NeodreÄ‘eno" literal in Insight Studio endpoints
+
+Status: READY
+Priority: P2
+Type: backend/tests
+Feature family: insight-studio-encoding
+Parallel-safe: yes (only string literals in `InsightStudioEndpoints.cs`/`InsightStudioV2Endpoints.cs`; RQ13-RQ24 are WAITING)
+Owner: Analytics Reliability / Copy
+Commit suggestion: `fix(analytics): repair double-encoded Serbian literal in Insight Studio`
+
+### Problem
+
+Seven production endpoints return `pol: "NeodreÄ‘eno"` instead of `"Neodređeno"`. The source literal itself is double-encoded (bytes `C3 84 E2 80 98` for "đ"); the repo-wide encoding check did not catch it. Other endpoints (Program.cs, dashboard) return the correct value.
+
+### Evidence
+
+- Live: `advanced/abc-classification`, `advanced/aging-stock`, `advanced/category-intelligence`, `advanced/reorder-plan`, `advanced/v2/product-lifecycle`, `advanced/v2/smart-reorder`, `advanced/v2/velocity-margin-matrix` all contain `NeodreÄ‘eno` (Python `repr` confirmed).
+- Source: `Api/Endpoints/InsightStudioEndpoints.cs:294,398,556,684` (byte scan: 7 double-encoded sequences in this file), `Api/Endpoints/InsightStudioV2Endpoints.cs` (3 occurrences); byte scan of `Api`, `Application`, `Infrastructure`, `Database`, `Klijent/clientapp/src` found no other file.
+
+### Scope
+
+- Replace the literals with correct UTF-8 (ideally one shared constant); extend the encoding guard to detect `Ä‘`, `Å½`, `Ä\u008d`-style sequences in `.cs` files.
+
+### Read first
+
+- `check:encoding` script in `Klijent/clientapp/package.json` and its source; RQ325/RQ468 copy work.
+
+### Do
+
+1. Fix the literals; use one constant for the unknown-gender label.
+2. Extend the encoding check (or add a backend test) to scan `.cs`/`.sql` for common UTF-8-as-CP1252 sequences.
+
+### Tests
+
+- Backend test asserting the label equals "Neodređeno"; encoding guard self-test with a fixture containing the bad bytes.
+- `dotnet build`; validators; `git diff --check`.
+
+### Acceptance
+
+- No production endpoint returns mojibake; the guard fails on reintroduction.
+
+### Dependencies
+
+- None.
+
+## RQ582 - Decide the future of Insight Studio and the legacy Advanced surfaces (stale snapshots, unknown identities)
+
+Status: WAITING
+Ready after: owner decision below
+Priority: P2
+Type: product decision/frontend/governance
+Feature family: insight-studio-quarantine
+Parallel-safe: no
+Owner: Product owner + Analytics Reliability
+Commit suggestion: `chore(analytics): quarantine uncertified Insight Studio surfaces`
+
+### Problem
+
+Insight Studio (`/analytics/insight-studio`) and the legacy Advanced endpoints are reachable but uncertified, and 26 legacy prompts (RQ13-RQ38, Advanced/Legacy addenda) have been WAITING since early September. Live evidence: intelligence snapshots are months old with broken identity (`inventory-risk` asOfDate 2026-03-25, `price-intelligence` 2026-01-31, rows "Unknown product"/"Unknown supplier"/"Uncategorized"; `demand-signals` empty); `weekly-changelog` and `daily-analysis` are anchored to today and report `revenueChangePct: 0` and "Normalan dan" (z-score 0) for days without data; `weekly-heatmap` counts transactions equal to units (RQ14); inventory forecast/size-curve/rebalance/alerts return `missing_relation`/no snapshot.
+
+### Evidence
+
+- `GET /api/analytics/intelligence/inventory-risk` → `asOfDate:"2026-03-25"`, first item `productName:"Unknown product"`, `supplierName:"Unknown supplier"`.
+- `GET /api/analytics/intelligence/price-intelligence` → `asOfDate:"2026-01-31"`; `demand-signals` → `totalCount:0`.
+- `GET /api/analytics/advanced/v2/weekly-changelog` → this/last week 0, `revenueChangePct:0`; `advanced/daily-analysis` → `analysisDate:"2026-10-03"`, `outlierLabel:"Normalan dan"`.
+- `GET /api/analytics/cached/inventory/forecast` → `provenanceStatus:"missing_relation"`.
+
+### Owner decision needed
+
+Question: Should Insight Studio and the legacy Advanced/intelligence widgets stay visible while uncertified?
+
+Recommendation: Hide them from navigation now (keep the route behind an "Eksperimentalno" flag for the owner), consolidate RQ13-RQ38 into at most two certification prompts (or mark OBSOLETE where the surface is retired), and only re-expose widgets that pass the same oracle/golden standard as the Operations screens. Engineering effort is better spent on Product Decision, Supplier and Inventory value.
+
+### Scope
+
+- Navigation/feature flag; queue consolidation of RQ13-RQ38 with explicit pointers; no formula work.
+
+### Read first
+
+- Advanced/Legacy addenda; `RQ507` (navigation simplification precedent).
+
+### Do
+
+1. Implement the approved visibility; add a banner on the experimental route.
+2. Consolidate/obsolete RQ13-RQ38 with a dated note per prompt.
+
+### Tests
+
+- Navigation spec; route still reachable with flag; validators; `git diff --check`.
+
+### Acceptance
+
+- The owner no longer sees uncertified, stale analytics in the main navigation.
+
+### Dependencies
+
+- Owner decision.
+
+## RQ583 - Data freshness SLA, visible stale-data banner and import alert
+
+Status: WAITING
+Ready after: owner decision below AND `RQ569` DONE (freshness contract) — STAB16 worker deployment is not required for the banner/alert logic
+Priority: P2
+Type: backend/frontend/ops
+Feature family: analytics-freshness-sla-alert
+Parallel-safe: no
+Owner: Analytics Reliability / Data Freshness
+Commit suggestion: `feat(analytics): enforce data freshness SLA with banner and alert`
+
+### Problem
+
+Production analytics data is 53 days old (last import 2026-08-12T10:30Z, last sale 2026-08-05) and nothing told the owner: refresh-status reports `unknown` for every job ("Worker nije registrovan u web procesu"), screens open on empty "today" windows, and integrity probes say "verified". RQ569 deliberately does not invent a freshness threshold; an owner-approved SLA is needed to turn freshness into an alert.
+
+### Evidence
+
+- `GET /api/analytics/cached/validation/freshness` → `lastImport:"2026-08-12T10:30:04Z"`, `freshnessHours:1279.6`, `status:"critical"`.
+- `GET /api/analytics/refresh-status` → all jobs `dataFreshnessStatus:"unknown"`, `workersEnabled:false`.
+- Supplier/Shoe Type/Color `dataWindowTo:"2026-08-05"`.
+
+### Owner decision needed
+
+Question: What freshness SLA should Trendplus analytics meet, and who gets alerted?
+
+Recommendation: Warning when the last successful Access import is older than 2 days, critical when older than 7 days; a red banner on every analytics screen when critical; one e-mail/notification to the owner per day while critical (sending only after explicit owner opt-in configuration).
+
+### Scope
+
+- SLA config (no hard-coded numbers), banner component fed by RQ569 metadata, optional notification hook (disabled by default).
+
+### Read first
+
+- `RQ569`, `RQ450` (probe after import), `RQ566`, STAB16.
+
+### Do
+
+1. Add configurable SLA thresholds with the approved defaults; classify freshness from durable import evidence only.
+2. Global banner on all analytics routes when warning/critical, with last import time (Europe/Belgrade display).
+3. Optional notification hook behind config; no message is sent without explicit configuration.
+
+### Tests
+
+- Backend classification tests (fresh/warning/critical/unknown); frontend banner spec; validators; `git diff --check`.
+
+### Acceptance
+
+- Stale data is impossible to miss on any analytics screen.
+
+### Dependencies
+
+- Owner decision; `RQ569` DONE.
+
+## RQ584 - Daily Sales: one `toDate` contract with the other Operations endpoints
+
+Status: WAITING
+Ready after: `RQ569` DONE (shared Daily Sales metadata)
+Priority: P3
+Type: backend/frontend/tests
+Feature family: daily-sales-todate-contract
+Parallel-safe: no
+Owner: Analytics Reliability / Operations
+Commit suggestion: `fix(analytics): align Daily Sales toDate with half-open contract`
+
+### Problem
+
+Supplier, Shoe Type and Color treat `toDate` as an exclusive bound (client sends next UTC midnight). Daily Sales treats `toDate` as an inclusive day for both date-only and timestamp input: `toDate=2026-08-06T00:00:00Z` returns 31 rows including an empty 2026-08-06 row. Totals match only because the extra day has no sales. A deep link or API consumer that passes the same exclusive bound to all screens gets a different day count on Daily.
+
+### Evidence
+
+- `GET /api/analytics/daily-sales?fromDate=2026-07-07&toDate=2026-08-06T00:00:00Z` → 31 `dateRows` (last `2026-08-06` = 0); `toDate=2026-08-05` → 30 rows, 1,561,120 RSD / 307 kom.
+- `GET /api/analytics/supplier-sales-stats?fromDate=2026-07-07&toDate=2026-08-05` → 1,540,870 RSD / 301 kom (excludes 2026-08-05) vs `...toDate=2026-08-06T00:00:00Z` → 1,561,120 / 307.
+- `Klijent/clientapp/src/utils/analyticsDateRanges.ts` (`toUtcDateOnlyExclusive`) used by Supplier/Shoe Type/Color pages, not by Daily.
+
+### Scope
+
+- Daily endpoint parsing of timestamp `toDate` as exclusive; date-only stays inclusive-day for backward compatibility; document the contract in meta (`dateBoundaryConvention`).
+
+### Read first
+
+- `RQ442` (Operations whole-day half-open), `RQ497`, `RQ517`.
+
+### Do
+
+1. Timestamp `toDate` ⇒ exclusive; no row for the exclusive end day.
+2. Echo `dateBoundaryConvention` in Daily meta; add a parity test with Supplier for the same exclusive bound.
+
+### Tests
+
+- Backend parity test Daily vs Supplier for identical exclusive bounds (rows and totals); frontend Daily spec unchanged; validators; `git diff --check`.
+
+### Acceptance
+
+- The same bound yields the same days and totals on Daily and Supplier.
+
+### Dependencies
+
+- `RQ569` DONE.
+
+## RQ585 - Weekly owner decision digest built only from certified signals
+
+Status: WAITING
+Ready after: `RQ570`, `RQ573`, `RQ574`, `RQ576` DONE and production data freshness within the RQ583 SLA
+Priority: P3
+Type: product/backend/frontend
+Feature family: owner-weekly-decision-digest
+Parallel-safe: no
+Owner: Product owner + Analytics Reliability
+Commit suggestion: `feat(analytics): weekly owner decision digest from certified signals`
+
+### Problem
+
+The analytics now has many trustworthy building blocks (Supplier overview, Shoe Type, Daily parity; Pre-Nivelacija SKU+store grain; Product Decision rules), but the owner still has to visit 10+ screens to find the 5 decisions that matter this week. There is no single "šta da uradim ove nedelje" view.
+
+### Evidence
+
+- Decision Board currently shows 5 "urgent" cards that are blockers/sample warnings (`blocker-outcome-sample`) and `Pouzdani produkt signali: 0`; Decision Pulse returns no items (`suppressedCount=124`).
+- Product Decision has 0 actionable rows today (RQ573/RQ574 root causes).
+
+### Scope
+
+- A weekly digest page/export listing at most 10 actions across: reorder best sellers by size (REPLENISH/BOOST), markdown candidates (Pre-Nivelacija high band, store grain), supplier negotiation flags (RQ465 pack), dead stock to transfer between Trend PLUS 1 and Trend PLUS 2; each item with evidence link, confidence and expected RSD impact only when certified.
+
+### Read first
+
+- Decision Board/Pulse endpoints; `RQ465`, `RQ483`, `RQ492`, `RQ530`, `RQ557`.
+
+### Do
+
+1. Compose from existing backend signals only (no new scoring); exclude anything with `recommendationAllowed=false`.
+2. Show data horizon and freshness at the top; empty state explains which blocker prevents actions.
+
+### Tests
+
+- Composition unit tests; page spec; validators; `git diff --check`.
+
+### Acceptance
+
+- One page answers "which 10 things should I do this week, and why" with traceable evidence.
+
+### Dependencies
+
+- As listed in Ready after.

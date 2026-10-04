@@ -695,6 +695,14 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 
 ---
 
+### Addendum 2026-10-04 (all-screen re-audit, live recheck)
+
+- Read-only recheck on production runtime `02f9915887f99115348bd241590da581dafee45d` (build 2026-10-04T16:56:14Z, i.e. after RQ519/RQ545 code landed): `GET /api/analytics/vendor-sales-nivelacija?fromDate=2026-07-07&toDate=2026-08-05` still returns the fallback insight "Pre/post nivelacija nije dostupna: nedostaje kolona change_percent_revenue_semantic u relaciji public.vw_vendor_sales_nivelacija" with empty totals.
+- `GET /api/analytics/operations-integrity` reports family `nivelacija` as `unverified` ("Canonical vw_vendor_sales_nivelacija is unavailable").
+- The message names one missing column of an existing relation, which points to a stale deployed view definition (the startup lifecycle did not converge the view) rather than to search-path/privilege invisibility; the admin diagnostic `GET /api/admin/analytics/nivelacija-contract` returns 401 without the admin key, so the hypothesis cannot be closed read-only.
+- Supplier report (`/api/analytics/reports/supplier-decision?fromDate=2026-06-01&toDate=2026-06-30`) still returns `MISSING_OBJECT` for the 90-day supplier decision dataset on the same runtime — same production-schema convergence class.
+- No scope change. Remaining acceptance still needs the owner/admin-key diagnostic or provider access (STAB16). Source: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`.
+
 ## RQ546 - NV-F10 - Do not swallow failed lazy-route imports in chunk-load recovery
 
 Status: DONE
@@ -1140,6 +1148,10 @@ RQ529 is DONE. Reuse shared components/labels where applicable; no remaining sta
 
 ---
 
+### Addendum 2026-10-04 (all-screen re-audit)
+
+- Live `GET /api/analytics/pre-nivelacija-prioriteti` returns the English recommendation label `"label": "Insufficient data"` inside `candidates[*].recommendation`; if the page renders this backend label, it belongs to this copy prompt (map to "Nedovoljno podataka"). No other scope change.
+
 ## RQ554 - NV-I4 - Failure-state truth on both nivelacija screens
 
 Status: DONE
@@ -1284,6 +1296,13 @@ NV-F1, NV-F3, NV-P2.
 ---
 
 ---
+
+### Addendum 2026-10-04 (all-screen re-audit, live evidence for the rebuild)
+
+- Live top candidates on 2026-10-04 are accessories and legacy stock: #1 `85` PERTLE (footwear type `Oprema`, store `STARO`, season proleće/leto2017, 381 units, 5,559 days without sale, score 86.0 `high`); #2 `155` PERTLA 1 (`Oprema`, Trend PLUS 1, 226 units, score 77.77 `high`) — the only item in `queues.highlightNow`, although its row recommendation is `insufficient_data` / `recommendationAllowed=false`.
+- Most medium-band rows are season "Proleće-leto 2021" stock; 371 of 537 candidates are `insufficient_data`.
+- Inputs for the rebuild: exclude or separately queue non-footwear `Oprema`; exclude inactive/legacy stores (owner to confirm whether `STARO`, `Magacin`, the two `Komision` ids and `Objekat 20828` are decision stores); never place a `recommendationAllowed=false` row into an action queue such as `highlightNow`.
+- The window/recency anchor bias (UTC now instead of the 2026-08-05 source horizon) is registered separately as `RQ571`; do not duplicate it here. No scope change beyond these inputs.
 
 ## RQ557 - NV-E2 - Markdown outcome ledger: did it work, what it cost, what to repeat or avoid
 
