@@ -1650,12 +1650,12 @@ Commit suggestion: `docs(ops): prove production analytics deploy and worker pari
 
 ### Problem
 
-The canonical production API now reports a runtime SHA contained in current `main`, but it still exposes no successful analytics-refresh jobs because the web process has no registered workers. This keeps freshness unknown, leaves cache warnings active, and prevents the pilot from claiming durable refreshed analytics or source-reconciled production truth.
+The canonical production API reports a runtime SHA contained in current `main`, but it exposes no durable successful analytics-refresh runs. The web process intentionally has no heavy workers; that process-local fact does **not** prove whether a separate worker service exists or is healthy. What is proven is that the shared durable `AnalyticsRefreshRuns` history visible to the API contains no usable successful evidence for the required job families, so freshness remains unknown/critical and production truth is not certified.
 
 ### Evidence
 
 - A same-day 2026-08-27 API-only recheck returned `commitSha=6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main` and includes the current PDC/Decision Board trust-repair chain.
-- `GET /api/analytics/refresh-status?dataScope=all` returned `workersEnabled=false`, process `web`, unknown freshness, in-memory-cache warning, and six job reasons equivalent to “Worker nije registrovan u web procesu.”
+- `GET /api/analytics/refresh-status?dataScope=all` returned `workersEnabled=false`, process `web`, unknown freshness, in-memory-cache warning, and six job reasons equivalent to “Worker nije registrovan u web procesu.” `AnalyticsRefreshStatusService` first reads durable refresh history from `AnalyticsDbContext`; only when no matching run exists does it fall back to process-local worker health. Therefore this response proves missing durable run evidence, not absence of a separate Render worker service.
 - `Api/Config/WorkerRuntimeConfig.cs` and `Api/Program.cs` deliberately register heavy refresh workers only for `PROCESS_TYPE=worker`; enabling them inside the web process would violate the established runtime boundary.
 - `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` plus `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md` record the public observations and the still-missing direct database reconciliation/browser proof.
 - A read-only public recheck on 2026-08-31 returned HTTP 500 from `/health`, `/ready`, `/api/runtime/version`, `/api/analytics/refresh-status?dataScope=all`, and `/api/analytics/cached/dashboard/bootstrap?dataScope=all`, while `/` still returned the static SPA shell. The current production fault prevents a truthful conclusion that a visible `insufficient_data` state means the source data is absent; restore liveness and inspect provider logs before classifying data availability.
@@ -1674,7 +1674,7 @@ The canonical production API now reports a runtime SHA contained in current `mai
 - `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md`;
 - `Api/Config/WorkerRuntimeConfig.cs`;
 - `Api/Program.cs`;
-- `Api/Services/Analytics/AnalyticsRefreshStatusService.cs`;
+- `Api/Services/AnalyticsRefreshStatusService.cs`;
 - `docs/DEPLOY_TO_FLY.md` and the canonical provider configuration that actually owns `trendplus-api.onrender.com`;
 - `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`;
 - `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`.
@@ -1713,5 +1713,5 @@ The canonical production API now reports a runtime SHA contained in current `mai
 ### Addendum 2026-10-04 (next-wave audit; first owner step, no status change)
 
 - Before any database access, the owner can check three settings in the Render dashboard in about three minutes: (1) effective `Database__AutoMigrate`, `DatabaseInitialization__FailFast` and `StartupTasks__RunDatabaseInitialization` on `trendplus-api`; (2) whether a `trendplus-worker` service from `render.yaml:81-147` exists and runs; (3) the startup log after the next restart.
-- Reason: live `/ready` is `ready=true` (since 2026-10-04 21:39:00 CEST) while startup-verified objects are missing; by code this is only possible when AutoMigrate or FailFast is not effective (RQ545 addendum). `refresh-status` shows `workersEnabled=false`, `processType=web` and six jobs without status, so Pulse (`product_decision_snapshot`) and the supplier MVs stay empty.
-- Enabling FailFast can keep the API `not ready` until the schema is repaired; this is the intended, visible failure. Prefer doing it outside shop hours. RQ587 makes the outcome readable from `/ready` afterwards. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2, §22.
+- Reason: retained live `/ready` is `ready=true` (since 2026-10-04 21:39:00 CEST) while startup-owned objects are missing. Code strongly indicates the effective runtime did not follow the expected strict initialization path, but provider config/startup logs are required to distinguish AutoMigrate-off, non-strict error completion, alternate effective config/connection, or post-readiness schema drift (RQ545/RQ587). `refresh-status` on the web process proves six job families have no durable run evidence visible to the API; it does **not** prove the separate worker service is absent. Pulse/supplier materializations are currently missing/empty and must be correlated with the worker service and its durable run history.
+- If the owner changes effective startup policy to strict/fail-fast, the next restart can remain `not ready` until the schema issue is repaired; treat that as an intentional visibility change and schedule it operationally. First capture current effective config and logs before changing anything. RQ587 makes startup outcome readable without claiming current schema certification. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2, §22.
