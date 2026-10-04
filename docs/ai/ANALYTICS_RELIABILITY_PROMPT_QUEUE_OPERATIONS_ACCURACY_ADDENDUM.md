@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (RQ567 IN_PROGRESS; no other READY)
+Current READY prompt: none (no other READY; RQ564-RQ566 remain gated)
+Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. RQ564-RQ566 stay WAITING behind their declared gates; no next READY prompt exists.
 Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
 Owner live verification 2026-10-04: the earlier Daily Sales query-range and supplier-ID validation report is resolved by current-main commits `deb6db0419a60207bcf0790bd2d906ce6eac3d33` and `1ed9c9e57603f0534d81b79b6594774190a82824`, and both deployed API and Vercel bundle now pass live contract checks. No additional implementation diff was needed. Evidence: `.ai/runs/2026-10-04-daily-sales-live-contract-evidence.md`.
 Owner claim 2026-10-04: fresh `origin/main` is `6a07acb2dfcd8ed2e16f8f84dcbe933c69cc72f3`; RQ554, RQ562 and RQ563 are DONE, and no RQ567 branch, local lock or open PR owns the Operations trust-header/page-state family. RQ567 moved READY -> IN_PROGRESS for visible backend-owned readiness/integrity evidence across the six Operations screens. Local lock `.ai/task-locks/RQ567-codex.lock.md`.
@@ -4192,7 +4193,7 @@ The 2026-10-02 negative-ID delivery explicitly did not run its read-only product
 
 ## RQ567 - Expose one trustworthy readiness and integrity surface across current Operations screens
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ554 closes the shared Nivelacija failure-state UI collision; RQ562 and RQ563 are already DONE
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -4234,6 +4235,24 @@ This is especially important now that Inventory has an independent family probe 
 - RQ515, RQ562, RQ563 are DONE.
 - RQ554 first to avoid conflicting edits on the two Nivelacija pages.
 - RQ564 is not a start gate: until it lands, Nivelacija must truthfully render missing-family proof as unverified.
+
+### Completion note
+
+- Date: 2026-10-04
+- Status: DONE
+- Completion: 100% of repository-local RQ567 scope; shared readiness/integrity trust is visible on all six Operations screens with fail-closed proof handling.
+- Changed files: `Api.Tests/AnalyticsCacheFreshnessTests.cs`, `Api.Tests/OperationsAnalyticsIntegrityMetaTests.cs`, `Api/Dtos/AnalyticsResponseMetaDto.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/DailySalesStatsEndpoints.cs`, `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api/Endpoints/SupplierDecisionHubEndpoints.cs`, `Api/Services/OperationsAnalyticsIntegrityMeta.cs`, `Application/Analytics/OperationsAnalyticsIntegrityContracts.cs`, `Infrastructure/Services/OperationsAnalyticsIntegrityService.cs`, `Klijent/clientapp/scripts/known-guardrail-baseline.json`, `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.css`, `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`, `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`, `Klijent/clientapp/src/pages/ColorSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`, `Klijent/clientapp/src/pages/__tests__/analyticsTrustStateProof.spec.tsx`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/utils/__tests__/analyticsDecisionReadiness.spec.ts`, `Klijent/clientapp/src/utils/analyticsDecisionReadiness.ts`, `Klijent/clientapp/src/validation/__tests__/analyticsResponseSchemas.spec.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`, `MASTER_ROADMAP.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`, `.ai/runs/2026-10-04-RQ567-evidence.md`.
+- Checks run: frontend trust/page/schema Vitest `58/58`; focused API family/cache/Daily Sales/Inventory tests `50/50`, zero skipped; API build `0 warnings / 0 errors`; frontend build passed; `npm run check:analytics-guardrails` passed; prompt-queue, agent-instruction, planning-architecture and analytics-execution-plan validators passed; `git diff --check` passed; live Daily Sales alias GET returned requested range `2026-05-05`–`2026-12-12`, 222 rows and 1,262 sold items; fresh `git fetch origin main` resolved `origin/main` to the implementation SHA and `git merge-base --is-ancestor` passed.
+- Checks not run: full API/frontend suites, authenticated browser session, deployed RQ567 UI/API verification and GitHub Actions inspection; focused contract/page tests and build/validators cover the repository-local acceptance, while deployment/browser/CI are outside this prompt's delivery gate.
+- Run log: `.ai/runs/2026-10-04-RQ567-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `419d77674692995653c65db73ab2892520e4f890`
+- Main verification: passed; fresh `origin/main` resolved to `419d77674692995653c65db73ab2892520e4f890`, and `git merge-base --is-ancestor` exited 0.
+- Missed: none known in repository-local RQ567 scope; live deployment/browser proof remains pending.
+- Follow-up: no READY RQ prompt. Reassess RQ564-RQ566 after their declared semantic, authenticated-access or deployment gates.
+- Residual risk: currently deployed API still returns null for the new operations-integrity/readiness metadata until the main commit is deployed; production browser behavior is not yet verified.
+- Prompt defect / scope repair: the six pages share one `AnalyticsTrustHeader`, so the state matrix is tested once at that component boundary and page integration verifies all six route mounts/fail-closed states plus Inventory evidence aggregation, avoiding six duplicate state matrices. Inventory's existing reviewed `totalCount ?? 0` exception moved from line 928 to 939 after trust metadata additions; the existing guardrail baseline reference was moved without changing that code or rule.
 
 ---
 
