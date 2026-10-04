@@ -4,8 +4,8 @@ Date: 2026-10-04
 Agent/tool: Cursor Cloud Agent
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending delivery
-Main verification: pending
+Main commit SHA: `8ddd329a220b12322ad4b3a6f6528ffd1a1b7f05`
+Main verification: pass — `origin/main` at `8ddd329a`; merges parallel routing reconcile `cc332a21` with validator self-test repair
 Evidence state: synchronized
 
 ## What was done
