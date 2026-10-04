@@ -87,7 +87,7 @@ The following are **not sufficient evidence** for a zero-READY conclusion:
 - CI is queued/in progress;
 - a historical branch/lock name exists without proof of an active conflicting owner.
 
-For queue closure, **"none" is the last conclusion, never the starting assumption**.
+For queue closure, none is the last conclusion, never the starting assumption (never inherit a prior `Current READY: none` without recomputing).
 
 **Default bias: find safe progress, not a reason to refuse.** A blocker written in an old prompt is a claim to verify, not an eternal fact. The agent must distinguish:
 - a true start gate from evidence needed only for final/deployed acceptance;
