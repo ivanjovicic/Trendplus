@@ -78,6 +78,7 @@ For a queue task, use this minimum shape:
 - Missed: <unfinished work or none known>
 - Follow-up: <prompt/task/owner or none>
 - Residual risk: <one sentence or none known>
+- Post-close routing: <promoted task id | Zero-READY proof in run log | not applicable for direct-user-request>
 - Prompt defect / scope repair: <note or none>
 ```
 
@@ -126,6 +127,8 @@ Before `DONE`, evidence must identify:
 - missed work or `none known`;
 - residual risk or `none known`;
 - next task/owner or `none`;
+- for formal queue work, **post-close routing recovery from the post-delivery `origin/main` SHA**;
+- when next is `none`, a durable **Zero-READY proof** listing active queue/addendum files scanned, plausible non-terminal candidates, blocker class/start-gate classification, safe-slice result and exact unblock event;
 - prompt defect/scope repair when one occurred.
 
 Missing required completion evidence means `PARTIAL` or `BLOCKED`, not a new status.
@@ -166,7 +169,8 @@ Before closure, verify:
 - skipped checks name a reason and residual risk;
 - scope repairs/prompt defects are recorded;
 - final status matches validation and delivery strength;
-- the reported next step does not contradict the status.
+- for queue tasks, any older `Next: none` was invalidated and recomputed after delivery;
+- the reported next step comes from the current **Post-close dependency cascade**; if it is `none`, the run contains a complete **Zero-READY proof** and does not rely on stale queue prose.
 
 ## Final response compact format
 
