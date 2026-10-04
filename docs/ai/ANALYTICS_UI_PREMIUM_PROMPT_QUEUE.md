@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional parallel-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-45`, `P-UI-47`, `P-UI-49`.
+Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49`. `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-52 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -53,7 +53,7 @@ Use with:
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
-| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
+| P-UI-45 | WAITING | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | READY | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
@@ -1876,7 +1876,7 @@ Owner promotion/claim 2026-10-02: after P-UI-34, idle recovery reconciled stale 
 ## P-UI-31 - Migrate Supplier overview to the responsive primitives
 
 Status: WAITING
-Ready after: P-UI-28 and P-UI-29
+Ready after: P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE; adopt the canonical theme/action tokens in the same page pass)
 Priority: P1
 Type: frontend/page/tests
 Feature family: supplier-overview-responsive
@@ -1938,13 +1938,13 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 ### Addendum 2026-10-04 (responsive re-audit, live evidence)
 
 - Live 360x780 (mobile emulation) on `/analytics/supplier?fromDate=2026-07-07&toDate=2026-08-05`: no document overflow (`innerWidth` 360). Filters stack one per row at 296px x 40px (`select`, `input`, `button.secondary`), below the 44px coarse-pointer target. The trust header is 749px tall before any supplier content.
-- The deferral reason recorded on 2026-10-02 ("RQ487 remains the owner-gated Supplier overview query-cost path") is stale: RQ487 is DONE. RQ530 is still PARTIAL as a consumer. Re-run the collision check against RQ530 before promotion instead of treating RQ487 as a blocker.
+- The deferral reason recorded on 2026-10-02 ("RQ487 remains the owner-gated Supplier overview query-cost path") is stale: RQ487 is DONE. RQ530 remains PARTIAL as a consumer, not a start gate. After the same-day UX audit, the deliberate sequencing gate is P-UI-47 so this page can adopt the canonical theme/action tokens once instead of being touched twice; perform a fresh active-owner/path collision check at claim time.
 - The shared control-bar geometry fix is now `P-UI-39` (default overflow safety). This prompt still owns the Supplier-specific filter density/disclosure and table migration. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
 ### Addendum 2026-10-04 (UX/UI audit; no status change)
 
 - Apply `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §2 when migrating: replace the page-local `--dashboard-accent: var(--success)` / `--dashboard-accent-strong: var(--warning)` aliases and neon fallbacks (`#66ff7e`, `#8bff00`, `#8ad5a8`) in `SupplierSalesStatsPage.css`/`.tsx` with the P-UI-47 `--chart-series-*` and `--status-*` tokens (audit UX-013/UX-037). Fix the truncated period preset only if P-UI-51 has not already done so.
-- Coordinate: if P-UI-47 is not DONE, keep the aliases and record the residual.
+- P-UI-47 is now an explicit start dependency for this page migration; do not intentionally ship a residual page-token migration that would require a second immediate pass.
 - Live 2026-10-04 (audit UX-046): "Pregled" (final recommendation) and "Skorkarta" (explicitly auxiliary signal) look like equal tabs. Mark the final tab as primary and label auxiliary tabs as supporting signals, using existing backend role/readiness fields only.
 
 ## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
@@ -2181,7 +2181,7 @@ Completion 2026-10-02: Implemented in `c2874c9a6ce70a7a1fc38ec6477021c721852847`
 ## P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives
 
 Status: WAITING
-Ready after: P-UI-27, P-UI-28 and P-UI-29
+Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-27/P-UI-28/P-UI-29 are already DONE); then re-check active Nivelacija owners
 Priority: P2
 Type: frontend/pages/tests
 Feature family: nivelacija-responsive
@@ -2241,7 +2241,7 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 
 - Live 360 (mobile emulation, dated data): `/analytics/nivelacije-pre-post` inflates the layout viewport to 433px through `label.analytics-control-bar__field` (380px, long supplier/store options). `/analytics/pre-nivelacija-prioriteti` at 1024 with the sidebar open overflows by 104px (4-column control-bar grid). The geometry part is now owned by `P-UI-39`. Do not duplicate it here.
 - Still owned here: the Pre-Nivelacija table (956px, 10 columns, 60 rows in a 268px scroller, first column `position: static`, 12px cells); the trust header 1287px plus control bar 1081px before the first KPI at 4056px on 360 (the trust-header compaction itself is `P-UI-43`); the Pre/Post control bar is 963px tall on 360.
-- All P-UI-27/28/29 dependencies are DONE. Remaining start gates are the active Nivelacija RQ owners touching the same pages (RQ553 READY; RQ552/RQ556/RQ571 WAITING). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+- All P-UI-27/28/29 dependencies are DONE. The real sequencing gates are P-UI-39 (shared control-bar geometry required for no-overflow acceptance) and P-UI-47 (canonical theme/status tokens required by the same-day UX addendum). RQ552/RQ556/RQ571 do not block while merely WAITING. RQ553 blocks only if it is actually active on the same page paths when this prompt becomes otherwise READY. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
 ### Addendum 2026-10-04 (UX/UI audit; no status change)
 
@@ -2250,7 +2250,7 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
 Status: WAITING
-Ready after: P-UI-28 and P-UI-29
+Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE); then perform a fresh active-owner/path collision check
 Priority: P2
 Type: frontend/pages/tests
 Feature family: supplier-segment-responsive
@@ -2311,7 +2311,7 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 
 - Live 360 (mobile emulation, dated data): Color inflates `innerWidth` to 426px and Shoe Type to 433px, both through the control-bar select width. At 1024 with the sidebar open, both overflow by 106px. Owned now by `P-UI-39`.
 - Still owned here: the Shoe Type table (1730px, 10 columns in a 260px scroller at 360, first column static, 12px); the Shoe Type trust header 1436px plus control bar 815px before the first KPI at 2403px (compaction in `P-UI-43`); the Supplier Decision Hub/Color table priority columns.
-- P-UI-28/29 are DONE. Before promotion, check collisions with RQ575 (Color "dimension not populated", WAITING) and RQ580 (supplier report/hub label, READY). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+- P-UI-28/29 are DONE. The real sequencing gates are P-UI-39 (shared overflow geometry) and P-UI-47 (canonical chart/status tokens now required by this page migration). RQ575 is WAITING and RQ580 is backend label-helper work; neither is a blocker by status alone. Only a fresh active owner/path collision blocks claim after those P-UI dependencies. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
 ### Addendum 2026-10-04 (UX/UI audit; no status change)
 
@@ -2591,7 +2591,7 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 
 ### Acceptance
 
-- At 1024 and 1280 the sticky header uses at most about 11% of the viewport height. The analytics content column is at least 900px at 1024 (rail) and the full width at 1280.
+- At 1024 and 1280 the sticky header uses at most about 11% of the viewport height. The analytics content column is at least 900px at 1024 with the rail. At 1280 preserve the intended desktop sidebar policy; do not claim a full-width content column while the 320px sidebar is expanded, but require a single-row/overflow-menu-safe header and no root overflow.
 - Every header action stays reachable by mouse, touch and keyboard.
 - Mobile/tablet (<1024) shell behaviour is unchanged.
 
@@ -2661,10 +2661,10 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 
 - The parallel live browser audit independently confirmed the Inventory overflow at 390×844 (capture 431px wide, horizontal scrollbar; audit UX-042). No separate prompt was registered.
 
-## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets (760–1023px)
+## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets and hybrid touch devices
 
 Status: WAITING
-Ready after: P-UI-39 DONE (shares `AnalyticsControlBar.css`); also re-check P-UI-40 if it is IN_PROGRESS (`HeaderStatus.tsx` class names)
+Ready after: P-UI-39 DONE, P-UI-40 DONE, P-UI-47 DONE and P-UI-48 DONE (shared control-bar/theme/header ownership)
 Priority: P2
 Type: frontend/css/tests
 Feature family: responsive-coarse-pointer-tablet
@@ -2694,7 +2694,7 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 
 ### Do
 
-1. Add a `(pointer: coarse)` media layer (up to 1023px, and also applying at ≥1024 when the pointer is coarse) that sets form-control text to ≥16px and interactive min target to 44x44 via the existing tokens (`--size-touch-target`). Inline text links inside paragraphs are documented exceptions.
+1. Add a capability-based touch layer using `any-pointer: coarse` (or an equivalent hybrid-safe strategy), not viewport width alone, so touch-capable tablets and hybrid devices get form-control text ≥16px and shared interactive targets ≥44x44 via the existing tokens (`--size-touch-target`). Inline text links inside paragraphs are documented exceptions. Fine-pointer-only desktops keep their dense layout.
 2. Apply it to the shared primitives first (control bar fields/actions, header buttons, KPI explain button, trust-header links, table toolbar buttons, chips). Record the remaining page-local offenders as a list in the run log for P-UI-46. Do not fix them here.
 3. Keep fine-pointer desktop density unchanged.
 
@@ -2709,7 +2709,7 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 
 ### Dependencies
 
-- P-UI-39 (same CSS file). P-UI-46 consumes the leftover list.
+- P-UI-39, P-UI-40, P-UI-47 and P-UI-48 own overlapping shared CSS/header/token surfaces and land first. P-UI-46 consumes the leftover list.
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 
@@ -2839,12 +2839,12 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
 
-Status: READY
-Ready after: none
+Status: WAITING
+Ready after: P-UI-40 DONE AND P-UI-48 DONE (`AppLayout.tsx` is shared ownership; P1 shell/safety changes land first)
 Priority: P2
 Type: frontend/a11y/tests
 Feature family: global-chrome-mobile
-Parallel-safe: yes
+Parallel-safe: no
 Owner: unassigned
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal image carousel is shown **only on the home page** (`/`). It is removed from every other route, including all analytics, data-entry, šifarnik and admin screens. Reduced-motion behaviour still applies on the home page.
 Commit suggestion: `fix(ui): localize request indicator, show seasonal carousel only on home`
@@ -2891,7 +2891,7 @@ Two always-mounted chrome elements degrade every screen on phones:
 
 ### Dependencies
 
-- None. Owner decision recorded 2026-10-04 (carousel only on home page). The `AppLayout.tsx` edit is limited to removing the mount. If P-UI-40 is IN_PROGRESS or lands first, whichever lands second rebases and keeps both changes.
+- P-UI-40 and P-UI-48 land first because both own `AppLayout.tsx`/shell behavior at higher priority. This is a path-collision sequence, not a business-semantic dependency. Owner decision recorded 2026-10-04 (carousel only on home page); after those owners land, remove only the global carousel mount and preserve their shell/skip-link behavior.
 
 ## P-UI-46 - Operational and šifarnik screens: phone-usable lists, actions and paging
 
@@ -2950,7 +2950,7 @@ Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_202
 Priority: P1
 Type: frontend/css/tests
 Feature family: analytics-theme-token-contract
-Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41/P-UI-45, from P-UI-49 and from all READY RQ paths)
+Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41, from P-UI-49 and from all READY RQ paths)
 Owner: unassigned (Analytics Frontend / Design System)
 Owned paths: `Klijent/clientapp/src/context/ThemeContext.tsx`, `Klijent/clientapp/src/styles/themes.css`, `Klijent/clientapp/src/styles/themeTokens.ts`, the token blocks in `Klijent/clientapp/src/tailwind.css` and `Klijent/clientapp/src/styles/analytics-system.css`, new token/contrast tests
 Avoid paths: `AnalyticsControlBar.css` (P-UI-39), `HeaderStatus.tsx`/`Sidebar.tsx`/`AppLayout.tsx` (P-UI-40), the `tailwind.css` `@media (max-width: 759px)` floor block (P-UI-42), `AnalyticsTrustHeader*` (RQ569), nivelacija pages/CSS (RQ553, P-UI-35), Supplier/Shoe Type/Color page CSS (P-UI-31/P-UI-36), `AnalyticsEmptyState*`/`AnalyticsErrorState*` (P-UI-49)
@@ -3084,7 +3084,7 @@ Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_202
 Priority: P2
 Type: frontend/tests
 Feature family: analytics-state-taxonomy
-Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41/P-UI-45/P-UI-47 and READY RQ paths)
+Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41/P-UI-47 and READY RQ paths)
 Owner: unassigned (Analytics Frontend / Design System)
 Owned paths: `Klijent/clientapp/src/components/analytics/AnalyticsEmptyState.tsx/.css`, `AnalyticsErrorState.tsx/.css`, new `Klijent/clientapp/src/utils/analyticsStateTaxonomy.ts`, their tests
 Avoid paths: `AnalyticsTrustHeader*` (RQ569), page files (adopt per page through page owners), backend
