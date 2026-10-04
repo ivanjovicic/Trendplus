@@ -1301,8 +1301,9 @@ NV-F1, NV-F3, NV-P2.
 
 - Live top candidates on 2026-10-04 are accessories and legacy stock: #1 `85` PERTLE (footwear type `Oprema`, store `STARO`, season proleće/leto2017, 381 units, 5,559 days without sale, score 86.0 `high`); #2 `155` PERTLA 1 (`Oprema`, Trend PLUS 1, 226 units, score 77.77 `high`) — the only item in `queues.highlightNow`, although its row recommendation is `insufficient_data` / `recommendationAllowed=false`.
 - Most medium-band rows are season "Proleće-leto 2021" stock; 371 of 537 candidates are `insufficient_data`.
-- Inputs for the rebuild: exclude or separately queue non-footwear `Oprema`; exclude inactive/legacy stores (owner to confirm whether `STARO`, `Magacin`, the two `Komision` ids and `Objekat 20828` are decision stores); never place a `recommendationAllowed=false` row into an action queue such as `highlightNow`.
-- The window/recency anchor bias (UTC now instead of the 2026-08-05 source horizon) is registered separately as `RQ571`; do not duplicate it here. No scope change beyond these inputs.
+- Owner decision (Ivan, 2026-10-04): the retail decision stores are **Trend PLUS 1 and Trend PLUS 2**. `STARO`, `Magacin`, all `Komision*` stores and `Objekat 20828` are excluded from retail markdown recommendations until a durable active-store master flag explicitly re-enables them; keep them visible in a separate legacy/cleanup/transfer view. `Oprema` is separated from footwear markdown ranking. A row with `recommendationAllowed=false` can never enter `highlightNow`.
+- The executable population/gating work above is now owned by `RQ571` together with the source-horizon anchor so it is not blocked behind RQ556's still-owner-gated v9 score weights.
+- RQ556 remains WAITING only for the v9 weight/threshold approval. Do not treat the resolved store/Oprema policy as a blocker for RQ571.
 
 ## RQ557 - NV-E2 - Markdown outcome ledger: did it work, what it cost, what to repeat or avoid
 
