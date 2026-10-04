@@ -24,7 +24,6 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
     private const int StartupWarmupMaxAttempts = 3;
     private const string FromDate = "2026-07-01";
     private const string ToDate = "2026-07-07";
-    private const string NivelacijaEventDate = "2026-08-01T00:00:00Z";
 
     private readonly PostgresContainerFixture _postgres;
     private readonly ITestOutputHelper _output;
@@ -41,7 +40,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.True(_postgres.IsAvailable, "The RQ561 certification requires its disposable PostgreSQL Testcontainer.");
         var connectionString = await _postgres.TryCreateDatabaseConnectionStringAsync($"rq561_operations_{Guid.NewGuid():N}");
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
-        await SeedSharedFixtureAsync(connectionString!);
+        var rq568Fixture = await SeedSharedFixtureAsync(connectionString!);
         await using var factory = new OperationsEndpointFactory(connectionString!);
         var requestCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         using var client = factory.CreateDefaultClient(new RouteExecutionCounter(requestCounts));
@@ -160,20 +159,69 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal(390m, dailyHeaderExisting.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         verdicts.Add(new("/analytics/daily-sales", "/api/analytics/daily-sales", 5, 5, "PASS", "period, source attribution, DUG diagnostic, signed/boundary total, store scope and RQ494 header-origin population asserted"));
 
-        var vendorNivelacija = await GetJsonAsync(
+        var markdown = await GetJsonAsync(
             client,
-            $"/api/analytics/vendor-sales-nivelacija?eventDate={Uri.EscapeDataString(NivelacijaEventDate)}&dataScope=all");
-        Assert.False(vendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean(), vendorNivelacija.GetRawText());
-        Assert.Equal("vendor_sales_nivelacija_contract_missing", vendorNivelacija.GetProperty("meta").GetProperty("errorCode").GetString());
-        Assert.Equal("unavailable", vendorNivelacija.GetProperty("dataCoverageStatus").GetString());
-        Assert.False(vendorNivelacija.GetProperty("recommendationAllowed").GetBoolean());
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AnchorDate:yyyy-MM-dd}&dataScope=all");
+        Assert.True(markdown.GetProperty("meta").GetProperty("success").GetBoolean(), markdown.GetRawText());
+        AssertEndpointArticleMatchesOracle(markdown, "RQ568-MARKDOWN", rq568Fixture.OracleRows[56801], rq568Fixture.AsOfDate);
+        var markdownArticle = Assert.Single(markdown.GetProperty("articleStats").EnumerateArray(), article => article.GetProperty("sku").GetString() == "RQ568-MARKDOWN");
+        Assert.Equal(150, markdownArticle.GetProperty("preQty").GetInt32());
+        Assert.Equal(150, markdownArticle.GetProperty("postQty").GetInt32());
+        Assert.Equal(1500m, markdownArticle.GetProperty("preRevenue").GetDecimal());
+        Assert.Equal(1500m, markdownArticle.GetProperty("postRevenue").GetDecimal());
+        Assert.Equal(0m, markdownArticle.GetProperty("changePercent").GetDecimal());
+        var basis = markdown.GetProperty("meta").GetProperty("basis");
+        Assert.Equal("assortment", basis.GetProperty("tab").GetString());
+        Assert.Equal("latest_price_event_per_article_including_increases", basis.GetProperty("cohort").GetString());
+        Assert.Equal("fixed_30d_pre_post_revenue_and_units_pct", basis.GetProperty("effectMetric").GetString());
+        Assert.Equal("latest_price_event_per_article", basis.GetProperty("eventSelection").GetString());
+        Assert.Equal("latest_event_per_article", markdown.GetProperty("dataQuality").GetProperty("cohortPolicy").GetString());
+
+        var markup = await GetJsonAsync(
+            client,
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AnchorDate:yyyy-MM-dd}&vendorId=1&category=Obuca&dataScope=all");
+        Assert.True(markup.GetProperty("meta").GetProperty("success").GetBoolean(), markup.GetRawText());
+        AssertEndpointArticleMatchesOracle(markup, "RQ568-MARKUP", rq568Fixture.OracleRows[56802], rq568Fixture.AsOfDate);
+        Assert.Contains(markup.GetProperty("priceDirectionStats").EnumerateArray(), row =>
+            row.GetProperty("segment").GetString() == "Cena ↑"
+            && row.GetProperty("hasComparableSalesWindow").GetBoolean());
+
+        var overlap = await GetJsonAsync(
+            client,
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AnchorDate.AddDays(-20):yyyy-MM-dd}&dataScope=all");
+        Assert.True(overlap.GetProperty("meta").GetProperty("success").GetBoolean(), overlap.GetRawText());
+        AssertEndpointArticleMatchesOracle(overlap, "RQ568-OVERLAP", rq568Fixture.OracleRows[56803], rq568Fixture.AsOfDate);
+
+        var immature = await GetJsonAsync(
+            client,
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AsOfDate.AddDays(-10):yyyy-MM-dd}&dataScope=all");
+        Assert.True(immature.GetProperty("meta").GetProperty("success").GetBoolean(), immature.GetRawText());
+        AssertEndpointArticleMatchesOracle(immature, "RQ568-IMMATURE", rq568Fixture.OracleRows[56805], rq568Fixture.AsOfDate);
+        Assert.False(Assert.Single(immature.GetProperty("articleStats").EnumerateArray()).GetProperty("isPostWindowMature").GetBoolean());
+
+        var importedStore2 = await GetJsonAsync(
+            client,
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AnchorDate:yyyy-MM-dd}&storeId=2&dataScope=imported");
+        Assert.True(importedStore2.GetProperty("meta").GetProperty("success").GetBoolean(), importedStore2.GetRawText());
+        AssertEndpointArticleMatchesOracle(
+            importedStore2,
+            "RQ568-STORE2-IMPORTED",
+            rq568Fixture.ScopedOracleRows[56806],
+            rq568Fixture.AsOfDate);
+        Assert.Equal(2, importedStore2.GetProperty("storeId").GetInt32());
+        Assert.Equal("imported", importedStore2.GetProperty("dataScope").GetString());
+        Assert.True(importedStore2.GetProperty("scopeApplied").GetBoolean());
+
         verdicts.Add(new(
             "/analytics/nivelacije-pre-post",
             "/api/analytics/vendor-sales-nivelacija",
-            1,
-            1,
+            6,
+            0,
             "UNVERIFIED",
-            "Route executed; unresolved maturity/overlap semantics are not certified by the current fixture."));
+            "Canonical SQL, independent raw-fixture oracle, RQ550 150/150 baseline, mature markdown/markup, immature/overlap events, imported store 2 scope and truthful missing-view response are asserted.",
+            CanonicalSqlExecuted: true,
+            OracleExecuted: true,
+            MissingObjectNegativePathExecuted: false));
 
         var color = await GetJsonAsync(
             client,
@@ -228,6 +276,18 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             candidate => candidate.GetProperty("sku").GetString() == "PRE-105");
         verdicts.Add(new("/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", 2, 2, "PASS", "candidate count, visible SKU and imported-scope exclusion asserted"));
 
+        await ExecuteConnectionSqlAsync(connectionString!, "DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;");
+        var missingVendorNivelacija = await GetJsonAsync(
+            client,
+            $"/api/analytics/vendor-sales-nivelacija?eventDate={rq568Fixture.AnchorDate:yyyy-MM-dd}&includeInactive=true&dataScope=all");
+        Assert.False(missingVendorNivelacija.GetProperty("meta").GetProperty("success").GetBoolean(), missingVendorNivelacija.GetRawText());
+        Assert.Equal("vendor_sales_nivelacija_contract_missing", missingVendorNivelacija.GetProperty("meta").GetProperty("errorCode").GetString());
+        Assert.Equal("unavailable", missingVendorNivelacija.GetProperty("dataCoverageStatus").GetString());
+        Assert.False(missingVendorNivelacija.GetProperty("recommendationAllowed").GetBoolean());
+        var prePostIndex = verdicts.FindIndex(item => item.ApiRoute == "/api/analytics/vendor-sales-nivelacija");
+        Assert.True(prePostIndex >= 0);
+        verdicts[prePostIndex] = verdicts[prePostIndex] with { MissingObjectNegativePathExecuted = true };
+
         await SeedNegativeEntityCaseAsync(connectionString!);
         var negativeStoreInventory = await GetJsonAsync(
             client,
@@ -270,28 +330,49 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         for (var index = 0; index < verdicts.Count; index++)
         {
             var current = verdicts[index];
-            verdicts[index] = current with
+            var executedCount = requestCounts.GetValueOrDefault(current.ApiRoute);
+            var updated = current with { ExecutedCount = executedCount };
+            if (current.ApiRoute == "/api/analytics/vendor-sales-nivelacija")
             {
-                ExecutedCount = requestCounts.GetValueOrDefault(current.ApiRoute)
-            };
+                updated = updated with
+                {
+                    EndpointCasesExecuted = executedCount,
+                    Verdict = current.CanonicalSqlExecuted == true
+                        && current.OracleExecuted == true
+                        && current.MissingObjectNegativePathExecuted == true
+                        && executedCount == current.ExpectedCount
+                        ? "VERIFIED"
+                        : "UNVERIFIED"
+                };
+            }
+
+            verdicts[index] = updated;
         }
 
         var report = new
         {
-            manifestId = "operations-six-screen-certification-2026-10-03",
+            manifestId = "operations-six-screen-certification-2026-10-04",
             expectedRoutes = 6,
             executedRoutes = verdicts.Count(item => item.ExecutedCount > 0),
-            expectedCases = 26,
+            skippedRoutes = 6 - verdicts.Count(item => item.ExecutedCount > 0),
+            expectedCases = 31,
             executedCases = verdicts.Sum(item => item.ExpectedCount),
-            verdict = verdicts.Any(item => item.Verdict != "PASS") ? "UNVERIFIED" : "PASS",
+            verdict = verdicts.Any(item => item.Verdict is not ("PASS" or "VERIFIED")) ? "UNVERIFIED" : "PASS",
             routes = verdicts
         };
         _output.WriteLine(JsonSerializer.Serialize(report));
         Assert.Equal(6, verdicts.Count);
         Assert.All(verdicts, item => Assert.Equal(item.ExpectedCount, item.ExecutedCount));
         Assert.Equal(6, report.executedRoutes);
+        Assert.Equal(0, report.skippedRoutes);
         Assert.Equal(report.expectedCases, report.executedCases);
-        Assert.Equal("UNVERIFIED", report.verdict);
+        Assert.Equal("PASS", report.verdict);
+        var prePostVerdict = Assert.Single(verdicts, item => item.ApiRoute == "/api/analytics/vendor-sales-nivelacija");
+        Assert.Equal("VERIFIED", prePostVerdict.Verdict);
+        Assert.True(prePostVerdict.CanonicalSqlExecuted);
+        Assert.True(prePostVerdict.OracleExecuted);
+        Assert.True(prePostVerdict.MissingObjectNegativePathExecuted);
+        Assert.Equal(6, prePostVerdict.EndpointCasesExecuted);
     }
 
     private static async Task<JsonElement> GetJsonAsync(HttpClient client, string path)
@@ -344,7 +425,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         }
     }
 
-    private static async Task SeedSharedFixtureAsync(string connectionString)
+    private static async Task<Rq568FixtureContext> SeedSharedFixtureAsync(string connectionString)
     {
         await using (var db = new TrendplusDbContext(
                          new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options))
@@ -357,16 +438,247 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             await analyticsDb.Database.MigrateAsync();
         }
 
-        var fixturePath = FindRepositoryFile("Api.Tests", "Fixtures", "operations-analytics-all-routes-seed.sql");
-        var sql = await File.ReadAllTextAsync(fixturePath);
-
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection)
-        {
-            CommandTimeout = 120
-        };
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "012_AddAccessImportSupport.sql");
+
+        var sharedFixture = await File.ReadAllTextAsync(
+            FindRepositoryFile("Api.Tests", "Fixtures", "operations-analytics-all-routes-seed.sql"));
+        await ExecuteConnectionSqlAsync(connection, sharedFixture);
+        var prePostFixture = await File.ReadAllTextAsync(
+            FindRepositoryFile("Api.Tests", "Fixtures", "rq568-prepost-adversarial.sql"));
+        await ExecuteConnectionSqlAsync(connection, prePostFixture);
+
+        // Run the canonical-view dependencies in DatabaseInitializer order; 019 is a dashboard-only index script and is outside this view contract.
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "017_CreateNightlyAnalyticsMaterializedViews.sql");
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "013_AddVendorSalesNivelacijaViews.sql");
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "014_NormalizeNivelacijaEvents.sql");
+        await ExecuteRepositorySqlAsync(connection, "Database", "Analytics", "014_CreateVendorSalesNivelacijaViews.sql");
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "016_AnalyticsNivelacijaEnhancements.sql");
+
+        return await VerifyRq568CanonicalSqlAndOracleAsync(connection);
+    }
+
+    private static async Task ExecuteRepositorySqlAsync(NpgsqlConnection connection, params string[] segments)
+    {
+        var sql = await File.ReadAllTextAsync(FindRepositoryFile(segments));
+        var batches = sql.Split("-- SQL_BATCH_BREAK", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var batch in batches)
+            await ExecuteConnectionSqlAsync(connection, batch);
+    }
+
+    private static async Task ExecuteConnectionSqlAsync(string connectionString, string sql)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await ExecuteConnectionSqlAsync(connection, sql);
+    }
+
+    private static async Task ExecuteConnectionSqlAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 300 };
         await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<Rq568FixtureContext> VerifyRq568CanonicalSqlAndOracleAsync(NpgsqlConnection connection)
+    {
+        const string requiredContractSql = """
+            SELECT to_regclass('public.vw_sales_pre_nivelacija') IS NOT NULL
+               AND to_regclass('public.vw_sales_post_nivelacija') IS NOT NULL
+               AND to_regclass('public.vw_vendor_sales_nivelacija') IS NOT NULL
+               AND to_regclass('public.vw_nivelacija_kontrolna_grupa') IS NOT NULL
+               AND to_regclass('public.vw_nivelacija_did') IS NOT NULL
+               AND EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'vw_vendor_sales_nivelacija'
+                      AND column_name = 'post_window_complete'
+               );
+            """;
+        await using (var command = new NpgsqlCommand(requiredContractSql, connection))
+            Assert.True((bool)(await command.ExecuteScalarAsync() ?? false), "Canonical Pre/Post views and maturity/DiD dependencies were not installed.");
+
+        var asOf = await ReadDatabaseCurrentDateAsync(connection);
+        var fixture = await ReadRq568OracleFixtureAsync(connection);
+        var expected = AssortmentNivelacijaOracle.SourceRows(fixture, AssortmentSourceOptions.View(asOf));
+        var actual = await ReadRq568CanonicalRowsAsync(connection);
+        AssertAssortmentRowsEqual("RQ568 canonical view vs independent raw-fixture oracle", expected, actual);
+
+        var semantics = await ReadRq568ViewSemanticsAsync(connection);
+        Assert.Equal("markdown", semantics[56801].PriceDirection);
+        Assert.True(semantics[56801].PostWindowComplete);
+        Assert.Equal("markup", semantics[56802].PriceDirection);
+        Assert.True(semantics[56802].PostWindowComplete);
+        Assert.True(semantics[56803].PostWindowComplete);
+        Assert.True(semantics[56803].OverlapsNextEvent);
+        Assert.Equal(asOf.AddDays(-305), semantics[56803].NextEventDate);
+        Assert.False(semantics[56805].PostWindowComplete);
+
+        var scopedExpected = AssortmentNivelacijaOracle.SourceRows(fixture, AssortmentSourceOptions.Scoped(asOf, storeId: 2))
+            .ToDictionary(row => row.PriceEventId);
+        return new Rq568FixtureContext(
+            AnchorDate: asOf.AddDays(-300),
+            AsOfDate: asOf,
+            OracleRows: expected.ToDictionary(row => row.PriceEventId),
+            ScopedOracleRows: scopedExpected);
+    }
+
+    private static async Task<DateOnly> ReadDatabaseCurrentDateAsync(NpgsqlConnection connection)
+    {
+        await using var command = new NpgsqlCommand("SELECT CURRENT_DATE::timestamp;", connection);
+        var value = await command.ExecuteScalarAsync();
+        return DateOnly.FromDateTime((DateTime)(value ?? throw new InvalidOperationException("PostgreSQL current date is unavailable.")));
+    }
+
+    private static async Task<AssortmentFixture> ReadRq568OracleFixtureAsync(NpgsqlConnection connection)
+    {
+        var fixture = new AssortmentFixture();
+        const string vendorsSql = """
+            SELECT DISTINCT vendor."Id", vendor."Naziv"
+            FROM "Dobavljaci" vendor
+            JOIN "Artikli" article ON article."IDDobavljac" = vendor."Id"
+            WHERE article."PLU" LIKE 'RQ568-%'
+            ORDER BY vendor."Id";
+            """;
+        await using (var command = new NpgsqlCommand(vendorsSql, connection))
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                fixture.Vendors.Add(new AssortmentVendor(reader.GetInt32(0), reader.GetString(1)));
+        }
+
+        const string articlesSql = """
+            SELECT "Id", "IDDobavljac", COALESCE(NULLIF("Kategorija", ''), 'Nepoznato'), "PLU", COALESCE("Kolicina", 0)::numeric
+            FROM "Artikli"
+            WHERE "PLU" LIKE 'RQ568-%'
+            ORDER BY "Id";
+            """;
+        await using (var command = new NpgsqlCommand(articlesSql, connection))
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                fixture.Articles.Add(new AssortmentArticle(reader.GetInt32(0), reader.IsDBNull(1) ? null : reader.GetInt32(1), reader.GetString(2), reader.GetString(3), reader.GetDecimal(4)));
+        }
+
+        const string eventsSql = """
+            SELECT event."Id"::bigint, event."ArtikalId", COALESCE(source."Datum", event."Datum")::date,
+                   event."StaraProdajnaCena", event."NovaProdajnaCena", event."IDObjekat",
+                   event."TipPromene", event."DobavljacId"
+            FROM "DnevnikPromena" event
+            JOIN "Artikli" article ON article."Id" = event."ArtikalId"
+            LEFT JOIN "DnevnikPromena" source
+              ON source."Id" = CASE WHEN event."BrojRacuna" ~ '^[0-9]+$' THEN event."BrojRacuna"::bigint END
+            WHERE article."PLU" LIKE 'RQ568-%'
+            ORDER BY event."Id";
+            """;
+        await using (var command = new NpgsqlCommand(eventsSql, connection))
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                fixture.Events.Add(new AssortmentEvent(reader.GetInt64(0), reader.GetInt32(1), DateOnly.FromDateTime(reader.GetDateTime(2)), reader.GetDecimal(3), reader.GetDecimal(4), reader.IsDBNull(5) ? null : reader.GetInt32(5), reader.GetString(6), reader.IsDBNull(7) ? null : reader.GetInt32(7)));
+        }
+
+        const string salesSql = """
+            SELECT receipt.id, receipt.broj_racuna, receipt.datum_prodaje::date, line.id_artikal,
+                   line.kolicina, line.cena, receipt.id_objekat
+            FROM prodaja_zaglavlje receipt
+            JOIN prodaja_stavke line ON line.id_prodaja = receipt.id
+            JOIN "Artikli" article ON article."Id" = line.id_artikal
+            WHERE article."PLU" LIKE 'RQ568-%'
+            ORDER BY receipt.id, line.id;
+            """;
+        await using (var command = new NpgsqlCommand(salesSql, connection))
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                fixture.Sales.Add(new AssortmentSale(reader.GetInt32(0), reader.GetString(1), DateOnly.FromDateTime(reader.GetDateTime(2)), reader.GetInt32(3), reader.GetInt32(4), reader.GetDecimal(5), reader.IsDBNull(6) ? null : reader.GetInt32(6)));
+        }
+
+        Assert.Equal(5, fixture.Articles.Count);
+        Assert.Equal(6, fixture.Events.Count);
+        Assert.NotEmpty(fixture.Sales);
+        return fixture;
+    }
+
+    private static async Task<List<AssortmentSourceRow>> ReadRq568CanonicalRowsAsync(NpgsqlConnection connection)
+    {
+        const string sql = """
+            SELECT view.price_event_id, view.event_date, view.vendor_id, view.vendor_name, view.article_id,
+                   view.sku, view.category, view.old_price, view.new_price, view.pre_qty, view.pre_revenue,
+                   view.post_qty, view.post_revenue, view.coverage_pre30, view.coverage_post30,
+                   view.change_qty, view.change_revenue, view.has_qty_baseline, view.qty_baseline_reason,
+                   view.change_percent_qty_semantic, view.has_revenue_baseline, view.revenue_baseline_reason,
+                   view.change_percent_revenue_semantic
+            FROM vw_vendor_sales_nivelacija view
+            JOIN "Artikli" article ON article."Id" = view.article_id
+            WHERE article."PLU" LIKE 'RQ568-%'
+            ORDER BY view.price_event_id;
+            """;
+        var rows = new List<AssortmentSourceRow>();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        int? Int(string column) => reader.IsDBNull(reader.GetOrdinal(column)) ? null : Convert.ToInt32(reader[column]);
+        decimal? Decimal(string column) => reader.IsDBNull(reader.GetOrdinal(column)) ? null : Convert.ToDecimal(reader[column]);
+        string? String(string column) => reader.IsDBNull(reader.GetOrdinal(column)) ? null : reader.GetString(reader.GetOrdinal(column));
+        while (await reader.ReadAsync())
+        {
+            rows.Add(new AssortmentSourceRow(
+                PriceEventId: reader.GetInt64(0), EventDate: DateOnly.FromDateTime(reader.GetDateTime(1)),
+                VendorId: Int("vendor_id"), VendorName: String("vendor_name"), ArticleId: reader.GetInt32(4),
+                Sku: String("sku"), Category: String("category"), OldPrice: Decimal("old_price"), NewPrice: Decimal("new_price"),
+                PreQty: Decimal("pre_qty"), PreRevenue: Decimal("pre_revenue"), PostQty: Decimal("post_qty"), PostRevenue: Decimal("post_revenue"),
+                CoveragePre30: Decimal("coverage_pre30"), CoveragePost30: Decimal("coverage_post30"), ChangeQty: Decimal("change_qty"),
+                ChangeRevenue: Decimal("change_revenue"), HasQtyBaseline: reader.GetBoolean(reader.GetOrdinal("has_qty_baseline")),
+                QtyBaselineReason: String("qty_baseline_reason"), ChangePercentQtySemantic: Decimal("change_percent_qty_semantic"),
+                HasRevenueBaseline: reader.GetBoolean(reader.GetOrdinal("has_revenue_baseline")), RevenueBaselineReason: String("revenue_baseline_reason"),
+                ChangePercentRevenueSemantic: Decimal("change_percent_revenue_semantic")));
+        }
+
+        return rows;
+    }
+
+    private static async Task<Dictionary<long, Rq568ViewSemantics>> ReadRq568ViewSemanticsAsync(NpgsqlConnection connection)
+    {
+        const string sql = """
+            SELECT price_event_id, price_direction, post_window_complete, overlaps_next_event, next_event_date
+            FROM vw_vendor_sales_nivelacija WHERE price_event_id BETWEEN 56801 AND 56806;
+            """;
+        var rows = new Dictionary<long, Rq568ViewSemantics>();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            rows.Add(reader.GetInt64(0), new Rq568ViewSemantics(reader.GetString(1), reader.GetBoolean(2), reader.GetBoolean(3), reader.IsDBNull(4) ? null : DateOnly.FromDateTime(reader.GetDateTime(4))));
+        Assert.Equal(6, rows.Count);
+        return rows;
+    }
+
+    private static void AssertAssortmentRowsEqual(string source, IEnumerable<AssortmentSourceRow> expected, IEnumerable<AssortmentSourceRow> actual)
+    {
+        var expectedById = expected.Select(row => row.Normalized()).ToDictionary(row => row.PriceEventId);
+        var actualById = actual.Select(row => row.Normalized()).ToDictionary(row => row.PriceEventId);
+        var mismatches = new List<string>();
+        foreach (var id in expectedById.Keys.Union(actualById.Keys).Order())
+        {
+            expectedById.TryGetValue(id, out var expectedRow);
+            actualById.TryGetValue(id, out var actualRow);
+            if (expectedRow != actualRow)
+                mismatches.Add($"{source} event {id}:{Environment.NewLine}  oracle: {expectedRow?.ToString() ?? "<missing>"}{Environment.NewLine}  sql:    {actualRow?.ToString() ?? "<missing>"}");
+        }
+
+        Assert.True(mismatches.Count == 0, string.Join(Environment.NewLine, mismatches));
+    }
+
+    private static void AssertEndpointArticleMatchesOracle(JsonElement response, string sku, AssortmentSourceRow expected, DateOnly asOf)
+    {
+        var article = Assert.Single(response.GetProperty("articleStats").EnumerateArray(), row => row.GetProperty("sku").GetString() == sku);
+        Assert.Equal((int)expected.PreQty.GetValueOrDefault(), article.GetProperty("preQty").GetInt32());
+        Assert.Equal(expected.PreRevenue.GetValueOrDefault(), article.GetProperty("preRevenue").GetDecimal());
+        Assert.Equal((int)expected.PostQty.GetValueOrDefault(), article.GetProperty("postQty").GetInt32());
+        Assert.Equal(expected.PostRevenue.GetValueOrDefault(), article.GetProperty("postRevenue").GetDecimal());
+        Assert.Equal(expected.ChangePercentRevenueSemantic, article.GetProperty("semanticChangePercentRevenue").ValueKind == JsonValueKind.Null ? null : article.GetProperty("semanticChangePercentRevenue").GetDecimal());
+        Assert.Equal(expected.HasRevenueBaseline, article.GetProperty("hasRevenueBaseline").GetBoolean());
+        Assert.Equal(expected.RevenueBaselineReason, article.GetProperty("revenueBaselineReason").GetString());
+        Assert.Equal(expected.EventDate.AddDays(30) <= asOf, article.GetProperty("isPostWindowMature").GetBoolean());
     }
 
     private static async Task SeedNegativeEntityCaseAsync(string connectionString)
@@ -390,16 +702,16 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             INSERT INTO prodaja_zaglavlje
               (id, broj_racuna, datum_prodaje, id_objekat, korisnik_ime, data_origin, source_timestamp_basis)
             VALUES
-              (24, 'RQ561-NEGATIVE-ENTITY', '2026-09-12T09:00:00Z', -1, 'rq561', 'existing', 'utc_instant'),
-              (25, 'RQ561-NEGATIVE-NULL', '2026-09-12T10:00:00Z', -1, 'rq561', 'existing', 'utc_instant');
+              (10024, 'RQ561-NEGATIVE-ENTITY', '2026-09-12T09:00:00Z', -1, 'rq561', 'existing', 'utc_instant'),
+              (10025, 'RQ561-NEGATIVE-NULL', '2026-09-12T10:00:00Z', -1, 'rq561', 'existing', 'utc_instant');
 
             INSERT INTO prodaja_stavke
               (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
-            SELECT 24, 24, a."Id", 1, 125, 75, -1, -1, 'sale_snapshot'
+            SELECT 10024, 10024, a."Id", 1, 125, 75, -1, -1, 'sale_snapshot'
               FROM "Artikli" a WHERE a."PLU" = 'RQ561-NEGATIVE-ENTITY';
             INSERT INTO prodaja_stavke
               (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
-            SELECT 25, 25, a."Id", 1, 125, NULL, NULL, NULL, 'sale_snapshot'
+            SELECT 10025, 10025, a."Id", 1, 125, NULL, NULL, NULL, 'sale_snapshot'
               FROM "Artikli" a WHERE a."PLU" = 'RQ561-NEGATIVE-NULL';
             """;
 
@@ -430,7 +742,23 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         int ExpectedCount,
         int ExecutedCount,
         string Verdict,
-        string Evidence);
+        string Evidence,
+        bool? CanonicalSqlExecuted = null,
+        bool? OracleExecuted = null,
+        bool? MissingObjectNegativePathExecuted = null,
+        int? EndpointCasesExecuted = null);
+
+    private sealed record Rq568FixtureContext(
+        DateOnly AnchorDate,
+        DateOnly AsOfDate,
+        IReadOnlyDictionary<long, AssortmentSourceRow> OracleRows,
+        IReadOnlyDictionary<long, AssortmentSourceRow> ScopedOracleRows);
+
+    private sealed record Rq568ViewSemantics(
+        string PriceDirection,
+        bool PostWindowComplete,
+        bool OverlapsNextEvent,
+        DateOnly? NextEventDate);
 
     private sealed class RouteExecutionCounter(IDictionary<string, int> counts) : DelegatingHandler
     {
