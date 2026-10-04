@@ -29371,9 +29371,9 @@ Ready after: none (registered 2026-10-04 by `docs/qa/ANALYTICS_RELIABILITY_VALUE
 Priority: P1
 Type: backend/runtime-contract/observability/tests
 Feature family: startup-database-initialization-truth
-Parallel-safe: yes (only the `/ready` and `/api/runtime/version` handlers in `Api/Program.cs`, the startup readiness services and the `InitializeDatabasesAsync` result; no READY prompt owns these paths. RQ569 owns analytics meta/freshness, not process readiness)
+Parallel-safe: yes (only `/ready`, the startup readiness services, the database-initialization outcome and an existing admin diagnostic surface; no READY prompt owns these paths. `/api/runtime/version` stays unchanged. RQ569 owns analytics meta/freshness, not process readiness)
 Owner: Analytics Reliability / Platform
-Owned paths: `Api/Services/Startup/StartupReadinessState.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api/Program.cs` (`/ready` and `/api/runtime/version` handlers only), `Infrastructure/Seed/DatabaseInitializer.cs` (`InitializeDatabasesAsync` outcome/result type only), focused tests in `Api.Tests`
+Owned paths: `Api/Services/Startup/StartupReadinessState.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api/Program.cs` (`/ready` handler only), `Infrastructure/Seed/DatabaseInitializer.cs` (`InitializeDatabasesAsync` outcome/result type only), existing admin startup/config diagnostic endpoint/DTO if available, focused tests in `Api.Tests`
 Avoid paths: startup SQL scripts and view/MV definitions (`Database/**`, owned by RQ545/RQ519 lifecycle), 013/014/016/029 execution order, worker registration and provider configuration (STAB16), analytics response meta (RQ569), frontend header status (P-UI-40/P-UI-48)
 Commit suggestion: `fix(startup): report database initialization state in readiness`
 
@@ -29443,7 +29443,7 @@ Production readiness cannot tell whether the startup database initialization act
 
 ---
 
-## RQ588 - Guard EF migration discovery and retire four attribute-less migrations
+## RQ588 - Guard EF migration discovery and classify four attribute-less legacy migration classes
 
 Status: READY
 Ready after: none (registered 2026-10-04 by `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F2)
@@ -29454,7 +29454,7 @@ Parallel-safe: yes (the four orphan migration files plus one new test; no READY 
 Owner: Platform / Data
 Owned paths: `Infrastructure/Migrations/20260327120000_CreateTransfersTables.cs`, `Infrastructure/Migrations/20260327153000_AddTransferLifecycleFields.cs`, `Infrastructure/Migrations/20260404183000_AddArtikliIdTipObuceIndex.cs`, `Infrastructure/Migrations/20260407153000_AddDailySalesStatsIndexes.cs`, one new test in `Api.Tests`, `Api/docs/daily-sales-stats-runbook.md` (index list only)
 Avoid paths: `TrendplusDbContextModelSnapshot.cs`, every attributed migration, `DatabaseInitializer.cs` bootstrap self-heal and the marked-applied list (`:1410-1434`), startup SQL scripts
-Commit suggestion: `chore(db): guard EF migration discovery and retire orphan migrations`
+Commit suggestion: `chore(db): guard EF migration discovery and classify orphan migrations`
 
 ### Problem
 
