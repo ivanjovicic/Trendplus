@@ -1,4 +1,5 @@
 using Infrastructure.Services.Caching;
+using Api.Services;
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -44,6 +45,10 @@ public sealed class AnalyticsReportsContractTests
         Assert.True(report.Meta?.Success);
         Assert.False(report.UsedFallback);
         Assert.NotEmpty(report.Kpis);
+        Assert.Equal("scorecard", report.Meta?.Basis?.Tab);
+        Assert.Equal("first_markdown_per_article", report.Meta?.Basis?.Cohort);
+        Assert.Equal(SupplierTabBasisPolicy.Fixed30DayRevenueAndUnitsPct, report.Meta?.Basis?.EffectMetric);
+        Assert.Equal(SupplierTabBasisPolicy.FirstMarkdownPerArticleEvent, report.Meta?.Basis?.EventSelection);
     }
 
     [Fact]

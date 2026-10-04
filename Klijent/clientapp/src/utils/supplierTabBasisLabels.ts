@@ -13,6 +13,8 @@ const ATTRIBUTION_LABELS: Record<string, string> = {
   markdown_event_supplier_with_sale_time_returns:
     "Dobavljač iz nivelacije (inače trenutni dobavljač artikla); povraćaji po dobavljaču u trenutku prodaje.",
   markdown_event_supplier: "Dobavljač iz nivelacije (inače trenutni dobavljač artikla).",
+  sale_time_shoe_type: "Tip obuće iz trenutka prodaje.",
+  current_article_color: "Boja prema trenutnom artiklu.",
 };
 
 const COST_LABELS: Record<string, string> = {
@@ -31,6 +33,20 @@ const COHORT_LABELS: Record<string, string> = {
   first_markdown_per_article: "Artikli prema prvom sniženju.",
   latest_price_event_per_article_including_increases:
     "Poslednja promena cene po artiklu, uključujući poskupljenja.",
+  articles_with_nivelacija_event_and_sales_in_period: "Artikli sa događajem nivelacije i prodajom u izabranom periodu.",
+};
+
+const EFFECT_LABELS: Record<string, string> = {
+  unadjusted_unequal_window_revenue_and_units_pct:
+    "Procentualna razlika prihoda i količine pre/posle; prozori nisu izjednačeni po trajanju.",
+  fixed_30d_pre_post_revenue_and_units_pct:
+    "Procentualna razlika prihoda i količine kroz fiksne prozore od 30 dana pre i posle događaja.",
+};
+
+const EVENT_SELECTION_LABELS: Record<string, string> = {
+  first_nivelacija_per_article: "Prvi događaj nivelacije po artiklu.",
+  first_markdown_per_article: "Prvo sniženje po artiklu.",
+  latest_price_event_per_article: "Poslednja promena cene po artiklu.",
 };
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -52,6 +68,8 @@ const STORE_LABELS: Record<string, string> = {
 const UNKNOWN_SUPPLIER_LABELS: Record<string, string> = {
   single_unknown_bucket: "Svi nepoznati dobavljači su spojeni u jedan red „Nepoznato”.",
   unresolved_supplier_not_collapsed: "Nerazrešeni dobavljači se ne spajaju u jedan red.",
+  unknown_shoe_type_bucket: "Nepoznati tipovi obuće imaju poseban red.",
+  unknown_color_bucket: "Nepoznate boje imaju poseban red.",
 };
 
 const TIMEZONE_LABELS: Record<string, string> = {
@@ -78,6 +96,8 @@ export function buildSupplierTabBasisRows(basis: SupplierTabBasis | null | undef
     { key: "receiptPopulation", label: "Računi", value: describe(RECEIPT_LABELS, basis.receiptPopulation) },
     { key: "cohort", label: "Skup artikala", value: describe(COHORT_LABELS, basis.cohort) },
     { key: "periodSemantics", label: "Period", value: describe(PERIOD_LABELS, basis.periodSemantics) },
+    { key: "effectMetric", label: "Efekat pre/posle", value: describe(EFFECT_LABELS, basis.effectMetric) },
+    { key: "eventSelection", label: "Događaj", value: describe(EVENT_SELECTION_LABELS, basis.eventSelection) },
     { key: "storeScope", label: "Objekat", value: describe(STORE_LABELS, basis.storeScope) },
     { key: "unknownSupplierPolicy", label: "Nepoznat dobavljač", value: describe(UNKNOWN_SUPPLIER_LABELS, basis.unknownSupplierPolicy) },
     {

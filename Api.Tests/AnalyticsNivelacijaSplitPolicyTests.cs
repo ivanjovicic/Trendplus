@@ -191,4 +191,101 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Equal(50d, signal.RevenueImpactPct);
         Assert.Equal(20d, signal.UnitsImpactPct);
     }
+
+    [Theory]
+    [InlineData(5, 400d)]
+    [InlineData(15, 0d)]
+    [InlineData(25, -80d)]
+    public void Build_BaselineExposesUnequalWindowBiasForFlatDailySales(int eventDayOffset, double expectedImpactPct)
+    {
+        var periodStart = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var rows = Enumerable.Range(0, 30)
+            .Select(day => new TestRow(1, periodStart.AddDays(day), 1m, 10))
+            .ToArray();
+
+        var snapshot = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime> { [1] = periodStart.AddDays(eventDayOffset) },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+        Assert.Equal(eventDayOffset, snapshot.PreRevenue);
+        Assert.Equal(30m - eventDayOffset, snapshot.PostRevenue);
+        Assert.Equal(expectedImpactPct, snapshot.RevenueImpactPct);
+        Assert.Equal(expectedImpactPct, snapshot.UnitsImpactPct);
+        Assert.True(snapshot.HasComparableSignal);
+    }
+
+    [Fact]
+    public void Build_EventBeforePeriodStartHasNoPreEvidenceAndDoesNotInventAnImpact()
+    {
+        var periodStart = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var rows = Enumerable.Range(0, 30)
+            .Select(day => new TestRow(1, periodStart.AddDays(day), 1m, 10))
+            .ToArray();
+
+        var snapshot = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime> { [1] = periodStart.AddDays(-1) },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+
+        Assert.Equal(0m, snapshot.PreRevenue);
+        Assert.Equal(30m, snapshot.PostRevenue);
+        Assert.Equal(0, snapshot.ComparableArticleCount);
+        Assert.Null(snapshot.RevenueImpactPct);
+        Assert.Null(snapshot.UnitsImpactPct);
+        Assert.False(snapshot.HasComparableSignal);
+    }
+
+    [Fact]
+    public void Build_StoreScopedAndChainWideEventsSelectTheCorrectFirstEvent()
+    {
+        var periodStart = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var rows = Enumerable.Range(0, 30)
+            .Select(day => new TestRow(1, periodStart.AddDays(day), 1m, 10))
+            .ToArray();
+        var events = new[]
+        {
+            new Domain.Model.DnevnikPromena { Id = 1, ArtikalId = 1, IDObjekat = null, Datum = periodStart.AddDays(20) },
+            new Domain.Model.DnevnikPromena { Id = 2, ArtikalId = 1, IDObjekat = 7, Datum = periodStart.AddDays(10) },
+            new Domain.Model.DnevnikPromena { Id = 3, ArtikalId = 1, IDObjekat = 8, Datum = periodStart.AddDays(1) }
+        }.AsQueryable();
+
+        DateTime? SplitForStore(int storeId)
+        {
+            var selected = Application.Analytics.NivelacijaEventScopePolicy.ApplyStoreScope(events, storeId)
+                .Where(e => e.ArtikalId == 1)
+                .Min(e => (DateTime?)e.Datum);
+            return selected;
+        }
+
+        var storeSevenEvent = SplitForStore(7);
+        var storeNineEvent = SplitForStore(9);
+        Assert.Equal(periodStart.AddDays(10), storeSevenEvent);
+        Assert.Equal(periodStart.AddDays(20), storeNineEvent);
+
+        var storeEventOnly = new[]
+        {
+            new Domain.Model.DnevnikPromena { Id = 4, ArtikalId = 1, IDObjekat = 7, Datum = periodStart.AddDays(15) }
+        }.AsQueryable();
+        Assert.Equal(
+            periodStart.AddDays(15),
+            Application.Analytics.NivelacijaEventScopePolicy.ApplyStoreScope(storeEventOnly, 7).Min(e => e.Datum));
+        Assert.Null(Application.Analytics.NivelacijaEventScopePolicy.ApplyStoreScope(storeEventOnly, 9)
+            .Select(e => (DateTime?)e.Datum).Min());
+
+        var chainWideSnapshot = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime> { [1] = storeNineEvent!.Value },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina);
+        Assert.Equal(-50d, chainWideSnapshot.RevenueImpactPct);
+    }
 }

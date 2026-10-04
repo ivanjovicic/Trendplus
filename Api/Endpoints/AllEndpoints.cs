@@ -2831,6 +2831,7 @@ public static class AllEndpoints
                 shoeTrustMeta.RequestedDataScope = normalizedDataScope;
                 shoeTrustMeta.EffectiveDataScope = normalizedDataScope;
                 shoeTrustMeta.DataScopeSource = SalesDataScopePolicy.Source;
+                shoeTrustMeta.Basis = SupplierTabBasisPolicy.ShoeType(generatedAtUtc);
                 shoeTrustMeta = OperationsAnalyticsIntegrityMeta.ApplyIntegrityState(shoeTrustMeta, shoeIntegrityRegistry);
                 shoeTrustMeta.Context = AnalyticsContextFingerprintPolicy.Create(
                     sourceDataset: "certified_sales_rows",
@@ -3569,6 +3570,7 @@ public static class AllEndpoints
                 trustMeta.RequestedDataScope = normalizedDataScope;
                 trustMeta.EffectiveDataScope = normalizedDataScope;
                 trustMeta.DataScopeSource = SalesDataScopePolicy.Source;
+                trustMeta.Basis = SupplierTabBasisPolicy.Color(generatedAtUtc);
                 trustMeta.RequestedPeriodFromUtc = requestedFromUtc;
                 trustMeta.RequestedPeriodToUtc = requestedToUtc;
                 trustMeta.EffectivePeriodFromUtc = fromUtc;

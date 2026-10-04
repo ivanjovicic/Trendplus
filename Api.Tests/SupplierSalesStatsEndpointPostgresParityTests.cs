@@ -112,6 +112,126 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
             metrics => Assert.Equal((2, 1, 1), (metrics.GetCalls, metrics.Hits, metrics.Misses)));
     }
 
+    [Fact]
+    public async Task NivelacijaEndpoints_ExposeTheSameFlatRateEffectAndExplicitBasisAcrossOverviewDimensionsAndPrePost()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"rq550_parity_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+        await CreateFixtureAsync(connectionString!);
+        await SeedRq550FlatRateArticleAsync(connectionString!);
+
+        var cache = new RecordingAnalyticsCacheService();
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified,
+            "rq550-flat-rate-evidence",
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "rq550_fixture_verified",
+            "Fixture integrity evidence is verified.",
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false));
+        await using var factory = new SupplierEndpointFactory(connectionString!, cache, registry);
+        using var client = factory.CreateClient();
+
+        var supplier = await GetSuccessfulJsonAsync(client,
+            "/api/analytics/supplier-sales-stats?fromDate=2026-07-01&toDate=2026-08-01&dataScope=all");
+        var shoeType = await GetSuccessfulJsonAsync(client,
+            "/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-08-01&dataScope=all");
+        var color = await GetSuccessfulJsonAsync(client,
+            "/api/analytics/color-sales-stats?fromDate=2026-07-01&toDate=2026-08-01&dataScope=all");
+        var prePost = await GetSuccessfulJsonAsync(client,
+            "/api/analytics/vendor-sales-nivelacija?vendorId=8&eventDate=2026-07-16&includeInactive=true&dataScope=existing");
+        var supplierRow = supplier.GetProperty("suppliers").EnumerateArray()
+            .Single(row => row.GetProperty("dobavljacNaziv").GetString() == "RQ550 supplier");
+        var shoeRow = shoeType.GetProperty("shoeTypes").EnumerateArray()
+            .Single(row => row.GetProperty("tipObuceNaziv").GetString() == "Cizme");
+        var colorRow = color.GetProperty("colors").EnumerateArray()
+            .Single(row => row.GetProperty("boja").GetString() == "RQ550 Violet");
+        Assert.Equal(0d, supplierRow.GetProperty("prePostNivelacijaRevenueImpactPct").GetDouble());
+        Assert.Equal(0d, supplierRow.GetProperty("prePostNivelacijaUnitsImpactPct").GetDouble());
+        Assert.Equal(0d, shoeRow.GetProperty("prePostNivelacijaRevenueImpactPct").GetDouble());
+        Assert.Equal(0d, shoeRow.GetProperty("prePostNivelacijaUnitsImpactPct").GetDouble());
+        Assert.Equal(0d, colorRow.GetProperty("prePostNivelacijaRevenueImpactPct").GetDouble());
+        Assert.Equal(0d, colorRow.GetProperty("prePostNivelacijaUnitsImpactPct").GetDouble());
+
+        AssertBasis(supplier, "overview", "all_sales_in_period", "first_nivelacija_per_article");
+        AssertBasis(shoeType, "shoe_type", "articles_with_nivelacija_event_and_sales_in_period", "first_nivelacija_per_article");
+        AssertBasis(color, "color", "articles_with_nivelacija_event_and_sales_in_period", "first_nivelacija_per_article");
+        AssertBasis(prePost, "assortment", "latest_price_event_per_article_including_increases", "latest_price_event_per_article",
+            "fixed_30d_pre_post_revenue_and_units_pct");
+        var prePostArticles = prePost.GetProperty("articleStats").EnumerateArray().ToArray();
+        Assert.True(prePostArticles.Any(row => row.GetProperty("sku").GetString() == "RQ550-FLAT"), prePost.GetRawText());
+        var prePostArticle = prePostArticles.Single(row => row.GetProperty("sku").GetString() == "RQ550-FLAT");
+        Assert.Equal(150, prePostArticle.GetProperty("preQty").GetInt32());
+        Assert.Equal(150, prePostArticle.GetProperty("postQty").GetInt32());
+        Assert.Equal(0m, prePostArticle.GetProperty("changePercent").GetDecimal());
+    }
+
+    private static async Task SeedRq550FlatRateArticleAsync(string connectionString)
+    {
+        const string setupSql = """
+            INSERT INTO "Dobavljaci" ("Id", "Naziv", "DataOrigin") VALUES (8, 'RQ550 supplier', 'existing');
+            INSERT INTO "Artikli"
+                ("Id", "PLU", "Naziv", "NabavnaCena", "NabavnaCenaDin", "PrvaProdajnaCena", "ProdajnaCena",
+                 "IDDobavljac", "IDTipObuce", "UpdatedAt", "Kolicina", "MinimalnaKolicina", "IDObjekat",
+                 "IDSezona", "Kategorija", "Pol", "Velicina", "Boja", "DataOrigin")
+            VALUES (19, 'RQ550-FLAT', 'RQ550 equal daily article', 5, 5, 10, 10, 8, 5, '2026-07-01T00:00:00Z',
+                    0, 0, 1, 1, 'Obuca', 'Unisex', '42', 'RQ550 Violet', 'existing');
+
+            INSERT INTO prodaja_zaglavlje
+                (id, broj_racuna, datum_prodaje, id_objekat, korisnik_ime, data_origin)
+            SELECT 1000 + n, 'RQ550-DAY-' || n, '2026-07-01T00:00:00Z'::timestamptz + (n - 1) * interval '1 day', 1, 'rq550', 'existing'
+            FROM generate_series(1, 30) AS n;
+
+            INSERT INTO prodaja_stavke
+                (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
+            SELECT 1000 + n, 1000 + n, 19, 10, 10, 5, 8, 5, 'sale_snapshot'
+            FROM generate_series(1, 30) AS n;
+
+            INSERT INTO "DnevnikPromena"
+                ("Id", "TipPromene", "Datum", "Iznos", "DobavljacId", "ArtikalId", "StaraProdajnaCena", "NovaProdajnaCena", "Kolicina", "IDObjekat", "DataOrigin")
+            VALUES (1000, 'Nivelacija', '2026-07-16T00:00:00Z', 10, 8, 19, 11, 10, 1, 1, 'existing');
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(setupSql, connection);
+        await command.ExecuteNonQueryAsync();
+
+        var viewSqlPath = FindRepositoryFile("Database", "Analytics", "014_CreateVendorSalesNivelacijaViews.sql");
+        var viewSql = await File.ReadAllTextAsync(viewSqlPath);
+        await using var views = new NpgsqlCommand(viewSql, connection) { CommandTimeout = 120 };
+        await views.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<JsonElement> GetSuccessfulJsonAsync(HttpClient client, string path)
+    {
+        using var response = await client.GetAsync(path);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK,
+            $"Expected HTTP 200 for {path}, got {(int)response.StatusCode}: {body}");
+        using var document = JsonDocument.Parse(body);
+        return document.RootElement.Clone();
+    }
+
+    private static void AssertBasis(
+        JsonElement response,
+        string tab,
+        string cohort,
+        string eventSelection,
+        string effectMetric = "unadjusted_unequal_window_revenue_and_units_pct")
+    {
+        var basis = GetPropertyIgnoreCase(response.GetProperty("meta"), "basis");
+        Assert.Equal(tab, GetPropertyIgnoreCase(basis, "tab").GetString());
+        Assert.Equal(cohort, GetPropertyIgnoreCase(basis, "cohort").GetString());
+        Assert.Equal(effectMetric, GetPropertyIgnoreCase(basis, "effectMetric").GetString());
+        Assert.Equal(eventSelection, GetPropertyIgnoreCase(basis, "eventSelection").GetString());
+    }
+
     private static async Task CreateFixtureAsync(string connectionString)
     {
         await using (var db = new TrendplusDbContext(

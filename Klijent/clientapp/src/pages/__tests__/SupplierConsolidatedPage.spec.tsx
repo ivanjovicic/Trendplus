@@ -48,6 +48,8 @@ vi.mock("../SupplierSalesStatsPage", () => ({
           receiptPopulation: "retail_receipts_excluding_dug_korekcija",
           cohort: "all_sales_in_period",
           periodSemantics: "sale_date_in_period",
+          effectMetric: "unadjusted_unequal_window_revenue_and_units_pct",
+          eventSelection: "first_nivelacija_per_article",
           storeScope: "future_store_rule_code",
           unknownSupplierPolicy: "single_unknown_bucket",
           asOfDate: "2026-07-01",
@@ -140,6 +142,8 @@ describe("SupplierConsolidatedPage", () => {
       expect(basis).toHaveTextContent("Kako se broji");
       expect(basis).toHaveTextContent("Dobavljač u trenutku prodaje.");
       expect(basis).toHaveTextContent("Maloprodajni računi, bez DUG i KOREKCIJA dokumenata.");
+      expect(basis).toHaveTextContent("Procentualna razlika prihoda i količine pre/posle; prozori nisu izjednačeni po trajanju.");
+      expect(basis).toHaveTextContent("Prvi događaj nivelacije po artiklu.");
       expect(basis).toHaveTextContent("Svi nepoznati dobavljači su spojeni u jedan red „Nepoznato”.");
       expect(basis).toHaveTextContent("2026-07-01 — Kalendarski dan po UTC vremenu.");
       expect(basis).toHaveTextContent("Pravilo nije opisano u ovoj verziji ekrana.");

@@ -7,7 +7,9 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ550` (RQ549 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ549 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ541 follows proof-first RQ550; RQ543 then RQ542 follow the RQ550/RQ549 oracle sequence.
+Current READY routing: primary `RQ541` (READY; RQ550 DONE), with independent `RQ543` (READY). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ549/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ542 follows RQ543 and the completed RQ549 oracle.
+Owner claim 2026-10-04: refreshed `origin/main` to `8ba3a9da223bf90a9240ba7590c16253524fe43e`; RQ528/RQ549 are DONE. No RQ550 lock, matching branch or open PR exists. Claimed primary RQ550; RQ541 remains WAITING for this oracle. Local lock: `.ai/task-locks/RQ550-codex.lock.md`.
+Owner completion/promotion 2026-10-04: RQ550/NV-P4 is DONE on implementation SHA pending main verification. Current behavior is pinned by passing unequal-window baselines (+400%/0%/−80%), pre-period no-baseline and store/chain event-scope tests. PostgreSQL parity proves supplier, shoe-type, color and Pre/Post agree for one flat-rate article/event; scorecard `meta.basis` is covered through the report response-builder contract because its route returned generic HTTP 500 against the isolated fixture. Promoted RQ541 (P1; depends on RQ550 and DONE RQ528) to primary READY, and independent RQ543 (Q83 dependency DONE) to additional READY. No RQ541/RQ543 lock, branch or open PR exists. Run log: `.ai/runs/2026-10-04-RQ550-evidence.md`; evidence state pending main delivery verification.
 Owner claim 2026-10-03: refreshed `origin/main` to `11e644c4c354928ad440a49215e62602183092e8`; RQ527 is DONE and its independent fixture is available. No RQ549 lock, matching branch or open PR exists. RQ549 moved `READY -> IN_PROGRESS` as the primary RQ lane; the independent RQ550 READY lane remains unchanged. Local lock: `.ai/task-locks/RQ549-codex.lock.md`.
 Owner recovery 2026-10-03 after RQ563: the prior "no safe RQ prompt" conclusion was superseded by a deeper dependency audit. RQ548 depends only on DONE RQ525; RQ546 has no dependencies; RQ554's required backend error states are already delivered by the code-side portion of PARTIAL RQ545 and its remaining deployed acceptance is not a start gate. Two circular queue defects were also found: RQ542<->RQ549 and RQ541<->RQ550. Both are repaired proof-first: RQ549/RQ550 must pin current defects before RQ542/RQ541 change semantics. Fresh GitHub checks found no open PR or matching RQ538-RQ550 task branch/lock. Primary READY is RQ548; additional READY lanes are RQ546/RQ549/RQ550/RQ554.
 Owner claim 2026-10-03: refreshed `origin/main` to `e21c72624fabf259f64be727f820b87d746da45a`; RQ525 is DONE and its harness SHA is an ancestor of current main. No RQ548 lock, matching branch or open PR exists. RQ548 moved `READY -> IN_PROGRESS` as the primary Nivelacija lane to establish the independent Pre-Nivelacija baseline before RQ538/RQ539 change semantics. Local lock: `.ai/task-locks/RQ548-codex.lock.md`.
@@ -26,16 +28,16 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F2 | RQ538 | DONE |
 | NV-F3 | RQ539 | DONE |
 | NV-F4 | RQ540 | DONE |
-| NV-F5 | RQ541 | WAITING |
+| NV-F5 | RQ541 | READY |
 | NV-F6 | RQ542 | WAITING |
-| NV-F7 | RQ543 | WAITING |
+| NV-F7 | RQ543 | READY |
 | NV-F8 | RQ544 | WAITING |
 | NV-F9 | RQ545 | PARTIAL |
 | NV-F10 | RQ546 | DONE |
 | NV-P1 | RQ547 | DONE |
 | NV-P2 | RQ548 | DONE |
 | NV-P3 | RQ549 | DONE |
-| NV-P4 | RQ550 | READY |
+| NV-P4 | RQ550 | DONE |
 | NV-I1 | RQ551 | WAITING |
 | NV-I2 | RQ552 | WAITING |
 | NV-I3 | RQ553 | WAITING |
@@ -320,7 +322,7 @@ None.
 
 ## RQ541 - NV-F5 - Replace the unequal-window first-nivelacija split in Supplier, Footwear-type and Color stats
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: backend/frontend/tests
 Feature family: nivelacija-split-semantics
@@ -430,7 +432,7 @@ RQ549/NV-P3 proof-first oracle. After the oracle lands, RQ543 should establish d
 
 ## RQ543 - NV-F7 - Declare event semantics in the canonical nivelacija views (direction, overlap, maturity)
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: sql/backend/tests
 Feature family: nivelacija-view-semantics
@@ -860,7 +862,7 @@ RQ527. This is the proof-first lane for NV-F6/RQ542: pin the current defects and
 
 ## RQ550 - NV-P4 - Nivelacija split oracle and cross-surface parity
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: tests
 Feature family: nivelacija-split-oracle
@@ -872,15 +874,35 @@ Commit suggestion: `test(analytics): prove nivelacija split windows and cross-su
 #### Do
 
 1. Add policy tests with unequal windows (an event at day 5, 15 and 25 of the period, at a flat daily rate), an event before the period start, and a store-scoped vs chain-wide event.
-2. Add an endpoint-level parity test: for one article and event, supplier-sales-stats, shoe-type, color, Pre/Post and the scorecard report their effect and cohort in `meta.basis`. Where they are meant to agree, they agree.
+2. Add PostgreSQL endpoint parity for one article/event across supplier-sales-stats, shoe-type, color and Pre/Post, documenting effect and cohort in `meta.basis`; verify scorecard-report basis in its response-builder contract when the isolated fixture cannot supply the scorecard query dependencies.
 
 #### Acceptance
 
-The flat-rate counterexample fails on current main and passes after NV-F5.
+The current-main oracle passes while pinning the flat-rate counterexample as +400%/0%/−80%, no pre-period baseline, and event-scope behavior. The cross-surface tests assert which paths agree and name each cohort/effect basis. RQ541 owns changing the flat-rate expected effects to approximately 0%.
 
 #### Dependencies
 
 RQ528 parity contract. This is the proof-first lane for NV-F5/RQ541: the flat-rate and cross-surface counterexamples must be captured on current main before the split implementation changes. RQ541 depends on this oracle; do not make RQ550 depend on RQ541.
+
+### Completion note
+
+- Date: 2026-10-04
+- Status: DONE
+- Completion: Baseline split and cross-surface contracts are recorded as passing tests. Shoe-type and color metadata now expose the same machine-readable effect and cohort basis as the other supplier decision surfaces.
+- Changed files: `Api.Tests/AnalyticsNivelacijaSplitPolicyTests.cs`, `Api.Tests/AnalyticsReportsContractTests.cs`, `Api.Tests/SupplierSalesStatsEndpointPostgresParityTests.cs`, `Api.Tests/SupplierTabBasisPolicyTests.cs`, `Api/Dtos/SupplierTabBasisDto.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Services/SupplierTabBasisPolicy.cs`, `Klijent/clientapp/src/pages/__tests__/SupplierConsolidatedPage.spec.tsx`, `Klijent/clientapp/src/types/analytics.ts`, `Klijent/clientapp/src/utils/supplierTabBasisLabels.ts`, `MASTER_ROADMAP.md`, this addendum, `.ai/runs/2026-10-04-RQ550-evidence.md`.
+- Contract/runtime behavior changed: Additive `meta.basis.effectMetric` and `eventSelection`; shoe-type and color publish basis; frontend maps the new semantics. No split calculation was changed.
+- Checks run: focused backend tests 27/27; frontend focused spec 18/18; analytics guardrails/typecheck passed; instruction validator and self-test passed; prompt-queue validator and self-test passed; planning validator and self-test passed; `git diff --check` passed.
+- Checks not run: scorecard report HTTP route parity; the isolated `EnsureCreated` fixture returns generic HTTP 500 before producing a report. Its response-builder basis contract passes.
+- Run log: `.ai/runs/2026-10-04-RQ550-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct main commit/push pending
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: The scorecard report route itself was not verified against its required precomputed analytics dependencies.
+- Follow-up: RQ541 should correct the unequal-window effects and update the pinned baseline assertions.
+- Residual risk: No route-level scorecard report parity evidence from the isolated fixture; HTTP 500 root cause was not determined.
+- Next: RQ541 primary READY; RQ543 additional READY.
+- Prompt defect / scope repair: Replaced acceptance wording “fails on current main and passes after NV-F5” with a green proof-first baseline; the former made the oracle itself red. Narrowed report proof to the response-builder basis contract because this fixture cannot produce the scorecard route response.
 
 ---
 

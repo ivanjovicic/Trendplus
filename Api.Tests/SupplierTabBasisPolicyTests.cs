@@ -20,6 +20,8 @@ public sealed class SupplierTabBasisPolicyTests
         Assert.Equal(SupplierTabBasisPolicy.RetailReceiptsExcludingDugKorekcija, basis.ReceiptPopulation);
         Assert.Equal("all_sales_in_period", basis.Cohort);
         Assert.Equal("sale_date_in_period", basis.PeriodSemantics);
+        Assert.Equal(SupplierTabBasisPolicy.UnequalWindowRevenueAndUnitsPct, basis.EffectMetric);
+        Assert.Equal(SupplierTabBasisPolicy.FirstNivelacijaPerArticle, basis.EventSelection);
         Assert.Equal(SupplierUnknownBucketPolicy.Policy, basis.UnknownSupplierPolicy);
         Assert.Equal("2026-10-01", basis.AsOfDate);
         Assert.Equal("UTC", basis.Timezone);
@@ -39,6 +41,8 @@ public sealed class SupplierTabBasisPolicyTests
         Assert.Equal("first_markdown_per_article", basis.Cohort);
         Assert.Equal("markdown_event_supplier_with_sale_time_returns", basis.SupplierAttribution);
         Assert.Equal("unresolved_supplier_not_collapsed", basis.UnknownSupplierPolicy);
+        Assert.Equal(SupplierTabBasisPolicy.Fixed30DayRevenueAndUnitsPct, basis.EffectMetric);
+        Assert.Equal(SupplierTabBasisPolicy.FirstMarkdownPerArticleEvent, basis.EventSelection);
     }
 
     [Fact]
@@ -53,6 +57,26 @@ public sealed class SupplierTabBasisPolicyTests
         Assert.Equal("price_event_date_in_period_with_30d_pre_post", basis.PeriodSemantics);
         Assert.Equal("store_filter_applies_to_events_and_sales", basis.StoreScope);
         Assert.Equal(SupplierUnknownBucketPolicy.Policy, basis.UnknownSupplierPolicy);
+        Assert.Equal(SupplierTabBasisPolicy.Fixed30DayRevenueAndUnitsPct, basis.EffectMetric);
+        Assert.Equal(SupplierTabBasisPolicy.LatestPriceEventPerArticleEvent, basis.EventSelection);
+    }
+
+    [Fact]
+    public void ShoeTypeAndColorBasisDeclareSplitEffectAndArticleEventCohort()
+    {
+        var bases = new[]
+        {
+            SupplierTabBasisPolicy.ShoeType(NowUtc),
+            SupplierTabBasisPolicy.Color(NowUtc)
+        };
+
+        Assert.Equal(new[] { "shoe_type", "color" }, bases.Select(basis => basis.Tab));
+        Assert.All(bases, basis =>
+        {
+            Assert.Equal("articles_with_nivelacija_event_and_sales_in_period", basis.Cohort);
+            Assert.Equal(SupplierTabBasisPolicy.UnequalWindowRevenueAndUnitsPct, basis.EffectMetric);
+            Assert.Equal(SupplierTabBasisPolicy.FirstNivelacijaPerArticle, basis.EventSelection);
+        });
     }
 
     [Fact]
@@ -63,6 +87,8 @@ public sealed class SupplierTabBasisPolicyTests
             SupplierTabBasisPolicy.Overview(NowUtc),
             SupplierTabBasisPolicy.Scorecard("90d", NowUtc),
             SupplierTabBasisPolicy.Assortment(NowUtc),
+            SupplierTabBasisPolicy.ShoeType(NowUtc),
+            SupplierTabBasisPolicy.Color(NowUtc),
         };
 
         Assert.All(bases, basis =>
@@ -131,6 +157,8 @@ public sealed class SupplierTabBasisPolicyTests
 
         Assert.Contains("supplierTrustMeta.Basis = SupplierTabBasisPolicy.Overview(", allEndpoints);
         Assert.Contains("response.Meta.Basis = SupplierTabBasisPolicy.Assortment(", allEndpoints);
+        Assert.Contains("shoeTrustMeta.Basis = SupplierTabBasisPolicy.ShoeType(", allEndpoints);
+        Assert.Contains("trustMeta.Basis = SupplierTabBasisPolicy.Color(", allEndpoints);
         Assert.Contains("meta.Basis = SupplierTabBasisPolicy.Scorecard(", hub);
         Assert.Contains("Basis = meta.Basis", allEndpoints);
         Assert.Contains("Basis = source.Basis", hub);

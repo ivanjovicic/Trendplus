@@ -129,6 +129,8 @@ export interface SupplierTabBasis {
   receiptPopulation: string;
   cohort: string;
   periodSemantics: string;
+  effectMetric?: string | null;
+  eventSelection?: string | null;
   storeScope: string;
   unknownSupplierPolicy: string;
   asOfDate: string;
