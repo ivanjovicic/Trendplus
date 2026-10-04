@@ -1065,6 +1065,9 @@ export default function ColorSalesStatsPage() {
           ? `${data.lineage.observedPopulation}; ${data.lineage.prePostPolicy}`
           : lineageBasis}
         dataQualityStatus={trustDataQualityStatus}
+        meta={responseMeta}
+        trustPending={loading}
+        showOperationsTrust
         mode="signal"
         isPartial={trustIsPartial}
         recommendationNote="Boja je podržavajući analitički signal, ne samostalna konačna preporuka. Backend status i razlog ostaju autoritativna evidencija; skor odluke je samo detalj/transparencija kada je dozvoljen."

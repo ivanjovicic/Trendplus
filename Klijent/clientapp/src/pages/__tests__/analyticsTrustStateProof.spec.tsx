@@ -6,6 +6,10 @@ import DailySalesStatsPage from "../DailySalesStatsPage";
 import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import SupplierSalesStatsPage from "../SupplierSalesStatsPage";
 import AnalyticsActionsPage from "../AnalyticsActionsPage";
+import ColorSalesStatsPage from "../ColorSalesStatsPage";
+import ProdajaPrePostNivelacijePage from "../ProdajaPrePostNivelacijePage";
+import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
+import InventoryPage from "../InventoryPage";
 import { getStores } from "../../services/analyticsApi";
 import { getDailySalesStats } from "../../services/dailySalesStatsApi";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
@@ -35,6 +39,16 @@ vi.mock("../../services/analyticsApi", async () => {
   return {
     ...actual,
     getStores: vi.fn(),
+    getSupplierFilters: vi.fn(),
+    getInventoryReportSchedules: vi.fn(),
+    getInventoryBalance: vi.fn(),
+    getInventoryList: vi.fn(),
+    getInventoryInsights: vi.fn(),
+    getInventoryStoreComparison: vi.fn(),
+    getInventoryActionSuggestions: vi.fn(),
+    getForecast: vi.fn(),
+    getInventoryAlerts: vi.fn(),
+    getRebalanceSuggestions: vi.fn(),
     getAnalyticsActions: vi.fn(),
     getAnalyticsActionCounts: vi.fn(),
     getAnalyticsActionOutcomeSummary: vi.fn(),
@@ -60,11 +74,31 @@ vi.mock("../../services/supplierSalesStatsApi", () => ({
   getSupplierSalesStats: vi.fn(),
 }));
 
+vi.mock("../../services/colorSalesStatsApi", () => ({ getColorSalesStats: vi.fn() }));
+vi.mock("../../services/vendorSalesNivelacijaApi", () => ({ getVendorSalesNivelacija: vi.fn() }));
+vi.mock("../../services/dobavljaciApi", () => ({ getDobavljaci: vi.fn().mockResolvedValue([]) }));
+vi.mock("../../services/preNivelacijaApi", () => ({
+  getPreNivelacijaPrioriteti: vi.fn(),
+  PreNivelacijaApiError: class extends Error {},
+}));
+
 describe("analytics trust-state header proof", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.setItem("trendplus:dataScope", "all");
     vi.mocked(getStores).mockResolvedValue([]);
+    const analyticsApi = await import("../../services/analyticsApi");
+    vi.mocked(analyticsApi.getSupplierFilters).mockResolvedValue([]);
+    vi.mocked(analyticsApi.getInventoryReportSchedules).mockResolvedValue([]);
+    vi.mocked(analyticsApi.getInventoryInsights).mockResolvedValue({
+      totalItems: 0,
+      totalEstimatedValue: 0,
+      aging: [],
+      abc: [],
+      topAgedItems: [],
+      topCapitalLockedItems: [],
+      meta: { success: true },
+    } as never);
   });
 
   it("Daily Sales mounts the real AnalyticsTrustHeader", async () => {
@@ -82,6 +116,8 @@ describe("analytics trust-state header proof", () => {
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
+    expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno za izabrani kontekst");
   });
 
   it("Shoe Type mounts the real AnalyticsTrustHeader", async () => {
@@ -99,6 +135,86 @@ describe("analytics trust-state header proof", () => {
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Nije dostupno");
+    expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno za izabrani kontekst");
+  });
+
+  it.each([
+    { title: "Color", route: "/analytics/color-sales-stats", Page: ColorSalesStatsPage, service: "color" },
+    { title: "Pre/Post Nivelacija", route: "/analytics/vendor-sales-nivelacija", Page: ProdajaPrePostNivelacijePage, service: "prepost" },
+    { title: "Pre-Nivelacija Priorities", route: "/analytics/pre-nivelacija-priorities", Page: PreNivelacijaPriorityPage, service: "priority" },
+    { title: "Inventory", route: "/analytics/inventory", Page: InventoryPage, service: "inventory" },
+  ])("$title mounts the shared trust header and exposes fail-closed state", async ({ route, Page, service }) => {
+    const analyticsApi = await import("../../services/analyticsApi");
+    if (service === "color") {
+      const api = await import("../../services/colorSalesStatsApi");
+      vi.mocked(api.getColorSalesStats).mockRejectedValue(new Error("backend down"));
+    } else if (service === "prepost") {
+      const api = await import("../../services/vendorSalesNivelacijaApi");
+      vi.mocked(api.getVendorSalesNivelacija).mockRejectedValue(new Error("backend down"));
+    } else if (service === "priority") {
+      const api = await import("../../services/preNivelacijaApi");
+      vi.mocked(api.getPreNivelacijaPrioriteti).mockRejectedValue(new Error("backend down"));
+    } else {
+      vi.mocked(analyticsApi.getInventoryBalance).mockResolvedValue({
+        totalSku: 1, totalOnHand: 10, outOfStockCount: 0, lowStockCount: 0, estimatedInventoryValue: 1000,
+        meta: { success: true },
+      } as never);
+      vi.mocked(analyticsApi.getInventoryList).mockResolvedValue({
+        items: [{ id: 501, naziv: "Artikal A", plu: "PLU-501", kolicina: 10, minimalnaKolicina: 3, nabavnaCena: 100, estimatedValue: 1000, idObjekat: 1, idDobavljac: null }],
+        totalCount: 1,
+        pageNumber: 1,
+        pageSize: 50,
+        meta: {
+          success: true,
+          operationsIntegrityStatus: "verified",
+          operationsIntegrityContextMatches: true,
+          operationsIntegrityEvidenceId: "inventory-evidence-1",
+          operationsIntegrityContextFingerprint: "inventory-context-1",
+        },
+      } as never);
+      vi.mocked(analyticsApi.getInventoryInsights).mockResolvedValue({
+        meta: {
+          success: true,
+          decisionReadiness: {
+            state: "decision_ready",
+            surfaceRole: "recommendation",
+            recommendationAllowed: true,
+            reasonCodes: [],
+            evidenceReferences: ["inventory.snapshot"],
+          },
+        },
+      } as never);
+      vi.mocked(analyticsApi.getInventoryStoreComparison).mockRejectedValue(new Error("backend down"));
+      vi.mocked(analyticsApi.getInventoryActionSuggestions).mockRejectedValue(new Error("backend down"));
+      vi.mocked(analyticsApi.getForecast).mockRejectedValue(new Error("backend down"));
+      vi.mocked(analyticsApi.getInventoryAlerts).mockRejectedValue(new Error("backend down"));
+      vi.mocked(analyticsApi.getRebalanceSuggestions).mockRejectedValue(new Error("backend down"));
+      vi.mocked(analyticsApi.getSupplierFilters).mockResolvedValue([]);
+      vi.mocked(analyticsApi.getInventoryReportSchedules).mockResolvedValue([]);
+    }
+
+    render(
+      <MemoryRouter initialEntries={[route]}>
+        <Routes>
+          <Route path={route} element={<Page />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    if (service === "inventory") {
+      expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Spremno za odluku");
+      expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Provereno za ovaj kontekst");
+      expect(screen.getByRole("link", { name: "Pregledaj dokaz" })).toHaveAttribute(
+        "href",
+        "/api/analytics/operations-integrity/evidence/inventory-evidence-1",
+      );
+    } else {
+      expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent(/Nije dostupno|Provera u toku/);
+      expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent(/Nije provereno|Provera u toku|nije dostupno/i);
+      expect(screen.queryByRole("link", { name: "Pregledaj dokaz" })).not.toBeInTheDocument();
+    }
   });
 
   it("Supplier sales mounts the real AnalyticsTrustHeader", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyticsResponseMetaSchema,
   colorSalesStatsResponseSchema,
   dailySalesTableResponseSchema,
   inventoryInsightsResponseSchema,
@@ -129,6 +130,33 @@ const validColorResponse = {
     recommendationAllowed: false,
   },
 };
+
+describe("analytics response trust metadata", () => {
+  it("accepts backend readiness plus context-bound Operations integrity evidence", () => {
+    const meta = analyticsResponseMetaSchema.parse({
+      success: true,
+      decisionReadiness: {
+        state: "blocked",
+        surfaceRole: "recommendation",
+        recommendationAllowed: false,
+        reasonCodes: ["data_quality_blocks_decision"],
+        evidenceReferences: ["inventory.stock"],
+        repairPath: "Inventory refresh status",
+      },
+      operationsIntegrityStatus: "drift_detected",
+      operationsIntegrityCheckedAtUtc: "2026-10-04T13:00:00Z",
+      operationsIntegrityEvidenceId: "inventory-evidence-1",
+      operationsIntegrityFamily: "inventory",
+      operationsIntegrityContextFingerprint: "integrity-context-1",
+      operationsIntegritySourceGeneration: "generation-1",
+      operationsIntegrityContextMatches: true,
+    });
+
+    expect(meta.decisionReadiness?.state).toBe("blocked");
+    expect(meta.operationsIntegrityEvidenceId).toBe("inventory-evidence-1");
+    expect(meta.operationsIntegrityContextMatches).toBe(true);
+  });
+});
 
 const validShoeResponse = {
   generatedAt: "2026-07-01T08:00:00Z",

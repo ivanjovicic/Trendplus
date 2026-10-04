@@ -1278,6 +1278,9 @@ export default function PreNivelacijaPriorityPage() {
         mode={data?.recommendationAllowed === true ? "recommendation" : "signal"}
         recommendationAllowed={data?.recommendationAllowed ?? null}
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
+        meta={dataMeta}
+        trustPending={loading}
+        showOperationsTrust
         isPartial={showMetaWarning}
         emptyStateReason={showEmptyState ? (dataMetaMessage ?? null) : null}
         methodologyHref="/analytics/data-quality"

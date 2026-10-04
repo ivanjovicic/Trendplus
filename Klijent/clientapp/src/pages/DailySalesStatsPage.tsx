@@ -1938,6 +1938,9 @@ export default function DailySalesStatsPage() {
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Dnevna prodaja (opseg: ${dataScopeLabel(normalizeDataScope(data?.dataScope ?? memoizedQueryDataScope))})`}
         dataQualityStatus={trustDataQualityStatus}
+        meta={responseMeta}
+        trustPending={loading}
+        showOperationsTrust
         isPartial={trustIsPartial}
         mode="signal"
         methodologyHref="/analytics/data-quality"

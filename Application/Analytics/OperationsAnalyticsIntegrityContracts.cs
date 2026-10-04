@@ -65,6 +65,45 @@ public static class OperationsAnalyticsIntegrityFamilies
         => Enrolled.Single(definition => string.Equals(definition.Family, family, StringComparison.Ordinal));
 }
 
+/// <summary>
+/// Builds the exact context identity used by a bounded Operations integrity probe.
+/// Endpoint metadata can use it to avoid presenting proof from another filter or
+/// invalidation generation as current for the selected request.
+/// </summary>
+public static class OperationsAnalyticsIntegrityContextPolicy
+{
+    public static string CreateFingerprint(
+        string family,
+        string sourceGeneration,
+        DateTime fromUtc,
+        DateTime toUtc,
+        string dataScope,
+        int? storeId)
+        => AnalyticsContextFingerprintPolicy.Create(
+            sourceDataset: $"integrity:{family}",
+            sourceGeneration: sourceGeneration,
+            formulaVersion: "analytics_integrity_probe_v2",
+            materializerGeneration: "bounded-independent-probe",
+            rowLimitSemantics: $"max_rows:{OperationsAnalyticsIntegrityFamilies.DefinitionFor(family).MaxRows}",
+            requestedPeriodFromUtc: fromUtc,
+            requestedPeriodToUtc: toUtc,
+            effectivePeriodFromUtc: fromUtc,
+            effectivePeriodToUtc: toUtc,
+            observedPeriodFromUtc: fromUtc,
+            observedPeriodToUtc: toUtc,
+            requestedDataScope: dataScope,
+            effectiveDataScope: dataScope,
+            dataScopeSource: "operations_integrity_probe",
+            populationKey: family,
+            populationFilters: new Dictionary<string, string?>
+            {
+                ["store_id"] = storeId?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["family"] = family
+            },
+            cacheGeneration: null,
+            resultState: AnalyticsContextFingerprintPolicy.StateAvailable).Fingerprint!;
+}
+
 public sealed record OperationsAnalyticsIntegrityFamilyDefinition(
     string Family,
     string Owner,

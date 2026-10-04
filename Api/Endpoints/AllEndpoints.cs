@@ -2037,6 +2037,21 @@ public static class AllEndpoints
                         supplierTrustMeta.Success,
                         supplierTrustMeta.IsPartial,
                         supplierTrustMeta.EmptyReason is not null));
+                OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+                    supplierTrustMeta,
+                    operationsIntegrityRegistry,
+                    OperationsAnalyticsIntegrityFamilies.SupplierShoeType,
+                    fromUtc ?? DateTime.MinValue,
+                    toUtc ?? DateTime.MinValue,
+                    normalizedDataScope,
+                    storeId);
+                var supplierReadiness = supplierTrustMeta.DecisionReadiness;
+                AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                    supplierTrustMeta,
+                    "recommendation",
+                    reasonCodes: supplierReadiness?.ReasonCodes,
+                    evidenceReferences: supplierReadiness?.EvidenceReferences,
+                    repairPath: supplierReadiness?.RepairPath);
                 supplierTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
                     "supplier",
                     supplierTrustMeta,
@@ -2861,6 +2876,21 @@ public static class AllEndpoints
                         shoeTrustMeta.Success,
                         shoeTrustMeta.IsPartial,
                         shoeTrustMeta.EmptyReason is not null));
+                OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+                    shoeTrustMeta,
+                    shoeIntegrityRegistry,
+                    OperationsAnalyticsIntegrityFamilies.SupplierShoeType,
+                    fromUtc ?? DateTime.MinValue,
+                    toUtc ?? DateTime.MinValue,
+                    normalizedDataScope,
+                    storeId);
+                var shoeReadiness = shoeTrustMeta.DecisionReadiness;
+                AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                    shoeTrustMeta,
+                    "recommendation",
+                    reasonCodes: shoeReadiness?.ReasonCodes,
+                    evidenceReferences: shoeReadiness?.EvidenceReferences,
+                    repairPath: shoeReadiness?.RepairPath);
                 shoeTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
                     "shoe-type",
                     shoeTrustMeta,
@@ -2974,6 +3004,7 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
+                var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
 
                 if (sezonaId.HasValue)
                 {
@@ -3030,7 +3061,15 @@ public static class AllEndpoints
                         };
 
                     return Results.Content(
-                        ApplyColorSalesCacheMetadata(cachedResponse.JsonPayload, cachedMetadata, cachePolicy),
+                        ApplyColorSalesCacheMetadata(
+                            cachedResponse.JsonPayload,
+                            cachedMetadata,
+                            cachePolicy,
+                            operationsIntegrityRegistry,
+                            fromUtc ?? DateTime.MinValue,
+                            toUtc ?? DateTime.MinValue,
+                            normalizedDataScope,
+                            storeId),
                         "application/json");
                 }
 
@@ -3816,7 +3855,15 @@ public static class AllEndpoints
                     ct);
 
                 return Results.Content(
-                    ApplyColorSalesCacheMetadata(responseJson, cacheMetadata, cachePolicy),
+                    ApplyColorSalesCacheMetadata(
+                        responseJson,
+                        cacheMetadata,
+                        cachePolicy,
+                        operationsIntegrityRegistry,
+                        fromUtc ?? DateTime.MinValue,
+                        toUtc ?? DateTime.MinValue,
+                        normalizedDataScope,
+                        storeId),
                     "application/json");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -7667,6 +7714,15 @@ public static class AllEndpoints
     {
         response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
         response.Meta.RecommendationAllowed = response.RecommendationAllowed;
+        if (response.Meta.DecisionReadiness is null)
+        {
+            AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                response.Meta,
+                "report",
+                reasonCodes: ["nivelacija.report_evidence"],
+                evidenceReferences: ["nivelacija.salesEvidence", "nivelacija.eventEvidence"],
+                repairPath: "Data Quality ili Nivelacija evidence");
+        }
         response.Meta.Basis = SupplierTabBasisPolicy.Assortment(response.Meta.GeneratedAtUtc);
         return response;
     }
@@ -7725,7 +7781,9 @@ public static class AllEndpoints
             }
         }
 
-        return ApplyVendorSalesNivelacijaContext(meta, response);
+        return OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(
+            ApplyVendorSalesNivelacijaContext(meta, response),
+            "nivelacija");
     }
 
     private static AnalyticsResponseMetaDto ApplyVendorSalesNivelacijaContext(
@@ -7944,6 +8002,13 @@ public static class AllEndpoints
             DataQualityStatus = meta.DataQualityStatus,
             RecommendationAllowed = meta.RecommendationAllowed,
             IsPartial = meta.IsPartial,
+            OperationsIntegrityStatus = meta.OperationsIntegrityStatus,
+            OperationsIntegrityCheckedAtUtc = meta.OperationsIntegrityCheckedAtUtc,
+            OperationsIntegrityEvidenceId = meta.OperationsIntegrityEvidenceId,
+            OperationsIntegrityFamily = meta.OperationsIntegrityFamily,
+            OperationsIntegrityContextFingerprint = meta.OperationsIntegrityContextFingerprint,
+            OperationsIntegritySourceGeneration = meta.OperationsIntegritySourceGeneration,
+            OperationsIntegrityContextMatches = meta.OperationsIntegrityContextMatches,
             MetricProvenance = meta.MetricProvenance,
             Context = meta.Context,
             DecisionReadiness = meta.DecisionReadiness,
@@ -8017,7 +8082,12 @@ public static class AllEndpoints
     internal static string ApplyColorSalesCacheMetadata(
         string jsonPayload,
         AnalyticsCacheMetadata metadata,
-        AnalyticsCachePolicyEntry policy)
+        AnalyticsCachePolicyEntry policy,
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null,
+        DateTime fromUtc = default,
+        DateTime toUtc = default,
+        string dataScope = "all",
+        int? storeId = null)
     {
         var root = JsonNode.Parse(jsonPayload)?.AsObject()
             ?? throw new InvalidOperationException("Color cache payload is not a JSON object.");
@@ -8044,6 +8114,24 @@ public static class AllEndpoints
                 meta["dataQualityStatus"] = staleWarning.DataQualityStatus;
             }
         }
+
+        var trustMeta = JsonSerializer.Deserialize<AnalyticsResponseMetaDto>(meta.ToJsonString(), ColorSalesCacheJsonOptions)
+            ?? AnalyticsResponseMetaFactory.Success();
+        OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            trustMeta,
+            integrityRegistry,
+            OperationsAnalyticsIntegrityFamilies.SupplierShoeType,
+            fromUtc,
+            toUtc,
+            dataScope,
+            storeId);
+        meta["operationsIntegrityStatus"] = trustMeta.OperationsIntegrityStatus;
+        meta["operationsIntegrityCheckedAtUtc"] = trustMeta.OperationsIntegrityCheckedAtUtc;
+        meta["operationsIntegrityEvidenceId"] = trustMeta.OperationsIntegrityEvidenceId;
+        meta["operationsIntegrityFamily"] = trustMeta.OperationsIntegrityFamily;
+        meta["operationsIntegrityContextFingerprint"] = trustMeta.OperationsIntegrityContextFingerprint;
+        meta["operationsIntegritySourceGeneration"] = trustMeta.OperationsIntegritySourceGeneration;
+        meta["operationsIntegrityContextMatches"] = trustMeta.OperationsIntegrityContextMatches;
 
         root["meta"] = meta;
         return root.ToJsonString();

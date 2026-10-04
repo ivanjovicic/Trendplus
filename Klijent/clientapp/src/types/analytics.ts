@@ -116,6 +116,10 @@ export interface AnalyticsResponseMeta {
   operationsIntegrityStatus?: "verified" | "unverified" | "degraded" | "drift_detected" | string | null;
   operationsIntegrityCheckedAtUtc?: string | null;
   operationsIntegrityEvidenceId?: string | null;
+  operationsIntegrityFamily?: string | null;
+  operationsIntegrityContextFingerprint?: string | null;
+  operationsIntegritySourceGeneration?: string | null;
+  operationsIntegrityContextMatches?: boolean | null;
   decisionReadiness?: AnalyticsDecisionReadiness | null;
   basis?: SupplierTabBasis | null;
 }

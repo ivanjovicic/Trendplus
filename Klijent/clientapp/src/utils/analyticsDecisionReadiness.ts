@@ -32,3 +32,18 @@ export function isAnalyticsDecisionActionable(
   const readiness = getAnalyticsDecisionReadiness(meta);
   return readiness.state === "decision_ready" && readiness.recommendationAllowed === true;
 }
+
+export type AnalyticsIntegrityState = "verified" | "unverified" | "degraded" | "drift_detected" | "unavailable";
+
+export function getAnalyticsIntegrityState(
+  meta: AnalyticsResponseMeta | null | undefined,
+  contextIsCurrent: boolean,
+): AnalyticsIntegrityState {
+  if (!contextIsCurrent) return "unverified";
+  const status = meta?.operationsIntegrityStatus?.trim().toLowerCase();
+  if (status === "verified" || status === "unverified" || status === "degraded" || status === "drift_detected") {
+    if (status === "verified" && !meta?.operationsIntegrityEvidenceId?.trim()) return "unverified";
+    return status;
+  }
+  return "unavailable";
+}

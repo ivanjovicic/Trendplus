@@ -13,6 +13,7 @@ using Application.Common.Interfaces;
 using Infrastructure.Services.Caching;
 using Infrastructure.Services.Analytics;
 using Api.Services;
+using Infrastructure.Services;
 using MediatR;
 using Domain.Model;
 using Domain.Model.Analytics;
@@ -740,6 +741,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/inventory/list", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            OperationsAnalyticsIntegrityRegistry integrityRegistry,
             HttpContext httpContext,
             ILoggerFactory loggerFactory,
             int page = 1,
@@ -942,6 +944,14 @@ public static class CachedAnalyticsEndpoints
 
                 var listMeta = paged.Meta ?? AnalyticsResponseMetaFactory.Success();
                 listMeta.CorrelationId = correlationId;
+                OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+                    listMeta,
+                    integrityRegistry,
+                    OperationsAnalyticsIntegrityFamilies.Inventory,
+                    salesWindowStartUtc,
+                    salesWindowEndUtc,
+                    normalizedDataScope,
+                    storeId);
                 return Results.Ok(paged with { Meta = listMeta });
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

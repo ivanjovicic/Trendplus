@@ -1,9 +1,12 @@
 using Api.Models;
 using Api.Services;
+using Application.Analytics;
+using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -21,6 +24,7 @@ public static class DailySalesStatsEndpoints
             IAnalyticsCacheService cache,
             ILogger<Program> logger,
             HttpContext httpContext,
+            OperationsAnalyticsIntegrityRegistry integrityRegistry,
             CancellationToken ct) =>
         {
             try
@@ -73,6 +77,23 @@ public static class DailySalesStatsEndpoints
                     CacheExpiration.Long,
                     ct);
 
+                OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+                    result.Meta,
+                    integrityRegistry,
+                    OperationsAnalyticsIntegrityFamilies.SalesDashboard,
+                    fromUtc.Date,
+                    toUtc.Date.AddDays(1),
+                    normalizedDataScope,
+                    request.StoreId);
+                if (result.Meta.DecisionReadiness is null)
+                {
+                    AnalyticsResponseMetaFactory.ApplyDecisionReadiness(
+                        result.Meta,
+                        "signal",
+                        reasonCodes: ["daily_sales.actionability_not_assessed"],
+                        evidenceReferences: ["daily_sales.rows", "daily_sales.shifts"],
+                        repairPath: "Daily Sales kvalitet i opseg podataka");
+                }
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

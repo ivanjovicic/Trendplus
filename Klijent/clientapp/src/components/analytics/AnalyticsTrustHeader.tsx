@@ -2,6 +2,8 @@
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
+import { getAnalyticsDecisionReadiness, getAnalyticsIntegrityState } from "../../utils/analyticsDecisionReadiness";
+import type { AnalyticsResponseMeta } from "../../types/analytics";
 import "./AnalyticsTrustHeader.css";
 
 type AnalyticsTrustHeaderProps = {
@@ -46,6 +48,8 @@ type AnalyticsTrustHeaderProps = {
   fallbackReasonCode?: string | null;
   recommendationAllowed?: boolean | null;
   trustPending?: boolean;
+  meta?: AnalyticsResponseMeta | null;
+  showOperationsTrust?: boolean;
 };
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
@@ -199,6 +203,8 @@ export default function AnalyticsTrustHeader({
   fallbackReasonCode,
   recommendationAllowed,
   trustPending = false,
+  meta = null,
+  showOperationsTrust = false,
 }: AnalyticsTrustHeaderProps) {
   const normalizedStatus = trustPending ? null : normalizeStatus(dataQualityStatus);
   const tone = trustPending ? "neutral" : statusTone(normalizedStatus);
@@ -239,6 +245,48 @@ export default function AnalyticsTrustHeader({
   const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
+  const readiness = trustPending
+    ? null
+    : getAnalyticsDecisionReadiness(meta, mode === "recommendation" ? "recommendation" : mode === "signal" ? "signal" : "report");
+  const readinessState = trustPending ? "unavailable" : readiness?.state;
+  const readinessStateIsKnown = readinessState === "decision_ready"
+    || readinessState === "signal_only"
+    || readinessState === "blocked"
+    || readinessState === "unavailable";
+  const resolvedReadinessState = readinessStateIsKnown ? readinessState : "unavailable";
+  const evidenceId = !trustPending ? meta?.operationsIntegrityEvidenceId?.trim() || null : null;
+  const integrityContextMatches = !trustPending
+    && meta?.operationsIntegrityContextMatches === true
+    && evidenceId !== null;
+  const integrityState = trustPending
+    ? "unavailable"
+    : getAnalyticsIntegrityState(meta, integrityContextMatches);
+  const rawIntegrityState = meta?.operationsIntegrityStatus?.trim().toLowerCase() ?? null;
+  const readinessLabels: Record<string, string> = {
+    decision_ready: "Spremno za odluku",
+    signal_only: "Samo signal",
+    blocked: "Blokirano",
+    unavailable: "Nije dostupno",
+  } as const;
+  const integrityLabels: Record<string, string> = {
+    verified: "Provereno za ovaj kontekst",
+    unverified: meta?.operationsIntegrityFamily === "nivelacija" && !evidenceId
+      ? "Nije nezavisno provereno"
+        : integrityContextMatches
+          ? "Nije provereno"
+          : meta?.operationsIntegrityContextMatches === true && !evidenceId
+            ? "Nije provereno — dokaz nije dostupan"
+            : "Nije provereno za izabrani kontekst",
+    degraded: "Provera je degradirana",
+    drift_detected: "Odstupanje je otkriveno",
+    unavailable: "Dokaz integriteta nije dostupan",
+  } as const;
+  const evidenceContext = !trustPending ? meta?.operationsIntegrityContextFingerprint?.trim() || null : null;
+  const responseContext = !trustPending ? meta?.context?.fingerprint?.trim() || null : null;
+  const readinessReason = readiness?.reasonCodes?.filter(Boolean).join(", ") || null;
+  const evidenceHref = evidenceId
+    ? `/api/analytics/operations-integrity/evidence/${encodeURIComponent(evidenceId)}`
+    : null;
 
   return (
     <section className="analytics-trust-header" aria-label="Kontekst pouzdanosti analitike">
@@ -257,6 +305,33 @@ export default function AnalyticsTrustHeader({
       </div>
 
       <div className="ath-meta-grid">
+        {showOperationsTrust ? <>
+        <div className="ath-meta-item" data-testid="analytics-trust-readiness">
+          <span className="ath-meta-key">Spremnost odluke</span>
+          <strong className={`ath-trust-state ath-trust-state-${resolvedReadinessState}`} data-testid="analytics-trust-readiness-state">
+            {trustPending ? "Provera u toku" : readinessLabels[resolvedReadinessState]}
+          </strong>
+          {readinessReason ? <span className="ath-meta-subtle">{readinessReason}</span> : null}
+        </div>
+        <div className="ath-meta-item" data-testid="analytics-trust-integrity">
+          <span className="ath-meta-key">Integritet Operacije</span>
+          <strong className={`ath-trust-state ath-trust-state-${integrityState}`} data-testid="analytics-trust-integrity-state">
+            {trustPending ? "Provera u toku" : integrityLabels[integrityState]}
+          </strong>
+          {rawIntegrityState && evidenceId && !integrityContextMatches && !trustPending ? (
+            <span className="ath-meta-subtle">Poslednji nalaz: {rawIntegrityState}</span>
+          ) : null}
+          {meta?.operationsIntegrityCheckedAtUtc && !trustPending ? (
+            <span className="ath-meta-subtle">Provereno: {formatDateTime(meta.operationsIntegrityCheckedAtUtc)}</span>
+          ) : null}
+          {evidenceId ? <span className="ath-integrity-evidence-id">ID dokaza: {evidenceId}</span> : null}
+          {evidenceContext ? <span className="ath-integrity-context">Kontekst dokaza: {evidenceContext}</span> : null}
+          {responseContext && evidenceContext && responseContext !== evidenceContext ? (
+            <span className="ath-integrity-context">Kontekst upita: {responseContext}</span>
+          ) : null}
+          {evidenceHref ? <a className="ath-integrity-evidence-link" href={evidenceHref} target="_blank" rel="noreferrer">Pregledaj dokaz</a> : null}
+        </div>
+        </> : null}
         <div className="ath-meta-item">
           <span className="ath-meta-key">Period</span>
           <strong className="ath-meta-value">

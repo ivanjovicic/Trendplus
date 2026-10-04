@@ -1138,6 +1138,9 @@ export default function ShoeTypeSalesStatsPage() {
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Analitika prodajnih činjenica (opseg: ${dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope)})`}
         dataQualityStatus={trustDataQualityStatus}
+        meta={responseMeta}
+        trustPending={loading}
+        showOperationsTrust
         mode="signal"
         isPartial={trustIsPartial}
         recommendationNote="Tip obuće je podržavajući analitički signal, ne samostalna konačna preporuka. Backend status i razlog ostaju autoritativna evidencija."

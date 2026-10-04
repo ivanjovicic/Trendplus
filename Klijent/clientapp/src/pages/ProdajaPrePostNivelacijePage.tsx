@@ -1582,6 +1582,9 @@ export default function ProdajaPrePostNivelacijePage() {
         dataSource={`Analitika nivelacije (opseg: ${dataScopeLabel(effectiveDataScope)}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
         mode="report"
         dataQualityStatus={dataMeta?.dataQualityStatus ?? null}
+        meta={dataMeta}
+        trustPending={loading}
+        showOperationsTrust
         isPartial={showMetaWarning}
         emptyStateReason={showEmptyState ? (dataMetaMessage ?? null) : null}
         methodologyHref="/analytics/data-quality"

@@ -1232,6 +1232,7 @@ public static class PreNivelacijaPriorityEndpoints
             reasonCodes: ["pre_nivelacija.evidence"],
             evidenceReferences: ["pre_nivelacija.salesEvidence", "pre_nivelacija.marginEvidence", "pre_nivelacija.recommendation"],
             repairPath: "Data Quality ili Nivelacija evidence");
+        OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(response.Meta, "nivelacija");
         return response;
     }
 

@@ -410,29 +410,13 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         string family,
         string sourceGeneration,
         OperationsAnalyticsRawFactOracle.Filters filters)
-        => AnalyticsContextFingerprintPolicy.Create(
-            sourceDataset: $"integrity:{family}",
-            sourceGeneration: sourceGeneration,
-            formulaVersion: "analytics_integrity_probe_v2",
-            materializerGeneration: "bounded-independent-probe",
-            rowLimitSemantics: $"max_rows:{OperationsAnalyticsIntegrityFamilies.DefinitionFor(family).MaxRows}",
-            requestedPeriodFromUtc: filters.FromUtc,
-            requestedPeriodToUtc: filters.ToUtc,
-            effectivePeriodFromUtc: filters.FromUtc,
-            effectivePeriodToUtc: filters.ToUtc,
-            observedPeriodFromUtc: filters.FromUtc,
-            observedPeriodToUtc: filters.ToUtc,
-            requestedDataScope: filters.DataScope,
-            effectiveDataScope: filters.DataScope,
-            dataScopeSource: "operations_integrity_probe",
-            populationKey: family,
-            populationFilters: new Dictionary<string, string?>
-            {
-                ["store_id"] = filters.StoreId?.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["family"] = family
-            },
-            cacheGeneration: null,
-            resultState: AnalyticsContextFingerprintPolicy.StateAvailable).Fingerprint!;
+        => OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(
+            family,
+            sourceGeneration,
+            filters.FromUtc,
+            filters.ToUtc,
+            filters.DataScope,
+            filters.StoreId);
 
     private async Task<OperationsAnalyticsIntegritySnapshot> StoreAsync(
         OperationsAnalyticsIntegritySnapshot snapshot,

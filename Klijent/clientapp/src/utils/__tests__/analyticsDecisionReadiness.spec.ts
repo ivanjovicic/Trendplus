@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getAnalyticsDecisionReadiness,
+  getAnalyticsIntegrityState,
   isAnalyticsDecisionActionable,
 } from "../analyticsDecisionReadiness";
 
@@ -45,5 +46,25 @@ describe("analyticsDecisionReadiness", () => {
     const readiness = getAnalyticsDecisionReadiness({ success: true }, "report");
     expect(readiness.state).toBe("unavailable");
     expect(readiness.reasonCodes).toContain("decision_readiness_unavailable");
+  });
+
+  it("never treats an integrity snapshot as verified outside its bound response context", () => {
+    expect(getAnalyticsIntegrityState({
+      success: true,
+      operationsIntegrityStatus: "verified",
+      operationsIntegrityContextMatches: false,
+    }, false)).toBe("unverified");
+    expect(getAnalyticsIntegrityState({
+      success: true,
+      operationsIntegrityStatus: "drift_detected",
+      operationsIntegrityContextMatches: true,
+    }, true)).toBe("drift_detected");
+    expect(getAnalyticsIntegrityState({
+      success: true,
+      operationsIntegrityStatus: "verified",
+      operationsIntegrityContextMatches: true,
+      operationsIntegrityEvidenceId: null,
+    }, true)).toBe("unverified");
+    expect(getAnalyticsIntegrityState({ success: true }, false)).toBe("unverified");
   });
 });

@@ -169,6 +169,55 @@
   line-height: 1.35;
 }
 
+.ath-trust-state {
+  display: block;
+  border-left: 3px solid var(--border-default, #d5dbe3);
+  padding-left: 0.5rem;
+  color: var(--text-secondary, #495057);
+  line-height: 1.4;
+}
+
+.ath-trust-state-decision_ready,
+.ath-trust-state-verified {
+  border-color: var(--success, #0f8a55);
+  color: var(--success, #0f8a55);
+}
+
+.ath-trust-state-blocked,
+.ath-trust-state-drift_detected {
+  border-color: var(--error, #b42318);
+  color: var(--error, #b42318);
+}
+
+.ath-trust-state-signal_only,
+.ath-trust-state-unverified,
+.ath-trust-state-degraded {
+  border-color: var(--warning, #b77900);
+  color: var(--warning, #b77900);
+}
+
+.ath-trust-state-unavailable {
+  border-color: var(--border-default, #d5dbe3);
+  color: var(--text-secondary, #495057);
+}
+
+.ath-integrity-evidence-id,
+.ath-integrity-context {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--text-secondary, #6c757d);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.ath-integrity-evidence-link {
+  display: inline-flex;
+  margin-top: 0.4rem;
+  color: var(--info, #0d6efd);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
 .ath-meta-subtle {
   display: block;
   margin-top: 0.3rem;

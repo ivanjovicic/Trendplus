@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Api.Services;
+using Application.Analytics;
+using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
@@ -56,6 +59,55 @@ public sealed class AnalyticsCacheFreshnessTests
         Assert.True(meta.GetProperty("isPartial").GetBoolean());
         Assert.Equal("STALE_CACHE", meta.GetProperty("warningCode").GetString());
         Assert.Equal("warning", meta.GetProperty("dataQualityStatus").GetString());
+    }
+
+    [Fact]
+    public void ColorSalesCacheMetadata_RebindsCachedTrustToCurrentFamilyAndQueryContext()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.SupplierShoeType;
+        var generation = registry.GetGeneration(family);
+        var fromUtc = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fingerprint = OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(
+            family, generation, fromUtc, toUtc, "all", null);
+        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified,
+            "current-color-evidence",
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "bounded_probe",
+            "Color buckets reconciled.",
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false)
+        {
+            Family = family,
+            ContextFingerprint = fingerprint,
+            SourceGeneration = generation
+        });
+        var json = "{\"meta\":{\"success\":true,\"operationsIntegrityStatus\":\"verified\",\"operationsIntegrityEvidenceId\":\"cached-old-evidence\",\"operationsIntegrityContextFingerprint\":\"cached-old-context\"}}";
+        var metadata = new AnalyticsCacheEntryMetadata
+        {
+            CreatedAtUtc = DateTime.UtcNow,
+            DataRefreshAtUtc = DateTime.UtcNow,
+            Family = AnalyticsCachePolicy.ColorSalesFamily
+        };
+
+        var matchingResult = AllEndpoints.ApplyColorSalesCacheMetadata(
+            json, metadata, AnalyticsCachePolicy.ColorSalesStats, registry, fromUtc, toUtc, "all", null);
+        var mismatchedResult = AllEndpoints.ApplyColorSalesCacheMetadata(
+            json, metadata, AnalyticsCachePolicy.ColorSalesStats, registry, fromUtc.AddDays(1), toUtc, "all", null);
+
+        using var matching = JsonDocument.Parse(matchingResult);
+        var matchingMeta = matching.RootElement.GetProperty("meta");
+        Assert.Equal("current-color-evidence", matchingMeta.GetProperty("operationsIntegrityEvidenceId").GetString());
+        Assert.Equal(fingerprint, matchingMeta.GetProperty("operationsIntegrityContextFingerprint").GetString());
+        Assert.True(matchingMeta.GetProperty("operationsIntegrityContextMatches").GetBoolean());
+
+        using var mismatched = JsonDocument.Parse(mismatchedResult);
+        var mismatchedMeta = mismatched.RootElement.GetProperty("meta");
+        Assert.Equal("current-color-evidence", mismatchedMeta.GetProperty("operationsIntegrityEvidenceId").GetString());
+        Assert.False(mismatchedMeta.GetProperty("operationsIntegrityContextMatches").GetBoolean());
     }
 
     [Fact]

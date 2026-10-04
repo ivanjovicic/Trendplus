@@ -262,6 +262,8 @@ function aggregateInventoryTrust(sources: InventoryTrustSource[]): InventoryTrus
   const compositeMessage = degradedSourceLabels.length > 0 && worstMessage
     ? `${degradedSourceLabels.join(", ")}: ${worstMessage}`
     : worstMessage;
+  const decisionMeta = availableSources.find((source) => source.meta.decisionReadiness != null)?.meta;
+  const integrityMeta = availableSources.find((source) => source.label === "Lista artikala")?.meta;
 
   return {
     sourceLabels: availableSources.map((source) => source.label),
@@ -274,6 +276,15 @@ function aggregateInventoryTrust(sources: InventoryTrustSource[]): InventoryTrus
         || worstSource.quality !== "good",
       lastRefreshAtUtc: oldestRefreshAt,
       warningMessage: compositeMessage,
+      decisionReadiness: decisionMeta?.decisionReadiness ?? worstSource.meta.decisionReadiness ?? null,
+      operationsIntegrityStatus: integrityMeta?.operationsIntegrityStatus ?? null,
+      operationsIntegrityCheckedAtUtc: integrityMeta?.operationsIntegrityCheckedAtUtc ?? null,
+      operationsIntegrityEvidenceId: integrityMeta?.operationsIntegrityEvidenceId ?? null,
+      operationsIntegrityFamily: integrityMeta?.operationsIntegrityFamily ?? null,
+      operationsIntegrityContextFingerprint: integrityMeta?.operationsIntegrityContextFingerprint ?? null,
+      operationsIntegritySourceGeneration: integrityMeta?.operationsIntegritySourceGeneration ?? null,
+      operationsIntegrityContextMatches: integrityMeta?.operationsIntegrityContextMatches ?? null,
+      context: integrityMeta?.context ?? decisionMeta?.context ?? worstSource.meta.context ?? null,
     },
   };
 }
@@ -1715,6 +1726,9 @@ export default function InventoryPage() {
         lastRefreshAt={primaryRefreshAt}
         dataSource="Snimak analitike zaliha"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
+        meta={primaryMeta}
+        trustPending={loading}
+        showOperationsTrust
         mode="recommendation"
         isPartial={isAnalyticsMetaWarning(primaryMeta)}
         recommendationNote="Tok akcija vode korisnici; preporučeni podaci sa servera ostaju izvor istine."

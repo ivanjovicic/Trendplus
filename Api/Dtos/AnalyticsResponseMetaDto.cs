@@ -44,6 +44,10 @@ public class AnalyticsResponseMetaDto
     public string? OperationsIntegrityStatus { get; set; }
     public DateTime? OperationsIntegrityCheckedAtUtc { get; set; }
     public string? OperationsIntegrityEvidenceId { get; set; }
+    public string? OperationsIntegrityFamily { get; set; }
+    public string? OperationsIntegrityContextFingerprint { get; set; }
+    public string? OperationsIntegritySourceGeneration { get; set; }
+    public bool? OperationsIntegrityContextMatches { get; set; }
     /// <summary>
     /// Backend-owned categorical readiness for the declared decision surface.
     /// This is additive and preserves existing response shapes.

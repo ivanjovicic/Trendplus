@@ -2,9 +2,10 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ567
-Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The active user-reported Daily Sales issue is being completed before RQ567 is claimed.
-Owner live verification 2026-10-04: the earlier Daily Sales query-range and supplier-ID validation report is resolved by current-main commits `deb6db0419a60207bcf0790bd2d906ce6eac3d33` and `1ed9c9e57603f0534d81b79b6594774190a82824`, and both deployed API and Vercel bundle now pass live contract checks. No additional implementation diff was needed. Evidence: `.ai/runs/2026-10-04-daily-sales-live-contract-evidence.md`. RQ567 remains the next READY prompt.
+Current READY prompt: none (RQ567 IN_PROGRESS; no other READY)
+Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
+Owner live verification 2026-10-04: the earlier Daily Sales query-range and supplier-ID validation report is resolved by current-main commits `deb6db0419a60207bcf0790bd2d906ce6eac3d33` and `1ed9c9e57603f0534d81b79b6594774190a82824`, and both deployed API and Vercel bundle now pass live contract checks. No additional implementation diff was needed. Evidence: `.ai/runs/2026-10-04-daily-sales-live-contract-evidence.md`.
+Owner claim 2026-10-04: fresh `origin/main` is `6a07acb2dfcd8ed2e16f8f84dcbe933c69cc72f3`; RQ554, RQ562 and RQ563 are DONE, and no RQ567 branch, local lock or open PR owns the Operations trust-header/page-state family. RQ567 moved READY -> IN_PROGRESS for visible backend-owned readiness/integrity evidence across the six Operations screens. Local lock `.ai/task-locks/RQ567-codex.lock.md`.
 Owner promotion 2026-10-04: RQ568 moved WAITING -> READY after RQ550, RQ541 and RQ543 completed on main. RQ561 six-route harness is DONE; Q83 is DONE with focused backend/PostgreSQL proof, and its historical branch has no commits outside origin/main. No RQ568 lock, matching branch, or open PR exists. RQ545 deployed/provider acceptance and RQ454/STAB16 remain final/deployed evidence, not start gates for the disposable local certification harness.
 Post-RQ563 recovery 2026-10-03: deeper queue inspection supersedes the RQ563 run-log statement that no safe RQ prompt exists. The Nivelacija addendum contains runnable proof/UI lanes after repairing two circular dependencies. This Operations queue keeps RQ564-RQ566 gated as documented and registers RQ567-RQ568 for two uncovered reliability gaps: current pages do not consume the delivered RQ515 decision-readiness / Operations integrity evidence, and RQ561 still reports Pre/Post UNVERIFIED because its disposable schema lacks the canonical compatibility view/oracle path.
 Owner promotion/claim 2026-10-03: RQ560 was delivered and verified DONE on current `main` at `2fe461557f781d4a5652294396c39d4726d18a7a`. Fresh recovery found RQ561 dependency-complete, with no RQ561 lock, branch or open PR; existing unrelated worktrees are clean. Promoted RQ561 to READY and claimed it for current six-screen adversarial certification. Local lock: `.ai/task-locks/RQ561-codex.lock.md`.
@@ -205,7 +206,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ564 | WAITING | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
 | RQ565 | WAITING | P0 | operations-six-screen-deployed-reconciliation | Reconcile all six current screens through deployed API/browser/export |
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
-| RQ567 | READY | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
+| RQ567 | IN_PROGRESS | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
 | RQ568 | DONE | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
 
 ---
@@ -4191,7 +4192,7 @@ The 2026-10-02 negative-ID delivery explicitly did not run its read-only product
 
 ## RQ567 - Expose one trustworthy readiness and integrity surface across current Operations screens
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ554 closes the shared Nivelacija failure-state UI collision; RQ562 and RQ563 are already DONE
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -4222,7 +4223,7 @@ This is especially important now that Inventory has an independent family probe 
 
 ### Tests / acceptance
 
-- Every six-screen page spec covers verified, unverified/degraded and drift/blocked states.
+- The shared `AnalyticsTrustHeader` spec covers the full readiness/integrity state matrix; the six-route page integration mounts that component on every current screen and verifies fail-closed unavailable states, while Inventory also proves actual evidence metadata pass-through. Keep shared state assertions at the shared component boundary instead of duplicating the same matrix six times.
 - `drift_detected` cannot render a green trust state.
 - Missing integrity evidence renders explicitly unverified.
 - The displayed evidence id/context matches response meta and the evidence drawer/API record.
