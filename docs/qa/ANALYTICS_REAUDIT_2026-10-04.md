@@ -20,11 +20,12 @@ Ukratko: računanje je sada uglavnom tačno i dokazano testovima. Ono što je os
 
 ## 2. Napredak (brojevi)
 
-- Ukupno jedinstvenih RQ promptova: 560 (RQ1–RQ569, uz duplikate u addendumima).
-- DONE: 486, WAITING: 61, PARTIAL: 6, READY: 2 (RQ569 primarni, RQ553), OBSOLETE: 5, IN_PROGRESS: 0.
+- **Snapshot pre registracije novih promptova:** 560 jedinstvenih RQ promptova; DONE 486, WAITING 61, PARTIAL 6, READY 2 (RQ569 primarni, RQ553), OBSOLETE 5.
+- **Trenutno stanje posle registracije RQ570–RQ585 i odluka vlasnika 04.10:** 576 jedinstvenih RQ promptova; DONE 486, WAITING 73, PARTIAL 6, READY 6, OBSOLETE 5, IN_PROGRESS 0.
+- Trenutno READY: **RQ569** (primarni), plus nezavisni **RQ553, RQ574, RQ578, RQ580 i RQ581**. Ovo nije „jedan READY po queue-u“; paralelni promptovi su dozvoljeni samo uz dependency/collision proveru.
 - Zatvoreno od 22.09.2026: oko 170 promptova sa datiranim completion zapisom (RQ371–RQ568 i drugi).
 - U opsegu RQ440–RQ569 (registrovano 25.09–04.10): oko 105 od 130 je DONE.
-- Od 61 WAITING promptova, 26 su stari Advanced/Legacy (RQ13–RQ38) koji stoje od početka septembra.
+- Od trenutnih 73 WAITING prompta, 26 su stari Advanced/Legacy (RQ13–RQ38); oni su sada product-odlukom predviđeni za konsolidaciju pod RQ582, uz obaveznu sledljivost acceptance-a.
 - Zastoji: STAB16 (produkcijski workeri i dokaz deploya) je BLOCKED zbog pristupa provajderu. RQ545 je PARTIAL i čeka produkcijsku proveru. RQ454 i RQ565 (sravnjenje sa produkcijom) su WAITING, a RQ453 (CI koji se ne može preskočiti) je WAITING.
 
 ## 3. Ocena po oblastima
@@ -105,28 +106,28 @@ Ostali nalazi: Boja, kategorija, pol, plaćanje i sat su 100% nepoznati (RQ575).
 - **Panel vrednosti nabavke po dobavljaču** (RQ530, PARTIAL) za pregovore.
 - **Čišćenje legacy zaliha:** pertle i stara roba (sezona 2017) iz objekta STARO. Odvojeni red za otpis ili akciju, umesto da zagušuje prioritete.
 
-## 8. Novi promptovi (registrovani 2026-10-04)
+## 8. Novi promptovi (registrovani 2026-10-04; stanje posle owner odluka)
 
 | RQ | Prioritet | Status | Ukratko |
 |---|---|---|---|
-| RQ570 | P1 | WAITING (odluka + RQ569) | Default period vezan za horizont podataka. PoP preko horizonta postaje „nedostupno“, a ne −100%. |
-| RQ571 | P1 | WAITING (RQ569, redom sa RQ552/RQ556) | Prioriteti pre nivelacije računaju od horizonta podataka, a ne od danas. |
-| RQ572 | P1 | WAITING (RQ569; executive posle RQ573) | Dashboard bootstrap koristi jedan period za sve sekcije. Pilot readiness je ispravan, a executive dobavljači dolaze iz stvarnog prometa. |
-| RQ573 | P1 | WAITING (RQ569, preklapanje fajla) | Product Decision: FIX_DATA ne sakriva prodate artikle, a payload je 13 MB → < 2 MB. |
-| RQ574 | P1 | WAITING (odluka) | Nedostajuća kategorija ne sme da blokira 100% preporuka. |
-| RQ575 | P2 | WAITING (RQ569 + odluka iz RQ574) | Umesto stubića sa 100% „Nepoznato“ prikazati „nije popunjeno u izvoru“. |
-| RQ576 | P1 | WAITING (odluka + RQ569) | Tačna vrednost i starost zaliha. |
-| RQ577 | P1 | WAITING (odluka) | Odrediti šta je zaglavlje prodaje, pre nego što se prikazuju metrike korpe. |
-| RQ578 | P2 | **READY** | Kvalitet podataka više ne prikazuje „100 / odlično“ i „0 problema“ nad starim i nepotpunim podacima. |
+| RQ570 | P1 | WAITING (RQ569) | Owner odluka rešena: undated period se vezuje za observed sales horizon; PoP preko horizonta je N/A, ne −100%. |
+| RQ571 | P1 | WAITING (RQ569; sekvencirati sa RQ552/RQ556) | Horizon-anchored Pre-Nivelacija + retail-store/Oprema/action-queue higijena. |
+| RQ572 | P1 | WAITING (RQ569 + RQ570 + RQ573; koordinacija sa RQ577) | Jedan period za ceo Dashboard; executive dobavljači iz stvarnog prometa. |
+| RQ573 | P1 | WAITING (RQ569 + RQ574) | Product Decision: FIX_DATA ne sakriva prodate artikle, payload < 2 MB. |
+| RQ574 | P1 | **READY** | Owner odluka rešena: TipObuce je autoritativan; missing category/pol nisu univerzalni blocker. |
+| RQ575 | P2 | WAITING (RQ569 + RQ574) | Umesto 100% „Nepoznato“ prikazati da dimenzija nije popunjena u izvoru. |
+| RQ576 | P1 | WAITING (RQ569) | Owner odluka rešena: realna inbound cost lineage; procenjeni sale-line fallback; aging samo iz realnog inbound-a ili unknown. |
+| RQ577 | P1 | WAITING (RQ574) | Owner odluka rešena: ProdajaZaglavlje nije dokazani customer receipt; basket metrike se gate-uju. |
+| RQ578 | P2 | **READY** | Kvalitet podataka više ne prikazuje „100 / odlično“ i „0 problema“ nad starim/nepotpunim podacima. |
 | RQ579 | P2 | WAITING (RQ569) | „Verified“ samo kada postoji neprazan i uparen skup. |
 | RQ580 | P2 | **READY** | Izveštaj i hub ne zovu eksplicitan period „Poslednjih N dana“. |
 | RQ581 | P2 | **READY** | Popravka mojibake „NeodreÄ‘eno“ u Insight Studio. |
-| RQ582 | P2 | WAITING (odluka) | Sakriti ili konsolidovati Insight Studio i legacy Advanced (RQ13–RQ38). |
-| RQ583 | P2 | WAITING (odluka + RQ569) | SLA za svežinu, baner na svim ekranima i alarm. |
+| RQ582 | P2 | WAITING (RQ581) | Owner odluka rešena: Insight Studio ide iza „Eksperimentalno“ flag-a; legacy promptovi se konsoliduju sledljivo. |
+| RQ583 | P2 | WAITING (RQ569) | Owner SLA: warning 48 h, critical 168 h; globalni baner i opt-in dnevni alarm. |
 | RQ584 | P3 | WAITING (RQ569) | Dnevna prodaja koristi isti `toDate` ugovor kao ostali ekrani. |
-| RQ585 | P3 | WAITING (posle RQ570/573/574/576 i SLA) | Nedeljni pregled odluka iz proverenih signala. |
+| RQ585 | P3 | WAITING (RQ570/RQ573/RQ574/RQ576/RQ583) | Nedeljni pregled odluka iz proverenih signala. |
 
-Addendumi (bez novih duplikata): RQ545 (Pre/Post i supplier MV i dalje nedostaju na deployu od 04.10), RQ556 (pertle, STARO, highlightNow sa nedozvoljenim redom), RQ553 (engleska oznaka „Insufficient data“), RQ479 (smoke akcije uživo), RQ569 (samo dokazi uživo, bez promene scope-a).
+Addendumi (bez novih duplikata): RQ545 (Pre/Post i supplier MV i dalje nedostaju na deployu od 04.10), RQ556 (v9 težine ostaju owner-gated; store/Oprema higijena prebačena u RQ571), RQ553 (engleska oznaka „Insufficient data“), RQ479 (smoke akcije uživo), RQ569 (live dokazi bez proširenja osnovnog scope-a).
 
 ## 9. Odluke vlasnika — rešeno 2026-10-04
 
