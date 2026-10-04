@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none as primary in this parent file (additional parallel-safe READY lanes registered here by the 2026-10-04 all-screen re-audit: `RQ578`, `RQ580`, `RQ581`); live routing is owned by addenda — primary `RQ569` (Operations source horizon/freshness), additional parallel-safe `RQ553` (copy/a11y), then `RQ552` and `RQ453` in that order after `RQ564` DONE on current `main`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
-All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585` at the end of this file: READY parallel-safe lanes `RQ578` (Data Quality health truth), `RQ580` (supplier report period label), `RQ581` (Insight Studio mojibake); all others WAITING on RQ569 and/or explicit owner decisions (RQ570, RQ574, RQ576, RQ577, RQ582, RQ583). Dated live-evidence addenda added to RQ479, RQ545, RQ553, RQ556 and RQ569 without scope change. Primary routing stays `RQ569`.
+Current READY prompt: none as primary in this parent file; live routing is primary `RQ569` (Operations source horizon/freshness), with additional independently claimable lanes `RQ553`, `RQ574`, `RQ578`, `RQ580` and `RQ581`. `RQ570`/`RQ576`/`RQ583` remain behind `RQ569`; `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
 Owner post-close routing recovery 2026-10-04 after RQ564 hardening: full active RQ queue/addenda review confirms RQ569 is primary READY; RQ552 waits until RQ569 is DONE, and RQ453 waits until RQ552 is DONE. RQ553 remains an additional parallel-safe READY lane. Recovery base and collision checks are recorded in `.ai/runs/2026-10-04-RQ564-evidence.md`.
 Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
 Idle recovery refinement 2026-10-02: `RQ487` is promoted `WAITING -> READY` after re-checking current code and its actual dependencies. `RQ474`, `RQ483` and `RQ470` are DONE. The previous `Ready after` incorrectly made the baseline timing/`EXPLAIN ANALYZE` measurement a prerequisite even though producing that baseline is the first executable step of RQ487, and it conflated the repository-local performance owner with the still-external live 503 root-cause proof owned by `RQ454`/`STAB16`. Current-main still loads the full active snapshot-cost batch for Supplier overview, keeps the Supplier sale projection at sale-line/timestamp grain, scans first nivelacija history without a relevant-article predicate, and returns cached Supplier JSON without projecting cache age/stale/correlation metadata at read time. Product Decision still materializes the matching article population then feeds its IDs through multiple `Contains` queries; its last-sale period-end bound and search-key normalization are already fixed and must not be redone. No `RQ487` branch, open PR or task-lock match was found; the canonical RQ queue had no READY/IN_PROGRESS prompt. Provider logs/live DB access are not required for the disposable PostgreSQL/Testcontainers baseline and equivalence work; deployed/provider proof remains a separate residual under `RQ454`/`STAB16`.
@@ -28357,7 +28357,7 @@ Source audit: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/202
 ## RQ570 - Anchor default analysis periods to the observed data horizon and suppress beyond-horizon comparisons
 
 Status: WAITING
-Ready after: owner answers the decision below AND `RQ569` is DONE (reuses its observed-horizon/source-freshness contract)
+Ready after: `RQ569` is DONE (owner decision resolved 2026-10-04; reuses its observed-horizon/source-freshness contract)
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: analytics-horizon-default-period
@@ -28379,11 +28379,9 @@ Production source sales end on 2026-08-05 (last import 2026-08-12T10:30Z), but m
 - `GET /api/analytics/reports/pilot-intake` (no dates) → `pir-20260707-20260805` (RQ467 behaviour, correct reference).
 - `Api/Endpoints/CachedAnalyticsEndpoints.cs:2322-2323` (bootstrap default `toDate ?? DateTime.UtcNow.Date`, `-29` days); Product Decision default in `BuildProductDecisionCenterAsync`.
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: Should every decision screen (Dashboard, Product Decision, Supplier overview/hub/report, Decision Board, Decision Pulse, Inventory sales-derived signals) use the RQ467 rule as its default period — last 30 days ending at `MAX(DatumProdaje)` of the active store/dataScope — with a visible "Podaci zaključno sa <datum>" banner, while explicitly chosen dates are never moved?
-
-Recommendation: Yes. It is the same rule the owner already approved for Pilot intake; screens open on real data, and staleness stays visible through RQ569 freshness instead of being hidden behind empty pages.
+Owner decision (Ivan, 2026-10-04): **approved**. For every undated decision surface, the default visible business period is the last 30 calendar days ending on the last observed sale date for the active store/dataScope. For half-open backend contracts this is `[horizonDate - 29 days, horizonDate + 1 day)`. Explicit user-selected dates are never rewritten. Staleness is shown separately from the period through `RQ569`/`RQ583`; anchoring to old data must never make it look current. A comparison window that is partly or fully beyond the observed horizon is `unavailable` with reason `beyond_source_horizon`, never a fabricated `0%` or `-100%` change.
 
 ### Scope
 
@@ -28421,7 +28419,7 @@ Recommendation: Yes. It is the same rule the owner already approved for Pilot in
 
 - `RQ569` DONE (observed horizon + freshness metadata); `RQ467` reference behaviour; coordinate with `RQ572` (bootstrap) and `RQ571` (Pre-Nivelacija) — run sequentially if they share files.
 
-## RQ571 - Pre-Nivelacija: anchor the 180-day window and recency to the source horizon, not to "now"
+## RQ571 - Pre-Nivelacija: anchor recency to the source horizon and keep non-decision stock out of markdown queues
 
 Status: WAITING
 Ready after: `RQ569` DONE (shared Pre-Nivelacija trust/freshness metadata); claim sequentially with `RQ552`/`RQ556` (same endpoint/service files)
@@ -28442,9 +28440,14 @@ Pre-Nivelacija computes its sales/markdown window and recency from `DateTime.Utc
 - `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs:98` (`requestNowUtc = DateTime.UtcNow`), `:118` (`nowUtc = DateTime.UtcNow`), `:738`, `:763`.
 - Source horizon: Supplier/Shoe Type/Color `dataWindowTo=2026-08-05`; `/api/analytics/cached/validation/freshness` `lastImport=2026-08-12T10:30:04Z`.
 
+### Owner decision — resolved 2026-10-04
+
+Owner decision (Ivan, 2026-10-04): default retail decision scope is **Trend PLUS 1 and Trend PLUS 2**. `STARO`, `Magacin`, all `Komision*` stores and `Objekat 20828` are excluded from retail markdown recommendations until a durable active-store master flag explicitly re-enables them; they remain visible in a separate legacy/cleanup/transfer view. `Oprema` is not footwear and must not compete in the footwear markdown ranking; expose it in a separate non-footwear cleanup queue. A row with `recommendationAllowed=false` can never enter `highlightNow` or another action queue.
+
 ### Scope
 
 - Window end, recency, receipt age and "new stock" age in the Pre-Nivelacija endpoint/scoring service; meta that declares the anchor.
+- Decision-population filtering for active retail stores, non-footwear separation and action-queue gating.
 - No formula-weight change (that is RQ556), no copy work (RQ553), no query-cost work (RQ552).
 
 ### Read first
@@ -28458,17 +28461,23 @@ Pre-Nivelacija computes its sales/markdown window and recency from `DateTime.Utc
 2. Use it for the 180-day sales and markdown windows, `daysSinceLastSale`, `daysSinceReceipt`, new-stock age and due dates.
 3. Expose `evidenceWindow.anchorBasis = source_horizon|now` and the horizon date; alert text uses the anchored day count.
 4. Extend the RQ548 oracle/golden fixture with a stale-horizon case.
+5. Apply the owner-approved decision-store policy: Trend PLUS 1/2 in the retail markdown population; `STARO`, `Magacin`, `Komision*` and `Objekat 20828` excluded from that population but retained in an explicit legacy/cleanup projection.
+6. Exclude `Oprema` from footwear ranking and expose it through a separate non-footwear cleanup list/queue.
+7. Enforce the queue invariant `recommendationAllowed == true` before any row can enter `highlightNow` or equivalent action-now collections.
 
 ### Tests
 
 - Oracle fixture with horizon 60 days before now: velocity and `daysSinceLastSale` equal the anchored values; score ordering matches the oracle.
 - Fresh-horizon fixture: behaviour unchanged.
+- Population fixture: `STARO`/`Magacin`/`Komision*`/`Objekat 20828` never enter retail markdown candidates; Trend PLUS 1/2 do.
+- `Oprema` appears only in the non-footwear cleanup projection; a `recommendationAllowed=false` row never enters `highlightNow`.
 - `dotnet test --filter PreNivelacija`; frontend Pre-Nivelacija spec still green; validators; `git diff --check`.
 
 ### Acceptance
 
 - No Pre-Nivelacija number counts days after the observed source horizon as "no sales".
 - The anchor is visible in the response and on the page methodology.
+- Legacy/non-retail stores and `Oprema` cannot distort the footwear markdown priority list, and disallowed rows cannot appear as immediate actions.
 
 ### Dependencies
 
@@ -28477,7 +28486,7 @@ Pre-Nivelacija computes its sales/markdown window and recency from `DateTime.Utc
 ## RQ572 - Dashboard bootstrap: one resolved period for every section, truthful Pilot Readiness, executive suppliers from real revenue
 
 Status: WAITING
-Ready after: `RQ569` DONE (shared `CachedAnalyticsEndpoints.cs`/meta builders); executive part after `RQ573` DONE
+Ready after: `RQ569` DONE, `RQ570` DONE and `RQ573` DONE; coordinate after `RQ577` if both touch Dashboard/bootstrap basket sections
 Priority: P1
 Type: backend/frontend/tests
 Feature family: dashboard-bootstrap-period-truth
@@ -28534,12 +28543,12 @@ The same 836,350 / 15 / 145 figures were already reported by the 2026-08-19 prod
 
 ### Dependencies
 
-- `RQ569` DONE (file overlap); `RQ570` owner answer for the undated default; `RQ573` for executive input independence (or implement step 2 first, which removes the coupling).
+- `RQ569` DONE (file overlap); `RQ570` DONE for the shared undated-period resolver; `RQ573` DONE for Product Decision/executive decoupling. If `RQ577` is active, serialize the shared Dashboard/bootstrap path.
 
 ## RQ573 - Product Decision: stop FIX_DATA rows from hiding sold articles and bound the payload
 
 Status: WAITING
-Ready after: `RQ569` DONE (shared `CachedAnalyticsEndpoints.cs`); may be promoted earlier if RQ569's delivered diff does not touch the Product Decision region
+Ready after: `RQ569` DONE AND `RQ574` DONE (shared Product Decision semantics/path); may be promoted earlier only if both delivered diffs are already clear of the owned region
 Priority: P1
 Type: backend/frontend/performance/tests
 Feature family: product-decision-row-ordering-payload
@@ -28590,12 +28599,12 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 
 ### Dependencies
 
-- `RQ569` DONE (file overlap); independent of `RQ574` (policy) but both change what the owner sees — run RQ573 first.
+- `RQ569` DONE (file overlap); `RQ574` DONE first so ordering/payload work operates on the approved actionability policy and does not race the same Product Decision surface.
 
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
-Status: WAITING
-Ready after: owner decision below
+Status: READY
+Ready after: owner decision resolved 2026-10-04; no blocking dependency. Do not run concurrently with another active Product Decision/Dashboard owner on the same files.
 Priority: P1
 Type: backend/policy/tests
 Feature family: product-decision-data-quality-blocker-policy
@@ -28614,11 +28623,9 @@ Commit suggestion: `fix(analytics): treat missing category as a quality warning 
 - `GET /api/analytics/cached/products/decision-center?fromDate=2026-07-07&toDate=2026-08-06&top=2000` → reason-code counts `data_quality_blocker` 2000, `minimum_stock_not_configured` 2000, `actionableCount` 0.
 - `GET /api/analytics/cached/dashboard/bootstrap` → `validationCompleteness.score=0`, "Missing: 12422/12422".
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: Is `Kategorija` (and `Pol`) expected to be filled in Access for Trendplus, or is `TipObuce` the authoritative assortment dimension?
-
-Recommendation: Treat `TipObuce` as the authoritative dimension; a missing category becomes a non-blocking quality warning (`category_missing_type_known`, reduced confidence) whenever `TipObuce` is present, and stays a blocker only when both are missing. Missing supplier and missing cost keep their existing owner-approved semantics (cost: excluded from margin evidence, never 0 RSD). Also confirm that RQ483's MinStock=0/null decision (reduced-confidence velocity/cover path) means `stock_evidence_unavailable` must not block by itself.
+Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment dimension for current Trendplus decisioning.** Missing `Kategorija` or `Pol` is a non-blocking quality warning with reduced confidence when the required footwear type exists. Block only the specific recommendation whose required dimension is actually missing; for general assortment classification, block when both `TipObuce` and `Kategorija` are missing. Missing size/variant evidence may block size-dependent decisions, not every recommendation globally. Preserve the existing missing-supplier and missing-cost policies, and preserve RQ483: missing `MinStock`/stock evidence alone follows the reduced-confidence path and is not a universal blocker.
 
 ### Scope
 
@@ -28648,12 +28655,12 @@ Recommendation: Treat `TipObuce` as the authoritative dimension; a missing categ
 
 ### Dependencies
 
-- Owner decision; `RQ573` preferably first (ordering), not required.
+- No blocking dependency. `RQ573` follows this policy so row-order/payload work uses the approved actionability semantics.
 
 ## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
 
 Status: WAITING
-Ready after: `RQ569` DONE (Color page trust/freshness surface) and owner answer in `RQ574` for category/gender
+Ready after: `RQ569` DONE AND `RQ574` DONE (category/gender semantics resolved and implemented)
 Priority: P2
 Type: backend/frontend/tests
 Feature family: categorical-dimension-coverage-gate
@@ -28702,12 +28709,12 @@ The owner cannot learn anything from these charts; they look like real distribut
 
 ### Dependencies
 
-- `RQ569` DONE; `RQ574` owner answer (category/gender wording).
+- `RQ569` DONE; `RQ574` DONE so the shared categorical warning/blocker semantics are already canonical.
 
 ## RQ576 - Inventory: truthful stock valuation and aging (no import-time "movement", no 0-cost value)
 
 Status: WAITING
-Ready after: owner decision below AND `RQ569` DONE (Inventory trust surface)
+Ready after: `RQ569` DONE (owner decision resolved 2026-10-04; Inventory trust surface)
 Priority: P1
 Type: backend/frontend/tests
 Feature family: inventory-valuation-aging-truth
@@ -28729,11 +28736,11 @@ Commit suggestion: `fix(analytics): value and age inventory from real cost and r
 - `GET /api/analytics/supplier-sales-stats?fromDate=2026-07-07&toDate=2026-08-06T00:00:00Z` → cost/unit per supplier (see above).
 - `Api/Endpoints/InventoryEndpoints.cs:56-58` (`NabavnaCena * Kolicina`), `:365` (`estimatedValue ?? 0m`), `:1005-1013` (`LastMovementAt = g.Max(x => x.Datum)` over all movement types).
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: Which cost should value current stock: (a) last receipt/purchase cost per article from Access documents, (b) latest sale-line historical cost, (c) `Artikli.NabavnaCena` only after a data fix? And should import-generated "Ulaz robe" rows (amount 0, at import time) be excluded from movement/aging?
+Owner decision (Ivan, 2026-10-04): value current stock from the **latest reliable positive inbound purchase/receipt unit cost for the article/store**. If no reliable inbound cost exists, the latest valid positive sale-line historical unit cost may be used only as an **estimated fallback**, explicitly labelled `estimated_from_sale_cost`; show valuation coverage and unknown units. Do **not** use `Artikli.NabavnaCena` while its scale is unverified, and never convert missing cost to 0 RSD.
 
-Recommendation: (a) when available, else (b) flagged as estimated, never (c) while its scale is unverified; value coverage shown; missing cost never valued at 0. Exclude import-synthetic movements from aging and use first receipt / last positive sale as the age basis, as Pre-Nivelacija already does (RQ539).
+For aging, exclude synthetic import-time `Ulaz robe` rows. Inventory age must come from a real inbound receipt/movement lineage. If no reliable inbound timestamp exists, age is `unknown`; **last sale is a separate sales-recency signal and is never a substitute for inventory age**. When lot/FIFO lineage is unavailable, label any last-real-receipt age as a proxy rather than exact age.
 
 ### Scope
 
@@ -28746,7 +28753,7 @@ Recommendation: (a) when available, else (b) flagged as estimated, never (c) whi
 ### Do
 
 1. Implement the approved valuation source with `valuationBasis` and `valueCoveragePct`; unknown cost → excluded + counted, not 0.
-2. Exclude import-synthetic movements (type "Ulaz robe" with zero amount at the import batch timestamp, or the import batch id) from `LastMovementAt`; fall back to first receipt / last positive sale.
+2. Exclude import-synthetic movements (type "Ulaz robe" with zero amount at the import batch timestamp, or the import batch id) from aging. Use a real inbound receipt/movement timestamp when provable; otherwise return `ageBasis=unknown`. Keep last-sale recency as a separate field and never use it as inventory age.
 3. Use one low-stock predicate for Inventory and Dashboard.
 4. Add a data-quality check that flags master cost below e.g. the minimum observed sale-line cost ratio (report only, no auto-correction).
 
@@ -28763,12 +28770,12 @@ Recommendation: (a) when available, else (b) flagged as estimated, never (c) whi
 
 ### Dependencies
 
-- Owner decision; `RQ569` DONE; `RQ563` integrity family must be updated with the new value basis.
+- `RQ569` DONE; owner decision is resolved; `RQ563` integrity family must be updated with the new value/age basis.
 
 ## RQ577 - Decide and label the sale-header grain before showing basket metrics
 
 Status: WAITING
-Ready after: owner decision below
+Ready after: `RQ574` DONE (owner decision resolved 2026-10-04; serialize shared Dashboard/bootstrap ownership)
 Priority: P1
 Type: contract/backend/frontend
 Feature family: sales-header-grain-basket-metrics
@@ -28787,11 +28794,9 @@ Commit suggestion: `fix(analytics): label daily sale documents and gate basket m
 - `GET /api/analytics/advanced/v2/basket-affinity?...` → `pairs=[]`, `totalMultiItemTransactions=25`.
 - `docs/qa/TRANSACTION_STATS_SEMANTICS_CONTRACT.md:15-22` defines receipt = `prodaja_zaglavlje` (assumption, not verified against the source grain).
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: In Access, does one `ProdajaZaglavlje` represent one customer receipt (fiskalni račun) or a daily/shift sales document per store?
-
-Recommendation: If it is a daily document (the data strongly suggests this), rename the unit to "prodajni dokument (dnevni)", hide/disable average basket, items-per-transaction, basket affinity and transaction heatmap until a receipt-grain source exists, and keep revenue/units metrics unchanged.
+Owner decision (Ivan, 2026-10-04): for analytics, treat `ProdajaZaglavlje` as a **sales aggregation document, not a proven customer receipt**, unless future source-lineage evidence proves receipt grain. Use the neutral label `prodajni dokument`; do not claim a daily/shift/customer grain that is not proven. Hide/disable average basket, items-per-transaction, basket affinity and transaction heatmap with reason `receipt_grain_unavailable`. Revenue, units and certified sales-population rules remain unchanged.
 
 ### Scope
 
@@ -28804,8 +28809,8 @@ Recommendation: If it is a daily document (the data strongly suggests this), ren
 ### Do
 
 1. Record the owner answer in the contract doc.
-2. If daily document: relabel and gate the basket metrics with reason `receipt_grain_unavailable`; fold RQ14/RQ15 into this outcome (mark them OBSOLETE with a pointer if fully covered).
-3. If customer receipt: add a data-quality check explaining the low receipt counts (import completeness) and close this prompt.
+2. Relabel the unit as `prodajni dokument` and gate basket metrics with reason `receipt_grain_unavailable` until receipt-grain lineage is proven.
+3. Fold RQ14/RQ15 into this outcome only after replacement coverage is explicit; mark them OBSOLETE with a pointer rather than silently dropping their acceptance.
 
 ### Tests
 
@@ -28817,7 +28822,7 @@ Recommendation: If it is a daily document (the data strongly suggests this), ren
 
 ### Dependencies
 
-- Owner decision; coordinates with `RQ572` (bootstrap) — run sequentially if both edit bootstrap.
+- Owner decision resolved. Coordinates with `RQ572` (bootstrap); serialize if both edit the bootstrap/Dashboard path.
 
 ## RQ578 - Data Quality health: stop reporting "100 / excellent" on stale and incomplete data
 
@@ -29017,7 +29022,7 @@ Seven production endpoints return `pol: "NeodreÄ‘eno"` instead of `"Neodređe
 ## RQ582 - Decide the future of Insight Studio and the legacy Advanced surfaces (stale snapshots, unknown identities)
 
 Status: WAITING
-Ready after: owner decision below
+Ready after: `RQ581` DONE (owner decision resolved 2026-10-04; serialize the Insight Studio family)
 Priority: P2
 Type: product decision/frontend/governance
 Feature family: insight-studio-quarantine
@@ -29036,11 +29041,9 @@ Insight Studio (`/analytics/insight-studio`) and the legacy Advanced endpoints a
 - `GET /api/analytics/advanced/v2/weekly-changelog` → this/last week 0, `revenueChangePct:0`; `advanced/daily-analysis` → `analysisDate:"2026-10-03"`, `outlierLabel:"Normalan dan"`.
 - `GET /api/analytics/cached/inventory/forecast` → `provenanceStatus:"missing_relation"`.
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: Should Insight Studio and the legacy Advanced/intelligence widgets stay visible while uncertified?
-
-Recommendation: Hide them from navigation now (keep the route behind an "Eksperimentalno" flag for the owner), consolidate RQ13-RQ38 into at most two certification prompts (or mark OBSOLETE where the surface is retired), and only re-expose widgets that pass the same oracle/golden standard as the Operations screens. Engineering effort is better spent on Product Decision, Supplier and Inventory value.
+Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from the main analytics navigation now**. Keep the route reachable only behind an owner-facing `Eksperimentalno` feature flag and show an explicit uncertified/stale-data banner. Consolidate RQ13-RQ38 into a small number of certification owners, but preserve traceability: no legacy prompt becomes OBSOLETE until a named replacement covers its acceptance or the surface is explicitly retired. Re-expose a widget only after it passes the same horizon/freshness, oracle/golden and identity/provenance standards as certified Operations analytics.
 
 ### Scope
 
@@ -29053,7 +29056,7 @@ Recommendation: Hide them from navigation now (keep the route behind an "Eksperi
 ### Do
 
 1. Implement the approved visibility; add a banner on the experimental route.
-2. Consolidate/obsolete RQ13-RQ38 with a dated note per prompt.
+2. Consolidate RQ13-RQ38 with a dated pointer to named replacement certification owners; mark a legacy prompt OBSOLETE only after replacement acceptance is explicit or the corresponding widget is retired.
 
 ### Tests
 
@@ -29065,12 +29068,12 @@ Recommendation: Hide them from navigation now (keep the route behind an "Eksperi
 
 ### Dependencies
 
-- Owner decision.
+- Owner decision resolved; `RQ581` DONE first to avoid same-family churn while the encoding fix is still claimable.
 
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
 Status: WAITING
-Ready after: owner decision below AND `RQ569` DONE (freshness contract) — STAB16 worker deployment is not required for the banner/alert logic
+Ready after: `RQ569` DONE (owner decision resolved 2026-10-04; freshness contract) — STAB16 worker deployment is not required for the banner/alert logic
 Priority: P2
 Type: backend/frontend/ops
 Feature family: analytics-freshness-sla-alert
@@ -29088,11 +29091,9 @@ Production analytics data is 53 days old (last import 2026-08-12T10:30Z, last sa
 - `GET /api/analytics/refresh-status` → all jobs `dataFreshnessStatus:"unknown"`, `workersEnabled:false`.
 - Supplier/Shoe Type/Color `dataWindowTo:"2026-08-05"`.
 
-### Owner decision needed
+### Owner decision — resolved 2026-10-04
 
-Question: What freshness SLA should Trendplus analytics meet, and who gets alerted?
-
-Recommendation: Warning when the last successful Access import is older than 2 days, critical when older than 7 days; a red banner on every analytics screen when critical; one e-mail/notification to the owner per day while critical (sending only after explicit owner opt-in configuration).
+Owner decision (Ivan, 2026-10-04): default SLA is **warning after 48 hours** and **critical after 168 hours (7 days)** from the last successful durable Access import. `unknown` freshness is never green. Show a global warning/critical banner on every analytics route with both last successful import and observed sales horizon. Notifications are disabled by default and require explicit opt-in configuration; when enabled, send at most one owner notification per 24 hours while critical and reset the alert state after a successful fresh import. A fresh import with an older sales horizon is not automatically called an import failure; show the horizon separately.
 
 ### Scope
 
@@ -29118,7 +29119,7 @@ Recommendation: Warning when the last successful Access import is older than 2 d
 
 ### Dependencies
 
-- Owner decision; `RQ569` DONE.
+- Owner decision resolved; `RQ569` DONE.
 
 ## RQ584 - Daily Sales: one `toDate` contract with the other Operations endpoints
 
