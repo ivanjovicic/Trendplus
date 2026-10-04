@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: RQ568
+Owner promotion 2026-10-04: RQ568 moved WAITING -> READY after RQ550, RQ541 and RQ543 completed on main. RQ561 six-route harness is DONE; Q83 is DONE with focused backend/PostgreSQL proof, and its historical branch has no commits outside origin/main. No RQ568 lock, matching branch, or open PR exists. RQ545 deployed/provider acceptance and RQ454/STAB16 remain final/deployed evidence, not start gates for the disposable local certification harness.
 Post-RQ563 recovery 2026-10-03: deeper queue inspection supersedes the RQ563 run-log statement that no safe RQ prompt exists. The Nivelacija addendum contains runnable proof/UI lanes after repairing two circular dependencies. This Operations queue keeps RQ564-RQ566 gated as documented and registers RQ567-RQ568 for two uncovered reliability gaps: current pages do not consume the delivered RQ515 decision-readiness / Operations integrity evidence, and RQ561 still reports Pre/Post UNVERIFIED because its disposable schema lacks the canonical compatibility view/oracle path.
 Owner promotion/claim 2026-10-03: RQ560 was delivered and verified DONE on current `main` at `2fe461557f781d4a5652294396c39d4726d18a7a`. Fresh recovery found RQ561 dependency-complete, with no RQ561 lock, branch or open PR; existing unrelated worktrees are clean. Promoted RQ561 to READY and claimed it for current six-screen adversarial certification. Local lock: `.ai/task-locks/RQ561-codex.lock.md`.
 Owner completion 2026-10-03: RQ561 is PARTIAL on current `main` at `56c56c83c1aaecb7d64aa1c1916d1a0e2dfcda34`; fresh fetch verified `origin/main` at the same SHA. Its disposable PostgreSQL certification executes all six current web/API route pairs without skips and emits machine-readable expected/executed counts and verdicts. Pre/Post Nivelacija is explicitly UNVERIFIED because the compatibility view is unavailable and maturity/overlap semantics remain uncertified. The wider same-fixture matrix for provenance, store/dataScope, cost and cross-screen totals remains incomplete. Run log: `.ai/runs/2026-10-03-RQ561-evidence.md`; evidence state synchronized.
@@ -4235,7 +4236,7 @@ This is especially important now that Inventory has an independent family probe 
 
 ## RQ568 - Execute the canonical Pre/Post compatibility view in current six-route certification
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ550 captures the current split/parity counterexamples, then RQ541 and RQ543 stabilize split/event semantics
 Priority: P1
 Type: integration-tests/test-infrastructure/evidence
@@ -4276,3 +4277,11 @@ A simplified test-only view would be dangerous because it could pass while produ
 - RQ550 proof baseline, then RQ541 and RQ543 semantic fixes.
 - Consume RQ545 diagnostics but do not wait for its deployed/provider acceptance.
 - RQ454/STAB16 remain production-only and do not block disposable PostgreSQL certification.
+
+#### Claim note
+
+- Date: 2026-10-04
+- Refreshed origin/main at 3d12251a1720d19d4711878bc767df29c4d3dcb4. RQ550, RQ541, RQ543, RQ561 and Q83 are DONE.
+- No RQ568 lock, matching branch or open PR existed before claim. Q83's historical branch has no commits outside origin/main; its synchronized SQL queue and re-entry evidence show DONE.
+- Reuse the existing RQ561 harness and canonical SQL/bootstrap; do not add a simplified shadow view. RQ545 deployed acceptance and RQ454/STAB16 remain later evidence owners, not disposable-harness start gates.
+- RQ568 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/RQ568-codex.lock.md.
