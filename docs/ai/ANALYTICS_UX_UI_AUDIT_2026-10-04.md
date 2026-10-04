@@ -375,7 +375,7 @@ Format: `UX-XXX — naslov` · Ozbiljnost · Ekran · Kategorija · Dokaz · Pro
 - P3 · live (390×844: "Loading data · 1 request in progress" preko trust headera) · code `components/GlobalRequestSpinner.tsx:26-29` · Vlasnik: P-UI-45 (Codex responsive re-audit; rečnik; "Učitavanje podataka · N zahteva u toku", bez prekrivanja ključnog sadržaja na telefonu).
 
 # UX-042 — Horizontalni overflow na Zalihama pri 390px
-- P2 · **live** (`inventory_Neon-Dark_390x844.png`, capture 431px, horizontalni scrollbar) · Vlasnik: **prošireni P-UI-49** (samo CSS).
+- P2 · **live** (`inventory_Neon-Dark_390x844.png`, capture 431px, horizontalni scrollbar) · Vlasnik: **P-UI-41** (responsive re-audit; Inventory panel intrinsic-width containment). P-UI-49 ostaje vlasnik state taxonomy-ja, ne layout overflow-a.
 
 # UX-043 — Back ne vraća prethodno primenjene filtere; Dashboard ne upisuje datume u URL
 - P3 · **live** · Vlasnik: P-UI-51 (pravilo istorije iz design system §6.3).
@@ -522,7 +522,7 @@ Prvo su prošireni postojeći vlasnici, pa su tek onda dodati novi promptovi za 
 | ID | Status | P | Porodica | Svrha | Ready after |
 |---|---|---|---|---|---|
 | P-UI-47 | READY | P1 | analytics-theme-token-contract | Jedan izvor tokena, statusni `*-text` tokeni ≥4,5:1, popravka `.card-theme`, chart tokeni, nivoi akcija | — |
-| P-UI-48 | WAITING | P1 | global-header-ops-safety | Ops toggle-ovi van poslovnog headera, potvrda, capability gating, skip link, mobilni breadcrumb | P-UI-48 DONE (deli `HeaderStatus.tsx`/`AppLayout.tsx`) |
+| P-UI-48 | WAITING | P1 | global-header-ops-safety | Ops toggle-ovi van poslovnog headera, potvrda, capability gating, skip link, mobilni breadcrumb | P-UI-40 DONE (deli `HeaderStatus.tsx`/`AppLayout.tsx`) |
 | P-UI-49 | READY | P2 | analytics-state-taxonomy | Mapiranje backend reason kodova u shared empty/error/loading stanja | — |
 | P-UI-50 | WAITING | P2 | product-decision-hierarchy | KPI "—" kada je blokirano, hijerarhija, ARIA, rečnik | RQ573 + RQ574 + P-UI-49 DONE |
 | P-UI-51 | WAITING | P2 | decision-surface-controls | Board period/opseg/URL stanje; eho datuma; pravilo istorije | RQ570 + P-UI-47 DONE (deli `AnalyticsControlBar`) |
@@ -543,7 +543,7 @@ Kolizije: P-UI-47 (`ThemeContext.tsx`, `themes.css`, token blok u `tailwind.css`
  15. Rutiranje posle registracije (§75)
 
 - **RQ (viši prioritet):** primarni READY ostaje **RQ569**. Dodatni READY: RQ553, RQ574, RQ578, RQ580, RQ581 i novi **RQ586** (parallel-safe, disjunktne putanje).
-- **P-UI (dopunska traka):** primarni READY ostaje Codex **P-UI-39**; dodatni READY P-UI-40, P-UI-41, P-UI-45 i iz ovog audita **P-UI-47** i **P-UI-49**. WAITING iz ovog audita: P-UI-48 (P-UI-40), P-UI-50 (RQ573+RQ574+P-UI-49), P-UI-51 (RQ570+P-UI-39), P-UI-52 (RQ553); P-UI-31/35/36/38 i Codex P-UI-42/43/44/46 kao ranije.
+- **P-UI (dopunska traka):** primarni READY ostaje **P-UI-39**; dodatni collision-safe READY su P-UI-40, P-UI-41, **P-UI-47** i **P-UI-49**. P-UI-45 je WAITING iza P-UI-40 + P-UI-48 zbog zajedničkog `AppLayout.tsx`. WAITING iz ovog audita: P-UI-48 (P-UI-40), P-UI-50 (RQ573+RQ574+P-UI-49), P-UI-51 (RQ570+P-UI-39), P-UI-52 (RQ553); P-UI-31/35/36/38 i Codex P-UI-42/43/44/46 kao ranije.
 - **Najbolji sledeći prompt:** po lancu prioriteta **RQ569**. Za UX traku iz ovog audita **P-UI-47** (P1 kontrast/tokeni) ili **P-UI-49** (taksonomija stanja, live "Failed to fetch"). Kao brza korektnost pobeda **RQ586**.
 
  16. Live dokazi i spajanje
@@ -580,3 +580,8 @@ Dodatna potvrđena zapažanja: metodologija drawer na PDC radi i dobar je obraza
 - Kontrast je računat iz token vrednosti, ne iz renderovanih piksela; UX-012 treba potvrditi live pre izmene.
 - Nije bilo pristupa bazi ni produkcijskim logovima; poslovni nalazi su preuzeti iz re-audita istog dana.
 - Format scorecard-a i nalaza prati brief (§47/§65/§66) kako je prenet ovom agentu.
+
+
+## 17. Post-registration routing correction (2026-10-04)
+
+Posle spajanja sa responsive re-auditom urađen je fresh collision/dependency pass. Dve greške u ovom dokumentu su ispravljene: P-UI-48 čeka P-UI-40 (ne samog sebe), a Inventory 390px overflow pripada P-UI-41, ne P-UI-49. P-UI-45 više nije READY jer deli `AppLayout.tsx` sa P-UI-40 i P-UI-48. Canonical P-UI READY skup je sada: **P-UI-39, P-UI-40, P-UI-41, P-UI-47, P-UI-49**. Exact dependencies za P-UI-31/35/36/42/45 su u live P-UI queue-u i usklađene su sa `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
