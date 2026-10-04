@@ -1,4 +1,5 @@
 using System.Text;
+using Application.Analytics;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,6 +16,8 @@ public sealed class AnalyticsCacheAdminServiceTests
     [InlineData(AnalyticsCachePolicy.InventoryFamily, "analytics:inventory")]
     [InlineData(AnalyticsCachePolicy.DataQualityFamily, "analytics:data-quality")]
     [InlineData(AnalyticsCachePolicy.PrePostFamily, "analytics:pre-post")]
+    [InlineData(AnalyticsCachePolicy.NivelacijaFamily, "analytics:vendor-sales-nivelacija")]
+    [InlineData("vendor-sales-nivelacija", "analytics:vendor-sales-nivelacija")]
     [InlineData(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, "analytics:pre-nivelacija-prioriteti")]
     [InlineData(AnalyticsCachePolicy.ReportsFamily, "analytics:analytics-report:")]
     [InlineData("pre-nivelacija", "analytics:pre-nivelacija-prioriteti")]

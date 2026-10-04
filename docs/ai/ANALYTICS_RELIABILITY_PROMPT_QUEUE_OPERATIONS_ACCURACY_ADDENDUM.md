@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ553 (parallel-safe P3 in Nivelacija addendum). RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
+Current READY prompt: RQ552 (primary; Nivelacija runtime cost/invalidation after RQ564). Additional parallel-safe READY: RQ553 (Nivelacija copy/a11y). Additional P0 READY: RQ569 (Operations source horizon/freshness). RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
 Owner recovery 2026-10-04 after RQ567: the prior "no other READY" conclusion was stale. RQ541-RQ544, RQ547-RQ550 and RQ568 are DONE, and RQ545's remaining work is deployed/provider acceptance that the RQ564 prompt explicitly says is not a local start gate. Fresh collision checks found no RQ564 lock, matching branch or open PR. RQ564 is therefore promoted WAITING -> READY as the next P0 repository-local reliability task. RQ553 is independently READY in the Nivelacija addendum after RQ529 DONE. RQ552 is narrowed to its still-live performance/cache-invalidation residual and sequenced after RQ564 because price-event writes must invalidate the new Nivelacija integrity generation consistently. Live Daily Sales evidence also exposed a separate source-horizon/freshness gap; RQ569 is registered below and waits for RQ564 so the same context/generation contract is reused. RQ453 is scope-repaired into the non-skippable repository certification gate after RQ564/RQ569 rather than waiting for deployed browser/certificate work.
 Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. Post-close cascade: RQ564 is primary READY and RQ553 is additional parallel-safe READY; RQ565-RQ566 remain externally gated.
 Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
@@ -210,7 +210,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
 | RQ567 | DONE | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
 | RQ568 | DONE | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
-| RQ569 | WAITING | P0 | operations-source-horizon-freshness | Bind requested periods to observed source horizon and durable import/refresh freshness across Operations |
+| RQ569 | READY | P0 | operations-source-horizon-freshness | Bind requested periods to observed source horizon and durable import/refresh freshness across Operations |
 
 ---
 
@@ -4124,6 +4124,19 @@ After the canonical nivelacija semantics stabilize, add one explicit family whos
 - Production application remains RQ454/STAB16; local family implementation must not wait on provider access once semantic/oracle dependencies are stable.
 - When wiring invalidation, reuse the existing analytics source-generation/context registry. A successful `POST /api/nivelacija`, a live Nivelacija repair, or an import/cache generation change must make prior Nivelacija evidence non-current before any new green state is possible.
 
+### Completion note
+
+- Date: 2026-10-04
+- Status: DONE
+- Completion: enrolled the `nivelacija` Operations integrity family with a bounded canonical-view probe, family-bound trust meta on Pre/Post and Pre-Nivelacija Priorities, and explicit cache/integrity invalidation after price writes and live repair.
+- Changed files: `Application/Analytics/OperationsAnalyticsIntegrityContracts.cs`, `Infrastructure/Services/NivelacijaOperationsIntegrityProbe.cs`, `Infrastructure/Services/Caching/AnalyticsCachePolicy.cs`, `Api/Program.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`, `Api/Endpoints/AdminRepairEndpoints.cs`, `Api.Tests/OperationsAnalyticsIntegrityFamilyTests.cs`, queue/roadmap docs, `.ai/runs/2026-10-04-RQ564-evidence.md`.
+- Checks run: `node scripts/check-agent-instructions.mjs` (incl. self-test) PASS; `node scripts/check-prompt-queues.mjs` PASS; `dotnet test Api.Tests --filter FullyQualifiedName~OperationsAnalyticsIntegrity` 17/17 PASS.
+- Checks not run: full backend suite, adversarial PostgreSQL oracle expansion for the new probe, deployed mutation→read freshness proof.
+- Main commit SHA: delivered on `main` via merge `cfe0720b` (implementation commit `d8313e15`).
+- Run log: `.ai/runs/2026-10-04-RQ564-evidence.md`
+- Evidence state: synchronized
+- Follow-up: promote RQ552 primary READY and RQ569 after post-close cascade; RQ553 remains parallel-safe READY.
+
 ---
 
 ## RQ565 - Reconcile all six current Operations screens through deployed API, browser and export
@@ -4242,7 +4255,7 @@ This is especially important now that Inventory has an independent family probe 
 
 - RQ515, RQ562, RQ563 are DONE.
 - RQ554 first to avoid conflicting edits on the two Nivelacija pages.
-- RQ564 is not a start gate: until it lands, Nivelacija must truthfully render missing-family proof as unverified.
+- RQ564 is DONE: Nivelacija now has a dedicated integrity family; surfaces must bind to that family evidence instead of the pre-RQ564 “not independently verified” placeholder when proof exists.
 
 ### Completion note
 
@@ -4258,7 +4271,7 @@ This is especially important now that Inventory has an independent family probe 
 - Main commit SHA: `419d77674692995653c65db73ab2892520e4f890`
 - Main verification: passed; fresh `origin/main` resolved to `419d77674692995653c65db73ab2892520e4f890`, and `git merge-base --is-ancestor` exited 0.
 - Missed: none known in repository-local RQ567 scope; live deployment/browser proof remains pending.
-- Follow-up: primary READY is RQ564; parallel-safe additional READY is RQ553 in the Nivelacija addendum. RQ565-RQ566 remain deployment/provider gated.
+- Follow-up: primary READY is RQ552; parallel-safe additional READY is RQ553; P0 RQ569 is READY after RQ564. RQ565-RQ566 remain deployment/provider gated.
 - Residual risk: currently deployed API still returns null for the new operations-integrity/readiness metadata until the main commit is deployed; production browser behavior is not yet verified.
 - Prompt defect / scope repair: the six pages share one `AnalyticsTrustHeader`, so the state matrix is tested once at that component boundary and page integration verifies all six route mounts/fail-closed states plus Inventory evidence aggregation, avoiding six duplicate state matrices. Inventory's existing reviewed `totalCount ?? 0` exception moved from line 928 to 939 after trust metadata additions; the existing guardrail baseline reference was moved without changing that code or rule.
 
@@ -4340,8 +4353,8 @@ A simplified test-only view would be dangerous because it could pass while produ
 
 ## RQ569 - Bind Operations trust to source horizon and durable freshness
 
-Status: WAITING
-Ready after: RQ564 is DONE; no production/provider access is required for repository-local contract work
+Status: READY
+Ready after: RQ564 is DONE on current main; no production/provider access is required for repository-local contract work
 Priority: P0
 Type: backend/frontend/contract/tests
 Feature family: operations-source-horizon-freshness

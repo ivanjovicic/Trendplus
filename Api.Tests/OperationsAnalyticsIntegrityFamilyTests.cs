@@ -28,6 +28,13 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
     }
 
     [Fact]
+    public void ResolveAffected_MapsNivelacijaAliasesToDedicatedFamily()
+    {
+        var resolved = OperationsAnalyticsIntegrityFamilies.ResolveAffected("vendor-sales-nivelacija");
+        Assert.Equal([OperationsAnalyticsIntegrityFamilies.Nivelacija], resolved);
+    }
+
+    [Fact]
     public void FamilyInvalidation_RotatesOnlyTheAffectedGeneration()
     {
         var registry = new OperationsAnalyticsIntegrityRegistry();
