@@ -29295,6 +29295,12 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 
 - As listed in Ready after.
 
+### Addendum 2026-10-04 (next-wave review correction; RQ585)
+
+- An empty/smoke-only Analytics Actions ledger is **not** a dependency of this prompt. RQ585 composes certified current signals and already has explicit gates: RQ570/RQ573/RQ574/RQ576 DONE plus production freshness within the RQ583 SLA.
+- Do not defer RQ585 waiting for measured outcomes. Outcome/learning may enrich a later digest, but the first digest is a bounded owner worklist from certified actionable signals. Rows with recommendationAllowed=false remain excluded and expected impact stays unavailable when not certified.
+
+
 ## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
 
 Status: READY
@@ -29380,14 +29386,14 @@ Production readiness cannot tell whether the startup database initialization act
 - Live 2026-10-04 22:51 CEST: `/ready` returned `ready=true`, `reason=ready`, `startedAtUtc=2026-10-04T19:38:36Z`, `readyAtUtc=19:39:00Z`; `/api/runtime/version` commit `02f99158`, `processType=web`.
 - At the same time, `GET /api/analytics/vendor-sales-nivelacija` returned `vendor_sales_nivelacija_contract_missing` (column `change_percent_revenue_semantic` missing in `public.vw_vendor_sales_nivelacija`), and `reports/supplier-decision` returned `MISSING_OBJECT` for the 90-day dataset.
 - `Program.cs:99-100,827-832` requires DB initialization for readiness only when `Database:AutoMigrate=true`; `StartupReadinessState.cs:25-38` refuses `ready` until it completes; `DatabaseInitializer.cs:800-821` and `:746-756` throw when those exact objects are still missing after repair; `DatabaseInitializer.cs:106-121` swallows the failure when `FailFast=false` and still lets `DeferredStartupTasksHostedService.cs:208-211` mark initialization completed.
-- Hence the live state is only possible when AutoMigrate or FailFast is not effective (or a different database is initialized), contradicting `render.yaml:35-40`. The deployed SHA contains the 42P16 fix (`26e09e46` is an ancestor of `02f99158`).
+- The live combination is **strong evidence** that the effective runtime did not follow the expected strict initialization path, but it does not uniquely identify the cause. Plausible hypotheses include AutoMigrate not effective, FailFast not effective and initializer errors completing non-strictly, a different effective runtime/connection/config path, or the objects drifting after startup readiness was achieved. Provider config/startup logs are required to select among them. The deployed SHA contains the 42P16 fix (`26e09e46` is an ancestor of `02f99158`).
 
 ### Scope
 
 - Track an initialization outcome: `not_required`, `pending`, `succeeded`, `completed_with_errors`, `failed`, plus `attempts`, `lastAttemptAtUtc`, `completedAtUtc`.
-- Expose it in `/ready` and `/api/runtime/version` as non-secret enums and booleans: `databaseInitialization.state`, `required`, `failFast` (effective), `autoMigrate` (effective).
+- Expose a safe summary in `/ready`: `databaseInitialization.state`, `required`, bounded failure category, attempts/timestamps. Keep `/api/runtime/version` focused on deployment identity rather than creating a second readiness authority. Exact effective flags (`Database:AutoMigrate`, `DatabaseInitialization:FailFast`, `StartupTasks:RunDatabaseInitialization`) and detailed failing stage belong on an existing admin-authorized diagnostic surface. A public derived mode such as `strict` / `non_strict` / `not_required` is acceptable if it is non-secret.
 - Keep script/relation names and exception text out of anonymous JSON (STAB rule: details only in logs or an Admin-only surface). If an Admin-only diagnostic already exists, add the failing step name there.
-- `completed_with_errors` must not report `reason=ready` as if clean: keep `ready=true` for availability, but use `reason=ready_degraded_schema` (or equivalent) so a monitor can alert.
+- `completed_with_errors` must not look identical to a clean startup. If the existing availability policy keeps `ready=true`, expose a degraded startup reason. This is **startup outcome**, not current schema certification: a later schema drift must remain distinguishable from `succeeded`.
 
 ### Read first
 
@@ -29401,7 +29407,7 @@ Production readiness cannot tell whether the startup database initialization act
 
 1. Make `InitializeDatabasesAsync` return an outcome (or record it in `StartupReadinessState`) instead of only logging "completed with errors".
 2. Record `not_required` when AutoMigrate is off for a web process, so "skipped" is distinguishable from "succeeded".
-3. Extend `/ready` and `/api/runtime/version` with the non-secret fields above; keep existing fields and status codes backward compatible.
+3. Extend `/ready` with the safe state above and extend/reuse an Admin-authorized diagnostic for exact effective config/stage. Keep `/api/runtime/version` as deployment identity; keep existing readiness fields/status codes backward compatible.
 4. Add the degraded readiness reason for `completed_with_errors`.
 5. Document the fields in the deploy runbook section the team already uses for readiness.
 
@@ -29409,12 +29415,12 @@ Production readiness cannot tell whether the startup database initialization act
 
 - Unit: each outcome maps to the expected readiness/reason; FailFast true/false; AutoMigrate off -> `not_required`.
 - Integration (existing startup test host): a forced vendor-view verification failure with `FailFast=false` yields `completed_with_errors` and `reason=ready_degraded_schema`; with `FailFast=true` readiness stays false.
-- Anonymous `/ready` JSON contains no connection string, host, script path or exception text.
+- Anonymous `/ready` JSON contains no connection string, host, script path, raw exception text or exact operational configuration values that are not needed for public health. Admin diagnostics require the existing authorization boundary.
 - Governance validators; `git diff --check`.
 
 ### Acceptance
 
-- From the public `/ready` alone, an operator can tell whether startup DB initialization was not required, succeeded, completed with errors or failed, and whether FailFast/AutoMigrate are effective.
+- From public `/ready`, an operator can distinguish not-required, pending, succeeded, completed-with-errors and failed startup initialization. From the Admin-authorized diagnostic, an operator can also see the effective initialization flags/path. `succeeded` must never be documented as proof that all analytics relations remain correct later.
 - No secret or schema detail is exposed anonymously.
 - Existing readiness consumers (frontend header, Render health check) keep working.
 
@@ -29424,12 +29430,12 @@ Production readiness cannot tell whether the startup database initialization act
 
 ### Completion evidence
 
-- Run log with tests, changed files, and, after deploy, one live `/ready` sample showing the new state. The live sample is expected to show `not_required` or `completed_with_errors` until the owner fixes the Render configuration (STAB16 addendum).
+- Run log with tests, changed files, and, after deploy, one live `/ready` sample plus the Admin initialization diagnostic and one startup-log correlation. Do not pre-predict `not_required` versus `completed_with_errors`; the retained evidence cannot yet distinguish configuration mismatch, non-strict failure or post-readiness drift.
 
 ### Residual risk
 
 - This makes the problem visible; it does not fix it. The fix is owner configuration (STAB16) plus RQ545's final verification.
-- Exposing `failFast`/`autoMigrate` booleans is low risk but is still a configuration disclosure; keep it to booleans.
+- Startup state is historical evidence. Current relation/schema health still belongs to existing analytics diagnostics/integrity owners; do not let `succeeded` become a new false-green signal.
 
 ### Dependencies
 
@@ -29457,13 +29463,13 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 ### Evidence
 
 - `20260327120000_CreateTransfersTables` and `20260327153000_AddTransferLifecycleFields`: the schema is provisioned instead by the idempotent bootstrap (`DatabaseInitializer.cs:2112-2166`); `20260327120000_CreateTransfersTables` is inserted into `__EFMigrationsHistory` by hand (`:1432`).
-- `20260404183000_AddArtikliIdTipObuceIndex` (`IX_Artikli_IDTipObuce`) and `20260407153000_AddDailySalesStatsIndexes` (`IX_prodaja_zaglavlje_id_objekat_datum_prodaje`, covering `IX_prodaja_stavke_id_prodaja_id_artikal_cover_qty_price`) are created nowhere else. Equivalent leading-column indexes already exist in `20260327201000_AddAnalyticsPerformanceIndexes` and `025_AddTrendplusPerformanceIndexes.sql`; at 67,517 sale lines this has no measurable performance impact.
+- `20260404183000_AddArtikliIdTipObuceIndex` and `20260407153000_AddDailySalesStatsIndexes` contain index DDL that is partly redundant with earlier index coverage. This audit did **not** benchmark the cost of their non-discovery, so no `no measurable impact` claim is justified; the absence is P3 because no current measured incident is attributable to these exact orphan migrations.
 - The Daily Sales runbook still lists the two never-applied index names.
 
 ### Scope
 
-- Add a reflection test: every non-abstract `Microsoft.EntityFrameworkCore.Migrations.Migration` subclass in the Infrastructure assembly has `[Migration(id)]` and `[DbContext(typeof(...))]`, and ids are unique and ordered.
-- Retire the four orphans by deleting them (preferred) or by excluding them explicitly with a documented allow-list in the test. Do **not** add attributes to them: that would make EF try to apply them on production (duplicate tables, redundant indexes).
+- Add an EF migration-discovery contract test using the same migrations assembly metadata/runtime discovery that `dotnet ef` relies on. Every production-intended migration must be discoverable with a unique canonical migration id, or live on a small explicit `intentionally_undiscoverable` allowlist with reason/owner/sunset. Do not rely only on raw reflection attributes if EF discovery semantics differ.
+- Classify the four current orphans against bootstrap/self-heal, current model snapshot, migration-history assumptions and repo references. Delete only when supersession/redundancy is proven; otherwise retain them only through the explicit allowlist. Do **not** simply add attributes, because EF could then execute old duplicate DDL on production.
 - Correct the runbook index list.
 
 ### Read first
@@ -29475,8 +29481,8 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 
 ### Do
 
-1. Write the guard test first; confirm it fails on the four files.
-2. Delete the four files (or allow-list them with the reason "superseded by bootstrap/indexes; never applied").
+1. Write the EF-discovery guard first and confirm the four current classes are not discovered.
+2. For each class, document whether it is superseded bootstrap DDL, redundant index DDL or still semantically needed. Delete only proven superseded files; otherwise allowlist with an expiry and follow-up owner.
 3. Update the runbook index names.
 4. Run the migration ownership tests that already exist.
 
@@ -29487,8 +29493,9 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 
 ### Acceptance
 
-- A migration without discovery attributes fails CI.
-- No production schema change is triggered (no attributes added, snapshot unchanged).
+- A production-intended migration that EF cannot discover fails CI; an intentionally undiscoverable legacy class passes only with an explicit reviewed allowlist entry.
+- Duplicate migration ids fail the guard.
+- No production schema change is triggered by this prompt (no legacy attributes added, snapshot unchanged unless a separate proven migration is intentionally generated).
 
 ### Promotion rule
 
@@ -29500,7 +29507,7 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 
 ### Residual risk
 
-- If some environment did apply these by hand, deleting the files changes nothing there; that is acceptable because nothing reads the migration ids except the history table.
+- If an environment applied equivalent DDL manually, repository deletion alone does not prove schema parity. Keep the classification/evidence so future operators can distinguish `superseded` from `never applied but still required`.
 
 ### Dependencies
 
