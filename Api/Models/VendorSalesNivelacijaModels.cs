@@ -58,6 +58,8 @@ public sealed class VendorSalesNivelacijaArticleStatDto
     public decimal? LostSalesOOS { get; set; }
     public decimal? OOSRate { get; set; }
     public string? MetricReason { get; set; } // null if all metrics are valid, else reason for nulls
+    [JsonIgnore]
+    public bool IsLowSignal { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaRecommendationDto
@@ -104,6 +106,7 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public string? PrimaryFootwearType { get; set; }
     public decimal? PrimaryFootwearTypeSharePercent { get; set; }
     public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }
+    public decimal? AvgElasticity { get; set; }
     public bool TypeInsightsAuthoritative { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }

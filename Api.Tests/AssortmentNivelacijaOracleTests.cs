@@ -476,7 +476,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         fixture.Vendors.Add(new AssortmentVendor(301, "Oracle vendor"));
         fixture.Articles.Add(new AssortmentArticle(3011, 301, "Patike", "SHARED-PLU"));
         fixture.Articles.Add(new AssortmentArticle(3012, 301, "Patike", "SHARED-PLU"));
-        fixture.Articles.Add(new AssortmentArticle(3021, 301, "Patike", "CONTROL-NO-STOCK"));
+        fixture.Articles.Add(new AssortmentArticle(3021, 301, "Patike", "CONTROL-NO-STOCK", Stock: 0m));
         fixture.Articles.Add(new AssortmentArticle(3022, 301, "Patike", "CONTROL-STOCK"));
         fixture.Articles.Add(new AssortmentArticle(3031, 301, "Patike", "POST-BACKFILL-MARKDOWN"));
         fixture.Events.Add(new AssortmentEvent(301, 3011, db.Anchor.AddDays(-40), 100m, 80m, 1));
@@ -489,15 +489,19 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         fixture.Sales.Add(new AssortmentSale(305, "CONTROL-PRE", db.Anchor.AddDays(-50), 3022, 10, 95m, 1));
         fixture.Sales.Add(new AssortmentSale(306, "CONTROL-POST", db.Anchor.AddDays(-35), 3022, 7, 95m, 1));
         fixture.Sales.Add(new AssortmentSale(307, "SECOND-SIZE", db.Anchor.AddDays(-35), 3012, 20, 80m, 1));
+        fixture.Sales.Add(new AssortmentSale(308, "POST-BACKFILL-CONTROL-TRAP", db.Anchor.AddDays(-50), 3031, 10, 100m, 1));
         await SeedAsync(db.Connection, fixture);
         await SeedDidMapperViewsAsync(db.Connection);
         await ExecuteAsync(db.Connection, ReadRepoFile("Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql"));
+        await ExecuteAsync(db.Connection, "CREATE VIEW supplier_did_dependency AS SELECT price_event_id, did_revenue FROM vw_nivelacija_did;");
+        await ExecuteAsync(db.Connection, ReadRepoFile("Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql"));
 
         var controls = await ReadStringSetAsync(db.Connection, "SELECT article_id::text FROM vw_nivelacija_kontrolna_grupa ORDER BY article_id;");
-        Assert.Equal(new[] { "3012", "3021", "3022" }, controls);
+        Assert.Equal(new[] { "3011", "3012", "3022", "3031" }, controls);
 
         var did = await ReadDidRowsAsync(db.Connection);
         Assert.Equal(new long[] { 301, 302, 303 }, did.Select(x => x.EventId).Order());
+        Assert.True(await ScalarAsync<bool>(db.Connection, "SELECT to_regclass('supplier_did_dependency') IS NOT NULL;"));
         Assert.All(did, row => Assert.NotEqual(row.ArticleId, row.ControlArticleId));
         Assert.Equal(3022, did.Single(row => row.EventId == 301).ControlArticleId);
         var firstEvent = did.Single(row => row.EventId == 301);
@@ -511,7 +515,6 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(665m, firstEvent.ControlPostRevenue);
         Assert.Equal(-75m, did.Single(row => row.EventId == 301).DidRevenue);
         Assert.Equal(1m, did.Single(row => row.EventId == 301).DidQty);
-        // Baseline includes all overlapping sales windows and the immature partial window; RQ542 owns semantic correction.
         var secondEvent = did.Single(row => row.EventId == 302);
         Assert.Equal(3022, secondEvent.ControlArticleId);
         Assert.Equal(18m, secondEvent.PreQty);
@@ -522,10 +525,10 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(1615m, secondEvent.ControlPreRevenue);
         Assert.Equal(0m, secondEvent.ControlPostQty);
         Assert.Equal(0m, secondEvent.ControlPostRevenue);
-        Assert.Equal(155m, secondEvent.DidRevenue);
-        Assert.Equal(1m, secondEvent.DidQty);
+        Assert.Null(secondEvent.DidRevenue);
+        Assert.Null(secondEvent.DidQty);
         var postBackfillEvent = did.Single(row => row.EventId == 303);
-        Assert.Equal(3021, postBackfillEvent.ControlArticleId);
+        Assert.Equal(3022, postBackfillEvent.ControlArticleId);
         Assert.Null(postBackfillEvent.DidRevenue);
         Assert.Null(postBackfillEvent.DidQty);
 
@@ -541,30 +544,53 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
 
         var articles = new List<VendorSalesNivelacijaArticleStatDto>
         {
-            new() { ArticleId = 3011, PriceEventId = 301, Sku = "SHARED-PLU", PriceChangePercent = -20m, PreQty = 10, PostQty = 4, PostRevenue = 320m },
+            new() { ArticleId = 3011, PriceEventId = 301, EventDate = db.Anchor.AddDays(-40).ToDateTime(TimeOnly.MinValue), Sku = "SHARED-PLU", OldPrice = 100m, NewPrice = 80m, PriceChangePercent = -20m, PreQty = 10, PostQty = 4, PostRevenue = 320m, HasComparableSalesWindow = true, IsPostWindowMature = true, HasPostSalesEvidence = true },
             new() { ArticleId = 3012, PriceEventId = 0, Sku = "SHARED-PLU", PriceChangePercent = 0m, PreQty = 20, PostQty = 20, PostRevenue = 1600m },
-            new() { ArticleId = 3011, PriceEventId = 302, Sku = "SHARED-PLU", PriceChangePercent = 12.5m, PreQty = 4, PostQty = 2, PostRevenue = 180m, IsPostWindowMature = false }
+            new() { ArticleId = 3011, PriceEventId = 302, EventDate = db.Anchor.AddDays(-20).ToDateTime(TimeOnly.MinValue), Sku = "SHARED-PLU", OldPrice = 80m, NewPrice = 90m, PriceChangePercent = 12.5m, PreQty = 4, PostQty = 2, PostRevenue = 180m, HasComparableSalesWindow = true, IsPostWindowMature = false }
         };
 
         var rollingWarning = await InvokeOptionalMapperAsync("MapRollingAndMomentumToNivelacijaArticlesAsync", articles, db.Connection, db.Anchor.AddDays(-40).ToDateTime(TimeOnly.MinValue));
         var didWarning = await InvokeOptionalMapperAsync("MapOosAndDidToNivelacijaArticlesAsync", articles, db.Connection);
         InvokeElasticityMapper(articles);
 
-        // Pin today's SKU-level aggregation/overwrite behavior before the independent mapper fix.
-        Assert.Contains("No momentum data (view missing)", rollingWarning, StringComparison.Ordinal);
-        Assert.Contains("OOS lookup failed", didWarning, StringComparison.Ordinal);
-        Assert.All(articles, article =>
-        {
-            Assert.Equal(90m, article.Rolling7dPreRevenue);
-            Assert.Equal(180m, article.Rolling7dPostRevenue);
-            Assert.Null(article.MomentumRevenue);
-            Assert.Null(article.OOSRate);
-            Assert.Equal(40m, article.DidRevenue);
-            Assert.Null(article.LostSalesOOS);
-        });
+        Assert.Null(rollingWarning);
+        Assert.Contains("OOS unavailable: observed snapshot history is not certified for event windows", didWarning, StringComparison.Ordinal);
+        Assert.Equal(100m, articles[0].Rolling7dPreRevenue);
+        Assert.Equal(200m, articles[0].Rolling7dPostRevenue);
+        Assert.NotEqual(articles[0].Rolling7dPreRevenue, articles[1].Rolling7dPreRevenue);
+        Assert.Null(articles[0].MomentumRevenue); // no complete event-relative 7-day post sample
+        Assert.Null(articles[0].OOSRate);
+        Assert.Null(articles[1].OOSRate);
+        Assert.Equal(-75m, articles[0].DidRevenue);
+        Assert.Null(articles[1].DidRevenue);
+        Assert.Null(articles[0].LostSalesOOS);
         Assert.Equal(3m, articles[0].PriceElasticity);
         Assert.Null(articles[1].PriceElasticity);
-        Assert.Equal(-4m, articles[2].PriceElasticity); // markup + immature post window currently still produces elasticity
+        Assert.Null(articles[2].PriceElasticity);
+
+        var scopedMetricRow = new VendorSalesNivelacijaArticleStatDto
+        {
+            ArticleId = 3011,
+            PriceEventId = 301,
+            EventDate = db.Anchor.AddDays(-40).ToDateTime(TimeOnly.MinValue),
+            Sku = "SHARED-PLU"
+        };
+        var scopedRollingWarning = await InvokeOptionalMapperAsync(
+            "MapRollingAndMomentumToNivelacijaArticlesAsync",
+            [scopedMetricRow],
+            db.Connection,
+            db.Anchor.AddDays(-40).ToDateTime(TimeOnly.MinValue),
+            metricsCanUseUnscopedSources: false);
+        var scopedDidWarning = await InvokeOptionalMapperAsync(
+            "MapOosAndDidToNivelacijaArticlesAsync",
+            [scopedMetricRow],
+            db.Connection,
+            metricsCanUseUnscopedSources: false);
+        Assert.Equal("scope_not_applied: rolling_and_momentum", scopedRollingWarning);
+        Assert.Equal("scope_not_applied: did_and_observed_oos", scopedDidWarning);
+        Assert.Null(scopedMetricRow.Rolling7dPreRevenue);
+        Assert.Null(scopedMetricRow.DidRevenue);
+        Assert.Null(scopedMetricRow.OOSRate);
     }
 
     [Fact]
@@ -805,11 +831,18 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         return ExecuteAsync(
             connection,
             """
-            CREATE VIEW price_history AS
-            SELECT "Id" AS id, "ArtikalId" AS article_id, "Datum"::date AS event_date,
-                   "StaraProdajnaCena" AS old_price, "NovaProdajnaCena" AS new_price
-              FROM "DnevnikPromena"
-             WHERE "TipPromene" IN ('Nivelacija', 'Nivelacija cena');
+            CREATE TABLE price_history (
+                id bigint,
+                article_id integer,
+                event_date date,
+                old_price numeric,
+                new_price numeric
+            );
+            INSERT INTO price_history
+            SELECT "Id", "ArtikalId", "Datum"::date, "StaraProdajnaCena", "NovaProdajnaCena"
+            FROM "DnevnikPromena"
+            WHERE "TipPromene" IN ('Nivelacija', 'Nivelacija cena')
+              AND "Id" <> 303;
             CREATE TABLE mv_daily_sales_facts (
                 article_id integer NOT NULL,
                 day date NOT NULL,
@@ -837,8 +870,17 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             (3012, CURRENT_DATE - 50, 80),
             (3012, CURRENT_DATE - 35, 160);
         CREATE TABLE vw_sales_momentum (article_id integer, last_day date, momentum_revenue numeric);
-        CREATE TABLE vw_stock_red_zone (sku text, is_oos boolean);
-        INSERT INTO vw_stock_red_zone VALUES ('SHARED-PLU', true), ('SHARED-PLU', false);
+        CREATE SCHEMA analytics_intel;
+        CREATE TABLE analytics_intel.vw_inventory_daily_stock_v1 (
+            article_id integer,
+            store_id integer,
+            date date,
+            observed_qty numeric,
+            provenance text
+        );
+        INSERT INTO analytics_intel.vw_inventory_daily_stock_v1 VALUES
+            (3011, 0, CURRENT_DATE - 39, 0, 'observed'),
+            (3011, 0, CURRENT_DATE - 35, 4, 'observed');
         """);
 
     private static async Task<List<DidRow>> ReadDidRowsAsync(NpgsqlConnection connection)
@@ -888,13 +930,14 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         string methodName,
         List<VendorSalesNivelacijaArticleStatDto> articles,
         NpgsqlConnection connection,
-        DateTime? eventDate = null)
+        DateTime? eventDate = null,
+        bool metricsCanUseUnscopedSources = true)
     {
         var method = typeof(Trendplus2.Endpoints.AllEndpoints).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException($"Mapper {methodName} not found.");
         var arguments = methodName == "MapRollingAndMomentumToNivelacijaArticlesAsync"
-            ? new object?[] { articles, connection, eventDate, CancellationToken.None }
-            : new object?[] { articles, connection, CancellationToken.None };
+            ? new object?[] { articles, connection, eventDate, metricsCanUseUnscopedSources, CancellationToken.None }
+            : new object?[] { articles, connection, metricsCanUseUnscopedSources, CancellationToken.None };
         return await (Task<string?>)(method.Invoke(null, arguments)
             ?? throw new InvalidOperationException($"Mapper {methodName} returned no task."));
     }
@@ -931,7 +974,8 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
                 "PLU" text,
                 "Naziv" text,
                 "Kategorija" text,
-                "IDDobavljac" integer
+                "IDDobavljac" integer,
+                "Kolicina" numeric NOT NULL DEFAULT 10
             );
             CREATE TABLE "DnevnikPromena" (
                 "Id" integer PRIMARY KEY,
@@ -976,7 +1020,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
 
         foreach (var a in fixture.Articles)
         {
-            sql.AppendLine($"INSERT INTO \"Artikli\" VALUES ({a.Id}, {Text(a.Sku)}, {Text($"Artikal {a.Id}")}, {Text(a.Category)}, {Num(a.VendorId)});");
+            sql.AppendLine($"INSERT INTO \"Artikli\" VALUES ({a.Id}, {Text(a.Sku)}, {Text($"Artikal {a.Id}")}, {Text(a.Category)}, {Num(a.VendorId)}, {Num(a.Stock)});");
         }
 
         foreach (var e in fixture.Events)

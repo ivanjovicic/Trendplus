@@ -11,7 +11,7 @@ namespace Api.Tests;
 
 internal sealed record AssortmentVendor(int Id, string Name);
 
-internal sealed record AssortmentArticle(int Id, int? VendorId, string Category, string Sku);
+internal sealed record AssortmentArticle(int Id, int? VendorId, string Category, string Sku, decimal Stock = 10m);
 
 internal sealed record AssortmentEvent(
     long Id,

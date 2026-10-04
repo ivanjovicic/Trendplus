@@ -832,7 +832,11 @@ export default function ProdajaPrePostNivelacijePage() {
   const previousData = querySnapshot?.previous ?? null;
   const previousComparisonError = querySnapshot?.previousError ?? null;
   const queryErrorDetails = errorReason
-    ? resolveNivelacijaErrorDetails(errorReason, "Greška pri učitavanju pre/post analitike.")
+    ? resolveNivelacijaErrorDetails(
+      errorReason,
+      "Greška pri učitavanju pre/post analitike.",
+      PRE_POST_SAFE_ERROR_MESSAGES,
+    )
     : null;
   const loading = initialLoading || refetching;
   useEffect(() => {
@@ -1155,8 +1159,8 @@ const advancedSignals = useMemo(
       {
         label: "Elastičnost cene",
         value: fmtNumber(data?.avgElasticity, 2),
-        hint: "prosek",
-        tip: "Prosečna cenovna elastičnost po artiklima dobavljača. Vrednost < 0 znači da rast cene smanjuje prodaju. Računa se kao %Δqty / %Δcena za svaki artikal.",
+        hint: "tačkasta procena",
+        tip: "Tačkasta procena cenovne elastičnosti za zrele markdown događaje sa dovoljnim signalom i promenom cene od najmanje 5%. Agregat je ponderisana sredina prema post-period prihodu.",
       },
       {
         label: "Efekat razlike u razlikama (DiD)",
@@ -1241,7 +1245,7 @@ const advancedSignals = useMemo(
       topRiskLabel: topRisk ? `${topRisk.article.sku || "-"} • ${topRisk.article.articleName}` : "Nije dostupno",
       topRiskRevenue: topRisk?.metric ?? null,
       avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
-      avgElasticity: averageNullable(vendorArticles.map((item) => item.priceElasticity)),
+      avgElasticity: selectedRow.avgElasticity ?? null,
       avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
       avgLostSalesOOS: averageNullable(vendorArticles.map((item) => item.lostSalesOOS)),
       topMetricReasons,

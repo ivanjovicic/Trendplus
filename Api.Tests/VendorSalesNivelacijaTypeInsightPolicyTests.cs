@@ -47,6 +47,47 @@ public sealed class VendorSalesNivelacijaTypeInsightPolicyTests
     }
 
     [Fact]
+    public void PointEstimateRequiresMatureNonLowSignalMarkdownAndFivePercentChange()
+    {
+        var eligible = new VendorSalesNivelacijaArticleStatDto
+        {
+            HasComparableSalesWindow = true,
+            IsPostWindowMature = true,
+            OldPrice = 100m,
+            NewPrice = 80m,
+            PreQty = 10,
+            PostQty = 4
+        };
+        Assert.Equal(3m, VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+        eligible.IsLowSignal = true;
+        Assert.Null(VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+        eligible.IsLowSignal = false;
+        eligible.IsPostWindowMature = false;
+        Assert.Null(VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+        eligible.IsPostWindowMature = true;
+        eligible.NewPrice = 105m;
+        Assert.Null(VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+        eligible.NewPrice = 96m;
+        Assert.Null(VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+        eligible.NewPrice = 80m;
+        eligible.PreQty = 1;
+        eligible.PostQty = 1000;
+        Assert.Equal(-10m, VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(eligible));
+    }
+
+    [Fact]
+    public void WeightedElasticityDoesNotFallBackToUnweightedWhenRevenueWeightIsMissing()
+    {
+        var rows = new[]
+        {
+            ComparableRow("SKU-ZERO", "Patike", 10m, 0m, 3m),
+            ComparableRow("SKU-NEGATIVE", "Patike", 10m, -5m, 9m)
+        };
+
+        Assert.Null(VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(rows));
+    }
+
+    [Fact]
     public void MissingPostRevenueDenominatorRemainsUnavailable()
     {
         var aggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(

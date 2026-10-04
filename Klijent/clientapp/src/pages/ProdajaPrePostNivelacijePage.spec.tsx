@@ -1212,6 +1212,25 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText("SKU-UNTRUSTED • Nevalidan signal")).not.toBeInTheDocument();
   });
 
+  it("uses the backend weighted elasticity aggregate in the selected vendor summary", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
+      response({
+        vendorStats: [vendor({ avgElasticity: 4.25 })],
+        articleStats: [article({ priceElasticity: 99 })],
+      }),
+    );
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    const driverGrid = await screen.findByText("Top dobitnik SKU").then((heading) => heading.closest(".ppn-driver-grid"));
+    expect(driverGrid).not.toBeNull();
+    const elasticity = Array.from(driverGrid!.querySelectorAll("small"))
+      .find((element) => element.textContent?.includes("Elasticnost"));
+    expect(elasticity).toHaveTextContent("4,25");
+  });
+
   it("keeps measured zero revenue visible in driver summary when comparability is confirmed", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

@@ -659,6 +659,7 @@ const vendorSalesNivelacijaVendorSchema = z.object({
   primaryFootwearType: z.string().nullable().optional(),
   primaryFootwearTypeSharePercent: nullableNonNegativePercentage.optional(),
   primaryFootwearTypeAvgElasticity: nullableNumber.optional(),
+  avgElasticity: nullableNumber.optional(),
   typeInsightsAuthoritative: z.boolean().optional(),
 }).passthrough();
 

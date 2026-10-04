@@ -4506,7 +4506,14 @@ public static class AllEndpoints
                             SemanticChangePercentRevenue = semanticChangePercentRevenue ?? changePercentRevenue,
                             SemanticChangePercentQty = semanticChangePercentQty,
                             IsPostWindowMature = isPostWindowMature,
-                            PostWindowDaysElapsed = postWindowDaysElapsed
+                            PostWindowDaysElapsed = postWindowDaysElapsed,
+                            IsLowSignal = !hasComparableSalesWindow
+                                || !coveragePre30.HasValue
+                                || coveragePre30.Value < (7m / 30m)
+                                || !coveragePost30.HasValue
+                                || coveragePost30.Value < 0.2m
+                                || preQty < 3
+                                || preRevenue < 100m
                         };
 
                         dedupRows.Add(dto);
@@ -4528,6 +4535,8 @@ public static class AllEndpoints
                     .ToList();
 
                 var analyzedRows = analyzed.Count;
+                var advancedMetricsRespectRequestScope = !storeId.HasValue
+                    && string.Equals(normalizedDataScope, "all", StringComparison.Ordinal);
 
                 var analyzedSharePercent = cohortRows.Count == 0
                     ? 0m
@@ -4546,6 +4555,7 @@ public static class AllEndpoints
                         analyzed,
                         connection,
                         eventDateOnly,
+                        advancedMetricsRespectRequestScope,
                         ct);
                     if (!string.IsNullOrWhiteSpace(warning))
                         globalWarnings.Add(warning);
@@ -4557,7 +4567,11 @@ public static class AllEndpoints
 
                 try
                 {
-                    var warning = await MapOosAndDidToNivelacijaArticlesAsync(analyzed, connection, ct);
+                    var warning = await MapOosAndDidToNivelacijaArticlesAsync(
+                        analyzed,
+                        connection,
+                        advancedMetricsRespectRequestScope,
+                        ct);
                     if (!string.IsNullOrWhiteSpace(warning))
                         globalWarnings.Add(warning);
                 }
@@ -4805,6 +4819,7 @@ public static class AllEndpoints
                                 PrimaryFootwearType = primaryType?.Category,
                                 PrimaryFootwearTypeSharePercent = primaryType?.PostRevenueSharePercent,
                                 PrimaryFootwearTypeAvgElasticity = primaryType?.AvgElasticity,
+                                AvgElasticity = VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(matureComparable),
                                 TypeInsightsAuthoritative = primaryType?.PostRevenueSharePercent.HasValue == true
                             },
                             IsUnknownVendor = isUnknownVendor,
@@ -4995,7 +5010,7 @@ public static class AllEndpoints
                 }
 
                 var avgMomentumRevenue = AverageOrNull(comparableRows.Select(x => x.MomentumRevenue));
-                var avgElasticity = AverageOrNull(comparableRows.Select(x => x.PriceElasticity));
+                var avgElasticity = VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(matureComparableRows);
                 var avgDidRevenue = AverageOrNull(comparableRows.Select(x => x.DidRevenue));
                 var avgLostSalesOos = AverageOrNull(comparableRows.Select(x => x.LostSalesOOS));
                 var avgOosRate = AverageOrNull(comparableRows.Select(x => x.OOSRate));
@@ -7377,91 +7392,112 @@ public static class AllEndpoints
         List<VendorSalesNivelacijaArticleStatDto> articles,
         NpgsqlConnection connection,
         DateTime? eventDate,
+        bool metricsCanUseUnscopedSources,
         CancellationToken ct)
     {
         if (articles.Count == 0) return null;
-
-        static string SkuKey(string? sku) => string.IsNullOrWhiteSpace(sku) ? string.Empty : sku.Trim().ToUpperInvariant();
+        _ = eventDate;
+        if (!metricsCanUseUnscopedSources)
+        {
+            return "scope_not_applied: rolling_and_momentum";
+        }
 
         var warnings = new List<string>();
-        var rollingMap = new Dictionary<string, (decimal? pre, decimal? post)>(StringComparer.Ordinal);
-        var momentumMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
-
-        var skuKeys = articles
-            .Select(x => SkuKey(x.Sku))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-        if (eventDate.HasValue)
-        {
-            try
-            {
-                const string rollingSql = """
-                    SELECT
-                        UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) AS sku_key,
-                        AVG(r.ma7_revenue) FILTER (
-                            WHERE r.day >= @eventDate - INTERVAL '30 days'
-                              AND r.day <  @eventDate
-                        ) AS pre,
-                        AVG(r.ma7_revenue) FILTER (
-                            WHERE r.day >= @eventDate
-                              AND r.day <  @eventDate + INTERVAL '30 days'
-                        ) AS post
-                    FROM vw_sales_rolling_7d r
-                    JOIN "Artikli" a ON a."Id" = r.article_id
-                    WHERE UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text))) = ANY(@skuKeys)
-                      AND r.day >= @eventDate - INTERVAL '30 days'
-                      AND r.day <  @eventDate + INTERVAL '30 days'
-                    GROUP BY UPPER(TRIM(COALESCE(NULLIF(a."PLU", ''), a."Id"::text)));
-                    """;
-                await using var cmd = new NpgsqlCommand(rollingSql, connection);
-                cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
-                cmd.Parameters.AddWithValue("eventDate", eventDate.Value.Date);
-                cmd.Parameters.AddWithValue("skuKeys", skuKeys);
-                await using var reader = await cmd.ExecuteReaderAsync(ct);
-                while (await reader.ReadAsync(ct))
-                {
-                    var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                    if (string.IsNullOrWhiteSpace(key)) continue;
-                    rollingMap[key] = (
-                        reader.IsDBNull(1) ? null : reader.GetDecimal(1),
-                        reader.IsDBNull(2) ? null : reader.GetDecimal(2));
-                }
-            }
-            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-            {
-                warnings.Add("No rolling data (view missing)");
-            }
-            catch (Exception)
-            {
-                warnings.Add("Rolling lookup failed");
-            }
-        }
-        else
-        {
-            warnings.Add("Rolling pre/post unavailable (no eventDate filter)");
-        }
+        var rollingMap = new Dictionary<long, (decimal? pre, decimal? post)>();
+        var momentumMap = new Dictionary<long, decimal?>();
 
         try
         {
-            const string momentumSql = """
+            const string rollingSql = """
+                WITH events AS (
+                    SELECT *
+                    FROM unnest(@eventIds::bigint[], @articleIds::integer[], @eventDates::date[], @mature::boolean[])
+                         AS e(price_event_id, article_id, event_date, post_window_complete)
+                )
                 SELECT
-                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
-                    m.momentum_revenue
-                FROM vw_sales_momentum m
-                JOIN "Artikli" a ON a."Id" = m.article_id
-                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys);
-            """;
-            await using var cmd = new NpgsqlCommand(momentumSql, connection);
+                    e.price_event_id,
+                    AVG(r.ma7_revenue) FILTER (
+                        WHERE r.day >= e.event_date - INTERVAL '30 days'
+                          AND r.day < e.event_date
+                    ) AS pre,
+                    CASE WHEN e.post_window_complete THEN AVG(r.ma7_revenue) FILTER (
+                        WHERE r.day >= e.event_date
+                          AND r.day < e.event_date + INTERVAL '30 days'
+                    ) END AS post
+                FROM events e
+                LEFT JOIN vw_sales_rolling_7d r
+                  ON r.article_id = e.article_id
+                 AND r.day >= e.event_date - INTERVAL '30 days'
+                 AND r.day < e.event_date + INTERVAL '30 days'
+                GROUP BY e.price_event_id, e.event_date, e.post_window_complete;
+                """;
+            await using var cmd = new NpgsqlCommand(rollingSql, connection);
             cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
+            AddNivelacijaEventParameters(cmd, articles);
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                if (string.IsNullOrWhiteSpace(key)) continue;
-                momentumMap[key] = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
+                rollingMap[reader.GetInt64(0)] = (
+                    reader.IsDBNull(1) ? null : reader.GetDecimal(1),
+                    reader.IsDBNull(2) ? null : reader.GetDecimal(2));
+            }
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        {
+            warnings.Add("No rolling data (view missing)");
+        }
+        catch (Exception)
+        {
+            warnings.Add("Rolling lookup failed");
+        }
+        try
+        {
+            const string momentumSql = """
+                WITH events AS (
+                    SELECT *
+                    FROM unnest(@eventIds::bigint[], @articleIds::integer[], @eventDates::date[], @mature::boolean[])
+                         AS e(price_event_id, article_id, event_date, post_window_complete)
+                ), windows AS (
+                    SELECT
+                        e.price_event_id,
+                        e.post_window_complete,
+                        SUM(f.revenue) FILTER (
+                            WHERE f.day >= e.event_date - INTERVAL '7 days'
+                              AND f.day < e.event_date
+                        ) AS pre_revenue,
+                        COUNT(f.day) FILTER (
+                            WHERE f.day >= e.event_date - INTERVAL '7 days'
+                              AND f.day < e.event_date
+                        ) AS pre_days,
+                        SUM(f.revenue) FILTER (
+                            WHERE f.day >= e.event_date
+                              AND f.day < e.event_date + INTERVAL '7 days'
+                        ) AS post_revenue,
+                        COUNT(f.day) FILTER (
+                            WHERE f.day >= e.event_date
+                              AND f.day < e.event_date + INTERVAL '7 days'
+                        ) AS post_days
+                    FROM events e
+                    LEFT JOIN mv_daily_sales_facts f
+                      ON f.article_id = e.article_id
+                     AND f.day >= e.event_date - INTERVAL '7 days'
+                     AND f.day < e.event_date + INTERVAL '7 days'
+                    GROUP BY e.price_event_id, e.post_window_complete
+                )
+                SELECT
+                    price_event_id,
+                    CASE WHEN post_window_complete AND pre_days > 0 AND post_days > 0
+                        THEN post_revenue - pre_revenue
+                    END AS momentum_revenue
+                FROM windows;
+                """;
+            await using var cmd = new NpgsqlCommand(momentumSql, connection);
+            cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
+            AddNivelacijaEventParameters(cmd, articles);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                momentumMap[reader.GetInt64(0)] = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
             }
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
@@ -7475,13 +7511,12 @@ public static class AllEndpoints
 
         foreach (var row in articles)
         {
-            var key = SkuKey(row.Sku);
-            if (rollingMap.TryGetValue(key, out var rolling))
+            if (rollingMap.TryGetValue(row.PriceEventId, out var rolling))
             {
                 row.Rolling7dPreRevenue = rolling.pre;
                 row.Rolling7dPostRevenue = rolling.post;
             }
-            if (momentumMap.TryGetValue(key, out var momentum))
+            if (momentumMap.TryGetValue(row.PriceEventId, out var momentum))
             {
                 row.MomentumRevenue = momentum;
             }
@@ -7493,128 +7528,94 @@ public static class AllEndpoints
     private static async Task<string?> MapOosAndDidToNivelacijaArticlesAsync(
         List<VendorSalesNivelacijaArticleStatDto> articles,
         NpgsqlConnection connection,
+        bool metricsCanUseUnscopedSources,
         CancellationToken ct)
     {
         if (articles.Count == 0) return null;
-
-        static string SkuKey(string? sku) => string.IsNullOrWhiteSpace(sku) ? string.Empty : sku.Trim().ToUpperInvariant();
+        if (!metricsCanUseUnscopedSources)
+        {
+            return "scope_not_applied: did_and_observed_oos";
+        }
 
         var warnings = new List<string>();
-        var oosMap = new Dictionary<string, decimal?>(StringComparer.Ordinal);
-        var didMap = new Dictionary<string, (decimal? didRevenue, decimal? didQty)>(StringComparer.Ordinal);
-
-        var skuKeys = articles
-            .Select(x => SkuKey(x.Sku))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-        try
-        {
-            const string oosSql = """
-                SELECT
-                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
-                    AVG(is_oos::numeric) AS oos_rate
-                FROM vw_stock_red_zone
-                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
-                GROUP BY UPPER(TRIM(COALESCE(sku, '')));
-            """;
-            await using var cmd = new NpgsqlCommand(oosSql, connection);
-            cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
-            {
-                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                if (string.IsNullOrWhiteSpace(key)) continue;
-                oosMap[key] = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
-            }
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-        {
-            warnings.Add("No OOS data (view missing)");
-        }
-        catch (Exception)
-        {
-            warnings.Add("OOS lookup failed");
-        }
+        var didByEventId = new Dictionary<long, (decimal? revenue, decimal? quantity)>();
 
         try
         {
             const string didSql = """
-                SELECT
-                    UPPER(TRIM(COALESCE(sku, ''))) AS sku_key,
-                    AVG(did_revenue) AS did_revenue,
-                    AVG(did_qty) AS did_qty
+                SELECT price_event_id, did_revenue, did_qty
                 FROM vw_nivelacija_did
-                WHERE UPPER(TRIM(COALESCE(sku, ''))) = ANY(@skuKeys)
-                GROUP BY UPPER(TRIM(COALESCE(sku, '')));
-            """;
+                WHERE price_event_id = ANY(@eventIds);
+                """;
             await using var cmd = new NpgsqlCommand(didSql, connection);
             cmd.CommandTimeout = OptionalNivelacijaMetricCommandTimeoutSeconds;
-            cmd.Parameters.AddWithValue("skuKeys", skuKeys);
+            cmd.Parameters.Add(new NpgsqlParameter("eventIds", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint)
+            {
+                Value = articles.Select(row => row.PriceEventId).ToArray()
+            });
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var key = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                if (string.IsNullOrWhiteSpace(key)) continue;
-                didMap[key] = (
+                didByEventId[reader.GetInt64(0)] = (
                     reader.IsDBNull(1) ? null : reader.GetDecimal(1),
                     reader.IsDBNull(2) ? null : reader.GetDecimal(2));
             }
         }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+        catch (PostgresException ex) when (ex.SqlState is "42P01" or "42703" or "3F000")
         {
-            warnings.Add("No DiD data (view missing)");
+            warnings.Add("DiD unavailable: event view missing");
         }
         catch (Exception)
         {
             warnings.Add("DiD lookup failed");
         }
 
+        warnings.Add("OOS unavailable: observed snapshot history is not certified for event windows");
+
         foreach (var row in articles)
         {
-            var key = SkuKey(row.Sku);
-            if (oosMap.TryGetValue(key, out var oosRate))
+            if (row.IsPostWindowMature && didByEventId.TryGetValue(row.PriceEventId, out var did))
             {
-                row.OOSRate = oosRate;
-            }
-            if (didMap.TryGetValue(key, out var did))
-            {
-                row.DidRevenue = did.didRevenue;
-                row.DidQty = did.didQty;
+                row.DidRevenue = did.revenue;
+                row.DidQty = did.quantity;
             }
         }
 
         return warnings.Count == 0 ? null : string.Join("; ", warnings.Distinct(StringComparer.Ordinal));
     }
 
+    private static void AddNivelacijaEventParameters(
+        NpgsqlCommand command,
+        IReadOnlyCollection<VendorSalesNivelacijaArticleStatDto> articles)
+    {
+        command.Parameters.Add(new NpgsqlParameter("eventIds", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Bigint)
+        {
+            Value = articles.Select(row => row.PriceEventId).ToArray()
+        });
+        command.Parameters.Add(new NpgsqlParameter("articleIds", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
+        {
+            Value = articles.Select(row => row.ArticleId).ToArray()
+        });
+        command.Parameters.Add(new NpgsqlParameter("eventDates", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Date)
+        {
+            Value = articles.Select(row => DateOnly.FromDateTime(row.EventDate)).ToArray()
+        });
+        command.Parameters.Add(new NpgsqlParameter("mature", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Boolean)
+        {
+            Value = articles.Select(row => row.IsPostWindowMature).ToArray()
+        });
+    }
+
     private static void MapElasticityAndLostSalesToNivelacijaArticles(List<VendorSalesNivelacijaArticleStatDto> articles)
     {
         foreach (var row in articles)
         {
-            if (row.PriceChangePercent.HasValue && row.PreQty > 0)
-            {
-                var pricePct = row.PriceChangePercent.Value / 100m;
-                if (pricePct != 0m)
-                {
-                    var qtyPct = ((decimal)row.PostQty - row.PreQty) / row.PreQty;
-                    var elasticity = qtyPct / pricePct;
-                    
-                    // Decimal can't be Infinity/NaN, but check for reasonable bounds
-                    if (elasticity > -1000000m && elasticity < 1000000m)
-                    {
-                        row.PriceElasticity = Math.Round(elasticity, 4);
-                    }
-                }
-            }
+            row.PriceElasticity = VendorSalesNivelacijaTypeInsightPolicy.ComputePointEstimate(row);
 
-            if (!row.OOSRate.HasValue) continue;
+            if (!row.OOSRate.HasValue || !row.IsPostWindowMature || !row.HasPostSalesEvidence) continue;
 
             var oos = row.OOSRate.Value;
-            if (oos < 0m) oos = 0m;
-            if (oos > 1m) oos = 1m;
-            if (oos >= 0.999m) continue;  // Prevent division by near-zero
+            if (oos < 0m || oos > 1m || oos >= 0.999m) continue;
 
             // Lost sales proxy from realized post revenue under OOS pressure.
             var denominator = 1m - oos;

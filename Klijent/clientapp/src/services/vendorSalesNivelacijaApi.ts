@@ -50,6 +50,7 @@ export interface VendorSalesNivelacijaVendorStat {
     primaryFootwearType?: string | null;
     primaryFootwearTypeSharePercent?: number | null;
     primaryFootwearTypeAvgElasticity?: number | null;
+    avgElasticity?: number | null;
     typeInsightsAuthoritative?: boolean;
 }
 

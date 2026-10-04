@@ -20,6 +20,7 @@ export type NivelacijaErrorDetails = {
 export function resolveNivelacijaErrorDetails(
   reason: unknown,
   fallback = NIVELACIJA_ERROR_FALLBACK,
+  allowlist?: readonly string[],
 ): NivelacijaErrorDetails {
   const error = typeof reason === "object" && reason !== null
     ? reason as { message?: unknown; errorCode?: unknown; correlationId?: unknown }
@@ -30,7 +31,7 @@ export function resolveNivelacijaErrorDetails(
   const mappedMessage = getNivelacijaBusinessErrorMessage(errorCode);
 
   return {
-    message: mappedMessage ?? getSafeAnalyticsErrorMessage(rawMessage, errorCode, fallback),
+    message: mappedMessage ?? getSafeAnalyticsErrorMessage(rawMessage, errorCode, fallback, allowlist),
     errorCode,
     correlationId,
   };
