@@ -17,7 +17,7 @@ Aplikacija ipak **još ne izgleda dobro na svim uređajima**. Ima pet konkretnih
 4. **Na telefonu se do podataka dolazi predugo:** blok o pouzdanosti na vrhu svakog ekrana zauzima 650–1436 px. Prvi pokazatelj (KPI) pojavljuje se tek posle 2 do 5 visina ekrana. Na Prioritetima pre nivelacije to je 4056 px.
 5. **Široke tabele (Dnevna prodaja 21 kolona, Zalihe 17, Vrsta obuće, Prioriteti) nemaju zakucanu prvu kolonu,** pa se pri skrolu u stranu gubi koji je red u pitanju.
 
-Ocena: telefon je **delimično dobar**, tablet uspravno **dobar uz sitne nedostatke**, tablet položen i mali laptop **slabi**, a veliki desktop **dobar**.
+Ocena: telefon je **delimično dobar**. Tablet uspravno je **layout-stabilan, ali touch ergonomija još nije dobra**: nema root overflow-a, ali veliki broj shared i page-local kontrola ne ispunjava interni 16px/44px touch contract. Tablet položen i mali laptop su **slabi**, a veliki desktop je **dobar**.
 
 ## 2. Metod i ograničenja
 
@@ -48,9 +48,9 @@ Ocena: telefon je **delimično dobar**, tablet uspravno **dobar uz sitne nedosta
 | Centralne akcije | P-UI-33 | DONE | nema prelivanja |
 | Dashboard i Dnevna prodaja | P-UI-34 | DONE | grafikoni prate širinu (296 px na 360) |
 | Lista artikala i duži rep | P-UI-37 | DONE | tabela 760 px u skrol oblasti sa zakucanom prvom kolonom |
-| Supplier pregled | P-UI-31 | WAITING | zavisnosti su ispunjene; razlog odlaganja (RQ487) je zastareo, RQ487 je DONE |
-| Nivelacije pre/posle i Prioriteti | P-UI-35 | WAITING | zavisnosti ispunjene; čeka RQ553/552/556/571 |
-| Hub, Vrsta obuće i Boja | P-UI-36 | WAITING | zavisnosti ispunjene; proveriti RQ575/RQ580 |
+| Supplier pregled | P-UI-31 | WAITING | RQ487 više nije blocker; sada namerno čeka P-UI-47 da responsive migracija odmah usvoji canonical theme/action tokene bez drugog prolaza |
+| Nivelacije pre/posle i Prioriteti | P-UI-35 | WAITING | čeka P-UI-39 + P-UI-47; RQ552/RQ556/RQ571 nisu start blockeri dok su WAITING, a RQ553 blokira samo ako je stvarno aktivan na istim putanjama |
+| Hub, Vrsta obuće i Boja | P-UI-36 | WAITING | čeka P-UI-39 + P-UI-47; RQ575/RQ580 nisu start blockeri samo zbog statusa |
 | Regresioni gate | P-UI-38 | WAITING | čeka da se migracije završe |
 | Recharts preload (performanse) | PERF18 | WAITING | uslov (P-UI-24) je ispunjen; vlasnik je PERF |
 
@@ -106,7 +106,7 @@ Ocena: telefon je **delimično dobar**, tablet uspravno **dobar uz sitne nedosta
 6. **Široke tabele bez zakucane kolone (P2).** Kod: `AnalyticsDataTable.css:125-160` (zakucana kolona samo do 900 px i samo za pilot), `InventoryItemsTable.tsx`. → **P-UI-44**; Vrsta obuće i Prioriteti ostaju u P-UI-35/36.
 7. **Engleski indikator učitavanja i karusel u pokretu (P2).** Kod: `GlobalRequestSpinner.tsx:26-29`, `SeasonalImageCarousel.tsx:74-79`. → **P-UI-45**
 8. **Operativne i šifarnik liste nisu za telefon (P3).** `/dobavljaci`, `/nivelacije`, `/dnevnik-promena`, `/logs` (+81 px na 1024), `ConfigurationPage.css:493` (`min-width: 1120px`). → **P-UI-46**
-9. **P-UI-31, 35 i 36 stoje iako su im zavisnosti ispunjene.** Razlog za P-UI-31 je zastareo (RQ487 je DONE). → addendumi
+9. **Stari razlozi za WAITING na P-UI-31/35/36 bili su zastareli, ali posle istog-dnevnog UX audita postoje novi, konkretni sequencing razlozi.** P-UI-31 čeka P-UI-47 da odmah usvoji canonical theme/action tokene; P-UI-35 i P-UI-36 čekaju P-UI-39 zbog sopstvenog no-overflow acceptance-a i P-UI-47 zbog page-token migracije. WAITING RQ promptovi nisu automatski start blockeri; samo stvaran aktivni owner/path collision blokira claim. → addendumi
 10. **Merni alat (baseline) nije uhvatio stvarne greške:** radi sa fixture podacima, ima 13 ruta i ne proverava `innerWidth`. → addendum P-UI-38
 
 ## 6. Novi promptovi (queue `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`)
@@ -116,15 +116,15 @@ Ocena: telefon je **delimično dobar**, tablet uspravno **dobar uz sitne nedosta
 | P-UI-39 | P1 | **READY** (primarni) | Filter traka bezbedna po defaultu: bez širenja stranice na telefonu i na 1024 |
 | P-UI-40 | P1 | **READY** | Mali laptop: zaglavlje u jednom redu i uzan bočni meni koji pamti izbor |
 | P-UI-41 | P1 | **READY** | Pilot izveštaj (tabele u skrol oblasti) i paneli Zaliha bez širenja |
-| P-UI-42 | P2 | WAITING (posle P-UI-39) | 16 px polja i 44 px dugmad i na tabletima na dodir |
+| P-UI-42 | P2 | WAITING (posle P-UI-39 + P-UI-40 + P-UI-47 + P-UI-48) | 16 px polja i 44 px shared touch targeti na coarse-pointer tabletima i hybrid touch uređajima |
 | P-UI-43 | P2 | WAITING (posle RQ569) | Sažet blok pouzdanosti na telefonu, sa detaljima na dodir |
 | P-UI-44 | P2 | WAITING (posle RQ569) | Zakucana prva kolona za Dnevnu prodaju i Zalihe |
-| P-UI-45 | P2 | **READY** | Indikator učitavanja na srpskom koji ne prekriva sadržaj; karusel samo na početnoj strani (odluka 04.10.) i poštuje smanjeno kretanje |
+| P-UI-45 | P2 | WAITING (posle P-UI-40 + P-UI-48) | Indikator učitavanja na srpskom koji ne prekriva sadržaj; karusel samo na početnoj strani (odluka 04.10.) i poštuje smanjeno kretanje |
 | P-UI-46 | P3 | WAITING (posle P-UI-42) | Operativne i šifarnik liste upotrebljive na telefonu |
 
 Addendumi: P-UI-31, P-UI-35, P-UI-36, P-UI-38 i RQ582 (Insight Studio: 67 sitnih tekstova; po Ivanovoj odluci ekran se sakriva, pa responsive rad nije potreban dok je sakriven).
 
-Redosled: prvo shell i zajedničke komponente (P-UI-39, 40, 41, 45 paralelno, jer dele različite fajlove), zatim temelj za tablet (P-UI-42), pa ekrani (P-UI-43 i 44 posle RQ569, P-UI-35 i 36 kada se oslobode njihovi RQ vlasnici, P-UI-31), zatim duži rep (P-UI-46) i na kraju gate (P-UI-38).
+Redosled posle usklađivanja sa istog-dnevnim UX auditom: paralelno mogu P-UI-39, P-UI-40, P-UI-41, P-UI-47 i P-UI-49. P-UI-48 ide posle P-UI-40; P-UI-45 zatim posle P-UI-40 + P-UI-48 zbog zajedničkog `AppLayout.tsx`. P-UI-42 ide tek posle P-UI-39 + P-UI-40 + P-UI-47 + P-UI-48 zbog shared control/header/theme putanja. P-UI-31 ide posle P-UI-47; P-UI-35/P-UI-36 posle P-UI-39 + P-UI-47 uz fresh active-owner collision check. P-UI-43/P-UI-44 ostaju posle RQ569, P-UI-46 posle P-UI-42, a P-UI-38 završni regression gate.
 
 ## 7. Druga provera (verifikacija nalaza i promptova)
 
@@ -147,3 +147,17 @@ Svaka citirana linija koda ponovo je pročitana na `6a2a23b3`. Ispravke posle dr
 ## 9. Dopuna 2026-10-04 21:36
 
 Ivan je odlučio da se sezonski karusel prikazuje samo na početnoj strani. Otvoreno pitanje iz odeljka 8 je zatvoreno, a odluka je upisana u P-UI-45.
+
+## 10. Re-review i korekcije posle paralelnog UX/UI audita (2026-10-04)
+
+Ponovna provera je urađena na svežem `main` nakon što je stigao commit `61992efb` sa P-UI-47..P-UI-52 i canonical `ANALYTICS_DESIGN_SYSTEM.md`. To menja routing, ali ne osporava runtime merenja iz ovog responsive audita.
+
+Korekcije:
+
+- **P-UI-40 i P-UI-45 nisu parallel-safe.** Oba menjaju `AppLayout.tsx`; P-UI-40 je P1 shell owner, a P-UI-45 P2 global chrome. P-UI-45 zato čeka P-UI-40 i P-UI-48, koji takođe menja shell/AppLayout na P1 nivou.
+- **P-UI-42 nije samo “760–1023px”.** Cilj je touch capability: coarse-pointer tablet i hybrid touch uređaj. Prompt sada zahteva `any-pointer: coarse` ili ekvivalentnu hybrid-safe strategiju, uz fine-pointer desktop density bez promene. Zbog shared putanja čeka P-UI-39, P-UI-40, P-UI-47 i P-UI-48.
+- **P-UI-40 acceptance je ispravljen.** Na 1280px ne sme da tvrdi “full-width content” dok je desktop sidebar od 320px proširen; zahtev je single-row/overflow-menu-safe header bez root overflow-a i očuvanje desktop sidebar politike.
+- **P-UI-31/35/36 više ne koriste stale RQ statuse kao blanket blockere.** Novi sequencing je P-UI-47 za P-UI-31, odnosno P-UI-39 + P-UI-47 za P-UI-35/36. WAITING RQ prompt nije blocker sam po sebi; aktivan owner/path collision jeste.
+- **Tablet portrait ocena je pooštrena.** Layout jeste stabilan, ali touch ergonomija nije “dobra uz sitne nedostatke” dok shared/page-local kontrole sistemski promašuju dogovoreni 16px/44px contract.
+
+Current P-UI READY posle korekcije: **P-UI-39 (primary), P-UI-40, P-UI-41, P-UI-47, P-UI-49**.
