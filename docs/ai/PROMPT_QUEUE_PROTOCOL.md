@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-10-02
+Updated: 2026-10-04
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -38,6 +38,57 @@ Future planning programs:
 
 `Current READY prompt: none` is a routing state, not a reason to stop. For a user instruction such as `next`, `continue`, `claim`, or `claim and execute`, the agent must run this recovery sequence before reporting that no work is available.
 
+
+### Zero-READY proof and dependency cascade (mandatory)
+
+A statement such as **`Current READY prompt: none`**, **`no READY prompt`**, **`no safe successor`** or **`no safe claimable task`** is a positive claim that must be proved from the **current post-delivery `origin/main`**. It is never inherited from an older queue header, run log, completion note or previous agent.
+
+**A previous zero-READY conclusion becomes invalid immediately when any of these happens:**
+- a prompt changes to `DONE`, `PARTIAL`, `BLOCKED` or `OBSOLETE`;
+- a named dependency changes state or its evidence is synchronized;
+- a new prompt, owner decision, oracle, fixture, baseline, deployment fact or run log lands;
+- a branch/PR/commit that can satisfy a dependency reaches `main`;
+- a blocker is reclassified from a start gate to final/deployed acceptance.
+
+After any such event, the agent MUST recompute routing before writing `Next: none` or leaving the queue pointer at `none`.
+
+#### Post-close dependency cascade
+
+After delivering or closing a queue prompt, and **before** declaring no successor:
+
+1. Refresh `origin/main` and use the resulting post-delivery SHA as the recovery base. Do not reuse the SHA from before the implementation/closure commit.
+2. Search the owning program's **entire active queue set**, including every active addendum, for the completed/changed task ID and for any other dependency whose status changed in the run.
+   - For Analytics/RQ this means all `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files plus the active SQL analytics queue, not only the addendum that contained the completed prompt.
+3. Re-evaluate every dependent prompt's `Ready after`, `Dependencies`, status, owner and path collision against current code and synchronized evidence.
+4. Then scan **all non-terminal prompts** (`WAITING`, `PARTIAL`, `BLOCKED`) in the owning program for stale/satisfied/circular/external-only blockers. This second pass is mandatory because dependencies can be indirect or described in prose rather than by exact task ID.
+5. Only after dependency completeness is established, check active locks/branches/PRs/path collisions. A stale branch name is not a blocker; verify whether it contains unique current work.
+6. If any prompt is dependency-complete, authorized and collision-safe, repair stale routing and promote it `WAITING -> READY` in the same recovery run. Do not leave it WAITING merely because an older completion note said `none`.
+7. If the first candidate is still blocked, continue through other independent lanes in the same program, then the next eligible program.
+8. If and only if no candidate is runnable, write a **Zero-READY proof** in the run evidence with:
+   - recovery base `origin/main` SHA;
+   - active queue/addendum files scanned;
+   - every plausible non-terminal candidate checked;
+   - blocker class for each;
+   - whether the blocker is a true start gate or final acceptance only;
+   - why no safe repo-local slice exists;
+   - exact event that would unblock the next candidate.
+
+If the agent cannot inspect the full active queue set or cannot verify current post-delivery `origin/main`, it MUST NOT claim that no READY work exists. Report the recovery as incomplete instead.
+
+#### Explicitly prohibited shortcuts
+
+The following are **not sufficient evidence** for a zero-READY conclusion:
+- the queue header currently says `Current READY prompt: none`;
+- the just-completed prompt's old `Next: none` line;
+- the previous agent said there was no safe work;
+- only the three or four prompts nearest the current one were checked;
+- the highest-priority P0 is externally blocked;
+- a production/browser/provider proof is missing when repo-local implementation/proof is independently safe;
+- CI is queued/in progress;
+- a historical branch/lock name exists without proof of an active conflicting owner.
+
+For queue closure, **"none" is the last conclusion, never the starting assumption**.
+
 **Default bias: find safe progress, not a reason to refuse.** A blocker written in an old prompt is a claim to verify, not an eternal fact. The agent must distinguish:
 - a true start gate from evidence needed only for final/deployed acceptance;
 - external/provider/business authority from repository-local work that can proceed independently;
@@ -65,14 +116,14 @@ If a prompt mixes executable repo-local work with external final proof, the agen
 
 ### Recovery order
 
-1. **Refresh routing truth.** Read current `main`, `MASTER_ROADMAP.md`, the owning queue header/addenda and all current `READY` / `IN_PROGRESS` rows. Do not trust an older audit's “next” sentence.
+1. **Refresh routing truth.** Fetch current `origin/main` and record the exact recovery-base SHA. Read `MASTER_ROADMAP.md`, the owning queue header **and the entire active addendum set**, plus all current `READY` / `IN_PROGRESS` rows. After a task closure, this refresh MUST happen from the post-delivery SHA. Do not trust an older audit's “next” or “none” sentence.
 2. **Finish already-started work and unfinished delivery first.**
    - Resume the agent/workspace's own active claim.
    - Inspect recent relevant run logs plus known task branch/PR state before selecting new work. If a valid implementation/proof exists on a branch or PR but `main` does not contain it, finish the permitted merge/push to `main`, resolve only in-scope conflicts, verify the delivered SHA, and synchronize evidence before moving on. Do not merge stale/unverified transport work blindly.
    - Do not steal a live claim from another owner.
    - If an `IN_PROGRESS` row is only stale metadata and current `main` plus its run log already prove delivery, reconcile it to the truthful terminal status before selecting new work.
    - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting lock/branch/PR/owner. Record the takeover evidence.
-3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** Inspect `PARTIAL`, `BLOCKED` and `WAITING` candidates in current program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence, then apply the Mandatory blocker decomposition above.
+3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** First run the Post-close dependency cascade for every task/dependency that changed state in the current run; then inspect **all** `PARTIAL`, `BLOCKED` and `WAITING` candidates across the program's active queue/addenda in program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence, then apply the Mandatory blocker decomposition above.
    - If a dependency is already satisfied, repair the stale dependency/status text.
    - Detect circular prerequisites: if the missing baseline/report/fixture/measurement is an output this prompt itself owns, make it step 1 of the prompt rather than a precondition.
    - Separate external final proof from safe repo-local work. Provider logs, production browser proof, exact-deployed SHA checks or remote CI may remain residual acceptance without blocking local implementation when the implementation can be proved safely on deterministic repository-owned fixtures.
@@ -87,7 +138,7 @@ If a prompt mixes executable repo-local work with external final proof, the agen
 6. **Try the next eligible program.** If the current program is genuinely exhausted or externally blocked, continue through the cross-program priority in `MASTER_ROADMAP.md`. Do not resurrect historical ledgers or lower-priority runtime work that bypasses a higher-priority gate.
 7. **Use productive unblock work when runtime execution is impossible.** A queue-execution request authorizes bounded repository-local analysis/tests/docs that can remove a blocker or produce a well-scoped next prompt. Prefer work that changes readiness truth: a deterministic reproducer, fixture, baseline, contract proof, stale-gate repair, collision classification or missing owner prompt. Do not manufacture cosmetic busywork merely to avoid an empty queue.
 8. **Try another safe lane before refusing.** If the highest-priority candidate still needs real external/owner authority, search the same program for a disjoint dependency-complete lane, then the next eligible program. A blocked P0 does not automatically forbid unrelated repository-local work unless the master roadmap says the gate is globally exclusive.
-9. **Stop only after the router is truly exhausted.** “No prompt” by itself is not an acceptable final result. The agent may report **no safe claimable task** only after the recovery sequence proves that every remaining candidate requires unresolved external/business/security/tenant/production authority, unavailable secrets/provider access, or a genuine conflicting active owner. The final report must include the candidates checked, blocker class for each, why no repo-local slice is safe, and what exact event would unblock the next action.
+9. **Stop only after the router is truly exhausted.** “No prompt” by itself is not an acceptable final result. The agent may report **no safe claimable task** only after a post-delivery Zero-READY proof on current `origin/main` proves that every plausible remaining candidate requires unresolved external/business/security/tenant/production authority, unavailable secrets/provider access, or a genuine conflicting active owner. The final report and durable run evidence must include the recovery-base SHA, active queue/addendum files scanned, candidates checked, blocker class for each, why no repo-local slice is safe, and the exact event that would unblock the next action.
 
 ### Promotion preference during idle recovery
 
@@ -139,7 +190,7 @@ If implementation is useful but evidence/delivery verification is incomplete, us
 
 - A program may have zero, one or multiple READY prompts. Multiple READY prompts are valid only when each is dependency-complete and the active set is collision-safe.
 - `Current READY` is the **primary/default** routing pointer for deterministic `next` behavior. It is not a global mutex and does not make other READY tasks unclaimable.
-- Zero READY/IN_PROGRESS is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` (or the equivalent named blocked/complete current truth).
+- Zero READY/IN_PROGRESS is valid only when the owner queue/current-READY table and `MASTER_ROADMAP.md` explicitly declare `none` **and a current post-close Zero-READY proof has been performed after the latest dependency/evidence/status change**. An older `none` declaration is invalidated by any such change.
 - Multiple programs and multiple independent feature families inside one program may be active concurrently; global program priority still comes from `MASTER_ROADMAP.md`.
 - `Parallel-safe: no` makes that feature family/owned surface exclusive; it does **not** serialize unrelated feature families. Multiple READY/IN_PROGRESS tasks in the same feature family require `Parallel-safe: yes` on every active task in that family.
 - Parallel-safe never means dependency, owner, release, security, tenant or production gates can be skipped.
@@ -209,6 +260,7 @@ Exclusive area: <paths/contract>
 9. Run exact tests/checks.
 10. Record changed files, checks, remaining risk and next status.
 11. Delete local lock before commit.
+12. **Post-close routing recovery is mandatory.** After the implementation/closure reaches `main`, refresh `origin/main`, run the dependency cascade and either promote the next runnable prompt or record a full Zero-READY proof. Never copy the pre-claim `Next`/`none` state into the completion note.
 
 ## Main-first delivery
 
