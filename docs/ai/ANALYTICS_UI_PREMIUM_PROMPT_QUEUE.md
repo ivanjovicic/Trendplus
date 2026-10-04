@@ -2,7 +2,8 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
+Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional parallel-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-45`.
+Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -44,6 +45,14 @@ Use with:
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
+| P-UI-39 | READY | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
+| P-UI-40 | READY | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
+| P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
+| P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
+| P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
+| P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
+| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; reduced-motion carousel |
+| P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 
 ---
 
@@ -1918,6 +1927,12 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 
 ---
 
+### Addendum 2026-10-04 (responsive re-audit, live evidence)
+
+- Live 360x780 (mobile emulation) on `/analytics/supplier?fromDate=2026-07-07&toDate=2026-08-05`: no document overflow (`innerWidth` 360). Filters stack one per row at 296px x 40px (`select`, `input`, `button.secondary`), below the 44px coarse-pointer target. The trust header is 749px tall before any supplier content.
+- The deferral reason recorded on 2026-10-02 ("RQ487 remains the owner-gated Supplier overview query-cost path") is stale: RQ487 is DONE. RQ530 is still PARTIAL as a consumer. Re-run the collision check against RQ530 before promotion instead of treating RQ487 as a blocker.
+- The shared control-bar geometry fix is now `P-UI-39` (default overflow safety). This prompt still owns the Supplier-specific filter density/disclosure and table migration. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
 ## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
 
 Status: DONE
@@ -2208,6 +2223,12 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 
 ---
 
+### Addendum 2026-10-04 (responsive re-audit, live evidence)
+
+- Live 360 (mobile emulation, dated data): `/analytics/nivelacije-pre-post` inflates the layout viewport to 433px through `label.analytics-control-bar__field` (380px, long supplier/store options). `/analytics/pre-nivelacija-prioriteti` at 1024 with the sidebar open overflows by 104px (4-column control-bar grid). The geometry part is now owned by `P-UI-39`. Do not duplicate it here.
+- Still owned here: the Pre-Nivelacija table (956px, 10 columns, 60 rows in a 268px scroller, first column `position: static`, 12px cells); the trust header 1287px plus control bar 1081px before the first KPI at 4056px on 360 (the trust-header compaction itself is `P-UI-43`); the Pre/Post control bar is 963px tall on 360.
+- All P-UI-27/28/29 dependencies are DONE. Remaining start gates are the active Nivelacija RQ owners touching the same pages (RQ553 READY; RQ552/RQ556/RQ571 WAITING). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
 Status: WAITING
@@ -2267,6 +2288,12 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 - Avoid current Supplier/segment RQ path collisions.
 
 ---
+
+### Addendum 2026-10-04 (responsive re-audit, live evidence)
+
+- Live 360 (mobile emulation, dated data): Color inflates `innerWidth` to 426px and Shoe Type to 433px, both through the control-bar select width. At 1024 with the sidebar open, both overflow by 106px. Owned now by `P-UI-39`.
+- Still owned here: the Shoe Type table (1730px, 10 columns in a 260px scroller at 360, first column static, 12px); the Shoe Type trust header 1436px plus control bar 815px before the first KPI at 2403px (compaction in `P-UI-43`); the Supplier Decision Hub/Color table priority columns.
+- P-UI-28/29 are DONE. Before promotion, check collisions with RQ575 (Color "dimension not populated", WAITING) and RQ580 (supplier report/hub label, READY). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
 
@@ -2411,3 +2438,457 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 
 - Core responsive migrations are DONE or explicitly deferred.
 - PERF18 separately owns bundle/preload performance gating.
+
+### Addendum 2026-10-04 (responsive re-audit, live evidence)
+
+- The existing `responsive:baseline` runner (`Klijent/clientapp/scripts/responsive_baseline.mjs:8-22`, 13 route entries, fixture mode) did not catch the live phone layout-viewport inflation on Color/Shoe Type/Pre-Post/Pilot intake/Inventory or the 1024px overflow (P-UI-39/P-UI-41). When this gate is built, add these invariants:
+  1. in mobile emulation, `window.innerWidth === viewport width` (document `scrollWidth` alone misses Chrome's layout-viewport growth);
+  2. 1024x768 with the sidebar expanded;
+  3. fixture option labels of at least 60 characters;
+  4. a sticky-header height budget (≤ 88px at ≥1024, see P-UI-40);
+  5. the missing routes `/analytics/shoe-type-sales-stats`, `/analytics/pre-nivelacija-prioriteti`, `/analytics/data-quality`, `/analytics/decision-board`, `/analytics/decision-pulse`, `/analytics/pilot-readiness`, `/analytics/reports/pilot-intake`, `/analytics/supplier/report`, `/logs` and the šifarnik list pages from P-UI-46.
+- The carousel reduced-motion item in Do step 2 is implemented by `P-UI-45`. This gate only needs to assert it. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
+## Responsive re-audit registration 2026-10-04
+
+Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/2026-10-04-responsive-reaudit-evidence.md`. Base `origin/main` `6a2a23b3`. Live proof: headless Chrome (Playwright-core, Chromium emulation, `isMobile`/`hasTouch` for phone and tablet profiles) against `https://trendplus.vercel.app` on 2026-10-04 21:10–21:40 (Europe/Belgrade), viewports 360x780, 390x844, 768x1024, 1024x768, 1280x800, plus dated URLs `fromDate=2026-07-07&toDate=2026-08-05` so tables/charts render with real rows. The deployed Vercel build SHA was not readable from the UI, so every live finding is also tied to the current-main source line that produces it. Real iOS/iPadOS Safari is still unproven (Chromium emulation only). De-duplicated against P-UI-01..P-UI-38, PERF18, `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md` and the RQ queues. Work already owned by P-UI-31/P-UI-35/P-UI-36/P-UI-38 is recorded as dated addenda on those prompts, not as new prompts.
+
+## P-UI-39 - Make the shared AnalyticsControlBar overflow-safe by default (phone layout-viewport inflation and 1024px overflow)
+
+Status: READY
+Ready after: none
+Priority: P1
+Type: frontend/css/tests
+Feature family: analytics-control-bar-overflow
+Parallel-safe: yes
+Owner: unassigned
+Commit suggestion: `fix(ui): make analytics control bar fields shrink inside narrow layouts`
+
+### Problem
+
+Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout`: Dashboard, Daily Sales, Inventory). On every other `AnalyticsControlBar` page, the default grid and the native `<select>` keep their intrinsic width. A native select is as wide as its longest option, so long Serbian labels push the whole page wider than the screen. Examples: store `Komision (Gospodska 6, N/A) [I…`, season `Proleće-leto 2021`, supplier `"Tim Tod"doo`. On a phone this inflates the layout viewport. Chrome renders the page about 17% zoomed out, or with sideways panning. On a 1024px laptop or tablet in landscape with the sidebar open, the page gets a horizontal scrollbar.
+
+### Evidence
+
+- Live, 360x780 phone emulation with data: `window.innerWidth` becomes 426 on Color, 433 on Shoe Type and 433 on Pre/Post. It should be 360. The widest non-scrolling element on each is `label.analytics-control-bar__field` (380px wide) containing the Objekat/Sezona/Dobavljač select.
+- Live, 1024x768 with the sidebar open: `documentElement.scrollWidth - innerWidth` = 106 on Color, 106 on Shoe Type and 104 on Pre-Nivelacija. The offender is the fourth `select` (180px) of `.analytics-control-bar__fields`, ending at x≈1130.
+- `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css:153-158`: `.analytics-control-bar__fields { grid-template-columns: repeat(4, minmax(180px, 1fr)) }`. At 1024 the content column is 704px minus padding, which is less than 4×180 plus gaps.
+- `AnalyticsControlBar.css:160-163` (field has no `min-width: 0`) and `:174-183` (select/input have no `width`/`min-width`).
+- `AnalyticsControlBar.css:192-203`: the safe rules (`minmax(min(100%,180px),1fr)`, `min-width:0`, `width:100%`) exist only under `.analytics-control-bar--responsive-pilot`.
+- `AnalyticsControlBar.css:211-215` (`@media (max-width:960px)` still uses `repeat(2, minmax(180px,1fr))`) and `:227-230` (`<=640px` uses `1fr`, i.e. `minmax(auto,1fr)`).
+- `AnalyticsControlBar.tsx:89,139`: `responsiveFilterLayout = false` by default. Pages without the opt-in: `ColorSalesStatsPage`, `ShoeTypeSalesStatsPage`, `ProdajaPrePostNivelacijePage`, `PreNivelacijaPriorityPage`, `SupplierSalesStatsPage`, `SupplierFootwearAnalyticsPage`.
+
+### Scope
+
+- `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css`
+- `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx` only if a class hook is needed
+- its nearest spec under `components/analytics/__tests__/`
+- `Klijent/clientapp/scripts/responsive_baseline.mjs` only to add a regression case for this fix
+- No page files, no filter semantics, no URL parameters, no option text changes
+
+### Read first
+
+- P-UI-28 completion evidence (filter pilot) and `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md`
+- `AnalyticsControlBar.css` and `.tsx`
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`
+
+### Do
+
+1. Make the base (non-pilot) grid overflow-safe: `grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr))` or an equivalent. Fields get `min-width: 0`. `select`/`input` get `box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%`. Wide fields must never span more tracks than exist.
+2. Keep the existing pilot-only behaviour (mobile filter summary/disclosure) opt-in. Only the geometry safety becomes default.
+3. Long option text must truncate inside the closed select, never widen the page. Do not shorten or rename the option labels.
+4. Keep the desktop layout at 1280 visually equivalent (4 columns when space allows).
+
+### Tests
+
+- Vitest: base control bar renders fields with the overflow-safe class/geometry contract. Use a jsdom style assertion or a class contract, not pixels.
+- Responsive runner (existing Puppeteer `responsive:baseline`), with a fixture option label of at least 60 characters: at 360 (mobile emulation) `window.innerWidth === 360`, and at 360/390/768/1024 (sidebar open)/1280 the document has no horizontal overflow on Color, Shoe Type, Pre/Post and Pre-Nivelacija.
+- `npm run typecheck`, `npm run build`, analytics guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- On a phone, Color/Shoe Type/Pre-Post/Pre-Nivelacija keep `innerWidth == viewport width` (no zoom-out), even with the longest real store/season/supplier names.
+- No document-level horizontal overflow at 1024 with the sidebar open on any control-bar page.
+- Filter values, defaults, URL state and option text are unchanged.
+
+### Dependencies
+
+- None. P-UI-35/P-UI-36/P-UI-31 later migrate those pages to the full responsive pilot and must not be reverted by this change.
+
+## P-UI-40 - Small-laptop shell (1024–1279px): single-row header and space-saving sidebar
+
+Status: READY
+Ready after: none
+Priority: P1
+Type: frontend/layout/tests
+Feature family: app-shell-small-laptop
+Parallel-safe: yes
+Owner: unassigned
+Commit suggestion: `feat(layout): compact header and sidebar rail for small laptops`
+
+### Problem
+
+From 1024px up, the shell switches to the full desktop mode: a fixed 320px sidebar is expanded by default, and the header shows every action at once and wraps. On a 1024px tablet in landscape or a small laptop, the sticky header is 3 rows tall and permanently covers 22–23% of the screen. The content column shrinks to about 704px. That column width is the direct cause of the control-bar overflow (P-UI-39) and of very narrow tables (Daily table scroller 641px, Product Decision 672px, Pre-Nivelacija 612px). The collapsed state is not remembered between visits.
+
+### Evidence
+
+- Live header height (sticky): 177px at 1024x768 and 166px at 1280x800 on every route. Compare 64px at 768 and 80px at 360. The screenshot at 1024 shows three rows: title/backend chip; Komande, Obaveštenja, Kontekst, Prikaz Sve; Prikaz select, Teme, Osveži.
+- Live sidebar at 1024: `aside.w-80` = 320px visible, so content is 704px.
+- `Klijent/clientapp/src/layout/components/HeaderStatus.tsx:400-401`: sticky header, `lg:flex-wrap lg:gap-3`. `:439` system strip `lg:flex`. `:457` action group `ml-auto hidden flex-wrap … lg:flex`. `:371-375`: the compact mode is tied to `max-width: 1023px`.
+- `Klijent/clientapp/src/layout/components/Sidebar.tsx:90` (`w-80`), `:219` (`lg:w-14` collapsed rail), `:231` (`hidden lg:block lg:sticky lg:top-0 lg:h-screen`).
+- `Klijent/clientapp/src/layout/AppLayout.tsx:13`: `useState(false)` for `sidebarCollapsed`. No persistence and no width-based default.
+
+### Scope
+
+- `layout/components/HeaderStatus.tsx`, `layout/components/Sidebar.tsx`, `layout/AppLayout.tsx` and their tests
+- No navigation IA change (navConfig labels/groups unchanged) and no removal of any header action
+
+### Read first
+
+- P-UI-26 completion evidence (mobile shell/drawer, which must not regress)
+- `HeaderStatus.tsx`, `Sidebar.tsx`, `AppLayout.tsx`, `layout/__tests__`, `layout/components/__tests__`
+
+### Do
+
+1. Between 1024 and 1279px, keep the header to one row (target ≤ 88px). Move the secondary actions (Kontekst, Prikaz, Teme, Obaveštenja list) into one accessible "Više" menu. Do not remove them. At ≥1280, show the full action set only if it fits in one row. Otherwise use the same overflow menu.
+2. Between 1024 and 1279px, default the sidebar to the existing 56px rail (`lg:w-14`), with the expanded panel available on demand. Persist the user's explicit collapse/expand choice (localStorage key, SSR/jsdom safe). An explicit user choice beats the width default.
+3. Keep the <1024 drawer behaviour from P-UI-26 unchanged: dialog, focus trap, Esc, scroll lock.
+4. Keep keyboard order, `aria-expanded`, focus-visible and the skip-to-content behaviour if present.
+
+### Tests
+
+- Vitest: default rail at 1100px width (matchMedia mock), persisted choice wins, overflow menu exposes every action, Esc/focus behaviour on the menu.
+- Responsive runner at 1024x768 and 1280x800: header height ≤ 88px, content column ≥ 900px at 1024 with the rail, no document overflow; 360/768 header heights unchanged (±4px).
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- At 1024 and 1280 the sticky header uses at most about 11% of the viewport height. The analytics content column is at least 900px at 1024 (rail) and the full width at 1280.
+- Every header action stays reachable by mouse, touch and keyboard.
+- Mobile/tablet (<1024) shell behaviour is unchanged.
+
+### Dependencies
+
+- None. RQ583 (owner-approved global warning/critical stale-data banner on every analytics route, WAITING) will add a banner to the shell. The banner is outside the one-row header budget but must stay a single line (≤ 48px) at ≥1024, and whichever lands second rebases and re-measures.
+
+## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
+
+Status: READY
+Ready after: none
+Priority: P1
+Type: frontend/css/tests
+Feature family: report-inventory-intrinsic-overflow
+Parallel-safe: yes
+Owner: unassigned
+Commit suggestion: `fix(ui): contain wide report tables and inventory panels on phones`
+
+### Problem
+
+Two screens widen the phone layout viewport for reasons unrelated to the control bar:
+- The Pilot intake report renders its "durable" tables with classes that have no CSS at all: no scroll wrapper, no width rules. The 406–417px tables push every card on the page to 417px.
+- Inventory insight panels are grid items without `min-width: 0`, so their content forces 415px cards.
+
+### Evidence
+
+- Live 360x780 mobile emulation: `/analytics/reports/pilot-intake` has `innerWidth` 433. The widest elements are `section.analytics-trust-header`, `section.analytics-refresh-banner`, `div.pirp-actions` and `section.pilot-intake-card`, all 417px. The tables measure 406/309/417/417/417px with no scroll container. The same happens at 390 (`innerWidth` 433), and also without dated data (first pass).
+- Live 360: `/analytics/inventory` has `innerWidth` 431. The widest elements are `div.rounded-[28px]` "Zastarelost i obrt zalihe" and "ABC segmentacija kapitala" (415px), then "Rizik i prioriteti"/"Vrednost po dobavljaču" (378px) and `div.recharts-wrapper` (336px, ends at 373).
+- `Klijent/clientapp/src/components/analytics/PilotDataQualityIntakeReport.tsx:220-221`: `pilot-intake-durable-table-wrap` / `pilot-intake-durable-table`. A search of all `*.css` finds no rule for either class.
+- `Klijent/clientapp/src/components/inventory/InventoryInsightPanels.tsx:66` (`grid gap-5 xl:grid-cols-[1.05fr_0.95fr]`), `:67` (panel without `min-w-0`), `:84` and `:151` (inner grids).
+
+### Scope
+
+- `components/analytics/PilotDataQualityIntakeReport.tsx` and `.css`
+- `components/inventory/InventoryInsightPanels.tsx` (and `InventoryPriorityPanels.tsx` only if the same pattern is proven there)
+- nearest tests
+- Not `InventoryPage.tsx` and not `AnalyticsTrustHeader.*` (RQ569 owns the trust-header/page trust props)
+
+### Read first
+
+- P-UI-29 table pilot (scroll hint, sticky first column) and `AnalyticsDataTable.css`
+- RQ466/RQ467 pilot intake contracts (no content/semantics change)
+
+### Do
+
+1. Give `pilot-intake-durable-table-wrap` a contained horizontal scroll (`overflow-x:auto`, keyboard-focusable region with label, `overscroll-behavior-inline: contain`). Give the table readable cell padding and numeric alignment, consistent with `AnalyticsDataTable`. Keep the print styles working (`@media print` in `PilotDataQualityIntakeReport.css:349`).
+2. Add `min-w-0` (or `minmax(0,1fr)` tracks) to Inventory insight panel grid items and inner cards. Let long words/numbers wrap or truncate with a title. The chart container must respect its parent width.
+3. Do not hide any column or value.
+
+### Tests
+
+- Vitest: the durable table renders inside a labelled scroll region. Inventory panels carry the min-width contract class.
+- Responsive runner: at 360/390 (mobile emulation) `innerWidth === viewport` on `/analytics/reports/pilot-intake` and `/analytics/inventory` with data, and no document overflow at 768/1024/1280.
+- Print smoke test of the pilot intake report (existing print CSS still applies).
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- Neither page zooms out or pans sideways on a phone. Wide tables scroll inside their own region with a visible affordance.
+- No report/inventory value, label or order changes.
+
+### Dependencies
+
+- None. RQ576 (inventory valuation/aging, WAITING) may later change panel content. It must keep the min-width contract.
+
+## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets (760–1023px)
+
+Status: WAITING
+Ready after: P-UI-39 DONE (shares `AnalyticsControlBar.css`); also re-check P-UI-40 if it is IN_PROGRESS (`HeaderStatus.tsx` class names)
+Priority: P2
+Type: frontend/css/tests
+Feature family: responsive-coarse-pointer-tablet
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): apply touch and input-size floor to coarse-pointer tablets`
+
+### Problem
+
+The P-UI-25 foundation applies the 16px form-control font and 44px button height by viewport width only, below 760px (`max-width: 759px`). Nothing is keyed to `pointer: coarse` except a data-entry search-panel tweak. The 2026-10-01 responsive contract also requires ≥16px text and 44px targets on coarse-pointer tablets. On a 768–1023px touch tablet, analytics filters are still 12–14px and most buttons, chips and links are 26–42px. That risks iPad Safari focus-zoom and causes mis-taps.
+
+### Evidence
+
+- Live 768x1024 with `hasTouch`: form-field font is 13px on `/analytics`, Inventory, Actions, Color, Shoe Type and Daily; 12.16px on Product Decision; 14px on `/prodaja`. At 360 the same fields are 16px.
+- Live 768: targets below 44px include the header menu button 35x35, the "Više" button 70x34, breadcrumb links 17px tall, trust-header footer links 34px, `kpi-explain-button` 116x17, Inventory toolbar buttons 17x36, `/prodaja` chips 94x27 and 112x30 with inputs 38px, and `/dobavljaci` row actions 71x26 and 67x26 (237 of 237 targets small).
+- `Klijent/clientapp/src/tailwind.css:604-622` (`@media (max-width: 759px)`: global 16px control font with `!important` and 44px `button` min-height), `Klijent/clientapp/src/styles/forms.css:544` and `:565` (`max-width: 759px` form/data-entry floors), `:578` (the only coarse-pointer rule, a search-panel layout tweak), `AnalyticsControlBar.css:182` (13px), `layout/components/HeaderStatus.tsx:406` (menu button `p-2`), `:544` ("Više" `py-2 text-xs`).
+- Contract: `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md` responsive design table ("Form controls | Tablet: text >=16px on coarse pointer; target 44px").
+
+### Scope
+
+- Foundation CSS (`tailwind.css`, `styles/themes.css` tokens, `styles/forms.css`), `AnalyticsControlBar.css`, and header/shared button primitives (`components/ui/*`, `HeaderStatus.tsx` class names only)
+- No per-page redesign, and no change for fine-pointer desktops
+
+### Read first
+
+- P-UI-25 and P-UI-27 completion evidence; the responsive design contract table
+
+### Do
+
+1. Add a `(pointer: coarse)` media layer (up to 1023px, and also applying at ≥1024 when the pointer is coarse) that sets form-control text to ≥16px and interactive min target to 44x44 via the existing tokens (`--size-touch-target`). Inline text links inside paragraphs are documented exceptions.
+2. Apply it to the shared primitives first (control bar fields/actions, header buttons, KPI explain button, trust-header links, table toolbar buttons, chips). Record the remaining page-local offenders as a list in the run log for P-UI-46. Do not fix them here.
+3. Keep fine-pointer desktop density unchanged.
+
+### Tests
+
+- Responsive runner with a `hasTouch` 768 and 1024 profile: on the listed routes no shared-primitive target is below 44px and no text field is below 16px. A fine-pointer 1280 profile stays unchanged within ±2px.
+- Vitest for any primitive class contract changes; typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- Coarse-pointer tablets meet the documented 16px/44px contract on shared primitives, and desktop density is unchanged.
+
+### Dependencies
+
+- P-UI-39 (same CSS file). P-UI-46 consumes the leftover list.
+
+## P-UI-43 - Compact the trust header on phones so data appears in the first screen
+
+Status: WAITING
+Ready after: RQ569 DONE (RQ569 changes `AnalyticsTrustHeader` to show the observed source horizon)
+Priority: P2
+Type: frontend/ux/tests
+Feature family: trust-header-mobile-compaction
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): compact analytics trust header on phones`
+
+### Problem
+
+Every analytics screen starts with `AnalyticsTrustHeader`. On a phone it stacks the period, last refresh, data source, gating text, the methodology note and the footer links as full-width cards. Next comes the control bar, also tall. The owner has to scroll 2–5 phone screens before seeing the first KPI. The trust information is required, but it should be summarised first and expanded on demand.
+
+### Evidence
+
+Live 360x780 mobile, dated data:
+
+| Route | Trust header height | Control bar | First KPI section top |
+|---|---|---|---|
+| Shoe Type | 1436px | 815px | 2403px (`shoetype-decision-kpis`) |
+| Pre-Nivelacija | 1287px | 1081px | 4056px (`pnp-decision-kpis`) |
+| Daily Sales | 1139px | 498px | 1777px |
+| Inventory | 1341px | – | – |
+| Color | 1036px | 815px | – |
+| Pre/Post | 928px | 963px | – |
+| Product Decision | 855px | – | 1402px |
+| Supplier | 749px | – | – |
+| Pilot intake | 649px | – | 1711px (first table) |
+
+- At 1280 the header is still 356–919px tall.
+- Code: `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx:292` (single `section` with all blocks always rendered); `AnalyticsTrustHeader.css:409` has only one breakpoint, `max-width: 720px`.
+
+### Scope
+
+- `components/analytics/AnalyticsTrustHeader.tsx` / `.css` and tests
+- Page files only if a prop is needed to mark the primary status (prefer no page edits)
+- No change to trust/readiness semantics, labels or which facts exist
+
+### Read first
+
+- RQ567/RQ569 trust-header contracts (after RQ569 lands), P-UI-20/P-UI-22 trust-state proofs
+
+### Do
+
+1. Below 640px, render a compact summary row: readiness status chip, effective period, observed horizon/freshness (from RQ569), and a "Detalji pouzdanosti" disclosure (`button` with `aria-expanded`/`aria-controls`) holding the remaining blocks and links.
+2. A blocked/critical readiness state must stay visible in the summary. It must never be hidden behind the disclosure.
+3. Between 640 and 1023px, use a two-column layout. At ≥1024, keep the current layout but cap the vertical padding.
+
+### Tests
+
+- Vitest: the summary always shows the readiness chip/period/horizon; the disclosure toggles the details; critical state stays visible when collapsed; existing trust-state specs still pass.
+- Responsive runner at 360: trust header ≤ 260px collapsed on the routes above; the first KPI section starts within 1.5 viewport heights on Daily/Product Decision.
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- On a phone, the first KPI or table is reachable in at most about 1.5 screens on the main analytics routes, and every trust fact is still one tap away.
+
+### Dependencies
+
+- RQ569 (same component). Later RQ570/RQ583 banners must use the summary row.
+
+## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
+
+Status: WAITING
+Ready after: RQ569 DONE (touches `DailySalesStatsPage.tsx` / `InventoryPage.tsx` trust wiring)
+Priority: P2
+Type: frontend/tests
+Feature family: operations-wide-table-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): sticky key column for wide operations tables`
+
+### Problem
+
+The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hint) is enabled only on Article List, Actions and Color. The two widest Operations tables still scroll with nothing to anchor them: Daily Sales (21 columns, 1795px) and Inventory items (17 columns, 1323px). On a phone the date or article column scrolls away, so a number cannot be matched to its row.
+
+### Evidence
+
+- Live 360 with dated data: Daily table 1795px wide, 21 columns, 30 rows, in a 297px scroller; first cell `position: static`; 12px cells. Inventory items table 1323px wide, 17 columns, 50 rows, in a 284px scroller; first cell static.
+- Live 1024: Daily scroller 641px, Inventory 628px. Product Decision is sticky only ≤900px (static at 1024 with 1442px width in a 672px scroller).
+- `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.tsx:8,22,28` (`responsivePilot` opt-in); only `ArtikliListPage.tsx:487`, `AnalyticsActionsPage.tsx:1297` and `ColorSalesStatsPage.tsx:1219` pass it.
+- `AnalyticsDataTable.css:125-160`: sticky first column only inside `@media (max-width: 900px)`.
+- `Klijent/clientapp/src/components/inventory/InventoryItemsTable.tsx` is a separate raw `<table>` without the pilot behaviour.
+
+### Scope
+
+- `DailySalesStatsPage.tsx` (table call site only), `components/inventory/InventoryItemsTable.tsx`, `AnalyticsDataTable.css` (sticky threshold up to 1279px when the table overflows)
+- Not Shoe Type/Pre-Nivelacija/Product Decision tables (owned by P-UI-35/P-UI-36/P-UI-32)
+
+### Read first
+
+- P-UI-29 and P-UI-34 completion evidence; P-UI-37 Article List example
+
+### Do
+
+1. Enable the pilot table behaviour on the Daily table. Give Inventory items the equivalent: labelled focusable scroll region, sticky date/article column, scroll hint.
+2. Apply the sticky key column whenever the table actually overflows its scroller, not only at ≤900px. Add a container-width check or a class toggled by a ResizeObserver.
+3. Keep every column, sort and export unchanged.
+
+### Tests
+
+- Vitest: pilot props/classes present on both tables; sticky column class applied when overflow is detected (mocked ResizeObserver).
+- Responsive runner: Daily and Inventory at 360/768/1024 keep the first column visible after scrolling the region to its end (`getBoundingClientRect().left` of the first cell ≥ scroller left).
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- On a phone, tablet and 1024 laptop, the key column of the Daily and Inventory tables stays visible while scrolling horizontally. No data or column changes.
+
+### Dependencies
+
+- RQ569 (same page files).
+
+## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
+
+Status: READY
+Ready after: none
+Priority: P2
+Type: frontend/a11y/tests
+Feature family: global-chrome-mobile
+Parallel-safe: yes
+Owner: unassigned
+Commit suggestion: `fix(ui): localize request indicator and respect reduced motion in carousel`
+
+### Problem
+
+Two always-mounted chrome elements degrade every screen on phones:
+- The global request indicator is English ("Loading data", "1 request in progress"). It sits as a card over the bottom of the content on 360px screens, covering the text under it while the slow analytics endpoints load (10–18s).
+- The seasonal image carousel is mounted under every route, including analytics and data entry. It auto-scrolls every 4s with no reduced-motion check, and its nav buttons are 36px wide.
+
+### Evidence
+
+- Live 360 screenshot of `/analytics/products`: a bottom-right card "Loading data / 1 request in progress" overlaps the trust-header text.
+- `Klijent/clientapp/src/components/GlobalRequestSpinner.tsx:26-29`: English label and copy.
+- Live 360: `button.carousel-nav-btn.left/right` 36x44 on `/analytics/products`, `/prodaja` and `/dobavljaci`.
+- `Klijent/clientapp/src/components/trendshoes/SeasonalImageCarousel.tsx:74-79` (`setInterval(… scrollBy(200) …, 4000)`) and `:88-93` (`scrollBy({ … behavior: "smooth" })`). No `prefers-reduced-motion` check exists anywhere in the component (repo-wide matchMedia reduced-motion appears only in `ShoeTypeSalesStatsPage.tsx:206` and `SupplierSalesStatsPage.tsx:294`).
+- `Klijent/clientapp/src/layout/AppLayout.tsx:42-44`: the carousel is rendered for every route. This mount point is out of scope here.
+
+### Scope
+
+- `components/GlobalRequestSpinner.tsx` (+ its CSS), `components/trendshoes/SeasonalImageCarousel.tsx`, `imagecarousel.css`, nearest tests
+- Not `AppLayout.tsx` (P-UI-40 owns it). Changing which routes show the carousel is an owner decision (see Dependencies).
+
+### Do
+
+1. Translate the indicator: "Učitavanje podataka" and "{n} zahtev(a) u toku", with correct Serbian plural forms (1 zahtev, 2–4 zahteva, 5+ zahteva). Below 640px, render it as a slim top progress bar or a compact pill that does not cover content (respect the safe-area insets). Keep `aria-live="polite"`.
+2. Carousel: do not auto-scroll when `prefers-reduced-motion: reduce`, and use `behavior: "auto"` instead of smooth. Pause on focus/hover/touch. Nav buttons ≥44x44 on coarse pointers.
+3. Keep the visible order of images and the modal unchanged.
+
+### Tests
+
+- Vitest: Serbian copy and plural forms; reduced-motion mock stops the interval; nav buttons have a min-size class.
+- Responsive runner at 360: indicator does not intersect the main content's first 200px when shown; carousel nav ≥44px.
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- No English loading text remains. On phones the loading indicator never covers content. Reduced-motion users get no automatic carousel movement.
+
+### Dependencies
+
+- None for the above. Owner decision (recorded in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`): should the seasonal carousel appear only on the home page `/` instead of under every screen? Recommendation: yes, home page only. It adds about 300px of page height and periodic motion to analytics and data-entry screens. If approved, the route change belongs to P-UI-40's `AppLayout.tsx` or a follow-up.
+
+## P-UI-46 - Operational and šifarnik screens: phone-usable lists, actions and paging
+
+Status: WAITING
+Ready after: P-UI-42 DONE (coarse-pointer target foundation)
+Priority: P3
+Type: frontend/tests
+Feature family: operational-long-tail-responsive
+Parallel-safe: no
+Owner: unassigned
+Commit suggestion: `feat(ui): make operational list screens usable on phones`
+
+### Problem
+
+The store/back-office list screens were outside P-UI-30/P-UI-37. They render full raw tables and every row's actions with no paging or search-first layout. Phones get very long pages with 26–34px action buttons. The Logs toolbar overflows at 1024.
+
+### Evidence
+
+- Live page heights at 360: `/dobavljaci` 8940px (237 targets, all small at 768: row actions 71x26/67x26); `/nivelacije` 6174px (9-column table 822px in a 294px scroller); `/dnevnik-promena` 5177px (11 columns, 961px in 294px); `/artikli/lista` 5093px (handled by P-UI-37).
+- Live 1024: `/logs` document overflow 81px from `button.button-big.button-danger` / `button-secondary` (right edge 1105/1030).
+- Raw tables: `pages/DobavljaciPage.tsx`, `NivelacijePage.tsx`, `DnevnikPromenaPage.tsx`, `SezonaPage.tsx`, `PovracajPage.tsx`, `LogsPage.tsx`, `ConfigurationPage.tsx` (`ConfigurationPage.css` `min-width: 1120px`), `components/transfers/TransferItemsTable.tsx`, `components/WorkersPanel.css` (`min-width: 1100px`).
+
+### Scope
+
+- The listed pages/components only, one page family per commit. No API, paging contract or permission changes. If server paging is missing, use client-side progressive rendering ("Prikaži još") and record the gap.
+
+### Read first
+
+- P-UI-37 Article List delivery (pattern to reuse), P-UI-29 table pilot, the leftover-offender list from P-UI-42's run log
+
+### Do
+
+1. For each list: search/filter first; card or priority-column layout below 640px when the columns are not needed for comparison, otherwise the pilot scroll table with a sticky key column; row actions in a 44px overflow menu on coarse pointers.
+2. Progressive rendering (e.g. 50 rows plus "Prikaži još") where more than 100 rows render at once.
+3. Fix the Logs toolbar wrap at 1024.
+
+### Tests
+
+- Per page: Vitest for the layout switch and action menu. Responsive runner at 360/768/1024: no document overflow, row actions ≥44px on coarse pointers, `/dobavljaci` first screen shows search plus at least 5 rows.
+- typecheck, build, guardrails, governance validators, `git diff --check`.
+
+### Acceptance
+
+- Every listed screen is usable one-handed on a phone without sideways page panning. Data and actions are unchanged.
+
+### Dependencies
+
+- P-UI-42. Insight Studio (67 sub-12px text elements at 360) is excluded: the RQ582 owner decision (2026-10-04) hides it behind the `Eksperimentalno` flag, and responsive work is required only before any re-exposure.

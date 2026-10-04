@@ -29070,6 +29070,10 @@ Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from th
 
 - Owner decision resolved; `RQ581` DONE first to avoid same-family churn while the encoding fix is still claimable.
 
+### Addendum 2026-10-04 (responsive re-audit, live evidence)
+
+- Responsive measurement for the decision: at 360 `/analytics/insight-studio` renders 67 visible text elements below 12px (e.g. `text-[11px]`, 10px badges) and 12 raw `<table>` elements (`pages/InsightStudioPage.tsx:699,815,937` among them) with no responsive table primitive. Consistent with the owner decision above (hide behind the `Eksperimentalno` flag), no responsive migration prompt is registered. While hidden, the route only has to respect the global no-page-overflow invariant (P-UI-38). A responsive migration becomes a prerequisite of any future re-exposure. `P-UI-46` explicitly excludes it.
+
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
 Status: WAITING
