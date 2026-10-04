@@ -4,18 +4,18 @@ Date: 2026-10-04
 Agent/tool: Grok Bot (executor, box worktree `/workspace/nw`)
 Delivery target: main
 Working branch / PR: local branch `next-wave-2026-10-04` from `origin/main` `f1437ed84c5c22922f4b70b2174ef05d2d0fa970`; the owner pushes from his PC (the box has no GitHub credentials)
-Main commit SHA: pending
-Main verification: pending (owner push)
-Evidence state: pending
+Main commit SHA: `8ae06a508ae8f98163015c869a816e2a3b7a11d3`
+Main verification: synchronized; fresh GitHub history after review confirms `8ae06a508ae8f98163015c869a816e2a3b7a11d3` is an ancestor of current `main`.
+Evidence state: synchronized
 
 ## What was done
 
-- Fresh start on `origin/main` `f1437ed8`. Open PRs: 0 (GitHub API). Remote branches: 28, all owned by DONE prompts. Local locks: none. READY state was read per section: RQ569 primary plus RQ553/RQ574/RQ578/RQ580/RQ581/RQ586, and P-UI-39 primary plus P-UI-40/41/45/47/49. STAB16 BLOCKED. QDB has no READY.
+- Fresh start on `origin/main` `f1437ed8`. Open PRs: 0 (GitHub API). Remote branches: 28, all owned by DONE prompts. Local locks: none. The original run recorded P-UI-45 as READY; this was superseded by the same-day collision review. Canonical P-UI READY after reconciliation is P-UI-39 primary plus P-UI-40/41/47/49; P-UI-45 waits behind P-UI-40 + P-UI-48. STAB16 BLOCKED. QDB has no READY.
 - Verified the section-level status of RQ142 (OBSOLETE), RQ147/RQ148/RQ149 (DONE), RQ150 (OBSOLETE) and RL12 (WAITING); section and table agree.
 - Falsified 10 claims (F1–F10). Confirmed F1, F2, F7, F9 and F10. Narrowed F2 (low impact) and F4 (the 42P16 fix is in the runtime). Mostly refuted F6: the "Failed to fetch" errors coincided with the 21:38 CEST redeploy. Refuted the P1 priority of F8 (RQ586 changes no current number).
-- New finding: live `/ready=true` while startup-verified objects are missing. By code, this proves startup DB initialization is not running with AutoMigrate+FailFast on the live service, contradicting `render.yaml`.
-- New finding: the action ledger holds only 4 smoke fixtures and 0 real actions, so the outcome-learning prompts have no population.
-- Built the coverage map (32 findings) before registering prompts. Registered only RQ587 (P1 READY) and RQ588 (P3 READY).
+- New finding: live `/ready=true` while startup-owned analytics objects are missing. Post-review correction: this strongly constrains the startup/schema-convergence problem but does not uniquely prove which setting/path is wrong. AutoMigrate-off, non-strict/FailFast behavior, alternate effective config/connection/runtime path, and post-readiness schema drift remain distinguishable until provider/admin evidence is captured.
+- New finding: the Analytics Actions ledger holds only 4 smoke fixtures and 0 real actions. Post-review correction: that blocks Actions-based adoption/outcome learning, but it does not block RQ557 (Nivelacija price-event outcome ledger) or RQ585 (current-signal weekly digest), which use different sources and dependencies.
+- Built the original coverage map (32 findings) before registering RQ587 (P1 READY) and RQ588 (P3 READY). Post-review found one additional measured execution-owner gap rather than a new analytics-semantic gap: PERF19 (P1 WAITING after RQ573) for Decision Board composition profiling if the endpoint remains above its existing budget.
 - Repaired RQ479: added the missing `Ready after` and paths, narrowed it to a repository-local read guard, and promoted it WAITING -> READY (P1 -> P2). Repaired RQ586: P1 -> P3.
 - Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Added a supersession note to the PROD-AN planning backlog. Updated the RQ queue header and the `MASTER_ROADMAP.md` RQ row and note.
 - Wrote `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (Serbian, 27 sections).
