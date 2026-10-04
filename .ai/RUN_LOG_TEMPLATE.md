@@ -34,6 +34,7 @@ Use each exactly once:
 ## Documentation impact
 ## What was missed
 ## Risks
+## Post-close routing recovery
 ## Next
 ```
 
@@ -46,7 +47,8 @@ Use each exactly once:
 - `Documentation impact` says what durable owner docs changed, or why none were needed.
 - `What was missed` records unfinished scope/known omissions, or `- none known`.
 - `Risks` records residual correctness, CI, security, tenant, performance or delivery risk, or `- none known`.
-- `Next` records the next prompt/task/follow-up owner, or `- none`.
+- `Post-close routing recovery` is mandatory for formal queue work after the implementation/closure reaches `main`. Record the post-delivery `origin/main` recovery-base SHA, completed/changed dependency IDs searched across the full active owner queue/addendum set, newly satisfied dependencies and promoted successor. If no successor is promoted, include the full **Zero-READY proof** required by `PROMPT_QUEUE_PROTOCOL.md`. For direct-user-request work use `- not applicable`.
+- `Next` must come from that post-close recovery, not from a pre-claim queue header or older run log. Use `- none` only when the Zero-READY proof is complete.
 - `Main commit SHA` is the implementation/delivery SHA that current `main` was freshly verified to contain; use `pending` until that proof exists.
 - `Evidence state` is separate from queue status and never creates a new queue status.
 
@@ -100,6 +102,13 @@ Evidence state: synchronized
 
 ## Risks
 - Policy exists before automation wiring; scan execution remains follow-up work.
+
+## Post-close routing recovery
+- Recovery base origin/main SHA: <full current sha>
+- Active owner queue/addendum files scanned: docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md
+- Completed/changed task IDs searched: SEC04
+- Newly satisfied dependencies: SEC05
+- Promoted successor: SEC05
 
 ## Next
 - SEC05 - Data protection and retention assurance plan
