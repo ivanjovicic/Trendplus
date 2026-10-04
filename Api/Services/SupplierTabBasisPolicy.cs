@@ -33,9 +33,9 @@ public static class SupplierTabBasisPolicy
     public const string AllTimeMarkdownsWithPrePostWindows = "all_time_markdowns_with_30d_pre_post";
     public const string RollingWindowMarkdownsWithPrePostWindows = "first_markdown_in_rolling_window_with_30d_pre_post";
     public const string PriceEventDateInPeriodWithPrePostWindows = "price_event_date_in_period_with_30d_pre_post";
-    public const string UnequalWindowRevenueAndUnitsPct = "unadjusted_unequal_window_revenue_and_units_pct";
+    public const string EqualDurationObservedWindowRevenueAndUnitsChangePct = "equal_duration_observed_pre_post_revenue_and_units_change_pct";
     public const string Fixed30DayRevenueAndUnitsPct = "fixed_30d_pre_post_revenue_and_units_pct";
-    public const string FirstNivelacijaPerArticle = "first_nivelacija_per_article";
+    public const string LatestNivelacijaBeforePeriodEndPerArticle = "latest_nivelacija_before_period_end_per_article";
     public const string FirstMarkdownPerArticleEvent = "first_markdown_per_article";
     public const string LatestPriceEventPerArticleEvent = "latest_price_event_per_article";
 
@@ -61,8 +61,8 @@ public static class SupplierTabBasisPolicy
         ReceiptPopulation = RetailReceiptsExcludingDugKorekcija,
         Cohort = AllSalesInPeriod,
         PeriodSemantics = SaleDateInPeriod,
-        EffectMetric = UnequalWindowRevenueAndUnitsPct,
-        EventSelection = FirstNivelacijaPerArticle,
+        EffectMetric = EqualDurationObservedWindowRevenueAndUnitsChangePct,
+        EventSelection = LatestNivelacijaBeforePeriodEndPerArticle,
         StoreScope = ReceiptStoreWithChainWideMarkdowns,
         UnknownSupplierPolicy = SingleUnknownBucket,
         AsOfDate = AsOfDate(nowUtc),
@@ -114,8 +114,8 @@ public static class SupplierTabBasisPolicy
         ReceiptPopulation = RetailReceiptsExcludingDugKorekcija,
         Cohort = "articles_with_nivelacija_event_and_sales_in_period",
         PeriodSemantics = SaleDateInPeriod,
-        EffectMetric = UnequalWindowRevenueAndUnitsPct,
-        EventSelection = FirstNivelacijaPerArticle,
+        EffectMetric = EqualDurationObservedWindowRevenueAndUnitsChangePct,
+        EventSelection = LatestNivelacijaBeforePeriodEndPerArticle,
         StoreScope = ReceiptStoreWithChainWideMarkdowns,
         UnknownSupplierPolicy = "unknown_shoe_type_bucket",
         AsOfDate = AsOfDate(nowUtc),
@@ -131,8 +131,8 @@ public static class SupplierTabBasisPolicy
         ReceiptPopulation = RetailReceiptsExcludingDugKorekcija,
         Cohort = "articles_with_nivelacija_event_and_sales_in_period",
         PeriodSemantics = SaleDateInPeriod,
-        EffectMetric = UnequalWindowRevenueAndUnitsPct,
-        EventSelection = FirstNivelacijaPerArticle,
+        EffectMetric = EqualDurationObservedWindowRevenueAndUnitsChangePct,
+        EventSelection = LatestNivelacijaBeforePeriodEndPerArticle,
         StoreScope = StoreFilterAppliesToEventsAndSales,
         UnknownSupplierPolicy = "unknown_color_bucket",
         AsOfDate = AsOfDate(nowUtc),

@@ -37,14 +37,15 @@ const COHORT_LABELS: Record<string, string> = {
 };
 
 const EFFECT_LABELS: Record<string, string> = {
-  unadjusted_unequal_window_revenue_and_units_pct:
-    "Procentualna razlika prihoda i količine pre/posle; prozori nisu izjednačeni po trajanju.",
+  equal_duration_observed_pre_post_revenue_and_units_change_pct:
+    "Opisna promena prihoda i količine u jednako dugim susednim prozorima unutar izabranog perioda (najviše 30 dana po strani); ne dokazuje uzročni efekat nivelacije.",
   fixed_30d_pre_post_revenue_and_units_pct:
     "Procentualna razlika prihoda i količine kroz fiksne prozore od 30 dana pre i posle događaja.",
 };
 
 const EVENT_SELECTION_LABELS: Record<string, string> = {
-  first_nivelacija_per_article: "Prvi događaj nivelacije po artiklu.",
+  latest_nivelacija_before_period_end_per_article:
+    "Poslednja nivelacija pre kraja perioda; ako je pre početka perioda, signal nema uporedivu pre-bazu.",
   first_markdown_per_article: "Prvo sniženje po artiklu.",
   latest_price_event_per_article: "Poslednja promena cene po artiklu.",
 };

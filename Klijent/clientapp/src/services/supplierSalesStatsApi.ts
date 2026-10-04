@@ -105,7 +105,7 @@ export interface SupplierSalesStat {
   shareOfUnits?: number | null;
   reliabilityPct?: number;
   recommendation?: AnalyticsRecommendation;
-  // Legacy compatibility aliases (deprecated)
+  /** @deprecated Always null; use prePostNivelacijaRevenueImpactPct. */
   promenaPrometa?: number | null;
   promenaKolicine?: number | null;
 }
@@ -163,7 +163,7 @@ export interface SupplierSalesTotals {
     doNotTrust: number;
     insufficientData: number;
   };
-  // Legacy compatibility alias (deprecated)
+  /** @deprecated Always null; use prePostNivelacijaRevenueImpactPct. */
   promenaPrometaPct?: number | null;
 }
 

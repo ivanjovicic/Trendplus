@@ -29,17 +29,26 @@ public static class AnalyticsNivelacijaSplitPolicy
 {
     public const int MinimumComparablePreQuantity = 5;
     public const double MinimumComparableCoveragePct = 15d;
+    public const int MaximumComparableWindowDays = 30;
 
     public static NivelacijaSplitSnapshot Build<T>(
         IEnumerable<T> rows,
-        IReadOnlyDictionary<int, DateTime> firstNivelacijaByArticle,
+        IReadOnlyDictionary<int, DateTime> nivelacijaDateByArticle,
         Func<T, int> articleIdSelector,
         Func<T, DateTime> saleDateSelector,
         Func<T, decimal> revenueSelector,
-        Func<T, int> quantitySelector)
+        Func<T, int> quantitySelector,
+        DateTime? periodFrom = null,
+        DateTime? periodToExclusive = null)
     {
         var materializedRows = rows as IReadOnlyCollection<T> ?? rows.ToList();
         var totalRevenue = materializedRows.Sum(revenueSelector);
+        var periodStart = (periodFrom ?? (materializedRows.Count > 0
+            ? materializedRows.Min(saleDateSelector).Date
+            : DateTime.MinValue)).Date;
+        var periodEndExclusive = (periodToExclusive ?? (materializedRows.Count > 0
+            ? materializedRows.Max(saleDateSelector).Date.AddDays(1)
+            : DateTime.MinValue)).Date;
 
         decimal preRevenue = 0m;
         decimal postRevenue = 0m;
@@ -52,20 +61,42 @@ public static class AnalyticsNivelacijaSplitPolicy
         int comparablePostQuantity = 0;
         int articleCountWithNivelacija = 0;
         int comparableArticleCount = 0;
+        var hasEventBeforePeriod = false;
 
         foreach (var articleGroup in materializedRows.GroupBy(articleIdSelector))
         {
-            if (!firstNivelacijaByArticle.TryGetValue(articleGroup.Key, out var firstNivelacijaDate))
+            if (!nivelacijaDateByArticle.TryGetValue(articleGroup.Key, out var selectedNivelacijaDate))
             {
                 continue;
             }
+
+            var eventDate = selectedNivelacijaDate.Date;
+            var eventInPeriod = eventDate >= periodStart && eventDate < periodEndExclusive;
+            hasEventBeforePeriod |= eventDate < periodStart;
+
+            // Keep the two observed sides the same calendar length. The selected
+            // period bounds cap each side, while 30 days matches the canonical
+            // Pre/Post event window. This is a descriptive change, not a causal effect.
+            var preDays = eventInPeriod
+                ? Math.Min(MaximumComparableWindowDays, Math.Max(0, (eventDate - periodStart).Days))
+                : 0;
+            var postDays = eventInPeriod
+                ? Math.Min(MaximumComparableWindowDays, Math.Max(0, (periodEndExclusive - eventDate).Days))
+                : 0;
+            var equalWindowDays = Math.Min(preDays, postDays);
+            var preWindowStart = eventDate.AddDays(-equalWindowDays);
+            var postWindowEnd = eventDate.AddDays(equalWindowDays);
 
             articleCountWithNivelacija++;
 
             decimal articlePreRevenue = 0m;
             decimal articlePostRevenue = 0m;
+            decimal articleWindowPreRevenue = 0m;
+            decimal articleWindowPostRevenue = 0m;
             int articlePreQuantity = 0;
             int articlePostQuantity = 0;
+            int articleWindowPreQuantity = 0;
+            int articleWindowPostQuantity = 0;
             decimal articleRevenueWithSplit = 0m;
 
             foreach (var row in articleGroup)
@@ -74,7 +105,8 @@ public static class AnalyticsNivelacijaSplitPolicy
                 var quantity = quantitySelector(row);
                 articleRevenueWithSplit += revenue;
 
-                if (saleDateSelector(row) < firstNivelacijaDate)
+                var saleDate = saleDateSelector(row).Date;
+                if (saleDate < eventDate)
                 {
                     articlePreRevenue += revenue;
                     articlePreQuantity += quantity;
@@ -84,6 +116,17 @@ public static class AnalyticsNivelacijaSplitPolicy
                     articlePostRevenue += revenue;
                     articlePostQuantity += quantity;
                 }
+
+                if (saleDate >= preWindowStart && saleDate < eventDate)
+                {
+                    articleWindowPreRevenue += revenue;
+                    articleWindowPreQuantity += quantity;
+                }
+                else if (saleDate >= eventDate && saleDate < postWindowEnd)
+                {
+                    articleWindowPostRevenue += revenue;
+                    articleWindowPostQuantity += quantity;
+                }
             }
 
             revenueWithSplit += articleRevenueWithSplit;
@@ -92,16 +135,20 @@ public static class AnalyticsNivelacijaSplitPolicy
             preQuantity += articlePreQuantity;
             postQuantity += articlePostQuantity;
 
-            if (articlePreRevenue <= 0m || articlePostRevenue <= 0m || articlePreQuantity <= 0 || articlePostQuantity <= 0)
+            if (equalWindowDays == 0
+                || articleWindowPreRevenue <= 0m
+                || articleWindowPostRevenue <= 0m
+                || articleWindowPreQuantity <= 0
+                || articleWindowPostQuantity <= 0)
             {
                 continue;
             }
 
             comparableArticleCount++;
-            comparablePreRevenue += articlePreRevenue;
-            comparablePostRevenue += articlePostRevenue;
-            comparablePreQuantity += articlePreQuantity;
-            comparablePostQuantity += articlePostQuantity;
+            comparablePreRevenue += articleWindowPreRevenue;
+            comparablePostRevenue += articleWindowPostRevenue;
+            comparablePreQuantity += articleWindowPreQuantity;
+            comparablePostQuantity += articleWindowPostQuantity;
         }
 
         var revenueCoveragePct = totalRevenue > 0m
@@ -119,6 +166,20 @@ public static class AnalyticsNivelacijaSplitPolicy
             comparablePostQuantity,
             comparableArticleCount,
             totalRevenue);
+        if (comparableArticleCount == 0 && hasEventBeforePeriod)
+        {
+            comparableSignal = comparableSignal with
+            {
+                SignalNote = "Poslednja nivelacija je pre izabranog perioda; nema uporedive pre-baze u ovom periodu."
+            };
+        }
+        else if (comparableArticleCount == 0 && articleCountWithNivelacija > 0)
+        {
+            comparableSignal = comparableSignal with
+            {
+                SignalNote = "Nema dovoljno dana za jednako dug pre/post prozor u izabranom periodu."
+            };
+        }
 
         return new NivelacijaSplitSnapshot(
             PreRevenue: Math.Round(preRevenue, 2),

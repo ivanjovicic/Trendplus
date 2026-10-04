@@ -7,9 +7,10 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ541` (READY; RQ550 DONE), with independent `RQ543` (READY). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ549/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ542 follows RQ543 and the completed RQ549 oracle.
+Current READY routing: primary `RQ543` (READY; RQ541 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ549/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16. RQ542 follows RQ543 and the completed RQ549 oracle.
 Owner claim 2026-10-04: refreshed `origin/main` to `8ba3a9da223bf90a9240ba7590c16253524fe43e`; RQ528/RQ549 are DONE. No RQ550 lock, matching branch or open PR exists. Claimed primary RQ550; RQ541 remains WAITING for this oracle. Local lock: `.ai/task-locks/RQ550-codex.lock.md`.
 Owner completion/promotion 2026-10-04: RQ550/NV-P4 is DONE on implementation SHA `fa12375d934d254deeedae14398645697f6d85ea`, freshly verified in `origin/main`. Current behavior is pinned by passing unequal-window baselines (+400%/0%/−80%), pre-period no-baseline and store/chain event-scope tests. PostgreSQL parity proves supplier, shoe-type, color and Pre/Post agree for one flat-rate article/event; scorecard `meta.basis` is covered through the report response-builder contract because its route returned generic HTTP 500 against the isolated fixture. Promoted RQ541 (P1; depends on RQ550 and DONE RQ528) to primary READY, and independent RQ543 (Q83 dependency DONE) to additional READY. No RQ541/RQ543 lock, branch or open PR exists. Current-main Actions runs 37185137589 (Analytics Quality Gates), 37185137593 (Analytics Tests & Data Integrity) and 37185137623 (Planning Governance) are `in_progress` on this SHA. Run log: `.ai/runs/2026-10-04-RQ550-evidence.md`; evidence state synchronized.
+Owner completion 2026-10-04: RQ541/NV-F5 replaces unequal period totals with equal-duration adjacent windows capped at 30 days, selects the latest event before period end, reports an explicit non-comparable reason for pre-period events, and feeds the corrected nullable signal into recommendation policies. Shoe-type/color recommendations remain blocked without a comparable signal; Supplier sales-only recommendations retain the established confidence penalty without claiming a price effect. Overview/shoe-type/color basis metadata names the descriptive (non-causal) metric; the legacy `promenaPrometa` fields remain as deprecated always-null compatibility properties; first-party React does not consume them. Run log: `.ai/runs/2026-10-04-RQ541-evidence.md`; evidence state: pending.
 Owner claim 2026-10-03: refreshed `origin/main` to `11e644c4c354928ad440a49215e62602183092e8`; RQ527 is DONE and its independent fixture is available. No RQ549 lock, matching branch or open PR exists. RQ549 moved `READY -> IN_PROGRESS` as the primary RQ lane; the independent RQ550 READY lane remains unchanged. Local lock: `.ai/task-locks/RQ549-codex.lock.md`.
 Owner recovery 2026-10-03 after RQ563: the prior "no safe RQ prompt" conclusion was superseded by a deeper dependency audit. RQ548 depends only on DONE RQ525; RQ546 has no dependencies; RQ554's required backend error states are already delivered by the code-side portion of PARTIAL RQ545 and its remaining deployed acceptance is not a start gate. Two circular queue defects were also found: RQ542<->RQ549 and RQ541<->RQ550. Both are repaired proof-first: RQ549/RQ550 must pin current defects before RQ542/RQ541 change semantics. Fresh GitHub checks found no open PR or matching RQ538-RQ550 task branch/lock. Primary READY is RQ548; additional READY lanes are RQ546/RQ549/RQ550/RQ554.
 Owner claim 2026-10-03: refreshed `origin/main` to `e21c72624fabf259f64be727f820b87d746da45a`; RQ525 is DONE and its harness SHA is an ancestor of current main. No RQ548 lock, matching branch or open PR exists. RQ548 moved `READY -> IN_PROGRESS` as the primary Nivelacija lane to establish the independent Pre-Nivelacija baseline before RQ538/RQ539 change semantics. Local lock: `.ai/task-locks/RQ548-codex.lock.md`.
@@ -28,7 +29,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F2 | RQ538 | DONE |
 | NV-F3 | RQ539 | DONE |
 | NV-F4 | RQ540 | DONE |
-| NV-F5 | RQ541 | READY |
+| NV-F5 | RQ541 | DONE |
 | NV-F6 | RQ542 | WAITING |
 | NV-F7 | RQ543 | READY |
 | NV-F8 | RQ544 | WAITING |
@@ -322,7 +323,7 @@ None.
 
 ## RQ541 - NV-F5 - Replace the unequal-window first-nivelacija split in Supplier, Footwear-type and Color stats
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: backend/frontend/tests
 Feature family: nivelacija-split-semantics
@@ -352,7 +353,7 @@ The result is published as `prePostNivelacijaRevenueImpactPct` and as the legacy
 
 1. Choose one owner-approved cohort for "nivelacija effect" across surfaces. Proposal: per-event fixed windows of equal length (30 + 30 days) with maturity, reusing the canonical view/scoped source, and the latest mature event per article inside the period.
 2. If the split stays a separate concept, normalize it per day (`avg daily revenue post / pre`) with an equal-length cap (`min(pre_days, post_days)` on each side), and rename it so it doesn't read as a causal effect.
-3. Stop aliasing it as `promenaPrometa`. Deprecate the alias with a contract note and update the frontend consumers.
+3. Stop aliasing it as `promenaPrometa`. Retain compatibility fields as deprecated always-null values, document their replacement, and remove frontend usage.
 4. Re-evaluate the recommendation gate on the corrected signal.
 
 #### Tests

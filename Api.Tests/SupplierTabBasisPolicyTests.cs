@@ -20,8 +20,8 @@ public sealed class SupplierTabBasisPolicyTests
         Assert.Equal(SupplierTabBasisPolicy.RetailReceiptsExcludingDugKorekcija, basis.ReceiptPopulation);
         Assert.Equal("all_sales_in_period", basis.Cohort);
         Assert.Equal("sale_date_in_period", basis.PeriodSemantics);
-        Assert.Equal(SupplierTabBasisPolicy.UnequalWindowRevenueAndUnitsPct, basis.EffectMetric);
-        Assert.Equal(SupplierTabBasisPolicy.FirstNivelacijaPerArticle, basis.EventSelection);
+        Assert.Equal(SupplierTabBasisPolicy.EqualDurationObservedWindowRevenueAndUnitsChangePct, basis.EffectMetric);
+        Assert.Equal(SupplierTabBasisPolicy.LatestNivelacijaBeforePeriodEndPerArticle, basis.EventSelection);
         Assert.Equal(SupplierUnknownBucketPolicy.Policy, basis.UnknownSupplierPolicy);
         Assert.Equal("2026-10-01", basis.AsOfDate);
         Assert.Equal("UTC", basis.Timezone);
@@ -74,8 +74,8 @@ public sealed class SupplierTabBasisPolicyTests
         Assert.All(bases, basis =>
         {
             Assert.Equal("articles_with_nivelacija_event_and_sales_in_period", basis.Cohort);
-            Assert.Equal(SupplierTabBasisPolicy.UnequalWindowRevenueAndUnitsPct, basis.EffectMetric);
-            Assert.Equal(SupplierTabBasisPolicy.FirstNivelacijaPerArticle, basis.EventSelection);
+            Assert.Equal(SupplierTabBasisPolicy.EqualDurationObservedWindowRevenueAndUnitsChangePct, basis.EffectMetric);
+            Assert.Equal(SupplierTabBasisPolicy.LatestNivelacijaBeforePeriodEndPerArticle, basis.EventSelection);
         });
     }
 

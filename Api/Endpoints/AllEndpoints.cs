@@ -1176,6 +1176,8 @@ public static class AllEndpoints
                     });
                 }
 
+                var splitPeriodToExclusiveUtc = toUtc ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+
                 // Resolve active snapshot batch once per request (used in cache key + cost resolution)
                 var snapshotOptions = snapshotOptionsRaw.Value;
                 long? activeBatchId = null;
@@ -1344,10 +1346,10 @@ public static class AllEndpoints
                     .ToListAsync(ct);
                 var salesRowCount = stavke.Count;
                 var relevantArticleIds = stavke.Select(s => s.ArtikalId).Distinct().ToArray();
-                var prvaNivelacijaPoArtiklu = await SupplierSalesStatsQuerySupport.LoadFirstNivelacijaByArticleAsync(
+                var prvaNivelacijaPoArtiklu = await SupplierSalesStatsQuerySupport.LoadLatestNivelacijaByArticleAsync(
                     db,
                     relevantArticleIds,
-                    toUtc,
+                    splitPeriodToExclusiveUtc,
                     storeId,
                     ct);
 
@@ -1476,7 +1478,9 @@ public static class AllEndpoints
                             sale => sale.ArtikalId,
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
-                            sale => sale.Kolicina);
+                            sale => sale.Kolicina,
+                            fromUtc ?? dataWindowFrom,
+                            splitPeriodToExclusiveUtc);
 
                         var normalizedSupplierName = string.IsNullOrWhiteSpace(g.Key.DobavljacNaziv)
                             ? "Nepoznato"
@@ -1631,8 +1635,6 @@ public static class AllEndpoints
                             primaryFootwearTypeSharePct = footwearBreakdown.FirstOrDefault()?.shareOfSupplierRevenuePct,
                             footwearTypeCount = footwearBreakdown.Count,
                             footwearBreakdown,
-                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = splitSnapshot.RevenueImpactPct,
                             promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
@@ -1886,8 +1888,8 @@ public static class AllEndpoints
                                 recommendationAllowed,
                                 reasonCodes = exposedRecommendation.ReasonCodes
                             },
-                            // Legacy compatibility aliases (deprecated)
-                            supplier.promenaPrometa,
+                            // Deprecated compatibility field; this metric no longer has this alias.
+                            promenaPrometa = (double?)null,
                             supplier.promenaKolicine
                         };
                     })
@@ -1985,10 +1987,8 @@ public static class AllEndpoints
                         doNotTrust = knownSupplierRecommendations.Count(x => x.recommendation.status == "do_not_trust"),
                         insufficientData = knownSupplierRecommendations.Count(x => x.recommendation.status == "insufficient_data")
                     },
-                    // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = sumPreRevenue > 0m
-                        ? Math.Round((double)((sumPostRevenue - sumPreRevenue) / sumPreRevenue * 100m), 2)
-                        : (double?)null
+                    // Deprecated compatibility field; use prePostNivelacijaRevenueImpactPct.
+                    promenaPrometaPct = (double?)null
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
@@ -2227,6 +2227,8 @@ public static class AllEndpoints
                     });
                 }
 
+                var splitPeriodToExclusiveUtc = toUtc ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+
                 // Resolve active snapshot batch
                 var snapshotOptions2 = snapshotOptionsRaw2.Value;
                 long? activeBatchId2 = null;
@@ -2291,15 +2293,15 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum < toUtc.Value) &&
+                        d.Datum < splitPeriodToExclusiveUtc &&
                         (!storeId.HasValue || !d.IDObjekat.HasValue || d.IDObjekat == storeId.Value))
                     .GroupBy(d => d.ArtikalId!.Value)
                     .Select(g => new
                     {
                         ArtikalId = g.Key,
-                        PrvaDatum = g.Min(x => x.Datum)
+                        PoslednjaDatum = g.Max(x => x.Datum)
                     })
-                    .ToDictionaryAsync(x => x.ArtikalId, x => x.PrvaDatum, ct);
+                    .ToDictionaryAsync(x => x.ArtikalId, x => x.PoslednjaDatum, ct);
 
                 var tipObuceNazivMap = await db.TipoviObuce.AsNoTracking()
                     .Select(t => new { t.Id, t.Naziv })
@@ -2475,7 +2477,9 @@ public static class AllEndpoints
                             sale => sale.ArtikalId,
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
-                            sale => sale.Kolicina);
+                            sale => sale.Kolicina,
+                            fromUtc ?? dataWindowFrom,
+                            splitPeriodToExclusiveUtc);
                         var tipObuceNaziv = "Nepoznato";
                         if (g.Key.HasValue && tipObuceNazivMap.TryGetValue(g.Key.Value, out var resolvedTipObuceNaziv))
                             tipObuceNaziv = resolvedTipObuceNaziv;
@@ -2543,8 +2547,6 @@ public static class AllEndpoints
                             isPreviousOnly = currentRows.Count == 0
                                 && hasPreviousComparablePeriod
                                 && previousShoeTypeMetrics.ContainsKey(shoeTypeBucketKey),
-                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = splitSnapshot.RevenueImpactPct,
                             promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
@@ -2720,8 +2722,8 @@ public static class AllEndpoints
                                 recommendationAllowed,
                                 reasonCodes = exposedRecommendation.ReasonCodes
                             },
-                            // Legacy compatibility aliases (deprecated)
-                            row.promenaPrometa,
+                            // Deprecated compatibility field; this metric no longer has this alias.
+                            promenaPrometa = (double?)null,
                             row.promenaKolicine
                         };
                     })
@@ -2811,10 +2813,8 @@ public static class AllEndpoints
                         doNotTrust = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "do_not_trust"),
                         insufficientData = shoeTypesWithRecommendation.Count(x => x.recommendation.status == "insufficient_data")
                     },
-                    // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = comparablePreRevenue > 0m
-                        ? Math.Round((double)((comparablePostRevenue - comparablePreRevenue) / comparablePreRevenue * 100m), 2)
-                        : (double?)null
+                    // Deprecated compatibility field; use prePostNivelacijaRevenueImpactPct.
+                    promenaPrometaPct = (double?)null
                 };
 
                 var generatedAtUtc = DateTime.UtcNow;
@@ -3008,6 +3008,8 @@ public static class AllEndpoints
                     });
                 }
 
+                var splitPeriodToExclusiveUtc = toUtc ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+
                 var cacheKey = AnalyticsCacheKeys.ColorSalesStats(
                     fromUtc,
                     toUtc,
@@ -3056,7 +3058,7 @@ public static class AllEndpoints
                     .Where(d =>
                         (d.TipPromene == TipPromeneConstants.Nivelacija || d.TipPromene == TipPromeneConstants.NivelacijaCena) &&
                         d.ArtikalId.HasValue &&
-                        (!toUtc.HasValue || d.Datum < toUtc.Value));
+                        d.Datum < splitPeriodToExclusiveUtc);
                 nivelacijeQuery = ApplyColorNivelacijaEventScope(nivelacijeQuery, storeId, normalizedDataScope);
 
                 var nivelacije = await nivelacijeQuery
@@ -3069,7 +3071,7 @@ public static class AllEndpoints
 
                 var prvaNivelacijaPoArtiklu = nivelacije
                     .GroupBy(n => n.ArtikalId)
-                    .ToDictionary(g => g.Key, g => g.Min(x => x.DatumNivelacije));
+                    .ToDictionary(g => g.Key, g => g.Max(x => x.DatumNivelacije));
 
                 var (previousFromUtc, previousToUtc) = OperationsDateRange.BuildComparablePreviousRange(fromUtc, toUtc);
                 var previousColorMetrics = new Dictionary<string, (decimal Revenue, int Units)>(StringComparer.Ordinal);
@@ -3183,7 +3185,9 @@ public static class AllEndpoints
                             sale => sale.ArtikalId,
                             sale => sale.DatumProdaje,
                             sale => sale.Prihod,
-                            sale => sale.Kolicina);
+                            sale => sale.Kolicina,
+                            fromUtc ?? dataWindowFrom,
+                            splitPeriodToExclusiveUtc);
                         var rowMarginPct = marginSnapshot.RevenueWithCost > 0m
                             ? (double?)marginSnapshot.MarginPct
                             : null;
@@ -3256,8 +3260,6 @@ public static class AllEndpoints
                             prePostNivelacijaRevenueCoveragePct = rowSplitCoveragePct,
                             prePostSignalNote = splitSnapshot.SignalNote,
                             prePostComparableArticleCount = splitSnapshot.ComparableArticleCount,
-                            // Legacy compatibility aliases (pre/post impact metric in old response shape)
-                            promenaPrometa = splitSnapshot.RevenueImpactPct,
                             promenaKolicine = splitSnapshot.UnitsImpactPct
                         };
                     })
@@ -3451,8 +3453,8 @@ public static class AllEndpoints
                                 RecommendationAllowed = recommendationAllowed,
                                 reasonCodes = exposedReasonCodes
                             },
-                            // Legacy compatibility aliases (deprecated)
-                            row.promenaPrometa,
+                            // Deprecated compatibility field; this metric no longer has this alias.
+                            promenaPrometa = (double?)null,
                             row.promenaKolicine
                         };
                     })
@@ -3535,8 +3537,8 @@ public static class AllEndpoints
                         doNotTrust = colorsWithRecommendation.Count(x => x.recommendation.Status == "do_not_trust"),
                         insufficientData = colorsWithRecommendation.Count(x => x.recommendation.Status == "insufficient_data")
                     },
-                    // Legacy compatibility alias (pre/post impact metric in old response shape)
-                    promenaPrometaPct = comparableSignal.RevenueImpactPct
+                    // Deprecated compatibility field; use prePostNivelacijaRevenueImpactPct.
+                    promenaPrometaPct = (double?)null
                 };
 
                 var sezone = (await db.Sezone.AsNoTracking()

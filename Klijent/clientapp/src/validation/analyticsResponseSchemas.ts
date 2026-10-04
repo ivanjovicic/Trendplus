@@ -190,6 +190,7 @@ const colorSalesStatSchema = {
   decisionScore: nullableNonNegativePercentage.optional(),
   reliabilityPct: nullableNonNegativePercentage.optional(),
   recommendation: colorRecommendationSchema,
+  promenaPrometa: nullableNumber.optional(),
 };
 
 const costTotalsSchema = {
@@ -206,6 +207,7 @@ const costTotalsSchema = {
   popUnitsChangePct: nullableNumber,
   prePostNivelacijaRevenueImpactPct: nullableNumber,
   prePostNivelacijaUnitsImpactPct: nullableNumber,
+  promenaPrometaPct: nullableNumber.optional(),
 };
 
 const colorCostTotalsSchema = {
@@ -369,7 +371,7 @@ export const shoeTypeSalesStatsResponseSchema = z.object({
     comparablePostQuantity: nonNegativeInteger,
     prePostSignalNote: z.string().nullable(),
     prePostComparableArticleCount: nonNegativeInteger,
-    promenaPrometa: nullableNumber,
+    promenaPrometa: nullableNumber.optional(),
     promenaKolicine: nullableNumber,
   })),
   totals: z.object({
@@ -506,7 +508,7 @@ const supplierSalesStatSchema = {
   shareOfUnits: nullableNumber,
   reliabilityPct: nullableNonNegativePercentage,
   recommendation: supplierRecommendationSchema,
-  promenaPrometa: nullableNumber,
+  promenaPrometa: nullableNumber.optional(),
   promenaKolicine: nullableNumber,
 };
 

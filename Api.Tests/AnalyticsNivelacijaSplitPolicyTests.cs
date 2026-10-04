@@ -13,7 +13,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         var rows = new[]
         {
             new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 100m, 1),
-            new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 600m, 6),
+            new TestRow(1, new DateTime(2026, 1, 19, 0, 0, 0, DateTimeKind.Utc), 600m, 6),
             new TestRow(2, new DateTime(2026, 1, 22, 0, 0, 0, DateTimeKind.Utc), 400m, 4)
         };
 
@@ -44,7 +44,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         var rows = new[]
         {
             new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 500m, 5),
-            new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 750m, 6),
+            new TestRow(1, new DateTime(2026, 1, 19, 0, 0, 0, DateTimeKind.Utc), 750m, 6),
             new TestRow(2, new DateTime(2026, 1, 21, 0, 0, 0, DateTimeKind.Utc), 300m, 3)
         };
 
@@ -82,7 +82,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         var rows = new[]
         {
             new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 500m, 5),
-            new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 500m, 5)
+            new TestRow(1, new DateTime(2026, 1, 19, 0, 0, 0, DateTimeKind.Utc), 500m, 5)
         };
 
         var noEvent = AnalyticsNivelacijaSplitPolicy.Build(
@@ -150,7 +150,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
             new[]
             {
                 new TestRow(1, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), 500m, 5),
-                new TestRow(1, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), 750m, 6)
+                new TestRow(1, new DateTime(2026, 1, 19, 0, 0, 0, DateTimeKind.Utc), 750m, 6)
             },
             new Dictionary<int, DateTime>
             {
@@ -193,10 +193,10 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
     }
 
     [Theory]
-    [InlineData(5, 400d)]
-    [InlineData(15, 0d)]
-    [InlineData(25, -80d)]
-    public void Build_BaselineExposesUnequalWindowBiasForFlatDailySales(int eventDayOffset, double expectedImpactPct)
+    [InlineData(5)]
+    [InlineData(15)]
+    [InlineData(25)]
+    public void Build_EqualizesObservedWindowsForFlatDailySales(int eventDayOffset)
     {
         var periodStart = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
         var rows = Enumerable.Range(0, 30)
@@ -213,9 +213,34 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
 
         Assert.Equal(eventDayOffset, snapshot.PreRevenue);
         Assert.Equal(30m - eventDayOffset, snapshot.PostRevenue);
-        Assert.Equal(expectedImpactPct, snapshot.RevenueImpactPct);
-        Assert.Equal(expectedImpactPct, snapshot.UnitsImpactPct);
+        Assert.Equal(0d, snapshot.RevenueImpactPct);
+        Assert.Equal(0d, snapshot.UnitsImpactPct);
+        Assert.Equal(Math.Min(eventDayOffset, 30 - eventDayOffset), snapshot.ComparablePreQuantity / 10);
+        Assert.Equal(snapshot.ComparablePreQuantity, snapshot.ComparablePostQuantity);
         Assert.True(snapshot.HasComparableSignal);
+    }
+
+    [Fact]
+    public void Build_CapsEqualObservedWindowsAtThirtyDays()
+    {
+        var periodStart = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var rows = Enumerable.Range(0, 75)
+            .Select(day => new TestRow(1, periodStart.AddDays(day), 1m, 1))
+            .ToArray();
+
+        var snapshot = AnalyticsNivelacijaSplitPolicy.Build(
+            rows,
+            new Dictionary<int, DateTime> { [1] = periodStart.AddDays(35) },
+            row => row.ArtikalId,
+            row => row.DatumProdaje,
+            row => row.Prihod,
+            row => row.Kolicina,
+            periodStart,
+            periodStart.AddDays(75));
+
+        Assert.Equal(0d, snapshot.RevenueImpactPct);
+        Assert.Equal(30, snapshot.ComparablePreQuantity);
+        Assert.Equal(30, snapshot.ComparablePostQuantity);
     }
 
     [Fact]
@@ -240,6 +265,7 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
         Assert.Null(snapshot.RevenueImpactPct);
         Assert.Null(snapshot.UnitsImpactPct);
         Assert.False(snapshot.HasComparableSignal);
+        Assert.Contains("pre izabranog perioda", snapshot.SignalNote ?? string.Empty);
     }
 
     [Fact]
@@ -286,6 +312,6 @@ public sealed class AnalyticsNivelacijaSplitPolicyTests
             row => row.DatumProdaje,
             row => row.Prihod,
             row => row.Kolicina);
-        Assert.Equal(-50d, chainWideSnapshot.RevenueImpactPct);
+        Assert.Equal(0d, chainWideSnapshot.RevenueImpactPct);
     }
 }

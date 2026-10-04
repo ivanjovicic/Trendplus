@@ -180,7 +180,6 @@ const validShoeResponse = {
     comparablePostRevenue: 0,
     comparablePreQuantity: 0,
     comparablePostQuantity: 0,
-    promenaPrometa: null,
     promenaKolicine: null,
     revenueWithNivelacijaSplit: 100,
     popRevenueChangePct: null,
@@ -353,7 +352,6 @@ const validSupplierResponse = {
       recommendationAllowed: true,
       reasonCodes: [],
     },
-    promenaPrometa: null,
     promenaKolicine: null,
   }],
   totals: {

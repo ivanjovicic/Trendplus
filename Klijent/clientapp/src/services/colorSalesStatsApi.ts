@@ -67,7 +67,7 @@ export interface ColorSalesStat {
   reliabilityPct?: number | null;
   isUnknown?: boolean;
   recommendation: AnalyticsRecommendation;
-  // Legacy compatibility aliases (deprecated)
+  /** @deprecated Always null; use prePostNivelacijaRevenueImpactPct. */
   promenaPrometa?: number | null;
   promenaKolicine?: number | null;
 }
@@ -115,6 +115,8 @@ export interface ColorSalesTotals {
   popUnitsChangePct: number | null;
   prePostNivelacijaRevenueImpactPct: number | null;
   prePostNivelacijaUnitsImpactPct: number | null;
+  /** @deprecated Always null; use prePostNivelacijaRevenueImpactPct. */
+  promenaPrometaPct?: number | null;
   recommendationSummary: {
     increaseFocus: number;
     maintain: number;
@@ -122,8 +124,6 @@ export interface ColorSalesTotals {
     doNotTrust: number;
     insufficientData: number;
   };
-  // Legacy compatibility alias (deprecated)
-  promenaPrometaPct?: number | null;
 }
 
 export interface ColorSalesDataQuality {
