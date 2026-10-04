@@ -15,7 +15,7 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
     [Fact]
     public void EnrolledFamilies_HaveExplicitOwnersAndBounds()
     {
-        Assert.Equal(5, OperationsAnalyticsIntegrityFamilies.Enrolled.Count);
+        Assert.Equal(6, OperationsAnalyticsIntegrityFamilies.Enrolled.Count);
         Assert.All(
             OperationsAnalyticsIntegrityFamilies.Enrolled,
             definition =>

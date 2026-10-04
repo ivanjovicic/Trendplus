@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ564 (primary P0). Additional parallel-safe READY lives in the Nivelacija addendum: RQ553. RQ565-RQ566 remain externally gated.
+Current READY prompt: RQ553 (parallel-safe P3 in Nivelacija addendum). RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
 Owner recovery 2026-10-04 after RQ567: the prior "no other READY" conclusion was stale. RQ541-RQ544, RQ547-RQ550 and RQ568 are DONE, and RQ545's remaining work is deployed/provider acceptance that the RQ564 prompt explicitly says is not a local start gate. Fresh collision checks found no RQ564 lock, matching branch or open PR. RQ564 is therefore promoted WAITING -> READY as the next P0 repository-local reliability task. RQ553 is independently READY in the Nivelacija addendum after RQ529 DONE. RQ552 is narrowed to its still-live performance/cache-invalidation residual and sequenced after RQ564 because price-event writes must invalidate the new Nivelacija integrity generation consistently. Live Daily Sales evidence also exposed a separate source-horizon/freshness gap; RQ569 is registered below and waits for RQ564 so the same context/generation contract is reused. RQ453 is scope-repaired into the non-skippable repository certification gate after RQ564/RQ569 rather than waiting for deployed browser/certificate work.
 Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. Post-close cascade: RQ564 is primary READY and RQ553 is additional parallel-safe READY; RQ565-RQ566 remain externally gated.
 Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
@@ -205,7 +205,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ561 | DONE | P0 | operations-six-screen-certification | Re-certify the six current Operations screens on one adversarial fixture |
 | RQ562 | DONE | P0 | operations-grain-aware-integrity | Detect bucket drift even when grand totals still match |
 | RQ563 | DONE | P0 | inventory-independent-integrity-probe | Register and execute the missing independent Inventory family probe |
-| RQ564 | READY | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
+| RQ564 | DONE | P0 | nivelacija-runtime-integrity | Add a dedicated Pre/Post + Priorities runtime integrity family after semantics/oracles stabilize |
 | RQ565 | WAITING | P0 | operations-six-screen-deployed-reconciliation | Reconcile all six current screens through deployed API/browser/export |
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
 | RQ567 | DONE | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
@@ -4093,7 +4093,7 @@ Implement `IOperationsAnalyticsIntegrityFamilyProbe` for Inventory using indepen
 
 ## RQ564 - Add a dedicated Nivelacija runtime-integrity family for Pre/Post and Priorities
 
-Status: READY
+Status: DONE
 Ready after: dependency-complete on current main (RQ541-RQ544, RQ547-RQ550 and RQ568 DONE; RQ545 code-side diagnostics delivered). Fresh collision check only.
 Priority: P0
 Type: backend/oracle/runtime-integrity/tests

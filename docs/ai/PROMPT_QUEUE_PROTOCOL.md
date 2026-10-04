@@ -65,6 +65,7 @@ After delivering or closing a queue prompt, and **before** declaring no successo
 6. If any prompt is dependency-complete, authorized and collision-safe, repair stale routing and promote it `WAITING -> READY` in the same recovery run. Do not leave it WAITING merely because an older completion note said `none`.
 7. If the first candidate is still blocked, continue through other independent lanes in the same program, then the next eligible program.
 8. If and only if no candidate is runnable, write a **Zero-READY proof** in the run evidence with:
+   Treat **`none` as the last conclusion** only after steps 1–7 on the post-delivery SHA; **none is the last conclusion**, never inherited from an older header, run log or completion note.
    - recovery base `origin/main` SHA;
    - active queue/addendum files scanned;
    - every plausible non-terminal candidate checked;

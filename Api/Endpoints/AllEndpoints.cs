@@ -3938,6 +3938,7 @@ public static class AllEndpoints
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveAnalyticsCorrelationId(httpContext);
+            var nivelacijaIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
             try
             {
                 var connectionString = trendplusDb.Database.GetConnectionString();
@@ -3999,7 +4000,7 @@ public static class AllEndpoints
                         maxRows,
                         endpointStopwatch.ElapsedMilliseconds);
 
-                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId));
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, nivelacijaIntegrityRegistry));
                 }
 
                 logger.LogInformation(
@@ -4043,7 +4044,7 @@ public static class AllEndpoints
                         normalizedDataScope,
                         contractIssue.ErrorMessage,
                         errorMeta);
-                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId));
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId, nivelacijaIntegrityRegistry));
                 }
 
                 var hasOldPrice = relationInspection.Columns.Contains("old_price", StringComparer.Ordinal);
@@ -5134,7 +5135,7 @@ public static class AllEndpoints
                     DataCoverageReason = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageReason
                 };
 
-                ApplyVendorSalesNivelacijaMeta(response, correlationId);
+                ApplyVendorSalesNivelacijaMeta(response, correlationId, nivelacijaIntegrityRegistry);
 
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
@@ -5184,7 +5185,7 @@ public static class AllEndpoints
                     reason,
                     errorMeta);
 
-                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, nivelacijaIntegrityRegistry));
             }
             catch (Exception ex)
             {
@@ -5210,7 +5211,7 @@ public static class AllEndpoints
                     $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.",
                     errorMeta);
 
-                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId));
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, nivelacijaIntegrityRegistry));
             }
         })
         .WithName("GetVendorSalesNivelacija")
@@ -6753,6 +6754,7 @@ public static class AllEndpoints
             ILogger<Program> logger,
             IConfiguration configuration,
             HttpContext httpContext,
+            AnalyticsCacheAdminService cacheAdmin,
             NivelacijaRequest request,
             CancellationToken ct) =>
         {
@@ -6832,6 +6834,8 @@ public static class AllEndpoints
                 });
 
                 await db.SaveChangesAsync(ct);
+
+                await InvalidateNivelacijaAnalyticsCachesAsync(cacheAdmin, ct);
 
                 return Results.Ok(new { success = true, message = "Cena uspešno nivelirana" });
             }
@@ -7708,11 +7712,20 @@ public static class AllEndpoints
         }
     }
 
+    internal static async Task InvalidateNivelacijaAnalyticsCachesAsync(
+        AnalyticsCacheAdminService cacheAdmin,
+        CancellationToken ct)
+    {
+        await cacheAdmin.ClearAsync(AnalyticsCachePolicy.NivelacijaFamily, ct);
+        await cacheAdmin.ClearAsync(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, ct);
+    }
+
     internal static VendorSalesNivelacijaResponseDto ApplyVendorSalesNivelacijaMeta(
         VendorSalesNivelacijaResponseDto response,
-        string correlationId)
+        string correlationId,
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null)
     {
-        response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId);
+        response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId, integrityRegistry);
         response.Meta.RecommendationAllowed = response.RecommendationAllowed;
         if (response.Meta.DecisionReadiness is null)
         {
@@ -7729,7 +7742,8 @@ public static class AllEndpoints
 
     internal static AnalyticsResponseMetaDto BuildVendorSalesNivelacijaMeta(
         VendorSalesNivelacijaResponseDto response,
-        string correlationId)
+        string correlationId,
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null)
     {
         AnalyticsResponseMetaDto meta;
         if (response.Meta is not null)
@@ -7781,9 +7795,24 @@ public static class AllEndpoints
             }
         }
 
-        return OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(
-            ApplyVendorSalesNivelacijaContext(meta, response),
-            "nivelacija");
+        meta = ApplyVendorSalesNivelacijaContext(meta, response);
+        if (integrityRegistry is null)
+        {
+            return OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(
+                meta,
+                OperationsAnalyticsIntegrityFamilies.Nivelacija);
+        }
+
+        var requestedFrom = response.EventDate ?? response.From;
+        var requestedTo = response.EventDate ?? response.To;
+        return OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            meta,
+            integrityRegistry,
+            OperationsAnalyticsIntegrityFamilies.Nivelacija,
+            requestedFrom ?? DateTime.UtcNow.Date,
+            (requestedTo ?? requestedFrom ?? DateTime.UtcNow.Date).AddDays(1),
+            NormalizeVendorSalesNivelacijaDataScope(response.DataScope),
+            response.StoreId);
     }
 
     private static AnalyticsResponseMetaDto ApplyVendorSalesNivelacijaContext(

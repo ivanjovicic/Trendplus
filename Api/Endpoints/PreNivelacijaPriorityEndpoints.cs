@@ -5,6 +5,7 @@ using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,7 @@ public static class PreNivelacijaPriorityEndpoints
             IAnalyticsCacheService cache,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
+            HttpContext httpContext,
             int? supplierId = null,
             int? seasonId = null,
             int? footwearTypeId = null,
@@ -88,6 +90,7 @@ public static class PreNivelacijaPriorityEndpoints
             pageSize = Math.Clamp(pageSize, 1, 100);
             var normalizedDataScope = NormalizeDataScope(dataScope);
             var minimumNewStockAgeDays = ResolveMinimumNewStockAgeDays(configuration);
+            var integrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
 
             try
             {
@@ -714,6 +717,7 @@ public static class PreNivelacijaPriorityEndpoints
                 pageSize,
                 focus,
                 normalizedDataScope,
+                integrityRegistry,
                 BuildFilterFacets(
                     baseEntry.FacetUniverseCandidates.Count > 0
                         ? baseEntry.FacetUniverseCandidates
@@ -737,6 +741,7 @@ public static class PreNivelacijaPriorityEndpoints
                     pageSize,
                     focus,
                     normalizedDataScope,
+                    integrityRegistry,
                     new PreNivelacijaFilterFacetsDto()));
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -761,6 +766,7 @@ public static class PreNivelacijaPriorityEndpoints
                     pageSize,
                     focus,
                     normalizedDataScope,
+                    integrityRegistry,
                     new PreNivelacijaFilterFacetsDto()));
             }
         })
@@ -1186,6 +1192,7 @@ public static class PreNivelacijaPriorityEndpoints
         int pageSize,
         string? focus = null,
         string dataScope = "all",
+        OperationsAnalyticsIntegrityRegistry? integrityRegistry = null,
         PreNivelacijaFilterFacetsDto? filterFacets = null)
     {
         var filteredCandidates = FilterCandidatesByFocus(baseEntry.Candidates, focus);
@@ -1232,7 +1239,24 @@ public static class PreNivelacijaPriorityEndpoints
             reasonCodes: ["pre_nivelacija.evidence"],
             evidenceReferences: ["pre_nivelacija.salesEvidence", "pre_nivelacija.marginEvidence", "pre_nivelacija.recommendation"],
             repairPath: "Data Quality ili Nivelacija evidence");
-        OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(response.Meta, "nivelacija");
+        if (integrityRegistry is null)
+        {
+            OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(
+                response.Meta,
+                OperationsAnalyticsIntegrityFamilies.Nivelacija);
+        }
+        else
+        {
+            OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+                response.Meta,
+                integrityRegistry,
+                OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                baseEntry.EvidenceWindow.SalesWindowFromUtc,
+                baseEntry.EvidenceWindow.SalesWindowToUtc,
+                dataScope,
+                storeId: null);
+        }
+
         return response;
     }
 

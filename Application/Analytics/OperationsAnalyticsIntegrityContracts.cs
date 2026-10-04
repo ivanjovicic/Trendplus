@@ -18,6 +18,7 @@ public static class OperationsAnalyticsIntegrityFamilies
     public const string Inventory = "inventory";
     public const string DataQuality = "data_quality";
     public const string DecisionBoard = "decision_board";
+    public const string Nivelacija = "nivelacija";
 
     public static IReadOnlyList<OperationsAnalyticsIntegrityFamilyDefinition> Enrolled { get; } =
     [
@@ -25,7 +26,8 @@ public static class OperationsAnalyticsIntegrityFamilies
         new(SalesDashboard, "Analytics Reliability / Sales and Dashboard totals", 10000, 31, false),
         new(Inventory, "Analytics Reliability / Inventory identity", 10000, 31, true),
         new(DataQuality, "Analytics Reliability / Data Quality identity", 10000, 31, false),
-        new(DecisionBoard, "Analytics Reliability / Decision Board contributors", 10000, 31, true)
+        new(DecisionBoard, "Analytics Reliability / Decision Board contributors", 10000, 31, true),
+        new(Nivelacija, "Analytics Reliability / Nivelacija Pre/Post and Priorities", 10000, 31, true)
     ];
 
     public static IReadOnlyList<string> ResolveAffected(string? family)
@@ -53,6 +55,7 @@ public static class OperationsAnalyticsIntegrityFamilies
             "inventory" or "inventory-alerts" or "inventory-snapshot" => Inventory,
             "data-quality" or "dataquality" => DataQuality,
             "decision-board" or "decisionboard" => DecisionBoard,
+            "nivelacija" or "pre-post" or "prepost" or "vendor-sales-nivelacija" or "pre-nivelacija" or "pre-nivelacija-prioriteti" => Nivelacija,
             _ => null
         };
 
