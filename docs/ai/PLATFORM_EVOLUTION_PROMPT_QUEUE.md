@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF17` DONE; `PERF18` WAITING on current browser/network proof; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF17` DONE; `PERF18` WAITING on current browser/network proof; `PERF19` WAITING after RQ573 for measured Decision Board composition profiling; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
