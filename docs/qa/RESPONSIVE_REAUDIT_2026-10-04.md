@@ -119,7 +119,7 @@ Ocena: telefon je **delimično dobar**, tablet uspravno **dobar uz sitne nedosta
 | P-UI-42 | P2 | WAITING (posle P-UI-39) | 16 px polja i 44 px dugmad i na tabletima na dodir |
 | P-UI-43 | P2 | WAITING (posle RQ569) | Sažet blok pouzdanosti na telefonu, sa detaljima na dodir |
 | P-UI-44 | P2 | WAITING (posle RQ569) | Zakucana prva kolona za Dnevnu prodaju i Zalihe |
-| P-UI-45 | P2 | **READY** | Indikator učitavanja na srpskom koji ne prekriva sadržaj; karusel poštuje smanjeno kretanje |
+| P-UI-45 | P2 | **READY** | Indikator učitavanja na srpskom koji ne prekriva sadržaj; karusel samo na početnoj strani (odluka 04.10.) i poštuje smanjeno kretanje |
 | P-UI-46 | P3 | WAITING (posle P-UI-42) | Operativne i šifarnik liste upotrebljive na telefonu |
 
 Addendumi: P-UI-31, P-UI-35, P-UI-36, P-UI-38 i RQ582 (Insight Studio: 67 sitnih tekstova; po Ivanovoj odluci ekran se sakriva, pa responsive rad nije potreban dok je sakriven).
@@ -140,6 +140,10 @@ Svaka citirana linija koda ponovo je pročitana na `6a2a23b3`. Ispravke posle dr
 
 ## 8. Odluke vlasnika
 
-1. **Sezonski karusel:** da li da se prikazuje samo na početnoj strani `/`, a ne ispod svakog ekrana? Preporuka: **da**. Na analitičkim i ekranima za unos dodaje oko 300 px i kretanje koje ometa.
+1. **Sezonski karusel — ODLUČENO (Ivan, 2026-10-04 21:36):** karusel se prikazuje samo na početnoj strani `/` i uklanja se sa analitičkih ekrana i ekrana za unos. Upisano u P-UI-45 (obim, koraci, testovi i prihvatanje). Pitanje je zatvoreno.
 2. **Insight Studio (RQ582):** Ivan je već odlučio (04.10.) da se sakrije iza oznake „Eksperimentalno“. Zato nije registrovan responsive prompt za njega. Responsive migracija je uslov samo ako se ekran ponovo vrati u meni. Odluka nije potrebna.
 3. **Pravi uređaji:** za potpuni dokaz potreban je bar jedan iPhone (Safari) i jedan iPad. Preporuka: posle P-UI-39 i P-UI-42 jedan ručni prolaz po kontrolnoj listi iz `ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`.
+
+## 9. Dopuna 2026-10-04 21:36
+
+Ivan je odlučio da se sezonski karusel prikazuje samo na početnoj strani. Otvoreno pitanje iz odeljka 8 je zatvoreno, a odluka je upisana u P-UI-45.

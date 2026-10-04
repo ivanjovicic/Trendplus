@@ -4,6 +4,7 @@ Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional parallel-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-45`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
+Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -51,7 +52,7 @@ Use with:
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
-| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; reduced-motion carousel |
+| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 
 ---
@@ -2804,7 +2805,8 @@ Type: frontend/a11y/tests
 Feature family: global-chrome-mobile
 Parallel-safe: yes
 Owner: unassigned
-Commit suggestion: `fix(ui): localize request indicator and respect reduced motion in carousel`
+Owner decision (Ivan, 2026-10-04 21:36): the seasonal image carousel is shown **only on the home page** (`/`). It is removed from every other route, including all analytics, data-entry, šifarnik and admin screens. Reduced-motion behaviour still applies on the home page.
+Commit suggestion: `fix(ui): localize request indicator, show seasonal carousel only on home`
 
 ### Problem
 
@@ -2823,27 +2825,32 @@ Two always-mounted chrome elements degrade every screen on phones:
 ### Scope
 
 - `components/GlobalRequestSpinner.tsx` (+ its CSS), `components/trendshoes/SeasonalImageCarousel.tsx`, `imagecarousel.css`, nearest tests
-- Not `AppLayout.tsx` (P-UI-40 owns it). Changing which routes show the carousel is an owner decision (see Dependencies).
+- `layout/AppLayout.tsx` is limited to removing the global carousel mount (`AppLayout.tsx:6` import and the `<section className="w-full pb-5">` wrapper at `:42-44`). No other shell change: P-UI-40 owns the rest of `AppLayout.tsx`.
+- `pages/HomePage.tsx`: mount the carousel there (the only route that renders it, per the owner decision).
 
 ### Do
 
 1. Translate the indicator: "Učitavanje podataka" and "{n} zahtev(a) u toku", with correct Serbian plural forms (1 zahtev, 2–4 zahteva, 5+ zahteva). Below 640px, render it as a slim top progress bar or a compact pill that does not cover content (respect the safe-area insets). Keep `aria-live="polite"`.
 2. Carousel: do not auto-scroll when `prefers-reduced-motion: reduce`, and use `behavior: "auto"` instead of smooth. Pause on focus/hover/touch. Nav buttons ≥44x44 on coarse pointers.
 3. Keep the visible order of images and the modal unchanged.
+4. Owner decision 2026-10-04: render `SeasonalImageCarousel` only from `HomePage` (route `/`). Remove the global mount and its wrapper from `AppLayout.tsx`, so no other route renders the carousel, its wrapper spacing, or its image request. Do not use a route-name check inside the shared layout as a substitute.
 
 ### Tests
 
 - Vitest: Serbian copy and plural forms; reduced-motion mock stops the interval; nav buttons have a min-size class.
+- Vitest (routing, owner decision): rendering the app at `/` shows the carousel (e.g. `carousel-strip` / its test id). Rendering `/analytics`, `/analytics/products`, `/prodaja`, `/unos-robe`, `/nivelacija` and `/dobavljaci` does not render it, and no seasonal-image request is made on those routes (mocked fetch not called).
+- Vitest: on `/` with `prefers-reduced-motion: reduce` mocked, the carousel still renders but starts no auto-scroll interval.
 - Responsive runner at 360: indicator does not intersect the main content's first 200px when shown; carousel nav ≥44px.
 - typecheck, build, guardrails, governance validators, `git diff --check`.
 
 ### Acceptance
 
 - No English loading text remains. On phones the loading indicator never covers content. Reduced-motion users get no automatic carousel movement.
+- The seasonal carousel appears only on the home page `/`. No analytics, data-entry, šifarnik or admin route renders it or loads its images. On `/` it respects reduced motion.
 
 ### Dependencies
 
-- None for the above. Owner decision (recorded in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`): should the seasonal carousel appear only on the home page `/` instead of under every screen? Recommendation: yes, home page only. It adds about 300px of page height and periodic motion to analytics and data-entry screens. If approved, the route change belongs to P-UI-40's `AppLayout.tsx` or a follow-up.
+- None. Owner decision recorded 2026-10-04 (carousel only on home page). The `AppLayout.tsx` edit is limited to removing the mount. If P-UI-40 is IN_PROGRESS or lands first, whichever lands second rebases and keeps both changes.
 
 ## P-UI-46 - Operational and šifarnik screens: phone-usable lists, actions and paging
 

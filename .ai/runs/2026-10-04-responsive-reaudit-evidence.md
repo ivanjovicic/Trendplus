@@ -73,3 +73,7 @@ Drawer at 360: {"w":320,"h":780,"role":"dialog","focusInside":true,"bodyOverflow
 ## Second-pass code verification (lines re-read on 6a2a23b3)
 
 `AnalyticsControlBar.css:153-158,160-163,174-183,192-203,211-215,227-230`; `AnalyticsControlBar.tsx:89,139`; `HeaderStatus.tsx:371-375,400-401,406,439,457,544`; `Sidebar.tsx:90,219,231`; `AppLayout.tsx:13,42-44`; `PilotDataQualityIntakeReport.tsx:220-221` (no CSS rule for either class anywhere); `InventoryInsightPanels.tsx:66-67,84,151`; `tailwind.css:604-622` (corrected from :470, which is the modal sheet rule); `styles/forms.css:544,565,578`; `AnalyticsTrustHeader.tsx:292`, `.css:409`; `AnalyticsDataTable.css:125-160`; `GlobalRequestSpinner.tsx:26-29`; `SeasonalImageCarousel.tsx:74-79,88-93` (corrected from 86-90); `ConfigurationPage.css:493`; `responsive_baseline.mjs:8-22`; `ColorSalesStatsPage.tsx:1219`, `ArtikliListPage.tsx:487`, `AnalyticsActionsPage.tsx:1297`.
+
+## Note 2026-10-04 21:36 — owner decision
+
+Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is rendered only on the home page `/`. The open carousel route-scope question from this audit is closed and recorded in `P-UI-45` (Scope, Do step 4, routing Tests, Acceptance). No new measurements.
