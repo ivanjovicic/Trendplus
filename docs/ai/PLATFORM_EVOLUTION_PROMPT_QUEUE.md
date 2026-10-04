@@ -2862,3 +2862,80 @@ Commit suggestion: `perf(frontend): restore chart chunk route isolation`
 - `PERF17` is DONE and supplies the prior baseline/guard.
 - Current browser/network evidence from P-UI-24 or equivalent is required before runtime implementation.
 - This task is independent of responsive CSS migrations but must avoid simultaneous edits to the same Vite/import-boundary files.
+
+
+---
+
+## PERF19 - Measure and bound Decision Board server composition after Product Decision slimming
+
+Status: WAITING
+Ready after: RQ573 DONE; then fresh collision check against any active Decision Board backend owner
+Priority: P1
+Type: backend/performance/observability/tests
+Feature family: decision-board-composition-performance
+Parallel-safe: no with an active `DecisionBoardEndpoints.cs` owner
+Owner: Performance / Analytics Reliability
+Commit suggestion: `perf(analytics): measure decision board composition before optimizing it`
+
+### Problem
+
+Retained production evidence on 2026-10-04 measured `GET /api/analytics/decision-board?fromDate=2026-07-07&toDate=2026-08-06` at about 17.3 seconds, far beyond the existing Decision Board target (p95 <= 2 s). Current code awaits Product Decision, inventory insights, inventory workflow, supplier summary, Actions, refresh status and Data Quality in sequence. Product Decision is independently known to be large/slow and is owned by RQ573, but there is no deployed per-section timing proving which Board contributor dominates the 17.3 s.
+
+The previous recommendation "do no more performance work" is too broad: speculative indexes are not justified, but a measured 17 s decision surface requires profiling after the known PDC payload defect is fixed.
+
+### Evidence
+
+- `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`: target p50 <= 800 ms, p95 <= 2 s, hard timeout 5 s.
+- `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`: Decision Board is a measured B2 family; prior M-tier warm p95 was ~126 ms, so the current deployed 17.3 s observation is a material regression/environment gap, not a reason to guess an index.
+- RQ573 owns Product Decision list ordering/payload slimming and already requires Board before/after timing.
+- `Api/Endpoints/DecisionBoardEndpoints.cs`: server-side sequential contributor awaits.
+- Retained live evidence is from the next-wave audit; this prompt must remeasure after RQ573 rather than treating one observation as a profile.
+
+### Scope
+
+- Decision Board backend composition timing and the narrowest proven optimization.
+- Add bounded contributor timing/diagnostic evidence that is safe for logs/metrics; do not expose sensitive internals in public payloads.
+- No new business formula, ranking, actionability, freshness or trust semantics.
+- No speculative SQL indexes, Redis introduction or broad cache redesign.
+- Do not parallelize calls merely because they are sequential: first prove dependency independence, DbContext/thread-safety and identical partial-failure semantics.
+
+### Read first
+
+- RQ573 completion/evidence and its Board before/after measurement.
+- `docs/qa/DECISION_BOARD_AGGREGATE_PERFORMANCE_BUDGET.md`.
+- `docs/architecture/PERFORMANCE_BASELINE_CONTRACT.md`.
+- `docs/architecture/PERFORMANCE_MEASURED_OPTIMIZATION_BACKLOG.md`.
+- Decision Board correctness/ranking/freshness contracts.
+
+### Do
+
+1. Reproduce Board latency on the fixed July fixture after RQ573 and record cold/warm process, cache miss/hit and exact contributor states.
+2. Add server-side section timings around Product Decision, inventory insights, inventory workflow, supplier summary, Actions, refresh status and Data Quality. Keep timing evidence out of normal business semantics.
+3. Identify the dominant measured contributors. If the Board is already within budget after RQ573, close as measurement-only DONE with no optimization.
+4. If still above budget, choose the smallest safe fix based on measurements:
+   - reuse an already-built bounded projection;
+   - remove duplicate work;
+   - cache only where the existing freshness/invalidation contract proves safety;
+   - parallelize only independent operations with separate/thread-safe data access and preserved partial-failure ordering.
+5. Record before/after p50/p95 on the same fixture/protocol and verify all Board cards/counts/reason codes/trust states are identical.
+6. If deployed latency remains high while deterministic fixture performance is healthy, stop and route provider/DB/network evidence to STAB/OBS instead of guessing code changes.
+
+### Tests
+
+- Fixed fixture correctness parity before/after: cards, lane order, counts, actionability, warnings, source states.
+- Performance harness: section timings plus aggregate cold/warm samples; no single-sample "fixed" claim.
+- Partial failure fixtures remain partial/fail-closed exactly as before.
+- API build/focused Decision Board tests, performance harness, governance validators, `git diff --check`.
+
+### Acceptance
+
+- Board has a measured post-RQ573 contributor profile.
+- Either the endpoint meets the existing performance budget with no further code change, or a measured dominant cause is improved with identical business/trust outputs.
+- No speculative index/cache/concurrency change is accepted without before/after evidence.
+- A deployed-vs-local discrepancy is classified as such, not hidden behind a code optimization claim.
+
+### Dependencies
+
+- RQ573 DONE first because it changes the largest known Product Decision payload/work and would invalidate a Board baseline taken immediately before it.
+- RQ479 may land independently; its smoke filtering changes Board action counts but not the performance protocol. Use a fixture with explicit real/smoke action expectations.
+- STAB16 is final deployed/provider evidence, not a repository-local start gate.
