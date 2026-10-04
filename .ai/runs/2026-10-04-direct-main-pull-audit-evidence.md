@@ -32,7 +32,8 @@ Evidence state: synchronized
 - `node scripts/check-prompt-queues.mjs` -> pass (671 tasks)
 - `node scripts/check-planning-architecture.mjs` -> pass
 - `git diff --check` -> pass
-- Focused `dotnet test` on Operations integrity filter -> see Validation not run if environment blocked
+- Focused `dotnet test Api.Tests` filter `OperationsAnalyticsIntegrityMetaTests` -> 7/7 pass
+- `npm run test -- --run AnalyticsTrustHeader.spec.tsx` -> 24/24 pass
 
 ## Validation not run
 
