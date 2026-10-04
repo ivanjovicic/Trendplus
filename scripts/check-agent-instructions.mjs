@@ -132,6 +132,12 @@ function runSelfTest() {
       throw new Error("expected broken-link failure");
     }
 
+    write(
+      root,
+      "AGENTS.md",
+      `${REQUIRED_SNIPPETS.get("AGENTS.md").join("\n")}\n[Example](docs/ai/example.md)\n`,
+    );
+
     const protocolPath = path.join(root, "docs/ai/PROMPT_QUEUE_PROTOCOL.md");
     const protocol = fs.readFileSync(protocolPath, "utf8");
     fs.writeFileSync(
