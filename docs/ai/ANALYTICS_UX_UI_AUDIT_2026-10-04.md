@@ -1,8 +1,7 @@
 # Trendplus Analytics — duboki UX/UI audit (2026-10-04)
 
 Datum: 2026-10-04 (rad 21:26–22:30 po beogradskom vremenu, CEST)
-Rebase: pre registracije rebase-ovano na `origin/main` `44edf98`; ID-jevi promptova deduplicirani sa `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (§13).
-Osnova koda: `origin/main` `6a2a23b` ("docs(analytics): correct post-registration queue state")
+Analiza koda je počela na `origin/main` `6a2a23b`; pre registracije je rad rebase-ovan na delivery bazu `44edf98`. ID-jevi promptova deduplicirani su sa `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (§13).
 Način rada: čitanje koda (`Klijent/clientapp/src`), stanja queue-a i postojećih audita; live screenshot-i iz paralelnog browser audita (`/workspace/ux-audit/*.png`, desktop, teme Tamna / Meka siva / Svetla / Neon Light / Neon Dark / Visoki kontrast, plus 390×844 za 6 ekrana). Nije menjan runtime kod.
 Ciljni design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` (novi kanonski dokument; ranije nije postojao).
 Dokazi: `.ai/runs/2026-10-04-ux-ui-audit-evidence.md`
@@ -18,15 +17,15 @@ Frontend ne sme da izmišlja poslovnu istinu. Backend ostaje autoritativan za `r
 
  1. Kratak zaključak
 
-Računanje je posle ~170 zatvorenih RQ promptova uglavnom tačno. UX je, međutim, zaostao: korisnik ne vidi najvažniju činjenicu (podaci su stari od 05.08.2026), prvi ekran svakog ekrana troši trust header pun internih oznaka, a odluke su ispod fold-a. Tema sistem ima tri izvora istine i statusne boje koje u svetlim temama nisu čitljive. Globalni header svakom korisniku daje dugmad "Stop/Start" za API ping, workere i Redis.
+Računanje je posle ~170 zatvorenih RQ promptova uglavnom tačno. UX je, međutim, zaostao: korisnik ne vidi najvažniju činjenicu (podaci su stari od 05.08.2026), prvi ekran svakog ekrana troši trust header pun internih oznaka, a odluke su ispod fold-a. Tema sistem ima tri izvora istine i statusne boje koje u svetlim temama nisu čitljive. Globalni header na poslovnim ekranima meša tri različite "Stop/Start" kontrole: admin-gated worker/Redis write akcije i lokalni frontend API-polling prekidač.
 
-Ukupna ocena: **4/10** (posle spajanja live nalaza: 50 nalaza). Operativni ekrani (Dobavljači pregled, Vrsta obuće, Dnevna prodaja) su najbolji (6/10). Product Decision, Pre/Post, Decision Pulse i Insight Studio su najslabiji (2–3/10).
+Ukupna ocena: **4/10** (posle spajanja live nalaza i post-review dopune: 51 nalaz; 31 potvrđen live, UX-051 je code-derived). Operativni ekrani (Dobavljači pregled, Vrsta obuće, Dnevna prodaja) su najbolji (6/10). Product Decision, Pre/Post, Decision Pulse i Insight Studio su najslabiji (2–3/10).
 
 # Top 5 problema
 
 1. **UX-001 (P0)** — Zastareli podaci (od 05.08.2026) nisu globalno vidljivi; ekrani otvaraju period "od danas", pa su prazni ili prikazuju lažan pad. Vlasnici: RQ569 (READY), RQ570, RQ583, STAB16.
-2. **UX-002 (P1)** — Globalni header svakom korisniku nudi jedan-klik "Stop/Start" za API ping, workere i Redis, bez potvrde. Novi P-UI-48.
-3. **UX-004 (P1)** — Trust header zauzima ceo prvi ekran; KPI i odluke su ispod fold-a na Dashboardu, Product Decision, Dobavljačima i Pre-Nivelaciji. Prošireni P-UI-50.
+2. **UX-002 (P1)** — Globalni header prikazuje worker/Redis backend write kontrole i lokalni API-polling prekidač kao isti "Stop/Start" obrazac. Worker/Redis rute jesu server-side admin-key zaštićene, a "API Stop" ne gasi API servis nego pauzira frontend polling. Problem je action-safety/placement i pogrešna mentalna slika. Vlasnik: P-UI-48.
+3. **UX-004 (P1)** — Trust header zauzima ceo prvi ekran; KPI i odluke su ispod fold-a na Dashboardu, Product Decision, Dobavljačima i Pre-Nivelaciji. Shared owner je P-UI-43; P-UI-50 rešava samo Product Decision sadržaj/hijerarhiju nakon shared kompakcije.
 4. **UX-007 (P1)** — Product Decision KPI kartice prikazuju "0" za dopunu/pojačanje/sniženje dok backend blokira preporuke, što se čita kao "nema šta da se radi". Novi P-UI-50 (posle RQ573/RQ574).
 5. **UX-011/UX-012 (P1)** — Statusne boje kao tekst u svetlim temama imaju kontrast 1,45–2,54:1. `.card-theme` u svetlim temama prelazi u skoro crnu pozadinu ispod tamnog teksta (1,15:1). Novi P-UI-47.
 
@@ -76,7 +75,7 @@ Ocena 1–10 je kritična: 10 = spreman za vlasničke odluke bez objašnjavanja;
 |---|---|---|---|
 | Navigacija (link) | `<a>`/`Link`, vodi na kanonsku rutu | Meni vodi na redirect alias `/analytics/supplier-decision-hub` | UX-021 |
 | Komanda (dugme) | `<button type="button">` sa glagolom u labeli | Uglavnom OK; Pulse/IS koriste kratke engleske labele | UX-006 |
-| Destruktivna/ops komanda | Samo admin površina, potvrda, opis posledice | "Stop" workera/API pinga/Redis u globalnom headeru, bez potvrde | UX-002 |
+| Destruktivna/ops komanda | Backend write akcije na admin površini, potvrda i opis posledice; lokalna browser podešavanja jasno označena kao lokalna | Worker/Redis write kontrole i lokalni API-polling prekidač izgledaju kao ista globalna "Stop/Start" komanda | UX-002 |
 | Promena filtera | Eksplicitno "Primeni" za period/opseg; trenutno za sort/tab | Mešano: Vrsta obuće auto, Boja/Pre-Post eksplicitno (RQ319/RQ320) | UX-018 |
 | Otkrivanje detalja (disclosure) | `button` + `aria-expanded` + `aria-controls` | PDC red: `<tr onClick>` + "Zašto?" bez `aria-expanded` | UX-023 |
 | Klik na red | Nikad jedini put; uvek i dugme/link u ćeliji | PDC ima "Zašto?" dugme (OK); Insight Studio `tr`/`div` samo mišem | UX-014 |
@@ -154,7 +153,7 @@ Pravilo: UI mapira samo kodove koje backend vrati; nepoznat kod je `unknown_code
 |---|---|---|---|---|
 | DS-1 | Stari podaci izgledaju kao "nema prodaje" | svi | live + live-API | RQ569/RQ570/RQ583 |
 | DS-2 | KPI "0" dok je preporuka blokirana | Product Decision | live | P-UI-50 |
-| DS-3 | Ops "Stop" dostupan svakom korisniku | shell | live | P-UI-48 |
+| DS-3 | Globalni shell meša admin write kontrole (worker/Redis) i lokalni API-polling prekidač u isti "Stop/Start" obrazac; backend write rute jesu admin-key zaštićene | shell | live + code | P-UI-48 |
 | DS-4 | Statičan bedž "Ready" na Pilot spremnosti dok je readiness 67 | meni | live | P-UI-52 |
 | DS-5 | "100 / odlično" nad starim podacima | Kvalitet podataka | live-API | RQ578 |
 | DS-6 | "Verified" na praznom skupu | Daily/integrity | live-API | RQ579 |
@@ -218,25 +217,25 @@ Format: `UX-XXX — naslov` · Ozbiljnost · Ekran · Kategorija · Dokaz · Pro
 
 # UX-002 — Ops "Stop/Start" kontrole u globalnom headeru
 - Ozbiljnost: P1 · Ekran: shell · Kategorija: action-safety
-- Dokaz: live (svi ekrani, ≥1280px: "API ON Stop", "Workeri 0/1 Stop", "Redis: isključen Start"); code `layout/components/HeaderStatus.tsx:450-453,650-653`, `WorkerControlFlag.tsx:63-75` (bez potvrde).
-- Problem: jedan klik gasi workere/ping za ceo sistem sa poslovnog ekrana.
-- Uticaj: slučajno gašenje osvežavanja; zbunjujući žargon.
-- Preporuka: poslovni korisnik vidi samo pasivan status; akcije su na admin/observability površini, uz potvrdu i opis posledice; vidljivost samo kada backend capability to dozvoljava.
-- Vlasnik: **novi P-UI-48**.
+- Dokaz: live (svi ekrani, ≥1280px: "API ON Stop", "Workeri 0/1 Stop", "Redis: isključen Start"); code `HeaderStatus.tsx`, `WorkerControlFlag.tsx`, `RedisToggleFlag.tsx`, `ApiPingFlag.tsx`; security audit potvrđuje da worker/Redis write rute koriste `AdminAccessControl`.
+- Problem: tri semantički različite kontrole izgledaju kao jednaka globalna operativna komanda. Worker/Redis menjaju backend stanje i zahtevaju admin credential; "API Stop" samo pauzira periodični frontend ping u tom browseru i ne gasi API servis.
+- Uticaj: opasna/zbunjujuća mentalna slika, slučajni admin write kada credential postoji, ili lažni osećaj da je sistem isključen kada je pauziran samo lokalni ping.
+- Preporuka: poslovni header prikazuje samo pasivan status. Worker/Redis write akcije idu na admin/observability površinu uz potvrdu i postojeći server-side auth; lokalni ping ide u lokalnu diagnostics/preferences kontrolu sa jasnom labelom tipa "Pauziraj proveru API-ja u ovom pregledaču".
+- Vlasnik: **P-UI-48**. Backend authorization se ne izmišlja niti menja u ovom promptu.
 
 # UX-003 — Trust header prikazuje interne evidence podatke
 - Ozbiljnost: P2 · Ekran: Pre-Nivelacija i Operacije · Kategorija: copy / progressive disclosure
 - Dokaz: live (Pre-Nivelacija, sve teme); live sirovi kodovi i na drugim ekranima: `decision_readiness_unavailable` (Zalihe, Pre/Post), `no_shoe_type_sales` (Vrsta obuće), `color_is_supporting_signal` (Boja), `daily_sales.actionability_not_assessed` (Dnevna prodaja); code `AnalyticsTrustHeader.tsx:327-328,371`.
 - Problem: sha256, probe ID, ISO UTC sa 7 decimala, engleski `unverified`.
 - Preporuka: ljudski sažetak plus "Detalji dokaza" disclosure; datumi kao `dd.MM.yyyy HH:mm` po Beogradu.
-- Vlasnik: **prošireni P-UI-50** (posle RQ569).
+- Vlasnik: **P-UI-43** (posle RQ569). P-UI-50 ne poseduje shared trust component.
 
 # UX-004 — Trust header troši prvi ekran; odluke ispod fold-a
 - Ozbiljnost: P1 · Ekran: Dashboard, Product Decision, Dobavljači, Pre-Nivelacija · Kategorija: hierarchy
 - Dokaz: live (svi 4 ekrana, sve teme, desktop); live 390×844 (Neon Dark): na Product Decision, Kvalitetu podataka, Dashboardu i Dobavljačima trust header zauzima više od celog prvog ekrana, a nijedan KPI ni kontrola nisu vidljivi.
 - Problem: krši `FRONTEND_UX_STANDARDS.md` "Above the fold".
 - Preporuka: kompaktni trust strip (1 red) sa disclosure-om; budžet visine u design system §5.2.
-- Vlasnik: **prošireni P-UI-50**; prošireni RQ572 (Dashboard).
+- Vlasnik: **P-UI-43** za shared kompakciju; RQ572 za Dashboard period/hijerarhiju; P-UI-50 samo za Product Decision sadržaj nakon shared trust stripa.
 
 # UX-005 — Trostruki naslovi
 - Ozbiljnost: P3 · Ekran: Product Decision, Dobavljači, Pre-Nivelacija · Kategorija: hierarchy
@@ -497,6 +496,13 @@ KPI: Promet | Komadi | Marža (pokriće) | Dobavljači 15
 Tabela/grafikon: chart boje iz `--chart-series-*`, ne `--success/--warning`
 ```
 
+# UX-051 — Grafikoni nemaju sistemski screen-reader ugovor
+- P2 · code-derived · Kategorija: accessibility / charts.
+- Dokaz: repo-wide pretraga ne nalazi Recharts `accessibilityLayer` ni shared `aria-describedby`/tekstualni sažetak za grafikone; izuzetak je Data Quality custom SVG sa `role="img"` i `aria-label`. Dashboard, Daily, Supplier, Shoe Type, Color, Inventory, Pre-Nivelacija, Pre/Post i Analytics Details koriste grafikone bez jednog kanonskog a11y obrasca.
+- Problem: design system §9 već zahteva tekstualni sažetak ili tabelu, ali nijedan postojeći prompt to sistemski implementira ili testira.
+- Preporuka: shared chart accessibility contract: semantičan naziv, kratak tekstualni sažetak iz **istog već prikazanog dataset-a**, veza ka tabelarnoj alternativi kada postoji, keyboard-safe interaktivni chart elementi i status koji nije prenet samo bojom. Ne računati nove KPI-je u browseru.
+- Vlasnik: **novi P-UI-53**; P-UI-38 kasnije ratchet/gate.
+
  12. Unakrsne reference sa ranijim auditima
 
 | Raniji audit | Stanje u queue-u 2026-10-04 | Odnos prema ovom auditu |
@@ -526,7 +532,8 @@ Prvo su prošireni postojeći vlasnici, pa su tek onda dodati novi promptovi za 
 | P-UI-49 | READY | P2 | analytics-state-taxonomy | Mapiranje backend reason kodova u shared empty/error/loading stanja | — |
 | P-UI-50 | WAITING | P2 | product-decision-hierarchy | KPI "—" kada je blokirano, hijerarhija, ARIA, rečnik | RQ573 + RQ574 + P-UI-49 DONE |
 | P-UI-51 | WAITING | P2 | decision-surface-controls | Board period/opseg/URL stanje; eho datuma; pravilo istorije | RQ570 + P-UI-47 DONE (deli `AnalyticsControlBar`) |
-| P-UI-52 | WAITING | P2 | analytics-nav-ia-copy | Usklađeni nazivi, bez statičnih bedževa, kanonske rute, rečnik (bez spinnera, to je P-UI-52) | RQ553 DONE |
+| P-UI-52 | WAITING | P2 | analytics-nav-ia-copy | Usklađeni nazivi, bez statičnih bedževa, kanonske rute, rečnik (spinner ostaje P-UI-45) | RQ553 DONE |
+| P-UI-53 | WAITING | P2 | analytics-chart-accessibility | Shared chart a11y contract, tekstualni sažetak/tabela i screen-reader dokaz | P-UI-47 + P-UI-31/35/36 DONE ili eksplicitno deferred |
 | RQ586 | READY | P1 | daily-sales-timezone-config | `DailySales:TimeZoneId` na pravi nivo konfiguracije + test | — |
 
 Kolizije: P-UI-47 (`ThemeContext.tsx`, `themes.css`, token blok u `tailwind.css` 345-389, `themeTokens.ts`, `analytics-system.css`) i P-UI-49 (`AnalyticsEmptyState*`, `AnalyticsErrorState*`, novi `utils/analyticsStateTaxonomy.ts`) imaju disjunktne putanje međusobno i sa Codex READY P-UI-39/40/41/45. P-UI-48 čeka P-UI-40 (isti header fajlovi), a P-UI-51 čeka P-UI-39 (isti control bar). Nijedan ne dira `AnalyticsTrustHeader*` (RQ569), nivelacija stranice/`navConfig.ts` (RQ553), backend PDC (RQ574), DQ (RQ578), Supplier label helper (RQ580) ni Insight Studio endpointe (RQ581). RQ586 dira samo `Api/appsettings*.json` i jedan test.
@@ -543,7 +550,7 @@ Kolizije: P-UI-47 (`ThemeContext.tsx`, `themes.css`, token blok u `tailwind.css`
  15. Rutiranje posle registracije (§75)
 
 - **RQ (viši prioritet):** primarni READY ostaje **RQ569**. Dodatni READY: RQ553, RQ574, RQ578, RQ580, RQ581 i novi **RQ586** (parallel-safe, disjunktne putanje).
-- **P-UI (dopunska traka):** primarni READY ostaje **P-UI-39**; dodatni collision-safe READY su P-UI-40, P-UI-41, **P-UI-47** i **P-UI-49**. P-UI-45 je WAITING iza P-UI-40 + P-UI-48 zbog zajedničkog `AppLayout.tsx`. WAITING iz ovog audita: P-UI-48 (P-UI-40), P-UI-50 (RQ573+RQ574+P-UI-49), P-UI-51 (RQ570+P-UI-39), P-UI-52 (RQ553); P-UI-31/35/36/38 i Codex P-UI-42/43/44/46 kao ranije.
+- **P-UI (dopunska traka):** primarni READY ostaje **P-UI-39**; dodatni collision-safe READY su P-UI-40, P-UI-41, **P-UI-47** i **P-UI-49**. P-UI-45 je WAITING iza P-UI-40 + P-UI-48 zbog zajedničkog `AppLayout.tsx`. WAITING iz ovog audita: P-UI-48 (P-UI-40), P-UI-50 (RQ573+RQ574+P-UI-49), P-UI-51 (RQ570+P-UI-39), P-UI-52 (RQ553), P-UI-53 (P-UI-47 + završene/deferred chart-heavy page migracije P-UI-31/35/36); P-UI-31/35/36/38 i responsive P-UI-42/43/44/45/46 prema canonical queue-u.
 - **Najbolji sledeći prompt:** po lancu prioriteta **RQ569**. Za UX traku iz ovog audita **P-UI-47** (P1 kontrast/tokeni) ili **P-UI-49** (taksonomija stanja, live "Failed to fetch"). Kao brza korektnost pobeda **RQ586**.
 
  16. Live dokazi i spajanje
@@ -585,3 +592,8 @@ Dodatna potvrđena zapažanja: metodologija drawer na PDC radi i dobar je obraza
 ## 17. Post-registration routing correction (2026-10-04)
 
 Posle spajanja sa responsive re-auditom urađen je fresh collision/dependency pass. Dve greške u ovom dokumentu su ispravljene: P-UI-48 čeka P-UI-40 (ne samog sebe), a Inventory 390px overflow pripada P-UI-41, ne P-UI-49. P-UI-45 više nije READY jer deli `AppLayout.tsx` sa P-UI-40 i P-UI-48. Canonical P-UI READY skup je sada: **P-UI-39, P-UI-40, P-UI-41, P-UI-47, P-UI-49**. Exact dependencies za P-UI-31/35/36/42/45 su u live P-UI queue-u i usklađene su sa `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
+
+## 18. Post-review sadržajne korekcije (2026-10-04)
+
+Fresh re-review na current `main` zadržao je ukupnu UX ocenu **4/10**, ali je ispravio tri stvari: (1) UX-002 više ne tvrdi da svaki korisnik može da ugasi backend — worker/Redis write rute imaju `AdminAccessControl`, dok je API ping lokalna browser kontrola; (2) UX-003/UX-004 shared trust-header owner je P-UI-43, ne P-UI-50; (3) dodat je code-derived UX-051 i P-UI-53 za sistemsku pristupačnost grafikona. Ukupan broj nalaza je sada **51: P0 3, P1 14, P2 22, P3 12**; live-confirmed ostaje 31.
