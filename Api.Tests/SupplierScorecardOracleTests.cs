@@ -87,7 +87,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         var scores = SupplierScorecardOracle.Score(fixture, SupplierScorecardOracleOptions.Window(PureAnchor, 90))
             .ToDictionary(s => s.Input.SupplierId);
 
-        Assert.Equal(new[] { 101, 102, 103, 104, 105, 106 }, scores.Keys.Order());
+        Assert.Equal(new[] { 101, 102, 103, 104, 105, 106, 108 }, scores.Keys.Order());
 
         // Alfa: (8 + 6) / ((8 + 4) + (6 + 2)); pre margin (480 + 330) / (800 + 540).
         Assert.Equal(0.7m, scores[101].Input.FullpriceSellthrough);
@@ -120,6 +120,35 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         // the supplier change: 2 returned / (9 + 5 + 2) gross sold units.
         Assert.Equal(0.125m, scores[102].Input.ReturnRate);
         Assert.Equal("REVIEW_QUALITY", scores[102].RecommendationCode);
+
+        // Eta's first markdown is only 20 days mature; its partial no-sales
+        // window must not make it a dead-stock case or manufacture a zero DiD.
+        Assert.Equal(0m, scores[108].Input.DeadStockRate);
+        Assert.Equal(0m, scores[108].Input.PostSignalCoverage);
+    }
+
+    [Fact]
+    public async Task WindowedScorecard_ExcludesImmatureNoSaleMarkdownFromDeadStockAndKeepsMissingDidNull()
+    {
+        await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_immature_markdown");
+        if (db is null)
+        {
+            return;
+        }
+
+        var builder = GoldenFixture.Build(db.Anchor);
+        await SeedAsync(db.Connection, builder.Fixture);
+        await ApplyScorecardSqlAsync(db.Connection);
+
+        await using var command = new NpgsqlCommand(
+            "SELECT dead_stock_rate, avg_did_revenue, avg_did_qty, post_signal_coverage FROM vw_supplier_markdown_dependency_90d WHERE supplier_id = 108 AND category IS NULL;",
+            db.Connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.True(reader.IsDBNull(reader.GetOrdinal("dead_stock_rate")));
+        Assert.True(reader.IsDBNull(reader.GetOrdinal("avg_did_revenue")));
+        Assert.True(reader.IsDBNull(reader.GetOrdinal("avg_did_qty")));
+        Assert.Equal(0m, reader.GetFieldValue<decimal>(reader.GetOrdinal("post_signal_coverage")));
     }
 
     // ------------------------------------------------------------------
@@ -696,6 +725,13 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
             b.PriceEvent(1062, 106, -60, 50m, 55m);
             b.PriceEvent(1062, 106, -50, 55m, 40m, did: false);
 
+            // 108 Eta: an immature post window with no sales must not count as
+            // a mature markdown dead-stock event or turn missing DiD into zero.
+            b.Supplier(108, "Eta Immature");
+            b.Article(1081, 108, "Patike", stock: 8, minStock: 1, costDin: 20m);
+            b.Sale(1081, -20, 2, 100m, 108, 20m);
+            b.PriceEvent(1081, 108, -10, 100m, 80m);
+
             return b;
         }
 
@@ -954,7 +990,13 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
                 post_revenue numeric,
                 coverage_pre30 numeric,
                 coverage_post30 numeric,
-                is_low_signal boolean NOT NULL DEFAULT FALSE
+                is_low_signal boolean NOT NULL DEFAULT FALSE,
+                price_direction text NOT NULL,
+                discount_depth_pct numeric,
+                post_window_complete boolean NOT NULL,
+                overlaps_next_event boolean NOT NULL DEFAULT FALSE,
+                next_event_date date,
+                same_day_event_count integer NOT NULL DEFAULT 1
             );
             CREATE TABLE vw_nivelacija_did (price_event_id bigint PRIMARY KEY, did_revenue numeric, did_qty numeric);
             """);
@@ -996,8 +1038,8 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         foreach (var e in fixture.Events)
         {
             sql.AppendLine(
-                "INSERT INTO vw_vendor_sales_nivelacija (price_event_id, event_date, vendor_id, article_id, old_price, new_price, pre_qty, post_qty, pre_revenue, post_revenue, coverage_pre30, coverage_post30, is_low_signal) "
-                + $"VALUES ({e.EventId}, DATE '{e.Day:yyyy-MM-dd}', {e.VendorId}, {e.ArticleId}, {Num(e.OldPrice)}, {Num(e.NewPrice)}, 0, {Num(e.PostQty)}, 0, {Num(e.PostRevenue)}, {Num(e.CoveragePre)}, {Num(e.CoveragePost)}, {(e.IsLowSignal ? "TRUE" : "FALSE")});");
+                "INSERT INTO vw_vendor_sales_nivelacija (price_event_id, event_date, vendor_id, article_id, old_price, new_price, pre_qty, post_qty, pre_revenue, post_revenue, coverage_pre30, coverage_post30, is_low_signal, price_direction, discount_depth_pct, post_window_complete) "
+                + $"VALUES ({e.EventId}, DATE '{e.Day:yyyy-MM-dd}', {e.VendorId}, {e.ArticleId}, {Num(e.OldPrice)}, {Num(e.NewPrice)}, 0, {Num(e.PostQty)}, 0, {Num(e.PostRevenue)}, {Num(e.CoveragePre)}, {Num(e.CoveragePost)}, {(e.IsLowSignal ? "TRUE" : "FALSE")}, '{(e.NewPrice < e.OldPrice ? "markdown" : e.NewPrice > e.OldPrice ? "markup" : "flat")}', {Num(e.OldPrice == 0 ? null : Math.Round(((e.OldPrice - e.NewPrice) / e.OldPrice) * 100, 2))}, (DATE '{e.Day:yyyy-MM-dd}' + 30 <= CURRENT_DATE));");
         }
 
         foreach (var d in fixture.Did)

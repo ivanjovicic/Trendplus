@@ -55,20 +55,22 @@ WITH signal_base AS (
         fs.first_markdown_date,
         fs.pre_qty_30d,
         fs.pre_revenue_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN fs.pre_qty_30d END AS comparable_pre_qty_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN fs.pre_revenue_30d END AS comparable_pre_revenue_30d,
         fs.pre_margin_30d,
         fs.pre_sellthrough_30d,
         fs.stock_before_markdown,
         fs.stockout_before_markdown_flag,
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
-        COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN vn.post_qty END::numeric AS post_qty_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN vn.post_revenue END::numeric(18,2) AS post_revenue_30d,
         CASE
             WHEN fs.old_price IS NULL OR fs.old_price = 0 THEN 0::numeric
             ELSE ROUND((fs.old_price - fs.new_price) / fs.old_price, 4)
         END AS price_change_pct,
-        COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue,
-        COALESCE(nd.did_qty, 0)::numeric AS did_qty,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN nd.did_revenue END::numeric(18,2) AS did_revenue,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN nd.did_qty END::numeric AS did_qty,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
         COALESCE(
             CASE
@@ -78,8 +80,9 @@ WITH signal_base AS (
             END,
             0
         )::numeric(18,2) AS current_cost
-        , (vn.price_event_id IS NOT NULL) AS has_post_signal
-        , (nd.price_event_id IS NOT NULL) AS has_did_signal
+        , (vn.post_window_complete AND vn.price_direction = 'markdown' AND vn.price_event_id IS NOT NULL) AS has_post_signal
+        , (vn.post_window_complete AND vn.price_direction = 'markdown' AND nd.price_event_id IS NOT NULL) AS has_did_signal
+        , COALESCE(vn.post_window_complete AND vn.price_direction = 'markdown', FALSE) AS eligible_mature_markdown
         , CASE
             WHEN a."NabavnaCenaDin" > 0 THEN TRUE
             WHEN a."NabavnaCena" > 0 THEN TRUE
@@ -87,7 +90,7 @@ WITH signal_base AS (
           END AS has_cost_signal
     FROM vw_supplier_fullprice_signals_90d fs
     LEFT JOIN LATERAL (
-        SELECT v.price_event_id, v.post_qty, v.post_revenue
+        SELECT v.price_event_id, v.post_qty, v.post_revenue, v.price_direction, v.post_window_complete
         FROM vw_vendor_sales_nivelacija v
         WHERE v.article_id = fs.article_id
           AND v.event_date::date = fs.first_markdown_date
@@ -109,29 +112,29 @@ aggregated AS (
         AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage,
         AVG(CASE WHEN has_did_signal THEN 1::numeric ELSE 0::numeric END) AS did_signal_coverage,
         AVG(CASE WHEN has_cost_signal THEN 1::numeric ELSE 0::numeric END) AS cost_signal_coverage,
-        SUM(COALESCE(pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
+        SUM(COALESCE(comparable_pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
         SUM(COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue_post_markdown,
-        SUM(COALESCE(pre_qty_30d, 0))::numeric AS qty_pre_markdown,
+        SUM(COALESCE(comparable_pre_qty_30d, 0))::numeric AS qty_pre_markdown,
         SUM(COALESCE(post_qty_30d, 0))::numeric AS qty_post_markdown,
         SUM(COALESCE(post_revenue_30d, 0))
-            / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS markdown_revenue_share,
+            / NULLIF(SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS markdown_revenue_share,
         SUM(COALESCE(post_qty_30d, 0))
-            / NULLIF(SUM(COALESCE(pre_qty_30d, 0) + COALESCE(post_qty_30d, 0)), 0) AS markdown_unit_share,
+            / NULLIF(SUM(COALESCE(comparable_pre_qty_30d, 0) + COALESCE(post_qty_30d, 0)), 0) AS markdown_unit_share,
         AVG(COALESCE(price_change_pct, 0))::numeric(18,4) AS avg_price_change_pct,
-        AVG(COALESCE(did_revenue, 0))::numeric(18,2) AS avg_did_revenue,
-        AVG(COALESCE(did_qty, 0))::numeric(18,4) AS avg_did_qty,
+        AVG(did_revenue)::numeric(18,2) AS avg_did_revenue,
+        AVG(did_qty)::numeric(18,4) AS avg_did_qty,
         COALESCE(
-            SUM(COALESCE(post_revenue_30d, 0)) FILTER (WHERE COALESCE(stockout_before_markdown_flag, FALSE) = FALSE)
+            SUM(COALESCE(post_revenue_30d, 0)) FILTER (WHERE eligible_mature_markdown AND COALESCE(stockout_before_markdown_flag, FALSE) = FALSE)
             / NULLIF(
-                SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))
-                    FILTER (WHERE COALESCE(stockout_before_markdown_flag, FALSE) = FALSE),
+                SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))
+                    FILTER (WHERE eligible_mature_markdown AND COALESCE(stockout_before_markdown_flag, FALSE) = FALSE),
                 0
             ),
             SUM(COALESCE(post_revenue_30d, 0))
-                / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
+                / NULLIF(SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
         ) AS oos_adjusted_markdown_dependency,
-        COUNT(*) FILTER (WHERE COALESCE(current_stock, 0) > 0 AND COALESCE(post_qty_30d, 0) = 0)::numeric
-            / NULLIF(COUNT(*), 0) AS dead_stock_rate,
+        COUNT(*) FILTER (WHERE eligible_mature_markdown AND COALESCE(current_stock, 0) > 0 AND COALESCE(post_qty_30d, 0) = 0)::numeric
+            / NULLIF(COUNT(*) FILTER (WHERE eligible_mature_markdown), 0) AS dead_stock_rate,
         SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value
     FROM signal_base
     GROUP BY GROUPING SETS (
@@ -147,13 +150,13 @@ SELECT
     ROUND(COALESCE(cost_signal_coverage, 0), 4) AS cost_signal_coverage,
     revenue_pre_markdown, revenue_post_markdown,
     qty_pre_markdown, qty_post_markdown,
-    ROUND(COALESCE(markdown_revenue_share, 0), 4) AS markdown_revenue_share,
-    ROUND(COALESCE(markdown_unit_share, 0), 4) AS markdown_unit_share,
+    ROUND(markdown_revenue_share, 4) AS markdown_revenue_share,
+    ROUND(markdown_unit_share, 4) AS markdown_unit_share,
     ROUND(COALESCE(avg_price_change_pct, 0), 4) AS avg_price_change_pct,
-    ROUND(COALESCE(avg_did_revenue, 0), 2) AS avg_did_revenue,
-    ROUND(COALESCE(avg_did_qty, 0), 4) AS avg_did_qty,
-    ROUND(COALESCE(oos_adjusted_markdown_dependency, 0), 4) AS oos_adjusted_markdown_dependency,
-    ROUND(COALESCE(dead_stock_rate, 0), 4) AS dead_stock_rate,
+    ROUND(avg_did_revenue, 2) AS avg_did_revenue,
+    ROUND(avg_did_qty, 4) AS avg_did_qty,
+    ROUND(oos_adjusted_markdown_dependency, 4) AS oos_adjusted_markdown_dependency,
+    ROUND(dead_stock_rate, 4) AS dead_stock_rate,
     unsold_stock_value
 FROM aggregated;
 
@@ -172,20 +175,22 @@ WITH signal_base AS (
         fs.first_markdown_date,
         fs.pre_qty_30d,
         fs.pre_revenue_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN fs.pre_qty_30d END AS comparable_pre_qty_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN fs.pre_revenue_30d END AS comparable_pre_revenue_30d,
         fs.pre_margin_30d,
         fs.pre_sellthrough_30d,
         fs.stock_before_markdown,
         fs.stockout_before_markdown_flag,
         fs.had_sales_before_markdown_flag,
         fs.signal_quality_flag,
-        COALESCE(vn.post_qty, 0)::numeric AS post_qty_30d,
-        COALESCE(vn.post_revenue, 0)::numeric(18,2) AS post_revenue_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN vn.post_qty END::numeric AS post_qty_30d,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN vn.post_revenue END::numeric(18,2) AS post_revenue_30d,
         CASE
             WHEN fs.old_price IS NULL OR fs.old_price = 0 THEN 0::numeric
             ELSE ROUND((fs.old_price - fs.new_price) / fs.old_price, 4)
         END AS price_change_pct,
-        COALESCE(nd.did_revenue, 0)::numeric(18,2) AS did_revenue,
-        COALESCE(nd.did_qty, 0)::numeric AS did_qty,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN nd.did_revenue END::numeric(18,2) AS did_revenue,
+        CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN nd.did_qty END::numeric AS did_qty,
         COALESCE(a."Kolicina", 0)::numeric AS current_stock,
         COALESCE(
             CASE
@@ -195,8 +200,9 @@ WITH signal_base AS (
             END,
             0
         )::numeric(18,2) AS current_cost
-        , (vn.price_event_id IS NOT NULL) AS has_post_signal
-        , (nd.price_event_id IS NOT NULL) AS has_did_signal
+        , (vn.post_window_complete AND vn.price_direction = 'markdown' AND vn.price_event_id IS NOT NULL) AS has_post_signal
+        , (vn.post_window_complete AND vn.price_direction = 'markdown' AND nd.price_event_id IS NOT NULL) AS has_did_signal
+        , COALESCE(vn.post_window_complete AND vn.price_direction = 'markdown', FALSE) AS eligible_mature_markdown
         , CASE
             WHEN a."NabavnaCenaDin" > 0 THEN TRUE
             WHEN a."NabavnaCena" > 0 THEN TRUE
@@ -204,7 +210,7 @@ WITH signal_base AS (
           END AS has_cost_signal
     FROM vw_supplier_fullprice_signals_180d fs
     LEFT JOIN LATERAL (
-        SELECT v.price_event_id, v.post_qty, v.post_revenue
+        SELECT v.price_event_id, v.post_qty, v.post_revenue, v.price_direction, v.post_window_complete
         FROM vw_vendor_sales_nivelacija v
         WHERE v.article_id = fs.article_id
           AND v.event_date::date = fs.first_markdown_date
@@ -224,29 +230,29 @@ aggregated AS (
         AVG(CASE WHEN has_post_signal THEN 1::numeric ELSE 0::numeric END) AS post_signal_coverage,
         AVG(CASE WHEN has_did_signal THEN 1::numeric ELSE 0::numeric END) AS did_signal_coverage,
         AVG(CASE WHEN has_cost_signal THEN 1::numeric ELSE 0::numeric END) AS cost_signal_coverage,
-        SUM(COALESCE(pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
+        SUM(COALESCE(comparable_pre_revenue_30d, 0))::numeric(18,2) AS revenue_pre_markdown,
         SUM(COALESCE(post_revenue_30d, 0))::numeric(18,2) AS revenue_post_markdown,
-        SUM(COALESCE(pre_qty_30d, 0))::numeric AS qty_pre_markdown,
+        SUM(COALESCE(comparable_pre_qty_30d, 0))::numeric AS qty_pre_markdown,
         SUM(COALESCE(post_qty_30d, 0))::numeric AS qty_post_markdown,
         SUM(COALESCE(post_revenue_30d, 0))
-            / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS markdown_revenue_share,
+            / NULLIF(SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0) AS markdown_revenue_share,
         SUM(COALESCE(post_qty_30d, 0))
-            / NULLIF(SUM(COALESCE(pre_qty_30d, 0) + COALESCE(post_qty_30d, 0)), 0) AS markdown_unit_share,
+            / NULLIF(SUM(COALESCE(comparable_pre_qty_30d, 0) + COALESCE(post_qty_30d, 0)), 0) AS markdown_unit_share,
         AVG(COALESCE(price_change_pct, 0))::numeric(18,4) AS avg_price_change_pct,
-        AVG(COALESCE(did_revenue, 0))::numeric(18,2) AS avg_did_revenue,
-        AVG(COALESCE(did_qty, 0))::numeric(18,4) AS avg_did_qty,
+        AVG(did_revenue)::numeric(18,2) AS avg_did_revenue,
+        AVG(did_qty)::numeric(18,4) AS avg_did_qty,
         COALESCE(
-            SUM(COALESCE(post_revenue_30d, 0)) FILTER (WHERE COALESCE(stockout_before_markdown_flag, FALSE) = FALSE)
+            SUM(COALESCE(post_revenue_30d, 0)) FILTER (WHERE eligible_mature_markdown AND COALESCE(stockout_before_markdown_flag, FALSE) = FALSE)
             / NULLIF(
-                SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))
-                    FILTER (WHERE COALESCE(stockout_before_markdown_flag, FALSE) = FALSE),
+                SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0))
+                    FILTER (WHERE eligible_mature_markdown AND COALESCE(stockout_before_markdown_flag, FALSE) = FALSE),
                 0
             ),
             SUM(COALESCE(post_revenue_30d, 0))
-                / NULLIF(SUM(COALESCE(pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
+                / NULLIF(SUM(COALESCE(comparable_pre_revenue_30d, 0) + COALESCE(post_revenue_30d, 0)), 0)
         ) AS oos_adjusted_markdown_dependency,
-        COUNT(*) FILTER (WHERE COALESCE(current_stock, 0) > 0 AND COALESCE(post_qty_30d, 0) = 0)::numeric
-            / NULLIF(COUNT(*), 0) AS dead_stock_rate,
+        COUNT(*) FILTER (WHERE eligible_mature_markdown AND COALESCE(current_stock, 0) > 0 AND COALESCE(post_qty_30d, 0) = 0)::numeric
+            / NULLIF(COUNT(*) FILTER (WHERE eligible_mature_markdown), 0) AS dead_stock_rate,
         SUM(GREATEST(COALESCE(current_stock, 0), 0) * COALESCE(current_cost, 0))::numeric(18,2) AS unsold_stock_value
     FROM signal_base
     GROUP BY GROUPING SETS (
@@ -259,13 +265,13 @@ SELECT
     articles_count, active_articles_count,
     revenue_pre_markdown, revenue_post_markdown,
     qty_pre_markdown, qty_post_markdown,
-    ROUND(COALESCE(markdown_revenue_share, 0), 4) AS markdown_revenue_share,
-    ROUND(COALESCE(markdown_unit_share, 0), 4) AS markdown_unit_share,
+    ROUND(markdown_revenue_share, 4) AS markdown_revenue_share,
+    ROUND(markdown_unit_share, 4) AS markdown_unit_share,
     ROUND(COALESCE(avg_price_change_pct, 0), 4) AS avg_price_change_pct,
-    ROUND(COALESCE(avg_did_revenue, 0), 2) AS avg_did_revenue,
-    ROUND(COALESCE(avg_did_qty, 0), 4) AS avg_did_qty,
-    ROUND(COALESCE(oos_adjusted_markdown_dependency, 0), 4) AS oos_adjusted_markdown_dependency,
-    ROUND(COALESCE(dead_stock_rate, 0), 4) AS dead_stock_rate,
+    ROUND(avg_did_revenue, 2) AS avg_did_revenue,
+    ROUND(avg_did_qty, 4) AS avg_did_qty,
+    ROUND(oos_adjusted_markdown_dependency, 4) AS oos_adjusted_markdown_dependency,
+    ROUND(dead_stock_rate, 4) AS dead_stock_rate,
     unsold_stock_value,
     ROUND(COALESCE(post_signal_coverage, 0), 4) AS post_signal_coverage,
     ROUND(COALESCE(did_signal_coverage, 0), 4) AS did_signal_coverage,
@@ -408,8 +414,8 @@ decision_inputs AS (
         COALESCE(sr.high_signal_share, 0) AS high_signal_share,
         COALESCE(sr.medium_signal_share, 0) AS medium_signal_share,
         COALESCE(sr.had_sales_share, 0) AS had_sales_share,
-        COALESCE(st.avg_did_revenue, 0)::numeric(18,2) AS avg_did_revenue,
-        COALESCE(st.avg_did_qty, 0)::numeric(18,4) AS avg_did_qty,
+        st.avg_did_revenue::numeric(18,2) AS avg_did_revenue,
+        st.avg_did_qty::numeric(18,4) AS avg_did_qty,
         COALESCE(sr.stockout_article_share, 0) AS stockout_article_share,
         COALESCE(sr.stockout_before_markdown_flag, FALSE) AS stockout_before_markdown_flag,
         COALESCE(scm.seasonal_category_share, 0) AS seasonal_category_share
@@ -620,8 +626,8 @@ decision_inputs AS (
         COALESCE(sr.high_signal_share, 0) AS high_signal_share,
         COALESCE(sr.medium_signal_share, 0) AS medium_signal_share,
         COALESCE(sr.had_sales_share, 0) AS had_sales_share,
-        COALESCE(st.avg_did_revenue, 0)::numeric(18,2) AS avg_did_revenue,
-        COALESCE(st.avg_did_qty, 0)::numeric(18,4) AS avg_did_qty,
+        st.avg_did_revenue::numeric(18,2) AS avg_did_revenue,
+        st.avg_did_qty::numeric(18,4) AS avg_did_qty,
         COALESCE(sr.stockout_article_share, 0) AS stockout_article_share,
         COALESCE(sr.stockout_before_markdown_flag, FALSE) AS stockout_before_markdown_flag,
         COALESCE(scm.seasonal_category_share, 0) AS seasonal_category_share

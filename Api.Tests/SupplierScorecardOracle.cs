@@ -95,6 +95,7 @@ internal sealed record OracleArticleSignal(
     bool StockoutBeforeMarkdown,
     bool HadSalesBeforeMarkdown,
     string SignalQuality,
+    bool EligibleMatureMarkdown,
     bool HasPostSignal,
     bool HasDidSignal,
     bool HasCostSignal,
@@ -241,6 +242,10 @@ internal static class SupplierScorecardOracle
                 ? Round(article.CostDin, 2)
                 : article.CostForeign > 0 ? Round(article.CostForeign, 2) : 0m;
 
+            var eligibleMatureMarkdown = postEvent is not null
+                && fm.NewPrice < fm.OldPrice
+                && (options.WindowDays is null || fmd.AddDays(30) <= options.Anchor);
+
             signals.Add(new OracleArticleSignal(
                 fm.VendorId,
                 suppliers[fm.VendorId].Name,
@@ -258,8 +263,9 @@ internal static class SupplierScorecardOracle
                 stockout,
                 hadSales,
                 quality,
-                postEvent is not null,
-                postEvent is not null && didEvents.Contains(postEvent.EventId),
+                eligibleMatureMarkdown,
+                eligibleMatureMarkdown,
+                eligibleMatureMarkdown && didEvents.Contains(postEvent!.EventId),
                 hasCost,
                 postEvent?.PostQty ?? 0m,
                 Round(postEvent?.PostRevenue ?? 0m, 2),
@@ -280,22 +286,29 @@ internal static class SupplierScorecardOracle
         foreach (var group in signals.GroupBy(s => s.SupplierId).OrderBy(g => g.Key))
         {
             var rows = group.ToList();
+            var effectRows = options.WindowDays is null
+                ? rows
+                : rows.Where(r => r.EligibleMatureMarkdown).ToList();
             var count = (decimal)rows.Count;
 
-            var revenuePre = rows.Sum(r => r.PreRevenue);
-            var revenuePost = rows.Sum(r => r.PostRevenue);
-            var qtyPre = rows.Sum(r => r.PreQty);
-            var qtyPost = rows.Sum(r => r.PostQty);
+            var revenuePre = effectRows.Sum(r => r.PreRevenue);
+            var revenuePost = effectRows.Sum(r => r.PostRevenue);
+            var qtyPre = effectRows.Sum(r => r.PreQty);
+            var qtyPost = effectRows.Sum(r => r.PostQty);
             var totalRevenue = revenuePre + revenuePost;
+            var fullpricePreQty = rows.Sum(r => r.PreQty);
+            var fullpricePreRevenue = rows.Sum(r => r.PreRevenue);
 
-            var deadStockRows = options.DeadStockCountsOnlyPostSignalArticles
+            var deadStockRows = options.WindowDays is not null
+                ? effectRows
+                : options.DeadStockCountsOnlyPostSignalArticles
                 ? rows.Where(r => r.HasPostSignal).ToList()
                 : rows;
             var deadStockRate = deadStockRows.Count == 0
                 ? 0m
                 : Round(deadStockRows.Count(r => r.CurrentStock > 0 && r.PostQty == 0) / (decimal)deadStockRows.Count, 4);
 
-            var categoryRevenue = rows
+            var categoryRevenue = effectRows
                 .GroupBy(r => r.Category)
                 .Select(c => (Category: c.Key, Revenue: c.Sum(r => r.PreRevenue) + c.Sum(r => r.PostRevenue)))
                 .ToList();
@@ -321,8 +334,8 @@ internal static class SupplierScorecardOracle
                 Round(totalRevenue, 2),
                 qtyPre + qtyPost,
                 totalRevenue == 0 ? 0m : revenuePre / totalRevenue,
-                stockDenominator == 0 ? 0m : qtyPre / stockDenominator,
-                revenuePre == 0 ? 0m : rows.Sum(r => r.PreMargin) / revenuePre,
+                stockDenominator == 0 ? 0m : fullpricePreQty / stockDenominator,
+                fullpricePreRevenue == 0 ? 0m : rows.Sum(r => r.PreMargin) / fullpricePreRevenue,
                 totalRevenue == 0 ? 0m : Round(revenuePost / totalRevenue, 4),
                 deadStockRate,
                 Round(rows.Sum(r => Math.Max(r.CurrentStock, 0) * r.CurrentCost), 2),

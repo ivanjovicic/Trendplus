@@ -222,7 +222,9 @@ DECLARE
         'coverage_pre30','coverage_post30',
         'change_qty','change_revenue','change_percent_qty','change_percent_revenue',
         'is_low_signal','has_qty_baseline','qty_baseline_reason','change_percent_qty_semantic',
-        'has_revenue_baseline','revenue_baseline_reason','change_percent_revenue_semantic'
+        'has_revenue_baseline','revenue_baseline_reason','change_percent_revenue_semantic',
+        'price_direction','discount_depth_pct','post_window_complete',
+        'overlaps_next_event','next_event_date','same_day_event_count'
     ];
 BEGIN
     SELECT array_agg(c.column_name::text ORDER BY c.ordinal_position)
@@ -238,6 +240,16 @@ BEGIN
 END$$;
 
 CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS
+WITH event_sequence AS (
+    SELECT
+        price_event_id,
+        LEAD(event_date) OVER (
+            PARTITION BY article_id
+            ORDER BY event_date, price_event_id
+        ) AS next_event_date,
+        COUNT(*) OVER (PARTITION BY article_id, event_date)::integer AS same_day_event_count
+    FROM vw_sales_pre_nivelacija
+)
 SELECT
     pre.price_event_id,
     pre.event_date,
@@ -289,10 +301,25 @@ SELECT
     CASE
         WHEN pre.pre_revenue = 0 THEN NULL
         ELSE ROUND(((post.post_revenue - pre.pre_revenue) / NULLIF(pre.pre_revenue, 0)) * 100, 2)
-    END AS change_percent_revenue_semantic
+    END AS change_percent_revenue_semantic,
+    CASE
+        WHEN pre.old_price IS NULL OR pre.new_price IS NULL THEN NULL
+        WHEN pre.new_price < pre.old_price THEN 'markdown'
+        WHEN pre.new_price > pre.old_price THEN 'markup'
+        ELSE 'flat'
+    END AS price_direction,
+    CASE
+        WHEN pre.old_price IS NULL OR pre.new_price IS NULL OR pre.old_price <= 0 THEN NULL
+        ELSE ROUND(((pre.old_price - pre.new_price) / pre.old_price) * 100, 2)
+    END AS discount_depth_pct,
+    (pre.event_date + 30 <= CURRENT_DATE) AS post_window_complete,
+    COALESCE(sequence.next_event_date < pre.event_date + 30, FALSE) AS overlaps_next_event,
+    sequence.next_event_date,
+    sequence.same_day_event_count
 FROM vw_sales_pre_nivelacija pre
 LEFT JOIN vw_sales_post_nivelacija post
-  ON pre.price_event_id = post.price_event_id;
+  ON pre.price_event_id = post.price_event_id
+JOIN event_sequence sequence ON sequence.price_event_id = pre.price_event_id;
 
 COMMENT ON VIEW vw_vendor_sales_nivelacija IS
-'Analytics-native pre/post markdown comparison view built over SalesFacts, ProductsDim and InventoryMovementFacts compatibility views.';
+'Analytics-native 30-day price-event comparison built from DnevnikPromena, Artikli, Dobavljaci, prodaja_stavke and prodaja_zaglavlje. Post-window totals remain partial until post_window_complete is true; price direction, overlapping event windows and same-day event counts are explicit.';

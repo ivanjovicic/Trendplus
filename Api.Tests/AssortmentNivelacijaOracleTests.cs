@@ -264,6 +264,54 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     }
 
     [Fact]
+    public async Task EventSemantics_ExposeDirectionOverlapSameDayCountAndPostMaturity()
+    {
+        await using var db = await TryCreateDatabaseAsync("tp_assortment_event_semantics");
+        if (db is null)
+        {
+            return;
+        }
+
+        var fixture = new AssortmentFixture();
+        fixture.Vendors.Add(new AssortmentVendor(901, "Semantics"));
+        fixture.Articles.Add(new AssortmentArticle(9011, 901, "Patike", "SKU-9011"));
+        fixture.Articles.Add(new AssortmentArticle(9012, 901, "Patike", "SKU-9012"));
+        fixture.Events.Add(new AssortmentEvent(1, 9011, db.Anchor.AddDays(-40), 100m, 80m, 1));
+        fixture.Events.Add(new AssortmentEvent(2, 9011, db.Anchor.AddDays(-30), 80m, 90m, 1));
+        fixture.Events.Add(new AssortmentEvent(3, 9011, db.Anchor.AddDays(-5), 90m, 90m, 1));
+        fixture.Events.Add(new AssortmentEvent(4, 9012, db.Anchor.AddDays(-5), 50m, 40m, 1));
+        fixture.Events.Add(new AssortmentEvent(5, 9012, db.Anchor.AddDays(-5), 40m, 50m, 1));
+        await SeedAsync(db.Connection, fixture);
+
+        var semantics = new Dictionary<long, (string? Direction, decimal? Depth, bool Complete, bool Overlaps, DateOnly? Next, int SameDayCount)>();
+        await using (var command = new NpgsqlCommand(
+            "SELECT price_event_id, price_direction, discount_depth_pct, post_window_complete, overlaps_next_event, next_event_date, same_day_event_count FROM vw_vendor_sales_nivelacija ORDER BY price_event_id;",
+            db.Connection))
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                var nextOrdinal = reader.GetOrdinal("next_event_date");
+                semantics.Add(
+                    reader.GetInt64(0),
+                    (
+                        reader.IsDBNull(1) ? null : reader.GetString(1),
+                        reader.IsDBNull(2) ? null : reader.GetDecimal(2),
+                        reader.GetBoolean(3),
+                        reader.GetBoolean(4),
+                        reader.IsDBNull(nextOrdinal) ? null : DateOnly.FromDateTime(reader.GetFieldValue<DateTime>(nextOrdinal)),
+                        reader.GetInt32(6)));
+            }
+        }
+
+        Assert.Equal(("markdown", 20m, true, true, db.Anchor.AddDays(-30), 1), semantics[1]);
+        Assert.Equal(("markup", -12.5m, true, true, db.Anchor.AddDays(-5), 1), semantics[2]);
+        Assert.Equal(("flat", 0m, false, false, null, 1), semantics[3]);
+        Assert.Equal(("markdown", 20m, false, true, db.Anchor.AddDays(-5), 2), semantics[4]);
+        Assert.Equal(("markup", -25m, false, false, null, 2), semantics[5]);
+    }
+
+    [Fact]
     public async Task StartupView_ReappliesOverLegacyPlainNumericPostRevenue()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_legacy_type");

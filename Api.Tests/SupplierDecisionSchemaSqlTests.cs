@@ -100,9 +100,12 @@ public sealed class SupplierDecisionSchemaSqlTests
     public void VendorSalesNivelacijaScopedFactQueryBindsStoreAndDataOriginForEventsAndSales()
     {
         var source = ReadRepoFile("Api/Endpoints/AllEndpoints.cs");
+        var scopePolicy = ReadRepoFile("Application/Analytics/NivelacijaEventScopePolicy.cs");
 
         Assert.Contains("BuildVendorSalesNivelacijaScopedSourceSql", source);
-        Assert.Contains("@storeId IS NULL OR d.\"IDObjekat\" = @storeId::int", source);
+        Assert.Contains("{{NivelacijaEventScopePolicy.VendorSqlStorePredicate}}", source);
+        Assert.Contains("VendorSqlStorePredicate =", scopePolicy);
+        Assert.Contains("IS NULL OR", scopePolicy);
         Assert.Contains("@storeId IS NULL OR pz.id_objekat = @storeId::int", source);
         Assert.Contains("@dataScope::text = 'all'", source);
         Assert.Contains("d.\"DataOrigin\" = 'access'", source);
@@ -622,6 +625,41 @@ public sealed class SupplierDecisionSchemaSqlTests
         Assert.Contains("WHEN sr.supplier_quality_index >= 60 THEN 'EXPAND_SELECTIVELY'", endpoint);
         Assert.Contains("supplier_quality_index,\n    recommendation_code", endpoint);
         Assert.DoesNotContain("WHEN sr.blended_supplier_quality_index > 80 THEN 'EXPAND'", endpoint);
+    }
+
+    [Fact]
+    public void SupplierDecisionWindowedViewsExposeMaturityDirectionAndPreserveMissingDid()
+    {
+        var sql = ReadRepoFile("Database/Migrations/029_AddSupplierDecisionWindowedViews.sql");
+        var vendorViews = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+
+        foreach (var field in new[]
+        {
+            "price_direction", "discount_depth_pct", "post_window_complete",
+            "overlaps_next_event", "next_event_date", "same_day_event_count"
+        })
+        {
+            Assert.Contains($"'{field}'", vendorViews);
+        }
+
+        Assert.Contains("LEAD(event_date) OVER", vendorViews);
+        Assert.Contains("COUNT(*) OVER (PARTITION BY article_id, event_date)", vendorViews);
+        Assert.Contains("built from DnevnikPromena, Artikli, Dobavljaci, prodaja_stavke and prodaja_zaglavlje", vendorViews);
+        foreach (var viewName in new[] { "90d", "180d" })
+        {
+            var start = sql.IndexOf($"CREATE OR REPLACE VIEW vw_supplier_markdown_dependency_{viewName} AS", StringComparison.Ordinal);
+            var nextBatch = sql.IndexOf("-- SQL_BATCH_BREAK", start, StringComparison.Ordinal);
+            Assert.True(start >= 0 && nextBatch > start);
+            var block = sql[start..nextBatch];
+            Assert.Contains("CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN vn.post_qty END", block);
+            Assert.Contains("CASE WHEN vn.post_window_complete AND vn.price_direction = 'markdown' THEN nd.did_revenue END", block);
+            Assert.Contains("WHERE eligible_mature_markdown", block);
+            Assert.Contains("AVG(did_revenue)::numeric(18,2) AS avg_did_revenue", block);
+        }
+
+        Assert.DoesNotContain("AVG(COALESCE(did_revenue, 0))", sql);
+        Assert.DoesNotContain("ROUND(COALESCE(avg_did_revenue, 0)", sql);
+        Assert.Contains("COUNT(*) FILTER (WHERE eligible_mature_markdown), 0) AS dead_stock_rate", sql);
     }
 
     [Fact]
