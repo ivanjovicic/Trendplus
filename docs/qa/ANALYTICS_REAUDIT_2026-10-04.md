@@ -128,24 +128,25 @@ Ostali nalazi: Boja, kategorija, pol, plaćanje i sat su 100% nepoznati (RQ575).
 
 Addendumi (bez novih duplikata): RQ545 (Pre/Post i supplier MV i dalje nedostaju na deployu od 04.10), RQ556 (pertle, STARO, highlightNow sa nedozvoljenim redom), RQ553 (engleska oznaka „Insufficient data“), RQ479 (smoke akcije uživo), RQ569 (samo dokazi uživo, bez promene scope-a).
 
-## 9. Odluke vlasnika (sa preporukom)
+## 9. Odluke vlasnika — rešeno 2026-10-04
 
-1. **RQ570:** da li default period na svim ekranima odlučivanja postaje „poslednjih 30 dana do poslednjeg datuma prodaje“, kao u Pilot intake-u, uz baner „Podaci zaključno sa …“? Preporuka: **da**.
-2. **RQ574:** da li je TipObuce glavna dimenzija asortimana, tako da nedostajuća kategorija bude samo upozorenje? Preporuka: **da**. Kategorija blokira samo kada nedostaju i tip i kategorija.
-3. **RQ576:** kojom cenom vrednovati zalihe? Preporuka: poslednja nabavna cena iz dokumenata, a kao rezerva istorijski trošak sa prodajne stavke, označen kao procena. `Artikli.NabavnaCena` ne koristiti dok se ne proveri razmera. Import „Ulaz robe“ ne računati u starost.
-4. **RQ577:** da li je `ProdajaZaglavlje` račun kupca ili dnevni dokument? Preporuka: ako je dnevni dokument, preimenovati ga i sakriti metrike korpe.
-5. **RQ582:** da li sakriti Insight Studio dok se ne sertifikuje? Preporuka: **da**, pod oznakom „Eksperimentalno“, a RQ13–RQ38 konsolidovati.
-6. **RQ583:** koji SLA za svežinu važi? Preporuka: upozorenje posle 2 dana, kritično posle 7 dana od poslednjeg uspešnog importa, uz baner i dnevni alarm (alarm samo uz izričito uključivanje).
-7. **RQ556 addendum:** da li su STARO, Magacin, Komision i „Objekat 20828“ objekti za odlučivanje, i da li „Oprema“ ide u prioritete za nivelaciju? Preporuka: isključiti neaktivne objekte, a Opremu staviti u poseban red.
-8. **STAB16 / RQ545 (operativno):** treba pristup provajderu ili admin ključ za jednokratnu dijagnostiku i popravku produkcijske šeme, kao i pokretanje worker procesa.
+1. **RQ570 — period:** odobreno. Undated decision ekrani koriste poslednjih 30 kalendarskih dana do poslednjeg posmatranog datuma prodaje za aktivni store/dataScope; eksplicitni datumi se ne menjaju. Staleness se prikazuje odvojeno. PoP/trend preko horizonta je N/A (`beyond_source_horizon`), nikad lažnih −100%/0%.
+2. **RQ574 — Product Decision dimenzije:** `TipObuce` je autoritativna dimenzija asortimana. Nedostajuća kategorija/pol su upozorenje kada tip postoji; blokira se samo odluka kojoj zaista nedostaje potrebna dimenzija. Missing size/variant blokira samo size-dependent odluke. RQ483 reduced-confidence stock put ostaje važeći.
+3. **RQ576 — vrednost/starost zaliha:** poslednja pouzdana pozitivna nabavna/prijemna cena po artiklu/objektu je primarna. Ako je nema, poslednji validan pozitivan istorijski trošak sa prodajne stavke sme samo kao jasno označena procena. `Artikli.NabavnaCena` se ne koristi dok se razmera ne sertifikuje; missing cost nije 0. Sintetički import `Ulaz robe` ne određuje starost. Starost se zasniva samo na stvarnom inbound prijemu; bez njega je unknown. Poslednja prodaja je zasebna recency metrika, ne zamena za starost lagera.
+4. **RQ577 — prodajno zaglavlje:** za analitiku se tretira kao **prodajni agregacioni dokument, ne dokazani račun kupca**, dok source-lineage ne dokaže receipt grain. Labela je „prodajni dokument“; prosečna korpa, items/transaction, basket affinity i transaction heatmap su skriveni/gated sa `receipt_grain_unavailable`. Prihod i količina ostaju.
+5. **RQ582 — Insight Studio:** sakriti iz glavne navigacije; zadržati samo iza owner-facing „Eksperimentalno“ flag-a sa jasnim uncertified/stale banerom. RQ13–RQ38 konsolidovati uz sledljivost; ništa ne postaje OBSOLETE bez imenovanog replacement acceptance-a ili eksplicitnog gašenja widgeta.
+6. **RQ583 — freshness SLA:** warning posle 48 h, critical posle 168 h od poslednjeg uspešnog durable Access importa. `unknown` nije green. Globalni baner prikazuje i poslednji import i observed sales horizon. Notifikacije su opt-in, najviše jedna na 24 h dok je critical.
+7. **RQ556/RQ571 — objekti i Oprema:** retail decision scope je Trend PLUS 1 + Trend PLUS 2. `STARO`, `Magacin`, `Komision*` i `Objekat 20828` ne ulaze u retail markdown preporuke; ostaju u posebnom legacy/cleanup/transfer prikazu. `Oprema` ide u posebnu non-footwear cleanup listu. `recommendationAllowed=false` nikad ne ulazi u `highlightNow`. Implementacija je prebačena u RQ571; RQ556 ostaje owner-gated samo za v9 težine.
+8. **STAB16 / RQ545 (operativno):** pristup provajderu/admin ključ i novi Access import i dalje su stvarni spoljni koraci; ne smeju blokirati nezavisni repo-local rad.
 
-## 10. Preporučeni redosled rada
+## 10. Revidirani redosled rada
 
-1. **Odmah, operativno (vlasnik):** pokrenuti Access import, kako bi podaci prestali da budu stari 60 dana. Dati pristup za STAB16 (worker proces, MV refresh) i za RQ545 dijagnostiku.
-2. **RQ569** (primarni READY), paralelno sa **RQ578**, **RQ580** i **RQ581** (READY, nezavisni) i sa RQ553.
-3. Posle RQ569: **RQ573** (Product Decision redosled i payload), zatim **RQ572** (bootstrap), **RQ579**, **RQ571** (redom sa RQ552 i RQ556) i **RQ584**.
-4. Kada vlasnik odgovori: **RQ574**, **RQ570**, **RQ576**, **RQ577**, **RQ575**, **RQ583**, **RQ582**.
-5. Na kraju **RQ585** (nedeljni pregled) i vrednosni promptovi RQ557, RQ559 i RQ530.
+1. **Primarni P0:** RQ569. Paralelno su bezbedni postojeći RQ553/RQ578/RQ580/RQ581 i novi owner-resolved **RQ574** (uz normalne collision provere).
+2. Posle **RQ574** može RQ577; posle **RQ581** može RQ582.
+3. Posle **RQ569:** RQ570, RQ576, RQ583, RQ579, RQ571 i RQ584 prema file-collision pravilima.
+4. **RQ573** ide kada su RQ569 i RQ574 DONE; zatim **RQ572** tek kada su RQ570 i RQ573 DONE i shared Dashboard/bootstrap put nije zauzet RQ577.
+5. **RQ575** posle RQ569 + RQ574. Na kraju RQ585 i vrednosni RQ557/RQ559/RQ530.
+6. Operativno paralelno: pokrenuti nov Access import i rešiti STAB16/RQ545 produkcijski pristup, ali odsustvo tog pristupa nije razlog da se repo-local READY promptovi odbiju.
 
 ## 11. Ograničenja ovog audita
 
