@@ -76,8 +76,13 @@ Do not continue blind.
 - [ ] I did not use provider/live/CI proof needed only for final acceptance as a blanket start blocker for independently safe repo-local work.
 - [ ] If a prompt mixed safe repo-local work with external final proof, I repaired/narrowed it before claim without changing business semantics or weakening acceptance.
 - [ ] If the first candidate remained genuinely blocked, I checked another collision-safe lane in the same program and then the next eligible program before reporting no work.
+- [ ] After any terminal queue transition, I refreshed the **post-delivery origin/main SHA**; I did not reuse the pre-claim routing result.
+- [ ] I ran the **Post-close dependency cascade**: searched every active owner queue/addendum for the completed task ID and changed dependencies, re-evaluated all dependents, then scanned all non-terminal prompts for stale blockers.
+- [ ] If any dependent/independent prompt became dependency-complete and collision-safe, I promoted it in the same recovery run instead of leaving it WAITING behind stale prose.
 - [ ] If multiple READY tasks exist, I selected one whose dependency, feature-family, path, owner and gate collision checks are clear; this agent/workspace still owns only one claimed prompt at a time.
-- [ ] A final "no safe task" report names candidates checked, blocker class, why no repo-local slice is safe, and the exact unblock event.
+- [ ] I did not copy an older queue header, run-log `Next: none`, blocked P0, pending CI or missing deployed proof into a new zero-READY conclusion.
+- [ ] A final "no safe task" report has a **Zero-READY proof**: recovery-base SHA, active queue/addendum files scanned, every plausible candidate checked, blocker class, start-gate-vs-final-proof classification, why no repo-local slice is safe, and the exact unblock event.
+- [ ] If I could not inspect the entire active owner queue/addendum set, I reported recovery incomplete and did **not** claim there was no READY work.
 - [ ] I added evidence: date, files changed, checks, risks, next step.
 - [ ] I did not execute an additional queue task unless explicitly instructed.
 
