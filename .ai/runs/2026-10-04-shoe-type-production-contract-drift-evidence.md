@@ -4,9 +4,9 @@ Date: 2026-10-04
 Agent/tool: Cursor agent
 Delivery target: main
 Working branch / PR: main (direct)
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `37acd8031a8d3bbcafb08d7bc2bfb53f40a35acd`
+Main verification: verified as an ancestor of current `main` during the 2026-10-04 owner-decision refresh
+Evidence state: synchronized
 
 ## What was done
 - Reproduced the production route `https://trendplus.vercel.app/analytics/shoe-type-sales-stats?periodPreset=90d&fromDate=2026-07-07&toDate=2026-10-04`.
