@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ552 (primary; Nivelacija runtime cost/invalidation after RQ564). Additional parallel-safe READY: RQ553 (Nivelacija copy/a11y). Additional P0 READY: RQ569 (Operations source horizon/freshness). RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
+Current READY prompt: RQ569 (primary; Operations source horizon/freshness after RQ564). Additional parallel-safe READY: RQ553 (Nivelacija copy/a11y). RQ552 waits for RQ569; RQ453 follows RQ552. RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
+Owner post-close routing refresh 2026-10-04 after RQ564 hardening: dependency audit against the full active RQ queue/addenda confirms RQ569 is the next primary repository-local P0; RQ552 remains WAITING until RQ569 is DONE; RQ453 remains WAITING until RQ552 is DONE after RQ564/RQ569. RQ553 remains an independent parallel-safe frontend copy/a11y lane. RQ545's deployed/provider acceptance is not a start gate for RQ564 or RQ569.
 Owner recovery 2026-10-04 after RQ567: the prior "no other READY" conclusion was stale. RQ541-RQ544, RQ547-RQ550 and RQ568 are DONE, and RQ545's remaining work is deployed/provider acceptance that the RQ564 prompt explicitly says is not a local start gate. Fresh collision checks found no RQ564 lock, matching branch or open PR. RQ564 is therefore promoted WAITING -> READY as the next P0 repository-local reliability task. RQ553 is independently READY in the Nivelacija addendum after RQ529 DONE. RQ552 is narrowed to its still-live performance/cache-invalidation residual and sequenced after RQ564 because price-event writes must invalidate the new Nivelacija integrity generation consistently. Live Daily Sales evidence also exposed a separate source-horizon/freshness gap; RQ569 is registered below and waits for RQ564 so the same context/generation contract is reused. RQ453 is scope-repaired into the non-skippable repository certification gate after RQ564/RQ569 rather than waiting for deployed browser/certificate work.
 Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. Post-close cascade: RQ564 is primary READY and RQ553 is additional parallel-safe READY; RQ565-RQ566 remain externally gated.
 Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
@@ -1899,7 +1900,7 @@ Generate a PDF or HTML certificate from immutable evidence, with tenant/store, r
 ## RQ453 - Make analytics certification CI non-skippable
 
 Status: WAITING
-Ready after: RQ564 and RQ569 are DONE; RQ561/RQ567/RQ568 already define the current six-screen executable certification set
+Ready after: RQ564, RQ569 and RQ552 are DONE; RQ561/RQ567/RQ568 already define the current six-screen executable certification set
 Priority: P0
 Type: CI/tests/release-gate
 Feature family: analytics-certification-ci-gate
@@ -1913,7 +1914,7 @@ The repository now has a strong disposable-PostgreSQL six-screen proof (RQ561/RQ
 
 ### Scope
 
-Generalize the existing RQ447 certification job instead of creating a second PostgreSQL harness. It must execute the RQ561/RQ568 six-screen route proof, the independent oracle/seam tests, the RQ567 shared frontend trust-state proof, and after RQ564/RQ569 the Nivelacija/freshness integrity contracts. Publish one machine-readable manifest with expected/executed/passed/skipped counts and route/family verdicts. Deployed browser/export proof remains RQ565 and is not a start gate for this repository CI task.
+Generalize the existing RQ447 certification job instead of creating a second PostgreSQL harness. It must execute the RQ561/RQ568 six-screen route proof, the independent oracle/seam tests, the RQ567 shared frontend trust-state proof, and after RQ564/RQ569/RQ552 the Nivelacija/freshness integrity contracts. Publish one machine-readable manifest with expected/executed/passed/skipped counts and route/family verdicts. Deployed browser/export proof remains RQ565 and is not a start gate for this repository CI task.
 
 ### Tests
 
@@ -1929,7 +1930,7 @@ Generalize the existing RQ447 certification job instead of creating a second Pos
 
 ### Dependencies
 
-- RQ561, RQ567, RQ568, then RQ564/RQ569. RQ448/RQ452/RQ565 remain deployed/browser/certificate owners and are not repository-CI start gates.
+- RQ561, RQ567, RQ568, then RQ564 -> RQ569 -> RQ552. RQ448/RQ452/RQ565 remain deployed/browser/certificate owners and are not repository-CI start gates.
 
 ---
 

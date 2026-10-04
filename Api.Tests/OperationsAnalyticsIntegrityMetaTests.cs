@@ -7,6 +7,7 @@ using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 using Trendplus2.Dtos;
 using Xunit;
 
@@ -129,6 +130,70 @@ public sealed class OperationsAnalyticsIntegrityMetaTests
         Assert.Null(meta.OperationsIntegrityCheckedAtUtc);
         Assert.Null(meta.OperationsIntegrityContextFingerprint);
         Assert.False(meta.OperationsIntegrityContextMatches);
+    }
+
+    [Fact]
+    public void NivelacijaEvidence_DistinguishesNullStoreFromNegativeStoreAndStaleContextIsUnverified()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        var generation = registry.GetGeneration(family);
+        var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var nullStoreFingerprint = OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(family, generation, from, to, "all", null);
+        var negativeStoreFingerprint = OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(family, generation, from, to, "all", -1);
+        Assert.NotEqual(nullStoreFingerprint, negativeStoreFingerprint);
+
+        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified, "nivelacija-proof", DateTime.UtcNow, DateTime.UtcNow,
+            "bounded_probe", "Oracle matched.", Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(), false)
+        {
+            Family = family,
+            ContextFingerprint = nullStoreFingerprint,
+            SourceGeneration = generation
+        });
+
+        var stale = OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            AnalyticsResponseMetaFactory.Success(), registry, family, from.AddDays(-1), to, "all", null);
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, stale.OperationsIntegrityStatus);
+        Assert.False(stale.OperationsIntegrityContextMatches);
+        Assert.Null(stale.OperationsIntegrityEvidenceId);
+        Assert.Null(stale.OperationsIntegrityCheckedAtUtc);
+    }
+
+    [Fact]
+    public void NivelacijaEvidence_ExactDriftIncludesDimensionsAndStaleProbeCannotStayGreen()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        var generation = registry.GetGeneration(family);
+        var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fingerprint = OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(family, generation, from, to, "imported", 2);
+        var dimensions = JsonDocument.Parse("{\"eventId\":56801,\"direction\":\"markdown\",\"isMature\":true,\"overlapsNextEvent\":false,\"storeId\":2,\"dataScope\":\"imported\"}").RootElement.Clone();
+        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.DriftDetected, "nivelacija-drift", DateTime.UtcNow, null,
+            "bounded_probe", "Store/cohort event drift.", Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(), true)
+        {
+            Family = family,
+            ContextFingerprint = fingerprint,
+            SourceGeneration = generation,
+            EvidenceDimensions = dimensions
+        });
+
+        var drift = OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            AnalyticsResponseMetaFactory.Success(), registry, family, from, to, "imported", 2);
+        Assert.Equal(OperationsAnalyticsIntegrityStates.DriftDetected, drift.OperationsIntegrityStatus);
+        Assert.False(drift.RecommendationAllowed);
+        Assert.Equal(56801, drift.OperationsIntegrityEvidenceDimensions!.Value.GetProperty("eventId").GetInt32());
+
+        var staleSnapshot = registry.GetCurrent(family) with { CheckedAtUtc = DateTime.UtcNow.AddHours(-2) };
+        registry.Set(staleSnapshot);
+        var stale = OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            AnalyticsResponseMetaFactory.Success(), registry, family, from, to, "imported", 2);
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, stale.OperationsIntegrityStatus);
+        Assert.Null(stale.OperationsIntegrityEvidenceId);
+        Assert.Null(stale.OperationsIntegrityEvidenceDimensions);
     }
 
     [Fact]

@@ -9,6 +9,7 @@ public sealed class OperationsAnalyticsIntegrityRegistry
         new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _generations =
         new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _pendingFamilyMutations = new(StringComparer.Ordinal);
 
     public OperationsAnalyticsIntegrityRegistry()
     {
@@ -62,13 +63,32 @@ public sealed class OperationsAnalyticsIntegrityRegistry
             return GetOrCreateGenerationUnsafe(family);
     }
 
-    public void Set(OperationsAnalyticsIntegritySnapshot snapshot)
+    public bool Set(OperationsAnalyticsIntegritySnapshot snapshot)
     {
         lock (_gate)
         {
+            if (_pendingFamilyMutations.ContainsKey(snapshot.Family)
+                && !string.Equals(snapshot.Status, OperationsAnalyticsIntegrityStates.Unverified, StringComparison.Ordinal))
+            {
+                // A probe may start after mutation invalidation and still observe
+                // pre-commit rows. It cannot restore any non-fail-closed state
+                // until the write has completed and advanced the generation again.
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(snapshot.SourceGeneration)
+                && _generations.TryGetValue(snapshot.Family, out var currentGeneration)
+                && !string.Equals(currentGeneration, snapshot.SourceGeneration, StringComparison.Ordinal))
+            {
+                // A probe that started before a source mutation must never restore
+                // the generation it observed when it eventually completes.
+                return false;
+            }
+
             _snapshots[snapshot.Family] = snapshot;
             if (!string.IsNullOrWhiteSpace(snapshot.SourceGeneration))
                 _generations[snapshot.Family] = snapshot.SourceGeneration;
+            return true;
         }
     }
 
@@ -93,6 +113,38 @@ public sealed class OperationsAnalyticsIntegrityRegistry
 
     public void MarkFamilyUnverified(string family, string trigger, string summary)
         => MarkUnverified(trigger, summary, [family]);
+
+    public OperationsAnalyticsIntegritySnapshot BeginFamilyMutation(string family, string trigger, string summary)
+    {
+        lock (_gate)
+        {
+            var generation = CreateGeneration();
+            _generations[family] = generation;
+            _pendingFamilyMutations[family] = _pendingFamilyMutations.GetValueOrDefault(family) + 1;
+            var snapshot = CreateUnverifiedSnapshot(family, generation, trigger, summary);
+            _snapshots[family] = snapshot;
+            return snapshot;
+        }
+    }
+
+    public OperationsAnalyticsIntegritySnapshot CompleteFamilyMutation(string family, string trigger, string summary)
+    {
+        lock (_gate)
+        {
+            var generation = CreateGeneration();
+            _generations[family] = generation;
+            if (_pendingFamilyMutations.TryGetValue(family, out var pendingCount))
+            {
+                if (pendingCount <= 1)
+                    _pendingFamilyMutations.Remove(family);
+                else
+                    _pendingFamilyMutations[family] = pendingCount - 1;
+            }
+            var snapshot = CreateUnverifiedSnapshot(family, generation, trigger, summary);
+            _snapshots[family] = snapshot;
+            return snapshot;
+        }
+    }
 
     private string GetOrCreateGenerationUnsafe(string family)
     {

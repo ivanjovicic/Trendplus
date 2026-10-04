@@ -23,8 +23,11 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
                 Assert.False(string.IsNullOrWhiteSpace(definition.Family));
                 Assert.False(string.IsNullOrWhiteSpace(definition.Owner));
                 Assert.InRange(definition.MaxRows, 1, 10000);
-                Assert.InRange(definition.MaxWindowDays, 1, 31);
             });
+        Assert.Equal(180, OperationsAnalyticsIntegrityFamilies.DefinitionFor(OperationsAnalyticsIntegrityFamilies.Nivelacija).MaxWindowDays);
+        Assert.All(
+            OperationsAnalyticsIntegrityFamilies.Enrolled.Where(definition => definition.Family != OperationsAnalyticsIntegrityFamilies.Nivelacija),
+            definition => Assert.InRange(definition.MaxWindowDays, 1, 31));
     }
 
     [Fact]
@@ -71,6 +74,100 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
         Assert.Equal(
             OperationsAnalyticsIntegrityStates.Unverified,
             registry.GetCurrent(OperationsAnalyticsIntegrityFamilies.Inventory).Status);
+    }
+
+    [Fact]
+    public void NivelacijaAndAccessImportInvalidation_RotateOnlyTheSharedFamilyGeneration()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        var before = registry.GetGeneration(family);
+        var supplierBefore = registry.GetGeneration(OperationsAnalyticsIntegrityFamilies.SupplierShoeType);
+
+        registry.MarkUnverified("nivelacija_repair", "Repair began.");
+        Assert.NotEqual(before, registry.GetGeneration(family));
+        Assert.Equal(supplierBefore, registry.GetGeneration(OperationsAnalyticsIntegrityFamilies.SupplierShoeType));
+
+        before = registry.GetGeneration(family);
+        registry.MarkUnverified("access_import", "Source generation changed.");
+        Assert.NotEqual(before, registry.GetGeneration(family));
+        Assert.Equal(
+            OperationsAnalyticsIntegrityStates.Unverified,
+            registry.GetCurrent(family).Status);
+
+        before = registry.GetGeneration(family);
+        registry.MarkUnverified("cache_clear", "Analytics cache/source generation changed.");
+        Assert.NotEqual(before, registry.GetGeneration(family));
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, registry.GetCurrent(family).Status);
+    }
+
+    [Fact]
+    public void CompletedProbeFromOldGenerationCannotRestoreGreenAfterMutation()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        var oldGeneration = registry.GetGeneration(family);
+        registry.MarkFamilyUnverified(family, "nivelacija_write", "Write is in progress.");
+
+        var stale = new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified,
+            "old-probe",
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "bounded_probe",
+            "Old probe completed late.",
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            false)
+        {
+            Family = family,
+            SourceGeneration = oldGeneration
+        };
+
+        registry.Set(stale);
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, registry.GetCurrent(family).Status);
+        Assert.NotEqual(oldGeneration, registry.GetGeneration(family));
+    }
+
+    [Fact]
+    public void ProbeStartedDuringNivelacijaWriteCannotPublishGreenBeforeCommit()
+    {
+        var registry = new OperationsAnalyticsIntegrityRegistry();
+        var family = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        registry.BeginFamilyMutation(family, "nivelacija_write", "First write in progress.");
+        var pending = registry.BeginFamilyMutation(family, "nivelacija_write", "Second write in progress.");
+        var probeDuringWrite = new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified,
+            "probe-during-write",
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "bounded_probe",
+            "Probe observed source rows before commit.",
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            false)
+        {
+            Family = family,
+            SourceGeneration = pending.SourceGeneration
+        };
+
+        Assert.False(registry.Set(probeDuringWrite));
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, registry.GetCurrent(family).Status);
+
+        var firstCompleted = registry.CompleteFamilyMutation(family, "nivelacija_write", "First write committed; second write remains.");
+        var probeBetweenWrites = probeDuringWrite with
+        {
+            EvidenceId = "probe-between-writes",
+            SourceGeneration = firstCompleted.SourceGeneration
+        };
+        Assert.False(registry.Set(probeBetweenWrites));
+
+        var completed = registry.CompleteFamilyMutation(family, "nivelacija_write", "Both writes committed; probe required.");
+        var postCommitProbe = probeDuringWrite with
+        {
+            EvidenceId = "post-commit-probe",
+            SourceGeneration = completed.SourceGeneration
+        };
+        Assert.True(registry.Set(postCommitProbe));
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Verified, registry.GetCurrent(family).Status);
     }
 
     [Fact]

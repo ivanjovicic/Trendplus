@@ -336,6 +336,7 @@ using NpgsqlTypes;
     private readonly IAnalyticsCacheService? _analyticsCache;
     private readonly AnalyticsCacheAdminService? _cacheAdmin;
     private readonly OperationsAnalyticsIntegrityRegistry? _operationsIntegrityRegistry;
+    private readonly IOperationsAnalyticsIntegrityService? _operationsIntegrityService;
     private readonly ILogger<AccessImportService> _logger;
     private readonly AccessImportOptions _options;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
@@ -387,7 +388,8 @@ using NpgsqlTypes;
         IAccessImportCursorRepository? cursorRepository = null,
         IFileStorage? fileStorage = null,
         IOptions<StorageOptions>? storageOptions = null,
-        IHostEnvironment? environment = null)
+        IHostEnvironment? environment = null,
+        IOperationsAnalyticsIntegrityService? operationsIntegrityService = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
@@ -396,6 +398,7 @@ using NpgsqlTypes;
         _analyticsCache = analyticsCache;
         _cacheAdmin = cacheAdmin;
         _operationsIntegrityRegistry = operationsIntegrityRegistry;
+        _operationsIntegrityService = operationsIntegrityService;
         _serviceScopeFactory = serviceScopeFactory;
         _jobQueue = jobQueue;
         _cursorRepository = cursorRepository;
@@ -434,8 +437,8 @@ using NpgsqlTypes;
 
     /// <summary>
     /// After a committed Access import that touched analytics, mark Operations integrity unverified
-    /// and run exactly one bounded Supplier/Shoe Type probe linked to the import batch.
-    /// Import success is never rewritten as analytics verification.
+    /// and run exactly one bounded probe linked to the import batch. Import success is never rewritten
+    /// as analytics verification.
     /// </summary>
     private void SchedulePostImportIntegrityProbe(long batchId)
     {
@@ -2537,10 +2540,21 @@ using NpgsqlTypes;
         });
         using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var heartbeatTask = RunBatchHeartbeatLoopAsync(heartbeatCts.Token);
+        var nivelacijaMutationPending = false;
 
         try
         {
             var postImportIntegrityBatchId = (long?)null;
+            if (includeAnalytics && _operationsIntegrityService is not null)
+            {
+                nivelacijaMutationPending = true;
+                await _operationsIntegrityService.BeginFamilyMutationAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    $"access_import:{batch.Id}",
+                    $"Access import batch {batch.Id} started; previous Nivelacija event/cohort evidence is invalid until a bounded post-import probe completes.",
+                    ct);
+            }
+
             await RetriableDbContextTransaction.ExecuteAsync(_trendDb, async transactionCt =>
             {
                 var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
@@ -2650,6 +2664,16 @@ using NpgsqlTypes;
 
             if (postImportIntegrityBatchId is long probeBatchId)
             {
+                if (nivelacijaMutationPending && _operationsIntegrityService is not null)
+                {
+                    await _operationsIntegrityService.InvalidateFamilyAsync(
+                        OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                        $"access_import:{probeBatchId}",
+                        $"Access import batch {probeBatchId} committed; previous Nivelacija event/cohort evidence remains invalid until a bounded post-import probe completes.",
+                        ct);
+                    nivelacijaMutationPending = false;
+                }
+
                 SchedulePostImportIntegrityProbe(probeBatchId);
             }
 
@@ -2770,6 +2794,25 @@ using NpgsqlTypes;
         }
         finally
         {
+            if (nivelacijaMutationPending && _operationsIntegrityService is not null)
+            {
+                try
+                {
+                    await _operationsIntegrityService.InvalidateFamilyAsync(
+                        OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                        $"access_import:{batch.Id}",
+                        $"Access import batch {batch.Id} ended without a post-import proof; previous Nivelacija evidence remains invalid until a bounded probe completes.",
+                        CancellationToken.None);
+                }
+                catch (Exception integrityException)
+                {
+                    _logger.LogWarning(
+                        integrityException,
+                        "Access import batch {BatchId} ended without a durable Nivelacija integrity completion marker.",
+                        batch.Id);
+                }
+            }
+
             heartbeatCts.Cancel();
             try
             {

@@ -68,6 +68,8 @@ public static class PreNivelacijaPriorityEndpoints
             IAnalyticsDbContext analyticsDb,
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
+            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            IOperationsAnalyticsIntegrityService integrityService,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
             HttpContext httpContext,
@@ -90,7 +92,6 @@ public static class PreNivelacijaPriorityEndpoints
             pageSize = Math.Clamp(pageSize, 1, 100);
             var normalizedDataScope = NormalizeDataScope(dataScope);
             var minimumNewStockAgeDays = ResolveMinimumNewStockAgeDays(configuration);
-            var integrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
 
             try
             {
@@ -726,6 +727,8 @@ public static class PreNivelacijaPriorityEndpoints
                     seasonId,
                     footwearTypeId,
                     storeId));
+            await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
+            ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
 
                 return Results.Ok(response);
             }
@@ -735,14 +738,17 @@ public static class PreNivelacijaPriorityEndpoints
                     DateTime.UtcNow,
                     BuildQueryFailureMeta(ex.SalesQueryFailed, ex.MarkdownQueryFailed, ex.ReceiptQueryFailed),
                     minimumNewStockAgeDays: minimumNewStockAgeDays);
-                return Results.Ok(BuildResponse(
+                var response = BuildResponse(
                     unavailable,
                     page,
                     pageSize,
                     focus,
                     normalizedDataScope,
                     integrityRegistry,
-                    new PreNivelacijaFilterFacetsDto()));
+                    new PreNivelacijaFilterFacetsDto());
+                await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
+                ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
+                return Results.Ok(response);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -760,14 +766,17 @@ public static class PreNivelacijaPriorityEndpoints
                         "Pre-nivelacija podaci trenutno nisu dostupni.",
                         null),
                     minimumNewStockAgeDays: minimumNewStockAgeDays);
-                return Results.Ok(BuildResponse(
+                var response = BuildResponse(
                     unavailable,
                     page,
                     pageSize,
                     focus,
                     normalizedDataScope,
                     integrityRegistry,
-                    new PreNivelacijaFilterFacetsDto()));
+                    new PreNivelacijaFilterFacetsDto());
+                await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
+                ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
+                return Results.Ok(response);
             }
         })
         .WithName("GetPreNivelacijaPrioriteti")
@@ -1258,6 +1267,51 @@ public static class PreNivelacijaPriorityEndpoints
         }
 
         return response;
+    }
+
+    private static void ApplyNivelacijaFamilyEvidence(
+        PreNivelacijaPriorityResponseDto response,
+        OperationsAnalyticsIntegrityRegistry registry,
+        int? storeId,
+        string dataScope)
+    {
+        OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
+            response.Meta!,
+            registry,
+            OperationsAnalyticsIntegrityFamilies.Nivelacija,
+            response.EvidenceWindow.SalesWindowFromUtc,
+            response.EvidenceWindow.SalesWindowToUtc,
+            dataScope,
+            storeId);
+
+        if (response.Meta!.OperationsIntegrityStatus == OperationsAnalyticsIntegrityStates.DriftDetected
+            && response.Meta.OperationsIntegrityContextMatches == true)
+        {
+            response.RecommendationAllowed = false;
+            response.Meta.RecommendationAllowed = false;
+            foreach (var candidate in response.Candidates)
+                candidate.Recommendation.RecommendationAllowed = false;
+        }
+    }
+
+    private static async Task EnsureNivelacijaFamilyEvidenceAsync(
+        PreNivelacijaPriorityResponseDto response,
+        IOperationsAnalyticsIntegrityService integrityService,
+        int? storeId,
+        string dataScope,
+        CancellationToken ct)
+    {
+        if (response.Meta?.Success != true)
+            return;
+
+        await integrityService.RunFamilyBoundedProbeAsync(
+            OperationsAnalyticsIntegrityFamilies.Nivelacija,
+            response.EvidenceWindow.SalesWindowFromUtc,
+            response.EvidenceWindow.SalesWindowToUtc,
+            dataScope,
+            storeId,
+            ct,
+            "nivelacija_priorities_request");
     }
 
     private static PreNivelacijaPriorityBaseCacheEntry MaterializeFacetFilteredEntry(

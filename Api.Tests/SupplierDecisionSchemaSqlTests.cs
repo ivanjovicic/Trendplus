@@ -180,7 +180,9 @@ public sealed class SupplierDecisionSchemaSqlTests
         var canonicalViews = ReadRepoFile("Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
 
         Assert.Contains("UPDATE \"DnevnikPromena\"", normalization);
-        Assert.Contains("line.\"BrojRacuna\" ~ '^-?[0-9]+$'", normalization);
+        Assert.Contains("line.\"BrojRacuna\" ~ '^[0-9]+$'", normalization);
+        Assert.Contains("length(COALESCE(NULLIF(ltrim(line.\"BrojRacuna\", '0'), ''), '0')) < 19", normalization);
+        Assert.Contains("<= '9223372036854775807'", normalization);
         Assert.DoesNotContain("CREATE VIEW", normalization, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("DROP VIEW", normalization, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("CREATE OR REPLACE VIEW vw_vendor_sales_nivelacija AS", canonicalViews);

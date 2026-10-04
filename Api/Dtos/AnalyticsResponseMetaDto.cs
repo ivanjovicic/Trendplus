@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Application.Analytics;
 
 namespace Trendplus2.Dtos;
@@ -48,6 +49,8 @@ public class AnalyticsResponseMetaDto
     public string? OperationsIntegrityContextFingerprint { get; set; }
     public string? OperationsIntegritySourceGeneration { get; set; }
     public bool? OperationsIntegrityContextMatches { get; set; }
+    /// <summary>Bound event/cohort dimensions from the exact current Nivelacija probe.</summary>
+    public JsonElement? OperationsIntegrityEvidenceDimensions { get; set; }
     /// <summary>
     /// Backend-owned categorical readiness for the declared decision surface.
     /// This is additive and preserves existing response shapes.

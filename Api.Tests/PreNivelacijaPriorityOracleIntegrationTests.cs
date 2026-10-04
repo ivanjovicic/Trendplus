@@ -2,8 +2,10 @@ using System.Net;
 using System.Globalization;
 using System.Text.Json;
 using System.Net.Http.Json;
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -202,13 +204,42 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             Assert.Equal(HttpStatusCode.BadRequest, invalidPrice.StatusCode);
         }
 
+        var integrityRegistry = factory.Services.GetRequiredService<OperationsAnalyticsIntegrityRegistry>();
+        var nivelacijaFamily = OperationsAnalyticsIntegrityFamilies.Nivelacija;
+        var priorGeneration = integrityRegistry.GetGeneration(nivelacijaFamily);
+        integrityRegistry.Set(new OperationsAnalyticsIntegritySnapshot(
+            OperationsAnalyticsIntegrityStates.Verified,
+            "pre-write-nivelacija-evidence",
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "bounded_probe",
+            "Prior bounded evidence.",
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            BlocksDecisionSignals: false)
+        {
+            Family = nivelacijaFamily,
+            SourceGeneration = priorGeneration,
+            ContextFingerprint = "pre-write-context"
+        });
+
         using (var accepted = await client.PostAsJsonAsync("/api/nivelacija", payload))
         {
             Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
         }
 
+        Assert.NotEqual(priorGeneration, integrityRegistry.GetGeneration(nivelacijaFamily));
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, integrityRegistry.GetCurrent(nivelacijaFamily).Status);
+        Assert.NotEqual("pre-write-nivelacija-evidence", integrityRegistry.GetCurrent(nivelacijaFamily).EvidenceId);
+
         await using var db = new TrendplusDbContext(
             new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options);
+        var mutationEvidence = await db.OperationsAnalyticsIntegrityEvidence.AsNoTracking()
+            .Where(row => row.Family == nivelacijaFamily && row.Trigger == "nivelacija_write")
+            .OrderBy(row => row.CheckedAtUtc)
+            .ToListAsync();
+        Assert.True(mutationEvidence.Count >= 2, "The write must durably record its fail-closed marker before committing and again after completion.");
+        Assert.All(mutationEvidence, evidence => Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified, evidence.Status));
+
         var article = await db.Artikli.AsNoTracking().SingleAsync(item => item.Id == 202);
         Assert.Equal(60m, article.ProdajnaCena);
         var supplierSplitEvents = await SupplierSalesStatsQuerySupport.LoadFirstNivelacijaByArticleAsync(

@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Api.Tests;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Hosting;
 using Npgsql;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -198,6 +200,13 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.True(immature.GetProperty("meta").GetProperty("success").GetBoolean(), immature.GetRawText());
         AssertEndpointArticleMatchesOracle(immature, "RQ568-IMMATURE", rq568Fixture.OracleRows[56805], rq568Fixture.AsOfDate);
         Assert.False(Assert.Single(immature.GetProperty("articleStats").EnumerateArray()).GetProperty("isPostWindowMature").GetBoolean());
+        Assert.True(
+            immature.GetProperty("meta").GetProperty("operationsIntegrityStatus").GetString() == OperationsAnalyticsIntegrityStates.Verified,
+            immature.GetProperty("meta").GetRawText());
+        Assert.True(immature.GetProperty("meta").GetProperty("operationsIntegrityContextMatches").GetBoolean());
+        Assert.Contains(
+            immature.GetProperty("meta").GetProperty("operationsIntegrityEvidenceDimensions").GetProperty("events").EnumerateArray(),
+            item => item.GetProperty("eventId").GetInt64() == 56805);
 
         var importedStore2 = await GetJsonAsync(
             client,
@@ -211,6 +220,13 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal(2, importedStore2.GetProperty("storeId").GetInt32());
         Assert.Equal("imported", importedStore2.GetProperty("dataScope").GetString());
         Assert.True(importedStore2.GetProperty("scopeApplied").GetBoolean());
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified,
+            importedStore2.GetProperty("meta").GetProperty("operationsIntegrityStatus").GetString());
+        Assert.True(importedStore2.GetProperty("meta").GetProperty("operationsIntegrityContextMatches").GetBoolean());
+        Assert.Equal(2,
+            importedStore2.GetProperty("meta").GetProperty("operationsIntegrityEvidenceDimensions").GetProperty("storeId").GetInt32());
+        Assert.Equal("imported",
+            importedStore2.GetProperty("meta").GetProperty("operationsIntegrityEvidenceDimensions").GetProperty("dataScope").GetString());
 
         verdicts.Add(new(
             "/analytics/nivelacije-pre-post",
@@ -262,6 +278,11 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             client,
             "/api/analytics/pre-nivelacija-prioriteti?dataScope=all&page=1&pageSize=100&focus=all");
         Assert.True(preNivelacija.GetProperty("meta").GetProperty("success").GetBoolean());
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Verified,
+            preNivelacija.GetProperty("meta").GetProperty("operationsIntegrityStatus").GetString());
+        Assert.True(preNivelacija.GetProperty("meta").GetProperty("operationsIntegrityContextMatches").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null,
+            preNivelacija.GetProperty("meta").GetProperty("operationsIntegrityEvidenceDimensions").ValueKind);
         Assert.Equal(1, preNivelacija.GetProperty("totalCandidates").GetInt32());
         Assert.Contains(
             preNivelacija.GetProperty("candidates").EnumerateArray(),
@@ -271,10 +292,122 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             "/api/analytics/pre-nivelacija-prioriteti?dataScope=imported&page=1&pageSize=100&focus=all");
         Assert.Equal("imported", preNivelacijaImported.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
         Assert.Equal("pre_nivelacija_product_origin_filter", preNivelacijaImported.GetProperty("meta").GetProperty("dataScopeSource").GetString());
+        Assert.Equal(OperationsAnalyticsIntegrityStates.Unverified,
+            preNivelacijaImported.GetProperty("meta").GetProperty("operationsIntegrityStatus").GetString());
+        Assert.True(preNivelacijaImported.GetProperty("meta").GetProperty("operationsIntegrityContextMatches").GetBoolean());
+        Assert.Equal("imported",
+            preNivelacijaImported.GetProperty("meta").GetProperty("operationsIntegrityEvidenceDimensions").GetProperty("dataScope").GetString());
         Assert.DoesNotContain(
             preNivelacijaImported.GetProperty("candidates").EnumerateArray(),
             candidate => candidate.GetProperty("sku").GetString() == "PRE-105");
         verdicts.Add(new("/analytics/pre-nivelacija-prioriteti", "/api/analytics/pre-nivelacija-prioriteti", 2, 2, "PASS", "candidate count, visible SKU and imported-scope exclusion asserted"));
+
+        await using (var integrityDb = new TrendplusDbContext(
+                         new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options))
+        {
+            var probe = new NivelacijaOperationsIntegrityProbe(integrityDb);
+            var checkedAt = DateTime.UtcNow;
+            var fromUtc = checkedAt.AddDays(-180);
+            var definition = OperationsAnalyticsIntegrityFamilies.DefinitionFor(OperationsAnalyticsIntegrityFamilies.Nivelacija);
+            var request = new OperationsAnalyticsIntegrityProbeRequest(
+                definition,
+                "rq564-probe-context",
+                "rq564-probe-generation",
+                fromUtc,
+                checkedAt,
+                "all",
+                "rq564-integration-test",
+                definition.MaxRows,
+                CancellationToken.None);
+
+            var baseline = await probe.ProbeAsync(request);
+            Assert.Equal(OperationsAnalyticsIntegrityStates.Verified, baseline.Status);
+            var eventEvidence = Assert.Single(
+                baseline.EvidenceDimensions!.Value.GetProperty("events").EnumerateArray(),
+                row => row.GetProperty("eventId").GetInt64() == 56805);
+            Assert.Equal("markdown", eventEvidence.GetProperty("direction").GetString());
+            Assert.False(eventEvidence.GetProperty("isMature").GetBoolean());
+            Assert.False(eventEvidence.GetProperty("overlapsNextEvent").GetBoolean());
+            Assert.Equal(1, eventEvidence.GetProperty("sameDayEventCount").GetInt32());
+            Assert.Equal(1, eventEvidence.GetProperty("storeId").GetInt32());
+            Assert.Equal("1", eventEvidence.GetProperty("storeIdentity").GetString());
+            Assert.True(eventEvidence.GetProperty("canonicalStoreIdentityAvailable").GetBoolean());
+            Assert.Equal(1, eventEvidence.GetProperty("canonicalStoreId").GetInt32());
+            Assert.Equal("existing", eventEvidence.GetProperty("dataOrigin").GetString());
+            Assert.Equal("all", eventEvidence.GetProperty("dataScope").GetString());
+            Assert.Equal(eventEvidence.GetProperty("eventDateUtc").GetDateTime().AddDays(-30), eventEvidence.GetProperty("preWindowFromUtc").GetDateTime());
+            Assert.Equal(eventEvidence.GetProperty("eventDateUtc").GetDateTime().AddDays(30), eventEvidence.GetProperty("postWindowToUtc").GetDateTime());
+            var markupDate = rq568Fixture.AnchorDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var markupProbe = await probe.ProbeAsync(request with { FromUtc = markupDate, ToUtc = markupDate });
+            Assert.Equal(OperationsAnalyticsIntegrityStates.Verified, markupProbe.Status);
+            var markupEvidence = Assert.Single(
+                markupProbe.EvidenceDimensions!.Value.GetProperty("events").EnumerateArray(),
+                row => row.GetProperty("eventId").GetInt64() == 56802);
+            Assert.Equal("markup", markupEvidence.GetProperty("direction").GetString());
+        }
+
+        await ExecuteConnectionSqlAsync(connectionString!, "ALTER VIEW vw_vendor_sales_nivelacija RENAME TO rq564_original_vendor_sales_nivelacija;");
+        await ExecuteConnectionSqlAsync(connectionString!, """
+            CREATE VIEW vw_vendor_sales_nivelacija AS
+            SELECT price_event_id,
+                   CASE WHEN price_event_id = 56805 THEN article_id + 100000 ELSE article_id END AS article_id,
+                   CASE WHEN price_event_id = 56805 THEN store_id + 1 ELSE store_id END AS store_id,
+                   event_date, old_price, new_price,
+                   CASE WHEN price_event_id = 56805 THEN 'markup' ELSE price_direction END AS price_direction,
+                   post_window_complete, overlaps_next_event, next_event_date,
+                   CASE WHEN price_event_id = 56805 THEN same_day_event_count + 1 ELSE same_day_event_count END AS same_day_event_count,
+                   pre_qty, pre_revenue, post_qty, post_revenue
+            FROM rq564_original_vendor_sales_nivelacija;
+            """);
+        await using (var driftDb = new TrendplusDbContext(
+                         new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options))
+        {
+            var probe = new NivelacijaOperationsIntegrityProbe(driftDb);
+            var checkedAt = DateTime.UtcNow;
+            var definition = OperationsAnalyticsIntegrityFamilies.DefinitionFor(OperationsAnalyticsIntegrityFamilies.Nivelacija);
+            var drift = await probe.ProbeAsync(new OperationsAnalyticsIntegrityProbeRequest(
+                definition,
+                "rq564-drift-context",
+                "rq564-drift-generation",
+                checkedAt.AddDays(-180),
+                checkedAt,
+                "all",
+                "rq564-deliberate-drift",
+                definition.MaxRows,
+                CancellationToken.None));
+            Assert.Equal(OperationsAnalyticsIntegrityStates.DriftDetected, drift.Status);
+            Assert.True(drift.BlocksDecisionSignals);
+            var changedEvent = Assert.Single(
+                drift.EvidenceDimensions!.Value.GetProperty("events").EnumerateArray(),
+                row => row.GetProperty("eventId").GetInt64() == 56805);
+            Assert.Contains("price_direction", changedEvent.GetProperty("mismatches").EnumerateArray().Select(value => value.GetString()));
+            Assert.Contains("event_article_identity", changedEvent.GetProperty("mismatches").EnumerateArray().Select(value => value.GetString()));
+            Assert.Contains("event_store_identity", changedEvent.GetProperty("mismatches").EnumerateArray().Select(value => value.GetString()));
+            Assert.Contains("same_day_cohort_count", changedEvent.GetProperty("mismatches").EnumerateArray().Select(value => value.GetString()));
+
+            var scopedDrift = await probe.ProbeAsync(new OperationsAnalyticsIntegrityProbeRequest(
+                definition,
+                "rq564-store-scoped-drift-context",
+                "rq564-store-scoped-drift-generation",
+                rq568Fixture.AsOfDate.AddDays(-180).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                rq568Fixture.AsOfDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                "existing",
+                "rq564-deliberate-store-scoped-cohort-drift",
+                definition.MaxRows,
+                CancellationToken.None,
+                StoreId: 1));
+            Assert.Equal(OperationsAnalyticsIntegrityStates.DriftDetected, scopedDrift.Status);
+            Assert.True(scopedDrift.BlocksDecisionSignals);
+            Assert.Equal(1, scopedDrift.EvidenceDimensions!.Value.GetProperty("storeId").GetInt32());
+            Assert.Equal("existing", scopedDrift.EvidenceDimensions.Value.GetProperty("dataScope").GetString());
+            var scopedChangedEvent = Assert.Single(
+                scopedDrift.EvidenceDimensions.Value.GetProperty("events").EnumerateArray(),
+                row => row.GetProperty("eventId").GetInt64() == 56805);
+            Assert.Contains("event_article_identity", scopedChangedEvent.GetProperty("mismatches").EnumerateArray().Select(value => value.GetString()));
+        }
+
+        await ExecuteConnectionSqlAsync(connectionString!, "DROP VIEW vw_vendor_sales_nivelacija;");
+        await ExecuteConnectionSqlAsync(connectionString!, "ALTER VIEW rq564_original_vendor_sales_nivelacija RENAME TO vw_vendor_sales_nivelacija;");
 
         await ExecuteConnectionSqlAsync(connectionString!, "DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;");
         var missingVendorNivelacija = await GetJsonAsync(

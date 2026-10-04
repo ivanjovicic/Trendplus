@@ -76,17 +76,43 @@ public static class OperationsAnalyticsIntegrityMeta
         var hasBoundEvidenceContext =
             !string.Equals(snapshot.Trigger, "bootstrap", StringComparison.Ordinal)
             && !string.IsNullOrWhiteSpace(snapshot.ContextFingerprint);
+        var isFreshNivelacijaEvidence = !string.Equals(family, OperationsAnalyticsIntegrityFamilies.Nivelacija, StringComparison.Ordinal)
+            || (snapshot.CheckedAtUtc <= DateTime.UtcNow
+                && DateTime.UtcNow - snapshot.CheckedAtUtc <= OperationsAnalyticsIntegrityFamilies.NivelacijaEvidenceMaxAge);
 
-        meta.OperationsIntegrityStatus = snapshot.Status;
-        meta.OperationsIntegrityCheckedAtUtc = hasBoundEvidenceContext ? snapshot.CheckedAtUtc : null;
-        meta.OperationsIntegrityEvidenceId = hasBoundEvidenceContext ? snapshot.EvidenceId : null;
-        meta.OperationsIntegrityFamily = family;
-        meta.OperationsIntegrityContextFingerprint = snapshot.ContextFingerprint;
-        meta.OperationsIntegritySourceGeneration = snapshot.SourceGeneration;
-        meta.OperationsIntegrityContextMatches =
+        var exactContextMatches =
             hasBoundEvidenceContext
             && string.Equals(snapshot.SourceGeneration, currentGeneration, StringComparison.Ordinal)
-            && string.Equals(snapshot.ContextFingerprint, expectedFingerprint, StringComparison.Ordinal);
+            && string.Equals(snapshot.ContextFingerprint, expectedFingerprint, StringComparison.Ordinal)
+            && isFreshNivelacijaEvidence;
+        var requireVerifiedNivelacijaContext = string.Equals(family, OperationsAnalyticsIntegrityFamilies.Nivelacija, StringComparison.Ordinal);
+        meta.OperationsIntegrityStatus = requireVerifiedNivelacijaContext && !exactContextMatches
+            ? OperationsAnalyticsIntegrityStates.Unverified
+            : snapshot.Status;
+        meta.OperationsIntegrityCheckedAtUtc = exactContextMatches ? snapshot.CheckedAtUtc : null;
+        meta.OperationsIntegrityEvidenceId = exactContextMatches ? snapshot.EvidenceId : null;
+        meta.OperationsIntegrityFamily = family;
+        meta.OperationsIntegrityContextFingerprint = exactContextMatches ? snapshot.ContextFingerprint : null;
+        meta.OperationsIntegritySourceGeneration = snapshot.SourceGeneration;
+        meta.OperationsIntegrityContextMatches = exactContextMatches;
+        meta.OperationsIntegrityEvidenceDimensions = exactContextMatches ? snapshot.EvidenceDimensions : null;
+
+        if (exactContextMatches && snapshot.Status == OperationsAnalyticsIntegrityStates.DriftDetected
+            && snapshot.BlocksDecisionSignals)
+        {
+            meta.WarningCode = "OPERATIONS_DRIFT_DETECTED";
+            meta.WarningMessage = snapshot.Summary ?? "Otkriveno je odstupanje integriteta Nivelacije; odluke su blokirane.";
+            meta.DataQualityStatus = "critical";
+            meta.RecommendationAllowed = false;
+            meta.IsPartial = true;
+        }
+        else if (requireVerifiedNivelacijaContext && !exactContextMatches)
+        {
+            meta.WarningCode ??= "OPERATIONS_INTEGRITY_UNVERIFIED";
+            meta.WarningMessage ??= "Nema uspešnog bounded Nivelacija dokaza za izabrani period, prodavnicu i obim podataka.";
+            meta.DataQualityStatus ??= "warning";
+            meta.IsPartial = true;
+        }
 
         return meta;
     }
@@ -106,6 +132,7 @@ public static class OperationsAnalyticsIntegrityMeta
         meta.OperationsIntegrityContextFingerprint = null;
         meta.OperationsIntegritySourceGeneration = null;
         meta.OperationsIntegrityContextMatches = false;
+        meta.OperationsIntegrityEvidenceDimensions = null;
         return meta;
     }
 }

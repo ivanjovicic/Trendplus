@@ -70,6 +70,18 @@ public sealed class OperationsAnalyticsPostImportProbeTests
         Assert.DoesNotContain(
             "_operationsIntegrityRegistry?.MarkUnverified(\n                            \"access_import\",",
             source.Replace("\r\n", "\n"));
+
+        var executeStart = source.IndexOf("private async Task<AccessImportRunResponse> ExecuteImportBatchAsync", StringComparison.Ordinal);
+        Assert.True(executeStart >= 0);
+        var beginMutation = source.IndexOf("BeginFamilyMutationAsync(", executeStart, StringComparison.Ordinal);
+        var importTransaction = source.IndexOf("RetriableDbContextTransaction.ExecuteAsync(", executeStart, StringComparison.Ordinal);
+        var completeMutation = source.IndexOf("InvalidateFamilyAsync(", importTransaction, StringComparison.Ordinal);
+        var postImportProbe = source.IndexOf("SchedulePostImportIntegrityProbe(probeBatchId)", completeMutation, StringComparison.Ordinal);
+
+        Assert.True(beginMutation > executeStart, "The Nivelacija mutation marker must be persisted before the import transaction writes source facts.");
+        Assert.True(importTransaction > beginMutation);
+        Assert.True(completeMutation > importTransaction, "The pending generation must be closed as unverified after the import commit and before a probe can publish green.");
+        Assert.True(postImportProbe > completeMutation);
     }
 
     private static string ReadRepoFile(string relativePath)
@@ -108,6 +120,22 @@ public sealed class OperationsAnalyticsPostImportProbeTests
 
         public Task MarkUnverifiedAsync(string trigger, string summary, string? family = null, CancellationToken ct = default)
             => Task.CompletedTask;
+
+        public Task BeginFamilyMutationAsync(string family, string trigger, string summary, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task InvalidateFamilyAsync(string family, string trigger, string summary, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task<OperationsAnalyticsIntegritySnapshot> RunFamilyBoundedProbeAsync(
+            string family,
+            DateTime fromUtc,
+            DateTime toUtc,
+            string dataScope,
+            int? storeId,
+            CancellationToken ct = default,
+            string? trigger = null)
+            => Task.FromResult(OperationsAnalyticsIntegritySnapshot.Unverified("test", "noop", "noop"));
 
         public Task<OperationsAnalyticsIntegritySnapshot> RunBoundedProbeAsync(
             CancellationToken ct = default,

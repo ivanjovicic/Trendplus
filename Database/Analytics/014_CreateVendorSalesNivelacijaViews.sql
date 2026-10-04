@@ -15,7 +15,7 @@ DO $$
 DECLARE
     _actual  text[];
     _expect  text[] := ARRAY[
-        'price_event_id','event_date','article_id','sku','article_name',
+        'price_event_id','event_date','store_id','article_id','sku','article_name',
         'category','vendor_id','vendor_name','old_price','new_price',
         'pre_qty','pre_revenue','coverage_pre30','valid_days_pre30','is_low_signal'
     ];
@@ -61,6 +61,7 @@ WITH nivelacija_events AS (
         SELECT
             d."Id"::bigint AS price_event_id,
             COALESCE(src."Datum", d."Datum")::date AS event_date,
+            d."IDObjekat" AS store_id,
             a."Id" AS article_id,
             COALESCE(NULLIF(a."PLU", ''), a."Id"::text) AS sku,
             a."Naziv" AS article_name,
@@ -117,6 +118,7 @@ sales_daily AS (
 SELECT
     e.price_event_id,
     e.event_date,
+    e.store_id,
     e.article_id,
     e.sku,
     e.article_name,
@@ -146,6 +148,7 @@ LEFT JOIN sales_daily s
 GROUP BY
     e.price_event_id,
     e.event_date,
+    e.store_id,
     e.article_id,
     e.sku,
     e.article_name,
@@ -263,6 +266,7 @@ WITH event_sequence AS (
 SELECT
     pre.price_event_id,
     pre.event_date,
+    pre.store_id,
     pre.vendor_id,
     pre.vendor_name,
     pre.article_id,

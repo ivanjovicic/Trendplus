@@ -79,13 +79,13 @@ public static class AllEndpoints
     public static void MapAllEndpoints(this WebApplication app)
     {
         // ============ HEALTH & MONITORING ============
-        
+
         // System health details. The public /health endpoint is mapped in Program.cs and is used by hosts/clients.
         app.MapGet("/api/system/health", (IMessageBroker messageBroker, WorkerHealthService workerHealth) =>
         {
             var rabbitMq = messageBroker as RabbitMqMessageBroker;
             var workersHealth = workerHealth.GetHealthSummary();
-            
+
             return Results.Ok(new
             {
                 Status = "Backend je živ",
@@ -307,7 +307,7 @@ public static class AllEndpoints
         .RequireRateLimiting("strict");
 
         // ============ PERFORMANCE ============
-        
+
         app.MapGet("/api/performance", async (
             IMediator mediator,
             IAnalyticsCacheService cache,
@@ -381,7 +381,7 @@ public static class AllEndpoints
         .RequireRateLimiting("db-heavy");
 
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
-        
+
         app.MapPost("/api/admin/run-analytics-optimization", async (
             ITrendplusDbContext db,
             HttpContext httpContext,
@@ -403,7 +403,7 @@ public static class AllEndpoints
             try
             {
                 logger.LogInformation("🚀 Starting analytics optimization migration...");
-                
+
                 var connectionString = db.Database.GetConnectionString();
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -429,7 +429,7 @@ public static class AllEndpoints
                     CREATE INDEX IF NOT EXISTS idx_artikli_dobavljac ON ""Artikli"" (""IDDobavljac"");
                     CREATE INDEX IF NOT EXISTS idx_artikli_pol ON ""Artikli"" (""Pol"");
                 ";
-                
+
                 await using (var cmd = new NpgsqlCommand(indexSql, connection))
                 {
                     await cmd.ExecuteNonQueryAsync(ct);
@@ -526,7 +526,7 @@ public static class AllEndpoints
                 for (int i = 0; i < 30; i++)
                 {
                     var date = today.AddDays(-i);
-                    
+
                     // Refresh daily summary
                     var dailySql = @"
                         INSERT INTO ""AnalyticsDailySummary"" (""Date"", ""TotalRevenue"", ""TotalTransactions"", ""TotalUnits"", ""AvgBasketValue"", ""AvgItemPrice"", ""UpdatedAt"")
@@ -597,7 +597,7 @@ public static class AllEndpoints
         });
 
         // ============ ADMIN - RUN ANALYTICS OPTIMIZATION ============
-        
+
         app.MapPost("/api/analytics/optimize", async (
             AnalyticsDbContext analyticsDb,
             HttpContext httpContext,
@@ -1267,7 +1267,7 @@ public static class AllEndpoints
                 {
                     var previousFootwearRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
@@ -2335,7 +2335,7 @@ public static class AllEndpoints
                 {
                     var previousRows = await (
                         from ps in db.ProdajaStavke.AsNoTracking()
-                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
+                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                         join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where pz.DatumProdaje >= previousFromUtc.Value
                            && pz.DatumProdaje < previousToUtc.Value
@@ -2361,7 +2361,7 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
@@ -3147,7 +3147,7 @@ public static class AllEndpoints
 
                 var stavke = await (
                     from ps in db.ProdajaStavke.AsNoTracking()
-                        join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
+                    join pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking() on ps.IdProdaja equals pz.Id
                     join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromUtc.HasValue || pz.DatumProdaje >= fromUtc.Value)
                        && (!toUtc.HasValue || pz.DatumProdaje < toUtc.Value)
@@ -3925,6 +3925,8 @@ public static class AllEndpoints
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
+            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            IOperationsAnalyticsIntegrityService integrityService,
             HttpContext httpContext,
             int? vendorId = null,
             DateTime? eventDate = null,
@@ -3938,7 +3940,6 @@ public static class AllEndpoints
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveAnalyticsCorrelationId(httpContext);
-            var nivelacijaIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
             try
             {
                 var connectionString = trendplusDb.Database.GetConnectionString();
@@ -4000,7 +4001,8 @@ public static class AllEndpoints
                         maxRows,
                         endpointStopwatch.ElapsedMilliseconds);
 
-                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, nivelacijaIntegrityRegistry));
+                    await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(cachedResponse, integrityService, ct);
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, integrityRegistry));
                 }
 
                 logger.LogInformation(
@@ -4044,7 +4046,8 @@ public static class AllEndpoints
                         normalizedDataScope,
                         contractIssue.ErrorMessage,
                         errorMeta);
-                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId, nivelacijaIntegrityRegistry));
+                    await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(missingContract, integrityService, ct);
+                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(missingContract, correlationId, integrityRegistry));
                 }
 
                 var hasOldPrice = relationInspection.Columns.Contains("old_price", StringComparer.Ordinal);
@@ -5135,7 +5138,8 @@ public static class AllEndpoints
                     DataCoverageReason = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageReason
                 };
 
-                ApplyVendorSalesNivelacijaMeta(response, correlationId, nivelacijaIntegrityRegistry);
+                await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(response, integrityService, ct);
+                ApplyVendorSalesNivelacijaMeta(response, correlationId, integrityRegistry);
 
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
@@ -5185,7 +5189,8 @@ public static class AllEndpoints
                     reason,
                     errorMeta);
 
-                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, nivelacijaIntegrityRegistry));
+                await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(fallback, integrityService, ct);
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, integrityRegistry));
             }
             catch (Exception ex)
             {
@@ -5211,7 +5216,8 @@ public static class AllEndpoints
                     $"Pre/post nivelacija trenutno nije dostupna. Referentni ID: {correlationId}.",
                     errorMeta);
 
-                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, nivelacijaIntegrityRegistry));
+                await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(fallback, integrityService, ct);
+                return Results.Ok(ApplyVendorSalesNivelacijaMeta(fallback, correlationId, integrityRegistry));
             }
         })
         .WithName("GetVendorSalesNivelacija")
@@ -5410,7 +5416,7 @@ public static class AllEndpoints
         .RequireRateLimiting("analytics");
 
         // ============ GLOBAL TRENDS API ============
-        
+
         // Get social media trends for category
         app.MapGet("/api/global-trends/social", async (
             IHttpClientFactory httpClientFactory,
@@ -5419,15 +5425,15 @@ public static class AllEndpoints
         {
             try {
                 logger.LogInformation("📊 Fetching social trends for category: '{Category}'", category);
-                
+
                 var pythonServiceUrl = "http://localhost:8000";
                 var httpClient = httpClientFactory.CreateClient("default");
-                
+
                 // Call Python trends API - NO FALLBACK
                 try
                 {
                     var response = await httpClient.GetAsync($"{pythonServiceUrl}/trends/social?category={category}");
-                    
+
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogError("Python service returned {StatusCode}", response.StatusCode);
@@ -5437,10 +5443,10 @@ public static class AllEndpoints
                             title: "Trends Service Unavailable"
                         );
                     }
-                    
+
                     var data = await response.Content.ReadFromJsonAsync<object>();
                     logger.LogInformation("✅ Received real data from Python service");
-                    
+
                     return Results.Ok(data);
                 }
                 catch (TaskCanceledException ex)
@@ -5830,7 +5836,7 @@ public static class AllEndpoints
         .WithTags("External");
 
         // ============ UPLOAD IMAGE ============
-        
+
         app.MapPost("/api/upload-image", async (
             HttpContext context,
             ITrendplusDbContext db,
@@ -5853,9 +5859,9 @@ public static class AllEndpoints
                 }
 
                 // Get optional productId from query or form
-                var productIdStr = context.Request.Query["productId"].FirstOrDefault() 
+                var productIdStr = context.Request.Query["productId"].FirstOrDefault()
                                   ?? context.Request.Form["productId"].FirstOrDefault();
-                
+
                 int? productId = null;
                 if (!string.IsNullOrWhiteSpace(productIdStr) && int.TryParse(productIdStr, out var pid))
                 {
@@ -5893,7 +5899,7 @@ public static class AllEndpoints
 
                 // TODO: Generate embedding vector when Python service is deployed
                 // For now, skip embedding generation to avoid database mapping errors
-                
+
                 // Update product in database if productId is provided
                 if (productId.HasValue)
                 {
@@ -5920,9 +5926,9 @@ public static class AllEndpoints
 
                         // Save new image path to Artikli table
                         artikal.ImagePath = fileName;
-                        
+
                         await db.SaveChangesAsync(ct);
-                        
+
                         logger.LogInformation("Image {FileName} associated with product ID {ProductId}", fileName, productId.Value);
                     }
                     else
@@ -5932,8 +5938,8 @@ public static class AllEndpoints
                     }
                 }
 
-                return Results.Ok(new 
-                { 
+                return Results.Ok(new
+                {
                     success = true,
                     fileName = fileName,
                     imageUrl = $"/product-images/{fileName}",
@@ -5958,11 +5964,11 @@ public static class AllEndpoints
         .WithTags("Upload");
 
         // ============ GET PRODUCT IMAGE ============
-        
+
         app.MapGet("/product-images/{fileName}", (string fileName) =>
         {
             var imagePath = Path.Combine("wwwroot", "product-images", fileName);
-            
+
             if (!File.Exists(imagePath))
             {
                 return Results.NotFound(new { message = "Image not found" });
@@ -5985,7 +5991,7 @@ public static class AllEndpoints
         .WithTags("Upload");
 
         // ============ DELETE PRODUCT IMAGE ============
-        
+
         app.MapDelete("/api/product-images/{productId:int}", async (
             int productId,
             ITrendplusDbContext db,
@@ -6008,7 +6014,7 @@ public static class AllEndpoints
                 // Delete physical file
                 var uploadsDir = Path.Combine("wwwroot", "product-images");
                 var imagePath = Path.Combine(uploadsDir, artikal.ImagePath);
-                
+
                 if (File.Exists(imagePath))
                 {
                     File.Delete(imagePath);
@@ -6017,19 +6023,19 @@ public static class AllEndpoints
 
                 // Remove from database
                 artikal.ImagePath = null;
-                
+
                 // Also delete from ProductImages table
                 var productImages = await db.ProductImages
                     .Where(pi => pi.ProductId == productId)
                     .ToListAsync(ct);
-                    
+
                 db.ProductImages.RemoveRange(productImages);
                 await db.SaveChangesAsync(ct);
 
-                return Results.Ok(new 
-                { 
+                return Results.Ok(new
+                {
                     success = true,
-                    message = "Image deleted successfully" 
+                    message = "Image deleted successfully"
                 });
             }
             catch (Exception ex)
@@ -6046,7 +6052,7 @@ public static class AllEndpoints
         .WithTags("Upload");
 
         // ============ SIMILARITY SEARCH ============
-        
+
         app.MapPost("/api/search-similar-images", async (
             HttpContext context,
             ITrendplusDbContext db,
@@ -6072,7 +6078,7 @@ public static class AllEndpoints
                 // Save temp file
                 var tempDir = Path.Combine(Path.GetTempPath(), "trendplus-search");
                 Directory.CreateDirectory(tempDir);
-                
+
                 var tempFileName = $"{Guid.NewGuid()}{Path.GetExtension(image.FileName)}";
                 var tempPath = Path.Combine(tempDir, tempFileName);
 
@@ -6089,9 +6095,9 @@ public static class AllEndpoints
 
                     // Find similar products
                     var similarProducts = await embeddingService.FindSimilarProductsAsync(
-                        queryEmbedding, 
-                        threshold, 
-                        limit, 
+                        queryEmbedding,
+                        threshold,
+                        limit,
                         ct);
 
                     logger.LogInformation("Found {Count} similar products", similarProducts.Count);
@@ -6482,11 +6488,11 @@ public static class AllEndpoints
                 baseQuery = normalizedSortBy switch
                 {
                     "prodajnacena" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.ProdajnaCena) : baseQuery.OrderByDescending(a => a.ProdajnaCena),
-                    "nabavnacena"  => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.NabavnaCena)  : baseQuery.OrderByDescending(a => a.NabavnaCena),
-                    "kolicina"     => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Kolicina)     : baseQuery.OrderByDescending(a => a.Kolicina),
-                    "id"           => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Id)           : baseQuery.OrderByDescending(a => a.Id),
-                    "dobavljac"    => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.DobavljacNaziv) : baseQuery.OrderByDescending(a => a.DobavljacNaziv),
-                    _              => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Naziv)        : baseQuery.OrderByDescending(a => a.Naziv)
+                    "nabavnacena" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.NabavnaCena) : baseQuery.OrderByDescending(a => a.NabavnaCena),
+                    "kolicina" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Kolicina) : baseQuery.OrderByDescending(a => a.Kolicina),
+                    "id" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Id) : baseQuery.OrderByDescending(a => a.Id),
+                    "dobavljac" => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.DobavljacNaziv) : baseQuery.OrderByDescending(a => a.DobavljacNaziv),
+                    _ => normalizedSortDir == "asc" ? baseQuery.OrderBy(a => a.Naziv) : baseQuery.OrderByDescending(a => a.Naziv)
                 };
 
                 var items = await baseQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -6751,6 +6757,7 @@ public static class AllEndpoints
         // ============ NIVELACIJE ============
         app.MapPost("/api/nivelacija", async (
             ITrendplusDbContext db,
+            IOperationsAnalyticsIntegrityService integrityService,
             ILogger<Program> logger,
             IConfiguration configuration,
             HttpContext httpContext,
@@ -6758,6 +6765,29 @@ public static class AllEndpoints
             NivelacijaRequest request,
             CancellationToken ct) =>
         {
+            var nivelacijaMutationPending = false;
+            const string mutationSummary = "Cena je promenjena; prethodni Nivelacija probe dokaz je nevažeći do nove bounded nezavisne provere.";
+
+            async Task ClearPendingNivelacijaMutationAsync()
+            {
+                if (!nivelacijaMutationPending)
+                    return;
+
+                nivelacijaMutationPending = false;
+                try
+                {
+                    await integrityService.InvalidateFamilyAsync(
+                        OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                        "nivelacija_write",
+                        mutationSummary,
+                        CancellationToken.None);
+                }
+                catch (Exception invalidationException)
+                {
+                    logger.LogWarning(invalidationException, "Nivelacija write finished without durable integrity marker persistence.");
+                }
+            }
+
             try
             {
                 var accessError = AdminAccessControl.RejectIfUnauthorized(httpContext, configuration);
@@ -6814,6 +6844,13 @@ public static class AllEndpoints
                     overrideApplied,
                     httpContext.User.Identity?.Name);
 
+                nivelacijaMutationPending = true;
+                await integrityService.BeginFamilyMutationAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    "nivelacija_write",
+                    mutationSummary,
+                    ct);
+
                 artikal.ProdajnaCena = request.NovaProdajnaCena;
 
                 db.DnevnikPromena.Add(new DnevnikPromena
@@ -6834,6 +6871,12 @@ public static class AllEndpoints
                 });
 
                 await db.SaveChangesAsync(ct);
+                await integrityService.InvalidateFamilyAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    "nivelacija_write",
+                    mutationSummary,
+                    ct);
+                nivelacijaMutationPending = false;
 
                 await InvalidateNivelacijaAnalyticsCachesAsync(cacheAdmin, ct);
 
@@ -6841,10 +6884,12 @@ public static class AllEndpoints
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
+                await ClearPendingNivelacijaMutationAsync();
                 throw;
             }
             catch (Exception ex)
             {
+                await ClearPendingNivelacijaMutationAsync();
                 var correlationId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
                 logger.LogError(ex, "Nivelacija price update failed. CorrelationId={CorrelationId}", correlationId);
                 return Results.Problem(
@@ -7726,6 +7771,9 @@ public static class AllEndpoints
         OperationsAnalyticsIntegrityRegistry? integrityRegistry = null)
     {
         response.Meta = BuildVendorSalesNivelacijaMeta(response, correlationId, integrityRegistry);
+        var exactNivelacijaDrift = response.Meta.OperationsIntegrityStatus == OperationsAnalyticsIntegrityStates.DriftDetected
+            && response.Meta.OperationsIntegrityContextMatches == true;
+        response.RecommendationAllowed = response.RecommendationAllowed && !exactNivelacijaDrift;
         response.Meta.RecommendationAllowed = response.RecommendationAllowed;
         if (response.Meta.DecisionReadiness is null)
         {
@@ -7802,17 +7850,45 @@ public static class AllEndpoints
                 meta,
                 OperationsAnalyticsIntegrityFamilies.Nivelacija);
         }
-
         var requestedFrom = response.EventDate ?? response.From;
         var requestedTo = response.EventDate ?? response.To;
+        if (!response.ScopeApplied || !requestedFrom.HasValue || !requestedTo.HasValue)
+            return OperationsAnalyticsIntegrityMeta.MarkIndependentlyUnverified(meta, OperationsAnalyticsIntegrityFamilies.Nivelacija);
+
         return OperationsAnalyticsIntegrityMeta.ApplyFamilyEvidence(
             meta,
             integrityRegistry,
             OperationsAnalyticsIntegrityFamilies.Nivelacija,
-            requestedFrom ?? DateTime.UtcNow.Date,
-            (requestedTo ?? requestedFrom ?? DateTime.UtcNow.Date).AddDays(1),
+            AsUtcDate(requestedFrom)!.Value,
+            AsUtcDate(requestedTo)!.Value,
             NormalizeVendorSalesNivelacijaDataScope(response.DataScope),
             response.StoreId);
+    }
+
+    private static async Task EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(
+        VendorSalesNivelacijaResponseDto response,
+        IOperationsAnalyticsIntegrityService integrityService,
+        CancellationToken ct)
+    {
+        // Successful-path metadata is assembled after this probe runs, so Meta is
+        // intentionally not a precondition here. ScopeApplied is the response's
+        // authoritative signal that the requested Nivelacija filters were used.
+        if (!response.ScopeApplied)
+            return;
+
+        var requestedFrom = response.EventDate ?? response.From;
+        var requestedTo = response.EventDate ?? response.To;
+        if (!requestedFrom.HasValue || !requestedTo.HasValue)
+            return;
+
+        await integrityService.RunFamilyBoundedProbeAsync(
+            OperationsAnalyticsIntegrityFamilies.Nivelacija,
+            AsUtcDate(requestedFrom)!.Value,
+            AsUtcDate(requestedTo)!.Value,
+            response.DataScope,
+            response.StoreId,
+            ct,
+            "nivelacija_prepost_request");
     }
 
     private static AnalyticsResponseMetaDto ApplyVendorSalesNivelacijaContext(
@@ -8038,6 +8114,7 @@ public static class AllEndpoints
             OperationsIntegrityContextFingerprint = meta.OperationsIntegrityContextFingerprint,
             OperationsIntegritySourceGeneration = meta.OperationsIntegritySourceGeneration,
             OperationsIntegrityContextMatches = meta.OperationsIntegrityContextMatches,
+            OperationsIntegrityEvidenceDimensions = meta.OperationsIntegrityEvidenceDimensions,
             MetricProvenance = meta.MetricProvenance,
             Context = meta.Context,
             DecisionReadiness = meta.DecisionReadiness,

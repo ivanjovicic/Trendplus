@@ -19,6 +19,7 @@ public static class OperationsAnalyticsIntegrityFamilies
     public const string DataQuality = "data_quality";
     public const string DecisionBoard = "decision_board";
     public const string Nivelacija = "nivelacija";
+    public static readonly TimeSpan NivelacijaEvidenceMaxAge = TimeSpan.FromMinutes(60);
 
     public static IReadOnlyList<OperationsAnalyticsIntegrityFamilyDefinition> Enrolled { get; } =
     [
@@ -27,7 +28,7 @@ public static class OperationsAnalyticsIntegrityFamilies
         new(Inventory, "Analytics Reliability / Inventory identity", 10000, 31, true),
         new(DataQuality, "Analytics Reliability / Data Quality identity", 10000, 31, false),
         new(DecisionBoard, "Analytics Reliability / Decision Board contributors", 10000, 31, true),
-        new(Nivelacija, "Analytics Reliability / Nivelacija Pre/Post and Priorities", 10000, 31, true)
+        new(Nivelacija, "Analytics Reliability / Nivelacija event and cohort integrity", 10000, 180, true)
     ];
 
     public static IReadOnlyList<string> ResolveAffected(string? family)
@@ -47,6 +48,8 @@ public static class OperationsAnalyticsIntegrityFamilies
         var normalized = family.Trim().ToLowerInvariant();
         if (normalized is "all" or "analytics" or "cache_clear" or "access_import")
             return Enrolled.Select(static definition => definition.Family).ToArray();
+        if (normalized.StartsWith("nivelacija_", StringComparison.Ordinal))
+            return [Nivelacija];
 
         var resolved = normalized switch
         {
@@ -55,7 +58,8 @@ public static class OperationsAnalyticsIntegrityFamilies
             "inventory" or "inventory-alerts" or "inventory-snapshot" => Inventory,
             "data-quality" or "dataquality" => DataQuality,
             "decision-board" or "decisionboard" => DecisionBoard,
-            "nivelacija" or "pre-post" or "prepost" or "vendor-sales-nivelacija" or "pre-nivelacija" or "pre-nivelacija-prioriteti" => Nivelacija,
+            "nivelacija" or "pre-post" or "prepost" or "vendor-sales-nivelacija" or "pre-nivelacija"
+                or "pre-nivelacija-prioriteti" or "nivelacija-runtime-integrity" or "nivelacija-repair" or "nivelacija-write" => Nivelacija,
             _ => null
         };
 
@@ -82,18 +86,28 @@ public static class OperationsAnalyticsIntegrityContextPolicy
         DateTime toUtc,
         string dataScope,
         int? storeId)
-        => AnalyticsContextFingerprintPolicy.Create(
+    {
+        // The Priority surface and the scheduled proof both describe a UTC-day
+        // horizon. Binding Nivelacija to the exact request instant would turn a
+        // successful same-day probe into a false mismatch on the next request.
+        var fingerprintFrom = string.Equals(family, OperationsAnalyticsIntegrityFamilies.Nivelacija, StringComparison.Ordinal)
+            ? fromUtc.Date
+            : fromUtc;
+        var fingerprintTo = string.Equals(family, OperationsAnalyticsIntegrityFamilies.Nivelacija, StringComparison.Ordinal)
+            ? toUtc.Date
+            : toUtc;
+        return AnalyticsContextFingerprintPolicy.Create(
             sourceDataset: $"integrity:{family}",
             sourceGeneration: sourceGeneration,
             formulaVersion: "analytics_integrity_probe_v2",
             materializerGeneration: "bounded-independent-probe",
             rowLimitSemantics: $"max_rows:{OperationsAnalyticsIntegrityFamilies.DefinitionFor(family).MaxRows}",
-            requestedPeriodFromUtc: fromUtc,
-            requestedPeriodToUtc: toUtc,
-            effectivePeriodFromUtc: fromUtc,
-            effectivePeriodToUtc: toUtc,
-            observedPeriodFromUtc: fromUtc,
-            observedPeriodToUtc: toUtc,
+            requestedPeriodFromUtc: fingerprintFrom,
+            requestedPeriodToUtc: fingerprintTo,
+            effectivePeriodFromUtc: fingerprintFrom,
+            effectivePeriodToUtc: fingerprintTo,
+            observedPeriodFromUtc: fingerprintFrom,
+            observedPeriodToUtc: fingerprintTo,
             requestedDataScope: dataScope,
             effectiveDataScope: dataScope,
             dataScopeSource: "operations_integrity_probe",
@@ -105,6 +119,7 @@ public static class OperationsAnalyticsIntegrityContextPolicy
             },
             cacheGeneration: null,
             resultState: AnalyticsContextFingerprintPolicy.StateAvailable).Fingerprint!;
+    }
 }
 
 public sealed record OperationsAnalyticsIntegrityFamilyDefinition(
@@ -123,14 +138,16 @@ public sealed record OperationsAnalyticsIntegrityProbeRequest(
     string DataScope,
     string Trigger,
     int MaxRows,
-    CancellationToken CancellationToken);
+    CancellationToken CancellationToken,
+    int? StoreId = null);
 
 public sealed record OperationsAnalyticsIntegrityProbeResult(
     string Status,
     string Summary,
     IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> Deltas,
     bool BlocksDecisionSignals,
-    int? ProbeRowCount = null)
+    int? ProbeRowCount = null,
+    System.Text.Json.JsonElement? EvidenceDimensions = null)
 {
     public static OperationsAnalyticsIntegrityProbeResult Verified(
         string summary,
@@ -143,13 +160,17 @@ public sealed record OperationsAnalyticsIntegrityProbeResult(
             BlocksDecisionSignals: false,
             ProbeRowCount: probeRowCount);
 
-    public static OperationsAnalyticsIntegrityProbeResult Unverified(string summary, int? probeRowCount = null)
+    public static OperationsAnalyticsIntegrityProbeResult Unverified(
+        string summary,
+        int? probeRowCount = null,
+        System.Text.Json.JsonElement? evidenceDimensions = null)
         => new(
             OperationsAnalyticsIntegrityStates.Unverified,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
             BlocksDecisionSignals: false,
-            ProbeRowCount: probeRowCount);
+            ProbeRowCount: probeRowCount,
+            EvidenceDimensions: evidenceDimensions);
 
     public static OperationsAnalyticsIntegrityProbeResult Degraded(string summary, int? probeRowCount = null)
         => new(
@@ -208,6 +229,7 @@ public sealed record OperationsAnalyticsIntegritySnapshot(
     public DateTime? ProbeWindowFromUtc { get; set; }
     public DateTime? ProbeWindowToUtc { get; set; }
     public int? ProbeRowCount { get; set; }
+    public System.Text.Json.JsonElement? EvidenceDimensions { get; set; }
 
     public static OperationsAnalyticsIntegritySnapshot Unverified(string evidenceId, string trigger, string summary)
         => new(

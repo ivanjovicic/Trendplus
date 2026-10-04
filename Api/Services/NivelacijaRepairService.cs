@@ -3,8 +3,10 @@ using System.Text.Json;
 using Api.Config;
 using Api.Models;
 using Api.Services.Access;
+using Application.Analytics;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -40,17 +42,20 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
     private readonly AccessImportOptions _accessOptions;
     private readonly IFileStorage _fileStorage;
     private readonly ILogger<NivelacijaRepairService> _logger;
+    private readonly IOperationsAnalyticsIntegrityService? _integrityService;
 
     public NivelacijaRepairService(
         TrendplusDbContext db,
         IOptions<AccessImportOptions> accessOptions,
         IFileStorage fileStorage,
-        ILogger<NivelacijaRepairService> logger)
+        ILogger<NivelacijaRepairService> logger,
+        IOperationsAnalyticsIntegrityService? integrityService = null)
     {
         _db = db;
         _accessOptions = accessOptions.Value;
         _fileStorage = fileStorage;
         _logger = logger;
+        _integrityService = integrityService;
     }
 
     public async Task<NivelacijaRepairPreflightDto> RunPreflightAsync(string? explicitSourceFilePath = null, CancellationToken ct = default)
@@ -122,66 +127,105 @@ public sealed class NivelacijaRepairService : INivelacijaRepairService
                 $"Repair plan exceeds the configured safety threshold ({plan.EstimatedImpact.ProposedFixesCount}/{plan.EstimatedImpact.MaxRowsThreshold}).");
         }
 
-        await using var connection = await OpenConnectionAsync(ct);
-        await using var transaction = await connection.BeginTransactionAsync(ct);
-        await EnsureAuditSchemaAsync(connection, transaction, ct);
+        var integrityMutationPending = false;
+        const string mutationSummary = "Nivelacija repair je započet; prethodni event/cohort dokaz ostaje nevažeći do nove bounded nezavisne provere.";
 
-        var fixedRows = 0;
-        var skippedRows = 0;
-        var remainingIssues = 0;
-        NivelacijaRepairVerificationDto verificationAfter;
-
-        if (plan.ProposedFixes.Count > 0)
+        try
         {
-            await CreateTempRepairTableAsync(connection, transaction, ct);
-            await BulkLoadRepairFixesAsync(connection, transaction, plan.ProposedFixes, ct);
-            fixedRows = await ExecuteRepairUpdateAsync(connection, transaction, ct);
-            skippedRows = Math.Max(0, plan.ProposedFixes.Count - fixedRows);
-            remainingIssues = await CountRemainingTempMismatchesAsync(connection, transaction, ct);
+            if (plan.ProposedFixes.Count > 0 && _integrityService is not null)
+            {
+                integrityMutationPending = true;
+                await _integrityService.BeginFamilyMutationAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    "nivelacija_repair",
+                    mutationSummary,
+                    ct);
+            }
+
+            await using var connection = await OpenConnectionAsync(ct);
+            await using var transaction = await connection.BeginTransactionAsync(ct);
+            await EnsureAuditSchemaAsync(connection, transaction, ct);
+
+            var fixedRows = 0;
+            var skippedRows = 0;
+            var remainingIssues = 0;
+            NivelacijaRepairVerificationDto verificationAfter;
+
+            if (plan.ProposedFixes.Count > 0)
+            {
+                await CreateTempRepairTableAsync(connection, transaction, ct);
+                await BulkLoadRepairFixesAsync(connection, transaction, plan.ProposedFixes, ct);
+                fixedRows = await ExecuteRepairUpdateAsync(connection, transaction, ct);
+                skippedRows = Math.Max(0, plan.ProposedFixes.Count - fixedRows);
+                remainingIssues = await CountRemainingTempMismatchesAsync(connection, transaction, ct);
+            }
+            else
+            {
+                skippedRows = plan.DetectedIssues.Count;
+            }
+
+            verificationAfter = await CollectVerificationAsync(connection, transaction, analysis.AccessLineage, ct);
+            var summaryJson = BuildAuditSummaryJson(
+                dryRun: false,
+                plan,
+                fixedRows,
+                skippedRows,
+                remainingIssues,
+                verificationAfter);
+
+            var auditId = await InsertAuditRecordAsync(
+                connection,
+                transaction,
+                requestedBy,
+                dryRun: false,
+                detectedIssues: plan.DetectedIssues.Count,
+                fixedRows,
+                summaryJson,
+                ct);
+
+            await transaction.CommitAsync(ct);
+
+            if (plan.ProposedFixes.Count > 0 && _integrityService is not null)
+            {
+                await _integrityService.InvalidateFamilyAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    "nivelacija_repair",
+                    "Nivelacija repair je promenio izvorne event podatke; nova bounded nezavisna provera još nije završena.",
+                    ct);
+                integrityMutationPending = false;
+            }
+
+            _logger.LogInformation(
+                "Nivelacija repair completed. AuditId: {AuditId}. FixedRows: {FixedRows}. SkippedRows: {SkippedRows}. RemainingIssues: {RemainingIssues}.",
+                auditId,
+                fixedRows,
+                skippedRows,
+                remainingIssues);
+
+            return new NivelacijaRepairExecutionResultDto
+            {
+                SourceFilePath = plan.SourceFilePath,
+                AuditId = auditId,
+                FixedRows = fixedRows,
+                SkippedRows = skippedRows,
+                RemainingIssuesAfterRepair = remainingIssues,
+                EstimatedImpact = plan.EstimatedImpact,
+                Verification = verificationAfter,
+            };
         }
-        else
+        catch
         {
-            skippedRows = plan.DetectedIssues.Count;
+            if (integrityMutationPending && _integrityService is not null)
+            {
+                await _integrityService.InvalidateFamilyAsync(
+                    OperationsAnalyticsIntegrityFamilies.Nivelacija,
+                    "nivelacija_repair",
+                    "Nivelacija repair nije završio; prethodni dokaz ostaje nevažeći do nove bounded nezavisne provere.",
+                    CancellationToken.None);
+            }
+
+            throw;
         }
-
-        verificationAfter = await CollectVerificationAsync(connection, transaction, analysis.AccessLineage, ct);
-        var summaryJson = BuildAuditSummaryJson(
-            dryRun: false,
-            plan,
-            fixedRows,
-            skippedRows,
-            remainingIssues,
-            verificationAfter);
-
-        var auditId = await InsertAuditRecordAsync(
-            connection,
-            transaction,
-            requestedBy,
-            dryRun: false,
-            detectedIssues: plan.DetectedIssues.Count,
-            fixedRows,
-            summaryJson,
-            ct);
-
-        await transaction.CommitAsync(ct);
-
-        _logger.LogInformation(
-            "Nivelacija repair completed. AuditId: {AuditId}. FixedRows: {FixedRows}. SkippedRows: {SkippedRows}. RemainingIssues: {RemainingIssues}.",
-            auditId,
-            fixedRows,
-            skippedRows,
-            remainingIssues);
-
-        return new NivelacijaRepairExecutionResultDto
-        {
-            SourceFilePath = plan.SourceFilePath,
-            AuditId = auditId,
-            FixedRows = fixedRows,
-            SkippedRows = skippedRows,
-            RemainingIssuesAfterRepair = remainingIssues,
-            EstimatedImpact = plan.EstimatedImpact,
-            Verification = verificationAfter,
-        };
     }
 
     private async Task<AnalysisResult> AnalyzeAsync(string? explicitSourceFilePath, int maxRowsToModify, CancellationToken ct)
