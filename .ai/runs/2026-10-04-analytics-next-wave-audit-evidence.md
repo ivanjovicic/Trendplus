@@ -17,7 +17,7 @@ Evidence state: synchronized
 - New finding: the Analytics Actions ledger holds only 4 smoke fixtures and 0 real actions. Post-review correction: that blocks Actions-based adoption/outcome learning, but it does not block RQ557 (Nivelacija price-event outcome ledger) or RQ585 (current-signal weekly digest), which use different sources and dependencies.
 - Built the original coverage map (32 findings) before registering RQ587 (P1 READY) and RQ588 (P3 READY). Post-review found one additional measured execution-owner gap rather than a new analytics-semantic gap: PERF19 (P1 WAITING after RQ573) for Decision Board composition profiling if the endpoint remains above its existing budget.
 - Repaired RQ479: added the missing `Ready after` and paths, narrowed it to a repository-local read guard, and promoted it WAITING -> READY (P1 -> P2). Repaired RQ586: P1 -> P3.
-- Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Added a supersession note to the PROD-AN planning backlog. Updated the RQ queue header and the `MASTER_ROADMAP.md` RQ row and note.
+- Original addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Post-review further tightened RQ545/RQ557/RQ558/RQ573/RQ578/RQ587/RQ588/STAB16, corrected RQ585's dependency narrative and registered PERF19. Added a supersession note to the PROD-AN planning backlog.
 - Wrote `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (Serbian, 27 sections).
 
 ## Live probes (read-only GET, no auth, 2026-10-04 22:50–22:56 CEST)
@@ -63,7 +63,7 @@ Raw responses are box-local in `/workspace/nwlive/` (not committed).
 
 ## Validation not run
 
-- .NET and frontend tests: not needed. This is a docs/queue-only change; runtime code was not changed, by instruction.
+- .NET and frontend tests were not run in the original audit because it was docs/queue-only. The post-review also changes only docs/queue/governance; no new runtime test result is claimed.
 - Browser rendering: not repeated. UX evidence is reused from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`.
 - Database, provider logs, Render dashboard, admin key: no access.
 
@@ -73,20 +73,35 @@ Raw responses are box-local in `/workspace/nwlive/` (not committed).
 
 ## What was missed
 
-- Effective Render configuration (AutoMigrate/FailFast/worker) remains UNPROVEN-RUNTIME. The inference is logical from code plus live readiness, not a direct reading.
+- Effective Render configuration and exact startup/schema-drift cause remain UNPROVEN-RUNTIME. The retained ready+missing-object evidence is a constraint, not a unique diagnosis. Separate worker existence is also UNPROVEN; process-local web status only proves there is no matching durable success evidence visible to the API.
 - Negative-ID repair was not re-probed live (owned by RQ566).
 
 ## Risks
 
-- Enabling FailFast on Render can keep the API not ready until the schema is repaired; intended, but visible to users.
+- If the owner later changes the effective runtime policy to strict FailFast, the next restart can legitimately remain not-ready until the schema is repaired. Capture current effective config/logs before changing it.
 - RQ587 touches readiness handlers in `Api/Program.cs`, a hotspot file.
 - Codex works concurrently; the queue was re-fetched before the commit.
 
 ## Post-close routing recovery
 
-- not applicable (direct-user-request audit/registration). Routing recomputed: RQ primary READY stays RQ569; additional RQ READY: RQ553, RQ574, RQ578, RQ580, RQ581, RQ586 (P3), RQ587, RQ588 (P3), RQ479 (P2). P-UI unchanged. Collision check: RQ587 owns the `/ready` and `/api/runtime/version` handlers and the startup services; RQ588 owns four orphan migration files plus one test; RQ479 owns the Actions read filters. All three are disjoint from each other and from RQ569/RQ574/RQ578/RQ580/RQ581/RQ553/RQ586.
+- Current RQ primary remains RQ569; additional READY lanes remain RQ553, RQ574, RQ578, RQ580, RQ581, RQ586 (P3), RQ587, RQ588 (P3), RQ479 (P2), subject to fresh claim-time collision checks. Canonical P-UI READY is P-UI-39 primary + P-UI-40/P-UI-41/P-UI-47/P-UI-49; P-UI-45 is WAITING. PERF19 is WAITING after RQ573. RQ557 waits for RQ553 shared Pre/Post ownership rather than real Actions data; RQ585 keeps only its certified-signal/freshness prerequisites.
 
 ## Next
 
-- Owner (wave A): run the Access import; check the Render env (`Database__AutoMigrate`, `DatabaseInitialization__FailFast`, `StartupTasks__RunDatabaseInitialization`) and whether a worker service exists; read the startup log after the restart.
+- Owner/provider wave A: run the approved Access import; capture before changing the effective Render env (`Database__AutoMigrate`, `DatabaseInitialization__FailFast`, `StartupTasks__RunDatabaseInitialization`), worker-service state and startup log/admin diagnostic. Change strictness only after the current state is evidenced.
 - Overall: claim RQ569. Highest code value per cost: RQ587. Quick hygiene: RQ479.
+
+
+## Post-review corrections
+
+A fresh code/queue review after the original `8ae06a50` delivery made the following corrections without changing runtime code:
+
+1. `/ready=true` plus missing analytics objects does not uniquely prove AutoMigrate/FailFast is disabled; RQ587/RQ545/STAB16 now distinguish startup skip, non-strict completion, alternate effective config/connection and post-readiness drift.
+2. `refresh-status` first consumes durable `AnalyticsRefreshRuns`; `workersEnabled=false` on the web process does not prove a separate worker service is absent.
+3. Data Quality health currently does not declare `fromDate/toDate`; RQ578 now owns a real explicit historical-period contract instead of merely a label correction.
+4. Decision Board's 17.3 s observation has no contributor timing. RQ573 measures PDC+Board before/after; PERF19 profiles/optimizes only if the Board still breaches the existing p95 budget.
+5. RQ479 uses one shared positive-only fixture predicate across list/count/outcome/Board and does not add an anonymous fixture bypass.
+6. RQ557 is a Nivelacija price-event descriptive ledger, not an Analytics Actions learning prompt; it is narrowed to observed outcomes with fail-closed stock/cost evidence.
+7. RQ585 does not depend on real Actions outcomes; RQ558/causal runtime work remains later behind measured sample/coverage gates.
+8. RQ588 uses EF discovery semantics plus an explicit reviewed legacy allowlist rather than blindly requiring raw attributes/deleting files.
+9. Supplier/Shoe Type historical attribution is already materially protected by RQ411 sale-time snapshots/provenance; remaining poorly populated master dimensions do not justify a new SCD runtime project now.
