@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ542` (IN_PROGRESS; RQ543/RQ541/RQ549 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ547/RQ548/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16.
+Current READY routing: primary `RQ544` (READY; RQ542/RQ543/RQ541/RQ549/RQ547 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ548/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
 Owner claim 2026-10-04: refreshed `origin/main` to `8ba3a9da223bf90a9240ba7590c16253524fe43e`; RQ528/RQ549 are DONE. No RQ550 lock, matching branch or open PR exists. Claimed primary RQ550; RQ541 remains WAITING for this oracle. Local lock: `.ai/task-locks/RQ550-codex.lock.md`.
 Owner completion/promotion 2026-10-04: RQ550/NV-P4 is DONE on implementation SHA `fa12375d934d254deeedae14398645697f6d85ea`, freshly verified in `origin/main`. Current behavior is pinned by passing unequal-window baselines (+400%/0%/−80%), pre-period no-baseline and store/chain event-scope tests. PostgreSQL parity proves supplier, shoe-type, color and Pre/Post agree for one flat-rate article/event; scorecard `meta.basis` is covered through the report response-builder contract because its route returned generic HTTP 500 against the isolated fixture. Promoted RQ541 (P1; depends on RQ550 and DONE RQ528) to primary READY, and independent RQ543 (Q83 dependency DONE) to additional READY. No RQ541/RQ543 lock, branch or open PR exists. Current-main Actions runs 37185137589 (Analytics Quality Gates), 37185137593 (Analytics Tests & Data Integrity) and 37185137623 (Planning Governance) are `in_progress` on this SHA. Run log: `.ai/runs/2026-10-04-RQ550-evidence.md`; evidence state synchronized.
@@ -31,9 +31,9 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F3 | RQ539 | DONE |
 | NV-F4 | RQ540 | DONE |
 | NV-F5 | RQ541 | DONE |
-| NV-F6 | RQ542 | IN_PROGRESS |
+| NV-F6 | RQ542 | DONE |
 | NV-F7 | RQ543 | DONE |
-| NV-F8 | RQ544 | WAITING |
+| NV-F8 | RQ544 | READY |
 | NV-F9 | RQ545 | PARTIAL |
 | NV-F10 | RQ546 | DONE |
 | NV-P1 | RQ547 | DONE |
@@ -434,6 +434,24 @@ No row has `control_article_id = article_id`, DiD is event-specific, and a singl
 
 RQ549/NV-P3 proof-first oracle and RQ543/NV-F7 event direction/maturity/overlap fields are DONE; those dependencies are satisfied. RQ532 consumes the corrected DiD.
 
+### Completion note
+
+- Date: 2026-10-04
+- Status: DONE
+- Completion: Event-relative DiD/control and rolling/momentum signals now key by `price_event_id`; elasticity is a capped, mature, low-signal-filtered markdown point estimate with a shared post-revenue weighted mean. OOS/LostSales stay nullable with a precise unavailable reason until dated observed stock history is certified. Filtered scopes report `scope_not_applied` rather than using unscoped data.
+- Changed files: `Api.Tests/AssortmentNivelacijaOracle.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/VendorSalesNivelacijaTypeInsightPolicyTests.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api/Services/VendorSalesNivelacijaTypeInsightPolicy.cs`, `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/utils/nivelacijaErrorPresentation.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`.
+- Checks run: focused backend tests 26/26; Pre/Post page tests 47/47; analytics guardrails/typecheck; frontend build; instruction, queue and planning validator self-tests plus full checks; `git diff --check`.
+- Checks not run: full backend and frontend suites (focused proof covers changed contracts); live database migration application (not authorized/required).
+- Run log: `.ai/runs/2026-10-04-RQ542-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a3b50a792aec5ff7762ca24aeaf4a0b42dee2003`
+- Main verification: fresh fetch; `origin/main` resolves to `a3b50a792aec5ff7762ca24aeaf4a0b42dee2003` and contains the implementation SHA.
+- Missed: No certified dated observed-stock source was available for event-window OOS/LostSales; these remain unavailable by design.
+- Follow-up: RQ544/NV-F8 promoted to primary READY after its RQ547/NV-P1 inventory dependency was verified DONE.
+- Residual risk: `dotnet ef migrations list` could not determine applied status because the configured Neon credentials failed authentication (`28P01`); no database migration was applied. No Actions run was discoverable for the delivered SHA.
+- Prompt defect / scope repair: The user-mentioned “AppSec Gate” file was not present; the canonical `ANALYTICS_AGENT_SAFETY_GATE.md` and `VALIDATION_SELECTOR.md` were applied. A same-page raw technical error message bypassing the analytics allowlist was fixed and regression-tested.
+
 ---
 
 ---
@@ -538,7 +556,7 @@ Q83 DONE (keep its nullability contract). NV-F6 consumes `price_direction`.
 
 ## RQ544 - NV-F8 - Harden the 014 event normalization and integer casts
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: sql/tests/data-safety
 Feature family: nivelacija-event-normalization
@@ -582,6 +600,12 @@ No broad pattern rewrites remain, and the view survives long numeric receipt num
 #### Dependencies
 
 NV-P1 (value inventory) as evidence input.
+
+### Promotion note
+
+- Date: 2026-10-04
+- Status: READY
+- Promotion: RQ547/NV-P1 is DONE. Collision review found no RQ544 task lock, matching local/remote branch or open PR; the RQ544 owned SQL/test paths are clear after RQ542 completion.
 
 ---
 
