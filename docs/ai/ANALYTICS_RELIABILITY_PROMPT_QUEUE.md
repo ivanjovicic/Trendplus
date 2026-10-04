@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none as primary in this parent file; live routing is primary `RQ569` (Operations source horizon/freshness), with additional independently claimable lanes `RQ553`, `RQ574`, `RQ578`, `RQ580`, `RQ581` and `RQ586` (Daily Sales timezone config, registered by the 2026-10-04 UX/UI audit). `RQ570`/`RQ576`/`RQ583` remain behind `RQ569`; `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Current READY prompt: none as primary in this parent file; live routing is primary `RQ569` (Operations source horizon/freshness), with additional independently claimable lanes `RQ553`, `RQ574`, `RQ578`, `RQ580`, `RQ581`, `RQ586` (Daily Sales timezone config; P3 after the 2026-10-04 next-wave falsification), `RQ587` (startup database-initialization truth in readiness), `RQ588` (EF migration discovery guard) and `RQ479` (smoke-fixture read guard; promoted 2026-10-04). `RQ570`/`RQ576`/`RQ583` remain behind `RQ569`; `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: only two repository-local gaps remained, so it registered READY `RQ587` (P1, `/ready` must report startup database-initialization state; live readiness proves startup SQL is not running fail-fast) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migrations). Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-52 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
 Owner post-close routing recovery 2026-10-04 after RQ564 hardening: full active RQ queue/addenda review confirms RQ569 is primary READY; RQ552 waits until RQ569 is DONE, and RQ453 waits until RQ552 is DONE. RQ553 remains an additional parallel-safe READY lane. Recovery base and collision checks are recorded in `.ai/runs/2026-10-04-RQ564-evidence.md`.
@@ -26823,8 +26824,11 @@ An action is counted as measured only when the backend has a valid measurement o
 
 ## RQ479 - Quarantine smoke action fixtures from the operational queue
 
-Status: WAITING
-Priority: P1
+Status: READY
+Ready after: none for the repository-local read guard (repaired 2026-10-04 by the next-wave audit: the section had no `Ready after`; the original "live/seed-owner gated" note applies only to the optional production cleanup, which stays owner-gated and out of scope)
+Owned paths: `Api/Endpoints/AnalyticsActionsEndpoints.cs` (list/counts/outcome-summary read filters only), the action query/service it calls, focused tests
+Avoid paths: action write/lifecycle endpoints, Decision Board composition (`DecisionBoardEndpoints.cs`, read the filtered counts only), frontend Actions page (P-UI-49 owns shared states), any production data mutation
+Priority: P2
 Type: data-hygiene/release-contract/tests
 Feature family: analytics-actions-live-fixture-hygiene
 Parallel-safe: yes (readiness/seed/release gate; no Actions rendering edits)
@@ -26883,6 +26887,18 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 - `GET /api/analytics/actions` still returns smoke fixtures in the operational list (e.g. id 3 `Smoke Inventory Final`, `sourceKey inventory:smoke:final:20260522151551`, description `smoke`); `GET /api/analytics/actions/counts` → `new=3`, `done=1`, `p1Open=1`.
 - The Decision Board counts them (`Otvorene akcije 3`, `Ishodi na čekanju 1`) and shows source `Analytics actions` as `good` with `generatedAtUtc 2026-05-22T13:16:17Z`.
 - No scope change; this is fresh proof that the quarantine is still needed. Source: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`.
+
+### Addendum 2026-10-04 (next-wave audit; prompt repair and promotion)
+
+- Live 22:50 CEST: `GET /api/analytics/actions` returns `totalCount=4`, all four are smoke fixtures (`inventory:smoke:final:20260522151551` P1 `new`, `product:smoke:final:20260522151533` `done`, `product:smoke:jsonok` `new`, `dashboard:smoke:final:20260522151558` `new`) with `dataQualityStatus=good`. The production action ledger contains zero real actions.
+- Repair: the section lacked `Ready after`; Do step 1 (read-only DB/provider origin proof) and the cleanup are not needed to stop fixtures from being presented as work. Narrowed scope for this READY claim:
+  1. Classify fixture rows at read time by an explicit, tested rule (`sourceKey` segment `:smoke:` and/or an existing fixture/test marker); never by heuristics on missing optional evidence.
+  2. Exclude classified rows from the operational list, counts and outcome summary by default; report `excludedFixtureCount` in meta so nothing disappears silently; an explicit `includeFixtures=true` (admin/diagnostic) shows them.
+  3. Do not delete, update or backfill production rows; record the owner cleanup option in the run log.
+- Promotion rule satisfied: no lock, branch or open PR owns the family; no READY prompt owns `AnalyticsActionsEndpoints.cs`; RQ569 does not touch Actions.
+- Completion evidence: focused tests (fixture excluded, real action with incomplete optional evidence kept, counts consistent with list, meta count), guardrails, validators; after deploy a live GET shows `totalCount=0` with `excludedFixtureCount=4`.
+- Residual risk: future fixtures with a different naming scheme; the seed side (Do step 2 tenant/environment separation) remains a follow-up if fixtures are still created by any non-test path.
+- Priority P1 -> P2: user-visible and cheap, but it does not change any sales or recommendation number. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F10.
 
 ## RQ480 - Surface Decision Pulse partial-source failures and provide retry
 
@@ -28630,6 +28646,11 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 
 - UX carry-over (audit UX-008, wireframe §11.3): expose backend totals so the page can say "Prikazano N od M"; P-UI-50 (WAITING on this prompt and RQ574) renders it and the blocked-KPI "—" state. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 
+### Addendum 2026-10-04 (next-wave audit; acceptance extension, no status change)
+
+- Live 22:50 CEST: `GET /api/analytics/decision-board` for `2026-07-07..2026-08-06` took 17.3 s (`BOARD_PARTIAL`). `DecisionBoardEndpoints.cs:60-148` builds the full Product Decision Center (`CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync`), then inventory insights, inventory workflow and the supplier summary sequentially, so the Board inherits the PDC cost.
+- Acceptance extension: when this prompt bounds the PDC payload/ordering, record Board latency before/after for the same fixed period. If the Board stays above the client budget, register a separate Board-composition prompt then (do not parallelize Board sources inside this prompt). The planning-only `PROD-AN-02` is superseded by this addendum.
+
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
 Status: READY
@@ -28914,6 +28935,10 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 
 - Presentation carry-over (audit UX-025/DS-5, wireframe §11.6): never show a health score without freshness next to it; `unknown` freshness renders neutral/warning, never green. Live 390×844 on 2026-10-04 shows "Nema otvorenih data quality problema za izabrani filter" directly above counters for 1,078 rows without cost, 12,422 articles without category and 12,290 insufficient signals; the "no open problems" copy must follow the backend issue list, not contradict visible counters. The data source label "Data quality checks" (`DataQualityPage.tsx:728`, `utils/analyticsMetricDefinitions.ts:280,300`) should become Serbian ("Provere kvaliteta podataka"). Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 - Live 2026-10-04 (desktop): English labels `PROMETNI HEALTH SIGNAL`, `HEALTH STATUS`, `Warning threshold`, `Risk threshold`, `Low priority issues`, `unknown` and `Lookback`; health 100 "SPREMNO UZ UPOZORENJA" next to readiness 67/100. Visually separate "no open problems in the table" from structural counters.
+
+### Addendum 2026-10-04 (next-wave audit; live re-confirmation, no scope change)
+
+- Live 22:50 CEST with explicit `fromDate=2026-07-07&toDate=2026-08-06`: `score=100`, `scoreStatus=excellent`, `windowFrom=2026-07-07T00:00:00Z`, `windowTo=2026-10-04T23:59:59.9999999Z`, `lookbackDays=90`. The requested end date is ignored, which also makes the window include 60 days without data. Include the requested-period binding in this prompt's tests.
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
@@ -29269,7 +29294,7 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 
 Status: READY
 Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` UX-035; hotfix finding from 2026-10-01)
-Priority: P1
+Priority: P3
 Type: backend/config/tests
 Feature family: daily-sales-timezone-config
 Parallel-safe: yes (only `Api/appsettings*.json` and one config-binding test; no READY prompt owns these files)
@@ -29319,3 +29344,159 @@ In both `Api/appsettings.json` and `Api/appsettings.Production.json`, the `"Dail
 ### Dependencies
 
 - None. RQ566 later verifies the deployed value and one DST/wall-clock smoke case.
+
+### Addendum 2026-10-04 (next-wave audit; priority repair P1 -> P3, scope unchanged)
+
+- Live 22:55 CEST `GET /api/analytics/daily-sales?fromDate=2026-07-07&toDate=2026-08-05`: `metadata.shiftTimeZone="UTC"` (the misbinding is confirmed live), but `shiftTimestampBasis="legacy_access_wall_clock"` for all 307 known rows, `shiftTimestampBasisUnknownRows=0`, `shiftAssignmentStatus="no_time_fallback"`.
+- `Api/Services/DailySalesStatsService.cs:878-893` intentionally returns the raw wall-clock value for the legacy Access basis and applies `_shiftTimeZone` only to `utc_instant` rows. Fixing the binding therefore changes no current number or shift assignment; it corrects the metadata label and future `utc_instant` sources (e.g. the SQL Server connector).
+- Keep READY (cheap, correct), but it is not a P1 correctness win. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F8.
+
+---
+
+## RQ587 - Report startup database-initialization state truthfully in readiness
+
+Status: READY
+Ready after: none (registered 2026-10-04 by `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2)
+Priority: P1
+Type: backend/runtime-contract/observability/tests
+Feature family: startup-database-initialization-truth
+Parallel-safe: yes (only the `/ready` and `/api/runtime/version` handlers in `Api/Program.cs`, the startup readiness services and the `InitializeDatabasesAsync` result; no READY prompt owns these paths. RQ569 owns analytics meta/freshness, not process readiness)
+Owner: Analytics Reliability / Platform
+Owned paths: `Api/Services/Startup/StartupReadinessState.cs`, `Api/Services/Startup/DeferredStartupTasksHostedService.cs`, `Api/Program.cs` (`/ready` and `/api/runtime/version` handlers only), `Infrastructure/Seed/DatabaseInitializer.cs` (`InitializeDatabasesAsync` outcome/result type only), focused tests in `Api.Tests`
+Avoid paths: startup SQL scripts and view/MV definitions (`Database/**`, owned by RQ545/RQ519 lifecycle), 013/014/016/029 execution order, worker registration and provider configuration (STAB16), analytics response meta (RQ569), frontend header status (P-UI-40/P-UI-48)
+Commit suggestion: `fix(startup): report database initialization state in readiness`
+
+### Problem
+
+Production readiness cannot tell whether the startup database initialization actually ran and succeeded. Today the live API reports `ready=true` while startup-owned analytics objects are missing, and nobody can tell from the outside whether initialization was skipped (`Database:AutoMigrate` not effective), failed and was swallowed (`DatabaseInitialization:FailFast` not effective), or succeeded against a different database. Every production schema repair (42P16, RQ519, RQ475, RQ545) is therefore verified blind and depends on provider logs that agents cannot read.
+
+### Evidence
+
+- Live 2026-10-04 22:51 CEST: `/ready` returned `ready=true`, `reason=ready`, `startedAtUtc=2026-10-04T19:38:36Z`, `readyAtUtc=19:39:00Z`; `/api/runtime/version` commit `02f99158`, `processType=web`.
+- At the same time, `GET /api/analytics/vendor-sales-nivelacija` returned `vendor_sales_nivelacija_contract_missing` (column `change_percent_revenue_semantic` missing in `public.vw_vendor_sales_nivelacija`), and `reports/supplier-decision` returned `MISSING_OBJECT` for the 90-day dataset.
+- `Program.cs:99-100,827-832` requires DB initialization for readiness only when `Database:AutoMigrate=true`; `StartupReadinessState.cs:25-38` refuses `ready` until it completes; `DatabaseInitializer.cs:800-821` and `:746-756` throw when those exact objects are still missing after repair; `DatabaseInitializer.cs:106-121` swallows the failure when `FailFast=false` and still lets `DeferredStartupTasksHostedService.cs:208-211` mark initialization completed.
+- Hence the live state is only possible when AutoMigrate or FailFast is not effective (or a different database is initialized), contradicting `render.yaml:35-40`. The deployed SHA contains the 42P16 fix (`26e09e46` is an ancestor of `02f99158`).
+
+### Scope
+
+- Track an initialization outcome: `not_required`, `pending`, `succeeded`, `completed_with_errors`, `failed`, plus `attempts`, `lastAttemptAtUtc`, `completedAtUtc`.
+- Expose it in `/ready` and `/api/runtime/version` as non-secret enums and booleans: `databaseInitialization.state`, `required`, `failFast` (effective), `autoMigrate` (effective).
+- Keep script/relation names and exception text out of anonymous JSON (STAB rule: details only in logs or an Admin-only surface). If an Admin-only diagnostic already exists, add the failing step name there.
+- `completed_with_errors` must not report `reason=ready` as if clean: keep `ready=true` for availability, but use `reason=ready_degraded_schema` (or equivalent) so a monitor can alert.
+
+### Read first
+
+- `Api/Program.cs` (process type, AutoMigrate, readiness registration, `/ready`, `/api/runtime/version`)
+- `Api/Services/Startup/*`
+- `Infrastructure/Seed/DatabaseInitializer.cs:29-135`
+- `.ai/runs/2026-09-26-migration-startup-gate-evidence.md`, `.ai/runs/2026-10-02-analytics-013-42p16-evidence.md`
+- RQ545 (diagnosis owner), STAB16 (provider owner), `docs/ai/ANALYTICS_AGENT_SAFETY_GATE.md`
+
+### Do
+
+1. Make `InitializeDatabasesAsync` return an outcome (or record it in `StartupReadinessState`) instead of only logging "completed with errors".
+2. Record `not_required` when AutoMigrate is off for a web process, so "skipped" is distinguishable from "succeeded".
+3. Extend `/ready` and `/api/runtime/version` with the non-secret fields above; keep existing fields and status codes backward compatible.
+4. Add the degraded readiness reason for `completed_with_errors`.
+5. Document the fields in the deploy runbook section the team already uses for readiness.
+
+### Tests
+
+- Unit: each outcome maps to the expected readiness/reason; FailFast true/false; AutoMigrate off -> `not_required`.
+- Integration (existing startup test host): a forced vendor-view verification failure with `FailFast=false` yields `completed_with_errors` and `reason=ready_degraded_schema`; with `FailFast=true` readiness stays false.
+- Anonymous `/ready` JSON contains no connection string, host, script path or exception text.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- From the public `/ready` alone, an operator can tell whether startup DB initialization was not required, succeeded, completed with errors or failed, and whether FailFast/AutoMigrate are effective.
+- No secret or schema detail is exposed anonymously.
+- Existing readiness consumers (frontend header, Render health check) keep working.
+
+### Promotion rule
+
+- READY on registration. Must not run concurrently with another active owner of `Api/Program.cs` readiness handlers; RQ569/RQ578/RQ574/RQ580/RQ581/RQ586/RQ588/RQ479 do not touch these handlers.
+
+### Completion evidence
+
+- Run log with tests, changed files, and, after deploy, one live `/ready` sample showing the new state. The live sample is expected to show `not_required` or `completed_with_errors` until the owner fixes the Render configuration (STAB16 addendum).
+
+### Residual risk
+
+- This makes the problem visible; it does not fix it. The fix is owner configuration (STAB16) plus RQ545's final verification.
+- Exposing `failFast`/`autoMigrate` booleans is low risk but is still a configuration disclosure; keep it to booleans.
+
+### Dependencies
+
+- None. Unblocks evidence for RQ545, RQ454, RQ565 and STAB16.
+
+---
+
+## RQ588 - Guard EF migration discovery and retire four attribute-less migrations
+
+Status: READY
+Ready after: none (registered 2026-10-04 by `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F2)
+Priority: P3
+Type: backend/migrations/tests
+Feature family: ef-migration-discovery-guard
+Parallel-safe: yes (the four orphan migration files plus one new test; no READY prompt owns `Infrastructure/Migrations`)
+Owner: Platform / Data
+Owned paths: `Infrastructure/Migrations/20260327120000_CreateTransfersTables.cs`, `Infrastructure/Migrations/20260327153000_AddTransferLifecycleFields.cs`, `Infrastructure/Migrations/20260404183000_AddArtikliIdTipObuceIndex.cs`, `Infrastructure/Migrations/20260407153000_AddDailySalesStatsIndexes.cs`, one new test in `Api.Tests`, `Api/docs/daily-sales-stats-runbook.md` (index list only)
+Avoid paths: `TrendplusDbContextModelSnapshot.cs`, every attributed migration, `DatabaseInitializer.cs` bootstrap self-heal and the marked-applied list (`:1410-1434`), startup SQL scripts
+Commit suggestion: `chore(db): guard EF migration discovery and retire orphan migrations`
+
+### Problem
+
+Four `Migration` subclasses in the main context have neither `[Migration]` nor `[DbContext]` attributes nor Designer files, so EF Core never discovers or applies them. Nothing fails, which is the danger: a future migration created without its Designer file would also be silently skipped in production.
+
+### Evidence
+
+- `20260327120000_CreateTransfersTables` and `20260327153000_AddTransferLifecycleFields`: the schema is provisioned instead by the idempotent bootstrap (`DatabaseInitializer.cs:2112-2166`); `20260327120000_CreateTransfersTables` is inserted into `__EFMigrationsHistory` by hand (`:1432`).
+- `20260404183000_AddArtikliIdTipObuceIndex` (`IX_Artikli_IDTipObuce`) and `20260407153000_AddDailySalesStatsIndexes` (`IX_prodaja_zaglavlje_id_objekat_datum_prodaje`, covering `IX_prodaja_stavke_id_prodaja_id_artikal_cover_qty_price`) are created nowhere else. Equivalent leading-column indexes already exist in `20260327201000_AddAnalyticsPerformanceIndexes` and `025_AddTrendplusPerformanceIndexes.sql`; at 67,517 sale lines this has no measurable performance impact.
+- The Daily Sales runbook still lists the two never-applied index names.
+
+### Scope
+
+- Add a reflection test: every non-abstract `Microsoft.EntityFrameworkCore.Migrations.Migration` subclass in the Infrastructure assembly has `[Migration(id)]` and `[DbContext(typeof(...))]`, and ids are unique and ordered.
+- Retire the four orphans by deleting them (preferred) or by excluding them explicitly with a documented allow-list in the test. Do **not** add attributes to them: that would make EF try to apply them on production (duplicate tables, redundant indexes).
+- Correct the runbook index list.
+
+### Read first
+
+- `Infrastructure/Migrations/*` (the four files plus `20260327201000_AddAnalyticsPerformanceIndexes.cs`)
+- `Infrastructure/Seed/DatabaseInitializer.cs:1400-1440,2112-2170`
+- `Database/Migrations/025_AddTrendplusPerformanceIndexes.sql`
+- `docs/ai/BACKEND_STANDARDS.md` (migration rules)
+
+### Do
+
+1. Write the guard test first; confirm it fails on the four files.
+2. Delete the four files (or allow-list them with the reason "superseded by bootstrap/indexes; never applied").
+3. Update the runbook index names.
+4. Run the migration ownership tests that already exist.
+
+### Tests
+
+- New guard test; existing `DatabaseMigrationOwnershipTests` and startup lifecycle smoke tests; `dotnet build`.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- A migration without discovery attributes fails CI.
+- No production schema change is triggered (no attributes added, snapshot unchanged).
+
+### Promotion rule
+
+- READY on registration; P3, so claim only when no higher-priority READY lane is unclaimed by the same agent.
+
+### Completion evidence
+
+- Run log with the failing-first and passing test output, deleted file list and snapshot diff (expected: none).
+
+### Residual risk
+
+- If some environment did apply these by hand, deleting the files changes nothing there; that is acceptable because nothing reads the migration ids except the history table.
+
+### Dependencies
+
+- None.

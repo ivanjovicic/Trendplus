@@ -1709,3 +1709,9 @@ The canonical production API now reports a runtime SHA contained in current `mai
 - Production provider deploy/read authority for the canonical Render service.
 - A local, read-only `TRENDPLUS_AUDIT_DATABASE_URL` supplied outside repository files.
 - No production mutation authority is needed or requested.
+
+### Addendum 2026-10-04 (next-wave audit; first owner step, no status change)
+
+- Before any database access, the owner can check three settings in the Render dashboard in about three minutes: (1) effective `Database__AutoMigrate`, `DatabaseInitialization__FailFast` and `StartupTasks__RunDatabaseInitialization` on `trendplus-api`; (2) whether a `trendplus-worker` service from `render.yaml:81-147` exists and runs; (3) the startup log after the next restart.
+- Reason: live `/ready` is `ready=true` (since 2026-10-04 21:39:00 CEST) while startup-verified objects are missing; by code this is only possible when AutoMigrate or FailFast is not effective (RQ545 addendum). `refresh-status` shows `workersEnabled=false`, `processType=web` and six jobs without status, so Pulse (`product_decision_snapshot`) and the supplier MVs stay empty.
+- Enabling FailFast can keep the API `not ready` until the schema is repaired; this is the intended, visible failure. Prefer doing it outside shop hours. RQ587 makes the outcome readable from `/ready` afterwards. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2, §22.

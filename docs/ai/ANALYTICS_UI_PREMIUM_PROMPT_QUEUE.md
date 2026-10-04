@@ -3149,6 +3149,11 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 
 - None blocking. RQ570/RQ575/RQ583 add or emit codes later; P-UI-50 and the page owners consume the taxonomy.
 
+### Addendum 2026-10-04 (next-wave audit; evidence only, no scope change)
+
+- The four live "Failed to fetch" observations used as `backend_unreachable` evidence coincide with a production redeploy at 21:38:36 CEST (ready at 21:39:00); at 22:50 the same endpoints returned 200. The taxonomy row stays valid because restarts and cold starts recur; the copy should say the server is restarting or temporarily unreachable and offer retry, not imply a data error. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F6.
+
+
 ---
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy

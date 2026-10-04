@@ -4176,6 +4176,12 @@ Extend existing browser/reconciliation tooling instead of creating a parallel ce
 
 - The live browser audit on 2026-10-04 saw `AnalyticsResponseValidationError` ("… response nije u očekivanom formatu") on Supplier overview and Inventory action proposals; "Failed to fetch" on Pilot Readiness, Decision Board, Decision Pulse and Actions; Supplier report "Skup podataka odluke dobavljača za period poslednjih 180 dana ne postoji"; and Pre/Post unavailable with a correlation ID. Part may be backend cold start. During deployed reconciliation, classify each as cold-start, schema drift (frontend vs backend SHA) or missing object. Presentation of these states is P-UI-49. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`.
 
+### Addendum 2026-10-04 (next-wave audit; live-failure re-classification, no status change)
+
+- The UI audit's "Failed to fetch" on Pilot Readiness, Decision Board, Decision Pulse and Actions (21:26–21:40 CEST) coincides with a production redeploy: `/api/runtime/version.buildTimeUtc=19:38:31Z`, `/ready.startedAtUtc=19:38:36Z`, `readyAtUtc=19:39:00Z` (21:38–21:39 CEST). Re-probed at 22:50 CEST: Actions 200 (0.3 s), Pulse 200 (1.9 s), Board 200 (17.3 s), all with a correct `Access-Control-Allow-Origin` for `https://trendplus.vercel.app`. Treat those four failures as a deploy-window transient (UNPROVEN-RUNTIME without logs), not as a reconciliation defect.
+- The Supplier report `MISSING_OBJECT` and Pre/Post `contract_missing` remain real and are explained by startup initialization not running fail-fast on the live service (RQ545 addendum, RQ587). Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F6/§12.
+
+
 ---
 
 ## RQ566 - Verify negative-ID repair, sync worker and Daily Sales timezone after deployment

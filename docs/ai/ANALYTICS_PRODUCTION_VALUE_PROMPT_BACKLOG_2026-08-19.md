@@ -13,6 +13,8 @@ Delivery warning: the audit workspace was 110 commits behind remote main after
 branch, rebased/ported onto current main and retested. They must not be pushed as an
 old-tree replacement.
 
+Supersession note 2026-10-04 (next-wave audit, `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §15): this planning backlog is stale. Do not promote any PROD-AN item; each is owned by an executable prompt: 01 → STAB15/STAB16; 02 → RQ573 (+2026-10-04 Board addendum); 03 → RQ580/RQ530; 04 → RQ576; 05 → RQ578; 06 → RQ576; 07 → RQ453; 08 → RQ585; 09 → RQ479; 10 → RQ574/RQ575/RQ576; 11 → RQ569/RQ572; 12 → RQ545/RQ587/STAB16; 13 → RQ557/RQ558; 14 → RQ557/RL12.
+
 ## Priority order
 
 | Candidate | Status | Suggested owner | Priority | Delivery target |

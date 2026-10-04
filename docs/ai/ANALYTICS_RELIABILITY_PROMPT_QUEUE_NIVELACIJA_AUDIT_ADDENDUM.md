@@ -703,6 +703,13 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 - Supplier report (`/api/analytics/reports/supplier-decision?fromDate=2026-06-01&toDate=2026-06-30`) still returns `MISSING_OBJECT` for the 90-day supplier decision dataset on the same runtime — same production-schema convergence class.
 - No scope change. Remaining acceptance still needs the owner/admin-key diagnostic or provider access (STAB16). Source: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`.
 
+### Addendum 2026-10-04 (next-wave audit; evidence only, no status change)
+
+- Live 22:50 CEST on runtime `02f99158` (build 19:38:31Z, restarted 21:38:36 CEST): Pre/Post still returns `vendor_sales_nivelacija_contract_missing` (`change_percent_revenue_semantic` missing), correlation `00-9eee39af3c3733a5384732c9fe0a25af-93fbd97dca3f8655-00`, while `/ready` reports `ready=true` since 21:39:00 CEST.
+- Code chain (`Program.cs:99-100,827-832`; `StartupReadinessState.cs:25-38`; `DatabaseInitializer.cs:800-821,87-121`; `DeferredStartupTasksHostedService.cs:189-211`): with `Database:AutoMigrate=true` and `DatabaseInitialization:FailFast=true` the process could not be ready while this column is missing, because `EnsureVendorSalesNivelacijaDependenciesAsync` throws. The live combination therefore implies AutoMigrate or FailFast is not effective on the Render service (contradicting `render.yaml:35-40`), not a schema/privilege mismatch inside a running initializer. The schema-privilege hypothesis stays open only if the owner shows both settings are effective.
+- Final verification therefore starts with the STAB16 configuration check and the new readiness field (RQ587), then one startup log line (`Supplier nivelacija dependencies verified` or the thrown message). Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2.
+
+
 ## RQ546 - NV-F10 - Do not swallow failed lazy-route imports in chunk-load recovery
 
 Status: DONE
