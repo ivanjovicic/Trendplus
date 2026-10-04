@@ -146,7 +146,7 @@ function runSelfTest() {
 
     fs.writeFileSync(
       protocolPath,
-      protocol.replace("Zero-READY proof", "removed zero-ready proof marker"),
+      protocol.replace(/Zero-READY proof/gi, "removed ZREADY marker"),
       "utf8",
     );
     const missingZeroReadyGuard = validate(root);

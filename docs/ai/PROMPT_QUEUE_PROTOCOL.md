@@ -41,7 +41,7 @@ Future planning programs:
 
 ### Zero-READY proof and dependency cascade (mandatory)
 
-A statement such as **`Current READY prompt: none`**, **`no READY prompt`**, **`no safe successor`** or **`no safe claimable task`** is a positive claim that must be proved from the **current post-delivery `origin/main`**. It is never inherited from an older queue header, run log, completion note or previous agent.
+A statement such as **`Current READY prompt: none`**, **`no READY prompt`**, **`no safe successor`** or **`no safe claimable task`** is a positive claim that must be proved from the **current post-delivery `origin/main`**. It is never inherited from an older queue header, run log, completion note or previous agent. Treating an older **`none`** as **none is the last conclusion** without a fresh Zero-READY proof is invalid.
 
 **A previous zero-READY conclusion becomes invalid immediately when any of these happens:**
 - a prompt changes to `DONE`, `PARTIAL`, `BLOCKED` or `OBSOLETE`;
