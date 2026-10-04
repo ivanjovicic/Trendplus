@@ -80,11 +80,21 @@ WITH nivelacija_events AS (
         JOIN "Artikli" a ON a."Id" = d."ArtikalId"
         LEFT JOIN "Dobavljaci" dob
             ON dob."Id" = COALESCE(d."DobavljacId", a."IDDobavljac")
-        LEFT JOIN "DnevnikPromena" src
-            ON src."Id" = CASE
+        LEFT JOIN LATERAL (
+            SELECT CASE
                 WHEN d."BrojRacuna" ~ '^[0-9]+$'
-                THEN d."BrojRacuna"::integer
-            END
+                 AND (
+                        length(COALESCE(NULLIF(ltrim(d."BrojRacuna", '0'), ''), '0')) < 19
+                     OR (
+                            length(COALESCE(NULLIF(ltrim(d."BrojRacuna", '0'), ''), '0')) = 19
+                        AND COALESCE(NULLIF(ltrim(d."BrojRacuna", '0'), ''), '0') <= '9223372036854775807'
+                     )
+                 )
+                THEN COALESCE(NULLIF(ltrim(d."BrojRacuna", '0'), ''), '0')::bigint
+            END AS source_dnevnik_id
+        ) receipt_reference ON TRUE
+        LEFT JOIN "DnevnikPromena" src
+            ON src."Id"::bigint = receipt_reference.source_dnevnik_id
         WHERE d."TipPromene" IN ('Nivelacija', 'Nivelacija cena')
           AND d."ArtikalId" IS NOT NULL
           AND COALESCE(src."Datum", d."Datum") IS NOT NULL

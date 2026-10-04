@@ -3280,6 +3280,14 @@ public static class DatabaseInitializer
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         await using var connection = new NpgsqlConnection(connectionString);
+        if (string.Equals(
+                scriptHistoryIdentifier,
+                NormalizeSqlScriptIdentifier("Database/Migrations/014_NormalizeNivelacijaEvents.sql"),
+                StringComparison.Ordinal))
+        {
+            AttachStartupSqlNoticeLogging(connection, logger);
+        }
+
         var connOpenSw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
@@ -3477,6 +3485,15 @@ public static class DatabaseInitializer
         {
             if (tx != null) await tx.DisposeAsync();
         }
+    }
+
+    internal static void AttachStartupSqlNoticeLogging(NpgsqlConnection connection, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        connection.Notice += (_, eventArgs) =>
+            logger.LogInformation("[Startup] Nivelacija normalization audit: {Notice}", eventArgs.Notice.MessageText);
     }
 
     private static async Task TryRollbackTransactionAsync(
