@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none as primary in this parent file; live routing is primary `RQ569` (Operations source horizon/freshness), with additional independently claimable lanes `RQ553`, `RQ574`, `RQ578`, `RQ580` and `RQ581`. `RQ570`/`RQ576`/`RQ583` remain behind `RQ569`; `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Current READY prompt: none as primary in this parent file; live routing is primary `RQ569` (Operations source horizon/freshness), with additional independently claimable lanes `RQ553`, `RQ574`, `RQ578`, `RQ580`, `RQ581` and `RQ586` (Daily Sales timezone config, registered by the 2026-10-04 UX/UI audit). `RQ570`/`RQ576`/`RQ583` remain behind `RQ569`; `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-52 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
 Owner post-close routing recovery 2026-10-04 after RQ564 hardening: full active RQ queue/addenda review confirms RQ569 is primary READY; RQ552 waits until RQ569 is DONE, and RQ453 waits until RQ552 is DONE. RQ553 remains an additional parallel-safe READY lane. Recovery base and collision checks are recorded in `.ai/runs/2026-10-04-RQ564-evidence.md`.
 Idle recovery 2026-10-02: reconciled stale summary rows `RQ463`, `RQ464`, `RQ469`-`RQ471`, `RQ473`-`RQ476`, `RQ485` and `RQ488` to DONE based on their synchronized section-level completion notes and run logs. Corrected the RQ128 detail status to WAITING to match its summary and `Ready after: STAB16` gate; STAB16 remains BLOCKED, so no promotion is valid. RQ137/RQ139/RQ140 remain PARTIAL; RQ139's old `analyticsIntelligenceDerived.ts` fallback pattern is absent on current main, but cross-surface parity and live/runtime evidence are still unproven. Current READY remains none.
@@ -18246,6 +18247,12 @@ Reproduction: change store on Shoe Type → immediate refetch; on Color → no r
 
 - Product choice recorded in completion note.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Owner-facing rule proposal (design system §6.3): period/date range and multi-field filters use draft + "Primeni" with a visible "Nije primenjeno" marker; tabs, sort, pagination and in-set search apply immediately. Use this rule unless the owner decides otherwise (audit UX-018).
+- P-UI-51 also edits `AnalyticsControlBar` (date echo, preset width); do not run both IN_PROGRESS at once.
+- Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
 ---
 
 ## RQ320 - Show draft vs active period on Apply-required Operacije screens
@@ -18292,6 +18299,10 @@ Reproduction: change preset dates without Apply — inputs show new range, heade
 ### Dependencies
 
 - Mark OBSOLETE if RQ319 chooses auto-apply everywhere.
+
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- The trust strip must describe the applied period, while the control shows a "Nije primenjeno" marker for an unapplied draft (design system §6.3, audit UX-018). Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 
 ---
 
@@ -27063,6 +27074,11 @@ Every Pulse item opens the evidence surface that owns its decision, users see un
 - Coordinate with `RQ480`/`RQ481` because warning and period metadata may share the page contract.
 - Do not duplicate `RQ475` scorecard readiness or `RQ476` Supplier share semantics.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Code evidence 2026-10-04 (`pages/DecisionPulsePage.tsx:51-133`): user copy contains developer/English terms ("Decision Pulse", "actionable", "Stale, prazno i greška nisu alert", "deep link", "KPI nule…"); chips render raw `inputFreshnessStatus`, `dataQualityStatus` and `tenantScope`; the error state has no retry; `suppressedCount ?? 0` turns an unknown count into 0; partial warning uses Tailwind `amber-*` instead of tokens; the page does not use the shared trust/empty/error components (audit UX-015, DS-9).
+- Acceptance carry-over: map raw codes through labels (design system §8), render suppressed count only when the backend provides it, add retry to the error state, and use `AnalyticsEmptyState`/`AnalyticsErrorState` (P-UI-49 taxonomy when available). Period/scope stays RQ481. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
 ---
 
 ## RQ483 - Make Product Decision rules reachable, measured from the period end and driven by one explainable threshold policy
@@ -28419,6 +28435,11 @@ Owner decision (Ivan, 2026-10-04): **approved**. For every undated decision surf
 
 - `RQ569` DONE (observed horizon + freshness metadata); `RQ467` reference behaviour; coordinate with `RQ572` (bootstrap) and `RQ571` (Pre-Nivelacija) — run sequentially if they share files.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Presentation pattern for beyond-horizon periods: trust strip shows "Period … · Podaci do …" as two facts; charts render "nema podataka" after the horizon, never 0 (design system §5.3). Emit a machine-readable `beyond_source_horizon` reason so the P-UI-49 taxonomy can render it.
+- P-UI-51 (Executive Board period/scope/URL controls) waits for this prompt. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
 ## RQ571 - Pre-Nivelacija: anchor recency to the source horizon and keep non-decision stock out of markdown queues
 
 Status: WAITING
@@ -28545,6 +28566,10 @@ The same 836,350 / 15 / 145 figures were already reported by the 2026-08-19 prod
 
 - `RQ569` DONE (file overlap); `RQ570` DONE for the shared undated-period resolver; `RQ573` DONE for Product Decision/executive decoupling. If `RQ577` is active, serialize the shared Dashboard/bootstrap path.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- UX acceptance carry-over (audit UX-004/UX-027, wireframe §11.2): after the single-period fix, the Dashboard must show the KPI row above the fold at 1280×800; the refresh/worker panel moves below the KPI row or into the trust-strip disclosure. Trust-header density itself is P-UI-43. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
 ## RQ573 - Product Decision: stop FIX_DATA rows from hiding sold articles and bound the payload
 
 Status: WAITING
@@ -28600,6 +28625,10 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 ### Dependencies
 
 - `RQ569` DONE (file overlap); `RQ574` DONE first so ordering/payload work operates on the approved actionability policy and does not race the same Product Decision surface.
+
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- UX carry-over (audit UX-008, wireframe §11.3): expose backend totals so the page can say "Prikazano N od M"; P-UI-50 (WAITING on this prompt and RQ574) renders it and the blocked-KPI "—" state. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
@@ -28772,6 +28801,11 @@ For aging, exclude synthetic import-time `Ulaz robe` rows. Inventory age must co
 
 - `RQ569` DONE; owner decision is resolved; `RQ563` integrity family must be updated with the new value/age basis.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Presentation carry-over (audit UX-024, wireframe §11.5): when value uses the sale-line fallback, the payload must carry a flag so the UI can label it "procena"; unknown aging stays "nepoznato", never a bucket. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+- Live 2026-10-04: `TRENUTNO OOS 11.885` is prominent while the primary action is gated; zero risk counts sit next to `Nije dostupno` action metrics; raw reason codes `stock_cover_no_velocity`, `sell_through_insufficient_denominator_data` and `opening_stock_unavailable` are shown. The payload should let the UI label these (P-UI-49/P-UI-43 render them).
+
 ## RQ577 - Decide and label the sale-header grain before showing basket metrics
 
 Status: WAITING
@@ -28875,6 +28909,11 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 ### Dependencies
 
 - None blocking. Must not change Pilot intake readiness math (RQ467) or Operations trust metadata (RQ569).
+
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Presentation carry-over (audit UX-025/DS-5, wireframe §11.6): never show a health score without freshness next to it; `unknown` freshness renders neutral/warning, never green. Live 390×844 on 2026-10-04 shows "Nema otvorenih data quality problema za izabrani filter" directly above counters for 1,078 rows without cost, 12,422 articles without category and 12,290 insufficient signals; the "no open problems" copy must follow the backend issue list, not contradict visible counters. The data source label "Data quality checks" (`DataQualityPage.tsx:728`, `utils/analyticsMetricDefinitions.ts:280,300`) should become Serbian ("Provere kvaliteta podataka"). Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+- Live 2026-10-04 (desktop): English labels `PROMETNI HEALTH SIGNAL`, `HEALTH STATUS`, `Warning threshold`, `Risk threshold`, `Low priority issues`, `unknown` and `Lookback`; health 100 "SPREMNO UZ UPOZORENJA" next to readiness 67/100. Visually separate "no open problems in the table" from structural counters.
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
@@ -29074,6 +29113,12 @@ Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from th
 
 - Responsive measurement for the decision: at 360 `/analytics/insight-studio` renders 67 visible text elements below 12px (e.g. `text-[11px]`, 10px badges) and 12 raw `<table>` elements (`pages/InsightStudioPage.tsx:699,815,937` among them) with no responsive table primitive. Consistent with the owner decision above (hide behind the `Eksperimentalno` flag), no responsive migration prompt is registered. While hidden, the route only has to respect the global no-page-overflow invariant (P-UI-38). A responsive migration becomes a prerequisite of any future re-exposure. `P-UI-46` explicitly excludes it.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Code evidence 2026-10-04 (audit UX-014): `pages/InsightStudioPage.tsx` has 50 hex colours, 34 inline styles, 0 `aria-*`/`role`, 58 `text-[9|10|11px]` uses, 12 raw `<table>` elements and click-only `tr`/`div` (`:823`, `:1131-1146`).
+- This audit does not propose a redesign. If the screen stays reachable behind the "Eksperimentalno" flag, the minimum bar is: the shared uncertified/stale banner, keyboard-reachable clickable elements, no key numbers below 12px. Otherwise record the shutdown. The nav entry removal stays here, not in P-UI-52. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+- Live 2026-10-04: the loaded view showed revenue 0, gross margin 0.0%, sold 0 and transactions 0 next to "No demand signal", `Unknown product`, `Uncategorized` and `n/a`. This is the strongest unavailable-as-zero ambiguity observed; English labels dominate. Any retained view must render unavailable as unavailable.
+
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
 Status: WAITING
@@ -29124,6 +29169,10 @@ Owner decision (Ivan, 2026-10-04): default SLA is **warning after 48 hours** and
 ### Dependencies
 
 - Owner decision resolved; `RQ569` DONE.
+
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Placement rule (design system §3, §5.2): one global banner above the trust strip, `role="status"`, P-UI-47 status tokens, showing both last import and observed horizon in Europe/Belgrade time; pages must not duplicate it. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 
 ## RQ584 - Daily Sales: one `toDate` contract with the other Operations endpoints
 
@@ -29215,3 +29264,58 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 ### Dependencies
 
 - As listed in Ready after.
+
+## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
+
+Status: READY
+Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` UX-035; hotfix finding from 2026-10-01)
+Priority: P1
+Type: backend/config/tests
+Feature family: daily-sales-timezone-config
+Parallel-safe: yes (only `Api/appsettings*.json` and one config-binding test; no READY prompt owns these files)
+Owner: Analytics Reliability / Daily Sales
+Owned paths: `Api/appsettings.json`, `Api/appsettings.Production.json`, `Api/appsettings.*.json` if they repeat the pattern, one focused test
+Avoid paths: Daily Sales query/shift logic (RQ497/RQ584 owners), deployment/provider settings (RQ566/STAB16)
+Commit suggestion: `fix(config): bind DailySales TimeZoneId at the configuration root`
+
+### Problem
+
+In both `Api/appsettings.json` and `Api/appsettings.Production.json`, the `"DailySales": { "TimeZoneId": … }` object was pasted inside the second `Serilog:WriteTo` element, together with that sink's `"Name": "File"` and `"Args"`. The configuration key is therefore `Serilog:WriteTo:1:DailySales:TimeZoneId`, not `DailySales:TimeZoneId`. Unless an environment variable overrides it, the app falls back to UTC for shift assignment (`shiftTimeZone "UTC"` observed on 2026-10-01), so the Belgrade business day and shift buckets are shifted by 1–2 hours.
+
+### Evidence
+
+- `Api/appsettings.Production.json:13-20` and `Api/appsettings.json:127-131` (fresh `origin/main` `6a2a23b`).
+- Hotfix analysis `DAILY_SALES_SOURCE_TIMESTAMP_BASIS_FIX_2026-10-01` (box-local); RQ566 lists the timezone as a deploy verification item but no repo-local owner existed.
+
+### Scope
+
+- Move `DailySales` to the configuration root in every appsettings file that has the misplaced block; restore the File sink element to its original shape.
+- Production value `Europe/Belgrade`; keep the development default as the owner documented (verify; do not silently change semantics).
+- Preserve the UTF-8 BOM/encoding conventions of the files.
+
+### Read first
+
+- RQ497 and RQ202 completion notes (Daily Sales business time)
+- Daily Sales options binding (`DailySales` options class / `Program.cs` registration)
+- RQ566
+
+### Do
+
+1. Fix the JSON structure in each affected appsettings file.
+2. Add a focused test that loads the real `appsettings.Production.json` through the configuration builder and asserts `DailySales:TimeZoneId == "Europe/Belgrade"` and that the Serilog File sink still has `Name`/`Args`.
+3. Record in the run log that the deployed environment value is still verified by RQ566.
+
+### Tests
+
+- New config-binding test; `dotnet test --filter DailySales`; JSON parse check of every edited file.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- `DailySales:TimeZoneId` resolves from the configuration root in production configuration.
+- The Serilog File sink configuration is unchanged in meaning.
+- No Daily Sales query logic changed.
+
+### Dependencies
+
+- None. RQ566 later verifies the deployed value and one DST/wall-clock smoke case.

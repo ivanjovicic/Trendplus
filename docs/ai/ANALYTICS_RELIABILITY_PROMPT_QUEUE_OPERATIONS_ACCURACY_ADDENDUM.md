@@ -3855,7 +3855,7 @@ Do not change journal/live/provider/schema semantics, recommendation scoring, ow
 
 ## RQ560 - Remove negative Access-ID sentinel collisions from analytics and nivelacija SQL
 
-Status: PARTIAL
+Status: DONE
 Ready after: RQ487 DONE; fresh collision check with RQ545 and active nivelacija query owners completed 2026-10-03. RQ545 deployed acceptance remains with RQ535/STAB16 and does not block this repository-local slice. No production access is required for the repository-local slice.
 Priority: P0
 Type: backend/sql/tests
@@ -4172,6 +4172,10 @@ Extend existing browser/reconciliation tooling instead of creating a parallel ce
 - RQ561 plus RQ567/RQ568 and RQ562-RQ564 as applicable, RQ448 patterns and exact deployed build evidence.
 - Read-only production reconciliation remains RQ454/STAB16; a staging/pilot environment may satisfy this browser layer without production writes.
 
+### Addendum 2026-10-04 (UX/UI audit live evidence; no status or scope change)
+
+- The live browser audit on 2026-10-04 saw `AnalyticsResponseValidationError` ("… response nije u očekivanom formatu") on Supplier overview and Inventory action proposals; "Failed to fetch" on Pilot Readiness, Decision Board, Decision Pulse and Actions; Supplier report "Skup podataka odluke dobavljača za period poslednjih 180 dana ne postoji"; and Pre/Post unavailable with a correlation ID. Part may be backend cold start. During deployed reconciliation, classify each as cold-start, schema drift (frontend vs backend SHA) or missing object. Presentation of these states is P-UI-49. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`.
+
 ---
 
 ## RQ566 - Verify negative-ID repair, sync worker and Daily Sales timezone after deployment
@@ -4210,6 +4214,9 @@ The 2026-10-02 negative-ID delivery explicitly did not run its read-only product
 - Negative-ID implementation `0360442d`; RQ560 for sentinel-collision interpretation.
 - Provider/admin actions require the existing STAB16/operator authority; no new secrets are introduced.
 
+### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
+
+- Repo-local root cause registered separately as RQ586: `DailySales` is nested inside a `Serilog:WriteTo` element in `Api/appsettings.json:127-131` and `Api/appsettings.Production.json:13-20`, so `DailySales:TimeZoneId` is not read and the app falls back to UTC unless an environment variable overrides it. RQ566 still verifies the deployed value. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
 
 ---
 

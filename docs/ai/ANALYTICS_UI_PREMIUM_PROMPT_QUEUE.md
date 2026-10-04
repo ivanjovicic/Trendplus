@@ -2,9 +2,10 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional parallel-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-45`.
+Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional parallel-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-45`, `P-UI-47`, `P-UI-49`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
+UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-52 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -54,6 +55,12 @@ Use with:
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
+| P-UI-47 | READY | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
+| P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
+| P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
+| P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
+| P-UI-51 | WAITING | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
+| P-UI-52 | WAITING | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553) |
 
 ---
 
@@ -1934,6 +1941,12 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 - The deferral reason recorded on 2026-10-02 ("RQ487 remains the owner-gated Supplier overview query-cost path") is stale: RQ487 is DONE. RQ530 is still PARTIAL as a consumer. Re-run the collision check against RQ530 before promotion instead of treating RQ487 as a blocker.
 - The shared control-bar geometry fix is now `P-UI-39` (default overflow safety). This prompt still owns the Supplier-specific filter density/disclosure and table migration. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
+### Addendum 2026-10-04 (UX/UI audit; no status change)
+
+- Apply `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §2 when migrating: replace the page-local `--dashboard-accent: var(--success)` / `--dashboard-accent-strong: var(--warning)` aliases and neon fallbacks (`#66ff7e`, `#8bff00`, `#8ad5a8`) in `SupplierSalesStatsPage.css`/`.tsx` with the P-UI-47 `--chart-series-*` and `--status-*` tokens (audit UX-013/UX-037). Fix the truncated period preset only if P-UI-51 has not already done so.
+- Coordinate: if P-UI-47 is not DONE, keep the aliases and record the residual.
+- Live 2026-10-04 (audit UX-046): "Pregled" (final recommendation) and "Skorkarta" (explicitly auxiliary signal) look like equal tabs. Mark the final tab as primary and label auxiliary tabs as supporting signals, using existing backend role/readiness fields only.
+
 ## P-UI-32 - Make Product Decision Center responsive and measure 1,200-row rendering before optimizing
 
 Status: DONE
@@ -2230,6 +2243,10 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 - Still owned here: the Pre-Nivelacija table (956px, 10 columns, 60 rows in a 268px scroller, first column `position: static`, 12px cells); the trust header 1287px plus control bar 1081px before the first KPI at 4056px on 360 (the trust-header compaction itself is `P-UI-43`); the Pre/Post control bar is 963px tall on 360.
 - All P-UI-27/28/29 dependencies are DONE. Remaining start gates are the active Nivelacija RQ owners touching the same pages (RQ553 READY; RQ552/RQ556/RQ571 WAITING). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
 
+### Addendum 2026-10-04 (UX/UI audit; no status change)
+
+- When migrating Pre/Post and Pre-Nivelacija, replace page-local status-as-brand aliases in `ProdajaPrePostNivelacijePage.css` and the hardcoded status colours in `PreNivelacijaPriorityPage.tsx:246` with P-UI-47 tokens (audit UX-013). Trust-header density belongs to P-UI-43, not this prompt.
+
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
 Status: WAITING
@@ -2295,6 +2312,10 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 - Live 360 (mobile emulation, dated data): Color inflates `innerWidth` to 426px and Shoe Type to 433px, both through the control-bar select width. At 1024 with the sidebar open, both overflow by 106px. Owned now by `P-UI-39`.
 - Still owned here: the Shoe Type table (1730px, 10 columns in a 260px scroller at 360, first column static, 12px); the Shoe Type trust header 1436px plus control bar 815px before the first KPI at 2403px (compaction in `P-UI-43`); the Supplier Decision Hub/Color table priority columns.
 - P-UI-28/29 are DONE. Before promotion, check collisions with RQ575 (Color "dimension not populated", WAITING) and RQ580 (supplier report/hub label, READY). Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
+### Addendum 2026-10-04 (UX/UI audit; no status change)
+
+- Replace `--dashboard-*` status aliases and neon fallbacks in `ShoeTypeSalesStatsPage.css`/`.tsx` (`:172-184`) and the Supplier Hub/Color page CSS with P-UI-47 chart/status tokens (audit UX-013/UX-037).
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
 
@@ -2449,6 +2470,12 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
   4. a sticky-header height budget (≤ 88px at ≥1024, see P-UI-40);
   5. the missing routes `/analytics/shoe-type-sales-stats`, `/analytics/pre-nivelacija-prioriteti`, `/analytics/data-quality`, `/analytics/decision-board`, `/analytics/decision-pulse`, `/analytics/pilot-readiness`, `/analytics/reports/pilot-intake`, `/analytics/supplier/report`, `/logs` and the šifarnik list pages from P-UI-46.
 - The carousel reduced-motion item in Do step 2 is implemented by `P-UI-45`. This gate only needs to assert it. Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`.
+
+### Addendum 2026-10-04 (UX/UI audit; no status change)
+
+- Extend the gate scope with a theme/a11y ratchet (audit UX-039, design system §12): count per file hex/`rgb()` literals in analytics pages, raw Tailwind palette classes (`amber|red|green|…-NNN`), `text-[9|10|11px]`, `color: var(--warning|success|error)` used as text, and `onClick` on `tr/div/span` without `role`+`tabIndex`. The 2026-10-04 audit baselines (e.g. Insight Studio 50 hex / 34 inline / 58 tiny text) are the initial allowlist; counts may only decrease.
+- The theme-contrast unit test added by P-UI-47 becomes part of the gate.
+- If the responsive migrations remain blocked, the owner may split this ratchet into its own prompt with a fresh collision check; do not duplicate it elsewhere.
 
 ## Responsive re-audit registration 2026-10-04
 
@@ -2630,6 +2657,10 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 
 - None. RQ576 (inventory valuation/aging, WAITING) may later change panel content. It must keep the min-width contract.
 
+### Addendum 2026-10-04 (UX/UI audit live evidence; no scope change)
+
+- The parallel live browser audit independently confirmed the Inventory overflow at 390×844 (capture 431px wide, horizontal scrollbar; audit UX-042). No separate prompt was registered.
+
 ## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets (760–1023px)
 
 Status: WAITING
@@ -2743,6 +2774,16 @@ Live 360x780 mobile, dated data:
 ### Dependencies
 
 - RQ569 (same component). Later RQ570/RQ583 banners must use the summary row.
+
+### Addendum 2026-10-04 (UX/UI audit; scope extension, no status change)
+
+The UX/UI audit (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, UX-003/UX-004/UX-005/UX-036/UX-038) found the same problem on desktop, so this prompt is extended rather than duplicated:
+- Desktop budget: at 1280×800 the first KPI is above the fold on Dashboard, Product Decision, Supplier and Pre-Nivelacija (live: the trust header fills the first viewport in all six themes). The strip is at most 56px on desktop.
+- Evidence disclosure: `pre_nivelacija.evidence`, `bounded_probe:…`, `sha256:…`, ISO UTC timestamps with seven fractional digits and raw readiness codes (`decision_readiness_unavailable`, `no_shoe_type_sales`, `color_is_supporting_signal`, `daily_sales.actionability_not_assessed`, `unverified`) move into a keyboard-accessible "Detalji" disclosure; the default view shows labels and Europe/Belgrade `dd.MM.yyyy HH:mm` times (`AnalyticsTrustHeader.tsx:327-328,371`).
+- Copy: "Preporuka je gated" → Serbian (design system §8); label the "Ignorisani redovi" counter with its backend meaning; warnings use `role="status"` instead of `role="note"` (`:395`, `:399-403`).
+- One `h1`: the trust header renders no title when the page already has one (live: "Odluke o proizvodima" three times).
+- Consume RQ569 fields exactly as delivered; compute nothing in the browser. Design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §3, §5.
+- Extra tests: evidence IDs are absent from the default render but reachable by keyboard; Belgrade time format; `role="status"`; desktop fold check in `responsive:baseline`.
 
 ## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
 
@@ -2899,3 +2940,375 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 ### Dependencies
 
 - P-UI-42. Insight Studio (67 sub-12px text elements at 360) is excluded: the RQ582 owner decision (2026-10-04) hides it behind the `Eksperimentalno` flag, and responsive work is required only before any re-exposure.
+
+---
+
+## P-UI-47 - Make one theme-token source of truth and repair light-theme status contrast
+
+Status: READY
+Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
+Priority: P1
+Type: frontend/css/tests
+Feature family: analytics-theme-token-contract
+Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41/P-UI-45, from P-UI-49 and from all READY RQ paths)
+Owner: unassigned (Analytics Frontend / Design System)
+Owned paths: `Klijent/clientapp/src/context/ThemeContext.tsx`, `Klijent/clientapp/src/styles/themes.css`, `Klijent/clientapp/src/styles/themeTokens.ts`, the token blocks in `Klijent/clientapp/src/tailwind.css` and `Klijent/clientapp/src/styles/analytics-system.css`, new token/contrast tests
+Avoid paths: `AnalyticsControlBar.css` (P-UI-39), `HeaderStatus.tsx`/`Sidebar.tsx`/`AppLayout.tsx` (P-UI-40), the `tailwind.css` `@media (max-width: 759px)` floor block (P-UI-42), `AnalyticsTrustHeader*` (RQ569), nivelacija pages/CSS (RQ553, P-UI-35), Supplier/Shoe Type/Color page CSS (P-UI-31/P-UI-36), `AnalyticsEmptyState*`/`AnalyticsErrorState*` (P-UI-49)
+Commit suggestion: `fix(ui): single theme token source and accessible status text`
+
+### Problem
+
+Theme colours come from three competing sources: `ThemeContext.tsx` inline variables, `themes.css` `:root`/`[data-theme]` blocks and a dark-valued `:root` block in `tailwind.css`. `themeTokens.ts` references `--c-*` variables that are not defined in `themes.css`. In the light and soft-gray themes, status colours used as text fail WCAG contrast: warning 2.15:1 on white and 1.47:1 on the soft-gray background, success 2.54/1.73, `--error-text` (#fecaca) 1.45. `COMMON_VARS` sets `--surface-elevated-light: #1f2430` and `--surface-elevated-dark: #0f1116` for every theme, so `.card-theme` (used by `InventoryPageShell`) fades to near-black under dark text (1.15:1) in light themes. Page-local palettes alias `--success`/`--warning` as brand/chart colours.
+
+### Evidence
+
+- Audit findings UX-010, UX-011, UX-012, UX-013, UX-037 (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` §5, §10).
+- `context/ThemeContext.tsx:12-180` (`COMMON_VARS` lines 68-69); `styles/themes.css:1-140`, `:248`; `tailwind.css:345-389`, `:414+`; `components/inventory/InventoryPageShell.tsx:21`.
+- 50 CSS rules use `color: var(--warning|success|error)` as text.
+- Live 2026-10-04: green status text in the soft-gray header is barely legible (`/workspace/ux-audit/*_Meka-siva_desktop.png`; screenshots are box-local evidence).
+
+### Scope
+
+- Token definitions and their tests only. Add `--status-{success,warning,error,info}-{fill,border,text}` and `--chart-series-1..8`, `--chart-axis`, `--chart-grid`, `--chart-tooltip-bg/text`, `--chart-positive/negative` for all six themes.
+- Make `ThemeContext.tsx` canonical. `themes.css` stays a no-JS fallback with a parity test; the `tailwind.css` token block only maps names.
+- Fix `--surface-elevated-light/-dark` and `--error-text` per theme.
+- Keep the old variable names as aliases so pages keep working; page migrations belong to P-UI-31/35/36 and later owners.
+- Define action-tier tokens and shared classes (primary / secondary / tertiary / link / destructive) in `analytics-system.css` so retry, export, print, navigation links and workflow actions stop sharing one pill style (audit UX-045, live). Page adoption stays with the page owners.
+- No analytics semantics, no API change, no page-level CSS rewrite.
+
+### Read first
+
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §2, §9, §11
+- `docs/ai/FRONTEND_UX_STANDARDS.md`
+- P-UI-25 completion note (focus/phone foundation)
+- `docs/Frontend/ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`
+
+### Do
+
+1. Inventory every colour variable defined in the three sources and record the effective value per theme in the run log.
+2. Make `ThemeContext.tsx` the single definition; remove conflicting colour values from the `tailwind.css` `:root` block, or alias them, without changing dark-theme rendering.
+3. Add the status and chart token sets for all six themes, meeting design system §2.2 contrast rules.
+4. Point `--error-text`, `--warning-text`, `--accent-text` and `--muted` at accessible per-theme values; fix `--surface-elevated-light/-dark` in light themes.
+5. Replace dark neon fallbacks in shared chart constants only where they live in the owned paths; leave page constants to the page owners and list them in the run log.
+6. Fix `themeTokens.ts` to reference defined variables.
+
+### Tests
+
+- New Vitest: for each theme, WCAG contrast of text/surface pairs and `--status-*-text` against `-fill` and `--surface-elevated` is at least 4.5:1, and chart axis/grid at least 3:1.
+- Parity test: the `themes.css` fallback equals `ThemeContext` values for the shared tokens.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, focused Vitest, `npm run responsive:baseline` for light/soft-gray/dark on Dashboard and an InventoryPageShell page.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- Each theme has exactly one authoritative definition per colour token.
+- All status text tokens meet 4.5:1 in all six themes; `.card-theme` stays light in light themes.
+- Dark themes are visually unchanged in the responsive baseline screenshots (documented diff).
+- No business value, status or threshold changed.
+
+### Dependencies
+
+- None blocking. P-UI-38 later turns the contrast and token rules into a ratchet. P-UI-31/35/36 migrate page-local `--dashboard-*` palettes to the new tokens.
+
+---
+
+## P-UI-48 - Remove one-click ops toggles from the business header and require confirmation
+
+Status: WAITING
+Ready after: P-UI-40 is DONE (same `HeaderStatus.tsx`/`AppLayout.tsx` files; registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
+Priority: P1
+Type: frontend/tests
+Feature family: global-header-ops-safety
+Parallel-safe: no (shared header/layout files with P-UI-40)
+Owner: unassigned (Frontend Shell)
+Owned paths: `Klijent/clientapp/src/layout/components/HeaderStatus.tsx` (+ spec), `Klijent/clientapp/src/components/WorkerControlFlag.tsx`, `RedisToggleFlag.tsx`, `ApiPingFlag.tsx`, the admin/observability page that hosts them, `Klijent/clientapp/src/layout/AppLayout.tsx` (skip link and `main` landmark only)
+Avoid paths: backend authorization code (report gaps, do not change here), analytics pages
+Commit suggestion: `fix(ui): move ops toggles out of the business header`
+
+### Problem
+
+At widths of 1280px and above, every business screen shows "API ON [Stop]", "Workeri 0/1 [Stop]" and "Redis: isključen [Start]" in the global header. One click disables workers or the API ping for the whole system with no confirmation and no explanation of the consequence. This mixes passive status with operational commands and exposes them to non-admin users.
+
+### Evidence
+
+- Audit UX-002 / DS-3. Live on all 2026-10-04 screenshots.
+- `layout/components/HeaderStatus.tsx:450-453`, `:650-653`; `components/WorkerControlFlag.tsx:63-75` (toggle without confirm; only `runtimeToggleAllowed` gates enabling).
+
+### Scope
+
+- The business header keeps a passive, read-only status (backend online, workers n/m, cache) with a link to the admin/observability surface.
+- Toggle actions move to the existing admin/observability page (e.g. Workers panel), behind an accessible confirmation dialog stating the consequence.
+- Action visibility follows existing backend capability fields (`runtimeToggleAllowed` or equivalent). If no backend capability exists for disabling, the UI shows status only and the run log records a STAB/SEC follow-up. Do not invent client-side roles.
+
+### Read first
+
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §6.1
+- P-UI-06 and P-UI-26 completion notes (header and drawer)
+- `HeaderStatus.spec.tsx`
+
+### Do
+
+1. Split each flag into a status view and an action view.
+2. Render only the status view in `HeaderStatus` (desktop and mobile drawer).
+3. Host the action views on the admin/observability page with the shared `Modal` confirmation.
+4. Verify what backend authorization protects the enable/disable endpoints and record it; do not change backend code in this prompt.
+5. Fix the existing `act(...)` warnings in `HeaderStatus.spec.tsx` while touching it.
+6. Add a visible-on-focus "Preskoči na sadržaj" skip link as the first tab stop, targeting the page `main` landmark; live keyboard testing on 2026-10-04 found the first 15 tab stops on shell, notification and sidebar controls before any page content (audit UX-044).
+7. Give the truncated mobile breadcrumb/title an accessible full label and rename the unlabeled "Više" control descriptively (live: "Trendplus pre…", "Odluke o proi…"; audit UX-050).
+
+### Tests
+
+- RTL: the header contains no Stop/Start buttons; the status remains visible and accessible.
+- RTL: the admin action requires confirmation; cancel does nothing; confirm calls the existing client once.
+- RTL: an action is hidden when the backend capability is false.
+- RTL: the first Tab focuses the skip link, and activating it moves focus to `main`.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, focused Vitest; responsive header check at 1280/768/375.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- No business screen offers a one-click operational toggle.
+- Every operational toggle requires confirmation and states its effect.
+- The backend authorization status is documented; any gap is recorded as a follow-up, not silently assumed.
+
+### Dependencies
+
+- None blocking. Backend authorization hardening, if needed, belongs to STAB/SEC.
+
+---
+
+## P-UI-49 - Map backend reason codes into one shared empty/error state taxonomy
+
+Status: READY
+Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
+Priority: P2
+Type: frontend/tests
+Feature family: analytics-state-taxonomy
+Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41/P-UI-45/P-UI-47 and READY RQ paths)
+Owner: unassigned (Analytics Frontend / Design System)
+Owned paths: `Klijent/clientapp/src/components/analytics/AnalyticsEmptyState.tsx/.css`, `AnalyticsErrorState.tsx/.css`, new `Klijent/clientapp/src/utils/analyticsStateTaxonomy.ts`, their tests
+Avoid paths: `AnalyticsTrustHeader*` (RQ569), page files (adopt per page through page owners), backend
+Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reason codes`
+
+### Problem
+
+`AnalyticsEmptyState` knows only `no_data`, `insufficient_data` and `filtered_out`; `AnalyticsErrorState` has no kind. The backend already returns reasons such as source-horizon limits, `MISSING_OBJECT`/`contract_missing`, suppressed candidates and readiness blocks. The UI renders these as a generic "Nema podataka", so users read "no sales" when the real cause is stale data or an unready source.
+
+### Evidence
+
+- Audit UX-016, §6. `components/analytics/AnalyticsEmptyState.tsx:21-41`; `AnalyticsErrorState.tsx`.
+- Live-API 2026-10-04: beyond-horizon empty periods, Supplier report `MISSING_OBJECT`, Pre/Post `contract_missing`, Color 100% unknown (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`).
+
+### Scope
+
+- One mapping table from backend code to tone, title, message and action, following design system §7. Backward-compatible props.
+- Map only codes the backend emits today (inventory them in the run log). Reserve names for the RQ570 (`beyond_source_horizon`) and RQ575 (`source_dimension_not_populated`) codes; render them only when the backend sends them.
+- An unknown code renders `unknown_code` with the raw code inside a details disclosure.
+- Add `schema_mismatch` for `AnalyticsResponseValidationError` (today rendered as "<context> response nije u očekivanom formatu", live on Supplier overview and Inventory action proposals on 2026-10-04, audit UX-047). Serbian copy, retry, correlation ID with a copy button. The root cause stays with RQ565.
+- Add `backend_unreachable` for network failures (live raw "Failed to fetch" on Pilot Readiness, Decision Board, Decision Pulse and Actions on 2026-10-04): Serbian copy and retry; never show the browser error text as the main message.
+- Add `loading_slow`: after a fixed delay, the loading state explains a possible backend cold start and offers retry/cancel instead of spinning forever (live: Supplier report stayed on "Učitavam trajni izveštaj…", audit UX-049). Reuse `BackendWakeupNotice` semantics; no new backend status is inferred.
+- No page adoption beyond one pilot page whose owner is not active (record which one); other pages adopt through their owners.
+
+### Read first
+
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §7, §8
+- `utils/analyticsErrorMessages.ts`, `AnalyticsResponseMeta` types
+- P-UI-20/P-UI-21/P-UI-22 completion notes
+
+### Do
+
+1. Inventory backend reason, warning and error codes reachable by analytics clients.
+2. Implement `analyticsStateTaxonomy.ts` with an exhaustive typed map and Serbian copy.
+3. Extend both components to accept `code` and `meta` and resolve through the taxonomy; keep the existing variants as aliases.
+4. Keep error states free of KPI zeros and always offer retry for retryable errors (with correlation ID when present).
+
+### Tests
+
+- Unit: every mapped code resolves; an unknown code resolves to `unknown_code`; no code is derived from row counts when a backend reason exists.
+- RTL: retry is present for retryable errors; the correlation ID is shown; the details disclosure is keyboard accessible.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- The two shared components can express every state in design system §7 without page-local markup.
+- No state is inferred by the frontend when a backend code exists.
+
+### Dependencies
+
+- None blocking. RQ570/RQ575/RQ583 add or emit codes later; P-UI-50 and the page owners consume the taxonomy.
+
+---
+
+## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
+
+Status: WAITING
+Ready after: RQ573 and RQ574 are DONE (same page/contract) and P-UI-49 is DONE
+Priority: P2
+Type: frontend/tests
+Feature family: product-decision-hierarchy
+Parallel-safe: no (`ProductDecisionCenterPage.tsx` is shared with RQ573/RQ574)
+Owner: unassigned (Analytics Frontend)
+Owned paths: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx/.css` and its specs
+Avoid paths: backend Product Decision endpoints and reasoning helpers (RQ573/RQ574)
+Commit suggestion: `feat(ui): honest Product Decision hierarchy when recommendations are blocked`
+
+### Problem
+
+When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 · Za pojačanje 0 · Za sniženje 0 · Ne naručivati 0", which reads as "nothing to do". Estimates show "N/A". The table row expands via `<tr onClick>` and a "Zašto?" button without `aria-expanded`. "N/A" appears 18 times; the export button is disabled without a reason; the population note does not say how many rows are shown out of the total.
+
+### Evidence
+
+- Audit UX-007, UX-008 (UX part), UX-023, UX-006; live 2026-10-04 Product Decision screenshots in all themes.
+- `pages/ProductDecisionCenterPage.tsx:1509-1544`, `:1843`, `:1898`.
+
+### Scope
+
+- When backend readiness or `recommendationAllowed` blocks an action family, its KPI shows "—" plus the backend reason (via the P-UI-49 taxonomy); real zeros stay zeros only when the backend marks the family as allowed.
+- Use backend totals for "Prikazano N od M" (added by RQ573); do not count in the browser.
+- Add `aria-expanded`/`aria-controls` to "Zašto?"; keep the row click as a secondary path.
+- Replace "N/A" with "Nije dostupno"; explain the disabled export.
+- Visually distinguish "Zašto?" (row reasoning) from "Kako je izračunato?" (metric methodology), and make "Dodaj u proveru" read as a workflow action with the P-UI-47 action tiers (live). Reduce the 11-card KPI strip to the golden-screen 4–5 plus a disclosure. Show methodology enums such as `REPLENISH` as labels.
+- Apply the layout from audit §11.3.
+
+### Read first
+
+- RQ573, RQ574, RQ483 completion notes
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §1, §3, §6, §7, §8
+- P-UI-32 completion note
+
+### Do
+
+1. Bind each KPI to its backend allowed/blocked field; render the three value states.
+2. Add the population line from backend totals.
+3. Fix the disclosure ARIA and copy.
+4. Rearrange to the golden-screen order without changing data fetching.
+
+### Tests
+
+- RTL: blocked family shows "—" with reason, never "0"; allowed family with backend zero shows "0"; the population line uses backend totals; `aria-expanded` toggles.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest, responsive baseline for `/analytics/products`.
+- Governance validators; `git diff --check`.
+
+### Acceptance
+
+- No KPI can imply "nothing to do" while the backend blocks the recommendation.
+- Keyboard users can open every "Zašto?" panel with a correct ARIA state.
+
+### Dependencies
+
+- RQ573, RQ574 (same page/contract); P-UI-49 (taxonomy).
+
+---
+
+## P-UI-51 - Decision-surface controls: Executive Board period/scope/URL state and date clarity
+
+Status: WAITING
+Ready after: RQ570 and P-UI-39 are DONE (horizon-anchored default periods; P-UI-39 owns `AnalyticsControlBar.css` overflow); must not run while RQ319/RQ320 are IN_PROGRESS (shared `AnalyticsControlBar`)
+Priority: P2
+Type: frontend/tests
+Feature family: decision-surface-controls
+Parallel-safe: no (shared control bar)
+Owner: unassigned (Analytics Frontend)
+Owned paths: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx` (controls/URL only), `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx/.css`
+Avoid paths: Decision Board backend and scoring; Decision Pulse page (RQ481/RQ482)
+Commit suggestion: `feat(ui): board scope controls and unambiguous dates`
+
+### Problem
+
+The Executive Board has no period, store or data-scope control and no URL state; its period is fixed by the backend (180 days from today), so it cannot be aligned with other screens or shared. Across the control bar, native date inputs follow the browser locale (live: `09/05/2026` next to "5. 9. 2026." in the trust header), and the preset label is truncated ("Poslednjih 3…").
+
+### Evidence
+
+- Audit UX-017, UX-019, UX-020; live Supplier screenshots 2026-10-04; `ExecutiveDecisionBoardPage.tsx` has no `<select>`/`<input>` controls; live-API Board period 180 days.
+
+### Scope
+
+- Board: show and allow changing the period/store/dataScope through parameters the backend already accepts (verify; if a parameter is not accepted, display only and record a backend follow-up). Persist them in the URL.
+- Control bar: a `dd.MM.yyyy` echo next to native date inputs; verify preset labels no longer truncate after P-UI-39 and fix only the residual.
+- URL/history rule (design system §6.3): `/analytics` (Dashboard) must encode custom dates in the URL like the other screens (live: it does not). Applied filter changes push one history entry so browser Back restores the previous applied state; typing in search does not (live: Back did not restore the Product filter, audit UX-043).
+- Use RQ570 defaults as delivered; never compute a horizon in the browser.
+
+### Read first
+
+- RQ570, RQ481 and RQ319/RQ320 prompts
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §6.3
+
+### Do
+
+1. Inventory Board endpoint parameters; wire the supported ones to controls and the URL.
+2. Add the date echo and fix preset label width in `AnalyticsControlBar`.
+3. Keep Apply semantics consistent with the design system §6.3 rule.
+
+### Tests
+
+- RTL: Board URL round-trips period/store/scope; unsupported parameters are display-only.
+- RTL: the date echo renders `dd.MM.yyyy` regardless of browser locale; preset labels are not truncated at 1280/768/375.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest; governance validators; `git diff --check`.
+
+### Acceptance
+
+- A Board view can be shared by URL and matches the period shown on other screens.
+- No ambiguous month/day dates on analytics controls.
+
+### Dependencies
+
+- RQ570 (default period). Coordinate with RQ319/RQ320 (shared control bar).
+
+---
+
+## P-UI-52 - Analytics navigation IA and user-facing glossary sweep
+
+Status: WAITING
+Ready after: RQ553 is DONE (it edits `navConfig.ts` labels); Insight Studio's nav entry stays with RQ582
+Priority: P2
+Type: frontend/copy/tests
+Feature family: analytics-nav-ia-copy
+Parallel-safe: no (`navConfig.ts`)
+Owner: unassigned (Frontend Shell / Analytics UX)
+Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`
+Avoid paths: `GlobalRequestSpinner.tsx` and the carousel (P-UI-45), header/breadcrumb (P-UI-40/P-UI-48), routes and redirects themselves (RQ507 legacy contract), Insight Studio entry (RQ582), RQ555 Actions logic
+Commit suggestion: `fix(ui): consistent analytics navigation labels and glossary`
+
+### Problem
+
+Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Archive, Ready, Board, Hub, Task, Lab) mostly use the warning tone and do not describe a state. "Pilot spremnost" carries a static "Ready" badge while readiness is 67/blocked. Nav labels differ from route definitions and page titles ("Prodaja po smeni i dobavljačima" vs "Dnevna prodaja", "Prioriteti nivelacije" vs "Prioriteti Pre-Nivelacije", "Pre/Posle" vs "Pre/Post"). The nav links to the redirect alias `/analytics/supplier-decision-hub`. "N/A" remains in Actions (14) and Supplier Footwear (11).
+
+### Evidence
+
+- Audit UX-021, UX-022, UX-006; live sidebar on all 2026-10-04 screenshots; `layout/navConfig.ts:108-220`; `routes/analyticsRouteDefinitions.ts`.
+
+### Scope
+
+- One label per destination, shared by nav, route definition and page `h1` (owner-approved naming recorded in the run log).
+- Remove static status-like badges; keep only descriptive, non-status markers where the owner asks for them.
+- Point nav items to canonical routes; keep redirects working.
+- Replace "N/A" in the owned files with "Nije dostupno".
+- Restore Serbian diacritics in shell/global strings seen live ("Prosiri", "Pokusaj ponovo", "Osvezi", "Greska pri ucitavanju", "jos nije dostupan", "Pojacaj"; audit UX-048). If the string lives in a page owned by an active prompt, hand it to that owner and list it in the run log.
+
+### Read first
+
+- RQ507 completion note (legacy alias contract), RQ553, RQ582
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §6.1, §8
+
+### Do
+
+1. Build a label table (nav / route definition / page title) and reconcile it.
+2. Update `navConfig.ts` items, group labels and badges.
+3. Replace redirect-alias links with canonical routes.
+4. Sweep "N/A" in the owned files.
+
+### Tests
+
+- Nav spec: every nav `to` is a canonical (non-redirect) route; labels equal route-definition labels.
+- Existing redirect/smoke route tests still pass.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest; governance validators; `git diff --check`.
+
+### Acceptance
+
+- No nav badge implies a status the backend does not report.
+- One name per screen across nav, route definitions and page titles.
+
+### Dependencies
+
+- RQ553 (same file); RQ582 owns the Insight Studio entry.

@@ -1,5 +1,7 @@
 # Trendplus Frontend / UX Standards
 
+Detaljna ciljna specifikacija (tokeni, golden screen, taksonomija stanja, interakcije, jezik): `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Ovaj dokument ostaje kratak obavezni standard.
+
 ## Core components
 
 Koristi:
