@@ -91,7 +91,7 @@ Kada je observed horizon pre kraja traženog perioda, strip prikazuje oba podatk
 |---|---|---|
 | Navigacija | `Link` | Kanonska ruta, nikad redirect alias u meniju |
 | Komanda | `button type="button"` | Labela je glagol + objekat ("Dodaj u akcije") |
-| Ops/destruktivna | Samo admin površina | Potvrda sa posledicom; vidljivo samo uz backend capability |
+| Ops/destruktivna | Backend write akcije samo na admin površini | Potvrda sa posledicom; vidljivo samo uz stvarnu backend capability/credential mogućnost. Browser-local preferences (npr. pauza periodičnog API pinga) moraju biti eksplicitno označene kao lokalne i ne smeju izgledati kao gašenje servisa |
 | Disclosure | `button[aria-expanded]` | Klik na red nikad nije jedini put |
 | Deep link | `Link` sa period/store/dataScope u URL-u | Odredište poštuje kontekst |
 | Export/print | `button` | Nosi trust metapodatke (RQ46) |
@@ -157,18 +157,19 @@ Sirovi enum-i (`n/a_dedicated`, `warning`, `stale`) se nikad ne prikazuju direkt
 
 ## 9. Pristupačnost
 - Kontrast: tekst ≥ 4,5:1, veliki brojevi i ikone ≥ 3:1, u **svakoj** temi (test u P-UI-47).
-- Mete na dodir ≥ 44px na telefonu (P-UI-25).
+- Shared mete na dodir ciljaju ≥44px na coarse-pointer/touch uređajima, uključujući tablete i hybrid uređaje; fine-pointer desktop može ostati gušći uz dokumentovane WCAG izuzetke (P-UI-25/P-UI-42).
 - `prefers-reduced-motion` gasi ne-esencijalne animacije.
-- Grafikoni imaju tekstualni sažetak ili tabelu.
+- Grafikoni imaju pristupačan naziv i tekstualni sažetak ili discoverable ekvivalentnu tabelu; sažetak koristi isti već prikazani dataset i ne izvodi novu poslovnu metriku (P-UI-53).
 - Jedan `h1`; naslovi sekcija su `h2`/`h3` redom.
 
 ## 10. Responsive
-Prati P-UI-24 do P-UI-38: širine 320/375/768/1024/1280, bez root overflow-a, tabele sa prioritetom kolona, filteri u drawer-u na telefonu.
+Prati responsive P-UI program i meri najmanje 320/360/375/390/768/1024/1280; 1024 mora uključiti landscape/small-laptop shell sa sidebar stanjem. Bez root overflow-a, tabele imaju prioritet/sticky ključne kolone gde je dokazano potrebno, a filteri koriste bounded responsive obrazac. Chromium emulacija nije dokaz iOS/iPadOS pariteta: pre oznake "real-device certified" potreban je ručni iPhone Safari + iPad Safari prolaz iz vizuelnog regresionog protokola.
 
 ## 11. Teme
-Šest tema (Tamna, Svetla, Meka siva, Neon Light, Neon Dark, Visok kontrast) moraju da prođu matricu iz audita §5. Nova tema se dodaje samo u `ThemeContext.tsx` i mora da prođe test kontrasta.
+Šest tema (Tamna, Svetla, Meka siva, Neon Light, Neon Dark, Visok kontrast) moraju da prođu matricu iz audita §5. Nova tema se dodaje kroz kanonski theme-token izvor definisan P-UI-47 i mora da prođe test kontrasta; ne uvoditi novi paralelni izvor vrednosti u page CSS-u ili Tailwind root blokovima.
 
 ## 12. Usklađenost i gate-ovi
 - `check-analytics-guardrails` čuva poslovnu istinu.
-- P-UI-38 ratchet čuva ovaj dokument: hex/paleta/inline boje, tekst ispod 12px, statusna boja kao tekst, klikabilni ne-semantički elementi. Baseline brojevi smeju samo da padaju.
+- P-UI-38 ratchet čuva ovaj dokument: hex/paleta/inline boje, tekst ispod 12px, statusna boja kao tekst, klikabilni ne-semantički elementi, responsive invariants i chart-a11y contract iz P-UI-53. Baseline brojevi smeju samo da padaju.
 - Svaki prompt koji menja analitički UI navodi koji deo ovog dokumenta primenjuje.
+- Automated gate i physical-device proof su odvojene stvari: CI ne sme da glumi Safari dokaz, a release evidence ne sme da tvrdi real-device paritet bez ručnog iPhone/iPad prolaza.
