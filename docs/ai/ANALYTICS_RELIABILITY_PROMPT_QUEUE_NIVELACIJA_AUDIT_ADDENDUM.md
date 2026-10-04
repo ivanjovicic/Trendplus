@@ -706,8 +706,8 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 ### Addendum 2026-10-04 (next-wave audit; evidence only, no status change)
 
 - Live 22:50 CEST on runtime `02f99158` (build 19:38:31Z, restarted 21:38:36 CEST): Pre/Post still returns `vendor_sales_nivelacija_contract_missing` (`change_percent_revenue_semantic` missing), correlation `00-9eee39af3c3733a5384732c9fe0a25af-93fbd97dca3f8655-00`, while `/ready` reports `ready=true` since 21:39:00 CEST.
-- Code chain (`Program.cs:99-100,827-832`; `StartupReadinessState.cs:25-38`; `DatabaseInitializer.cs:800-821,87-121`; `DeferredStartupTasksHostedService.cs:189-211`): with `Database:AutoMigrate=true` and `DatabaseInitialization:FailFast=true` the process could not be ready while this column is missing, because `EnsureVendorSalesNivelacijaDependenciesAsync` throws. The live combination therefore implies AutoMigrate or FailFast is not effective on the Render service (contradicting `render.yaml:35-40`), not a schema/privilege mismatch inside a running initializer. The schema-privilege hypothesis stays open only if the owner shows both settings are effective.
-- Final verification therefore starts with the STAB16 configuration check and the new readiness field (RQ587), then one startup log line (`Supplier nivelacija dependencies verified` or the thrown message). Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2.
+- Code chain (`Program.cs`, `StartupReadinessState`, `DatabaseInitializer`, `DeferredStartupTasksHostedService`): while a **required strict** initializer is pending or throwing, readiness cannot become clean. The retained live combination therefore strongly suggests the effective runtime did not follow that strict path, but it does not prove which hypothesis is true. Keep at least: AutoMigrate not effective; FailFast/non-strict initializer error completion; different effective config/connection/runtime path; or the view/MV changed after readiness was achieved. Search-path/privilege diagnostics remain useful, but they are not the only remaining alternative.
+- Final verification therefore starts with STAB16 effective-config/provider inspection plus RQ587 startup outcome, then correlates `startedAt/readyAt` with startup logs and the admin contract diagnostic. If initialization reports `succeeded` yet the object is later missing, classify that as post-readiness schema drift rather than rewriting startup history. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2.
 
 
 ## RQ546 - NV-F10 - Do not swallow failed lazy-route imports in chunk-load recovery
@@ -1312,41 +1312,61 @@ NV-F1, NV-F3, NV-P2.
 - The executable population/gating work above is now owned by `RQ571` together with the source-horizon anchor so it is not blocked behind RQ556's still-owner-gated v9 score weights.
 - RQ556 remains WAITING only for the v9 weight/threshold approval. Do not treat the resolved store/Oprema policy as a blocker for RQ571.
 
-## RQ557 - NV-E2 - Markdown outcome ledger: did it work, what it cost, what to repeat or avoid
+## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
 Status: WAITING
+Ready after: RQ553 DONE (semantic prerequisites RQ542/RQ543/RQ551 and the sale-cost basis are already DONE; this sequencing is only to avoid shared Pre/Post page/copy ownership)
 Priority: P2
-Type: sql/backend/frontend
+Type: sql/backend/frontend/tests
 Feature family: markdown-outcome-ledger
-Parallel-safe: no (new view/DTO; Pre/Post page section)
+Parallel-safe: no with RQ553 / any active Pre/Post page owner
 Owner: Analytics Product / Pricing
 Findings: NV-N23, NV-N28, NV-N29
-Commit suggestion: `feat(analytics): add markdown outcome ledger with margin cost and sell-through`
+Commit suggestion: `feat(analytics): add descriptive markdown outcome ledger`
 
 #### Problem
 
-For a past markdown, no screen answers four questions: did sell-through improve, what the markdown cost in margin, whether the stock cleared before the season ended, and which depth bands work for this supplier or footwear type.
+Trendplus has mature markdown-event and pre/post evidence, but there is still no bounded review surface that answers: what was observed before and after a markdown, what margin evidence was covered, and which stock-dependent conclusions are unavailable. The prior version of this prompt incorrectly mixed a descriptive outcome ledger with policy learning ("ponoviti/izbegavati"), elasticity feedback and stock-at-event assumptions. It also cited NV-P1/RQ547 as a stock-source proof even though RQ547 is a reconciliation pack, not certified historical inventory history.
+
+The Analytics Actions ledger population is **not** a dependency of this prompt. Price-event outcomes come from Nivelacija/event/sales evidence.
+
+#### Scope
+
+- Mature markdown events only, using the RQ543 event direction/maturity/overlap contract and RQ542 bounded comparison semantics.
+- Observed descriptive outcomes only. No causal uplift, no recommendation calibration, no automatic "repeat/avoid" label and no change to Pre-Nivelacija scoring/elasticity.
+- Historical-stock-dependent metrics are nullable and carry an explicit evidence reason. Never reconstruct an observed stock fact merely to fill the UI.
 
 #### Do
 
-1. Add a per-event outcome over mature markdowns (`price_direction='markdown' AND post_window_complete`, from NV-F7) with these fields:
-   - `stock_at_event` (dated stock if it exists; otherwise derived from receipts minus sales; otherwise unavailable);
-   - `sell_through_pre30` and `sell_through_post30` against the stock at the event;
-   - `markdown_cost = Σ(old − new) × post units`;
-   - the margin before and after, using cost at sale time (the RQ521/RQ522 cost basis);
-   - `days_to_clear` or the remaining stock at 30/60 days;
-   - `depth_band` (≤10/10–20/20–30/>30%).
-2. Aggregate by supplier × footwear type × depth band: the success rate (sell-through uplift above a threshold with margin per unit not worse than the alternative) and the median markdown cost. Label it "ponoviti" or "izbegavati" only above a minimum event count.
-3. Feed the history-derived elasticity per type and depth band back into the Pre-Nivelacija markdown scenario, replacing the fixed 1.8 with an explicit fallback.
-4. Add a "Ishod sniženja" section on Pre/Post that lists events by outcome, with export.
+1. Add a per-event descriptive outcome for mature markdowns with:
+   - event id/date/store/article/supplier/shoe type/depth band;
+   - pre/post signed units and revenue on the canonical comparable windows;
+   - pre/post average realized selling price where denominator evidence exists;
+   - pre/post margin contribution and cost coverage using the canonical sale-time cost precedence; uncovered margin stays unavailable;
+   - `stockAtEvent`, sell-through and days-to-clear **only** when a certified dated-stock source proves them; otherwise null with `historical_stock_unavailable` (or equivalent).
+2. Aggregate descriptively by supplier × footwear type × depth band: event count, mature/comparable count, median observed revenue/units/margin deltas and coverage. Do not emit "success rate", "ponoviti", "izbegavati" or confidence calibration.
+3. Add an "Ishod sniženja" section on Pre/Post that clearly labels these as **posmatrani ishodi**, exposes sample/coverage, and keeps stock-dependent fields unavailable when their evidence is absent.
+4. Export the same bounded fields plus period/maturity/cost/stock evidence metadata. No frontend recomputation of business metrics.
+5. Document the future handoff: recommendation/policy feedback requires a separate measured-calibration/causal owner (RQ558/RL12 or a future explicitly approved successor) after sufficient event population exists.
+
+#### Tests
+
+- Mature markdown fixture with sale-time cost: pre/post signed values and margin contribution match the independent raw fixture.
+- Missing cost: revenue/units remain visible, margin fields are null with coverage/reason.
+- No historical stock source: stockAtEvent/sell-through/days-to-clear are null; no zero or synthetic stock age is produced.
+- Markup/immature/overlapping events follow the RQ543 eligibility state and cannot silently enter the mature markdown aggregate.
+- Frontend/export parity: same values, sample counts and evidence states.
 
 #### Acceptance
 
-Every number states its population, maturity and cost basis. There are no causal claims; it is labelled "ishod", not "efekat".
+Every displayed number declares its event population, maturity, period and cost/stock evidence. The ledger is useful without claiming causality or learning. Missing historical stock cannot become 0, reconstructed "observed" stock or fake sell-through. No output changes future recommendation scoring.
 
 #### Dependencies
 
-NV-F6, NV-F7, NV-P1 (stock source evidence).
+- RQ542, RQ543 and RQ551 are DONE and supply bounded/event/maturity/summary semantics.
+- Existing sale-time cost owners remain authoritative.
+- RQ547 is **not** a historical-stock dependency.
+- Wait only for RQ553 to release the shared Pre/Post page/copy path; after that perform a fresh branch/lock/PR collision check.
 
 ---
 
@@ -1355,6 +1375,7 @@ NV-F6, NV-F7, NV-P1 (stock source evidence).
 ## RQ558 - NV-E3 - Controlled markdown effect with seasonality and cannibalization (delta to RQ532)
 
 Status: WAITING
+Ready after: RQ557 DONE plus proven non-trivial mature-event/control-dimension coverage; explicit owner promotion required
 Priority: P3
 Type: sql/backend/product
 Feature family: markdown-controlled-effect
@@ -1365,7 +1386,9 @@ Commit suggestion: `feat(analytics): controlled markdown effect with seasonal ba
 
 #### Scope note
 
-RQ532 owns the supplier size-curve and the approved DiD/control contract. This prompt only adds what RQ532 doesn't specify.
+RQ532 is DONE on a **negative source path** for supplier × footwear-type size-curve evidence; do not treat that completion as proof that all control dimensions are populated. This prompt is a later controlled-effect experiment only after RQ557 establishes a descriptive mature-event population and category/type/control dimensions have enough measured coverage. The Analytics Actions ledger is not its data source.
+
+No runtime calibration or recommendation change is authorized here.
 
 #### Do
 
@@ -1380,7 +1403,11 @@ The controlled effect, the seasonal expectation and cannibalization are shown se
 
 #### Dependencies
 
-RQ532, NV-F6, NV-E2.
+- RQ557 descriptive ledger DONE.
+- RQ542/NV-F6 is DONE.
+- RQ532's negative-source contract must be respected; unavailable dimensions remain unavailable.
+- Before promotion, attach evidence that mature markdown events and matching category/type/control dimensions have a non-trivial sample. Current production category coverage is insufficient, so this remains WAITING.
+- RL12 remains the causal-claim gate; this prompt must not relabel a matched comparison as proven incremental impact.
 
 ---
 
