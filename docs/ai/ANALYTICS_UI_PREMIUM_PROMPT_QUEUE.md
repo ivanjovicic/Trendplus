@@ -5,7 +5,7 @@ Repo: `ivanjovicic/Trendplus`
 Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49`. `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
-UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-52 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
+UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
 Purpose: make shared backoffice and analytics navigation, controls, tables, responsive workflows and dashboard UX premium without mixing presentation work with analytics correctness fixes.
 
 Use with:
@@ -61,6 +61,7 @@ Use with:
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | WAITING | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | WAITING | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553) |
+| P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts |
 
 ---
 
@@ -2398,7 +2399,7 @@ Article List has small pagination/input controls and a table without an explicit
 ## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
 
 Status: WAITING
-Ready after: P-UI-30 through P-UI-37 core migrations or explicit owner decision that remaining slices are deferred
+Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred; this prompt is the final responsive/theme/a11y regression gate
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
 Feature family: responsive-ui-regression-gates
@@ -2458,8 +2459,9 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 
 ### Dependencies
 
-- Core responsive migrations are DONE or explicitly deferred.
+- All named responsive/UX migrations above are DONE or explicitly deferred, including P-UI-53 chart accessibility.
 - PERF18 separately owns bundle/preload performance gating.
+- Physical-device proof is release evidence, not a CI prerequisite: before claiming "real-device certified", record one iPhone Safari and one iPad Safari manual pass using `ANALYTICS_VISUAL_REGRESSION_PROTOCOL.md`; if hardware is unavailable, state that limitation explicitly rather than inferring parity from Chromium emulation.
 
 ### Addendum 2026-10-04 (responsive re-audit, live evidence)
 
@@ -2475,6 +2477,7 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 
 - Extend the gate scope with a theme/a11y ratchet (audit UX-039, design system §12): count per file hex/`rgb()` literals in analytics pages, raw Tailwind palette classes (`amber|red|green|…-NNN`), `text-[9|10|11px]`, `color: var(--warning|success|error)` used as text, and `onClick` on `tr/div/span` without `role`+`tabIndex`. The 2026-10-04 audit baselines (e.g. Insight Studio 50 hex / 34 inline / 58 tiny text) are the initial allowlist; counts may only decrease.
 - The theme-contrast unit test added by P-UI-47 becomes part of the gate.
+- P-UI-53 supplies the chart semantics; this gate adds a deterministic check that chart regions have an accessible name plus either a textual summary or a discoverable table alternative, and that seeded missing-a11y fixtures fail.
 - If the responsive migrations remain blocked, the owner may split this ratchet into its own prompt with a fresh collision check; do not duplicate it elsewhere.
 
 ## Responsive re-audit registration 2026-10-04
@@ -3027,18 +3030,24 @@ Commit suggestion: `fix(ui): move ops toggles out of the business header`
 
 ### Problem
 
-At widths of 1280px and above, every business screen shows "API ON [Stop]", "Workeri 0/1 [Stop]" and "Redis: isključen [Start]" in the global header. One click disables workers or the API ping for the whole system with no confirmation and no explanation of the consequence. This mixes passive status with operational commands and exposes them to non-admin users.
+At widths of 1280px and above, every business screen shows "API ON [Stop]", "Workeri 0/1 [Stop]" and "Redis: isključen [Start]" in the global header, but these controls do **not** have the same semantics:
+- worker enable/disable and Redis toggle are backend write operations protected server-side by `AdminAccessControl` / `X-Admin-Key`;
+- "API Stop" only pauses the SPA's periodic backend ping in the current browser through `PingControlContext`; it does not stop the API service.
+
+The UX defect is therefore global placement, misleading action naming and missing consequence/confirmation for backend writes — not proof that every anonymous user can shut down the backend.
 
 ### Evidence
 
 - Audit UX-002 / DS-3. Live on all 2026-10-04 screenshots.
-- `layout/components/HeaderStatus.tsx:450-453`, `:650-653`; `components/WorkerControlFlag.tsx:63-75` (toggle without confirm; only `runtimeToggleAllowed` gates enabling).
+- `WorkerControlFlag.tsx` calls worker control writes; `RedisToggleFlag.tsx` calls `POST /api/redis/toggle`; `ApiPingFlag.tsx` only calls the local `toggleApiPing` context action.
+- `docs/security/RUNTIME_AUTHORIZATION_BOUNDARY_AUDIT_2026-08-05.md`: worker start/stop/control and `POST /api/redis/toggle` use `AdminAccessControl`; production has API-key admin mode rather than a general frontend role pipeline.
 
 ### Scope
 
-- The business header keeps a passive, read-only status (backend online, workers n/m, cache) with a link to the admin/observability surface.
-- Toggle actions move to the existing admin/observability page (e.g. Workers panel), behind an accessible confirmation dialog stating the consequence.
-- Action visibility follows existing backend capability fields (`runtimeToggleAllowed` or equivalent). If no backend capability exists for disabling, the UI shows status only and the run log records a STAB/SEC follow-up. Do not invent client-side roles.
+- The business header keeps passive read-only status (backend online, workers n/m, cache) with a link to the admin/observability surface.
+- Worker/Redis backend write actions move to the admin/observability surface and require an accessible confirmation explaining the server-side effect. Preserve the existing `AdminAccessControl`; do not weaken, replace or simulate authorization in the frontend.
+- The API-ping switch is **not** an admin backend action. Move it to diagnostics/preferences as a browser-local control and label it explicitly ("Pauziraj proveru API-ja u ovom pregledaču" / equivalent). It does not require destructive-action confirmation, but must never imply that the API service is stopped.
+- Action visibility follows actual capability/credential availability. If the current client cannot legitimately supply the required admin credential, show status only and record the existing STAB/SEC/admin-client gap; do not invent client-side roles.
 
 ### Read first
 
@@ -3048,32 +3057,34 @@ At widths of 1280px and above, every business screen shows "API ON [Stop]", "Wor
 
 ### Do
 
-1. Split each flag into a status view and an action view.
-2. Render only the status view in `HeaderStatus` (desktop and mobile drawer).
-3. Host the action views on the admin/observability page with the shared `Modal` confirmation.
-4. Verify what backend authorization protects the enable/disable endpoints and record it; do not change backend code in this prompt.
-5. Fix the existing `act(...)` warnings in `HeaderStatus.spec.tsx` while touching it.
-6. Add a visible-on-focus "Preskoči na sadržaj" skip link as the first tab stop, targeting the page `main` landmark; live keyboard testing on 2026-10-04 found the first 15 tab stops on shell, notification and sidebar controls before any page content (audit UX-044).
-7. Give the truncated mobile breadcrumb/title an accessible full label and rename the unlabeled "Više" control descriptively (live: "Trendplus pre…", "Odluke o proi…"; audit UX-050).
+1. Split each flag into passive status and action/pref control.
+2. Render only passive operational status in `HeaderStatus` (desktop and mobile drawer).
+3. Host worker/Redis writes on the admin/observability page with the shared `Modal` confirmation and existing admin-credential flow. If no usable credential flow exists on that surface, render them status-only and record the gap; do not create an insecure client-side bypass.
+4. Move the API-ping switch to diagnostics/preferences as an explicitly browser-local preference. Test that changing it affects polling state only and never calls a backend "stop API" route.
+5. Verify and record the existing server-side auth boundary: worker/Redis writes remain `AdminAccessControl`; no backend auth code changes are authorized here.
+6. Fix the existing `act(...)` warnings in `HeaderStatus.spec.tsx` while touching it.
+7. Add a visible-on-focus "Preskoči na sadržaj" skip link as the first tab stop, targeting the page `main` landmark; live keyboard testing on 2026-10-04 found the first 15 tab stops on shell, notification and sidebar controls before any page content (audit UX-044).
+8. Give the truncated mobile breadcrumb/title an accessible full label and rename the unlabeled "Više" control descriptively (live: "Trendplus pre…", "Odluke o proi…"; audit UX-050).
 
 ### Tests
 
 - RTL: the header contains no Stop/Start buttons; the status remains visible and accessible.
-- RTL: the admin action requires confirmation; cancel does nothing; confirm calls the existing client once.
-- RTL: an action is hidden when the backend capability is false.
+- RTL: worker/Redis admin writes require confirmation; cancel does nothing; confirm calls the existing client once only when the legitimate admin capability/credential is available.
+- RTL: backend write actions are hidden/disabled when capability or credential is unavailable; the browser-local API-ping preference remains clearly local and does not call a backend write.
 - RTL: the first Tab focuses the skip link, and activating it moves focus to `main`.
 - `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, focused Vitest; responsive header check at 1280/768/375.
 - Governance validators; `git diff --check`.
 
 ### Acceptance
 
-- No business screen offers a one-click operational toggle.
-- Every operational toggle requires confirmation and states its effect.
-- The backend authorization status is documented; any gap is recorded as a follow-up, not silently assumed.
+- No business screen offers backend operational write controls.
+- Worker/Redis writes require confirmation and retain server-side admin authorization.
+- The API-ping preference is labelled as local to the current browser and cannot be mistaken for stopping the backend service.
+- Any missing legitimate admin-client credential flow is documented as a follow-up, not bypassed.
 
 ### Dependencies
 
-- None blocking. Backend authorization hardening, if needed, belongs to STAB/SEC.
+- P-UI-40 DONE first (same `HeaderStatus.tsx`/`AppLayout.tsx` ownership). Backend authorization remains STAB/SEC-owned; this prompt consumes the existing boundary and must not weaken it.
 
 ---
 
@@ -3312,3 +3323,68 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 ### Dependencies
 
 - RQ553 (same file); RQ582 owns the Insight Studio entry.
+
+
+## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
+
+Status: WAITING
+Ready after: P-UI-47 DONE AND P-UI-31/P-UI-35/P-UI-36 are DONE or explicitly deferred (avoid repainting chart-heavy pages twice)
+Priority: P2
+Type: frontend/a11y/tests
+Feature family: analytics-chart-accessibility
+Parallel-safe: no while a page-family owner is editing the same chart files
+Owner: unassigned (Analytics Frontend / Accessibility)
+Commit suggestion: `feat(ui): add accessible analytics chart contract`
+
+### Problem
+
+The design system already says every chart needs a textual summary or table alternative, but the repository has no shared chart accessibility contract. Repo-wide inspection finds no Recharts `accessibilityLayer` usage and no common `aria-describedby`/summary wrapper. The Data Quality custom SVG is an isolated positive example with `role="img"` and `aria-label`; Dashboard, Daily, Supplier, Shoe Type, Color, Inventory, Pre-Nivelacija, Pre/Post and Analytics Details charts rely on visual rendering without one consistent screen-reader path.
+
+### Evidence
+
+- UX-051 in `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`.
+- Recharts chart call sites across `AnalyticsDashboardCharts.tsx`, `DailySalesStatsPage.tsx`, `SupplierSalesStatsPage.tsx`, `ShoeTypeSalesStatsPage.tsx`, `ColorSalesStatsPage.tsx`, Inventory panels, Pre-Nivelacija/Pre-Post and `AnalyticsDetails.tsx`.
+- Positive control: `DataQualityPage.tsx` custom SVG exposes `role="img"` + `aria-label`.
+
+### Scope
+
+- Add one shared chart accessibility helper/frame under `components/analytics` plus focused tests.
+- Migrate the named chart families after their responsive/theme page owners are finished or explicitly deferred.
+- No chart data, aggregation, ranking, recommendation, threshold or backend contract changes.
+- Insight Studio is excluded while RQ582 keeps it experimental/hidden; accessibility becomes a re-exposure prerequisite.
+
+### Read first
+
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §4 and §9.
+- P-UI-47 chart/status tokens.
+- P-UI-31/P-UI-35/P-UI-36 completion evidence.
+- Existing chart/table parity contracts; a textual alternative must use the same already-rendered dataset.
+
+### Do
+
+1. Define a shared chart frame/helper with an accessible name and optional `aria-describedby` summary id. Use Recharts' supported accessibility mechanism where it materially helps, but do not depend on SVG internals that are unstable across versions.
+2. Every meaningful chart gets a short Serbian text summary generated only from the same chart-series projection already displayed. Do not calculate a new KPI, recommendation or business status for the summary.
+3. When a semantically equivalent data table already exists, expose a clear relationship/link ("Prikaži tabelu podataka") instead of duplicating every point in hidden text.
+4. Interactive chart controls/legends/tooltips must be keyboard reachable when they carry information not otherwise available. Purely decorative chart elements are hidden from assistive tech.
+5. Preserve color-independent meaning: legend/series labels and status text remain understandable without color.
+6. Document exceptions for decorative mini-sparklines and prove they have an adjacent textual value.
+
+### Tests
+
+- Shared helper RTL/Vitest: accessible name present; summary relation resolves; decorative mode is hidden; table-alternative link is keyboard reachable.
+- Representative chart tests for Dashboard, Daily, Supplier/Shoe Type/Color and one Nivelacija/Inventory family.
+- Static/Node check: named production chart call sites cannot silently regress to an unlabeled chart wrapper unless allowlisted with rationale.
+- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest, build, governance validators, `git diff --check`.
+
+### Acceptance
+
+- Every in-scope analytics chart has an accessible name and either a concise textual summary or a discoverable equivalent table.
+- Screen-reader users can recover the chart's decision-relevant meaning without relying on color or hover-only tooltips.
+- No new business value is computed by the accessibility layer.
+- P-UI-38 receives a stable invariant it can ratchet in CI.
+
+### Dependencies
+
+- P-UI-47 first for canonical chart/status tokens.
+- P-UI-31/P-UI-35/P-UI-36 first, or explicit owner deferral, to avoid broad same-page collisions.
+- P-UI-38 consumes this prompt and remains the final gate.
