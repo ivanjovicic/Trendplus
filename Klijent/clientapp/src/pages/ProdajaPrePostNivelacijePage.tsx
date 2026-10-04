@@ -27,6 +27,8 @@ import { getStores } from "../services/analyticsApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
   getVendorSalesNivelacija,
+  type VendorSalesNivelacijaDriverMetricSummary,
+  type VendorSalesNivelacijaDriverSummary,
   type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
   type VendorSalesNivelacijaVendorStat,
@@ -225,10 +227,7 @@ type DetailDriverSummary = {
   topWinnerRevenue: number | null;
   topRiskLabel: string;
   topRiskRevenue: number | null;
-  avgMomentumRevenue: number | null;
-  avgElasticity: number | null;
-  avgDidRevenue: number | null;
-  avgLostSalesOOS: number | null;
+  driverMetrics: VendorSalesNivelacijaDriverSummary | null;
   topMetricReasons: string[];
 };
 
@@ -290,7 +289,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
   { key: "confidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "percent" },
-  { key: "volatilityLabel", header: "Volatilnost", dataType: "text" },
+  { key: "volatilityLabel", header: "Poređenje sa prethodnim periodom", dataType: "text" },
   { key: "status", header: "Efekat promene cene", dataType: "text" },
   { key: "articleCount", header: "Artikala", dataType: "number" },
   { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
@@ -411,7 +410,7 @@ function focusFilterLabel(filter: FocusFilter): string {
   if (filter === "doNotTrust") return effectStatusLabel("ineffective");
   if (filter === "insufficientData") return effectStatusLabel("insufficient_data");
   if (filter === "lowConfidence") return "Nisko poverenje";
-  if (filter === "volatile") return "Visoka volatilnost";
+  if (filter === "volatile") return "Veća promena";
   return "Sve";
 }
 
@@ -428,6 +427,7 @@ type MetricWarningMeta = {
   severity: "info" | "watch";
   explanation: string;
   isExpected: boolean;
+  supportReason: string;
 };
 
 const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
@@ -436,33 +436,37 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     severity: "info",
     explanation:
       "Rolling 7-dnevni pre/post zahteva tačan datum nivelacije. U mode-u pregleda po periodu, ova metrika se ne računa, što je očekivano ponašanje.",
+    supportReason: "Rolling pre/post unavailable (no eventDate filter)",
     isExpected: true,
   },
   "No rolling data (view missing)": {
-    label: "Rolling 7d view nedostupan",
+    label: "Rolling analiza nije dostupna",
     severity: "info",
-    explanation: "vw_sales_rolling_7d nije aktivan na ovoj bazi. Ostali podaci su ispravni.",
+    explanation: "Dodatni sedmodnevni obračun prodaje nije dostupan. Osnovna pre/post analiza ostaje ispravna.",
+    supportReason: "No rolling data (view missing)",
     isExpected: true,
   },
   "No momentum data (view missing)": {
     label: "Momentum signal nedostupan",
     severity: "info",
     explanation:
-      "vw_sales_momentum view nije kreiran. Momentum signal nije uključen u ocenu, ali je osnovna analiza ispravna.",
+      "Dodatni signal ubrzanja prodaje nije dostupan i nije uključen u ocenu. Osnovna analiza ostaje ispravna.",
+    supportReason: "No momentum data (view missing)",
     isExpected: true,
   },
   "No OOS data (view missing)": {
     label: "OOS metrika nedostupna",
     severity: "info",
     explanation:
-      "vw_stock_red_zone view nije kreiran. Procena prodajnog gubitka zbog iscrpljenosti zalihe nije dostupna.",
+      "Procena prodajnog gubitka zbog nedostupnosti robe nije dostupna.",
+    supportReason: "No OOS data (view missing)",
     isExpected: true,
   },
   "No DiD data (view missing)": {
-    label: "DiD metrika nedostupna",
+    label: "Kontrolna grupa još nije dostupna",
     severity: "info",
-    explanation:
-      "Pogled vw_nivelacija_did nije kreiran. Procena efekta metodom razlike u razlikama nije uključena.",
+    explanation: "Poređenje sa artiklima bez ove nivelacije nije dostupno; ostala pre/post analiza ostaje ispravna.",
+    supportReason: "No DiD data (view missing)",
     isExpected: true,
   },
   "Article detail limited": {
@@ -470,6 +474,7 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     severity: "info",
     explanation:
       "Prikazana lista artikala je ograničena, ali zbirni KPI-jevi i preporuke koriste ceo kanonski kohort.",
+    supportReason: "Article detail limited",
     isExpected: true,
   },
   "OOS/DiD mapping failed": {
@@ -477,6 +482,7 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     severity: "watch",
     explanation:
       "Neočekivana greška pri učitavanju OOS ili DiD podataka. Osnovna analiza je ispravna, ali proverite konfiguraciju baze.",
+    supportReason: "OOS/DiD mapping failed",
     isExpected: false,
   },
   "Metrics mapping failed": {
@@ -484,6 +490,7 @@ const METRIC_WARNING_META: Record<string, MetricWarningMeta> = {
     severity: "watch",
     explanation:
       "Greška pri obradi naprednih metrika. Osnovna analiza prometa pre/posle i promene cene ostaje ispravna.",
+    supportReason: "Metrics mapping failed",
     isExpected: false,
   },
 };
@@ -493,17 +500,24 @@ function getMetricWarningMeta(rawKey: string): MetricWarningMeta {
   const prefixMatch = Object.entries(METRIC_WARNING_META).find(([key]) => rawKey.startsWith(key));
   if (prefixMatch) return prefixMatch[1];
   return {
-    label: rawKey,
+    label: "Napredni signal nije dostupan",
     severity: "watch",
     explanation: "Neočekivano upozorenje pri obradi podataka.",
+    supportReason: rawKey.replace(/\bvw_[A-Za-z0-9_]+\b/gi, "pomoćni analitički izvor"),
     isExpected: false,
   };
 }
 
-function averageNullable(values: Array<number | null | undefined>): number | null {
-  const numbers = values.filter((value): value is number => value != null && !Number.isNaN(value));
-  if (numbers.length === 0) return null;
-  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+function driverMetricEvidenceHint(
+  metric: VendorSalesNivelacijaDriverMetricSummary | null | undefined,
+  format: (value: number) => string,
+): string {
+  if (!metric) return "Medijana i uzorak nisu dostupni.";
+  const meanBasis = metric.meanWeighting === "post_revenue_weighted"
+    ? "Srednja vrednost ponderisana post-period prihodom"
+    : "Aritmetička srednja vrednost";
+  const median = metric.median == null ? "nije dostupna" : format(metric.median);
+  return `${meanBasis}; neponderisana medijana ${median}; n=${metric.sampleCount}.`;
 }
 
 function buildConfidenceMeta(
@@ -553,12 +567,12 @@ function buildVolatilityMeta(currentRevenue: number | null, previousRevenue: num
   const magnitude = Math.abs(pct);
 
   if (magnitude >= 45) {
-    return { pct, label: "Visoka", tone: pct >= 0 ? "positive" : "negative" };
+    return { pct, label: "Velika promena", tone: pct >= 0 ? "positive" : "negative" };
   }
   if (magnitude >= 20) {
-    return { pct, label: "Promenljivo", tone: "warning" };
+    return { pct, label: "Primetna promena", tone: "warning" };
   }
-  return { pct, label: "Stabilno", tone: "neutral" };
+  return { pct, label: "Mala promena", tone: "neutral" };
 }
 
 function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
@@ -568,7 +582,7 @@ function focusFilterMatches(row: DecisionVendor, filter: FocusFilter): boolean {
   if (filter === "doNotTrust") return row.status === "ineffective";
   if (filter === "insufficientData") return row.status === "insufficient_data";
   if (filter === "lowConfidence") return row.confidenceTone === "weak";
-  if (filter === "volatile") return row.volatilityLabel === "Visoka" || row.volatilityLabel === "Promenljivo" || row.volatilityLabel === "Novo";
+  if (filter === "volatile") return row.volatilityLabel === "Velika promena" || row.volatilityLabel === "Primetna promena" || row.volatilityLabel === "Novo";
   return true;
 }
 
@@ -1148,34 +1162,38 @@ export default function ProdajaPrePostNivelacijePage() {
     return rows[0] ?? null;
   }, [data?.priceDirectionStats]);
 
-const advancedSignals = useMemo(
+  const advancedSignals = useMemo(
     () => [
       {
         label: "Momentum prodaje",
-        value: fmtRsd(data?.avgMomentumRevenue),
-        hint: "prosečan prihod",
-        tip: "Prosečan prihod od ubrzanja prodaje (momentum signal). Pokazuje da li prodajni trend dobija na brzini pre/posle nivelacije. Nedostupno ako vw_sales_momentum view nije kreiran u bazi.",
+        value: fmtRsd(data?.driverMetrics?.momentumRevenue.mean),
+        available: data?.driverMetrics?.momentumRevenue.mean != null,
+        hint: driverMetricEvidenceHint(data?.driverMetrics?.momentumRevenue, fmtRsd),
+        tip: "Prosečan prihod od ubrzanja prodaje. Ovaj signal je informativan i ne menja osnovnu pre/post analizu.",
       },
       {
         label: "Elastičnost cene",
-        value: fmtNumber(data?.avgElasticity, 2),
-        hint: "tačkasta procena",
-        tip: "Tačkasta procena cenovne elastičnosti za zrele markdown događaje sa dovoljnim signalom i promenom cene od najmanje 5%. Agregat je ponderisana sredina prema post-period prihodu.",
+        value: fmtNumber(data?.driverMetrics?.elasticity.mean, 2),
+        available: data?.driverMetrics?.elasticity.mean != null,
+        hint: driverMetricEvidenceHint(data?.driverMetrics?.elasticity, (value) => fmtNumber(value, 2)),
+        tip: "Tačkasta procena za zrele uporedive događaje sa sniženjem cene od najmanje 5%. Srednja vrednost koristi post-period prihod kao ponder; medijana je neponderisana.",
       },
       {
-        label: "Efekat razlike u razlikama (DiD)",
-        value: fmtRsd(data?.avgDidRevenue),
-        hint: "prosečan prihod",
-        tip: "Procena uzročnog efekta nivelacije metodom razlike u razlikama. Poredi promenu prodaje sa kontrolnom grupom (artikli bez nivelacije). Nije dostupno ako vw_nivelacija_did nije kreiran.",
+        label: "Efekat naspram kontrolne grupe (DiD)",
+        value: fmtRsd(data?.driverMetrics?.didRevenue.mean),
+        available: data?.driverMetrics?.didRevenue.mean != null,
+        hint: driverMetricEvidenceHint(data?.driverMetrics?.didRevenue, fmtRsd),
+        tip: "Procena promene prodaje poređenjem sa artiklima bez nivelacije. Ne prikazuje se kada kontrolna grupa ili njeni podaci nisu dostupni.",
       },
       {
         label: "Izgubljena prodaja zbog nestašice",
-        value: fmtRsd(data?.avgLostSalesOOS),
-        hint: "prosek",
-        tip: "Procena prihoda izgubljenog zbog iscrpljenosti zalihe (nestašica, OOS). Izračunava se iz vw_stock_red_zone podataka. Nedostupno dok taj view nije kreiran u bazi.",
+        value: fmtRsd(data?.driverMetrics?.lostSalesOOS.mean),
+        available: data?.driverMetrics?.lostSalesOOS.mean != null,
+        hint: driverMetricEvidenceHint(data?.driverMetrics?.lostSalesOOS, fmtRsd),
+        tip: "Procena prihoda izgubljenog zbog nedostupnosti robe. Ostaje nedostupna kada nema potvrđenih podataka o nestašici.",
       },
     ],
-    [data?.avgDidRevenue, data?.avgElasticity, data?.avgLostSalesOOS, data?.avgMomentumRevenue]
+    [data?.driverMetrics]
   );
 
   const concentrationData = useMemo(() => {
@@ -1213,7 +1231,18 @@ const advancedSignals = useMemo(
     const vendorArticles = data.articleStats.filter((item, articleIndex) =>
       resolveSupplierArticleVendorKey(item, articleIndex, data.vendorStats, currentVendorRowKeys) === selectedRow.vendorRowKey
       && hasComparablePrePostEvidence(item));
-    if (vendorArticles.length === 0) return null;
+    if (vendorArticles.length === 0) {
+      return {
+        dominantCategory: "Nije dostupno",
+        dominantCategoryRevenue: null,
+        topWinnerLabel: "Nije dostupno",
+        topWinnerRevenue: null,
+        topRiskLabel: "Nije dostupno",
+        topRiskRevenue: null,
+        driverMetrics: selectedRow.driverMetrics ?? null,
+        topMetricReasons: [],
+      };
+    }
 
     const dominantCategoryMap = new Map<string, number>();
     const metricReasonCounts = new Map<string, number>();
@@ -1244,10 +1273,7 @@ const advancedSignals = useMemo(
       topWinnerRevenue: topWinner?.metric ?? null,
       topRiskLabel: topRisk ? `${topRisk.article.sku || "-"} • ${topRisk.article.articleName}` : "Nije dostupno",
       topRiskRevenue: topRisk?.metric ?? null,
-      avgMomentumRevenue: averageNullable(vendorArticles.map((item) => item.momentumRevenue)),
-      avgElasticity: selectedRow.avgElasticity ?? null,
-      avgDidRevenue: averageNullable(vendorArticles.map((item) => item.didRevenue)),
-      avgLostSalesOOS: averageNullable(vendorArticles.map((item) => item.lostSalesOOS)),
+      driverMetrics: selectedRow.driverMetrics ?? null,
       topMetricReasons,
     };
   }, [currentVendorRowKeys, data, selectedRow]);
@@ -1634,7 +1660,7 @@ const advancedSignals = useMemo(
       ) : null}
       {previousComparisonError ? (
         <div className="ppn-decision-message warning" role="status" data-testid="previous-comparison-warning">
-          Uporedni prethodni period nije učitan ({previousComparisonError}). PoP rast i volatilnost nisu dostupni zbog
+          Uporedni prethodni period nije učitan ({previousComparisonError}). Promena prema prethodnom periodu nije dostupna zbog
           greške zahteva, ne zbog stvarnog nedostatka baze — ovo nije „Nova baza“.
         </div>
       ) : null}
@@ -1702,6 +1728,10 @@ const advancedSignals = useMemo(
                       <div key={warning} className={`ppn-warning-item ppn-warning-${meta.severity}`}>
                         <span className="ppn-warning-label">{meta.label}</span>
                         <span className="ppn-warning-explanation">{meta.explanation}</span>
+                        <details className="ppn-warning-support-details">
+                          <summary>Detalji za podršku</summary>
+                          <span>{meta.supportReason}</span>
+                        </details>
                       </div>
                     );
                   })}
@@ -1767,14 +1797,14 @@ const advancedSignals = useMemo(
             </section>
           ) : null}
 
-          {advancedSignals.some((item) => item.value !== "Nije dostupno") ? (
+          {advancedSignals.some((item) => item.available) ? (
             <section className="ppn-advanced-signals-secondary">
               <h3 className="ppn-section-label">
                 Dodatni analitički signali
-                <InfoTip text="Dodatni signali izračunati iz naprednih pogleda. Dostupni su samo ako su potrebni pogledi kreirani u bazi – osnovna analiza ostaje ispravna i kada su ovi signali nedostupni." />
+                <InfoTip text="Dodatni signali zavise od dostupnih analitičkih podataka. Osnovna analiza ostaje ispravna i kada neki od njih nisu dostupni." />
               </h3>
               <div className="ppn-mini-metrics ppn-mini-metrics--secondary">
-                {advancedSignals.filter((item) => item.value !== "Nije dostupno").map((item) => (
+                {advancedSignals.filter((item) => item.available).map((item) => (
                   <article key={item.label}>
                     <span className="ppn-mini-metric-label">
                       {item.label}
@@ -1918,9 +1948,9 @@ const advancedSignals = useMemo(
                       </th>
                       <th className="align-center">
                         <button type="button" onClick={() => handleSort("volatilityPct")}>
-                          Volatilnost{sortMarker("volatilityPct", sortField, sortDir)}
+                          Poređenje sa prethodnim periodom{sortMarker("volatilityPct", sortField, sortDir)}
                         </button>
-                        <InfoTip text="Variranje post-window prometa vs prethodni event-opseg istog perioda. Visoka volatilnost znači nestabilan signal – preporuku treba uzeti s rezervom." />
+                        <InfoTip text="Poredi post-period prihod za dve različite populacije događaja; ne opisuje nestabilnost unutar istih događaja." />
                       </th>
                       <th>
                         <button type="button" onClick={() => handleSort("status")}>
@@ -2045,8 +2075,8 @@ const advancedSignals = useMemo(
                 </article>
                 <article>
                   <span>
-                    Volatilnost vs prethodni period
-                    <InfoTip text="Procentualna razlika post-window prometa ovog perioda vs prethodnog event-opsega. Visoka volatilnost (>30%) znači nestabilan signal – preporuka je manje sigurna." />
+                    Poređenje sa prethodnim periodom
+                    <InfoTip text="Poredi post-period prihod ovog perioda sa prethodnim periodom, koji sadrži drugu populaciju događaja. Ovaj pokazatelj sam po sebi ne menja pouzdanost preporuke." />
                   </span>
                   <strong>{selectedRow.volatilityPct == null ? selectedRow.volatilityLabel : fmtSignedPct(selectedRow.volatilityPct, 1)}</strong>
                 </article>
@@ -2085,14 +2115,32 @@ const advancedSignals = useMemo(
                     <small>{fmtRsd(selectedDriverSummary.topRiskRevenue)}</small>
                   </article>
                   <article>
-                    <span>Momentum / Elasticnost</span>
-                    <strong>{fmtRsd(selectedDriverSummary.avgMomentumRevenue)}</strong>
-                    <small>Elasticnost {fmtNumber(selectedDriverSummary.avgElasticity, 2)}</small>
+                    <span>Momentum prodaje</span>
+                    <strong>{fmtRsd(selectedDriverSummary.driverMetrics?.momentumRevenue.mean)}</strong>
+                    <small>{driverMetricEvidenceHint(selectedDriverSummary.driverMetrics?.momentumRevenue, fmtRsd)}</small>
                   </article>
                   <article>
-                    <span>DiD / Izgubljena prodaja zbog nestašice</span>
-                    <strong>{fmtRsd(selectedDriverSummary.avgDidRevenue)}</strong>
-                    <small>Izgubljena prodaja {fmtRsd(selectedDriverSummary.avgLostSalesOOS)}</small>
+                    <span>Elastičnost cene</span>
+                    <strong>{fmtNumber(selectedDriverSummary.driverMetrics?.elasticity.mean, 2)}</strong>
+                    <small>{driverMetricEvidenceHint(selectedDriverSummary.driverMetrics?.elasticity, (value) => fmtNumber(value, 2))}</small>
+                  </article>
+                  <article>
+                    <span>Efekat naspram kontrolne grupe (DiD)</span>
+                    <strong>
+                      {selectedDriverSummary.driverMetrics?.didRevenue.mean == null
+                        ? "Kontrolna grupa još nije dostupna"
+                        : fmtRsd(selectedDriverSummary.driverMetrics.didRevenue.mean)}
+                    </strong>
+                    <small>{driverMetricEvidenceHint(selectedDriverSummary.driverMetrics?.didRevenue, fmtRsd)}</small>
+                  </article>
+                  <article>
+                    <span>Izgubljena prodaja zbog nestašice</span>
+                    <strong>
+                      {selectedDriverSummary.driverMetrics?.lostSalesOOS.mean == null
+                        ? "Procena nestašice nije dostupna"
+                        : fmtRsd(selectedDriverSummary.driverMetrics.lostSalesOOS.mean)}
+                    </strong>
+                    <small>{driverMetricEvidenceHint(selectedDriverSummary.driverMetrics?.lostSalesOOS, fmtRsd)}</small>
                   </article>
                   <article>
                     <span>

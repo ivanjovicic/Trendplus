@@ -4820,6 +4820,7 @@ public static class AllEndpoints
                                 PrimaryFootwearTypeSharePercent = primaryType?.PostRevenueSharePercent,
                                 PrimaryFootwearTypeAvgElasticity = primaryType?.AvgElasticity,
                                 AvgElasticity = VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(matureComparable),
+                                DriverMetrics = VendorSalesNivelacijaDriverSummaryPolicy.Build(comparable, matureComparable),
                                 TypeInsightsAuthoritative = primaryType?.PostRevenueSharePercent.HasValue == true
                             },
                             IsUnknownVendor = isUnknownVendor,
@@ -5079,6 +5080,7 @@ public static class AllEndpoints
                     AvgDidRevenue = avgDidRevenue,
                     AvgLostSalesOOS = avgLostSalesOos,
                     OOSRate = avgOosRate,
+                    DriverMetrics = VendorSalesNivelacijaDriverSummaryPolicy.Build(comparableRows, matureComparableRows),
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal)),
                     RecommendationAllowed = false,
                     DataCoverageStatus = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageStatus,

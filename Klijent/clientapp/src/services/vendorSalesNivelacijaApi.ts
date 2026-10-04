@@ -18,6 +18,20 @@ export interface VendorSalesNivelacijaRecommendation {
     reasonCodes: string[];
 }
 
+export interface VendorSalesNivelacijaDriverMetricSummary {
+    mean: number | null;
+    median: number | null;
+    sampleCount: number;
+    meanWeighting: "unweighted" | "post_revenue_weighted";
+}
+
+export interface VendorSalesNivelacijaDriverSummary {
+    momentumRevenue: VendorSalesNivelacijaDriverMetricSummary;
+    elasticity: VendorSalesNivelacijaDriverMetricSummary;
+    didRevenue: VendorSalesNivelacijaDriverMetricSummary;
+    lostSalesOOS: VendorSalesNivelacijaDriverMetricSummary;
+}
+
 export interface VendorSalesNivelacijaVendorStat {
     vendorId: number | null;
     vendorName: string;
@@ -51,6 +65,7 @@ export interface VendorSalesNivelacijaVendorStat {
     primaryFootwearTypeSharePercent?: number | null;
     primaryFootwearTypeAvgElasticity?: number | null;
     avgElasticity?: number | null;
+    driverMetrics?: VendorSalesNivelacijaDriverSummary | null;
     typeInsightsAuthoritative?: boolean;
 }
 
@@ -215,6 +230,7 @@ export interface VendorSalesNivelacijaResponse {
     avgElasticity?: number | null;
     avgDidRevenue?: number | null;
     avgLostSalesOOS?: number | null;
+    driverMetrics?: VendorSalesNivelacijaDriverSummary | null;
     oosRate?: number | null;
     metricsStatus?: string | null;
     recommendationAllowed?: boolean | null;

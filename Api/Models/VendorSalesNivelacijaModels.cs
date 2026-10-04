@@ -107,6 +107,7 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public decimal? PrimaryFootwearTypeSharePercent { get; set; }
     public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }
     public decimal? AvgElasticity { get; set; }
+    public VendorSalesNivelacijaDriverSummaryDto? DriverMetrics { get; set; }
     public bool TypeInsightsAuthoritative { get; set; }
     public VendorSalesNivelacijaRecommendationDto? Recommendation { get; set; }
 }
@@ -237,11 +238,28 @@ public sealed class VendorSalesNivelacijaResponseDto
     public decimal? AvgDidRevenue { get; set; }
     public decimal? AvgLostSalesOOS { get; set; }
     public decimal? OOSRate { get; set; }
+    public VendorSalesNivelacijaDriverSummaryDto? DriverMetrics { get; set; }
     public string? MetricsStatus { get; set; } // null if all metrics valid, else reason
     public bool RecommendationAllowed { get; set; }
     public string DataCoverageStatus { get; set; } = Api.Services.VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageStatus;
     public string DataCoverageReason { get; set; } = Api.Services.VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageReason;
     public AnalyticsResponseMetaDto? Meta { get; set; }
+}
+
+public sealed class VendorSalesNivelacijaDriverSummaryDto
+{
+    public VendorSalesNivelacijaDriverMetricSummaryDto MomentumRevenue { get; set; } = new();
+    public VendorSalesNivelacijaDriverMetricSummaryDto Elasticity { get; set; } = new();
+    public VendorSalesNivelacijaDriverMetricSummaryDto DidRevenue { get; set; } = new();
+    public VendorSalesNivelacijaDriverMetricSummaryDto LostSalesOOS { get; set; } = new();
+}
+
+public sealed class VendorSalesNivelacijaDriverMetricSummaryDto
+{
+    public decimal? Mean { get; set; }
+    public decimal? Median { get; set; }
+    public int SampleCount { get; set; }
+    public string MeanWeighting { get; set; } = "unweighted";
 }
 
 public sealed class VendorSalesNivelacijaOptionDto

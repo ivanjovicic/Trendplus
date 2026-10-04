@@ -627,6 +627,20 @@ const vendorSalesNivelacijaRecommendationSchema = z.object({
   reasonCodes: z.array(z.string().trim().min(1)),
 }).passthrough();
 
+const vendorSalesNivelacijaDriverMetricSummarySchema = z.object({
+  mean: nullableNumber,
+  median: nullableNumber,
+  sampleCount: nonNegativeInteger,
+  meanWeighting: z.enum(["unweighted", "post_revenue_weighted"]),
+}).passthrough();
+
+const vendorSalesNivelacijaDriverSummarySchema = z.object({
+  momentumRevenue: vendorSalesNivelacijaDriverMetricSummarySchema,
+  elasticity: vendorSalesNivelacijaDriverMetricSummarySchema,
+  didRevenue: vendorSalesNivelacijaDriverMetricSummarySchema,
+  lostSalesOOS: vendorSalesNivelacijaDriverMetricSummarySchema,
+}).passthrough();
+
 const vendorSalesNivelacijaVendorSchema = z.object({
   vendorId: nullableEntityId,
   vendorName: z.string(),
@@ -660,6 +674,7 @@ const vendorSalesNivelacijaVendorSchema = z.object({
   primaryFootwearTypeSharePercent: nullableNonNegativePercentage.optional(),
   primaryFootwearTypeAvgElasticity: nullableNumber.optional(),
   avgElasticity: nullableNumber.optional(),
+  driverMetrics: vendorSalesNivelacijaDriverSummarySchema.nullable().optional(),
   typeInsightsAuthoritative: z.boolean().optional(),
 }).passthrough();
 
@@ -823,6 +838,7 @@ export const vendorSalesNivelacijaResponseSchema = z.object({
   avgElasticity: nullableNumber.optional(),
   avgDidRevenue: nullableNumber.optional(),
   avgLostSalesOOS: nullableNumber.optional(),
+  driverMetrics: vendorSalesNivelacijaDriverSummarySchema.nullable().optional(),
   oosRate: nullableNonNegativePercentage.optional(),
   metricsStatus: z.string().nullable().optional(),
   recommendationAllowed: z.boolean().nullable().optional(),

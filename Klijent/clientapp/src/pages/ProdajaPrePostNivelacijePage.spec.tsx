@@ -507,10 +507,12 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
   it("uses Serbian labels for advanced Pre/Post signal cards", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
-      avgMomentumRevenue: 1200,
-      avgElasticity: -0.42,
-      avgDidRevenue: 800,
-      avgLostSalesOOS: 500,
+      driverMetrics: {
+        momentumRevenue: { mean: 1200, median: 1100, sampleCount: 2, meanWeighting: "unweighted" },
+        elasticity: { mean: -0.42, median: -0.5, sampleCount: 3, meanWeighting: "post_revenue_weighted" },
+        didRevenue: { mean: 800, median: 700, sampleCount: 4, meanWeighting: "unweighted" },
+        lostSalesOOS: { mean: 500, median: 600, sampleCount: 2, meanWeighting: "unweighted" },
+      },
     }));
 
     renderPage();
@@ -518,10 +520,68 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(await screen.findByText("Dodatni analitički signali")).toBeInTheDocument();
     expect(screen.getByText("Momentum prodaje")).toBeInTheDocument();
     expect(screen.getByText("Elastičnost cene")).toBeInTheDocument();
-    expect(screen.getByText("Efekat razlike u razlikama (DiD)")).toBeInTheDocument();
+    expect(screen.getByText("Efekat naspram kontrolne grupe (DiD)")).toBeInTheDocument();
     expect(screen.getByText("Izgubljena prodaja zbog nestašice")).toBeInTheDocument();
+    expect(screen.getByText(/ponderisana post-period prihodom; neponderisana medijana -0,50; n=3/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Poređenje sa prethodnim periodom/ })).toBeInTheDocument();
+    expect(screen.getByText(/dve različite populacije događaja/)).toBeInTheDocument();
+    expect(screen.queryByText(/vw_/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Volatilnost")).not.toBeInTheDocument();
     expect(screen.queryByText("avg rev")).not.toBeInTheDocument();
     expect(screen.queryByText("Lost sales OOS")).not.toBeInTheDocument();
+  });
+
+  it("does not label legacy means with an unsupported sample basis", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      avgElasticity: -0.42,
+      avgDidRevenue: 800,
+      avgLostSalesOOS: 500,
+    }));
+
+    renderPage();
+
+    await screen.findByText("Prioritetna lista dobavljača");
+    expect(screen.queryByText("Dodatni analitički signali")).not.toBeInTheDocument();
+  });
+
+  it("uses per-vendor backend aggregates instead of averaging article detail in the drill", async () => {
+    const driverMetrics = {
+      momentumRevenue: { mean: 5, median: 5, sampleCount: 1, meanWeighting: "unweighted" as const },
+      elasticity: { mean: 0.5, median: 0.4, sampleCount: 2, meanWeighting: "post_revenue_weighted" as const },
+      didRevenue: { mean: 77, median: 70, sampleCount: 2, meanWeighting: "unweighted" as const },
+      lostSalesOOS: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" as const },
+    };
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [vendor({ driverMetrics })],
+      articleStats: [article({ momentumRevenue: 999, priceElasticity: 999, didRevenue: 999, lostSalesOOS: 999 })],
+    }));
+
+    renderPage();
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
+
+    expect(await screen.findByText("Elastičnost cene")).toBeInTheDocument();
+    expect(screen.getByText(/neponderisana medijana 0,40; n=2/)).toBeInTheDocument();
+    const didArticle = screen.getByText("Efekat naspram kontrolne grupe (DiD)").closest("article");
+    expect(didArticle).not.toBeNull();
+    expect(within(didArticle as HTMLElement).getByText(/77/)).toBeInTheDocument();
+    expect(within(didArticle as HTMLElement).queryByText(/999/)).not.toBeInTheDocument();
+  });
+
+  it("presents an unavailable control group in business copy and hides support detail by default", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      metricsStatus: "No DiD data (view missing)",
+    }));
+
+    renderPage();
+
+    await screen.findByText("Prioritetna lista dobavljača");
+    fireEvent.click(screen.getByRole("button", { name: /Kvalitet signala/ }));
+
+    expect(screen.getByText("Kontrolna grupa još nije dostupna")).toBeInTheDocument();
+    expect(screen.getByText("No DiD data (view missing)")).toBeInTheDocument();
+    expect(screen.getByText("No DiD data (view missing)").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByText(/vw_/)).not.toBeInTheDocument();
   });
 
   it("keeps the trust header as the only page-level h1", async () => {
@@ -1215,7 +1275,15 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
   it("uses the backend weighted elasticity aggregate in the selected vendor summary", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({
-        vendorStats: [vendor({ avgElasticity: 4.25 })],
+        vendorStats: [vendor({
+          avgElasticity: 4.25,
+          driverMetrics: {
+            momentumRevenue: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" },
+            elasticity: { mean: 4.25, median: 4, sampleCount: 2, meanWeighting: "post_revenue_weighted" },
+            didRevenue: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" },
+            lostSalesOOS: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" },
+          },
+        })],
         articleStats: [article({ priceElasticity: 99 })],
       }),
     );
@@ -1226,9 +1294,10 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     const driverGrid = await screen.findByText("Top dobitnik SKU").then((heading) => heading.closest(".ppn-driver-grid"));
     expect(driverGrid).not.toBeNull();
-    const elasticity = Array.from(driverGrid!.querySelectorAll("small"))
-      .find((element) => element.textContent?.includes("Elasticnost"));
-    expect(elasticity).toHaveTextContent("4,25");
+    const elasticityCard = screen.getByText("Elastičnost cene").closest("article");
+    expect(elasticityCard).not.toBeNull();
+    expect(within(elasticityCard!).getByText("4,25")).toBeInTheDocument();
+    expect(within(elasticityCard!).getByText(/n=2/)).toBeInTheDocument();
   });
 
   it("keeps measured zero revenue visible in driver summary when comparability is confirmed", async () => {

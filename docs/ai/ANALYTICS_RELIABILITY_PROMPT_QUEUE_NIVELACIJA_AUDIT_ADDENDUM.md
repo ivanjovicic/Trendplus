@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: primary `RQ551` (READY; RQ544/RQ542/RQ543/RQ541/RQ549/RQ547 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ548/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16.
+Current READY routing: none (RQ551 is IN_PROGRESS; RQ544/RQ542/RQ543/RQ541/RQ549/RQ547 DONE). RQ554/RQ546/RQ538/RQ539/RQ537/RQ540/RQ548/RQ550 are DONE. RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16.
 Owner completion/promotion 2026-10-04: RQ544/NV-F8 is DONE on implementation SHA `b890f88ec30084f3d1e640562ed63386162bd0b1`, freshly verified in `origin/main`. The startup migration now uses explicit event aliases, preserves storno/re-nivelacija/supplier-return values with bounded unmapped audit notices, and guards leading-zero/oversized receipt references with bigint-safe matching. Focused disposable PostgreSQL proof passed, including idempotency and the 12-digit view case; governance validators and `git diff --check` passed. Promoted RQ551/NV-I1 to primary READY after confirming RQ542/RQ534 dependencies DONE and no active RQ551 lock, branch or open PR. Actions run 37201544462 (Analytics Tests & Data Integrity) is in progress on the implementation SHA. Run log: `.ai/runs/2026-10-04-RQ544-evidence.md`; evidence state synchronized.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
 Owner claim 2026-10-04: refreshed `origin/main` to `8ba3a9da223bf90a9240ba7590c16253524fe43e`; RQ528/RQ549 are DONE. No RQ550 lock, matching branch or open PR exists. Claimed primary RQ550; RQ541 remains WAITING for this oracle. Local lock: `.ai/task-locks/RQ550-codex.lock.md`.
@@ -378,7 +378,7 @@ RQ550/NV-P4 proof-first oracle, plus the DONE RQ528 parity contract as context.
 
 ## RQ542 - NV-F6 - Make DiD/control, OOS, momentum and elasticity event-aligned and honest
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: sql/backend/tests
 Feature family: nivelacija-causal-signals
@@ -698,7 +698,7 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 
 Status: DONE
 Priority: P1
-Type: frontend/tests
+Type: backend/frontend/tests
 Feature family: frontend-chunk-recovery
 Parallel-safe: yes (`chunkLoadRecovery.ts`, `ErrorBoundary.tsx`)
 Owner: Frontend Platform
@@ -990,7 +990,7 @@ RQ528 parity contract. This is the proof-first lane for NV-F5/RQ541: the flat-ra
 
 ## RQ551 - NV-I1 - Pre/Post page: honest volatility, elasticity and DiD presentation
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/tests
 Feature family: prepost-driver-presentation
@@ -1006,6 +1006,10 @@ Commit suggestion: `fix(prepost): present volatility, elasticity and DiD with th
 #### Evidence
 
 - `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx:779-800,843-852,884-886,1236-1239,1898,2024,451-482,1146,1158,2063-2065`.
+
+#### Scope repair (2026-10-04)
+
+NV-F6 exposes overall means but not their metric-specific sample counts/medians, and vendor rows do not expose DiD/OOS aggregates. RQ551 therefore adds descriptive summary metadata to the existing response, based on the same full cohorts and mean policies. It does not change any recommendation, score, or metric population.
 
 #### Do
 
@@ -1025,6 +1029,13 @@ No metric suggests a basis it doesn't have, and no DB object names are visible.
 #### Dependencies
 
 NV-F6 for the aggregated drivers; RQ534 (spec statuses) is DONE.
+#### Claim note
+
+- Date: 2026-10-04
+- Refreshed `origin/main` at `ea29329448f6260d9c7377642edbc01437fa82c9`; RQ542/NV-F6 and RQ534 are DONE.
+- Repaired the stale RQ542 queue status IN_PROGRESS -> DONE from its synchronized run evidence and current-main SHA 3b50a792aec5ff7762ca24aeaf4a0b42dee2003.
+- The Q83 branch has no commits outside current `main`, no active task lock exists and no open PR exists. Q83's remaining PARTIAL gate is its SQL/Testcontainers proof; RQ551's presentation and additive descriptive response fields do not overlap the Q83 SQL proof.
+- RQ551 moved `READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ551-codex.lock.md`.
 
 ---
 

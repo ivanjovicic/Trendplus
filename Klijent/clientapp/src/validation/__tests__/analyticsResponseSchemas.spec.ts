@@ -1091,6 +1091,12 @@ describe("analytics response schemas", () => {
   });
 
   it("accepts unknown vendor-sales-nivelacija change percent instead of requiring a fake zero", () => {
+    const driverMetrics = {
+      momentumRevenue: { mean: 0, median: 0, sampleCount: 2, meanWeighting: "unweighted" },
+      elasticity: { mean: 0.5, median: 0.4, sampleCount: 2, meanWeighting: "post_revenue_weighted" },
+      didRevenue: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" },
+      lostSalesOOS: { mean: null, median: null, sampleCount: 0, meanWeighting: "unweighted" },
+    };
     const vendor = {
       vendorId: 203,
       vendorName: "Gama",
@@ -1113,6 +1119,7 @@ describe("analytics response schemas", () => {
       increasedPriceArticlesCount: 0,
       decreasedPriceArticlesCount: 0,
       reliabilityPct: 35,
+      driverMetrics,
     };
     const response = {
       generatedAt: "2026-10-01T08:00:00Z",
@@ -1176,12 +1183,20 @@ describe("analytics response schemas", () => {
         comparableArticleCount: 0,
       }],
       insights: [],
+      driverMetrics,
     };
 
     expect(vendorSalesNivelacijaResponseSchema.safeParse(response).success).toBe(true);
     expect(vendorSalesNivelacijaResponseSchema.safeParse({
       ...response,
       vendorStats: [{ ...vendor, changePercent: Number.NaN }],
+    }).success).toBe(false);
+    expect(vendorSalesNivelacijaResponseSchema.safeParse({
+      ...response,
+      driverMetrics: {
+        ...response.driverMetrics,
+        didRevenue: { ...response.driverMetrics.didRevenue, sampleCount: -1 },
+      },
     }).success).toBe(false);
   });
 });
