@@ -54,12 +54,13 @@ Evidence state: synchronized
 
 ## Risks
 
-- Codex works concurrently on the same queues. The first draft IDs P-UI-39..P-UI-46 collided with Codex's responsive re-audit after fetch; renumbered to P-UI-47..P-UI-52 and re-checked against the latest `origin/main` before push (highest P-UI 46, highest RQ 585 before this change).
-- P-UI-48 depends on a backend capability for disable actions. If none exists, the prompt hides the actions and records a STAB/SEC follow-up rather than inventing roles.
+- Codex worked concurrently on the same queues. The first draft IDs P-UI-39..P-UI-46 collided with the responsive re-audit after fetch; the original audit therefore registered P-UI-47..P-UI-52. Post-review later added P-UI-53 after proving chart accessibility had no execution owner.
+- P-UI-48 must preserve the existing server-side `AdminAccessControl` boundary for worker/Redis writes. The API-ping switch is a separate browser-local preference and must not be presented as a backend shutdown action. If the admin surface lacks a legitimate credential flow, show backend writes status-only and record the gap rather than inventing a frontend role/bypass.
 
 ## Post-close routing recovery
 
-- not applicable (direct-user-request audit/registration). Routing was recomputed after registration: RQ primary READY stays RQ569; additional RQ READY lanes are RQ553, RQ574, RQ578, RQ580, RQ581, RQ586. P-UI primary READY stays P-UI-39; additional P-UI-40, P-UI-41, P-UI-45, P-UI-47, P-UI-49. Collision check: the owned paths of P-UI-47, P-UI-49 and RQ586 are disjoint from each other, from P-UI-39/40/41/45, and from RQ569 (`AnalyticsTrustHeader*`, backend freshness), RQ553 (nivelacija copy, `navConfig.ts`), RQ574 (PDC backend), RQ578 (DQ), RQ580 (Supplier label helper) and RQ581 (Insight Studio endpoints).
+- Original registration routing is historical and superseded by the post-review routing below. Current RQ primary remains RQ569; additional RQ READY lanes are RQ553, RQ574, RQ578, RQ580, RQ581 and RQ586, subject to fresh claim-time collision checks.
+- Current P-UI primary is P-UI-39; additional collision-safe READY lanes are P-UI-40, P-UI-41, P-UI-47 and P-UI-49. P-UI-45 is WAITING behind P-UI-40 + P-UI-48. P-UI-53 is WAITING behind P-UI-47 plus P-UI-31/P-UI-35/P-UI-36 completion or explicit deferral.
 
 ## Next
 
