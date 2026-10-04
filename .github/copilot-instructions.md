@@ -39,7 +39,10 @@ Kanonska selekcija, claim, paralelnost, takeover i **Idle recovery** su u `docs/
 - Pre nego što kažeš da je kandidat blokiran, razdvoji: stvarni start gate vs final/deployed dokaz, eksterni/provider dokaz vs repo-local rad, aktivni owner vs stale metadata, i kružni prerequisite vs artefakt koji prompt sam treba da napravi.
 - Ako je bezbedan same-owner repo-local deo izvršiv, popravi/suzi prompt pre claim-a i ostavi provider/live/owner-gated dokaz kao eksplicitan residual; ne izmišljaj odluke i ne spuštaj acceptance.
 - Ako prvi kandidat ostane stvarno blokiran, traži collision-safe kandidat u istom programu pa sledeći dozvoljeni program. “Nema rada” je poslednji rezultat, ne prvi.
-- Posle završenog prompta, ako korisnik traži `continue` ili `claim and execute`, ponovo pokreni selekciju/recovery umesto da staneš zato što se pointer vratio na `none`.
+- Posle **svakog** zatvaranja prompta na `DONE/PARTIAL/BLOCKED/OBSOLETE`, prethodni `none` zaključak je automatski nevažeći. Osveži post-delivery `origin/main`, pokreni **Post-close dependency cascade** kroz ceo aktivni owner queue + sve addendum fajlove, pretraži dependente završenog task ID-a i ponovo proveri sve non-terminal promptove.
+- Ne smeš napisati `nema READY`, `no safe successor` ili `Next: none` na osnovu starog header-a/run-log-a ili nekoliko najbližih promptova. Za takav zaključak je obavezan **Zero-READY proof**: recovery-base SHA, svi aktivni queue/addendum fajlovi koji su pregledani, kandidati i blocker klasa, start gate vs final proof, zašto nema safe repo-local slice-a i tačan unblock event.
+- Ako nisi pregledao ceo aktivni owner queue/addendum set sa trenutnog post-delivery `origin/main`, napiši da je recovery nepotpun; **ne tvrdi da nema rada**.
+- Ako korisnik traži `continue` ili `claim and execute`, nakon cascade-a odmah promoviši/claim-uj sledeći dependency-complete collision-safe prompt umesto da staneš zato što se pointer privremeno vratio na `none`.
 
 Pre nego što kreneš:
 1. Pronađi postojeći shared helper/component.
