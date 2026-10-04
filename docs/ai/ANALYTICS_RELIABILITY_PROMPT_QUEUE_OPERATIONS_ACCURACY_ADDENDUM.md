@@ -2,7 +2,8 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (no other READY; RQ564-RQ566 remain gated)
+Current READY prompt: RQ564 (primary P0). Additional parallel-safe READY lives in the Nivelacija addendum: RQ553. RQ565-RQ566 remain externally gated.
+Owner recovery 2026-10-04 after RQ567: the prior "no other READY" conclusion was stale. RQ541-RQ544, RQ547-RQ550 and RQ568 are DONE, and RQ545's remaining work is deployed/provider acceptance that the RQ564 prompt explicitly says is not a local start gate. Fresh collision checks found no RQ564 lock, matching branch or open PR. RQ564 is therefore promoted WAITING -> READY as the next P0 repository-local reliability task. RQ553 is independently READY in the Nivelacija addendum after RQ529 DONE. RQ552 is narrowed to its still-live performance/cache-invalidation residual and sequenced after RQ564 because price-event writes must invalidate the new Nivelacija integrity generation consistently. Live Daily Sales evidence also exposed a separate source-horizon/freshness gap; RQ569 is registered below and waits for RQ564 so the same context/generation contract is reused. RQ453 is scope-repaired into the non-skippable repository certification gate after RQ564/RQ569 rather than waiting for deployed browser/certificate work.
 Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. RQ564-RQ566 stay WAITING behind their declared gates; no next READY prompt exists.
 Owner promotion 2026-10-04: RQ567 moved WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE. Fresh collision checks found no RQ567 branch, task lock or open PR. The separately reported Daily Sales query/schema issue was verified against live API and frontend deployments before this claim.
 Owner live verification 2026-10-04: the earlier Daily Sales query-range and supplier-ID validation report is resolved by current-main commits `deb6db0419a60207bcf0790bd2d906ce6eac3d33` and `1ed9c9e57603f0534d81b79b6594774190a82824`, and both deployed API and Vercel bundle now pass live contract checks. No additional implementation diff was needed. Evidence: `.ai/runs/2026-10-04-daily-sales-live-contract-evidence.md`.
@@ -209,6 +210,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
 | RQ567 | IN_PROGRESS | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
 | RQ568 | DONE | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
+| RQ569 | WAITING | P0 | operations-source-horizon-freshness | Bind requested periods to observed source horizon and durable import/refresh freshness across Operations |
 
 ---
 
@@ -1827,6 +1829,10 @@ Parallel-safe: no with Supplier/Shoe Type page trust surfaces
 Owner: Analytics Reliability / Frontend QA
 Commit suggestion: feat(analytics): expose Supplier and Shoe Type verification evidence
 
+### Scope reconciliation 2026-10-04
+
+RQ567 now provides the shared visible readiness/integrity state, exact-context matching, checked time and evidence id across all six current Operations screens. Do not duplicate that surface here. RQ451 remains only for Supplier/Shoe-specific drill-down details that require the raw/API/render/export reconciliation payload from RQ448 (reconciled line count, revenue/quantity deltas, attribution/unknown and cost coverage) and for legacy Supplier entry-point browser proof.
+
 ### Problem
 
 Backend already exposes operationsIntegrity status, checked time and evidence id, but the current Supplier and Shoe Type screens do not present a complete, inspectable proof surface to the customer.
@@ -1893,7 +1899,7 @@ Generate a PDF or HTML certificate from immutable evidence, with tenant/store, r
 ## RQ453 - Make analytics certification CI non-skippable
 
 Status: WAITING
-Ready after: RQ446 and RQ447 define the executable certification set
+Ready after: RQ564 and RQ569 are DONE; RQ561/RQ567/RQ568 already define the current six-screen executable certification set
 Priority: P0
 Type: CI/tests/release-gate
 Feature family: analytics-certification-ci-gate
@@ -1903,17 +1909,17 @@ Commit suggestion: ci(analytics): add non-skippable Supplier Shoe Type certifica
 
 ### Problem
 
-RQ412 integration tests are opt-in and the recorded run explicitly skipped them when PostgreSQL was unavailable. A release cannot carry a Verified analytics claim when certification tests were not executed.
+The repository now has a strong disposable-PostgreSQL six-screen proof (RQ561/RQ568) and shared frontend trust proof (RQ567), but the dedicated workflow is still named/scoped as the older Supplier/Shoe Type RQ447 gate. A future regression can therefore leave the broader Operations certification implicit or split across workflows without one machine-readable release verdict. A release cannot carry a Verified Operations claim when the required six-screen certification did not execute.
 
 ### Scope
 
-Add a dedicated certification job with PostgreSQL, adversarial fixture, independent oracle, API tests, browser/render/export proof where available, schema and migration smoke and exact executed/passed/skipped accounting. The job fails on missing service, test skip, missing artifact, non-zero delta or stale/unverified evidence.
+Generalize the existing RQ447 certification job instead of creating a second PostgreSQL harness. It must execute the RQ561/RQ568 six-screen route proof, the independent oracle/seam tests, the RQ567 shared frontend trust-state proof, and after RQ564/RQ569 the Nivelacija/freshness integrity contracts. Publish one machine-readable manifest with expected/executed/passed/skipped counts and route/family verdicts. Deployed browser/export proof remains RQ565 and is not a start gate for this repository CI task.
 
 ### Tests
 
-- Forced missing database, skipped test, failed oracle, failed browser reconciliation and missing artifact each fail the job.
-- Successful run reports expected=executed=passed for the required set and publishes machine-readable evidence.
-- Normal developer CI may retain opt-in tests, but certification job may not.
+- Forced missing database, skipped required test, failed oracle, Pre/Post not VERIFIED, missing family proof, frontend trust regression or missing manifest each fail the certification job.
+- Successful run records six current Operations routes, exact case counts from the route manifest, zero skipped required tests, and the current integrity-family verdicts.
+- Keep deployed browser/export evidence separate under RQ565; repository certification must never fake that layer as executed.
 
 ### Acceptance
 
@@ -1923,7 +1929,7 @@ Add a dedicated certification job with PostgreSQL, adversarial fixture, independ
 
 ### Dependencies
 
-- RQ445-RQ448, RQ452, repository CI conventions and deployment credentials only through existing secret mechanisms.
+- RQ561, RQ567, RQ568, then RQ564/RQ569. RQ448/RQ452/RQ565 remain deployed/browser/certificate owners and are not repository-CI start gates.
 
 ---
 
@@ -4087,8 +4093,8 @@ Implement `IOperationsAnalyticsIntegrityFamilyProbe` for Inventory using indepen
 
 ## RQ564 - Add a dedicated Nivelacija runtime-integrity family for Pre/Post and Priorities
 
-Status: WAITING
-Ready after: RQ541-RQ544 semantic fixes and RQ548-RQ550 independent oracles are DONE, or an owner explicitly narrows this prompt to already-stable fields
+Status: READY
+Ready after: dependency-complete on current main (RQ541-RQ544, RQ547-RQ550 and RQ568 DONE; RQ545 code-side diagnostics delivered). Fresh collision check only.
 Priority: P0
 Type: backend/oracle/runtime-integrity/tests
 Feature family: nivelacija-runtime-integrity
@@ -4110,11 +4116,13 @@ After the canonical nivelacija semantics stabilize, add one explicit family whos
 - Event/store/cohort drift produces `drift_detected` and blocks decision/action signals designated by the family contract.
 - Markup/markdown, overlapping/immature events and NULL/negative IDs are adversarially covered.
 - Probe evidence is generation/context bound and bounded in rows/time.
+- Price-event writes/repairs invalidate the prior Nivelacija family evidence before returning a current green trust state; a bounded reprobe may run asynchronously, but stale evidence stays non-current until it succeeds.
 
 ### Dependencies
 
-- RQ541-RQ544, RQ547-RQ550, RQ568 certification-schema parity, and the code-side RQ545 contract diagnostics.
+- RQ541-RQ544, RQ547-RQ550, RQ568 certification-schema parity, and the code-side RQ545 contract diagnostics are DONE/delivered on current main.
 - Production application remains RQ454/STAB16; local family implementation must not wait on provider access once semantic/oracle dependencies are stable.
+- When wiring invalidation, reuse the existing analytics source-generation/context registry. A successful `POST /api/nivelacija`, a live Nivelacija repair, or an import/cache generation change must make prior Nivelacija evidence non-current before any new green state is possible.
 
 ---
 
@@ -4326,3 +4334,65 @@ A simplified test-only view would be dangerous because it could pass while produ
 - Follow-up: RQ567 promoted WAITING -> READY after RQ554, RQ562 and RQ563 were verified DONE and fresh RQ567 branch/lock/open-PR checks returned none. The earlier Daily Sales query/schema issue was verified against the currently deployed API and Vercel bundle; see `.ai/runs/2026-10-04-daily-sales-live-contract-evidence.md`. RQ567 remains next.
 - Residual risk: the test host emits non-fatal performance-log persistence errors because the disposable schema lacks the optional `PerformanceLogs` table; certification assertions and route verdicts pass. CI was not inspected.
 - Prompt defect / scope repair: RQ561's prior negative-path fixture became incomplete after adding RQ568 rows; explicit IDs were moved to a disjoint range. The 019 dashboard index script was excluded because it depends on an unrelated startup-core summary table and is not part of the canonical Pre/Post view contract.
+
+
+---
+
+## RQ569 - Bind Operations trust to source horizon and durable freshness
+
+Status: WAITING
+Ready after: RQ564 is DONE; no production/provider access is required for repository-local contract work
+Priority: P0
+Type: backend/frontend/contract/tests
+Feature family: operations-source-horizon-freshness
+Parallel-safe: no with shared Operations trust/freshness metadata owners
+Owner: Analytics Reliability / Data Freshness
+Commit suggestion: feat(analytics): expose source horizon and freshness
+
+### Problem
+
+Live Daily Sales verification on 2026-10-04 accepted a requested period through 2026-12-12, but the latest non-zero sales day in the returned population was 2026-08-05. That may be legitimate if the source/import itself has not advanced or if there were genuinely no later sales; the current request/effective period alone cannot distinguish those cases.
+
+RQ567 makes trust state visible, and `AnalyticsTrustHeader` already supports an observed period, but the six Operations surfaces do not yet have one canonical rule binding:
+- requested/effective analytics period;
+- observed business-data horizon;
+- durable upstream import/checkpoint/refresh evidence;
+- freshness/readiness classification.
+
+A technically fresh cache or integrity probe must not make stale source data look current. Conversely, "no sales after date X" must not by itself be treated as a stale import.
+
+### Scope
+
+Extend the existing AnalyticsResponseMeta / refresh / source-generation contracts; do not create a second freshness registry and do not invent a new numeric freshness threshold.
+
+Cover the six current Operations screens:
+- Inventory;
+- Shoe Type;
+- Daily Sales;
+- Pre/Post Nivelacija;
+- Color;
+- Pre-Nivelacija Priorities.
+
+### Do
+
+1. Populate authoritative `observedPeriodFromUtc` / `observedPeriodToUtc` where the source facts can prove the observed business window for the exact store/dataScope context.
+2. Bind source freshness to durable import/sync/refresh evidence (Access import batch, SourceSyncCheckpoint or existing refresh status), not to cache generation time and not to "last non-zero sale" alone.
+3. Reuse the existing backend freshness/readiness policy. If no authoritative source watermark exists, report `unknown`; never infer `fresh`.
+4. Make RQ567's shared trust header render requested/effective period separately from the observed data horizon and last authoritative refresh/import time.
+5. Ensure a future requested tail can be zero-filled for presentation without silently implying that source data was observed through that future date.
+6. Preserve the exact RQ567 context fingerprint/source-generation binding so freshness from another store/dataScope cannot leak into the current page.
+7. Add a machine-readable reason/evidence reference when freshness blocks or limits decision use; do not add a new scoring threshold.
+
+### Tests / acceptance
+
+- Requested through October/December with source facts ending in August shows the requested period and the observed horizon as different facts.
+- A fresh import/checkpoint with legitimately zero later sales does not become stale solely because the last non-zero sale is old.
+- Missing import/checkpoint evidence returns freshness `unknown`, not `fresh`.
+- Stale/critical source freshness cannot render a green decision-ready state when the existing backend policy says freshness blocks it.
+- Store/dataScope changes cannot reuse the previous scope's observed horizon or freshness evidence.
+- All six page trust specs show observed/source freshness consistently.
+
+### Dependencies
+
+- RQ514/RQ515 readiness evidence, RQ567 visible trust surface, and RQ564 Nivelacija integrity family.
+- RQ566 later verifies real worker/checkpoint/timezone state after deployment; RQ569 must remain repository-local and must not require production access.
