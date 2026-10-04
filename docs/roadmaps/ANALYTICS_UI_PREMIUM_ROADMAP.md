@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-10-02
+Updated: 2026-10-04
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -50,7 +50,9 @@ Current queue truth on 2026-10-02:
 - `P-UI-33` is DONE on `main` at `987ec671894b5b77642674674d466159dd1d8bad`: Central Actions uses the shared responsive table/modal patterns; its 320/375/768 light/dark matrix passed with 0 root overflow and the status/outcome dialog workflow reachable.
 - `P-UI-37` is DONE on `main` at `46f9587f6b2424e1238bac7b76be7a87c2ea5c6b`: Article List passes the 320/375/768 light/dark fixture matrix with 0 root overflow and keeps server paging/sort semantics unchanged.
 - `P-UI-23` is DONE on `main` at `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff`: the selected shared Pilot Data Quality Intake component slice went from 7 errors / 1 warning to 0 / 0; global lint baseline remains 108 / 226.
-- `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-38` remain WAITING behind named dependencies or current-owner collision checks; the live queue is authoritative for their exact status.
+- Responsive re-audit + same-day UX/UI reconciliation registered `P-UI-39`..`P-UI-52` and the canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Current collision-safe READY lanes are `P-UI-39` (primary), `P-UI-40`, `P-UI-41`, `P-UI-47` and `P-UI-49`.
+- Sequencing is explicit rather than blanket-blocked by unrelated RQ statuses: `P-UI-31` waits for `P-UI-47`; `P-UI-35`/`P-UI-36` wait for `P-UI-39` + `P-UI-47` plus a fresh active-owner/path collision check; `P-UI-42` waits for `P-UI-39` + `P-UI-40` + `P-UI-47` + `P-UI-48`; `P-UI-45` waits for `P-UI-40` + `P-UI-48` because all touch shell/`AppLayout.tsx`; `P-UI-43`/`P-UI-44` remain after `RQ569`; `P-UI-46` follows `P-UI-42`; `P-UI-38` is the final responsive regression gate.
+- Portrait-tablet layout is currently stable against root overflow, but touch ergonomics is not yet acceptable: shared/page-local controls still miss the internal 16px form-text / 44px target contract. `P-UI-42` therefore targets coarse-pointer and hybrid touch capability, not a width-only device class.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
 
 The queue remains authoritative for exact task status and acceptance. P-UI remains supplemental and must not displace higher-priority RQ/SQL correctness work.
@@ -93,3 +95,9 @@ The audit deliberately does **not** authorize a repository-wide visual rewrite. 
 `P-UI-24 measured browser baseline -> P-UI-25 foundation -> P-UI-26/27 shell+primitives -> P-UI-28/29 filter+table pilots -> P-UI-30..37 bounded page families -> P-UI-38 stable regression gates`.
 
 Any page-family prompt that collides with an active RQ correctness owner waits. Responsive work never invents client-side analytics truth to make a layout easier.
+
+## Responsive + UX reconciliation — 2026-10-04
+
+The 2026-10-04 live responsive measurements remain valid, but routing was recomputed after the same-day UX/UI audit landed. READY means dependency-complete **and path-collision-safe**: two prompts that both edit `AppLayout.tsx` are not parallel merely because their feature-family names differ. WAITING RQ prompts are not start blockers by status alone; only a declared semantic dependency or a verified active owner/path collision blocks a P-UI claim.
+
+Canonical evidence: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`, `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, and `.ai/runs/2026-10-04-responsive-audit-review-corrections-evidence.md`.
