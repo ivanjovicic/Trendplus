@@ -437,6 +437,7 @@ builder.Services.AddScoped<AnalyticsDataQualityHistoryService>();
 builder.Services.AddSingleton<Infrastructure.Services.OperationsAnalyticsIntegrityRegistry>();
 builder.Services.AddScoped<Infrastructure.Services.IOperationsAnalyticsIntegrityService, Infrastructure.Services.OperationsAnalyticsIntegrityService>();
 builder.Services.AddScoped<Application.Analytics.IOperationsAnalyticsIntegrityFamilyProbe, Infrastructure.Services.InventoryOperationsIntegrityProbe>();
+builder.Services.AddScoped<Application.Analytics.IOperationsAnalyticsIntegrityFamilyProbe, Infrastructure.Services.NivelacijaOperationsIntegrityProbe>();
 builder.Services.AddScoped<AnalyticsRefreshRunRecorder>();
 builder.Services.AddScoped<Api.Services.AnalyticsCostSnapshotService>();
 builder.Services.AddScoped<Infrastructure.Services.Analytics.AnalyticsActionItemService>();

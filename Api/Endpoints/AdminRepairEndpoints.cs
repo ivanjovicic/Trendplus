@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Api.Models;
 using Api.Services;
+using Infrastructure.Services.Caching;
 
 namespace Trendplus2.Endpoints;
 
@@ -33,6 +34,7 @@ public static class AdminRepairEndpoints
         group.MapPost("/nivelacije", async (
             NivelacijaRepairRequest request,
             INivelacijaRepairService repairService,
+            AnalyticsCacheAdminService cacheAdmin,
             HttpContext httpContext,
             IConfiguration configuration,
             CancellationToken ct) =>
@@ -72,6 +74,7 @@ public static class AdminRepairEndpoints
                 }
 
                 var result = await repairService.ExecuteRepairAsync(request.SourceFilePath, requestedBy, request.MaxRowsToModify, ct);
+                await AllEndpoints.InvalidateNivelacijaAnalyticsCachesAsync(cacheAdmin, ct);
                 return Results.Ok(new
                 {
                     fixedRows = result.FixedRows,

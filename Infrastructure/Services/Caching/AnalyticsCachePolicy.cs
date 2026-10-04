@@ -11,6 +11,7 @@ public static class AnalyticsCachePolicy
     public const string InventoryFamily = "inventory";
     public const string DataQualityFamily = "data-quality";
     public const string PrePostFamily = "pre-post";
+    public const string NivelacijaFamily = "nivelacija";
     public const string PreNivelacijaPrioritetiFamily = "pre-nivelacija-prioriteti";
     public const string ColorSalesFamily = "color-sales";
     public const string ReportsFamily = "reports";
@@ -23,6 +24,7 @@ public static class AnalyticsCachePolicy
         InventoryFamily,
         DataQualityFamily,
         PrePostFamily,
+        NivelacijaFamily,
         PreNivelacijaPrioritetiFamily,
         ColorSalesFamily,
         ReportsFamily
@@ -66,7 +68,7 @@ public static class AnalyticsCachePolicy
             "supplier-scorecard" or SupplierDecisionHubFamily => SupplierScorecard,
             InventoryFamily => Inventory,
             DataQualityFamily => DataQuality,
-            PrePostFamily or "pre-nivelacija" or PreNivelacijaPrioritetiFamily => PrePost,
+            PrePostFamily or NivelacijaFamily or "vendor-sales-nivelacija" or "pre-nivelacija" or PreNivelacijaPrioritetiFamily => PrePost,
             ColorSalesFamily or "color-sales-stats" => ColorSalesStats,
             ReportsFamily => CacheExpiration.Long.WithStaleAfter(TimeSpan.FromMinutes(10)),
             _ => CacheExpiration.Medium.WithStaleAfter(TimeSpan.FromMinutes(2))
@@ -84,6 +86,7 @@ public static class AnalyticsCachePolicy
             InventoryFamily => "analytics:inventory",
             DataQualityFamily => "analytics:data-quality",
             PrePostFamily => "analytics:pre-post",
+            NivelacijaFamily or "vendor-sales-nivelacija" => "analytics:vendor-sales-nivelacija",
             "pre-nivelacija" or PreNivelacijaPrioritetiFamily => "analytics:pre-nivelacija-prioriteti",
             ColorSalesFamily or "color-sales-stats" => "analytics:color-sales",
             ReportsFamily => AnalyticsCacheKeys.ReportNamespace,
