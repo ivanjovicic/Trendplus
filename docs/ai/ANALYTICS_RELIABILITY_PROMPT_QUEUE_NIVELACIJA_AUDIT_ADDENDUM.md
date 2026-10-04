@@ -522,13 +522,13 @@ Q83 DONE (keep its nullability contract). NV-F6 consumes `price_direction`.
 - Checks run: focused backend/SQL oracle suite 84/84, 0 skipped; governance validators; `git diff --check`.
 - Checks not run: full backend suite and production migration application; neither was required for this bounded view contract. Remote Actions will be inspected after main delivery if a run is discoverable.
 - Run log: `.ai/runs/2026-10-04-RQ543-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `556582df5735d7fb0ade64195d9fd06a4de36ec2`
+- Main verification: fresh `git fetch origin main` and ancestry check confirm `origin/main` contains implementation SHA `556582df5735d7fb0ade64195d9fd06a4de36ec2`.
 - Missed: none known.
 - Follow-up: RQ542/NV-F6 is promoted to the primary READY prompt to consume the new direction/maturity fields.
-- Residual risk: provider/deployed refresh evidence remains outside this repository-local acceptance.
+- Residual risk: provider/deployed refresh evidence remains outside this repository-local acceptance. Current-main Actions runs 37194892031 (Analytics Tests & Data Integrity) is queued and 37194892062 (Planning Governance) is in progress; neither has yet provided a result.
 - Prompt defect / scope repair: repaired a stale RQ current-READY row and corrected the focused scoped-event SQL assertion to check the shared `NivelacijaEventScopePolicy` owner. Added the missing RQ543 Scope/Read first sections without changing acceptance.
 
 ---
