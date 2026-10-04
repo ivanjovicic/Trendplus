@@ -34,7 +34,7 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
-Current queue truth on 2026-10-02:
+Current queue truth on 2026-10-04:
 
 - `P-UI-17` is DONE: PreNivelacijaPriorityPage chrome modernization.
 - `P-UI-18` is DONE: SupplierFootwearAnalyticsPage chrome modernization.
@@ -50,12 +50,14 @@ Current queue truth on 2026-10-02:
 - `P-UI-33` is DONE on `main` at `987ec671894b5b77642674674d466159dd1d8bad`: Central Actions uses the shared responsive table/modal patterns; its 320/375/768 light/dark matrix passed with 0 root overflow and the status/outcome dialog workflow reachable.
 - `P-UI-37` is DONE on `main` at `46f9587f6b2424e1238bac7b76be7a87c2ea5c6b`: Article List passes the 320/375/768 light/dark fixture matrix with 0 root overflow and keeps server paging/sort semantics unchanged.
 - `P-UI-23` is DONE on `main` at `87e9deb7b9f7416b8cdd92be28ffb9ed7daa89ff`: the selected shared Pilot Data Quality Intake component slice went from 7 errors / 1 warning to 0 / 0; global lint baseline remains 108 / 226.
-- Responsive re-audit + same-day UX/UI reconciliation registered `P-UI-39`..`P-UI-52` and the canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Current collision-safe READY lanes are `P-UI-39` (primary), `P-UI-40`, `P-UI-41`, `P-UI-47` and `P-UI-49`.
-- Sequencing is explicit rather than blanket-blocked by unrelated RQ statuses: `P-UI-31` waits for `P-UI-47`; `P-UI-35`/`P-UI-36` wait for `P-UI-39` + `P-UI-47` plus a fresh active-owner/path collision check; `P-UI-42` waits for `P-UI-39` + `P-UI-40` + `P-UI-47` + `P-UI-48`; `P-UI-45` waits for `P-UI-40` + `P-UI-48` because all touch shell/`AppLayout.tsx`; `P-UI-43`/`P-UI-44` remain after `RQ569`; `P-UI-46` follows `P-UI-42`; `P-UI-38` is the final responsive regression gate.
+- Responsive re-audit + same-day UX/UI reconciliation registered `P-UI-39`..`P-UI-53` and the canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Current collision-safe READY lanes are `P-UI-39` (primary), `P-UI-40`, `P-UI-41`, `P-UI-47` and `P-UI-49`.
+- Sequencing is explicit rather than blanket-blocked by unrelated RQ statuses: `P-UI-31` waits for `P-UI-47`; `P-UI-35`/`P-UI-36` wait for `P-UI-39` + `P-UI-47` plus a fresh active-owner/path collision check; `P-UI-42` waits for `P-UI-39` + `P-UI-40` + `P-UI-47` + `P-UI-48`; `P-UI-45` waits for `P-UI-40` + `P-UI-48` because all touch shell/`AppLayout.tsx`; `P-UI-43`/`P-UI-44` remain after `RQ569`; `P-UI-46` follows `P-UI-42`; `P-UI-53` follows `P-UI-47` plus the chart-heavy page migrations `P-UI-31/35/36` (or explicit deferral); `P-UI-38` is the final responsive/theme/a11y regression gate and consumes P-UI-53.
 - Portrait-tablet layout is currently stable against root overflow, but touch ergonomics is not yet acceptable: shared/page-local controls still miss the internal 16px form-text / 44px target contract. `P-UI-42` therefore targets coarse-pointer and hybrid touch capability, not a width-only device class.
 - Recharts initial-preload/bundle graph is not P-UI-owned; it is routed to `PERF18`.
 
 The queue remains authoritative for exact task status and acceptance. P-UI remains supplemental and must not displace higher-priority RQ/SQL correctness work.
+
+Chart accessibility is an explicit program owner now: `P-UI-53` provides accessible names plus summary/table alternatives for analytics charts without deriving new business metrics; `P-UI-38` later ratchets that invariant.
 
 ## Roadmap sequence
 
