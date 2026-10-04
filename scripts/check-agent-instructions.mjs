@@ -144,6 +144,16 @@ function runSelfTest() {
       throw new Error("expected proactive-recovery marker failure");
     }
 
+    fs.writeFileSync(
+      protocolPath,
+      protocol.replace("Zero-READY proof", "removed zero-ready proof marker"),
+      "utf8",
+    );
+    const missingZeroReadyGuard = validate(root);
+    if (!missingZeroReadyGuard.some((error) => error.includes("Zero-READY proof"))) {
+      throw new Error("expected zero-READY recovery marker failure");
+    }
+
     console.log("agent instruction validator self-test: PASS");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
