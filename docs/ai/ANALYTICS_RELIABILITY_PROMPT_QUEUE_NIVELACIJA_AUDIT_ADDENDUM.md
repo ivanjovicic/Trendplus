@@ -440,7 +440,7 @@ RQ549/NV-P3 proof-first oracle and RQ543/NV-F7 event direction/maturity/overlap 
 - Status: DONE
 - Completion: Event-relative DiD/control and rolling/momentum signals now key by `price_event_id`; elasticity is a capped, mature, low-signal-filtered markdown point estimate with a shared post-revenue weighted mean. OOS/LostSales stay nullable with a precise unavailable reason until dated observed stock history is certified. Filtered scopes report `scope_not_applied` rather than using unscoped data.
 - Changed files: `Api.Tests/AssortmentNivelacijaOracle.cs`, `Api.Tests/AssortmentNivelacijaOracleTests.cs`, `Api.Tests/VendorSalesNivelacijaTypeInsightPolicyTests.cs`, `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, `Api/Services/VendorSalesNivelacijaTypeInsightPolicy.cs`, `Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.spec.tsx`, `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`, `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, `Klijent/clientapp/src/utils/nivelacijaErrorPresentation.ts`, `Klijent/clientapp/src/validation/analyticsResponseSchemas.ts`.
-- Checks run: focused backend tests 26/26; Pre/Post page tests 47/47; analytics guardrails/typecheck; frontend build; instruction, queue and planning validator self-tests plus full checks; `git diff --check`.
+- Checks run: focused backend tests 26/26; Pre/Post page tests 47/47; analytics guardrails/typecheck; frontend build; instruction, queue and planning validator self-tests plus full checks; `git diff --check`. Current-main Actions `37197810727` is red only on unrelated `InventoryPage.queueStatus.spec.tsx` (`data-queued` expected true, received false); this is reproduced locally and no InventoryPage/queue implementation path changed. Actions `37197810723` was in progress and `37197810710` passed on the implementation SHA; closure SHA Planning Governance run `37197921249` was in progress at evidence sync.
 - Checks not run: full backend and frontend suites (focused proof covers changed contracts); live database migration application (not authorized/required).
 - Run log: `.ai/runs/2026-10-04-RQ542-evidence.md`
 - Evidence state: synchronized
@@ -449,7 +449,7 @@ RQ549/NV-P3 proof-first oracle and RQ543/NV-F7 event direction/maturity/overlap 
 - Main verification: fresh fetch; `origin/main` resolves to `a3b50a792aec5ff7762ca24aeaf4a0b42dee2003` and contains the implementation SHA.
 - Missed: No certified dated observed-stock source was available for event-window OOS/LostSales; these remain unavailable by design.
 - Follow-up: RQ544/NV-F8 promoted to primary READY after its RQ547/NV-P1 inventory dependency was verified DONE.
-- Residual risk: `dotnet ef migrations list` could not determine applied status because the configured Neon credentials failed authentication (`28P01`); no database migration was applied. No Actions run was discoverable for the delivered SHA.
+- Residual risk: `dotnet ef migrations list` could not determine applied status because the configured Neon credentials failed authentication (`28P01`); no database migration was applied. Actions has an unrelated red Inventory queue-status test and an in-progress backend/data-integrity run.
 - Prompt defect / scope repair: The user-mentioned “AppSec Gate” file was not present; the canonical `ANALYTICS_AGENT_SAFETY_GATE.md` and `VALIDATION_SELECTOR.md` were applied. A same-page raw technical error message bypassing the analytics allowlist was fixed and regression-tested.
 
 ---
