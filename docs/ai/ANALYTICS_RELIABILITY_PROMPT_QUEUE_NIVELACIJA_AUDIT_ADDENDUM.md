@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: RQ568 (RQ551/RQ544/RQ542/RQ543/RQ541/RQ549/RQ547/RQ550 DONE; RQ552/RQ553/RQ555-RQ559 remain WAITING; RQ545 remains PARTIAL for deployed acceptance with RQ535/STAB16).
+Current READY routing: RQ553 is additional parallel-safe READY while Operations RQ564 is the primary P0. RQ552 is sequenced immediately after RQ564 because cache/write invalidation must reuse the new Nivelacija integrity generation. RQ555-RQ559 remain product/value lanes with explicit owner/source gates; RQ545 remains PARTIAL only for deployed acceptance.
 Owner completion/promotion 2026-10-04: RQ544/NV-F8 is DONE on implementation SHA `b890f88ec30084f3d1e640562ed63386162bd0b1`, freshly verified in `origin/main`. The startup migration now uses explicit event aliases, preserves storno/re-nivelacija/supplier-return values with bounded unmapped audit notices, and guards leading-zero/oversized receipt references with bigint-safe matching. Focused disposable PostgreSQL proof passed, including idempotency and the 12-digit view case; governance validators and `git diff --check` passed. Promoted RQ551/NV-I1 to primary READY after confirming RQ542/RQ534 dependencies DONE and no active RQ551 lock, branch or open PR. Actions run 37201544462 (Analytics Tests & Data Integrity) is in progress on the implementation SHA. Run log: `.ai/runs/2026-10-04-RQ544-evidence.md`; evidence state synchronized.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
 Owner claim 2026-10-04: refreshed `origin/main` to `8ba3a9da223bf90a9240ba7590c16253524fe43e`; RQ528/RQ549 are DONE. No RQ550 lock, matching branch or open PR exists. Claimed primary RQ550; RQ541 remains WAITING for this oracle. Local lock: `.ai/task-locks/RQ550-codex.lock.md`.
@@ -20,6 +20,7 @@ Owner completion 2026-10-03: RQ548 moved `IN_PROGRESS -> DONE` with the independ
 Owner claim 2026-10-03: refreshed `origin/main` to `31aff121a515459f3486a1cf706f0576cce0e03d`; RQ539 is READY after its RQ537 and RQ548 dependencies completed. No RQ539 task lock, matching branch or open PR exists. Claimed the primary Pre-Nivelacija candidate-truth prompt; RQ538 remains WAITING for this shared endpoint owner to finish. Local lock: `.ai/task-locks/RQ539-codex.lock.md`.
 Owner completion 2026-10-03: RQ539 moved `IN_PROGRESS -> DONE` and was delivered on `main` at `ffd2f52d0d558778df52054027205b4a775dc793`; fresh fetch verified `origin/main` contains that SHA. The proposed configurable 30-day new-stock threshold was used under the owner's repeated instruction to finish the assigned prompt. API oracle tests passed 3/3, frontend tests 54/54, analytics guardrails and frontend build passed; current-main Actions runs 37151372747 (Analytics Quality Gates) is queued and 37151372735/37151372737 are in progress. Run log: `.ai/runs/2026-10-03-RQ539-evidence.md`; evidence state: synchronized.
 Owner promotion/claim 2026-10-03: RQ538's RQ548 baseline prerequisite is satisfied and the RQ539 endpoint owner has completed. Fresh collision check found no RQ538 lock, matching branch or open PR. Promoted RQ538 `WAITING -> READY -> IN_PROGRESS` as primary Pre-Nivelacija event-scope work. Local lock: `.ai/task-locks/RQ538-codex.lock.md`.
+Owner recovery 2026-10-04 after RQ567: RQ529 is DONE, so RQ553's only declared dependency is satisfied; no RQ553 lock, matching branch or open PR was found, and its copy/a11y scope is parallel-safe with backend/oracle RQ564. RQ553 is promoted WAITING -> READY. RQ552's original 2026-10-01 problem statement is partly stale: RQ540 already made transient Pre-Nivelacija failures non-cacheable/cancellation-safe, RQ542 bounded and event-aligned the DiD/control path, and RQ474 owns safe error classification. The still-live residual is performance measurement/current query shape plus immediate cache/integrity invalidation after price-event writes/repairs. RQ552 stays WAITING until RQ564 lands so invalidation can mark the Nivelacija integrity generation non-current and then reprobe consistently.
 Registered range: RQ537–RQ559.
 Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload suppression only. Business-model and data-semantic changes remain queued until their proof/owner gates are satisfied.
 
@@ -43,7 +44,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-P4 | RQ550 | DONE |
 | NV-I1 | RQ551 | READY |
 | NV-I2 | RQ552 | WAITING |
-| NV-I3 | RQ553 | WAITING |
+| NV-I3 | RQ553 | READY |
 | NV-I4 | RQ554 | DONE |
 | NV-I5 | RQ555 | WAITING |
 | NV-E1 | RQ556 | WAITING |
@@ -1060,7 +1061,7 @@ NV-F6 for the aggregated drivers; RQ534 (spec statuses) is DONE.
 ## RQ552 - NV-I2 - Nivelacija query cost, error status and cache invalidation
 
 Status: WAITING
-Registration note: (delta to RQ487; register only if RQ487 does not absorb it)
+Scope reconciliation 2026-10-04: RQ487 is DONE. RQ540 already owns transient-failure/cancellation cache truth; RQ542 owns event-bounded DiD semantics; RQ474 owns safe error classification. Keep only the current residual below.
 Priority: P2
 Type: backend/frontend/sql/perf
 Feature family: nivelacija-runtime-cost
@@ -1071,11 +1072,11 @@ Commit suggestion: `perf(analytics): bound nivelacija page cost and invalidate a
 
 #### Problem
 
-**Cost.** One Pre/Post page load issues two endpoint calls (current and previous period). Each runs a count, the main query (45 s timeout) and four optional lookups (5 s each). The DiD view scans `mv_daily_sales_facts` per control candidate with no date predicate.
+**Cost.** Current Pre/Post still issues separate current/previous-period endpoint requests. The old 2026-10-01 cost assumptions must be remeasured after RQ541-RQ544/RQ551/RQ568; do not optimize against stale EXPLAIN output.
 
-**Errors.** They return 200 plus error meta. Cancellations are logged as unexpected failures.
+**Caching/invalidation.** Repository search still finds no explicit price-event/repair invalidation of the `VendorSalesNivelacija` / Pre-Nivelacija base caches. After RQ564, the same mutation must also make prior Nivelacija integrity evidence non-current before any fresh green proof is possible.
 
-**Caching.** Partial-metric responses are cached for 20 minutes, and nothing is invalidated after a price change or a repair.
+**Already solved elsewhere.** Do not reopen RQ540 cancellation/transient-failure caching, RQ542 event-bounded DiD semantics, or RQ474 error classification unless a current-main regression is reproduced.
 
 #### Evidence
 
@@ -1085,19 +1086,20 @@ Commit suggestion: `perf(analytics): bound nivelacija page cost and invalidate a
 
 #### Do
 
-1. Measure first: run `EXPLAIN (ANALYZE, BUFFERS)` on fixtures for the main, scoped and DiD queries, and record p50/p95 in `.ai/runs`.
-2. Let the backend return the previous-period post revenue per vendor in one call (with an optional `includePrevious` flag), or lazy-load the previous period only when the volatility column is visible.
-3. Skip optional lookups when no row needs them, and cache them separately with a short TTL. Don't cache a response whose `MetricsStatus` contains "failed" longer than 2 minutes.
-4. Map `OperationCanceledException` to 499 without an error log. Keep the 200-plus-meta contract only for documented "contract missing" states, and use 503 plus a correlation id for unexpected failures, if RQ474's contract allows that.
-5. Invalidate the `VendorSalesNivelacija*` and `PreNivelacijaPriorityBase*` cache prefixes after `POST /api/nivelacija` and after a live repair.
+1. Measure current main first: run bounded `EXPLAIN (ANALYZE, BUFFERS)` and repeated fixture/API timing for the main/scoped/enrichment paths; record baseline p50/p95 and query counts in `.ai/runs`.
+2. Confirm whether the second previous-period request is still materially expensive. If yes, return the needed comparison in one backend request or lazy-load it only when the comparison is visible; preserve RQ551 semantics.
+3. Skip optional enrichment queries when no selected row needs them and avoid duplicate work across the two periods. Only introduce a separate cache when measurement proves value.
+4. After successful `POST /api/nivelacija` and live Nivelacija repair, invalidate the affected Pre/Post and Pre-Nivelacija cache families and mark the RQ564 Nivelacija integrity generation non-current. A bounded reprobe may run after commit; stale proof must not remain green.
+5. Add mutation-to-next-read tests: a price change or repair is visible on the next request without waiting for TTL, and the trust state remains unverified/degraded until the new integrity probe succeeds.
+6. Do not reopen already-delivered RQ540/RQ542/RQ474 behavior unless the focused current-main baseline reproduces a regression.
 
 #### Acceptance
 
-The p95 is recorded and improved. A price change becomes visible in Pre-Nivelacija on the next request.
+A current-main before/after baseline is recorded; query/request count is reduced only where measurement proves the path is expensive. A price change/repair becomes visible on the next request, stale cache entries cannot survive the mutation, and the RQ564 Nivelacija integrity evidence is invalidated/re-established truthfully.
 
 #### Dependencies
 
-RQ487 (query cost owner); RQ474 (error contract, DONE on `cb3eb7e`).
+RQ487 and RQ474 are DONE. Start after RQ564 so mutation invalidation and integrity generation use one owner/contract.
 
 ---
 
@@ -1105,7 +1107,7 @@ RQ487 (query cost owner); RQ474 (error contract, DONE on `cb3eb7e`).
 
 ## RQ553 - NV-I3 - Nivelacija copy, labels, i18n and accessibility
 
-Status: WAITING
+Status: READY
 Priority: P3
 Type: frontend/backend-copy/tests
 Feature family: nivelacija-copy-a11y
@@ -1131,7 +1133,7 @@ Navigation, route and title labels match, and the user-facing copy has no Englis
 
 #### Dependencies
 
-RQ529 (supplier a11y) for shared components.
+RQ529 is DONE. Reuse shared components/labels where applicable; no remaining start gate.
 
 ---
 
