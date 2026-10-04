@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-10-02
+Updated: 2026-10-04
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -190,9 +190,12 @@ Queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not maintain a se
 5. Once claimed, identify the source of truth, nearest shared contract/helper and focused proof; run the tenant/analytics safety gate where relevant.
 6. Implement the smallest owned change and validate it through `docs/ai/VALIDATION_SELECTOR.md`.
 7. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record remote CI separately unless the prompt explicitly gates on it.
-8. Close/synchronize queue, evidence and roadmap truth; then, when the user asked to continue executing prompts, re-enter selection/recovery rather than ending merely because the just-finished prompt returned the pointer to `none`.
+8. After the implementation/closure is delivered to `main`, refresh the **post-delivery `origin/main` SHA** and run the protocol's mandatory **Post-close dependency cascade**. Search the completed task ID and every dependency whose state changed across the entire active owner queue/addendum set, re-evaluate all dependents, then scan all non-terminal prompts for stale blockers.
+9. If a dependent or independent prompt is now dependency-complete and collision-safe, repair routing and promote it in the same recovery run. Never copy a pre-claim `Next: none` or older agent's zero-READY conclusion into the new completion note.
+10. Only when the router is genuinely exhausted may the queue remain at `none`; record the protocol's durable **Zero-READY proof** with recovery-base SHA, files scanned, candidate/blocker matrix, start-gate-vs-final-proof classification, safe-slice result and exact unblock event.
+11. When the user asked to continue executing prompts, continue with the newly promoted candidate when safe instead of ending after the just-finished prompt.
 
-A final "no safe task" result must name the candidates checked, classify each blocker and explain why no safe repository-local slice or alternate lane exists. A bare `Current READY: none` is never enough.
+A final "no safe task" result is valid only from a post-delivery Zero-READY proof on current `origin/main`. If the full active queue/addendum set was not inspected, recovery is incomplete and the agent must **not** say there is no READY work. A bare `Current READY: none`, old run-log `Next: none`, blocked P0, queued CI or missing deployed proof is never enough.
 
 ## Stop rules
 
