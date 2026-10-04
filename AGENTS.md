@@ -119,7 +119,11 @@ For formal queue work:
 - classify blockers instead of accepting old wording at face value: distinguish true start gates from final/deployed evidence, external authority from repo-local proof, and circular prerequisites from artifacts the prompt itself should create;
 - when a prompt safely contains an executable same-owner repo-local slice plus an external final-proof residual, repair/narrow the prompt before claim rather than refusing the whole task; never lower business acceptance or fake deployed proof;
 - if the highest-priority candidate remains genuinely blocked, try a collision-safe candidate in the same program and then the next eligible program before reporting no work;
-- after completing a prompt, re-enter selection/recovery when the user asked to continue/claim-and-execute instead of stopping only because the pointer returned to `none`;
+- after **every terminal queue transition** (`DONE`/`PARTIAL`/`BLOCKED`/`OBSOLETE`), treat every previous `Current READY: none` / `Next: none` conclusion as invalid; refresh the **post-delivery `origin/main` SHA** and run the protocol's mandatory **Post-close dependency cascade** across the entire active owner queue/addendum set;
+- search the just-completed task ID and every dependency whose state changed across all active queue files, then re-evaluate all dependent `WAITING/PARTIAL/BLOCKED` prompts; if any is now dependency-complete and collision-safe, promote it in the same recovery run;
+- a zero-READY conclusion requires the protocol's durable **Zero-READY proof** (recovery-base SHA, files scanned, candidate/blocker matrix, start-gate-vs-final-proof classification, safe-slice result and exact unblock event); an old queue header, old run-log `Next`, blocked P0, queued CI or missing deployed proof is never sufficient;
+- if the agent did not inspect the entire active owner queue/addendum set from current post-delivery `origin/main`, it must report recovery incomplete and **must not** say there is no READY work;
+- when the user asked to continue/claim-and-execute, re-enter selection/recovery after closure and continue with the newly promoted candidate when safe;
 - stop only for a genuine authority/gate/owner conflict or when the canonical router proves there is no safe repository-local action left.
 
 A mechanical prompt/routing defect may be repaired without asking when the authoritative owner and acceptance are clear, the repair stays same-owner and evidence records it. Direct user work does not need to become a queue prompt before implementation.
