@@ -29761,7 +29761,7 @@ Production readiness cannot tell whether the startup database initialization act
 ## RQ588 - Guard EF migration discovery and classify four attribute-less legacy migration classes
 
 Status: IN_PROGRESS
-Claim 2026-10-05 after RQ586: fresh post-close scan at `origin/main` `6d5a7414ef61ef70829597bdb6b755ae71c95a30` confirmed RQ588 remains READY and no matching lock, branch, remote branch or open PR exists. RQ586 is DONE and no higher-priority READY prompt remains in the canonical RQ route. Local lock: `.ai/task-locks/RQ588-codex.lock.md`.
+Claim 2026-10-05 after RQ586: fresh post-close scan at `origin/main` `37aeae09fd55a3d150f2f99ee25dafecccd0b7ed` confirmed RQ588 remains READY and no matching lock, branch, remote branch or open PR exists. RQ586 is DONE and no higher-priority READY prompt remains in the canonical RQ route. Local lock: `.ai/task-locks/RQ588-codex.lock.md`.
 Ready after: none (registered 2026-10-04 by `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F2)
 Priority: P3
 Type: backend/migrations/tests
