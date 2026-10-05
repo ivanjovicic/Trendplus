@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ452 (Supplier/Shoe accuracy certificate) and parallel lanes RQ578, RQ579, RQ580, RQ581, RQ583, RQ584, RQ586, RQ588, RQ479 (collision-check before claim). RQ453 certification CI is DONE on `337fcb42`. RQ572, RQ575, RQ576, RQ577, RQ552, RQ553 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. RQ582 follows RQ581. See Operations and Nivelacija addenda.
+Current READY prompt: RQ579 (non-vacuous integrity verification) and parallel lanes RQ580, RQ581, RQ583, RQ584, RQ586, RQ588, RQ479 (collision-check before claim). RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`. RQ572, RQ575, RQ576, RQ577, RQ552, RQ553 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. RQ582 follows RQ581. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -28981,7 +28981,7 @@ Owner decision (Ivan, 2026-10-04): for analytics, treat `ProdajaZaglavlje` as a 
 
 ## RQ578 - Data Quality health: stop reporting "100 / excellent" on stale and incomplete data
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend/frontend/tests
 Feature family: data-quality-health-truth
@@ -29041,6 +29041,17 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 - Retained live evidence at 22:50 CEST sent `fromDate=2026-07-07&toDate=2026-08-06`, but the current Minimal API handler for `/api/analytics/data-quality/health` does **not declare those parameters at all**; they are silently ignored and `CaptureAsync(lookbackDays,...)` anchors the window to wall-clock today through `DataQualitySalesWindow.Resolve`. This is not merely a wrong displayed end date.
 - Extend the contract with optional explicit `fromDate/toDate` (half-open backend bounds) or one canonical period object consistent with other analytics routes. Validate both dates/order; when explicit bounds are supplied they own the health population. When absent, the existing lookback contract may remain but requested/effective/observed bounds must stay truthful.
 - Add an endpoint regression where July facts + October wall clock + explicit July bounds produce the July health population. The Data Quality client must send the same period it displays when a historical period control is active.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Delivery: `origin/main` at `9f25bf8e` (fast-forward from `cursor/rq578-data-quality-health-e050`).
+- Scope: explicit half-open health periods, observed sales horizon, separate master-data completeness counts, truthful issue-list limitation state, Decision Board worst-badge status, and Serbian Data Quality UI copy.
+- Validation: focused backend 18/18; broader Data Quality/health suite 99 passed, 1 skipped because the PostgreSQL integration fixture was unavailable; frontend Data Quality/schema tests 31/31; analytics guardrails, typecheck, API Release build and `git diff --check` passed.
+- Run log: `.ai/runs/2026-10-05-RQ578-evidence.md`
+- Evidence state: synchronized
+- Follow-up: RQ579 is promoted as the next primary READY lane; RQ452 remains blocked by its RQ451/RQ448 start gates.
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
