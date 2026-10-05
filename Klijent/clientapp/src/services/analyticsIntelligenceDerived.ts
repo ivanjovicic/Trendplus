@@ -512,8 +512,11 @@ export function mergeSmartReorderAsPrimary(
 
 export function buildLegacyReorderFallbackFromSignals(
   smart: SmartReorderResult | null
-): { items: ReorderItem[]; summary: { criticalCount: number; urgentCount: number; recommendedCount: number; totalReorderValue: number } } | null {
+): ReorderPlan | null {
   if (!smart) return null;
+
+  const potentialRevenue = smart.summary.expectedRevenueFromReorder;
+  const procurementCost = smart.summary.totalReorderCost;
 
   return {
     items: smart.items.map((item) => ({
@@ -536,7 +539,10 @@ export function buildLegacyReorderFallbackFromSignals(
       criticalCount: smart.summary.criticalCount,
       urgentCount: smart.summary.urgentCount,
       recommendedCount: smart.summary.recommendedCount,
-      totalReorderValue: smart.summary.totalReorderCost ?? 0,
+      potentialRevenueRsd: potentialRevenue,
+      estimatedProcurementCostRsd: procurementCost,
+      reorderValueBasis: potentialRevenue != null ? "potential_revenue_at_selling_price" : "unavailable",
+      totalReorderValue: potentialRevenue,
     },
   };
 }
