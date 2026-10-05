@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49` and `P-UI-52` (promoted after RQ582 released `navConfig.ts`; supplemental while higher-priority RQ work is ready). `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
+Current primary prompt: P-UI-39 (IN_PROGRESS; claimed 2026-10-06 after RQ588 closed and the full cross-program post-close scan found no higher-priority READY execution lane). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49` and `P-UI-52` (promoted after RQ582 released `navConfig.ts`; supplemental when higher-priority program work is ready). `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -47,7 +47,7 @@ Use with:
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
-| P-UI-39 | READY | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
+| P-UI-39 | IN_PROGRESS | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | READY | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
@@ -2486,7 +2486,7 @@ Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/2026-10-
 
 ## P-UI-39 - Make the shared AnalyticsControlBar overflow-safe by default (phone layout-viewport inflation and 1024px overflow)
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none
 Priority: P1
 Type: frontend/css/tests
@@ -2545,6 +2545,12 @@ Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout
 ### Dependencies
 
 - None. P-UI-35/P-UI-36/P-UI-31 later migrate those pages to the full responsive pilot and must not be reverted by this change.
+
+### Claim note 2026-10-06
+
+- RQ588 is DONE and fresh post-close recovery at `origin/main` `4762916deaf9701d21ae46c5d4f81ffa5debe094` found no dependency-complete RQ successor. Q69's stale PARTIAL status was reconciled to its already evidenced DONE state; Q70-Q83 are DONE.
+- BCI has no READY or IN_PROGRESS prompt; STAB16 remains provider/deployed-proof gated; QDB/MT/GAI have no READY execution lane. P-UI-39 is the primary collision-safe P1 candidate. No matching lock, branch or open PR exists. Its owned `AnalyticsControlBar` files/specs are separate from the just-completed `AnalyticsEmptyState.css` fix.
+- Local lock: `.ai/task-locks/P-UI-39-codex.lock.md`.
 
 ## P-UI-40 - Small-laptop shell (1024–1279px): single-row header and space-saving sidebar
 
