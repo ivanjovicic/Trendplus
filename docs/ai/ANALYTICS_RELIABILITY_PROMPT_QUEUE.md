@@ -28676,7 +28676,7 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: owner decision resolved 2026-10-04; no blocking dependency. Do not run concurrently with another active Product Decision/Dashboard owner on the same files.
 Priority: P1
 Type: backend/policy/tests
@@ -28734,7 +28734,7 @@ Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment 
 
 - RQ574 was claimed after RQ570 reached DONE on `origin/main` at `59d95ee5d9f4b727b7ed5ae1aeac31b2f2089e1a`. Post-close recovery found no matching lock, branch or open PR; no other Product Decision/Dashboard owner is active. Local lock: `.ai/task-locks/RQ574-codex.lock.md`. Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`.
 
-### Implementation delivery note 2026-10-05
+### Completion note 2026-10-05
 
 - Final implementation SHA `046120c95df1b29f6b7394d65ff4492874073bfd` is freshly verified on `origin/main`; queue closure follows the mandatory post-close cascade.
 - Missing category or footwear type is now a warning when the alternate classification dimension is valid; only both missing block assortment decisions. Incomplete variants are a warning, and category/variant gaps reduce confidence. Missing supplier/cost policy remains unchanged. Missing MinStock stays on RQ483's reduced-confidence path with `lostSalesEstimate=null`.
