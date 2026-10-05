@@ -75,6 +75,64 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
     }
 
     [Fact]
+    public async Task PreNivelacija_AnchorsToRetailSalesHorizon_AndKeepsExcludedStockInSeparateQueues()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+
+        var connectionString = await CreateSeededDatabaseAsync();
+        await ExecuteAsync(connectionString, """
+            UPDATE prodaja_zaglavlje SET datum_prodaje = datum_prodaje - INTERVAL '60 days' WHERE id_objekat IN (1, 2);
+            UPDATE "DnevnikPromena" SET "Datum" = "Datum" - INTERVAL '60 days';
+            INSERT INTO "StoresDim" ("StoreKey", "StoreId", "StoreName", "DataOrigin")
+            VALUES (3, 3, 'STARO', 'existing'), (20828, 20828, 'Trend PLUS 2', 'existing');
+            INSERT INTO "TipoviObuce" ("Id", "Naziv", "DataOrigin") VALUES (2, 'Oprema', 'existing');
+            INSERT INTO "Artikli"
+                ("Id", "PLU", "Naziv", "NabavnaCena", "NabavnaCenaDin", "PrvaProdajnaCena", "ProdajnaCena",
+                 "IDDobavljac", "IDTipObuce", "UpdatedAt", "Kolicina", "IDObjekat", "Kategorija", "DataOrigin")
+            VALUES
+                (107, 'RQ571-STARO', 'Legacy store stock', 50, 50, 100, 100, 1, 1, CURRENT_TIMESTAMP, 8, 3, 'Obuca', 'existing'),
+                (108, 'RQ571-OPREMA', 'Non footwear stock', 50, 50, 100, 100, 1, 2, CURRENT_TIMESTAMP, 6, 1, 'Oprema', 'existing'),
+                (109, 'RQ571-20828', 'Excluded object stock', 50, 50, 100, 100, 1, 1, CURRENT_TIMESTAMP, 4, 20828, 'Obuca', 'existing');
+            INSERT INTO prodaja_zaglavlje (id, broj_racuna, datum_prodaje, id_objekat, korisnik_ime, data_origin)
+            VALUES (90, 'RQ571-EXCLUDED-LATEST', CURRENT_TIMESTAMP, 3, 'rq571', 'existing');
+            INSERT INTO prodaja_stavke
+                (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
+            VALUES (90, 90, 107, 3, 100, 50, 1, 1, 'sale_snapshot');
+            SELECT setval(pg_get_serial_sequence('"Artikli"', 'Id'), 209, true);
+            """);
+
+        var cache = new HybridCacheService(
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<HybridCacheService>.Instance);
+        await using var factory = new PreNivelacijaEndpointFactory(connectionString, cache);
+        using var client = factory.CreateClient();
+        using var response = await GetJsonAsync(client, "all");
+        var root = response.RootElement;
+        var evidenceWindow = root.GetProperty("evidenceWindow");
+        Assert.Equal("source_horizon", evidenceWindow.GetProperty("anchorBasis").GetString());
+        Assert.Equal(
+            DateTime.Parse(evidenceWindow.GetProperty("observedSourceHorizonUtc").GetString()!, CultureInfo.InvariantCulture).Date,
+            DateTime.Parse(evidenceWindow.GetProperty("anchorDateUtc").GetString()!, CultureInfo.InvariantCulture).Date);
+        var anchoredCandidate = root.GetProperty("candidates").EnumerateArray()
+            .Single(item => item.GetProperty("artikalId").GetInt32() == 101);
+        Assert.Equal(4, anchoredCandidate.GetProperty("daysSinceLastSale").GetInt32());
+        Assert.DoesNotContain(root.GetProperty("candidates").EnumerateArray(),
+            item => new[] { 107, 108, 109 }.Contains(item.GetProperty("artikalId").GetInt32()));
+
+        var queues = root.GetProperty("queues");
+        var legacyCleanup = queues.GetProperty("legacyCleanup").EnumerateArray().ToArray();
+        Assert.Contains(legacyCleanup, item => item.GetProperty("artikalId").GetInt32() == 107);
+        Assert.Contains(legacyCleanup, item => item.GetProperty("artikalId").GetInt32() == 109);
+        Assert.All(legacyCleanup, item => Assert.False(item.GetProperty("recommendationAllowed").GetBoolean()));
+        var nonFootwearCleanup = queues.GetProperty("nonFootwearCleanup").EnumerateArray().ToArray();
+        var equipment = Assert.Single(nonFootwearCleanup);
+        Assert.Equal(108, equipment.GetProperty("artikalId").GetInt32());
+        Assert.Contains("non_footwear", equipment.GetProperty("reasonCodes").EnumerateArray().Select(item => item.GetString()));
+        Assert.False(equipment.GetProperty("recommendationAllowed").GetBoolean());
+    }
+
+    [Fact]
     public async Task PreNivelacijaEndpoint_MarkdownQueryFailureIsNotCached_AndNextRequestRecovers()
     {
         if (!_fixture.IsAvailable)
@@ -350,7 +408,17 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         int? storeId)
     {
         const string sql = """
-            WITH sales AS (
+            WITH anchor AS (
+                SELECT COALESCE(MAX(p.datum_prodaje)::date, CURRENT_DATE) AS anchor_date
+                FROM prodaja_zaglavlje p
+                JOIN prodaja_stavke ps ON ps.id_prodaja = p.id
+                JOIN "StoresDim" active_store ON active_store."StoreId" = p.id_objekat
+                WHERE UPPER(BTRIM(COALESCE(p.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
+                  AND UPPER(BTRIM(active_store."StoreName")) IN ('TREND PLUS 1', 'TREND PLUS 2')
+                  AND (@scope = 'all'
+                       OR (@scope = 'imported' AND p.data_origin = 'access')
+                       OR (@scope = 'existing' AND COALESCE(p.data_origin, '') IN ('', 'existing')))
+            ), sales AS (
                 SELECT ps.id_artikal,
                        p.id_objekat AS store_id,
                        SUM(ps.kolicina)::integer AS units_180,
@@ -360,8 +428,9 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                        MAX(p.datum_prodaje) FILTER (WHERE ps.kolicina > 0) AS latest_positive_sale
                 FROM prodaja_stavke ps
                 JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
-                WHERE p.datum_prodaje >= CURRENT_TIMESTAMP - INTERVAL '180 days'
-                  AND p.datum_prodaje <= CURRENT_TIMESTAMP
+                CROSS JOIN anchor
+                WHERE p.datum_prodaje >= anchor.anchor_date - 179
+                  AND p.datum_prodaje < anchor.anchor_date + 1
                   AND UPPER(BTRIM(COALESCE(p.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
                   AND (@scope = 'all'
                        OR (@scope = 'imported' AND p.data_origin = 'access')
@@ -402,12 +471,12 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                    COALESCE(s.units_180, 0), COALESCE(s.positive_units_180, 0),
                    COALESCE(s.negative_units_180, 0), COALESCE(s.sales_row_count, 0),
                    CASE WHEN s.latest_positive_sale IS NULL THEN NULL
-                        ELSE (CURRENT_DATE - s.latest_positive_sale::date)::integer END,
+                        ELSE ((SELECT anchor_date FROM anchor) - s.latest_positive_sale::date)::integer END,
                    COALESCE(m.markdown_events, 0), COALESCE(m.average_markdown_pct, 0),
                    COALESCE(a."ProdajnaCena", a."PrvaProdajnaCena"),
                    COALESCE(a."NabavnaCenaDin", a."NabavnaCena"), a."DataOrigin",
                    CASE WHEN r.first_receipt IS NULL THEN NULL
-                        ELSE (CURRENT_DATE - r.first_receipt::date)::integer END
+                        ELSE ((SELECT anchor_date FROM anchor) - r.first_receipt::date)::integer END
             FROM "Artikli" a
             LEFT JOIN sales s ON s.id_artikal = a."Id" AND s.store_id IS NOT DISTINCT FROM a."IDObjekat"
             LEFT JOIN markdown m ON m.article_id = a."Id"
@@ -576,7 +645,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             || sku.EndsWith("-EXCLUDED", StringComparison.Ordinal));
         var newStock = root.GetProperty("queues").GetProperty("newStock").EnumerateArray()
             .Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
-        Assert.Equal(3, newStock.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.Equal(0, newStock.GetProperty("daysSinceReceipt").GetInt32());
         Assert.Equal("new_stock", newStock.GetProperty("stockAgeStatus").GetString());
         Assert.Equal("new_stock", newStock.GetProperty("reasonCode").GetString());
         var neverSold = candidates["RQ548-S1-NEVER"];
@@ -586,7 +655,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.Equal("high", neverSold.GetProperty("priorityBand").GetString());
         var firstSaleFallback = candidates["RQ548-S1-NET"];
         Assert.Equal("first_sale_fallback", firstSaleFallback.GetProperty("receiptEvidenceStatus").GetString());
-        Assert.True(firstSaleFallback.GetProperty("daysSinceReceipt").GetInt32() >= 90);
+        Assert.Equal(87, firstSaleFallback.GetProperty("daysSinceReceipt").GetInt32());
 
         var belowCost = candidates["RQ548-S1-BELOW"];
         Assert.Equal(-25m, belowCost.GetProperty("grossMarginPctEst").GetDecimal());
@@ -613,12 +682,10 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         using var client = factory.CreateClient();
 
         using var response = await GetJsonAsync(client, "all", storeId: 1);
-        var candidates = response.RootElement.GetProperty("candidates").EnumerateArray().ToArray();
-        var threeDayOld = candidates.Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
-        Assert.Equal("established", threeDayOld.GetProperty("stockAgeStatus").GetString());
-        Assert.Equal(3, threeDayOld.GetProperty("daysSinceReceipt").GetInt32());
-        Assert.DoesNotContain(response.RootElement.GetProperty("queues").GetProperty("newStock").EnumerateArray(),
-            item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
+        var newStock = response.RootElement.GetProperty("queues").GetProperty("newStock").EnumerateArray()
+            .Single(item => item.GetProperty("sku").GetString() == "RQ548-S1-NEW");
+        Assert.Equal("new_stock", newStock.GetProperty("stockAgeStatus").GetString());
+        Assert.Equal(0, newStock.GetProperty("daysSinceReceipt").GetInt32());
     }
 
     [Fact]
@@ -650,7 +717,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         var candidate = response.RootElement.GetProperty("candidates").EnumerateArray()
             .Single(item => item.GetProperty("sku").GetString() == "RQ539-S1-OLDER");
         Assert.Equal("established", candidate.GetProperty("stockAgeStatus").GetString());
-        Assert.Equal(40, candidate.GetProperty("daysSinceReceipt").GetInt32());
+        Assert.Equal(37, candidate.GetProperty("daysSinceReceipt").GetInt32());
         Assert.DoesNotContain(response.RootElement.GetProperty("queues").GetProperty("newStock").EnumerateArray(),
             item => item.GetProperty("sku").GetString() == "RQ539-S1-OLDER");
     }

@@ -6,6 +6,23 @@ namespace Api.Tests;
 
 public sealed class PreNivelacijaPopulationTests
 {
+    [Theory]
+    [InlineData(1, "Trend PLUS 1", true)]
+    [InlineData(2, "Trend PLUS 2", true)]
+    [InlineData(3, "STARO", false)]
+    [InlineData(4, "Magacin", false)]
+    [InlineData(5, "Komision 8", false)]
+    [InlineData(20828, "Trend PLUS 2", false)]
+    [InlineData(null, "Trend PLUS 1", false)]
+    [InlineData(1, "N/A", false)]
+    public void RetailMarkdownStorePolicy_AllowsOnlyNamedRetailStores(
+        int? storeId,
+        string storeName,
+        bool expected)
+    {
+        Assert.Equal(expected, PreNivelacijaPriorityEndpoints.IsRetailMarkdownStore(storeId, storeName));
+    }
+
     [Fact]
     public void BuildSummary_UsesFullFilteredUniverseAndKeepsInsufficientHighBandRows()
     {

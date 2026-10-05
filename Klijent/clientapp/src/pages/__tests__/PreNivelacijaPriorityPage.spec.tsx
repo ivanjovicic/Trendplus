@@ -33,16 +33,19 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
     periodFrom,
     periodTo,
     emptyStateReason,
+    provenanceBasis,
   }: {
     title: string;
     periodFrom?: string | null;
     periodTo?: string | null;
     emptyStateReason?: string | null;
+    provenanceBasis?: string | null;
   }) => (
     <>
       <h1 data-testid="analytics-trust-header">{title}</h1>
       <output data-testid="analytics-trust-period">{periodFrom ?? "unknown"}|{periodTo ?? "unknown"}</output>
       <output data-testid="analytics-trust-empty-reason">{emptyStateReason ?? "none"}</output>
+      <output data-testid="analytics-trust-provenance">{provenanceBasis ?? "none"}</output>
     </>
   ),
 }));
@@ -633,6 +636,65 @@ describe("PreNivelacijaPriorityPage", () => {
 
     expect(await screen.findByText("SKU-NEW-ONLY")).toBeInTheDocument();
     expect(screen.queryByText("Nema kandidata za pre-nivelaciju.")).not.toBeInTheDocument();
+  });
+
+  it("explains the source-horizon anchor and separates legacy and non-footwear cleanup", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
+      ...makeResponse([makeCandidate()]),
+      evidenceWindow: {
+        ...makeResponse([makeCandidate()]).evidenceWindow,
+        anchorBasis: "source_horizon",
+        anchorDateUtc: "2026-08-05T00:00:00Z",
+        observedSourceHorizonUtc: "2026-08-05T16:00:00Z",
+        decisionPopulationPolicy: "trend_plus_1_2_footwear_only",
+      },
+      queues: {
+        ...makeResponse([makeCandidate()]).queues,
+        legacyCleanupTotal: 1,
+        legacyCleanup: [{
+          artikalId: 301,
+          sku: "SKU-LEGACY",
+          storeId: 3,
+          storeName: "STARO",
+          supplierId: 11,
+          supplierName: "Dobavljac A",
+          seasonId: 7,
+          season: "Proleće-leto",
+          footwearTypeId: 4,
+          footwearType: "Obuća",
+          stockUnits: 8,
+          reasonCodes: ["non_retail_store"],
+          recommendationAllowed: false,
+        }],
+        nonFootwearCleanupTotal: 1,
+        nonFootwearCleanup: [{
+          artikalId: 302,
+          sku: "SKU-OPREMA",
+          storeId: 1,
+          storeName: "Trend PLUS 1",
+          supplierId: 11,
+          supplierName: "Dobavljac A",
+          seasonId: 7,
+          season: "Proleće-leto",
+          footwearTypeId: 9,
+          footwearType: "Oprema",
+          stockUnits: 6,
+          reasonCodes: ["non_footwear"],
+          recommendationAllowed: false,
+        }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("analytics-trust-provenance")).toHaveTextContent(/period je usidren na poslednju prodaju 2026-08-05/);
+    expect(screen.getByRole("heading", { name: "Legacy / transfer zalihe (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Oprema · neobućarska zaliha (1)" })).toBeInTheDocument();
+    expect(screen.getByText("Bez preporuke za sniženje")).toBeInTheDocument();
   });
 
   it.each([

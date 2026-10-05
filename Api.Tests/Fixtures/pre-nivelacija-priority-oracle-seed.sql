@@ -11,7 +11,7 @@ CREATE TABLE "StoresDim" (
 );
 
 INSERT INTO "StoresDim" ("StoreKey", "StoreId", "StoreName", "DataOrigin")
-VALUES (1, 1, 'RQ548 imported store', 'access'), (2, 2, 'RQ548 existing store', 'existing');
+VALUES (1, 1, 'Trend PLUS 1', 'access'), (2, 2, 'Trend PLUS 2', 'existing');
 
 INSERT INTO "Dobavljaci" ("Id", "Naziv", "DataOrigin")
 VALUES (1, 'RQ548 supplier', 'existing');

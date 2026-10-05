@@ -1007,6 +1007,10 @@ export default function PreNivelacijaPriorityPage() {
       { key: "visiblePageHighPriority", label: "Visok prioritet (vidljiva strana)", value: candidateCounts.highPriority },
       { key: "salesWindowFromUtc", label: "Prodajni prozor od (UTC)", value: data?.evidenceWindow?.salesWindowFromUtc ?? null },
       { key: "salesWindowToUtc", label: "Prodajni prozor do (UTC)", value: data?.evidenceWindow?.salesWindowToUtc ?? null },
+      { key: "anchorBasis", label: "Sidro perioda", value: data?.evidenceWindow?.anchorBasis === "source_horizon" ? "Poslednji datum sa prodajom" : data?.evidenceWindow?.anchorBasis === "now" ? "Trenutni datum (nema horizonta prodaje)" : data?.evidenceWindow?.anchorBasis ?? null },
+      { key: "anchorDateUtc", label: "Datum sidra (UTC)", value: data?.evidenceWindow?.anchorDateUtc ?? null },
+      { key: "observedSourceHorizonUtc", label: "Poslednja uočena prodaja (UTC)", value: data?.evidenceWindow?.observedSourceHorizonUtc ?? null },
+      { key: "decisionPopulationPolicy", label: "Populacija preporuka", value: "Trend PLUS 1/2 · samo obuća; ostale zalihe u zasebnim listama za čišćenje" },
       { key: "receiptPopulationPolicy", label: "Populacija računa", value: data?.evidenceWindow?.receiptPopulationPolicy === "certified_retail_excludes_trimmed_case_insensitive_dug_korekcija" ? "Maloprodaja bez DUG/KOREKCIJA računa" : data?.evidenceWindow?.receiptPopulationPolicy ?? null },
       { key: "salesQuantityPolicy", label: "Politika količine", value: data?.evidenceWindow?.salesQuantityPolicy === "signed_net_quantity_preserved" ? "Potpisana neto količina; povrati i korekcije ostaju vidljivi" : data?.evidenceWindow?.salesQuantityPolicy ?? null },
       { key: "signedReturnPolicy", label: "Politika povrata", value: data?.evidenceWindow?.signedReturnPolicy === "included_in_signed_net_positive_net_remains_actionable" ? "Povrat ulazi u neto; pozitivan neto ostaje podoban za preporuku" : data?.evidenceWindow?.signedReturnPolicy ?? null },
@@ -1021,8 +1025,11 @@ export default function PreNivelacijaPriorityPage() {
 
   const evidenceBasis = useMemo(() => {
     const window = data?.evidenceWindow;
-    if (!window) return null;
-    return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; maloprodajna populacija isključuje DUG/KOREKCIJA, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.`;
+    if (!window || data.totalCandidates === 0) return null;
+    const anchor = window.anchorBasis === "source_horizon"
+      ? `period je usidren na poslednju prodaju ${window.anchorDateUtc ?? window.observedSourceHorizonUtc ?? ""}`
+      : `period koristi trenutni datum ${window.anchorDateUtc ?? ""} jer horizont prodaje nije dostupan`;
+    return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; ${anchor}; preporuke obuhvataju obuću u Trend PLUS 1/2. Ostali objekti i Oprema su izdvojeni iz markdown prioriteta; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.`;
   }, [data?.evidenceWindow]);
 
   const handleSort = (field: SortField) => {
@@ -1756,7 +1763,7 @@ export default function PreNivelacijaPriorityPage() {
             </section>
           ) : null}
 
-          {data.queues && ((data.queues.newStock?.length ?? 0) > 0 || data.queues.highlightNow.length > 0 || data.queues.monitor.length > 0 || data.queues.likelyMarkdownSoon.length > 0) ? (
+          {data.queues && ((data.queues.newStock?.length ?? 0) > 0 || data.queues.highlightNow.length > 0 || data.queues.monitor.length > 0 || data.queues.likelyMarkdownSoon.length > 0 || (data.queues.legacyCleanup?.length ?? 0) > 0 || (data.queues.nonFootwearCleanup?.length ?? 0) > 0) ? (
             <section className="pnp-queues">
               <h2 className="pnp-queues-title">
                 Redovi čekanja
@@ -1833,6 +1840,37 @@ export default function PreNivelacijaPriorityPage() {
                     ))
                   )}
                 </article>
+                {(data.queues.legacyCleanup?.length ?? 0) > 0 ? (
+                  <article className="pnp-queue-panel pnp-queue-panel--keep">
+                    <h3>{formatQueueHeading("Legacy / transfer zalihe", data.queues.legacyCleanup?.length ?? 0, data.queues.legacyCleanupTotal)}</h3>
+                    {(data.queues.legacyCleanup ?? []).map((item) => (
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName} · {item.footwearType}</div>
+                          <div className="pnp-queue-item-supplier">{item.storeName}{item.storeId != null ? ` (ID ${item.storeId})` : ""} · {fmtNumber(item.stockUnits, 0)} kom</div>
+                          <div className="pnp-queue-item-supplier">{cleanupReasonsLabel(item.reasonCodes)}</div>
+                        </div>
+                        <span className="pnp-decision-status status-keep">Bez preporuke za sniženje</span>
+                      </div>
+                    ))}
+                  </article>
+                ) : null}
+                {(data.queues.nonFootwearCleanup?.length ?? 0) > 0 ? (
+                  <article className="pnp-queue-panel pnp-queue-panel--keep">
+                    <h3>{formatQueueHeading("Oprema · neobućarska zaliha", data.queues.nonFootwearCleanup?.length ?? 0, data.queues.nonFootwearCleanupTotal)}</h3>
+                    {(data.queues.nonFootwearCleanup ?? []).map((item) => (
+                      <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
+                        <div>
+                          <div className="pnp-queue-item-sku">{item.sku}</div>
+                          <div className="pnp-queue-item-supplier">{item.supplierName} · {item.storeName}</div>
+                          <div className="pnp-queue-item-supplier">{fmtNumber(item.stockUnits, 0)} kom · {cleanupReasonsLabel(item.reasonCodes)}</div>
+                        </div>
+                        <span className="pnp-decision-status status-keep">Odvojeno od obućarskih preporuka</span>
+                      </div>
+                    ))}
+                  </article>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -1847,4 +1885,16 @@ function salesHistoryLabel(status: string | null | undefined, daysSinceLastSale:
   if (status === "no_sale_in_window") return "Nema prodaje u 180 d";
   if (status === "sold" && daysSinceLastSale != null) return `${fmtNumber(daysSinceLastSale, 0)} dana`;
   return "Nije dostupno";
+}
+
+function cleanupReasonsLabel(reasonCodes: string[]): string {
+  const labels: Record<string, string> = {
+    non_footwear: "neobućarska roba",
+    footwear_type_unknown: "tip obuće nije potvrđen",
+    missing_store_identity: "nedostaje identitet objekta",
+    excluded_object_20828: "objekat 20828 nije u retail populaciji",
+    store_identity_unknown: "objekat nije pouzdano mapiran",
+    non_retail_store: "legacy ili neretail objekat",
+  };
+  return reasonCodes.map((code) => labels[code] ?? "izdvojeno iz preporuka").join(" · ");
 }

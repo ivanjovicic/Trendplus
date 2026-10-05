@@ -123,6 +123,10 @@ export interface PreNivelacijaSupplierAction {
 }
 
 export interface PreNivelacijaEvidenceWindow {
+  anchorBasis?: "source_horizon" | "now" | string;
+  anchorDateUtc?: string;
+  observedSourceHorizonUtc?: string | null;
+  decisionPopulationPolicy?: string;
   salesWindowFromUtc: string;
   salesWindowToUtc: string;
   markdownWindowFromUtc: string;
@@ -172,6 +176,10 @@ export interface PreNivelacijaNewStockQueueItem {
 }
 
 export interface PreNivelacijaQueues {
+  legacyCleanup?: PreNivelacijaCleanupItem[];
+  legacyCleanupTotal?: number | null;
+  nonFootwearCleanup?: PreNivelacijaCleanupItem[];
+  nonFootwearCleanupTotal?: number | null;
   newStock?: PreNivelacijaNewStockQueueItem[];
   newStockTotal?: number | null;
   highlightNow: PreNivelacijaQueueItem[];
@@ -180,6 +188,22 @@ export interface PreNivelacijaQueues {
   monitorTotal?: number | null;
   likelyMarkdownSoon: PreNivelacijaQueueItem[];
   likelyMarkdownSoonTotal?: number | null;
+}
+
+export interface PreNivelacijaCleanupItem {
+  artikalId: number;
+  sku: string;
+  storeId: number | null;
+  storeName: string;
+  supplierId: number | null;
+  supplierName: string;
+  seasonId: number | null;
+  season: string;
+  footwearTypeId: number | null;
+  footwearType: string;
+  stockUnits: number;
+  reasonCodes: string[];
+  recommendationAllowed: false;
 }
 
 export interface PreNivelacijaAlert {

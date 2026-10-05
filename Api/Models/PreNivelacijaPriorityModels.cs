@@ -36,6 +36,10 @@ public sealed class PreNivelacijaModelEvidenceDto
 
 public sealed class PreNivelacijaEvidenceWindowDto
 {
+    public string AnchorBasis { get; set; } = "now";
+    public DateTime AnchorDateUtc { get; set; }
+    public DateTime? ObservedSourceHorizonUtc { get; set; }
+    public string DecisionPopulationPolicy { get; set; } = "trend_plus_1_2_footwear_only";
     public DateTime SalesWindowFromUtc { get; set; }
     public DateTime SalesWindowToUtc { get; set; }
     public DateTime MarkdownWindowFromUtc { get; set; }
@@ -145,6 +149,10 @@ public sealed class PreNivelacijaSupplierActionDto
 
 public sealed class PreNivelacijaQueuesDto
 {
+    public List<PreNivelacijaCleanupItemDto> LegacyCleanup { get; set; } = [];
+    public int LegacyCleanupTotal { get; set; }
+    public List<PreNivelacijaCleanupItemDto> NonFootwearCleanup { get; set; } = [];
+    public int NonFootwearCleanupTotal { get; set; }
     public List<PreNivelacijaNewStockQueueItemDto> NewStock { get; set; } = [];
     public int NewStockTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> HighlightNow { get; set; } = [];
@@ -153,6 +161,23 @@ public sealed class PreNivelacijaQueuesDto
     public int MonitorTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> LikelyMarkdownSoon { get; set; } = [];
     public int LikelyMarkdownSoonTotal { get; set; }
+}
+
+public sealed class PreNivelacijaCleanupItemDto
+{
+    public int ArtikalId { get; set; }
+    public string Sku { get; set; } = string.Empty;
+    public int? StoreId { get; set; }
+    public string StoreName { get; set; } = "N/A";
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = "N/A";
+    public int? SeasonId { get; set; }
+    public string Season { get; set; } = "N/A";
+    public int? FootwearTypeId { get; set; }
+    public string FootwearType { get; set; } = "N/A";
+    public int StockUnits { get; set; }
+    public string[] ReasonCodes { get; set; } = [];
+    public bool RecommendationAllowed { get; set; }
 }
 
 public sealed class PreNivelacijaNewStockQueueItemDto
