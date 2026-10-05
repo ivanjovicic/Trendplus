@@ -4,8 +4,8 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: `575af2ab3f48eb9668477b9b95b90928b4a61aec`
-Main verification: pushed to origin/main; fresh fetch confirmed `HEAD == origin/main == 575af2ab3f48eb9668477b9b95b90928b4a61aec`
+Main commit SHA: pending regression-test follow-up delivery
+Main verification: original implementation is on main at `575af2ab3f48eb9668477b9b95b90928b4a61aec`; verify the follow-up after push
 Evidence state: pending
 
 ## What was done
@@ -43,12 +43,14 @@ Evidence state: pending
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass, 709 tasks.
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass, 80 tasks.
 - `git diff --check` -> pass.
+- Regression follow-up `npm run test -- --run src/pages/__tests__/ConfigurationPage.spec.tsx` -> pass, 5/5.
+- CI-failed case recheck `npm run test -- --run src/pages/__tests__/PreNivelacijaPriorityPage.spec.tsx -t "shows the backend evidence window in the trust header"` -> pass, 1 passed / 55 skipped.
 
 ## Validation not run
 - Full local Vitest suite -> not run; focused shell/operational suites cover the touched controls and the responsive shell matrix covers the affected header widths.
 - Live production admin-key acceptance -> not run; no production write was attempted. The UI sends the credential to the existing server-side `AdminAccessControl` boundary.
 - Remote Planning Governance run `37386822805` -> green on `575af2ab3f48eb9668477b9b95b90928b4a61aec`.
-- GitHub Analytics Quality Gates run `37386823059` -> in progress on this implementation SHA; recorded as residual, not as passing proof.
+- GitHub Analytics Quality Gates run `37386823059` -> completed red on implementation SHA `575af2ab3f48eb9668477b9b95b90928b4a61aec`; its ConfigurationPage assertion was corrected in this follow-up. The separate PreNivelacija failure passed locally in isolation; exact-main CI for the correction remains pending.
 
 ## Documentation impact
 - Updated the UI queue claim, cross-program current pointer and stale RQ supplemental pointers.
@@ -59,10 +61,14 @@ Evidence state: pending
 
 ## Risks
 - The backend remains the authority for `X-Admin-Key`; production key availability is not established by local UI tests. Invalid or unavailable credentials remain rejected by the existing server boundary.
-- The production build retains its existing chunk-size warning; analytics guardrails retain 39 baseline findings.
+- The production build retains its existing chunk-size warning; analytics guardrails retain 39 baseline findings. Exact-main CI for the test-only correction remains pending.
 
 ## Post-close routing recovery
-- Pending final synchronization: P-UI-48 has reached `main`; refresh `origin/main` after its terminal queue transition, scan the full active RQ/SQL/UI queue/addendum set, re-evaluate RQ576/P-UI-41 plus P-UI-45/P-UI-42 dependents, and record the collision-safe successor in the synchronized follow-up commit.
+- Recovery base `origin/main` SHA: `9663b4b8be7624be47dd4585ffd40dbb34a40cd6` (fresh fetch after P-UI-48 closure metadata).
+- Active owner queue/addendum set scanned: 12 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files, `SQL_ANALYTICS_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`, and `MASTER_ROADMAP.md` (16 files).
+- Completed/changed dependency IDs searched: P-UI-48 and RQ576; P-UI-48 is implemented on main at `575af2ab3f48eb9668477b9b95b90928b4a61aec`; RQ576 is DONE on main at `e5e2dc83bf73eee8b34f0b7e3565afa272625535`.
+- Re-evaluated dependent/candidate UI prompts: P-UI-41 was dependency-complete and collision-safe once RQ576's distinct Inventory-page work landed; P-UI-45 became READY after P-UI-48; P-UI-42 remains WAITING for P-UI-47; P-UI-31/P-UI-35/P-UI-36 remain WAITING for P-UI-47; P-UI-43/P-UI-44 remain gated by RQ569; P-UI-53 remains gated by P-UI-47 plus P-UI-31/35/36; P-UI-38 remains the final responsive/theme/a11y gate. Independent READY lanes include P-UI-47/P-UI-49/P-UI-51/P-UI-52. No zero-READY claim applies.
+- CI recovery after that closure found an in-scope P-UI-48 test assertion defect; P-UI-48 resumed and P-UI-41 returned to READY before implementation. This does not invalidate the dependency scan or require a zero-READY proof.
 
 ## Next
-- Pending post-close recovery.
+- Deliver the focused ConfigurationPage regression-test correction to `main`, inspect the resulting current-main CI once, then close and refresh routing.

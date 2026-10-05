@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main RQ queue has no READY prompt after RQ588 DONE; P-UI-48 is DONE; P-UI-41 is claimed after RQ576 released its Inventory path, and P-UI-45 is READY. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend certification for RQ34-RQ38 is DONE on main; RQ590 backend certification for RQ25-RQ33 is DONE on main.
+Main RQ queue has no READY prompt after RQ588 DONE; P-UI-48 is IN_PROGRESS for a focused CI regression-test correction; P-UI-41 is READY after RQ576 released its Inventory path, and P-UI-45 is READY. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend certification for RQ34-RQ38 is DONE on main; RQ590 backend certification for RQ25-RQ33 is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
