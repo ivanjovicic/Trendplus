@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   isEstimatedCategoryRevenue,
+  LOW_MARGIN_ALERT_THRESHOLD_PCT,
+  lowMarginAlertStatLabel,
   presentDailyAnalysisMetrics,
   presentReorderV1Summary,
   presentSignedInsightPercent,
@@ -98,5 +100,12 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
     expect(isEstimatedCategoryRevenue({ estimated: true })).toBe(true);
     expect(isEstimatedCategoryRevenue({ revenueBasis: "estimated_velocity_price" })).toBe(true);
     expect(isEstimatedCategoryRevenue({})).toBe(false);
+  });
+});
+
+describe("lowMarginAlertStatLabel", () => {
+  it("matches the V2 LOW_MARGIN backend cutoff of 15%", () => {
+    expect(LOW_MARGIN_ALERT_THRESHOLD_PCT).toBe(15);
+    expect(lowMarginAlertStatLabel()).toBe("Niska marža (<15%)");
   });
 });

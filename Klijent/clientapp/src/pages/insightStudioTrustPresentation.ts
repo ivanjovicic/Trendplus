@@ -2,6 +2,9 @@ import type { DailyAnalysis, ReorderPlan, SupplierScore } from "../services/insi
 import type { SmartReorderResult } from "../services/insightStudioV2Api";
 import { fmtPct, fmtRsd, fmtSignedPct } from "../utils/analyticsFormatters";
 
+/** Must match InsightStudioV2Endpoints margin-alerts LOW_MARGIN cutoff. */
+export const LOW_MARGIN_ALERT_THRESHOLD_PCT = 15;
+
 export function presentDailyAnalysisMetrics(data: DailyAnalysis) {
   const hasTargetEvidence = data.targetDataStatus !== "missing";
   const zScore = data.zScore;
@@ -70,4 +73,8 @@ export function isEstimatedCategoryRevenue(
   row: { estimated?: boolean; revenueBasis?: string },
 ): boolean {
   return row.estimated === true || row.revenueBasis === "estimated_velocity_price";
+}
+
+export function lowMarginAlertStatLabel(thresholdPct: number = LOW_MARGIN_ALERT_THRESHOLD_PCT): string {
+  return `Niska marža (<${thresholdPct}%)`;
 }

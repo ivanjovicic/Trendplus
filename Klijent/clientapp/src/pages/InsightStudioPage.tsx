@@ -97,6 +97,7 @@ import {
   presentSignedInsightPercent,
   presentSmartReorderProfit,
   presentSupplierMarginBenchmark,
+  lowMarginAlertStatLabel
 } from "./insightStudioTrustPresentation";
 
 // ══════════════════════════════════════════════════════════════════
@@ -582,7 +583,7 @@ function OverviewTab({
           </div>
           <div className="grid grid-cols-3 gap-3 mb-3">
             <MiniStat label="Negativna marža" value={marginAlerts.summary.negativeMarginCount} color={PAL.red} />
-            <MiniStat label="Niska marža (<10%)" value={marginAlerts.summary.lowMarginCount} color={PAL.orange} />
+            <MiniStat label={lowMarginAlertStatLabel()} value={marginAlerts.summary.lowMarginCount} color={PAL.orange} />
             <MiniStat label="Ukupno izgubljena marža" value={fmtRsd(marginAlerts.summary.totalLostMargin)} color={PAL.red} />
           </div>
           <div className="space-y-1.5 max-h-[200px] overflow-y-auto">

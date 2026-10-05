@@ -15,6 +15,8 @@ namespace Trendplus2.Endpoints;
 /// </summary>
 public static class InsightStudioV2Endpoints
 {
+    private const double LowMarginAlertThresholdPct = 15d;
+
     private static readonly string[] DayNames = ["Pon", "Uto", "Sre", "\u010cet", "Pet", "Sub", "Ned"];
 
     public static void MapInsightStudioV2Endpoints(this WebApplication app)
@@ -528,7 +530,7 @@ public static class InsightStudioV2Endpoints
                             ? (double)((p.prvaCena.Value - p.prodajnaCena.Value) / p.prvaCena.Value * 100) : 0;
 
                         var alertType = marginPct < 0 ? "NEGATIVE_MARGIN"
-                                      : marginPct < 15 ? "LOW_MARGIN"
+                                      : marginPct < LowMarginAlertThresholdPct ? "LOW_MARGIN"
                                       : priceDropPct > 30 ? "HEAVY_MARKDOWN"
                                       : "OK";
 
@@ -539,8 +541,8 @@ public static class InsightStudioV2Endpoints
                             p.marginDataCoveragePct,
                             priceDropPct,
                             p.totalRevenue, p.totalUnits,
-                            nabavnaCena = p.currentUnitCost ?? 0m,
-                            prodajnaCena = p.prodajnaCena ?? 0,
+                            nabavnaCena = p.currentUnitCost,
+                            prodajnaCena = p.prodajnaCena,
                             alertType,
                             lostMargin = marginPct < 30 ? (30 - marginPct) / 100 * (double)p.totalRevenue : 0
                         };

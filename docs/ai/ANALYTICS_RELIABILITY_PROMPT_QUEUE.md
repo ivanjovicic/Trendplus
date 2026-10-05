@@ -29881,6 +29881,9 @@ Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, emp
 - Post-close routing: after recovery from `84d098eb4778a58e5fe56850030decf517460a97`, RQ47 was promoted and claimed; RQ590 and RQ88 were promoted as separate collision-safe lanes. Full scan and candidate matrix are recorded in this run log.
 - Prompt defect / scope repair: RQ21/RQ22 were removed from RQ589 and marked OBSOLETE based on completed RQ81/RQ84/RQ86/RQ93 contracts and their named regression tests.
 
+
+Addendum 2026-10-05 (gap review after harden): Residual acceptance review after `2043f9dd` found Insight Studio V2 margin-alerts still coerced missing `nabavnaCena`/`prodajnaCena` to `0`, and the FE "Niska marža" MiniStat claimed `<10%` while the backend LOW_MARGIN cutoff is `15`. Fixed in follow-up harden (nullable prices + shared `<15%` label). Status remains DONE.
+
 ## RQ590 - Certify legacy Advanced backend contracts
 
 Status: DONE
@@ -30000,3 +30003,6 @@ Owner completion 2026-10-05: RQ591 moved `READY -> DONE` after Insight Studio AP
 
 - Frontend still fell back to `fmtRsd(0)` when the V1 reorder summary presentation was absent, and category/supplier plan cost fields were typed non-null while the backend can return null.
 - Residual closed in the review-harden commit: unavailable labels use `N/D`; V2 plan cost/revenue types are `number | null`.
+
+
+Addendum 2026-10-05 (gap review after harden): FE margin-pressure copy now uses `lowMarginAlertStatLabel()` / `LOW_MARGIN_ALERT_THRESHOLD_PCT = 15` so the RQ591 trust presentation stays aligned with the V2 backend cutoff. Status remains DONE.

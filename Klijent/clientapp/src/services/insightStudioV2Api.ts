@@ -124,8 +124,8 @@ export interface MarginAlert {
   priceDropPct: number;
   totalRevenue: number;
   totalUnits: number;
-  nabavnaCena: number;
-  prodajnaCena: number;
+  nabavnaCena: number | null;
+  prodajnaCena: number | null;
   alertType: "NEGATIVE_MARGIN" | "LOW_MARGIN" | "HEAVY_MARKDOWN";
   lostMargin: number;
 }
