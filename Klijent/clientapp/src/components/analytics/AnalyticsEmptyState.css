@@ -37,7 +37,7 @@
 
 .aes-insufficient-data {
   border-color: var(--warning, #f59e0b);
-  background: var(--surface-warning, #fffbeb);
+  background: var(--warning-soft, rgba(245, 158, 11, 0.12));
 }
 
 .aes-insufficient-data h2::before {
