@@ -91,7 +91,7 @@ export default function WorkerControlFlag() {
     <div className="inline-flex shrink-0 items-center gap-1 rounded-2xl border border-muted bg-[var(--surface-light)] px-1.5 py-1">
       <span
         className={`inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-bold tracking-wide ${toneClass}`}
-        title={health ? `Env: ${health.environment ?? "n/a"} | Last switch: ${health.lastSwitchAtUtc ?? "n/a"}` : "Worker status"}
+        title={health ? `Okruženje: ${health.environment ?? "Nije dostupno"} | Poslednja promena: ${health.lastSwitchAtUtc ?? "Nije dostupno"}` : "Status workera"}
       >
         <Bot size={12} />
         {statusText}

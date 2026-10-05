@@ -192,7 +192,7 @@ const baseMetrics = {
     shortDescription: "Ukupan broj prodatih komada u periodu.",
     formula: "SUM(količina)",
     dataSource: "Sales facts analytics",
-    interpretation: "Meri promet po količini, nezavisno od cene.",
+    interpretation: "Meri obim prodaje po količini, nezavisno od cene (nije isto što i promet/prihod).",
     relatedScreens: ["/analytics", "/analytics/products", "/analytics/supplier"],
     inputs: ["količina", "period", "filteri"],
   }),

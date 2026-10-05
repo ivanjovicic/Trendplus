@@ -9,6 +9,7 @@ import {
   presentSmartReorderProfit,
   presentSupplierMarginBenchmark,
 } from "../insightStudioTrustPresentation";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../../utils/analyticsConstants";
 
 describe("insightStudioTrustPresentation (RQ591)", () => {
   it("does not treat missing daily target as zero revenue day", () => {
@@ -27,8 +28,8 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
     });
 
     expect(view.hasTargetEvidence).toBe(false);
-    expect(view.targetRevenueLabel).toBe("N/D");
-    expect(view.zScoreLabel).toBe("N/D");
+    expect(view.targetRevenueLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
+    expect(view.zScoreLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
     expect(view.outlierSummary).toContain("Nema podataka");
   });
 
@@ -72,8 +73,8 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
       totalReorderValue: null,
     } as any);
 
-    expect(view.potentialRevenueLabel).toBe("N/D");
-    expect(view.procurementCostLabel).toBe("N/D");
+    expect(view.potentialRevenueLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
+    expect(view.procurementCostLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
     expect(view.basisNote).toBeNull();
   });
 
@@ -89,13 +90,13 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
       totalReorderValue: null,
     } as any);
 
-    expect(view.potentialRevenueLabel).toBe("N/D");
+    expect(view.potentialRevenueLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
     expect(view.procurementCostLabel).toContain("2.000");
     expect(view.potentialRevenueLabel).not.toContain("2.000");
   });
 
   it("keeps nullable profit lift out of fake zero percent", () => {
-    expect(presentSignedInsightPercent(null)).toBe("N/D");
+    expect(presentSignedInsightPercent(null)).toBe(ANALYTICS_UNAVAILABLE_LABEL);
     expect(presentSignedInsightPercent(12.5)).toBe("+12,5%");
   });
 
@@ -109,7 +110,7 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
       expectedProfitFromReorder: null,
     });
 
-    expect(view.profitLabel).toBe("N/D");
+    expect(view.profitLabel).toBe(ANALYTICS_UNAVAILABLE_LABEL);
     expect(view.profitNote).toContain("nije pouzdan");
   });
 

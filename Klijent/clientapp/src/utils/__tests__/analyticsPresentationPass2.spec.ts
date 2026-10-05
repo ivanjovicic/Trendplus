@@ -40,4 +40,20 @@ describe("analytics presentation pass 2 residuals", () => {
     expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
     expect(src).not.toMatch(/"N\/A"/);
   });
+
+  it("keeps Insight Studio trust helper on canonical unavailable label", () => {
+    const src = readSrc("pages/insightStudioTrustPresentation.ts");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).not.toMatch(/"N\/D"/);
+    expect(src).not.toMatch(/"N\/A"/);
+  });
+
+  it("keeps IntelligenceSnapshotPanel unavailable copy Serbian", () => {
+    const src = readSrc("components/dashboard/IntelligenceSnapshotPanel.tsx");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).toContain("Pregled signala");
+    expect(src).not.toMatch(/"n\/a"/);
+    expect(src).not.toContain("Signals Snapshot");
+    expect(src).not.toContain("No demand signal");
+  });
 });

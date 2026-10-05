@@ -1,5 +1,6 @@
 import type { DailyAnalysis, ReorderPlan, SupplierScore } from "../services/insightStudioApi";
 import type { SmartReorderResult } from "../services/insightStudioV2Api";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { fmtPct, fmtRsd, fmtSignedPct } from "../utils/analyticsFormatters";
 
 /** Must match InsightStudioV2Endpoints margin-alerts LOW_MARGIN cutoff. */
@@ -10,9 +11,9 @@ export function presentDailyAnalysisMetrics(data: DailyAnalysis) {
   const zScore = data.zScore;
   return {
     hasTargetEvidence,
-    targetRevenueLabel: hasTargetEvidence ? fmtRsd(data.targetRevenue) : "N/D",
-    targetUnitsLabel: hasTargetEvidence && data.targetUnits != null ? String(data.targetUnits) : "N/D",
-    zScoreLabel: zScore != null && Number.isFinite(zScore) ? zScore.toFixed(2) : "N/D",
+    targetRevenueLabel: hasTargetEvidence ? fmtRsd(data.targetRevenue) : ANALYTICS_UNAVAILABLE_LABEL,
+    targetUnitsLabel: hasTargetEvidence && data.targetUnits != null ? String(data.targetUnits) : ANALYTICS_UNAVAILABLE_LABEL,
+    zScoreLabel: zScore != null && Number.isFinite(zScore) ? zScore.toFixed(2) : ANALYTICS_UNAVAILABLE_LABEL,
     outlierSummary: data.outlierLabel
       ?? (hasTargetEvidence ? "—" : "Nema podataka za ciljni dan"),
     showOutlierBadge: hasTargetEvidence && zScore != null && Number.isFinite(zScore),
@@ -38,7 +39,7 @@ export function presentSupplierMarginBenchmark(
 }
 
 export function presentSignedInsightPercent(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(value)) return "N/D";
+  if (value == null || !Number.isFinite(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   return value >= 0 ? `+${fmtPct(value)}` : fmtSignedPct(value);
 }
 
@@ -46,12 +47,12 @@ export function presentReorderV1Summary(summary: ReorderPlan["summary"]) {
   const potentialRevenue = summary.potentialRevenueRsd ?? summary.totalReorderValue;
   return {
     potentialRevenueLabel: potentialRevenue == null || !Number.isFinite(potentialRevenue)
-      ? "N/D"
+      ? ANALYTICS_UNAVAILABLE_LABEL
       : fmtRsd(potentialRevenue),
     procurementCostLabel: summary.estimatedProcurementCostRsd != null
       ? fmtRsd(summary.estimatedProcurementCostRsd)
-      : "N/D",
-    costCoverageLabel: summary.costCoveragePct != null ? fmtPct(summary.costCoveragePct) : "N/D",
+      : ANALYTICS_UNAVAILABLE_LABEL,
+    costCoverageLabel: summary.costCoveragePct != null ? fmtPct(summary.costCoveragePct) : ANALYTICS_UNAVAILABLE_LABEL,
     basisNote: summary.reorderValueBasis === "potential_revenue_at_selling_price"
       ? "Vrednost nabavke prikazuje potencijalni prihod po prodajnoj ceni, ne novčani trošak nabavke."
       : null,
@@ -62,7 +63,7 @@ export function presentSmartReorderProfit(summary: SmartReorderResult["summary"]
   const profitReliable = summary.expectedProfitFromReorder != null
     && Number.isFinite(summary.expectedProfitFromReorder);
   return {
-    profitLabel: profitReliable ? fmtRsd(summary.expectedProfitFromReorder) : "N/D",
+    profitLabel: profitReliable ? fmtRsd(summary.expectedProfitFromReorder) : ANALYTICS_UNAVAILABLE_LABEL,
     profitNote: profitReliable
       ? null
       : "Profit nije pouzdan jer trošak ili cena nisu dostupni za sve preporučene količine.",

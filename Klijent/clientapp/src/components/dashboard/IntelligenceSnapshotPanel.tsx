@@ -5,6 +5,7 @@ import type {
   PriceIntelligenceItem,
   TrendMomentumItem,
 } from "../../services/analyticsIntelligenceApi";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../../utils/analyticsConstants";
 
 const PAL = {
   blue: 'var(--info)',
@@ -47,12 +48,12 @@ function formatCompact(value: number) {
 }
 
 function formatPercent(value: number | null | undefined, decimals = 1) {
-  if (value == null || Number.isNaN(value)) return "n/a";
+  if (value == null || Number.isNaN(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   return `${(value * 100).toFixed(decimals)}%`;
 }
 
 function formatSignedPercent(value: number | null | undefined, decimals = 1) {
-  if (value == null || Number.isNaN(value)) return "n/a";
+  if (value == null || Number.isNaN(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   const pct = value * 100;
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(decimals)}%`;
 }
@@ -70,7 +71,7 @@ function demandSignalTone(item: DemandSignalItem) {
 }
 
 function formatDateLabel(value?: string | null) {
-  if (!value) return "latest cache";
+  if (!value) return "Poslednji keš";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("sr-RS");
@@ -183,7 +184,7 @@ export default function IntelligenceSnapshotPanel({
   if (error) {
     return (
       <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: `${PAL.red}33`, background: `${PAL.red}10`, color: PAL.red }}>
-        Intelligence snapshot trenutno nije dostupan: {error}
+        Pregled signala trenutno nije dostupan: {error}
       </div>
     );
   }
@@ -191,7 +192,7 @@ export default function IntelligenceSnapshotPanel({
   if (demand.length === 0 && inventory.length === 0 && price.length === 0 && trend.length === 0) {
     return (
       <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: `${PAL.blue}33`, background: `${PAL.blue}10`, color: PAL.blue }}>
-        Intelligence cache je trenutno prazan ili jos uvek zavrsava prvi build.
+        Keš signala je trenutno prazan ili se još uvek gradi.
       </div>
     );
   }
@@ -205,28 +206,28 @@ export default function IntelligenceSnapshotPanel({
     <div className="space-y-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Signals Snapshot</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Pregled signala</h3>
           <p className="text-[11px] text-[var(--text-secondary)]">
-            Live read preko analytics_intel cache layer-a za demand, zalihe, cene i trend.
+            Poslednji podaci iz keša analitike za potražnju, zalihe, cene i trend.
           </p>
         </div>
-        <div className="text-[11px] text-[var(--text-secondary)]">Snapshot: {formatDateLabel(asOfDate)}</div>
+        <div className="text-[11px] text-[var(--text-secondary)]">Pregled: {formatDateLabel(asOfDate)}</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SignalCard
-          title="Demand Pulse"
-          subtitle="Najjaci artikli po ubrzanju traznje i aktuelnoj brzini prodaje."
+          title="Potražnja"
+          subtitle="Najjači artikli po ubrzanju tražnje i aktuelnoj brzini prodaje."
           accent={PAL.blue}
-          summaryLabel="Top acceleration"
-          summaryValue={topDemand ? formatDemandSignal(topDemand) : "n/a"}
-          summaryMeta={topDemand ? `${topDemand.productName} | vel ${formatCompact(topDemand.salesVelocity)}` : "No demand signal"}
+          summaryLabel="Najveće ubrzanje"
+          summaryValue={topDemand ? formatDemandSignal(topDemand) : ANALYTICS_UNAVAILABLE_LABEL}
+          summaryMeta={topDemand ? `${topDemand.productName} | brzina ${formatCompact(topDemand.salesVelocity)}` : "Nema signala potražnje"}
         >
           {demand.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.storeId}-${item.date}`}
               title={item.productName}
-              subtitle={`${item.storeName} | ${item.category} | cover ${item.storeCoverage}`}
+              subtitle={`${item.storeName} | ${item.category} | pokriće ${item.storeCoverage}`}
               badge={formatDemandSignal(item)}
               badgeColor={demandSignalTone(item)}
             />
@@ -234,22 +235,22 @@ export default function IntelligenceSnapshotPanel({
         </SignalCard>
 
         <SignalCard
-          title="Inventory Risk"
-          subtitle="Najrizicniji artikli po dead-stock heuristici i short cover signalu."
+          title="Rizik zaliha"
+          subtitle="Najrizičniji artikli po mrtvoj zalihi i kratkom pokriću."
           accent={PAL.red}
-          summaryLabel="Top risk"
-          summaryValue={topInventory ? formatPercent(topInventory.deadStockRisk, 0) : "n/a"}
+          summaryLabel="Najveći rizik"
+          summaryValue={topInventory ? formatPercent(topInventory.deadStockRisk, 0) : ANALYTICS_UNAVAILABLE_LABEL}
           summaryMeta={
             topInventory
-              ? `${topInventory.productName} | cover ${topInventory.daysOfCover?.toFixed(1) ?? "n/a"}d`
-              : "No inventory risk"
+              ? `${topInventory.productName} | pokriće ${topInventory.daysOfCover?.toFixed(1) ?? ANALYTICS_UNAVAILABLE_LABEL} d`
+              : "Nema rizika zaliha"
           }
         >
           {inventory.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.date}`}
               title={item.productName}
-              subtitle={`${item.category} | stock ${formatCompact(item.stockQty)} | OOS ${item.stockoutDays}d`}
+              subtitle={`${item.category} | stanje ${formatCompact(item.stockQty)} | OOS ${item.stockoutDays} d`}
               badge={formatPercent(item.deadStockRisk, 0)}
               badgeColor={signalTone(item.deadStockRisk, 0.5, PAL.red, PAL.yellow)}
             />
@@ -257,18 +258,18 @@ export default function IntelligenceSnapshotPanel({
         </SignalCard>
 
         <SignalCard
-          title="Price Edge"
-          subtitle="Artikli sa najjacim margin signalom i vidljivom discount dubinom."
+          title="Cene i marža"
+          subtitle="Artikli sa najjačim signalom marže i vidljivom dubinom popusta."
           accent={PAL.green}
-          summaryLabel="Best margin"
-          summaryValue={topPrice ? formatPercent(topPrice.marginPct, 0) : "n/a"}
-          summaryMeta={topPrice ? `${topPrice.productName} | disc ${formatPercent(topPrice.discountDepth, 0)}` : "No price signal"}
+          summaryLabel="Najbolja marža"
+          summaryValue={topPrice ? formatPercent(topPrice.marginPct, 0) : ANALYTICS_UNAVAILABLE_LABEL}
+          summaryMeta={topPrice ? `${topPrice.productName} | popust ${formatPercent(topPrice.discountDepth, 0)}` : "Nema signala cene"}
         >
           {price.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.priceDate}`}
               title={item.productName}
-              subtitle={`${item.category} | net ${formatCompact(item.netPrice)} | idx ${item.priceIndexVsCategory?.toFixed(2) ?? "n/a"}`}
+              subtitle={`${item.category} | neto ${formatCompact(item.netPrice)} | indeks ${item.priceIndexVsCategory?.toFixed(2) ?? ANALYTICS_UNAVAILABLE_LABEL}`}
               badge={formatPercent(item.marginPct, 0)}
               badgeColor={signalTone(item.marginPct ?? 0, 0.2, PAL.green, PAL.yellow)}
             />
@@ -276,22 +277,22 @@ export default function IntelligenceSnapshotPanel({
         </SignalCard>
 
         <SignalCard
-          title="Trend Momentum"
-          subtitle="Spoj eksternog trend score-a i lokalnog sales acceleration signala."
+          title="Momentum trenda"
+          subtitle="Spoj eksternog trend skora i lokalnog ubrzanja prodaje."
           accent={PAL.cyan}
-          summaryLabel="Top trend"
-          summaryValue={topTrend ? topTrend.externalTrendScore.toFixed(1) : "n/a"}
+          summaryLabel="Najjači trend"
+          summaryValue={topTrend ? topTrend.externalTrendScore.toFixed(1) : ANALYTICS_UNAVAILABLE_LABEL}
           summaryMeta={
             topTrend
-              ? `${topTrend.productName} | local ${formatSignedPercent(topTrend.localSalesAcceleration, 1)}`
-              : "No trend signal"
+              ? `${topTrend.productName} | lokalno ${formatSignedPercent(topTrend.localSalesAcceleration, 1)}`
+              : "Nema trend signala"
           }
         >
           {trend.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.signalDate}`}
               title={item.productName}
-              subtitle={`${item.category} | entropy ${item.trendEntropy.toFixed(2)} | ${item.supplierName}`}
+              subtitle={`${item.category} | entropija ${item.trendEntropy.toFixed(2)} | ${item.supplierName}`}
               badge={item.externalTrendScore.toFixed(1)}
               badgeColor={signalTone(item.externalTrendScore, 50, PAL.cyan, PAL.yellow)}
             />

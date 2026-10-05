@@ -1117,7 +1117,7 @@ function CategoryTab({
 }
 
 // ══════════════════════════════════════════════════════════════════
-// TAB 4: MATRICA V×M (Velocity × Margin)
+// TAB 4: MATRICA V×M (Velocity × Marža)
 // ══════════════════════════════════════════════════════════════════
 
 function MatrixTab({

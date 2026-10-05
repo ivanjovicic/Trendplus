@@ -1569,7 +1569,7 @@ export default function DailySalesStatsPage() {
     supplierConcentration.warning,
   ]);
 
-  // Data Health badge: count non-info, non-good signals
+  // Bedž kvaliteta podataka: broj signala koji nisu info/good
   const dataHealthSummary = useMemo(() => {
     const problemSignals = qualitySignals.filter((s) => s.tone === "danger" || s.tone === "warning");
     const dangerCount = qualitySignals.filter((s) => s.tone === "danger").length;
