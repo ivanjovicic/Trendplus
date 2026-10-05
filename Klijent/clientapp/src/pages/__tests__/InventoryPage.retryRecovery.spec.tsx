@@ -258,7 +258,9 @@ describe("InventoryPage retry recovery and persistent controls (RQ427)", () => {
     renderPage("/analytics/inventory?search=nema");
 
     await screen.findByTestId("analytics-empty-state");
-    fireEvent.click(screen.getByRole("button", { name: "Poništi filtere" }));
+    await screen.findByRole("option", { name: "Prodavnica 1" });
+    await settle();
+    fireEvent.click(await screen.findByRole("button", { name: "Poništi filtere" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("inventory-items-table")).toHaveAttribute("data-row-count", "1");

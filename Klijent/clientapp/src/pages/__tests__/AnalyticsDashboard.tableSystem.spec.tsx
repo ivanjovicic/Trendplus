@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -144,6 +144,13 @@ const unknownTrendRows = [
   },
 ];
 
+async function openDetailedAnalysis() {
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: /prikaži detaljnu analizu/i })).toBeEnabled();
+  });
+  fireEvent.click(screen.getByRole("button", { name: /prikaži detaljnu analizu/i }));
+}
+
 describe("AnalyticsDashboard table system", () => {
   beforeEach(() => {
     vi.mocked(getDashboardBootstrap).mockResolvedValue({
@@ -213,9 +220,7 @@ describe("AnalyticsDashboard table system", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: /detaljnu analizu/i }),
-    );
+    await openDetailedAnalysis();
 
     const tableSurface = await screen.findByTestId("analytics-data-table");
     const table = within(tableSurface).getByRole("table");
@@ -312,9 +317,7 @@ describe("AnalyticsDashboard table system", () => {
       </MemoryRouter>,
     );
     // Find the top gainers section
-    fireEvent.click(
-      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
-    );
+    await openDetailedAnalysis();
     const gainersSection = await screen.findByTestId("top-gainers-section");
 
     // Should only see Runner 101 (trendPct: 12.4) in gainers
@@ -394,10 +397,7 @@ describe("AnalyticsDashboard table system", () => {
       </MemoryRouter>,
     );
 
-    // Find the top losers section
-    fireEvent.click(
-      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
-    );
+    await openDetailedAnalysis();
     const losersSection = await screen.findByTestId("top-losers-section");
 
     // Should only see Runner 102 (trendPct: -4.8) in losers
@@ -474,9 +474,7 @@ describe("AnalyticsDashboard table system", () => {
     );
 
     // Find the top gainers section
-    fireEvent.click(
-      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
-    );
+    await openDetailedAnalysis();
     const gainersSection = await screen.findByTestId("top-gainers-section");
 
     // SKU-204 (zero trend) should NOT be in gainers
@@ -497,9 +495,7 @@ describe("AnalyticsDashboard table system", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
-    );
+    await openDetailedAnalysis();
     expect(await screen.findByText(/izvor ne potvrdi da dokument predstavlja račun kupca/i)).toBeInTheDocument();
     expect(screen.getByText("Prosečna korpa")).toBeInTheDocument();
     expect(screen.getByText("Prodajni dokumenti")).toBeInTheDocument();
