@@ -27,17 +27,12 @@
       "totalRevenue": 750
     }
   ],
-  "topSuppliersOrder": ["Dobavljac A", "Dobavljac C", "Nepoznat dobavljač"],
+  "topSuppliersOrder": [
+    "Dobavljac A",
+    "Dobavljac C",
+    "Nepoznat dobavljač"
+  ],
   "dateRows": [
-    {
-      "date": "2026-01-03",
-      "firstShiftTotalItems": 0,
-      "secondShiftTotalItems": 0,
-      "totalRevenue": 0,
-      "othersCount": 0,
-      "totalItemsSold": 0,
-      "topSupplierCounts": [0, 0, 0]
-    },
     {
       "date": "2026-01-02",
       "firstShiftTotalItems": 12,
@@ -45,7 +40,11 @@
       "totalRevenue": 1100,
       "othersCount": 0,
       "totalItemsSold": 12,
-      "topSupplierCounts": [0, 7, 5]
+      "topSupplierCounts": [
+        0,
+        7,
+        5
+      ]
     },
     {
       "date": "2026-01-01",
@@ -54,11 +53,15 @@
       "totalRevenue": 1300,
       "othersCount": 3,
       "totalItemsSold": 10,
-      "topSupplierCounts": [7, 0, 0]
+      "topSupplierCounts": [
+        7,
+        0,
+        0
+      ]
     }
   ],
   "metadata": {
-    "totalDays": 3,
+    "totalDays": 2,
     "uniqueSuppliersInRange": 4,
     "unknownSupplierPct": 22.73,
     "unknownSupplierItems": 5,
