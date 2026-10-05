@@ -56,7 +56,8 @@ public sealed class OperationsSourceFreshnessService
                 source,
                 storeId,
                 meta.RequestedPeriodFromUtc,
-                meta.RequestedPeriodToUtc);
+                meta.RequestedPeriodToUtc,
+                meta.Context?.DateBoundaryConvention);
             meta.ObservedPeriodFromUtc = await headers
                 .Select(header => (DateTime?)header.DatumProdaje)
                 .MinAsync(ct);
@@ -230,7 +231,8 @@ public sealed class OperationsSourceFreshnessService
         string scopeSource,
         int? storeId,
         DateTime? requestedFromUtc,
-        DateTime? requestedToUtc)
+        DateTime? requestedToUtc,
+        string? dateBoundaryConvention)
     {
         var query = _db.ProdajaZaglavlja.AsNoTracking()
             .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate);
@@ -246,7 +248,16 @@ public sealed class OperationsSourceFreshnessService
         if (requestedFromUtc.HasValue)
             query = query.Where(header => header.DatumProdaje >= requestedFromUtc.Value);
         if (requestedToUtc.HasValue)
-            query = query.Where(header => header.DatumProdaje <= requestedToUtc.Value);
+        {
+            var usesHalfOpenEnd = string.IsNullOrWhiteSpace(dateBoundaryConvention)
+                || string.Equals(
+                    dateBoundaryConvention,
+                    AnalyticsContextFingerprintPolicy.DefaultDateBoundaryConvention,
+                    StringComparison.OrdinalIgnoreCase);
+            query = usesHalfOpenEnd
+                ? query.Where(header => header.DatumProdaje < requestedToUtc.Value)
+                : query.Where(header => header.DatumProdaje <= requestedToUtc.Value);
+        }
         if (articleScoped && scope != "all")
         {
             query = scope switch
