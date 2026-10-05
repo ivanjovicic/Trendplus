@@ -1029,7 +1029,13 @@ export interface AnalyticsDataQualityHealth {
   lookbackDays: number;
   windowFrom: string;
   windowTo: string;
+  observedPeriodFrom?: string | null;
+  observedPeriodTo?: string | null;
   orphanArticleCount: number;
+  totalArticleCount?: number;
+  missingSupplierArticleCount?: number;
+  missingCostArticleCount?: number;
+  missingCategoryArticleCount?: number;
   totalRevenue: number;
   hasRevenueEvidence: boolean;
   missingCostRevenue: number;

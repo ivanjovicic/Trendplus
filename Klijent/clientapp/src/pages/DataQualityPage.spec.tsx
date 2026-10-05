@@ -272,7 +272,7 @@ describe("DataQualityPage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Provera kvaliteta podataka");
     await screen.findByText("Problematični artikli");
 
-    expect(screen.getByText("Prometni health signal")).toBeInTheDocument();
+    expect(screen.getByText("Rizik prometa (cena/dobavljač)")).toBeInTheDocument();
     expect(screen.getByText("Postoje problemi koji blokiraju deo preporuka.")).toBeInTheDocument();
     expect(screen.getAllByText("Artikli bez dobavljača").length).toBeGreaterThan(0);
     expect(screen.getByText("Promet bez nabavne cene")).toBeInTheDocument();
@@ -330,6 +330,25 @@ describe("DataQualityPage", () => {
     expect(screen.queryByText("Podaci su u zelenoj zoni")).not.toBeInTheDocument();
   });
 
+  it("keeps master-data completeness visible when the revenue score is excellent", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
+      score: 100,
+      scoreStatus: "excellent",
+      missingSupplierArticleCount: 0,
+      missingCostArticleCount: 1_078,
+      missingCategoryArticleCount: 12_422,
+      observedPeriodTo: "2026-08-05T00:00:00Z",
+    }));
+
+    renderPage();
+    await screen.findByText("Problematični artikli");
+
+    expect(screen.getByText("Potrebna je korekcija podataka")).toBeInTheDocument();
+    expect(screen.getByText(/bez nabavne cene: 1\.078/)).toBeInTheDocument();
+    expect(screen.getByText(/bez kategorije: 12\.422/)).toBeInTheDocument();
+    expect(screen.getByText(/Poslednji promet:/)).toBeInTheDocument();
+  });
+
   it("renders a one-point trend as neutral instead of improving", async () => {
     vi.mocked(getAnalyticsDataQualityTrend).mockResolvedValue(trend({
       points: [
@@ -367,7 +386,11 @@ describe("DataQualityPage", () => {
     await screen.findByText("Problematični artikli");
 
     expect(getDataQualityIssues).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
-    expect(getAnalyticsDataQualityHealth).toHaveBeenCalledWith(undefined, "imported");
+    expect(getAnalyticsDataQualityHealth).toHaveBeenCalledWith(
+      undefined,
+      "imported",
+      { fromDate: "2026-06-01T00:00:00Z", toDate: "2026-06-30T23:59:59Z" },
+    );
     expect(getDataQualityTopOffenders).toHaveBeenCalledWith("missingSupplier", 10, "imported");
     expect(screen.getByText(/Otvoreno iz analytics tabele:/)).toBeInTheDocument();
     expect(screen.getByText("color-sales-stats")).toBeInTheDocument();

@@ -24,13 +24,23 @@ public static class DataQualityEndpoints
             IOptions<AnalyticsDataQualityHealthOptions> options,
             int? lookbackDays,
             string? dataScope,
+            DateTime? fromDate,
+            DateTime? toDate,
             CancellationToken ct) =>
         {
             var correlationId = ResolveCorrelationId(httpContext);
             try
             {
                 var requestedLookback = lookbackDays ?? options.Value.LookbackDays;
-                var snapshot = await healthService.CaptureAsync(requestedLookback, dataScope, ct);
+                var (windowFromUtc, windowToExclusiveUtc) = ResolveHealthWindow(
+                    fromDate,
+                    toDate,
+                    requestedLookback);
+                var snapshot = await healthService.CaptureAsync(
+                    windowFromUtc,
+                    windowToExclusiveUtc,
+                    dataScope,
+                    ct);
                 var score = BuildScore(snapshot, options.Value);
 
                 var healthMeta = new AnalyticsResponseMetaDto
@@ -39,13 +49,7 @@ public static class DataQualityEndpoints
                     CorrelationId = correlationId,
                     GeneratedAtUtc = DateTime.UtcNow,
                     LastRefreshAtUtc = null,
-                    DataQualityStatus = score.Status switch
-                    {
-                        "critical" => "critical",
-                        "warning" => "warning",
-                        "good" or "excellent" => "good",
-                        _ => "insufficient_data"
-                    },
+                    DataQualityStatus = ResolveOverallDataQualityStatus(score.Status, snapshot),
                     Message = score.Status == "insufficient_data"
                         ? snapshot.TotalRevenue <= 0
                             ? "Nema dovoljno prometnog dokaza u ovom prozoru."
@@ -62,11 +66,11 @@ public static class DataQualityEndpoints
                         materializerGeneration: "data_quality_health_query",
                         rowLimitSemantics: "lookback_window_all_rows",
                         requestedPeriodFromUtc: snapshot.WindowFromUtc,
-                        requestedPeriodToUtc: snapshot.WindowToUtc,
+                        requestedPeriodToUtc: windowToExclusiveUtc,
                         effectivePeriodFromUtc: snapshot.WindowFromUtc,
-                        effectivePeriodToUtc: snapshot.WindowToUtc,
-                        observedPeriodFromUtc: snapshot.WindowFromUtc,
-                        observedPeriodToUtc: snapshot.WindowToUtc,
+                        effectivePeriodToUtc: windowToExclusiveUtc,
+                        observedPeriodFromUtc: snapshot.ObservedPeriodFromUtc,
+                        observedPeriodToUtc: snapshot.ObservedPeriodToUtc,
                         requestedDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
                         effectiveDataScope: string.IsNullOrWhiteSpace(dataScope) ? "all" : dataScope.Trim(),
                         dataScopeSource: "data_quality_health_capture",
@@ -91,7 +95,13 @@ public static class DataQualityEndpoints
                     snapshot.LookbackDays,
                     snapshot.WindowFromUtc,
                     snapshot.WindowToUtc,
+                    snapshot.ObservedPeriodFromUtc,
+                    snapshot.ObservedPeriodToUtc,
                     snapshot.OrphanArticleCount,
+                    snapshot.TotalArticleCount,
+                    snapshot.MissingSupplierArticleCount,
+                    snapshot.MissingCostArticleCount,
+                    snapshot.MissingCategoryArticleCount,
                     snapshot.TotalRevenue,
                     snapshot.HasRevenueEvidence,
                     snapshot.MissingCostRevenue,
@@ -106,6 +116,15 @@ public static class DataQualityEndpoints
                         options.Value.WarningMissingCostRevenueSharePct,
                         options.Value.WarningUnknownSupplierRevenueSharePct),
                     healthMeta));
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new
+                {
+                    error = "invalid_data_quality_period",
+                    message = ex.Message,
+                    correlationId
+                });
             }
             catch (Exception)
             {
@@ -156,9 +175,9 @@ public static class DataQualityEndpoints
                     Success = true,
                     CorrelationId = correlationId,
                     GeneratedAtUtc = DateTime.UtcNow,
-                    DataQualityStatus = result.Total == 0 ? "insufficient_data" : "warning",
-                    Message = result.Total == 0 ? "Nema otvorenih data quality problema za izabrani filter." : null,
-                    EmptyReason = result.Total == 0 ? "no_open_issues" : null
+                    DataQualityStatus = "warning",
+                    Message = "Lista prikazuje samo dobavljača, tip obuće i naziv; nabavna cena i kategorija ostaju u Pilot intake pregledu.",
+                    EmptyReason = result.Total == 0 ? "issue_list_not_materialized" : null
                 };
                 meta = BuildDataQualityEvidenceMeta(
                     meta,
@@ -1775,7 +1794,13 @@ public static class DataQualityEndpoints
         int LookbackDays,
         DateTime WindowFrom,
         DateTime WindowTo,
+        DateTime? ObservedPeriodFrom,
+        DateTime? ObservedPeriodTo,
         int OrphanArticleCount,
+        int TotalArticleCount,
+        int MissingSupplierArticleCount,
+        int MissingCostArticleCount,
+        int MissingCategoryArticleCount,
         decimal TotalRevenue,
         bool HasRevenueEvidence,
         decimal MissingCostRevenue,
@@ -1787,6 +1812,55 @@ public static class DataQualityEndpoints
         string ScoreSummary,
         DataQualityHealthThresholds Thresholds,
         AnalyticsResponseMetaDto? Meta = null);
+
+    internal static (DateTime FromUtc, DateTime ToExclusiveUtc) ResolveHealthWindow(
+        DateTime? fromDate,
+        DateTime? toDate,
+        int lookbackDays,
+        DateTime? utcNow = null)
+    {
+        if (fromDate.HasValue != toDate.HasValue)
+        {
+            throw new ArgumentException("fromDate and toDate must be supplied together.");
+        }
+
+        if (!fromDate.HasValue)
+        {
+            return DataQualitySalesWindow.Resolve(lookbackDays, utcNow);
+        }
+
+        var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+        var toExclusiveUtc = DateTime.SpecifyKind(toDate!.Value.Date, DateTimeKind.Utc);
+        if (toExclusiveUtc <= fromUtc)
+        {
+            throw new ArgumentException("toDate must be after fromDate.");
+        }
+
+        return (fromUtc, toExclusiveUtc);
+    }
+
+    internal static string ResolveOverallDataQualityStatus(
+        string scoreStatus,
+        AnalyticsDataQualityHealthSnapshot snapshot)
+    {
+        if (scoreStatus == "insufficient_data" || !snapshot.HasRevenueEvidence)
+        {
+            return "insufficient_data";
+        }
+
+        if (scoreStatus == "critical")
+        {
+            return "critical";
+        }
+
+        return snapshot.MissingSupplierArticleCount > 0
+            || snapshot.MissingCostArticleCount > 0
+            || snapshot.MissingCategoryArticleCount > 0
+            || snapshot.OrphanArticleCount > 0
+            || scoreStatus == "warning"
+            ? "warning"
+            : "good";
+    }
 
     private static string ResolveCorrelationId(HttpContext httpContext)
     {

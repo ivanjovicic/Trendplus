@@ -27,6 +27,12 @@ public sealed class AnalyticsDataQualityHealthServiceTests
         Assert.Equal(80d, snapshot.UnknownSupplierRevenueSharePct);
         Assert.Equal(30, snapshot.LookbackDays);
         Assert.True(snapshot.WindowFromUtc <= snapshot.WindowToUtc);
+        Assert.Equal(3, snapshot.TotalArticleCount);
+        Assert.Equal(2, snapshot.MissingSupplierArticleCount);
+        Assert.Equal(1, snapshot.MissingCostArticleCount);
+        Assert.Equal(3, snapshot.MissingCategoryArticleCount);
+        Assert.Equal(DateTime.UtcNow.Date, snapshot.ObservedPeriodFromUtc?.Date);
+        Assert.Equal(DateTime.UtcNow.Date, snapshot.ObservedPeriodToUtc?.Date);
         Assert.InRange(snapshot.GeneratedAtUtc, DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddMinutes(1));
     }
 
@@ -70,6 +76,7 @@ public sealed class AnalyticsDataQualityHealthServiceTests
         Assert.Equal(fromUtc, snapshot.WindowFromUtc);
         Assert.Equal(toExclusiveUtc.AddTicks(-1), snapshot.WindowToUtc);
         Assert.Equal(30, snapshot.LookbackDays);
+        Assert.Equal(new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc), snapshot.ObservedPeriodToUtc);
     }
 
     [Fact]

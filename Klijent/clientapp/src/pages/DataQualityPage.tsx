@@ -492,7 +492,13 @@ export default function DataQualityPage() {
           sortDir,
           dataScope: contextDataScope,
         }),
-        getAnalyticsDataQualityHealth(undefined, contextDataScope),
+        getAnalyticsDataQualityHealth(
+          undefined,
+          contextDataScope,
+          contextFromDate && contextToDate
+            ? { fromDate: contextFromDate, toDate: contextToDate }
+            : undefined,
+        ),
         getAnalyticsRefreshStatus(),
         getPilotDataQualityIntakeReport({
           fromDate: contextFromDate,
@@ -629,7 +635,7 @@ export default function DataQualityPage() {
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "total", label: "Ukupno problema", value: data?.total ?? 0 },
-    { key: "issueType", label: "Issue type", value: issueType },
+    { key: "issueType", label: "Tip problema", value: issueLabel(issueType) },
   ], [data?.total, issueType]);
 
   const issuesMeta = data?.meta ?? null;
@@ -660,6 +666,9 @@ export default function DataQualityPage() {
     }
 
     const hasWarning =
+      (health.missingSupplierArticleCount ?? 0) > 0 ||
+      (health.missingCostArticleCount ?? 0) > 0 ||
+      (health.missingCategoryArticleCount ?? 0) > 0 ||
       health.orphanArticleCount >= health.thresholds.orphanArticleCount ||
       health.missingCostRevenueSharePct == null ||
       health.unknownSupplierRevenueSharePct == null ||
@@ -725,7 +734,7 @@ export default function DataQualityPage() {
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
-        dataSource="Data quality checks"
+        dataSource="Provere kvaliteta podataka"
         dataQualityStatus={trustDataQualityStatus}
         dataQualitySummary={trustSummary}
         mode="report"
@@ -748,15 +757,29 @@ export default function DataQualityPage() {
         </div>
         <div className="data-quality-header-side">
           {health ? (
-            <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Prometni health signal">
-              <span className="data-quality-score-label">Prometni health signal</span>
+            <section className={`data-quality-score-card ${scoreTone(health.scoreStatus)}`} aria-label="Prometni signal kvaliteta">
+              <span className="data-quality-score-label">Rizik prometa (cena/dobavljač)</span>
               <strong>{health.scoreStatus === "insufficient_data" ? "Nije dostupno" : health.score}</strong>
               <span className="data-quality-score-status">{scoreStatusLabel(health.scoreStatus)}</span>
               <span className="data-quality-score-context">
                 Udeo rizika u prometu za poslednjih {health.lookbackDays} dana; nije isto što i spremnost za preporuke.
               </span>
               <p>{health.scoreSummary}</p>
-              <KpiExplainButton metricKey="revenueHealthScore" ariaLabel="Kako je izračunat prometni health signal" />
+              <KpiExplainButton metricKey="revenueHealthScore" ariaLabel="Kako je izračunat rizik prometa" />
+            </section>
+          ) : null}
+          {health ? (
+            <section className="data-quality-meta" aria-label="Svežina i potpunost matičnih podataka">
+              <strong>Odvojeni signali</strong>
+              <span>
+                Izvorni period: {formatDate(health.observedPeriodFrom)} – {formatDate(health.observedPeriodTo)}
+              </span>
+              <span>
+                Bez dobavljača: {fmtNumber(health.missingSupplierArticleCount ?? 0, 0, "-")} · bez nabavne cene: {fmtNumber(health.missingCostArticleCount ?? 0, 0, "-")} · bez kategorije: {fmtNumber(health.missingCategoryArticleCount ?? 0, 0, "-")}
+              </span>
+              <span>
+                Svežina: {refreshStatus?.dataFreshnessStatus === "critical" ? "kritična" : refreshStatus?.dataFreshnessStatus ?? "nije potvrđena"}
+              </span>
             </section>
           ) : null}
           <div className="data-quality-meta">
@@ -814,24 +837,26 @@ export default function DataQualityPage() {
       {viewMode === "issues" && health ? (
         <section className="data-quality-health-grid">
           <article className={`data-quality-health-card ${healthStatus.tone}`}>
-            <span className="data-quality-health-label">Health status</span>
+            <span className="data-quality-health-label">Status kvaliteta</span>
             <strong>{healthStatus.label}</strong>
             <p>
-              Prozor: {formatDateTime(health.windowFrom)} - {formatDateTime(health.windowTo)} | Lookback {health.lookbackDays} dana
+              Traženi prozor: {formatDateTime(health.windowFrom)} – {formatDateTime(health.windowTo)} | poslednjih {health.lookbackDays} dana
+              <br />
+              Poslednji promet: {formatDateTime(health.observedPeriodTo)}
             </p>
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Artikli bez dobavljača</span>
-            <strong>{fmtNumber(health.orphanArticleCount)}</strong>
-            <p>Warning threshold: {health.thresholds.orphanArticleCount}</p>
+            <strong>{fmtNumber(health.missingSupplierArticleCount ?? health.orphanArticleCount)}</strong>
+            <p>Orphan reference: {fmtNumber(health.orphanArticleCount)} · prag: {health.thresholds.orphanArticleCount}</p>
             <KpiExplainButton metricKey="missingSupplierCount" ariaLabel="Kako je izračunat broj artikala bez dobavljača" />
           </article>
 
           <article className="data-quality-health-card">
             <span className="data-quality-health-label">Artikli bez nabavne cene</span>
-            <strong>{fmtNumber(intakeReport?.issues?.missingCostCount ?? null)}</strong>
-            <p>Risk threshold: {health.thresholds.missingCostRevenueSharePct}% udela prihoda bez cene</p>
+            <strong>{fmtNumber(health.missingCostArticleCount ?? intakeReport?.issues?.missingCostCount ?? null)}</strong>
+            <p>Prag rizika: {health.thresholds.missingCostRevenueSharePct}% udela prihoda bez cene</p>
             <KpiExplainButton metricKey="missingCostCount" ariaLabel="Kako je izračunat broj artikala bez nabavne cene" />
           </article>
 

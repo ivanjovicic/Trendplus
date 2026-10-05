@@ -1120,11 +1120,20 @@ export async function getDataQualityIssues(paramsInput: {
 
 export async function getAnalyticsDataQualityHealth(
   lookbackDays?: number,
-  dataScope?: string | null
+  dataScope?: string | null,
+  period?: { fromDate?: string | null; toDate?: string | null }
 ): Promise<AnalyticsDataQualityHealth> {
   const params = new URLSearchParams();
   if (lookbackDays != null) params.set("lookbackDays", String(lookbackDays));
   if (dataScope) params.set("dataScope", dataScope);
+  if (period?.fromDate) params.set("fromDate", period.fromDate);
+  if (period?.toDate) {
+    const end = new Date(`${period.toDate}T00:00:00.000Z`);
+    if (Number.isFinite(end.getTime())) {
+      end.setUTCDate(end.getUTCDate() + 1);
+      params.set("toDate", end.toISOString().slice(0, 10));
+    }
+  }
 
   return fetchJson(
     "/api/analytics/data-quality/health",

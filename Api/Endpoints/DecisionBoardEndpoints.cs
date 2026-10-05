@@ -1216,6 +1216,16 @@ public static class DecisionBoardEndpoints
             _ => "critical"
         };
 
+        var hasMasterDataIssues =
+            health.MissingSupplierArticleCount > 0
+            || health.MissingCostArticleCount > 0
+            || health.MissingCategoryArticleCount > 0
+            || health.OrphanArticleCount > 0;
+        if (hasMasterDataIssues && status is "excellent" or "good")
+        {
+            status = "warning";
+        }
+
         var dominantRisk = new[]
         {
             (Label: "missing nabavna cena", Score: missingCostPenalty * scoreMissingCostWeight),
@@ -1227,9 +1237,11 @@ public static class DecisionBoardEndpoints
 
         var summary = status switch
         {
-            "excellent" => "Prometni pokazatelji nemaju izmeren rizik u ovom periodu; spremnost za preporuke proverava se odvojeno.",
+            "excellent" => "Prometni pokazatelji nemaju izmeren rizik u ovom periodu; proverite i potpunost matičnih podataka.",
             "good" => $"Prometni pokazatelji su uglavnom pokriveni. Najveci rizik: {dominantRisk}; proverite spremnost za preporuke.",
-            "warning" => $"Prometni pokazatelji imaju vidljive rupe. Najveci rizik: {dominantRisk}; preporuke su ogranicene.",
+            "warning" => hasMasterDataIssues
+                ? $"Prometni skor ne obuhvata sve probleme matičnih podataka; nedostajući dobavljač/cena/kategorija ograničavaju preporuke. Najveci prometni rizik: {dominantRisk}."
+                : $"Prometni pokazatelji imaju vidljive rupe. Najveci rizik: {dominantRisk}; preporuke su ogranicene.",
             _ => $"Prometni podaci traze hitnu korekciju. Najveci rizik: {dominantRisk}; preporuke nisu bezbedne."
         };
 

@@ -168,10 +168,12 @@ public sealed class AnalyticsDataQualityHealthService
                && (!importedOnly || pz.DataOrigin == "access")
                && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
                && !new[] { "DUG", "KOREKCIJA" }.Contains((pz.BrojRacuna ?? string.Empty).Trim().ToUpper())
-            group new { ps, a, d } by 1 into g
+            group new { ps, pz, a, d } by 1 into g
             select new
             {
                 TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                ObservedPeriodFromUtc = g.Min(x => x.pz.DatumProdaje),
+                ObservedPeriodToUtc = g.Max(x => x.pz.DatumProdaje),
                 MissingCostRevenue = g.Sum(x =>
                     (x.ps.NabavnaCena.HasValue && x.ps.NabavnaCena.Value > 0m
                         ? x.ps.NabavnaCena
@@ -196,13 +198,40 @@ public sealed class AnalyticsDataQualityHealthService
         var missingCostRevenue = salesWindow?.MissingCostRevenue ?? 0m;
         var unknownSupplierRevenue = salesWindow?.UnknownSupplierRevenue ?? 0m;
 
+        var articleQuery =
+            from a in _db.Artikli.AsNoTracking()
+            join d in _db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dj
+            from d in dj.DefaultIfEmpty()
+            where (!importedOnly || a.DataOrigin == "access")
+               && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
+            select new { a, d };
+
+        var masterData = await articleQuery
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalArticleCount = g.Count(),
+                MissingSupplierArticleCount = g.Count(x => !x.a.IDDobavljac.HasValue || x.d == null),
+                MissingCostArticleCount = g.Count(x =>
+                    (!x.a.NabavnaCenaDin.HasValue || x.a.NabavnaCenaDin <= 0m)
+                    && (!x.a.NabavnaCena.HasValue || x.a.NabavnaCena <= 0m)),
+                MissingCategoryArticleCount = g.Count(x => string.IsNullOrWhiteSpace(x.a.Kategorija))
+            })
+            .FirstOrDefaultAsync(ct);
+
         return new AnalyticsDataQualityHealthSnapshot
         {
             GeneratedAtUtc = DateTime.UtcNow,
             LookbackDays = safeLookbackDays,
             WindowFromUtc = windowFromUtc,
             WindowToUtc = windowToUtc,
+            ObservedPeriodFromUtc = salesWindow?.ObservedPeriodFromUtc,
+            ObservedPeriodToUtc = salesWindow?.ObservedPeriodToUtc,
             OrphanArticleCount = orphanArticleCount,
+            TotalArticleCount = masterData?.TotalArticleCount ?? 0,
+            MissingSupplierArticleCount = masterData?.MissingSupplierArticleCount ?? 0,
+            MissingCostArticleCount = masterData?.MissingCostArticleCount ?? 0,
+            MissingCategoryArticleCount = masterData?.MissingCategoryArticleCount ?? 0,
             TotalRevenue = Math.Round(totalRevenue, 2),
             HasRevenueEvidence = totalRevenue > 0m,
             MissingCostRevenue = Math.Round(missingCostRevenue, 2),
@@ -306,7 +335,13 @@ public sealed class AnalyticsDataQualityHealthSnapshot
     public int LookbackDays { get; set; }
     public DateTime WindowFromUtc { get; set; }
     public DateTime WindowToUtc { get; set; }
+    public DateTime? ObservedPeriodFromUtc { get; set; }
+    public DateTime? ObservedPeriodToUtc { get; set; }
     public int OrphanArticleCount { get; set; }
+    public int TotalArticleCount { get; set; }
+    public int MissingSupplierArticleCount { get; set; }
+    public int MissingCostArticleCount { get; set; }
+    public int MissingCategoryArticleCount { get; set; }
     public decimal TotalRevenue { get; set; }
     /// <summary>False when the lookback window has no sales revenue. Share-based health must not look green.</summary>
     public bool HasRevenueEvidence { get; set; }
