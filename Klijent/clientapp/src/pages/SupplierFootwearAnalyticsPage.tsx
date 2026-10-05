@@ -954,7 +954,7 @@ export default function SupplierFootwearAnalyticsPage({
           secondaryActions={[
             {
               key: "reset",
-              label: "Reset filtera",
+              label: "Poništi filtere",
               onClick: handleResetFilters,
               disabled: loading || !isDirty,
               tone: "secondary",
@@ -967,6 +967,8 @@ export default function SupplierFootwearAnalyticsPage({
             },
           ]}
           fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period i filteri"
         />
       ) : null}
 

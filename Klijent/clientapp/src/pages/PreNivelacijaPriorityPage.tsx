@@ -1310,7 +1310,7 @@ export default function PreNivelacijaPriorityPage() {
         secondaryActions={[
           {
             key: "reset",
-            label: "Reset filtera",
+            label: "Poništi filtere",
             onClick: handleResetFilters,
             disabled: loading,
             tone: "secondary",
@@ -1323,6 +1323,8 @@ export default function PreNivelacijaPriorityPage() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Filteri prioriteta"
       />
       <header className="pnp-decision-header">
         <div>

@@ -241,6 +241,7 @@
   text-shadow: var(--analytics-glow);
   white-space: normal;
   word-break: normal;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-card > span,

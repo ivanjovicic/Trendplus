@@ -1863,7 +1863,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           chips={controlBarChips}
           primaryAction={{
             key: "reset",
-            label: loading ? "Učitavanje..." : "Reset filtera",
+            label: loading ? "Učitavanje..." : "Poništi filtere",
             onClick: handleResetFilters,
             disabled: loading,
           }}
@@ -1876,6 +1876,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             },
           ]}
           fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period i filteri"
         />
       ) : null}
 
@@ -1930,7 +1932,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             actions={[
               { label: "Proširite period." },
               { label: "Uklonite uske filtere i pokušajte ponovo." },
-              { label: "Otvori Data Quality", href: "/analytics/data-quality" },
+              { label: "Otvori kvalitet podataka", href: "/analytics/data-quality" },
             ]}
             dataQualityHref="/analytics/data-quality"
             refreshStatusHref="/admin/configuration?panel=workers"

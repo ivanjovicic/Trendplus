@@ -30,6 +30,7 @@ describe("AnalyticsDataTable", () => {
     );
 
     expect(screen.getByTestId("analytics-data-table")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-data-table")).toHaveClass("analytics-data-table--responsive-pilot");
     expect(screen.getByRole("button", { name: "Izvoz" })).toBeInTheDocument();
     expect(screen.getByText("Prikazano: 2 redova")).toBeInTheDocument();
     expect(

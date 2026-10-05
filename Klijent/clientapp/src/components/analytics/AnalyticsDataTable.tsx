@@ -19,7 +19,7 @@ export default function AnalyticsDataTable({
   toolbar,
   rowCount,
   truncationLabel,
-  responsivePilot = false,
+  responsivePilot = true,
   children,
   testId = "analytics-data-table",
 }: AnalyticsDataTableProps) {

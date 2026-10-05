@@ -1167,7 +1167,7 @@ export default function ShoeTypeSalesStatsPage() {
         chips={controlBarChips}
         primaryAction={{
           key: "reset",
-          label: loading ? "Učitavanje..." : "Reset filtera",
+          label: loading ? "Učitavanje..." : "Poništi filtere",
           onClick: resetFilters,
           disabled: loading,
         }}
@@ -1180,6 +1180,8 @@ export default function ShoeTypeSalesStatsPage() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period i filteri"
       />
 
       {invalidRange ? (

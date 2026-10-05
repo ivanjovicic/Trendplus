@@ -1107,7 +1107,7 @@ export default function ColorSalesStatsPage() {
         secondaryActions={[
           {
             key: "reset",
-            label: "Reset filtera",
+            label: "Poništi filtere",
             onClick: resetFilters,
             disabled: loading,
             tone: "secondary",
@@ -1120,6 +1120,8 @@ export default function ColorSalesStatsPage() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period i filteri"
       />
 
       {invalidRange ? (

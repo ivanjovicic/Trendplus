@@ -1649,6 +1649,8 @@ export default function ProdajaPrePostNivelacijePage() {
           },
         ]}
         fields={controlBarFields}
+        responsiveFilterLayout
+        mobileFilterSummary="Period i filteri"
       />
       <header className="ppn-decision-header">
         <div>

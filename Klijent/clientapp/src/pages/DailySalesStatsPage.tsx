@@ -1986,7 +1986,7 @@ export default function DailySalesStatsPage() {
         secondaryActions={[
           {
             key: "reset",
-            label: "Reset filtera",
+            label: "Poništi filtere",
             onClick: handleResetFilters,
             disabled: loading,
             tone: "secondary",
