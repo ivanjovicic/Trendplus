@@ -15,7 +15,7 @@ Dokaz: `.ai/runs/2026-10-05-analytics-ui-presentation-audit-evidence.md`.
 | 5 | Targeted tests (not brittle snapshots) | PASS |
 | 6 | Encoding guardrail OK | PASS |
 | 7 | Evidence + QA audit updated | PASS |
-| 8 | Commit + PC bundle FF push | PASS (bundle ready; PC FF needed) |
+| 8 | Commit + PC bundle FF push | PASS (on `main` via presentation tip `8d0f1589` / pass-2 `90a47a54`; superseded by later UX tip) |
 | 9 | No Trendplus2 WT / no cloud agents | PASS |
 | 10 | Prefer fix over new RQ | PASS |
 
@@ -42,6 +42,8 @@ Prodaja po dobavljačima; po vrsti obuće; po boji; Dnevna prodaja; Inventory/Bi
 - Did not invent RQ; Velocity kept.
 
 ## Residuals
+
+Canonical business terms (Prihod/Promet, Nije dostupno, horizon, DUG/KOREKCIJA): `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`.
 
 - Insight Studio remains experimental (RQ582); deeper AI-sounding metrics/score semantics not redesigned.
 - Some admin/diagnostic English identifiers (Redis, batch, scraper source codes) intentionally kept where domain/product names.

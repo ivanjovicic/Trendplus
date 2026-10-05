@@ -3275,6 +3275,8 @@ The Executive Board has no period, store or data-scope control and no URL state;
 
 ## P-UI-52 - Analytics navigation IA and user-facing glossary sweep
 
+Progress note 2026-10-05: presentation/UX audits already replaced many user-facing `N/A` strings with `Nije dostupno` and documented canonical terms in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`. **P-UI-52 stays READY** — nav/group label reconciliation, badge cleanup and canonical route `to` targets in `navConfig.ts` remain executable scope.
+
 Status: READY
 Ready after: RQ553 is DONE and RQ582 has released its exclusive navigation entry/visibility work; RQ589 is backend-only and does not own `navConfig.ts`
 Priority: P2

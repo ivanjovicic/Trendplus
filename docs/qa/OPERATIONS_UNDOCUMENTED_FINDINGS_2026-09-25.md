@@ -1,5 +1,9 @@
 # Operacije calculation audit — 2026-09-25
 
+> **Historical snapshot (2026-09-25).** Routing statuses inside the findings table are **not** live queue pointers.
+> As of 2026-10-05: `RQ441`/`RQ442`/`RQ456` and related Operations accuracy work are **DONE** on main; live half-open day boundaries and DUG/KOREKCIJA exclusion are certified contracts.
+> For current READY/WAITING see `MASTER_ROADMAP.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` (+ Operations Accuracy addendum). Canonical terms: `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`.
+
 Status: reviewed and routed
 Scope: read-only audit of the eight Operacije menu entries and their backend/frontend calculation contracts.
 

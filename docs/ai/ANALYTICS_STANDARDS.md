@@ -76,11 +76,13 @@ Primer:
 
 ## Canonical vocabulary
 
-Koristi dosledno:
+Full business definitions (Promet/Prihod, nabavni trošak, DUG/KOREKCIJA, source horizon, Nije dostupno vs 0, inventory age, insufficient signal): **`docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`**.
+
+Screen/UX short list — koristi dosledno:
 
 | Termin | Značenje |
 |---|---|
-| Prihod | prodajna vrednost |
+| Prihod | prodajna vrednost (`revenue`; UI alias often **Promet** — same metric; no mass rename without owner decision) |
 | Maržni doprinos | poslovni doprinos po marži |
 | Lager u riziku | zaliha koja nosi rizik |
 | Kapital u riziku | vrednost robe vezana u rizičnoj zalihi |
@@ -88,6 +90,7 @@ Koristi dosledno:
 | Sigurnost preporuke | confidence |
 | Kvalitet podataka | data quality |
 | Nedovoljno podataka | nema dovoljno signala |
+| Nije dostupno | unavailable metric (never fake as `0`) |
 | Pomoćni signal | nije finalna preporuka |
 | Preporuka sistema | sistem daje akciju |
 | Analitički signal | indikator za proveru |

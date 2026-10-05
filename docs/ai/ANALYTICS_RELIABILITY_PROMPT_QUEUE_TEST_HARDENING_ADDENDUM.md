@@ -3,7 +3,7 @@
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none (`RQ100`-`RQ105` DONE)
-Status: owner-promoted READY pack complete; current execution is `RQ96`
+Status: owner-promoted READY pack complete; `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main — this addendum has no live READY work (2026-10-05 docs audit)
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -18,7 +18,7 @@ Use with:
 ## Queue rules
 
 1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ105` is DONE. No remaining RQ READY in this pack or the cross-surface addendum. Current execution is `RQ96`. `RQ106` is WAITING in the main RQ queue after `RQ96`.
+2. `RQ105` is DONE. No remaining RQ READY in this pack. `RQ96` and `RQ106` are DONE on main; do not treat this addendum header as a live executor pointer.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.

@@ -16,6 +16,7 @@ After `AGENTS.md` and `.github/copilot-instructions.md`, read:
 - `docs/ai/CODEX_TASK_CHECKLIST.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`
 - `docs/ai/ANALYTICS_STANDARDS.md`
+- `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`
 - `docs/ai/BACKEND_STANDARDS.md`
 - `docs/ai/FRONTEND_UX_STANDARDS.md`
 - `docs/ai/COMMIT_STANDARDS.md`
@@ -43,7 +44,7 @@ If a summary doc disagrees with its owner, update or ignore the summary; do not 
 - Queue routing/primary READY/full runnable set/global priority: `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - Idle/no-READY recovery and blocker decomposition: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not treat stale/circular/external-final-proof blockers as permanent without reclassification.
 - Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
-- Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md` and `docs/ai/BACKEND_STANDARDS.md`
+- Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md`, `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md` and `docs/ai/BACKEND_STANDARDS.md`
 - Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
 - Delivery evidence and honest completion: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` and `.ai/RUN_LOG_TEMPLATE.md`
 - Validation selection by changed layer and risk: `docs/ai/VALIDATION_SELECTOR.md`

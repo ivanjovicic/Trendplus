@@ -74,3 +74,7 @@ Da vlasnik/prodavac za 5–10 s na svakom Analytics ekranu razume: šta se desil
 
 Focused: TrustHeader 26, DataTable, ExecutiveKpi, Methodology, ControlBar, Footwear, Shoe premium, PreNivelacija 56, Color, Daily premium — zeleni u finalnoj rundi (vidi evidence).
 `tsc -b` OK; `check:encoding` OK; `git diff --check` OK.
+
+## Docs follow-up (2026-10-05)
+
+Business terminology drift (Prihod vs Promet) and unavailable-label rules are locked in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md` without inventing an owner rename.
