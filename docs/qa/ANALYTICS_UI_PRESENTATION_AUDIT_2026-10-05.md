@@ -1,41 +1,55 @@
 # Analytics UI presentation audit — 2026-10-05
 
-Osnova: `origin/main` `4bdb4400135a6c2a6029a54d2bb26713a97b8503`.
+Osnova (pass 1 tip): `8d0f1589` na `4bdb4400`.
+Pass 2 osnova: `origin/main` `63486fb11536388f2a21255f0cf6ee3905708b0e`.
 Dokaz: `.ai/runs/2026-10-05-analytics-ui-presentation-audit-evidence.md`.
-
-Napomena: puni parent brief §0–154 nije bio u executor storage-u; audit pokriva Ivanove oblasti (terminologija, encoding, datumi/valuta/%, N/A vs 0, trust/empty/error, tooltips, charts, CSV, a11y osnove, red-team) uz §152/§153.
 
 ## §152 — Definition of Done
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | Fresh fetch + tip recorded | PASS (`4bdb440`) |
-| 2 | Presentation domains reviewed | PASS |
-| 3 | Safe local UI fixes landed | PASS |
-| 4 | Label↔metric correctness preferred over cosmetic EN | PASS (Velocity kept as product term) |
+| 1 | Fresh fetch + tip recorded | PASS (`63486fb1`) |
+| 2 | Presentation domains reviewed (2nd full pass) | PASS |
+| 3 | Residual AnalyticsDetails / Configuration / GlobalTrends fixed | PASS |
+| 4 | Safe local UI fixes landed | PASS |
 | 5 | Targeted tests (not brittle snapshots) | PASS |
 | 6 | Encoding guardrail OK | PASS |
-| 7 | Evidence + QA audit written | PASS |
-| 8 | Commit + PC bundle FF push | pending at write |
+| 7 | Evidence + QA audit updated | PASS |
+| 8 | Commit + PC bundle FF push | PASS (bundle ready; PC FF needed) |
 | 9 | No Trendplus2 WT / no cloud agents | PASS |
 | 10 | Prefer fix over new RQ | PASS |
 
-## §153 — Final report
+## Pass 2 — screens reviewed
 
-### Findings fixed
-1. **Unavailable copy**: design system maps N/A → `Nije dostupno`. Centralized `ANALYTICS_UNAVAILABLE_LABEL`; defaults in `analyticsFormatters` + `analyticsTableState`; applied on Product Decision, Actions, Supplier Footwear.
-2. **Insight Studio**: restored Serbian diacritics (Dobavljač, Marža, Trošak, Očekivani, će); Serbianized clear English headings (KPI Snapshot, Margin Pressure, Heatmap, At-risk, Smart Reorder Engine) without renaming Velocity product term.
-3. **CSV encoding**: UTF-8 BOM on Dashboard client CSV and decision-timeline download (Excel-safe Serbian).
-4. **Export CTA**: Product Decision `Export…` → `Izvoz…`.
+Prodaja po dobavljačima; po vrsti obuće; po boji; Dnevna prodaja; Inventory/Bilans; Data Quality; Pre/posle nivelacije; Pre-nivelacija prioriteti; Supplier Footwear / Report / Decision Hub; Product Decision; Insight Studio (presentation-only; RQ582 experimental); Analytics Dashboard / Details / Actions; Global Trends + Amazon/eBay/Google trend empty states; Deichmann scraper; Configuration (admin health/copy); formatters / table state / export helpers.
 
-### Red-team
-- Searched mojibake (clean on maintained surfaces).
-- Falsified N/A-as-unavailable vs measured 0 (formatters no longer default to English N/A).
-- Did not invent RQ; P-UI-50 intent partially satisfied by shared unavailable label.
+## Pass 2 findings fixed
 
-### Residuals
-- AnalyticsDetails / Configuration / GlobalTrends still have some English or N/A.
-- Full live visual pass and exhaustive a11y audit not run this delivery.
+1. **AnalyticsDetails**: English risk/quality/action headings → Serbian; `N/A` → `ANALYTICS_UNAVAILABLE_LABEL`; diacritics (`Greške`, `Osveži`, `Marža`, `Prikaži`, `Kritično`); legacy jargon softened; basic `type="button"` / aria on key actions.
+2. **GlobalTrends**: `formatTrendNumber` → `Nije dostupno` (test already expected this); Serbian toasts/empty labels; `Čizme` + categoryMap keys; Cyrillic mix `rasтуće` → `rastuće`; brand placeholder.
+3. **Configuration**: health `N/A` → `Nije dostupno`; English error/toast/confirm → Serbian; Redis label; ping button aria-label.
+4. **Inventory**: SizeCurve + SKU history `N/A` → canonical unavailable; `Dobavljač` diacritic.
+5. **Data Quality / Dashboard**: English aria/empty/tableTitle and `(Data Health)` parenthetical cleaned.
+6. **Insight Studio**: clear leftover English section/export titles; `N/D` → canonical unavailable; Croatian `Tjedna` → Serbian; no product rename of Velocity/OOS (RQ582).
+7. **Pre/post / Footwear / external trends / Deichmann**: Reset → `Poništi filtere`; dataSource Serbian; empty states Serbian; Deichmann mojibake/BOM stripped and UTF-8 restored.
+8. **Tests**: stale `N/A` expectations aligned; new `analyticsPresentationPass2.spec.ts` guardrail.
 
-### Tests
-- Encoding check OK; focused vitest suites green (SupplierFootwear 21/21 + formatter/table/export helpers).
+## Red-team (pass 2)
+
+- Production `"N/A"` in analytics pages/components/inventory utils cleared (comment-only remains in constants).
+- Mojibake scan on maintained analytics surfaces: OK (`npm run check:encoding`).
+- Did not claim live visual a11y; code/static pass only for obvious missing names/aria.
+- Did not invent RQ; Velocity kept.
+
+## Residuals
+
+- Insight Studio remains experimental (RQ582); deeper AI-sounding metrics/score semantics not redesigned.
+- Some admin/diagnostic English identifiers (Redis, batch, scraper source codes) intentionally kept where domain/product names.
+- Live visual/responsive/a11y sweep still not run in browser.
+- Outbox/Logs Retry English is outside core Analytics sales surfaces (not changed this pass).
+
+## Tests (pass 2 focused)
+
+- `check:encoding` OK
+- `tsc -b` OK (empty diagnostics)
+- Vitest focused suites: **136 passed** (presentation pass2, AD period, Insight, Inventory null/forecast, indicator regression, Footwear, Daily/Shoe/Color premium, unavailable label, prePost toolbar)

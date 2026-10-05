@@ -1,37 +1,34 @@
 Task ID: analytics-ui-presentation-audit-2026-10-05
 Queue: direct-user-request
 Date: 2026-10-05
-Agent/tool: Grok Bot (executor, `/workspace/rh`)
+Agent/tool: Grok Bot (executor, `/workspace/ui-rebase/repo`)
 Delivery target: main
-Base SHA: `4bdb4400135a6c2a6029a54d2bb26713a97b8503`
-Main commit SHA: pending
+Base SHA (pass 2): `63486fb11536388f2a21255f0cf6ee3905708b0e`
+Main commit SHA: `9ecd44cc36fadcff10305aad33326a86ec783a0d` (pending PC FF)
 
-## What was done
-- Fresh fetch; tip `4bdb440` (newer than `7aed4aa`).
-- Presentation audit vs design system (`N/A` → `Nije dostupno`), encoding guide, UX audit P-UI-50 intent.
-- Fixed safe user-facing issues: shared unavailable label; formatter + table-state defaults; PDC/Actions/SupplierFootwear copy; Insight Studio diacritics + clear English headings; CSV UTF-8 BOM on Dashboard + decision timeline export.
-- Did not rename confirmed product terms (Velocity kept where intentional).
-- Prefer fix over new RQ.
+## What was done (pass 2)
+- Rebased box clone onto latest `origin/main` (`63486fb1`, includes Daily Sales exclusive-end fix after pass-1 UI commit `8d0f1589`).
+- Second full Analytics presentation pass; finished prior residuals (AnalyticsDetails, Configuration, GlobalTrends) plus inventory/Insight/DQ/Deichmann/trend empty states.
+- Canonical unavailable label extended; English user-facing copy Serbianized where safe; Deichmann encoding corruption fixed (BOM removed).
+- Targeted regression spec `analyticsPresentationPass2.spec.ts`; stale N/A test expectations updated.
+- Prefer fix over new RQ; Velocity/OOS product terms kept (RQ582).
 
 ## Files changed (high level)
-- `Klijent/clientapp/src/utils/analyticsConstants.ts` (+ ANALYTICS_UNAVAILABLE_LABEL)
-- `Klijent/clientapp/src/utils/analyticsFormatters.ts`
-- `Klijent/clientapp/src/utils/dailySalesPreviousPeriodComparison.ts`
-- `Klijent/clientapp/src/utils/decisionTimelineExport.ts` (BOM)
-- `Klijent/clientapp/src/services/analyticsTableState.ts`
-- Pages: ProductDecisionCenter, AnalyticsActions, SupplierFootwear, InsightStudio, AnalyticsDashboard (BOM)
-- Specs updated for Serbian unavailable + BOM
-- `docs/qa/ANALYTICS_UI_PRESENTATION_AUDIT_2026-10-05.md`
-- this evidence file
+- Pages: AnalyticsDetails, Configuration, GlobalTrends, InsightStudio, DataQuality, AnalyticsDashboard, ProdajaPrePost, SupplierFootwear, Amazon/Ebay/Google trends, Deichmann
+- Inventory: SizeCurveVisualization, SKUDetailModal
+- Services/utils: analyticsIntelligenceDerived, prePostToolbarMetadata
+- Specs + new presentation pass2 guardrail
+- docs/qa audit + this evidence file
 
 ## Validation
 - `npm run check:encoding` → OK
-- Vitest: SupplierFootwear 21/21; formatters; tableState; decisionTimelineExport; unavailable label; dailySales comparison → green in focused runs
+- `tsc -b` → OK
+- Vitest focused: 136 passed
 
 ## Residuals
-- Broader remaining `"N/A"` in GlobalTrends/Configuration/AnalyticsDetails and some English source labels (`dashboard`) — lower traffic / separate polish.
-- Insight Studio still uses Velocity/OOS as product/metric terms by design; quarantined (RQ582).
-- Full §0–154 parent brief text was not in executor storage; domains from Ivan summary + design system/UX audit were covered.
+- RQ582 Insight Studio experimental quarantine remains
+- No live browser a11y/visual sweep
+- Non-analytics Outbox Retry English left alone
 
 ## Next
-- Push via PC bundle FF.
+- Push via PC bundle FF; confirm HEAD == origin/main
