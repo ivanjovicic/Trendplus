@@ -4,6 +4,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Trendplus2.Dtos;
 using Xunit;
@@ -12,6 +13,22 @@ namespace Api.Tests;
 
 public sealed class OperationsSourceFreshnessServiceTests
 {
+    [Fact]
+    public async Task ApplyIfRegisteredAsync_FailsClosedWhenFreshnessServiceIsUnavailable()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var meta = CreateMeta();
+        meta.LastRefreshAtUtc = DateTime.UtcNow;
+
+        await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
+            services, meta, "imported", null, "recommendation");
+
+        Assert.Equal("unknown", meta.DataFreshnessStatus);
+        Assert.Equal("source_freshness_service_unavailable", meta.DataFreshnessReasonCode);
+        Assert.Null(meta.LastRefreshAtUtc);
+        Assert.NotEqual(AnalyticsDecisionReadinessStates.DecisionReady, meta.DecisionReadiness?.State);
+    }
+
     [Fact]
     public async Task ApplyAsync_UsesDurableImportEvidenceAndObservedSalesHorizon()
     {

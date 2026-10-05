@@ -25,7 +25,7 @@ public static class DailySalesStatsEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
-            OperationsSourceFreshnessService sourceFreshness,
+            IServiceProvider serviceProvider,
             CancellationToken ct) =>
         {
             try
@@ -95,7 +95,8 @@ public static class DailySalesStatsEndpoints
                         evidenceReferences: ["daily_sales.rows", "daily_sales.shifts"],
                         repairPath: "Daily Sales kvalitet i opseg podataka");
                 }
-                await sourceFreshness.ApplyAsync(
+                await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
+                    serviceProvider,
                     result.Meta,
                     normalizedDataScope,
                     request.StoreId,

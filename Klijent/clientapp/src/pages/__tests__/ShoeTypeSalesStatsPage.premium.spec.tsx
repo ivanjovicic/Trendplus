@@ -148,6 +148,7 @@ function response(overrides: Partial<ShoeTypeSalesStatsResponse> = {}): ShoeType
       success: true,
       dataQualityStatus: "good",
       lastRefreshAtUtc: "2026-07-01T08:30:00Z",
+      dataFreshnessStatus: "fresh",
     },
     sezone: [],
     ...overrides,

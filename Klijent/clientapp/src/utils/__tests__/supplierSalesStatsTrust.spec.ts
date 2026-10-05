@@ -2,26 +2,26 @@ import { describe, expect, it } from "vitest";
 import { buildSupplierSalesStatsTrustProjection } from "../supplierSalesStatsTrust";
 
 describe("supplierSalesStatsTrust", () => {
-  it("projects fresh status from a valid refresh timestamp", () => {
+  it("does not infer freshness from a valid refresh timestamp", () => {
     expect(buildSupplierSalesStatsTrustProjection({
       success: true,
       lastRefreshAtUtc: "2026-07-01T07:55:00Z",
       isPartial: false,
     })).toEqual({
       lastRefreshAt: "2026-07-01T07:55:00Z",
-      dataFreshnessStatus: "fresh",
+      dataFreshnessStatus: "unknown",
       isPartial: false,
     });
   });
 
-  it("keeps partial responses visibly stale while preserving refresh timestamp", () => {
+  it("does not infer stale source data from a partial response", () => {
     expect(buildSupplierSalesStatsTrustProjection({
       success: true,
       lastRefreshAtUtc: "2026-07-01T07:55:00Z",
       isPartial: true,
     })).toEqual({
       lastRefreshAt: "2026-07-01T07:55:00Z",
-      dataFreshnessStatus: "stale",
+      dataFreshnessStatus: "unknown",
       isPartial: true,
     });
   });

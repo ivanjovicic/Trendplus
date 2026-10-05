@@ -4,6 +4,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Trendplus2.Dtos;
@@ -164,6 +165,48 @@ public sealed class OperationsSourceFreshnessService
         return root.ToJsonString(WebJsonOptions);
     }
 
+    public static async Task ApplyIfRegisteredAsync(
+        IServiceProvider services,
+        AnalyticsResponseMetaDto meta,
+        string? dataScope,
+        int? storeId,
+        string surfaceRole,
+        CancellationToken ct = default)
+    {
+        var service = services.GetService<OperationsSourceFreshnessService>();
+        if (service is null)
+        {
+            MarkUnavailable(meta, surfaceRole);
+            return;
+        }
+
+        await service.ApplyAsync(meta, dataScope, storeId, surfaceRole, ct);
+    }
+
+    public static async Task<string> ApplyJsonIfRegisteredAsync(
+        IServiceProvider services,
+        string jsonPayload,
+        string? dataScope,
+        int? storeId,
+        string surfaceRole,
+        CancellationToken ct = default)
+    {
+        var service = services.GetService<OperationsSourceFreshnessService>();
+        if (service is not null)
+            return await service.ApplyJsonAsync(jsonPayload, dataScope, storeId, surfaceRole, ct);
+
+        var root = JsonNode.Parse(jsonPayload)?.AsObject()
+            ?? throw new InvalidOperationException("Operations response JSON is not an object.");
+        if (root["meta"] is not JsonObject metaNode)
+            throw new InvalidOperationException("Operations response JSON has no analytics meta object.");
+
+        var meta = metaNode.Deserialize<AnalyticsResponseMetaDto>(WebJsonOptions)
+            ?? throw new InvalidOperationException("Operations response analytics meta could not be read.");
+        MarkUnavailable(meta, surfaceRole);
+        root["meta"] = JsonSerializer.SerializeToNode(meta, WebJsonOptions);
+        return root.ToJsonString(WebJsonOptions);
+    }
+
     private IQueryable<ProdajaZaglavlje> BuildSourceHeaders(
         string scope,
         string scopeSource,
@@ -240,6 +283,13 @@ public sealed class OperationsSourceFreshnessService
         meta.DataFreshnessSourceGeneration = null;
         meta.DataFreshnessContextFingerprint = null;
         meta.LastRefreshAtUtc = null;
+    }
+
+    private static void MarkUnavailable(AnalyticsResponseMetaDto meta, string surfaceRole)
+    {
+        ResetSourceFreshness(meta);
+        meta.DataFreshnessReasonCode = "source_freshness_service_unavailable";
+        ApplyDecisionReadiness(meta, surfaceRole);
     }
 
     private static void ApplyDecisionReadiness(AnalyticsResponseMetaDto meta, string surfaceRole)

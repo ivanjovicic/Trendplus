@@ -269,13 +269,14 @@ describe("ColorSalesStatsPage premium controls", () => {
     expect(screen.getByText("Prioritetna lista boja")).toBeInTheDocument();
   });
 
-  it("shows fresh only when the response provides a valid refresh timestamp", async () => {
+  it("shows fresh only when the response provides an explicit freshness status", async () => {
     vi.mocked(getColorSalesStats).mockResolvedValue(response({
       meta: {
         success: true,
         dataQualityStatus: "good",
         isPartial: false,
         lastRefreshAtUtc: "2026-07-01T08:30:00Z",
+        dataFreshnessStatus: "fresh",
       },
     }));
 

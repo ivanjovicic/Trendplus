@@ -126,6 +126,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       meta: {
         success: true,
         lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataFreshnessStatus: "fresh",
         dataQualityStatus: "good",
         isPartial: false,
       },
@@ -569,6 +570,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       meta: {
         success: true,
         lastRefreshAtUtc: "2026-07-01T07:55:00Z",
+        dataFreshnessStatus: "stale",
         dataQualityStatus: "warning",
         isPartial: true,
         warningCode: "partial_payload",

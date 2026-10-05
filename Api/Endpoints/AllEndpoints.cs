@@ -2183,7 +2183,7 @@ public static class AllEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw2,
-            OperationsSourceFreshnessService sourceFreshness,
+            IServiceProvider serviceProvider,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -2282,7 +2282,8 @@ public static class AllEndpoints
                         cachedResponse,
                         cachedResponse.GetType(),
                         new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                    var refreshedJson = await sourceFreshness.ApplyJsonAsync(
+                    var refreshedJson = await OperationsSourceFreshnessService.ApplyJsonIfRegisteredAsync(
+                        serviceProvider,
                         cachedJson,
                         normalizedDataScope,
                         storeId,
@@ -2902,7 +2903,8 @@ public static class AllEndpoints
                     reasonCodes: shoeReadiness?.ReasonCodes,
                     evidenceReferences: shoeReadiness?.EvidenceReferences,
                     repairPath: shoeReadiness?.RepairPath);
-                await sourceFreshness.ApplyAsync(shoeTrustMeta, normalizedDataScope, storeId, "recommendation", ct);
+                await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
+                    serviceProvider, shoeTrustMeta, normalizedDataScope, storeId, "recommendation", ct);
                 shoeTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
                     "shoe-type",
                     shoeTrustMeta,
@@ -2985,7 +2987,7 @@ public static class AllEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             AnalyticsRefreshStatusService refreshStatusService,
-            OperationsSourceFreshnessService sourceFreshness,
+            IServiceProvider serviceProvider,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -3082,7 +3084,8 @@ public static class AllEndpoints
                             toUtc ?? DateTime.MinValue,
                             normalizedDataScope,
                             storeId);
-                    var refreshedJson = await sourceFreshness.ApplyJsonAsync(
+                    var refreshedJson = await OperationsSourceFreshnessService.ApplyJsonIfRegisteredAsync(
+                        serviceProvider,
                         cachedJson,
                         normalizedDataScope,
                         storeId,
@@ -3881,7 +3884,8 @@ public static class AllEndpoints
                         toUtc ?? DateTime.MinValue,
                         normalizedDataScope,
                         storeId);
-                var responseWithSourceFreshness = await sourceFreshness.ApplyJsonAsync(
+                var responseWithSourceFreshness = await OperationsSourceFreshnessService.ApplyJsonIfRegisteredAsync(
+                    serviceProvider,
                     responseWithCacheMeta,
                     normalizedDataScope,
                     storeId,
@@ -3950,7 +3954,7 @@ public static class AllEndpoints
             IAnalyticsCacheService cache,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IOperationsAnalyticsIntegrityService integrityService,
-            OperationsSourceFreshnessService sourceFreshness,
+            IServiceProvider serviceProvider,
             HttpContext httpContext,
             int? vendorId = null,
             DateTime? eventDate = null,
@@ -4028,7 +4032,8 @@ public static class AllEndpoints
                     await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(cachedResponse, integrityService, ct);
                     ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, integrityRegistry);
                     if (cachedResponse.Meta is not null)
-                        await sourceFreshness.ApplyAsync(cachedResponse.Meta, normalizedDataScope, storeId, "report", ct);
+                        await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
+                            serviceProvider, cachedResponse.Meta, normalizedDataScope, storeId, "report", ct);
                     return Results.Ok(cachedResponse);
                 }
 
@@ -5168,7 +5173,8 @@ public static class AllEndpoints
                 await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(response, integrityService, ct);
                 ApplyVendorSalesNivelacijaMeta(response, correlationId, integrityRegistry);
                 if (response.Meta is not null)
-                    await sourceFreshness.ApplyAsync(response.Meta, normalizedDataScope, storeId, "report", ct);
+                    await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
+                        serviceProvider, response.Meta, normalizedDataScope, storeId, "report", ct);
 
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 
