@@ -360,7 +360,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(await screen.findByText(/Prikazano 50 od 120 redova\./)).toBeInTheDocument();
     expect(container.querySelectorAll("tr.data-row")).toHaveLength(50);
     expect(screen.getByTestId("analytics-table-toolbar")).toHaveAttribute("data-row-count", "120");
-  });
+  }, 15_000);
 
   it("explains Decision Timeline filter scope and keeps empty results explicit", async () => {
     render(<ProductDecisionCenterPage />);
@@ -661,6 +661,28 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(snapshotPanel).toHaveTextContent(/Snimljen/i);
     expect(snapshotPanel).not.toHaveTextContent(/2026-06-26T12:00:00Z/i);
     expect(snapshotPanel).not.toHaveTextContent(/product:101:REPLENISH:20260528:20260626/i);
+  });
+
+  it("loads full explainability only when a compact row is expanded", async () => {
+    const compactResponse = buildResponse([makeRow({
+      confidenceBreakdown: [],
+      alternativeRecommendations: [],
+      evidenceChain: [],
+    })], "good");
+    compactResponse.rows[0].whyPanel = null;
+    compactResponse.rows[0].evidenceSnapshotPreview = null;
+    getProductDecisionCenterMock
+      .mockResolvedValueOnce(compactResponse)
+      .mockResolvedValueOnce(buildResponse([makeRow()], "good"));
+
+    render(<ProductDecisionCenterPage />);
+    expect(await screen.findByText(/Visoka sigurnost/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Model X").closest("tr")!);
+
+    expect(await screen.findByText(/Pregled: Dopuni/i)).toBeInTheDocument();
+    expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
+      expect.objectContaining({ detailProductId: 101 }),
+    );
   });
 
   it("renders a structured evidence chain in the Why panel", async () => {

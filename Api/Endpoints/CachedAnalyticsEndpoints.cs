@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace Trendplus2.Endpoints;
 
@@ -1992,6 +1993,7 @@ public static class CachedAnalyticsEndpoints
             int top = 500,
             string dataScope = "all",
             string? search = null,
+            int? detailProductId = null,
             CancellationToken ct = default) =>
         {
             var normalizedDataScope = NormalizeDataScope(dataScope);
@@ -2022,13 +2024,24 @@ public static class CachedAnalyticsEndpoints
 
             try
             {
-                var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope, normalizedSearch);
+                if (detailProductId.HasValue)
+                {
+                    var detail = await BuildProductDecisionCenterAsync(
+                        db, fromDate, toDate, storeId, supplierId, 1, normalizedDataScope, ct,
+                        normalizedSearch, resolvedObservedHorizonUtc, detailProductId, includeDetails: true);
+                    detail.Meta ??= BuildSuccessMeta();
+                    detail.Meta.CorrelationId = ResolveCorrelationId(httpContext);
+                    return Results.Ok(detail);
+                }
+
+                // Version the cache key so old full-detail payloads are not replayed after list slimming.
+                var cacheKey = AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, top, normalizedDataScope, normalizedSearch) + ":payload-v2";
                 var cacheResult = await GetOrSetWithPolicyAsync(
                     cache,
                     cacheKey,
                     AnalyticsCachePolicy.ProductDecisionCenterFamily,
                     AnalyticsCachePolicy.ProductDecisionCenter,
-                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct, normalizedSearch, resolvedObservedHorizonUtc),
+                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct, normalizedSearch, resolvedObservedHorizonUtc, includeDetails: false),
                     ct,
                     loggerFactory: loggerFactory,
                     dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
@@ -2546,8 +2559,8 @@ public static class CachedAnalyticsEndpoints
                             "ProductDecisionCenter",
                             "P0",
                             async () => await cache.GetOrSetAsync(
-                                AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope),
-                                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct, observedHorizonUtc: resolvedObservedHorizonUtc),
+                                AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope) + ":payload-v2",
+                                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct, observedHorizonUtc: resolvedObservedHorizonUtc, includeDetails: false),
                                 DashboardFastSectionTtl,
                                 ct),
                             "Product Decision Center nije dostupan.");
@@ -6253,7 +6266,9 @@ public static class CachedAnalyticsEndpoints
         string dataScope,
         CancellationToken ct,
         string? search = null,
-        DateTime? observedHorizonUtc = null)
+        DateTime? observedHorizonUtc = null,
+        int? productId = null,
+        bool includeDetails = true)
     {
         var normalizedDataScope = NormalizeDataScope(dataScope);
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
@@ -6285,6 +6300,7 @@ public static class CachedAnalyticsEndpoints
             join t in db.TipoviObuce.AsNoTracking() on a.IDTipObuce equals t.Id into shoeTypeJoin
             from t in shoeTypeJoin.DefaultIfEmpty()
             where (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                  && (!productId.HasValue || a.Id == productId.Value)
                   && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                   && (!importedOnly || a.DataOrigin == "access")
                   && (!existingOnly || a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "")
@@ -6681,7 +6697,21 @@ public static class CachedAnalyticsEndpoints
                 RecommendedAction = recommendedAction
             };
 
-            var confidenceProfile = BuildProductDecisionConfidenceProfile(row, periodFromUtc, periodToExclusiveUtc.AddDays(-1));
+            rows.Add(row);
+        }
+
+        var sortedRows = rows
+            .OrderByDescending(ProductDecisionEvidencePriority)
+            .ThenByDescending(x => RecommendationPriority(x.RecommendationStatus))
+            .ThenByDescending(x => x.ConfidencePct)
+            .ThenByDescending(x => x.Revenue)
+            .Take(top)
+            .ToList();
+
+        foreach (var row in sortedRows)
+        {
+            var confidenceProfile = BuildProductDecisionConfidenceProfile(
+                row, periodFromUtc, periodToExclusiveUtc.AddDays(-1), includeDetails);
             row.RecommendationId = confidenceProfile.RecommendationId;
             row.SourceType = confidenceProfile.SourceType;
             row.SourceKey = confidenceProfile.SourceKey;
@@ -6690,27 +6720,19 @@ public static class CachedAnalyticsEndpoints
             row.ConfidenceScore = confidenceProfile.ConfidenceScore;
             row.PrimaryDrivers = confidenceProfile.PrimaryDrivers.ToList();
             row.WarningCodes = confidenceProfile.WarningCodes.ToList();
-            row.ConfidenceBreakdown = confidenceProfile.ConfidenceBreakdown.ToList();
-            row.AlternativeRecommendations = confidenceProfile.AlternativeRecommendations.ToList();
+            row.ConfidenceBreakdown = includeDetails ? confidenceProfile.ConfidenceBreakdown.ToList() : null;
+            row.AlternativeRecommendations = includeDetails ? confidenceProfile.AlternativeRecommendations.ToList() : null;
             row.ExpectedImpactRsd = confidenceProfile.ExpectedImpactRsd;
             row.ImpactWindowDays = confidenceProfile.ImpactWindowDays;
             row.RiskIfIgnored = confidenceProfile.RiskIfIgnored;
-            row.ExplainabilityText = confidenceProfile.ExplainabilityText;
+            row.ExplainabilityText = includeDetails ? confidenceProfile.ExplainabilityText : null;
             row.InputFreshnessStatus = confidenceProfile.InputFreshnessStatus;
-            row.EvidenceChain = confidenceProfile.EvidenceChain.ToList();
-            row.WhyPanel = confidenceProfile.WhyPanel;
-            ApplyIssuedRecommendationLifecycle(row);
-            ApplyDecisionEvidenceSnapshotPreview(row, periodFromUtc, periodToExclusiveUtc.AddDays(-1));
-
-            rows.Add(row);
+            row.EvidenceChain = includeDetails ? confidenceProfile.EvidenceChain.ToList() : null;
+            row.WhyPanel = includeDetails ? confidenceProfile.WhyPanel : null;
+            ApplyIssuedRecommendationLifecycle(row, includeDetails);
+            if (includeDetails)
+                ApplyDecisionEvidenceSnapshotPreview(row, periodFromUtc, periodToExclusiveUtc.AddDays(-1));
         }
-
-        var sortedRows = rows
-            .OrderByDescending(x => RecommendationPriority(x.RecommendationStatus))
-            .ThenByDescending(x => x.ConfidencePct)
-            .ThenByDescending(x => x.Revenue)
-            .Take(top)
-            .ToList();
 
         var rowWindow = BuildProductDecisionCenterRowWindow(rows.Count, sortedRows.Count);
         var responseMeta = sortedRows.Count == 0
@@ -6755,6 +6777,13 @@ public static class CachedAnalyticsEndpoints
             ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
             Meta = responseMeta
         };
+    }
+
+    private static int ProductDecisionEvidencePriority(ProductDecisionCenterRowDto row)
+    {
+        if (row.UnitsSold > 0 || row.Revenue > 0m) return 3;
+        if (row.CurrentStock > 0) return 2;
+        return RecommendationPriority(row.RecommendationStatus) > 0 ? 1 : 0;
     }
 
     private static AnalyticsResponseMetaDto BuildProductDecisionContextMeta(
@@ -7055,7 +7084,8 @@ public static class CachedAnalyticsEndpoints
     internal static ProductDecisionConfidenceProfile BuildProductDecisionConfidenceProfile(
         ProductDecisionCenterRowDto row,
         DateTime periodFromUtc,
-        DateTime periodToUtc)
+        DateTime periodToUtc,
+        bool includeDetails = true)
     {
         var recommendationStatus = NormalizeRecommendationStatus(row.RecommendationStatus);
         var sourceType = "product";
@@ -7100,48 +7130,35 @@ public static class CachedAnalyticsEndpoints
         }
 
         var primaryDrivers = BuildProductDecisionPrimaryDrivers(row, warningCodes);
-        var confidenceBreakdown = BuildProductDecisionConfidenceBreakdown(
-            row,
-            confidenceLevel,
-            confidenceScore,
-            warningCodes,
-            inputFreshnessStatus);
-        var alternativeRecommendations = BuildProductDecisionAlternativeRecommendations(
-            row,
-            confidenceLevel,
-            confidenceScore,
-            warningCodes,
-            inputFreshnessStatus);
-        var evidenceChain = BuildProductDecisionEvidenceChain(
-            row,
-            confidenceLevel,
-            confidenceScore,
-            warningCodes,
-            expectedImpactRsd,
-            inputFreshnessStatus,
-            explainabilityText);
-        var decisionTree = BuildProductDecisionDecisionTree(
-            row,
-            confidenceLevel,
-            warningCodes,
-            inputFreshnessStatus,
-            alternativeRecommendations,
-            explainabilityText);
-        var whyPanel = BuildProductDecisionWhyPanel(
-            row,
-            confidenceLevel,
-            confidenceScore,
-            primaryDrivers,
-            warningCodes,
-            expectedImpactRsd,
-            impactWindowDays,
-            riskIfIgnored,
-            explainabilityText,
-            inputFreshnessStatus,
-            confidenceBreakdown,
-            alternativeRecommendations,
-            evidenceChain,
-            decisionTree);
+        var confidenceBreakdown = includeDetails
+            ? BuildProductDecisionConfidenceBreakdown(row, confidenceLevel, confidenceScore, warningCodes, inputFreshnessStatus)
+            : [];
+        var alternativeRecommendations = includeDetails
+            ? BuildProductDecisionAlternativeRecommendations(row, confidenceLevel, confidenceScore, warningCodes, inputFreshnessStatus)
+            : [];
+        var evidenceChain = includeDetails
+            ? BuildProductDecisionEvidenceChain(row, confidenceLevel, confidenceScore, warningCodes, expectedImpactRsd, inputFreshnessStatus, explainabilityText)
+            : [];
+        var decisionTree = includeDetails
+            ? BuildProductDecisionDecisionTree(row, confidenceLevel, warningCodes, inputFreshnessStatus, alternativeRecommendations, explainabilityText)
+            : [];
+        var whyPanel = includeDetails
+            ? BuildProductDecisionWhyPanel(
+                row,
+                confidenceLevel,
+                confidenceScore,
+                primaryDrivers,
+                warningCodes,
+                expectedImpactRsd,
+                impactWindowDays,
+                riskIfIgnored,
+                explainabilityText,
+                inputFreshnessStatus,
+                confidenceBreakdown,
+                alternativeRecommendations,
+                evidenceChain,
+                decisionTree)
+            : null!;
 
         return new ProductDecisionConfidenceProfile(
             RecommendationId: recommendationId,
@@ -7222,19 +7239,22 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static void ApplyIssuedRecommendationLifecycle(ProductDecisionCenterRowDto row)
+    private static void ApplyIssuedRecommendationLifecycle(ProductDecisionCenterRowDto row, bool includeDetails = true)
     {
         var lifecycle = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
-        row.RecommendationLifecycle = lifecycle;
+        row.RecommendationLifecycle = includeDetails ? lifecycle : null;
         row.LifecycleState = lifecycle.LifecycleState;
         row.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
         row.LearningEligible = lifecycle.LearningEligible;
         row.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
 
-        row.WhyPanel.LifecycleState = lifecycle.LifecycleState;
-        row.WhyPanel.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
-        row.WhyPanel.LearningEligible = lifecycle.LearningEligible;
-        row.WhyPanel.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
+        if (row.WhyPanel is not null)
+        {
+            row.WhyPanel.LifecycleState = lifecycle.LifecycleState;
+            row.WhyPanel.OutcomeEvidenceState = lifecycle.OutcomeEvidenceState;
+            row.WhyPanel.LearningEligible = lifecycle.LearningEligible;
+            row.WhyPanel.LearningEligibilityReasonCodes = lifecycle.LearningEligibilityReasonCodes.ToList();
+        }
     }
 
     internal static void ApplyDecisionEvidenceSnapshotPreview(
@@ -7256,12 +7276,12 @@ public static class CachedAnalyticsEndpoints
             ConfidencePct = row.ConfidencePct,
             ReliabilityPct = row.ReliabilityPct,
             InputFreshnessStatus = row.InputFreshnessStatus,
-            ExplainabilityText = row.ExplainabilityText,
+            ExplainabilityText = row.ExplainabilityText ?? row.RecommendationReason,
             ReasonCodes = [.. row.ReasonCodes],
             WarningCodes = [.. row.WarningCodes],
             PrimaryDrivers = [.. row.PrimaryDrivers],
-            EvidenceChain = [.. row.EvidenceChain],
-            ConfidenceBreakdown = [.. row.ConfidenceBreakdown]
+            EvidenceChain = [.. row.EvidenceChain ?? []],
+            ConfidenceBreakdown = [.. row.ConfidenceBreakdown ?? []]
         };
     }
 
@@ -9240,12 +9260,17 @@ public class ProductDecisionCenterRowDto
     public decimal? ExpectedImpactRsd { get; set; }
     public int? ImpactWindowDays { get; set; }
     public string RiskIfIgnored { get; set; } = string.Empty;
-    public string ExplainabilityText { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExplainabilityText { get; set; } = string.Empty;
     public string InputFreshnessStatus { get; set; } = "unknown";
-    public List<ProductDecisionEvidenceNodeDto> ConfidenceBreakdown { get; set; } = [];
-    public List<ProductDecisionAlternativeRecommendationDto> AlternativeRecommendations { get; set; } = [];
-    public List<ProductDecisionEvidenceNodeDto> EvidenceChain { get; set; } = [];
-    public ProductDecisionWhyPanelDto WhyPanel { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ProductDecisionEvidenceNodeDto>? ConfidenceBreakdown { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ProductDecisionAlternativeRecommendationDto>? AlternativeRecommendations { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ProductDecisionEvidenceNodeDto>? EvidenceChain { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ProductDecisionWhyPanelDto? WhyPanel { get; set; } = new();
     public string RecommendedAction { get; set; } = string.Empty;
     /// <summary>RL04 lifecycle tip state for this issued recommendation instance.</summary>
     public string LifecycleState { get; set; } = RecommendationLifecycleSemantics.LifecycleStates.Issued;
@@ -9254,10 +9279,12 @@ public class ProductDecisionCenterRowDto
     /// <summary>True only when measured evidence may feed later learning statistics.</summary>
     public bool LearningEligible { get; set; }
     public List<string> LearningEligibilityReasonCodes { get; set; } = [];
-    public RecommendationLifecycleCaptureDto RecommendationLifecycle { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RecommendationLifecycleCaptureDto? RecommendationLifecycle { get; set; }
         = RecommendationLifecycleSemantics.ProjectIssuedRecommendation();
     /// <summary>DEX10: live recommendations are absent until acted on and frozen into the action ledger.</summary>
     public string EvidenceSnapshotStatus { get; set; } = "absent";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ProductDecisionEvidenceSnapshotPreviewDto? EvidenceSnapshotPreview { get; set; }
 }
 

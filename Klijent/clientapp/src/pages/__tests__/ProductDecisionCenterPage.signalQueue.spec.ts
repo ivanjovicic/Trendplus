@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProductQueueSpec } from "../ProductDecisionCenterPage";
+import { buildProductQueueSpec, productEvidencePriority } from "../ProductDecisionCenterPage";
 import type { ProductDecisionCenterItem } from "../../types/analytics";
 
 function makeRow(overrides: Partial<ProductDecisionCenterItem> = {}): ProductDecisionCenterItem {
@@ -43,6 +43,20 @@ function makeRow(overrides: Partial<ProductDecisionCenterItem> = {}): ProductDec
 }
 
 describe("Product decision signal queue mapping", () => {
+  it("keeps sold and in-stock evidence ahead of zero-sales/zero-stock data-fix rows", () => {
+    const sold = productEvidencePriority(makeRow({ revenue: 100, unitsSold: 1, currentStock: 0 }));
+    const stocked = productEvidencePriority(makeRow({ revenue: 0, unitsSold: 0, currentStock: 1 }));
+    const emptyFix = productEvidencePriority(makeRow({
+      revenue: 0,
+      unitsSold: 0,
+      currentStock: 0,
+      recommendationStatus: "FIX_DATA",
+    }));
+
+    expect(sold).toBeGreaterThan(emptyFix);
+    expect(stocked).toBeGreaterThan(emptyFix);
+  });
+
   it("maps low_cover/out_of_stock_risk to REPLENISH", () => {
     const low = buildProductQueueSpec(makeRow({ stockCoverStatus: "low_cover" }));
     const oos = buildProductQueueSpec(makeRow({ stockCoverStatus: "out_of_stock_risk" }));

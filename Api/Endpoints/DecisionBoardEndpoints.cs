@@ -90,7 +90,8 @@ public static class DecisionBoardEndpoints
                 300,
                 normalizedDataScope,
                 ct,
-                observedHorizonUtc: resolvedObservedHorizonUtc);
+                observedHorizonUtc: resolvedObservedHorizonUtc,
+                includeDetails: false);
         }
         catch (Exception ex)
         {

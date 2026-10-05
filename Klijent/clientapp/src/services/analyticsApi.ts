@@ -851,6 +851,7 @@ export async function getProductDecisionCenter(options?: {
   top?: number;
   dataScope?: string | null;
   search?: string | null;
+  detailProductId?: number | null;
 }): Promise<ProductDecisionCenterResponse> {
   const params = new URLSearchParams();
   if (options?.fromDate) params.append("fromDate", options.fromDate);
@@ -860,6 +861,7 @@ export async function getProductDecisionCenter(options?: {
   if (options?.top != null) params.append("top", String(options.top));
   if (options?.dataScope) params.append("dataScope", options.dataScope);
   if (options?.search?.trim()) params.append("search", options.search.trim());
+  if (options?.detailProductId != null) params.append("detailProductId", String(options.detailProductId));
 
   return fetchJson(
     "/api/analytics/cached/products/decision-center",

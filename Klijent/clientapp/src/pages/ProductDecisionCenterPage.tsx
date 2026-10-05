@@ -125,7 +125,7 @@ const RECOMMENDATION_OPTIONS: Array<{ value: RecommendationFilter; label: string
   { value: "WATCH", label: "Prati" },
   { value: "MARKDOWN", label: "Snizi cenu" },
   { value: "DO_NOT_ORDER", label: "Ne naručivati" },
-  { value: "FIX_DATA", label: "Proveriti podatke" },
+  { value: "FIX_DATA", label: "Za ispravku podataka" },
   { value: "INSUFFICIENT_DATA", label: "Nedovoljno podataka" },
 ];
 
@@ -138,6 +138,12 @@ const RECOMMENDATION_PRIORITY: Record<ProductDecisionRecommendationStatus, numbe
   WATCH: 2,
   INSUFFICIENT_DATA: 1,
 };
+
+export function productEvidencePriority(row: Pick<ProductDecisionCenterItem, "revenue" | "unitsSold" | "currentStock">): number {
+  if (row.unitsSold > 0 || row.revenue > 0) return 3;
+  if ((row.currentStock ?? 0) > 0) return 2;
+  return 1;
+}
 
 const DATA_QUALITY_LABELS: Record<Exclude<DataQualityFilter, "all">, string> = {
   good: "Dobar",
@@ -972,7 +978,7 @@ export default function ProductDecisionCenterPage() {
         toDate,
         storeId,
         supplierId,
-        top: 1200,
+        top: 500,
         dataScope,
         search: serverSearch || null,
       });
@@ -1055,7 +1061,13 @@ export default function ProductDecisionCenterPage() {
       if (sortField === "dataQualityStatus") {
         return compareNullable(a.dataQualityStatus, b.dataQualityStatus, (left, right) => DATA_QUALITY_ORDER[canonicalDataQualityStatus(left)] - DATA_QUALITY_ORDER[canonicalDataQualityStatus(right)], sortDir);
       }
-      return compareNullable(a.recommendationStatus, b.recommendationStatus, (left, right) => RECOMMENDATION_PRIORITY[left] - RECOMMENDATION_PRIORITY[right], sortDir);
+      return compareNullable(
+        a,
+        b,
+        (left, right) => (productEvidencePriority(left) * 100 + RECOMMENDATION_PRIORITY[left.recommendationStatus])
+          - (productEvidencePriority(right) * 100 + RECOMMENDATION_PRIORITY[right.recommendationStatus]),
+        sortDir,
+      );
     });
     return copy;
   }, [filteredRows, sortDir, sortField]);
@@ -1312,6 +1324,32 @@ export default function ProductDecisionCenterPage() {
   }, [expandedProductId, sortedRows]);
 
   useEffect(() => {
+    if (!expandedTimelineRow || expandedTimelineRow.whyPanel) return;
+    let cancelled = false;
+    void getProductDecisionCenter({
+      fromDate,
+      toDate,
+      storeId,
+      supplierId,
+      dataScope,
+      search: serverSearch || null,
+      detailProductId: expandedTimelineRow.productId,
+    }).then((response) => {
+      const detail = response.rows.find((item) => item.productId === expandedTimelineRow.productId);
+      if (cancelled || !detail) return;
+      setPayload((current) => {
+        if (!current) return current;
+        const next = { ...current, rows: current.rows.map((item) => item.productId === detail.productId ? detail : item) };
+        payloadRef.current = next;
+        return next;
+      });
+    }).catch(() => {
+      // The compact row remains usable; timeline and primary decision fields stay available.
+    });
+    return () => { cancelled = true; };
+  }, [dataScope, expandedTimelineRow?.productId, expandedTimelineRow?.whyPanel, fromDate, serverSearch, storeId, supplierId, toDate]);
+
+  useEffect(() => {
     if (!expandedTimelineRow) {
       return;
     }
@@ -1544,7 +1582,7 @@ export default function ProductDecisionCenterPage() {
           <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
         </article>
         <article className="kpi-card">
-          <span>Proveriti podatke</span>
+          <span>Za ispravku podataka</span>
           <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
           <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
         </article>

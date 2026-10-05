@@ -146,7 +146,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     await waitFor(() => {
       expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
-        expect.objectContaining({ search: "TAIL-SKU", top: 1200 }),
+        expect.objectContaining({ search: "TAIL-SKU", top: 500 }),
       );
     });
 
@@ -162,7 +162,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     await waitFor(() => {
       expect(getProductDecisionCenterMock).toHaveBeenCalledWith(
-        expect.objectContaining({ dataScope: "imported", top: 1200 }),
+        expect.objectContaining({ dataScope: "imported", top: 500 }),
       );
       expect(getSupplierFiltersMock).toHaveBeenCalledWith(
         expect.any(String),
@@ -178,7 +178,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
     await waitFor(() => {
       expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ dataScope: "existing", top: 1200 }),
+        expect.objectContaining({ dataScope: "existing", top: 500 }),
       );
       expect(getSupplierFiltersMock).toHaveBeenLastCalledWith(
         expect.any(String),

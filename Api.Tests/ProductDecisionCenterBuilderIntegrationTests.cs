@@ -1,10 +1,12 @@
 using Application.Analytics;
+using System.Text.Json;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Analytics;
 using Microsoft.EntityFrameworkCore;
 using Trendplus2.Endpoints;
+using Xunit.Abstractions;
 using Xunit;
 
 namespace Api.Tests;
@@ -12,6 +14,10 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class ProductDecisionCenterBuilderIntegrationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public ProductDecisionCenterBuilderIntegrationTests(ITestOutputHelper output) => _output = output;
+
     [Theory]
     [InlineData(null)]
     [InlineData(0)]
@@ -329,6 +335,103 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(0m, response.Summary.LostSalesEstimate);
         Assert.DoesNotContain(response.Rows, row => row.RecommendationStatus == "REPLENISH");
         Assert.DoesNotContain(response.Rows, row => row.ExpectedImpactRsd == 0m);
+    }
+
+    [Fact]
+    public async Task BuildProductDecisionCenter_PrioritizesEvidenceAndBoundsListPayload_WhileDetailRetainsExplainability()
+    {
+        var databaseName = $"product-decision-payload-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        db.Artikli.AddRange(Enumerable.Range(1_000, 1_000).Select(id => new Artikli
+        {
+            Id = id,
+            PLU = $"FIX-{id}",
+            Naziv = $"Artikal bez podataka {id}",
+            IDObjekat = 1,
+            IDDobavljac = null,
+            Kolicina = 0,
+            MinimalnaKolicina = null,
+            NabavnaCena = null,
+            NabavnaCenaDin = null,
+            Kategorija = null,
+            Boja = null,
+            Velicina = null,
+            DataOrigin = "existing",
+            UpdatedAt = toDate
+        }));
+        var soldArticleIds = Enumerable.Range(2_001, 48).ToArray();
+        db.Artikli.AddRange(soldArticleIds.Select(id => new Artikli
+        {
+            Id = id,
+            PLU = $"SOLD-{id}",
+            Naziv = $"Artikal sa prodajom {id}",
+            IDObjekat = 1,
+            IDDobavljac = 1,
+            Kolicina = 0,
+            MinimalnaKolicina = 3,
+            NabavnaCena = 10m,
+            Kategorija = "Patike",
+            Boja = "Crna",
+            Velicina = "42",
+            DataOrigin = "existing",
+            UpdatedAt = toDate
+        }));
+        db.ProdajaZaglavlja.AddRange(soldArticleIds.Select(id => new ProdajaZaglavlje
+        {
+            Id = id,
+            DatumProdaje = toDate.AddHours(12),
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        }));
+        db.ProdajaStavke.AddRange(soldArticleIds.Select(id => new ProdajaStavka
+        {
+            Id = id,
+            IdProdaja = id,
+            IdArtikal = id,
+            Kolicina = 1,
+            Cena = 100m,
+            NabavnaCena = 10m
+        }));
+        await db.SaveChangesAsync();
+
+        var startedAt = System.Diagnostics.Stopwatch.StartNew();
+        var list = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db, fromDate, toDate, 1, null, 500, "all", CancellationToken.None, includeDetails: false);
+        startedAt.Stop();
+        var listBytes = JsonSerializer.SerializeToUtf8Bytes(list).Length;
+        _output.WriteLine($"PDC compact list: analyzed={list.AnalyzedRows}, returned={list.Rows.Count}, payloadBytes={listBytes}, builderElapsedMs={startedAt.ElapsedMilliseconds}");
+        var medianRowBytes = list.Rows
+            .Select(row => JsonSerializer.SerializeToUtf8Bytes(row).Length)
+            .Order()
+            .ElementAt(list.Rows.Count / 2);
+        _output.WriteLine($"PDC compact row medianBytes={medianRowBytes}");
+
+        Assert.Equal(1_050, list.AnalyzedRows);
+        Assert.Equal(500, list.Rows.Count);
+        Assert.Equal(50, list.Rows.Count(row => row.Revenue > 0m));
+        Assert.All(list.Rows.Take(50), row => Assert.True(row.Revenue > 0m));
+        Assert.All(list.Rows, row =>
+        {
+            Assert.Null(row.WhyPanel);
+            Assert.Null(row.EvidenceChain);
+            Assert.Null(row.ConfidenceBreakdown);
+            Assert.Null(row.AlternativeRecommendations);
+            Assert.Null(row.EvidenceSnapshotPreview);
+        });
+        Assert.True(listBytes < 2 * 1024 * 1024, $"Compact 500-row payload was {listBytes:N0} bytes.");
+        Assert.True(medianRowBytes <= 3 * 1024, $"Compact median row was {medianRowBytes:N0} bytes.");
+
+        var detail = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db, fromDate, toDate, 1, null, 1, "all", CancellationToken.None,
+            productId: 101, includeDetails: true);
+        var detailRow = Assert.Single(detail.Rows);
+        Assert.NotNull(detailRow.WhyPanel);
+        Assert.NotEmpty(detailRow.EvidenceChain);
+        Assert.NotEmpty(detailRow.ConfidenceBreakdown);
+        Assert.NotNull(detailRow.EvidenceSnapshotPreview);
     }
 
     [Theory]

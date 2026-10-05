@@ -118,6 +118,21 @@ public sealed class SupplierNivelacijaQueryPerformanceTests : IClassFixture<Post
             commandLog.Clear();
             var to = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
             var from = to.AddDays(1 - days);
+            var fullWatch = Stopwatch.StartNew();
+            var fullResponse = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+                db,
+                from,
+                to,
+                storeId: 1,
+                supplierId: null,
+                top: 50,
+                dataScope: "all",
+                CancellationToken.None,
+                includeDetails: true);
+            fullWatch.Stop();
+            var fullPayloadBytes = JsonSerializer.SerializeToUtf8Bytes(fullResponse).Length;
+            var fullCommands = commandLog.Count;
+            commandLog.Clear();
             var watch = Stopwatch.StartNew();
             var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
                 db,
@@ -127,17 +142,137 @@ public sealed class SupplierNivelacijaQueryPerformanceTests : IClassFixture<Post
                 supplierId: null,
                 top: 50,
                 dataScope: "all",
-                CancellationToken.None);
+                CancellationToken.None,
+                includeDetails: false);
             watch.Stop();
             Assert.Equal(50, response.TotalRows);
             Assert.Equal(12000, response.AnalyzedRows);
+            var payloadBytes = JsonSerializer.SerializeToUtf8Bytes(response).Length;
+            Assert.Equal(JsonSerializer.Serialize(fullResponse.Rows.Select(row => new { row.ProductId, row.Revenue, row.UnitsSold, row.RecommendationStatus, row.RecommendationAllowed, row.ExpectedImpactRsd })),
+                JsonSerializer.Serialize(response.Rows.Select(row => new { row.ProductId, row.Revenue, row.UnitsSold, row.RecommendationStatus, row.RecommendationAllowed, row.ExpectedImpactRsd })));
             _output.WriteLine(
-                "RQ487 Product Decision baseline days={0}; articles=12000; saleLines=48000; analyzedRows={1}; returnedRows={2}; elapsedMs={3}; dbCommands={4}",
+                "RQ573 PDC before/after days={0}; articles=12000; returned=50; beforeBytes={1}; afterBytes={2}; beforeElapsedMs={3}; afterElapsedMs={4}",
+                days, fullPayloadBytes, payloadBytes, fullWatch.ElapsedMilliseconds, watch.ElapsedMilliseconds);
+            _output.WriteLine(
+                "RQ573 compact Product Decision after days={0}; articles=12000; saleLines=48000; analyzedRows={1}; returnedRows={2}; payloadBytes={3}; elapsedMs={4}; dbCommands={5}",
                 days,
                 response.AnalyzedRows,
                 response.Rows.Count,
+                payloadBytes,
                 watch.ElapsedMilliseconds,
                 commandLog.Count);
+            var boardBeforeWatch = Stopwatch.StartNew();
+            var boardBefore = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+                DateTime.UtcNow,
+                from,
+                to,
+                lastRefreshAtUtc: null,
+                productDecisionCenter: fullResponse,
+                inventoryInsights: null,
+                inventoryWorkflow: null,
+                supplierSummary: null,
+                actions: [],
+                outcomeSummary: null,
+                refreshStatus: null,
+                dataQualityHealth: null,
+                loadWarnings: [],
+                dataScope: "all",
+                storeId: 1,
+                supplierId: null);
+            boardBeforeWatch.Stop();
+            var boardWatch = Stopwatch.StartNew();
+            var board = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+                DateTime.UtcNow,
+                from,
+                to,
+                lastRefreshAtUtc: null,
+                productDecisionCenter: response,
+                inventoryInsights: null,
+                inventoryWorkflow: null,
+                supplierSummary: null,
+                actions: [],
+                outcomeSummary: null,
+                refreshStatus: null,
+                dataQualityHealth: null,
+                loadWarnings: [],
+                dataScope: "all",
+                storeId: 1,
+                supplierId: null);
+            boardWatch.Stop();
+            var boardBytes = JsonSerializer.SerializeToUtf8Bytes(board).Length;
+            var beforeBoardBusiness = boardBefore.Sections.Select(section => new
+            {
+                section.Key,
+                section.Warnings,
+                Cards = section.Cards.Select(card => new
+                {
+                    card.Id,
+                    card.Kind,
+                    card.SourceModule,
+                    card.SourceType,
+                    card.SourceKey,
+                    card.Title,
+                    card.Summary,
+                    card.ConfidenceLevel,
+                    card.ConfidenceScore,
+                    card.ReliabilityPct,
+                    card.ExpectedImpactRsd,
+                    card.MeasuredImpactRsd,
+                    card.RealizationRatio,
+                    card.RiskIfIgnored,
+                    card.RecommendedNextAction,
+                    card.AlreadyInAction,
+                    card.AlreadyClosed,
+                    card.WarningCodes,
+                    card.DataQualityStatus,
+                    card.PriorityScore,
+                    card.ImpactScore,
+                    card.ConfidenceSource,
+                    card.ReasonCodes,
+                    card.RecommendationAllowed
+                })
+            });
+            var afterBoardBusiness = board.Sections.Select(section => new
+            {
+                section.Key,
+                section.Warnings,
+                Cards = section.Cards.Select(card => new
+                {
+                    card.Id,
+                    card.Kind,
+                    card.SourceModule,
+                    card.SourceType,
+                    card.SourceKey,
+                    card.Title,
+                    card.Summary,
+                    card.ConfidenceLevel,
+                    card.ConfidenceScore,
+                    card.ReliabilityPct,
+                    card.ExpectedImpactRsd,
+                    card.MeasuredImpactRsd,
+                    card.RealizationRatio,
+                    card.RiskIfIgnored,
+                    card.RecommendedNextAction,
+                    card.AlreadyInAction,
+                    card.AlreadyClosed,
+                    card.WarningCodes,
+                    card.DataQualityStatus,
+                    card.PriorityScore,
+                    card.ImpactScore,
+                    card.ConfidenceSource,
+                    card.ReasonCodes,
+                    card.RecommendationAllowed
+                })
+            });
+            Assert.Equal(JsonSerializer.Serialize(beforeBoardBusiness), JsonSerializer.Serialize(afterBoardBusiness));
+            _output.WriteLine(
+                "RQ573 Decision Board projection before/after days={0}; pdcRows={1}; beforeElapsedMs={2}; afterElapsedMs={3}; afterBytes={4}; fullEndpoint=false",
+                days,
+                response.Rows.Count,
+                boardBeforeWatch.ElapsedMilliseconds,
+                boardWatch.ElapsedMilliseconds,
+                boardBytes);
+            _output.WriteLine("RQ573 full PDC fixture query count days={0}; dbCommands={1}", days, fullCommands);
             foreach (var command in commandLog)
             {
                 _output.WriteLine("RQ487 Product Decision command: {0}", command[..Math.Min(command.Length, 220)].ReplaceLineEndings(" "));
