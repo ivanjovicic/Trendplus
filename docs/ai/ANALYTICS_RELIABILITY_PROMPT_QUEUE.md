@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ479 (Quarantine smoke action fixtures) and parallel lanes RQ584, RQ586, RQ588 (collision-check before claim). RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. RQ582 follows RQ581. See Operations and Nivelacija addenda.
+Current READY prompt: RQ582 (quarantine uncertified Insight Studio and Advanced surfaces); parallel collision-check lanes RQ584, RQ586 and RQ588. RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -26824,16 +26824,18 @@ An action is counted as measured only when the backend has a valid measurement o
 
 ## RQ479 - Quarantine smoke action fixtures from the operational queue
 
-Status: READY
+Status: DONE
 Ready after: none for the repository-local read guard (repaired 2026-10-04 by the next-wave audit: the section had no `Ready after`; the original "live/seed-owner gated" note applies only to the optional production cleanup, which stays owner-gated and out of scope)
-Owned paths: `Api/Endpoints/AnalyticsActionsEndpoints.cs` (list/counts/outcome-summary read filters only), the action query/service it calls, focused tests
-Avoid paths: action write/lifecycle endpoints, Decision Board composition (`DecisionBoardEndpoints.cs`, read the filtered counts only), frontend Actions page (P-UI-49 owns shared states), any production data mutation
+Owned paths: `Api/Endpoints/AnalyticsActionsEndpoints.cs` (list/counts/outcome-summary/detail/source-status read filters only), the action query/service it calls, `Api/Endpoints/DecisionBoardEndpoints.cs` and `Api/Dtos/DecisionBoardDtos.cs` (filtered action/outcome projection only), focused tests
+Avoid paths: action write/lifecycle endpoints, Decision Board composition beyond filtered action/outcome/sample projections (general payload/performance remains with its named owners), frontend Actions page (P-UI-49 owns shared states), any production data mutation
 Priority: P2
 Type: data-hygiene/release-contract/tests
 Feature family: analytics-actions-live-fixture-hygiene
 Parallel-safe: yes (readiness/seed/release gate; no Actions rendering edits)
 Owner: Analytics Reliability / Release Data
 Commit suggestion: `chore(analytics): prevent smoke fixtures in operational actions`
+
+Claim 2026-10-05: refreshed `origin/main` at `0d2aa9606a3127992b78c6f337e1db9686b02c87`; no RQ479 lock, matching branch or open PR exists, and the repaired repository-local read-guard scope does not require the owner-gated production cleanup. Claimed RQ479 for positive-only smoke-fixture quarantine across operational Actions reads. Local lock: `.ai/task-locks/RQ479-codex.lock.md`.
 
 ### Problem
 
@@ -26902,6 +26904,24 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 - Completion evidence: focused tests (fixture excluded, real action with incomplete optional evidence kept, counts consistent with list, meta count), guardrails, validators; after deploy a live GET shows `totalCount=0` with `excludedFixtureCount=4`.
 - Residual risk: future fixtures with a different naming scheme; the seed side (Do step 2 tenant/environment separation) remains a follow-up if fixtures are still created by any non-test path.
 - Priority P1 -> P2: user-visible and cheap, but it does not change any sales or recommendation number. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` F10.
+
+### Completion note 2026-10-05
+
+- Status: DONE
+- Completion: Operational Actions and Decision Board reads now exclude exact `smoke` source-key segments through one shared positive-only predicate; filtered fixture counts remain visible, and empty operational samples do not generate outcome/sample-quality cards.
+- Changed files: `Application/Analytics/AnalyticsActionFixturePolicy.cs`, `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`, `Api/Endpoints/AnalyticsActionsEndpoints.cs`, `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api/Dtos/DecisionBoardDtos.cs`, `Api.Tests/AnalyticsActionsEndpointsTests.cs`, `Api.Tests/DecisionBoardEndpointsTests.cs`, and `.ai/runs/2026-10-05-RQ479-evidence.md`.
+- Checks run: focused Actions/Decision Board/service suite 118/118; `dotnet build Api/Api.csproj --no-restore --verbosity quiet -clp:ErrorsOnly`; instruction, queue and planning validators; `git diff --check`.
+- Checks not run: live production/provider GET and post-deploy smoke verification; no production data mutation was performed.
+- Run log: `.ai/runs/2026-10-05-RQ479-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d8a868c7a591ecdffbf8db1b3ca8af2c598a1a37`
+- Main verification: fresh fetch verified `HEAD == origin/main == d8a868c7a591ecdffbf8db1b3ca8af2c598a1a37`; implementation SHA is on current `main`.
+- Missed: source-side/test-tenant provenance and owner-authorized cleanup remain follow-up work; this change only quarantines positive marker matches at read time.
+- Follow-up: dependency-complete RQ582 is the primary next candidate after the full post-close scan; RQ584, RQ586 and RQ588 remain ready candidates subject to collision checks.
+- Residual risk: fixtures using a different key convention or non-test creation path are not classified by this exact reserved marker.
+- Post-close routing: RQ582 is the next candidate; the post-delivery scan and claim are recorded in the run log.
+- Prompt defect / scope repair: repaired `Owned paths`/`Avoid paths` to include the Decision Board action/outcome projections required by the 2026-10-04 acceptance addendum; production cleanup remains out of scope.
 
 ## RQ480 - Surface Decision Pulse partial-source failures and provide retry
 
@@ -29269,7 +29289,7 @@ Seven production endpoints return `pol: "NeodreÄ‘eno"` instead of `"Neodređe
 
 ## RQ582 - Decide the future of Insight Studio and the legacy Advanced surfaces (stale snapshots, unknown identities)
 
-Status: WAITING
+Status: READY
 Ready after: `RQ581` DONE (owner decision resolved 2026-10-04; serialize the Insight Studio family)
 Priority: P2
 Type: product decision/frontend/governance
