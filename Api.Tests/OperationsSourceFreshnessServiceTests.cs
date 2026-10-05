@@ -52,6 +52,31 @@ public sealed class OperationsSourceFreshnessServiceTests
     }
 
     [Fact]
+    public async Task ApplyAsync_ExcludesSaleAtHalfOpenUpperBoundary()
+    {
+        await using var db = CreateDb();
+        var fromUtc = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toExclusiveUtc = new DateTime(2026, 8, 3, 0, 0, 0, DateTimeKind.Utc);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje { Id = 1, DatumProdaje = new DateTime(2026, 8, 2, 12, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "access" },
+            new ProdajaZaglavlje { Id = 2, DatumProdaje = toExclusiveUtc, IDObjekat = 1, DataOrigin = "access" });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 1, IdProdaja = 1, IdArtikal = 10 },
+            new ProdajaStavka { Id = 2, IdProdaja = 2, IdArtikal = 10 });
+        db.DataImportBatches.Add(CompletedImport(DateTime.UtcNow.AddHours(-2)));
+        await db.SaveChangesAsync();
+
+        var meta = CreateMeta();
+        meta.RequestedPeriodFromUtc = fromUtc;
+        meta.RequestedPeriodToUtc = toExclusiveUtc;
+
+        await CreateService(db).ApplyAsync(meta, "imported", null, "signal");
+
+        Assert.Equal(new DateTime(2026, 8, 2, 12, 0, 0, DateTimeKind.Utc), meta.ObservedPeriodFromUtc);
+        Assert.Equal(new DateTime(2026, 8, 2, 12, 0, 0, DateTimeKind.Utc), meta.ObservedPeriodToUtc);
+    }
+
+    [Fact]
     public async Task ApplyAsync_DoesNotUseGlobalImportToCertifyStoreFilteredRows()
     {
         await using var db = CreateDb();
