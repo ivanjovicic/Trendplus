@@ -1107,17 +1107,17 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
-    expect(screen.getByText("Analiza poredjena po nivelacionom prozoru: prozor nije dostupan.")).toBeInTheDocument();
+    expect(screen.getByText("Analiza poređena po nivelacionom prozoru: prozor nije dostupan.")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
 
     const snapshot = getAnalyticsDetailSnapshot("nivelacije-pre-post", "10");
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
-      expect.objectContaining({ key: "vendorsCount", label: "Dobavljača", value: "N/A" }),
-      expect.objectContaining({ key: "articlesCount", label: "Artikala", value: "N/A" }),
-      expect.objectContaining({ key: "windowDays", label: "Prozor analize", value: "N/A" }),
-      expect.objectContaining({ key: "metricsStatus", label: "Status metrika", value: "N/A" }),
+      expect.objectContaining({ key: "vendorsCount", label: "Dobavljača", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "articlesCount", label: "Artikala", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "windowDays", label: "Prozor analize", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "metricsStatus", label: "Status metrika", value: "Nije dostupno" }),
     ]));
   });
 
@@ -1137,7 +1137,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     renderPage();
     await screen.findByText("Prioritetna lista dobavljača");
-    expect(screen.getByText("Analiza poredjena po nivelacionom prozoru od 0 dana.")).toBeInTheDocument();
+    expect(screen.getByText("Analiza poređena po nivelacionom prozoru od 0 dana.")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Detalji" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
@@ -1174,8 +1174,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
-      expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "inactiveRows", label: "Neaktivni redovi", value: "Nije dostupno" }),
     ]));
   });
 
@@ -1227,7 +1227,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(snapshot?.metadata).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "dataTrust", label: "Poverenje", value: "Nepoznato" }),
       expect.objectContaining({ key: "analyzedShare", label: "Analizirani redovi", value: "Nije dostupno" }),
-      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "N/A" }),
+      expect.objectContaining({ key: "duplicateRowsRemoved", label: "Duplikati događaja uklonjeni", value: "Nije dostupno" }),
     ]));
   });
 
@@ -1245,7 +1245,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
     const vendorRow = within(table).getByText("Vendor A").closest("tr");
     expect(vendorRow).not.toBeNull();
-    expect(within(vendorRow!).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+    expect(within(vendorRow!).getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("100.000 RSD")).not.toBeInTheDocument();
   });
 
@@ -1280,7 +1280,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(await screen.findByText("Top dobitnik SKU")).toBeInTheDocument();
     const driverGrid = screen.getByText("Top dobitnik SKU").closest(".ppn-driver-grid");
     expect(driverGrid).not.toBeNull();
-    expect(within(driverGrid!).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+    expect(within(driverGrid!).getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(2);
     expect(within(driverGrid!).queryByText("0 RSD")).not.toBeInTheDocument();
   });
 

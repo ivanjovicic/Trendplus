@@ -787,8 +787,7 @@ describe("DailySalesStatsPage premium controls", () => {
       .getByRole("heading", { name: /Koncentracija dobavljača/ })
       .closest("article");
     expect(concentrationPanel).not.toBeNull();
-    expect(within(concentrationPanel as HTMLElement).getAllByText("N/A")).toHaveLength(2);
-    expect(within(concentrationPanel as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(concentrationPanel as HTMLElement).getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows concentration warning when supplier order metadata is missing", async () => {

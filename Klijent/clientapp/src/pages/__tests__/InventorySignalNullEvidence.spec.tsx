@@ -119,7 +119,7 @@ describe("Inventory signal null evidence surfaces", () => {
 
     expect(screen.getByText("Nepoznato")).toBeInTheDocument();
     expect(screen.getByText("Prikazano 1 od 2 predloga")).toBeInTheDocument();
-    expect(screen.getAllByText("N/A").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
     expect(screen.getByText(/nepotpunom signalnom evidencijom/i)).toBeInTheDocument();
   });
 
@@ -149,7 +149,7 @@ describe("Inventory signal null evidence surfaces", () => {
       );
 
       expect(screen.getAllByText("Evidencija: nedostaje").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("N/A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
       expect(screen.getAllByText("0pp").length).toBeGreaterThan(0);
       expect(screen.getAllByText("0,0%").length).toBeGreaterThan(0);
     } finally {

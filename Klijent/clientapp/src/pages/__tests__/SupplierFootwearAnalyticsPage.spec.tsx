@@ -560,7 +560,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
       expect(onTrustMetadataChange).toHaveBeenLastCalledWith(expect.objectContaining({
         periodFrom: "2026-07-13",
         periodTo: "2026-08-11",
-        dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
+        dataSource: "Prodaja po dobavljaču — nivelacija po tipu obuće",
         dataQualityStatus: "good",
         dataFreshnessStatus: "fresh",
         recommendationAllowed: true,

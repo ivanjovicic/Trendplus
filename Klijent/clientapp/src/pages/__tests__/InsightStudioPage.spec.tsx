@@ -20,7 +20,7 @@ describe("changeBadge", () => {
     expect(neutral).not.toContain("\u25BC");
 
     expect(unknown).toContain("text-warning");
-    expect(unknown).toContain("N/A");
+    expect(unknown).toContain("Nije dostupno");
   });
 });
 

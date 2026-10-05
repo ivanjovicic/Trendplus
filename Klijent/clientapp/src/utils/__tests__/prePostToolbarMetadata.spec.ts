@@ -25,13 +25,13 @@ describe("prePostToolbarMetadata", () => {
 
   it("formats analysis-window hints for available and missing values", () => {
     expect(formatPrePostAnalysisWindowHint(30)).toBe(
-      "Analiza poredjena po nivelacionom prozoru od 30 dana.",
+      "Analiza poređena po nivelacionom prozoru od 30 dana.",
     );
     expect(formatPrePostAnalysisWindowHint(0)).toBe(
-      "Analiza poredjena po nivelacionom prozoru od 0 dana.",
+      "Analiza poređena po nivelacionom prozoru od 0 dana.",
     );
     expect(formatPrePostAnalysisWindowHint(null)).toBe(
-      "Analiza poredjena po nivelacionom prozoru: prozor nije dostupan.",
+      "Analiza poređena po nivelacionom prozoru: prozor nije dostupan.",
     );
   });
 });

@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../analyticsConstants";
+import { formatTrendNumber } from "../../pages/GlobalTrendsPage";
+
+const root = resolve(__dirname, "../..");
+
+function readSrc(rel: string): string {
+  return readFileSync(resolve(root, rel), "utf8");
+}
+
+describe("analytics presentation pass 2 residuals", () => {
+  it("uses canonical unavailable label for trend number helper", () => {
+    expect(ANALYTICS_UNAVAILABLE_LABEL).toBe("Nije dostupno");
+    expect(formatTrendNumber(null, 2)).toBe(ANALYTICS_UNAVAILABLE_LABEL);
+    expect(formatTrendNumber(Number.NaN, 1)).toBe(ANALYTICS_UNAVAILABLE_LABEL);
+  });
+
+  it("keeps AnalyticsDetails user-facing copy in Serbian without N/A", () => {
+    const src = readSrc("pages/AnalyticsDetails.tsx");
+    expect(src).toContain("Kvalitet podataka");
+    expect(src).toContain("Najveći rast");
+    expect(src).toContain("Preporučene akcije");
+    expect(src).toContain("Greške pri učitavanju");
+    expect(src).not.toMatch(/"N\/A"/);
+    expect(src).not.toContain("Quick Insights");
+    expect(src).not.toContain("Recommended actions");
+  });
+
+  it("keeps Configuration health fallbacks in Serbian", () => {
+    const src = readSrc("pages/ConfigurationPage.tsx");
+    expect(src).toContain("Nije dostupno");
+    expect(src).not.toMatch(/health-status off">N\/A</);
+    expect(src).toContain("Greška pri učitavanju pending batch-eva");
+  });
+
+  it("Serbianizes Inventory size-curve unavailable presentation", () => {
+    const src = readSrc("components/inventory/SizeCurveVisualization.tsx");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).not.toMatch(/"N\/A"/);
+  });
+});

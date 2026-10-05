@@ -313,7 +313,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const card = await screen.findByText("Prosečna marža");
     const cardArticle = card.closest("article");
     expect(cardArticle).not.toBeNull();
-    expect(cardArticle).toHaveTextContent("N/A");
+    expect(cardArticle).toHaveTextContent("Nije dostupno");
     expect(cardArticle).not.toHaveTextContent("redni prosek");
   });
 
@@ -354,13 +354,13 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const row = within(table).getAllByRole("row").find((candidate) => within(candidate).queryByText("Patike"));
     expect(row).toBeDefined();
     if (!row) throw new Error("Shoe type data row was not rendered");
-    const status = within(row).getByLabelText(/Nivelacija artikala N\/A/);
+    const status = within(row).getByLabelText(/Nivelacija artikala Nije dostupno/);
     expect(status).toBeInTheDocument();
     expect(status).not.toHaveAttribute("aria-label", expect.stringContaining("Nivelacija artikala 0%"));
 
     within(row).getByRole("button", { name: "Detalji" }).click();
     const detailLabel = await screen.findByText("Udeo artikala sa nivelacijom");
-    expect(detailLabel.parentElement).toHaveTextContent("N/A");
+    expect(detailLabel.parentElement).toHaveTextContent("Nije dostupno");
     expect(detailLabel.parentElement).not.toHaveTextContent("0%");
   });
 
@@ -772,7 +772,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
     expect(within(detailPanel!).getByText("Neto udeo u prometu").parentElement).toHaveTextContent("150,00%");
-    expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Pre/post pokriće prometa").parentElement).toHaveTextContent("Nije dostupno");
   });
 
   it("puts shoe type identity and decision metrics first while retaining evidence in detail", async () => {
@@ -862,7 +862,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Patike"));
     expect(row).toBeDefined();
     expect(row).not.toHaveTextContent("100,00%");
-    expect(row).toHaveTextContent("N/A");
+    expect(row).toHaveTextContent("Nije dostupno");
   });
 
   it("shows unavailable margin-share detail when total margin is zero", async () => {

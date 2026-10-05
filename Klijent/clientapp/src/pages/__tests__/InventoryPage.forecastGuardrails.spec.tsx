@@ -265,7 +265,7 @@ describe("DemandForecastPanel guardrails", () => {
       />,
     );
 
-    expect(screen.getByText("7d: N/A")).toBeInTheDocument();
+    expect(screen.getByText("7d: Nije dostupno")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Predloži signal dopune za SKU 501 veličinu 42/i })).toBeDisabled();
     expect(screen.getByText(/nepotpunom signalnom evidencijom/i)).toBeInTheDocument();
   });

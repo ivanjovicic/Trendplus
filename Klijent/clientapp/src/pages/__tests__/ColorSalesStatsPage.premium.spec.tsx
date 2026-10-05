@@ -541,7 +541,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     );
 
     const toolbar = await screen.findByTestId("analytics-toolbar");
-    expect(within(toolbar).getByText("Broj boja: N/A")).toBeInTheDocument();
+    expect(within(toolbar).getByText("Broj boja: Nije dostupno")).toBeInTheDocument();
     expect(within(toolbar).queryByText("Broj boja: 0")).not.toBeInTheDocument();
   });
 
@@ -641,7 +641,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     const row = within(table).getAllByRole("row").find((candidate) => candidate.textContent?.includes("Bez udela"));
     expect(row).toBeDefined();
     expect(row).not.toHaveTextContent("100,00%");
-    expect(row).toHaveTextContent("N/A");
+    expect(row).toHaveTextContent("Nije dostupno");
   });
 
   it("keeps signed share outside 0-100 while coverage remains bounded", async () => {
@@ -671,7 +671,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     const detailHeading = await screen.findByRole("heading", { name: "Detalj signala: Nevalidna" });
     const detailPanel = detailHeading.closest("section");
     expect(detailPanel).not.toBeNull();
-    expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("N/A");
+    expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).toHaveTextContent("Nije dostupno");
     expect(within(detailPanel!).getByText("Pre/post pokriće uporedive kohorte").parentElement).not.toHaveTextContent("130,0%");
   });
 });
