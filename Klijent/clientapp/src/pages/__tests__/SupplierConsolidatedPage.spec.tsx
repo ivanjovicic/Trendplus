@@ -100,6 +100,13 @@ vi.mock("../SupplierFootwearAnalyticsPage", () => ({
   },
 }));
 
+function expandTrustDetails() {
+  const toggle = screen.queryByTestId("analytics-trust-details-toggle");
+  if (toggle && toggle.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(toggle);
+  }
+}
+
 describe("SupplierConsolidatedPage", () => {
   afterEach(() => {
     vi.mocked(getSupplierFilters).mockReset();
@@ -121,12 +128,13 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
 
     await waitFor(() => {
+      expandTrustDetails();
       expect(screen.getByText("Skup podataka")).toBeInTheDocument();
       expect(screen.getByText(/poslednjih 30 dana\s*(→|->)\s*poslednjih 90 dana/i)).toBeInTheDocument();
       expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
       expect(screen.getByText(/Pomoćni skup je aktivan\./)).toBeInTheDocument();
       expect(screen.queryByText(/no_data_30d/i)).not.toBeInTheDocument();
-      expect(screen.getByText("Sveže")).toBeInTheDocument();
+      expect(screen.getAllByText("Sveže").length).toBeGreaterThan(0);
     });
   });
 
@@ -410,12 +418,14 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     await waitFor(() => {
+      expandTrustDetails();
       expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByRole("combobox", { name: "Period" }), { target: { value: "90d" } });
 
     await waitFor(() => {
+      expandTrustDetails();
       expect(screen.getByText("Učitavanje pouzdanosti")).toBeInTheDocument();
       expect(screen.getByText("Analitika maloprodajne prodaje po dobavljačima")).toBeInTheDocument();
       expect(screen.queryByText("Materijalizovani prikaz skorkarte dobavljača")).not.toBeInTheDocument();
@@ -444,6 +454,7 @@ describe("SupplierConsolidatedPage", () => {
     );
 
     await waitFor(() => {
+      expandTrustDetails();
       expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
     });
 
@@ -452,6 +463,7 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.queryByText("keš signala odluke dobavljača")).not.toBeInTheDocument();
 
     await waitFor(() => {
+      expandTrustDetails();
       expect(screen.getByText("Materijalizovani prikaz skorkarte dobavljača")).toBeInTheDocument();
     });
   });

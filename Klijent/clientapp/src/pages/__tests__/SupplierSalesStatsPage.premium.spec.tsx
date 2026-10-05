@@ -448,7 +448,9 @@ describe("SupplierSalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(toolbar).toHaveTextContent("Prikazani skup: Poznati dobavljači (1)");
     });
-    expect(toolbar).toHaveTextContent("Ukupan PoP trend: N/A");
+    expect(fmtPct(null, 1)).toBe("Nije dostupno");
+    expect(toolbar).toHaveTextContent(`Ukupan PoP trend: ${fmtPct(null, 1)}`);
+    expect(toolbar).not.toHaveTextContent("Ukupan PoP trend: 0");
   });
 
   it("renders confirmed margin quality without a false fallback caveat", async () => {

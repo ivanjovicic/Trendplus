@@ -213,7 +213,7 @@ describe("ConfigurationPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/OK \(120ms\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/U redu \(120 ms\)/i)).toBeInTheDocument();
     });
     expect(screen.getByText(/HTTP 503/i)).toBeInTheDocument();
   });

@@ -111,3 +111,24 @@ Earlier proof that the drift-evidence and zero-margin failures predate this clos
 
 - Leave RQ588 to its existing claim.
 - Inspect Actions on the close-out SHA after it is on `origin/main`. Cancelled runs caused by a newer push are not failures. Vercel rate limit is not a code defect.
+
+## Frontend quality-gate follow-up
+
+Exact-main Analytics Quality Gates on `cd29c12da04db816b0a6dbf9d611d281818f27b4` failed the frontend analytics job. Planning Governance and the backend analytics suite on that SHA were already green. `origin/main` then advanced to `7265745a12068641405e2a80cfc08a4b70e14fee` (trust details start collapsed).
+
+Fixes, test-side except for the existing guardrail baseline:
+
+- Data Quality trend chart is queried by `Grafikon trenda kvaliteta podataka`.
+- Configuration ping expects `U redu (120 ms)`.
+- Inventory queue status is keyed by `article=501` because a later effect was clearing the queued marker.
+- Known-only supplier PoP expects `fmtPct(null)` (`Nije dostupno`) and rejects a displayed `0`.
+- Trust proofs open `analytics-trust-details-toggle` before readiness, dataset, provenance and evidence assertions. The visible supplier title is `Dobavljači: Pregled`. Expanded freshness `Sveže` is allowed in both the context strip and the details panel.
+- Guardrail baseline lines moved with the UI commits already on `7265745a`: Global Trends 148, Supplier Footwear 363/543/552, Supplier Sales 1985. Same reviewed rules; no new exception.
+
+Local proof after those edits, base `7265745a`:
+
+- `npm run test:analytics`: 144 files, 1067 passed.
+- `npm run check:analytics-guardrails` and typecheck: pass, 39 known violations, 0 removed.
+- `npm run build`: pass.
+
+Recovery scan of active queue headers on this base: canonical pointer remains RQ588 IN_PROGRESS. Supplemental UI READY remains P-UI-39 plus P-UI-40, P-UI-41, P-UI-47, P-UI-49 and P-UI-52. RQ48, RQ49, RQ88, RQ584, RQ590 and RQ591 stay DONE. The delivery tip is the commit that contains this section; verify `HEAD == origin/main` after push.

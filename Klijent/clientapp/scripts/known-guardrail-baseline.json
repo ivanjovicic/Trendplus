@@ -65,7 +65,7 @@
     {
       "file": "src/pages/GlobalTrendsPage.tsx",
       "rule": "swallowed_fetch_failure",
-      "line": 147,
+      "line": 148,
       "reason": "Existing optional global-trends fallback requires a reviewed error-state exception."
     },
     {
@@ -107,25 +107,25 @@
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 362,
+      "line": 363,
       "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 551,
+      "line": 552,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 542,
+      "line": 543,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1983,
+      "line": 1985,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {

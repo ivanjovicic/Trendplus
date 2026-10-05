@@ -387,7 +387,7 @@ describe("DataQualityPage", () => {
     renderPage();
     await screen.findByText("Problematični artikli");
 
-    const trendChart = screen.getByRole("img", { name: "Data quality trend chart" });
+    const trendChart = screen.getByRole("img", { name: "Grafikon trenda kvaliteta podataka" });
     expect(trendChart.querySelector(".trend-line.neutral")).not.toBeNull();
     expect(trendChart.querySelector(".trend-line.improving")).toBeNull();
     expect(screen.getByText("Nedostajuća nabavna cena %").classList.contains("neutral")).toBe(true);

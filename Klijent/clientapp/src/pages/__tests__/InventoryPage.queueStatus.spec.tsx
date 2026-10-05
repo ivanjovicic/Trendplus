@@ -291,13 +291,12 @@ describe("InventoryPage queue status sync", () => {
       meta: { success: true, dataQualityStatus: "good" },
     };
 
-    getAnalyticsActionSourceStatusesMock
-      .mockImplementationOnce(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
-        items: items.map(({ sourceKey }) => ({ sourceKey, exists: true })),
-      }))
-      .mockImplementation(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
-        items: items.map(({ sourceKey }) => ({ sourceKey, exists: false })),
-      }));
+    getAnalyticsActionSourceStatusesMock.mockImplementation(({ items }: { items: Array<{ sourceKey: string }> }) => Promise.resolve({
+      items: items.map(({ sourceKey }) => ({
+        sourceKey,
+        exists: sourceKey.includes("article=501"),
+      })),
+    }));
 
     render(
       <MemoryRouter>

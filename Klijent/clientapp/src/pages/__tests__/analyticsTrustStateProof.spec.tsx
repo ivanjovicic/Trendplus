@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,6 +82,13 @@ vi.mock("../../services/preNivelacijaApi", () => ({
   PreNivelacijaApiError: class extends Error {},
 }));
 
+function expandTrustDetails() {
+  const toggle = screen.queryByTestId("analytics-trust-details-toggle");
+  if (toggle && toggle.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(toggle);
+  }
+}
+
 describe("analytics trust-state header proof", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -116,6 +123,7 @@ describe("analytics trust-state header proof", () => {
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toHaveTextContent(/Dnevna prodaja trenutno nije dostupna/i);
+    expandTrustDetails();
     expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Nije dostupno");
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno za izabrani kontekst");
   });
@@ -135,6 +143,7 @@ describe("analytics trust-state header proof", () => {
     expect(screen.getByText("Analitički signal")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expandTrustDetails();
     expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Nije dostupno");
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno za izabrani kontekst");
   });
@@ -203,8 +212,11 @@ describe("analytics trust-state header proof", () => {
     );
 
     expect(await screen.findByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expandTrustDetails();
     if (service === "inventory") {
-      expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Spremno za odluku");
+      await waitFor(() => {
+        expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Spremno za odluku");
+      });
       expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Provereno za ovaj kontekst");
       expect(screen.getByRole("link", { name: "Pregledaj dokaz" })).toHaveAttribute(
         "href",
@@ -332,9 +344,13 @@ describe("analytics trust-state header proof", () => {
     );
 
     expect(screen.getByRole("region", { name: "Kontekst pouzdanosti analitike" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Dobavljači: Pregled" })).toBeInTheDocument();
+    await waitFor(() => {
+      expandTrustDetails();
+      expect(screen.getByText("Osnova generisanja")).toBeInTheDocument();
+    });
     expect(screen.getByText("Prodaja po dobavljačima (opseg: Svi podaci)")).toBeInTheDocument();
     expect(screen.getByText("Svi podaci -> Svi podaci")).toBeInTheDocument();
-    expect(await screen.findByText("Osnova generisanja")).toBeInTheDocument();
     expect(screen.getByText("live_query")).toBeInTheDocument();
   });
 
