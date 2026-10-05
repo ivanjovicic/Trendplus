@@ -180,11 +180,11 @@ export interface ReorderPlan {
     criticalCount: number;
     urgentCount: number;
     recommendedCount: number;
-    potentialRevenueRsd?: number;
+    potentialRevenueRsd?: number | null;
     estimatedProcurementCostRsd?: number | null;
     costCoveragePct?: number;
     reorderValueBasis?: string;
-    totalReorderValue: number;
+    totalReorderValue: number | null;
   };
 }
 
