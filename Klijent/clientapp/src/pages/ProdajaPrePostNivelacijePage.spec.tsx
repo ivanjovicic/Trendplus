@@ -7,7 +7,7 @@ import { getStores } from "../services/analyticsApi";
 import * as analyticsTableState from "../services/analyticsTableState";
 import { getAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getDobavljaci } from "../services/dobavljaciApi";
-import { getVendorSalesNivelacija } from "../services/vendorSalesNivelacijaApi";
+import { getVendorSalesNivelacija, getVendorSalesNivelacijaPrePostPair } from "../services/vendorSalesNivelacijaApi";
 import type {
   VendorSalesNivelacijaArticleStat,
   VendorSalesNivelacijaResponse,
@@ -56,7 +56,7 @@ vi.mock("../services/dobavljaciApi", async () => {
 
 vi.mock("../services/vendorSalesNivelacijaApi", async () => {
   const actual = await vi.importActual<typeof import("../services/vendorSalesNivelacijaApi")>("../services/vendorSalesNivelacijaApi");
-  return { ...actual, getVendorSalesNivelacija: vi.fn() };
+  return { ...actual, getVendorSalesNivelacija: vi.fn(), getVendorSalesNivelacijaPrePostPair: vi.fn() };
 });
 
 function vendor(overrides: Partial<VendorSalesNivelacijaVendorStat> = {}): VendorSalesNivelacijaVendorStat {
@@ -221,7 +221,55 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     vi.mocked(getStores).mockResolvedValue([
       { storeId: 2, storeName: "Novi Beograd", city: "Beograd", region: "BG" },
     ]);
+    vi.mocked(getVendorSalesNivelacija).mockReset();
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response());
+    vi.mocked(getVendorSalesNivelacijaPrePostPair).mockReset();
+    vi.mocked(getVendorSalesNivelacijaPrePostPair).mockImplementation(async (query) => {
+      const current = await getVendorSalesNivelacija(query);
+      let previous: VendorSalesNivelacijaResponse | null = null;
+      let previousError: string | null = null;
+      try {
+        previous = await getVendorSalesNivelacija({ ...query, from: query.previousFrom, to: query.previousTo, eventDate: undefined });
+      } catch {
+        previousError = "Podaci trenutno nisu dostupni.";
+      }
+      return { current, previous, previousError, outcomeLedger: null };
+    });
+  });
+
+  it("shows observed mature markdown outcomes and exports the same event rows with evidence state", async () => {
+    vi.mocked(getVendorSalesNivelacijaPrePostPair).mockResolvedValueOnce({
+      current: response(),
+      previous: response(),
+      outcomeLedger: {
+        population: "mature_markdown_no_overlap",
+        periodBasis: "canonical_30_day_event_windows",
+        stockEvidenceReason: "historical_stock_unavailable",
+        eventCount: 1,
+        matureComparableCount: 1,
+        isTruncated: false,
+        eventLimit: 5000,
+        events: [{
+          eventId: 77, eventDate: "2026-05-01T00:00:00Z", storeId: 2, articleId: 31,
+          articleName: "Patika test", supplierId: 10, supplierName: "Vendor A", shoeTypeId: 3,
+          shoeType: "Ženska obuća", discountDepthPct: 15, depthBand: "10_to_20_pct",
+          preUnits: 4, postUnits: 5, preRevenue: 400, postRevenue: 425,
+          hasComparableWindows: true, preAveragePrice: 100, postAveragePrice: 85,
+          preMarginContribution: 120, postMarginContribution: 125,
+          preCostCoveragePct: 100, postCostCoveragePct: 100,
+          costEvidenceReason: "sale_time_cost_fully_covered", stockAtEvent: null,
+          sellThroughPct: null, daysToClear: null, stockEvidenceReason: "historical_stock_unavailable",
+        }],
+        aggregates: [],
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Ishod sniženja" })).toBeInTheDocument();
+    expect(await screen.findByText(/Patika test/)).toBeInTheDocument();
+    expect(screen.getByText(/nivelacije-ishod-snizenja: 1 rows/)).toBeInTheDocument();
+    expect(screen.getByText(/Nije dostupno \(historical_stock_unavailable\)/)).toBeInTheDocument();
   });
 
   it("round-trips Pre/Post table sort through the URL", async () => {

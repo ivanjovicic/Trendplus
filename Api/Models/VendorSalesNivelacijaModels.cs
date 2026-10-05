@@ -267,6 +267,67 @@ public sealed class VendorSalesNivelacijaPrePostPairResponseDto
     public VendorSalesNivelacijaResponseDto Current { get; set; } = new();
     public VendorSalesNivelacijaResponseDto? Previous { get; set; }
     public string? PreviousError { get; set; }
+    public VendorSalesNivelacijaOutcomeLedgerDto? OutcomeLedger { get; set; }
+    public string? OutcomeLedgerError { get; set; }
+}
+
+public sealed class VendorSalesNivelacijaOutcomeLedgerDto
+{
+    public string Population { get; set; } = "mature_markdown_no_overlap";
+    public string PeriodBasis { get; set; } = "canonical_30_day_event_windows";
+    public string StockEvidenceReason { get; set; } = "historical_stock_unavailable";
+    public int EventCount { get; set; }
+    public int MatureComparableCount { get; set; }
+    public bool IsTruncated { get; set; }
+    public int EventLimit { get; set; }
+    public IReadOnlyList<VendorSalesNivelacijaOutcomeEventDto> Events { get; set; } = [];
+    public IReadOnlyList<VendorSalesNivelacijaOutcomeAggregateDto> Aggregates { get; set; } = [];
+}
+
+public sealed class VendorSalesNivelacijaOutcomeEventDto
+{
+    public long EventId { get; set; }
+    public DateTime EventDate { get; set; }
+    public int? StoreId { get; set; }
+    public int ArticleId { get; set; }
+    public string ArticleName { get; set; } = string.Empty;
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = "Nepoznato";
+    public int? ShoeTypeId { get; set; }
+    public string ShoeType { get; set; } = "Nije dostupno";
+    public decimal? DiscountDepthPct { get; set; }
+    public string DepthBand { get; set; } = "unavailable";
+    public decimal? PreUnits { get; set; }
+    public decimal? PostUnits { get; set; }
+    public decimal? PreRevenue { get; set; }
+    public decimal? PostRevenue { get; set; }
+    public bool HasComparableWindows { get; set; }
+    public decimal? PreAveragePrice { get; set; }
+    public decimal? PostAveragePrice { get; set; }
+    public decimal? PreMarginContribution { get; set; }
+    public decimal? PostMarginContribution { get; set; }
+    public decimal? PreCostCoveragePct { get; set; }
+    public decimal? PostCostCoveragePct { get; set; }
+    public string CostEvidenceReason { get; set; } = "sale_time_cost_precedence";
+    public int? StockAtEvent { get; set; }
+    public decimal? SellThroughPct { get; set; }
+    public int? DaysToClear { get; set; }
+    public string StockEvidenceReason { get; set; } = "historical_stock_unavailable";
+}
+
+public sealed class VendorSalesNivelacijaOutcomeAggregateDto
+{
+    public int? SupplierId { get; set; }
+    public string SupplierName { get; set; } = "Nepoznato";
+    public int? ShoeTypeId { get; set; }
+    public string ShoeType { get; set; } = "Nije dostupno";
+    public string DepthBand { get; set; } = "unavailable";
+    public int EventCount { get; set; }
+    public int MatureComparableCount { get; set; }
+    public decimal? MedianRevenueDelta { get; set; }
+    public decimal? MedianUnitsDelta { get; set; }
+    public decimal? MedianMarginDelta { get; set; }
+    public decimal? CostCoveragePct { get; set; }
 }
 
 public sealed class VendorSalesNivelacijaOptionDto

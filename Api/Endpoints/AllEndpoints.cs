@@ -5433,6 +5433,27 @@ public static class AllEndpoints
                     logger.LogWarning(ex, "Previous-period nivelacija pair leg failed.");
                 }
 
+                VendorSalesNivelacijaOutcomeLedgerDto? outcomeLedger = null;
+                string? outcomeLedgerError = null;
+                try
+                {
+                    outcomeLedger = await VendorSalesNivelacijaOutcomeLedgerService.LoadAsync(
+                        trendplusDb,
+                        vendorId,
+                        eventDate,
+                        from,
+                        to,
+                        categoryTrimmed,
+                        storeId,
+                        normalizedDataScope,
+                        ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    logger.LogWarning(ex, "Vendor sales nivelacija outcome ledger unavailable.");
+                    outcomeLedgerError = "Ishod sniženja trenutno nije dostupan.";
+                }
+
                 logger.LogInformation(
                     "Vendor sales nivelacija pre-post pair served. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, PreviousLoaded={PreviousLoaded}, ElapsedMs={ElapsedMs}",
                     vendorId,
@@ -5445,7 +5466,9 @@ public static class AllEndpoints
                 {
                     Current = current,
                     Previous = previous,
-                    PreviousError = previousError
+                    PreviousError = previousError,
+                    OutcomeLedger = outcomeLedger,
+                    OutcomeLedgerError = outcomeLedgerError
                 });
             }
             catch (Exception ex)

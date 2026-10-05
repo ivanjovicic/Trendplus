@@ -32,6 +32,8 @@ import {
   type VendorSalesNivelacijaDriverSummary,
   type VendorSalesNivelacijaRecommendation,
   type VendorSalesNivelacijaResponse,
+  type VendorSalesNivelacijaOutcomeEvent,
+  type VendorSalesNivelacijaOutcomeLedger,
   type VendorSalesNivelacijaVendorStat,
 } from "../services/vendorSalesNivelacijaApi";
 import type { Dobavljac } from "../types/Dobavljaci";
@@ -184,6 +186,8 @@ type PrePostQuerySnapshot = {
   current: VendorSalesNivelacijaResponse;
   previous: VendorSalesNivelacijaResponse | null;
   previousError: string | null;
+  outcomeLedger: VendorSalesNivelacijaOutcomeLedger | null;
+  outcomeLedgerError: string | null;
 };
 
 type DecisionVendor = VendorSalesNivelacijaVendorStat & {
@@ -295,6 +299,34 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "articleCount", header: "Artikala", dataType: "number" },
   { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
   { key: "statusReason", header: "Razlog preporuke", dataType: "text" },
+];
+
+const outcomeColumns: AnalyticsTableColumn<VendorSalesNivelacijaOutcomeEvent>[] = [
+  { key: "eventId", header: "Događaj", dataType: "number" },
+  { key: "eventDate", header: "Datum događaja", dataType: "date" },
+  { key: "storeId", header: "Objekat ID", dataType: "number" },
+  { key: "articleId", header: "Artikal ID", dataType: "number" },
+  { key: "articleName", header: "Artikal", dataType: "text" },
+  { key: "supplierName", header: "Dobavljač", dataType: "text" },
+  { key: "shoeType", header: "Tip obuće", dataType: "text" },
+  { key: "discountDepthPct", header: "Dubina sniženja %", dataType: "percent" },
+  { key: "depthBand", header: "Opseg dubine", dataType: "text" },
+  { key: "preUnits", header: "Jedinice pre", dataType: "number" },
+  { key: "postUnits", header: "Jedinice posle", dataType: "number" },
+  { key: "hasComparableWindows", header: "Uporedivi prozori", dataType: "text" },
+  { key: "preRevenue", header: "Promet pre", dataType: "currency" },
+  { key: "postRevenue", header: "Promet posle", dataType: "currency" },
+  { key: "preAveragePrice", header: "Prosečna cena pre", dataType: "currency" },
+  { key: "postAveragePrice", header: "Prosečna cena posle", dataType: "currency" },
+  { key: "preMarginContribution", header: "Doprinos marže pre", dataType: "currency" },
+  { key: "postMarginContribution", header: "Doprinos marže posle", dataType: "currency" },
+  { key: "preCostCoveragePct", header: "Pokrivenost troška pre %", dataType: "percent" },
+  { key: "postCostCoveragePct", header: "Pokrivenost troška posle %", dataType: "percent" },
+  { key: "costEvidenceReason", header: "Dokaz troška", dataType: "text" },
+  { key: "stockAtEvent", header: "Zaliha na dan događaja", dataType: "number" },
+  { key: "sellThroughPct", header: "Sell-through %", dataType: "percent" },
+  { key: "daysToClear", header: "Dana do rasprodaje", dataType: "number" },
+  { key: "stockEvidenceReason", header: "Dokaz zalihe", dataType: "text" },
 ];
 
 interface CustomConcentrationTooltipProps {
@@ -808,6 +840,8 @@ export default function ProdajaPrePostNivelacijePage() {
       previous: pair.previous ?? null,
       previousError: pair.previousError
         ?? (pair.previous == null ? "Prethodni period nije učitan." : null),
+      outcomeLedger: pair.outcomeLedger ?? null,
+      outcomeLedgerError: pair.outcomeLedgerError ?? null,
     };
   }, [activeFilters, dataScope, storeValidationNonce]);
   const {
@@ -831,6 +865,8 @@ export default function ProdajaPrePostNivelacijePage() {
   const data = querySnapshot?.current ?? null;
   const previousData = querySnapshot?.previous ?? null;
   const previousComparisonError = querySnapshot?.previousError ?? null;
+  const outcomeLedger = querySnapshot?.outcomeLedger ?? null;
+  const outcomeLedgerError = querySnapshot?.outcomeLedgerError ?? null;
   const queryErrorDetails = errorReason
     ? resolveNivelacijaErrorDetails(
       errorReason,
@@ -1707,6 +1743,71 @@ export default function ProdajaPrePostNivelacijePage() {
               {formatPrePostAnalysisWindowHint(data.windowDays)}
             </span>
           </div>
+
+          <section className="ppn-decision-card analytics-surface-panel" aria-labelledby="ppn-outcome-ledger-title">
+            <div className="ppn-decision-card-heading">
+              <div>
+                <h2 id="ppn-outcome-ledger-title">Ishod sniženja</h2>
+                <p>Posmatrani ishodi zrelih markdown događaja u kanonskim 30-dnevnim prozorima; bez kauzalnog zaključka ili preporuke.</p>
+              </div>
+              {outcomeLedger ? (
+                <AnalyticsTableToolbar
+                  tableKey="nivelacije-ishod-snizenja"
+                  tableTitle="Posmatrani ishodi sniženja"
+                  columns={outcomeColumns}
+                  rows={outcomeLedger.events}
+                  filters={toolbarFilters}
+                  metadata={[
+                    { key: "population", label: "Populacija", value: outcomeLedger.population },
+                    { key: "periodBasis", label: "Period", value: outcomeLedger.periodBasis },
+                    { key: "maturity", label: "Zrelost", value: "post_window_complete; bez preklapanja; jedan događaj istog dana" },
+                    { key: "costEvidence", label: "Dokaz troška", value: "Nabavna cena stavke → aktivni snapshot → fallback artikla; marža null ako pokrivenost nije potpuna" },
+                    { key: "stockEvidence", label: "Dokaz zalihe", value: outcomeLedger.stockEvidenceReason },
+                    { key: "eventCount", label: "Broj događaja", value: outcomeLedger.eventCount },
+                    { key: "matureComparableCount", label: "Zreli i uporedivi", value: outcomeLedger.matureComparableCount },
+                    { key: "eventLimit", label: "Limit vraćenih događaja", value: outcomeLedger.eventLimit },
+                    { key: "isTruncated", label: "Presečen rezultat", value: outcomeLedger.isTruncated },
+                  ]}
+                  defaultOrientation="landscape"
+                />
+              ) : null}
+            </div>
+            {outcomeLedger && outcomeLedger.events.length > 0 ? (
+              <>
+                <p className="ppn-chart-hint">Događaji: {outcomeLedger.eventCount}; zreli i uporedivi: {outcomeLedger.matureComparableCount}{outcomeLedger.isTruncated ? ` (prikazan limit od ${outcomeLedger.eventLimit})` : ""}. Zaliha na dan događaja, sell-through i dani do rasprodaje nisu dostupni jer nema potvrđenog istorijskog izvora zaliha.</p>
+                <div className="ppn-decision-table-wrap">
+                  <table className="ppn-decision-table">
+                    <thead><tr><th>Datum / artikal</th><th>Dobavljač / tip</th><th>Dubina</th><th>Jedinice pre / posle</th><th>Promet pre / posle</th><th>Marža pre / posle</th><th>Pokrivenost troška pre / posle</th><th>Istorijska zaliha</th></tr></thead>
+                    <tbody>{outcomeLedger.events.slice(0, 100).map((event) => (
+                      <tr key={event.eventId}>
+                        <td>{new Date(event.eventDate).toLocaleDateString("sr-RS")} · {event.articleName}</td>
+                        <td>{event.supplierName} · {event.shoeType}</td>
+                        <td>{event.discountDepthPct == null ? "Nije dostupno" : fmtPct(event.discountDepthPct, 1)}</td>
+                        <td>{fmtQty(event.preUnits)} / {fmtQty(event.postUnits)}</td>
+                        <td>{fmtRsd(event.preRevenue)} / {fmtRsd(event.postRevenue)}</td>
+                        <td>{fmtRsd(event.preMarginContribution)} / {fmtRsd(event.postMarginContribution)}</td>
+                        <td>{fmtPct(event.preCostCoveragePct)} / {fmtPct(event.postCostCoveragePct)}</td>
+                        <td>Nije dostupno ({event.stockEvidenceReason})</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                {outcomeLedger.aggregates.length > 0 ? (
+                  <div className="ppn-chip-wrap" aria-label="Deskriptivni zbirni ishodi">
+                    {outcomeLedger.aggregates.slice(0, 8).map((aggregate) => (
+                      <span className="ppn-signal-pill signal-neutral" key={`${aggregate.supplierId}-${aggregate.shoeTypeId}-${aggregate.depthBand}`}>
+                        {aggregate.supplierName} · {aggregate.shoeType} · {aggregate.depthBand}: medijana promene {fmtRsd(aggregate.medianRevenueDelta)} ({aggregate.eventCount} događaja)
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className={outcomeLedgerError ? "ppn-decision-message warning" : "ppn-chart-hint"} role={outcomeLedgerError ? "status" : undefined}>
+                {outcomeLedgerError ?? "Nema zrelih markdown događaja bez preklapanja u izabranom opsegu."}
+              </p>
+            )}
+          </section>
 
           {trustPanelOpen ? (
             <div className="ppn-trust-drawer">

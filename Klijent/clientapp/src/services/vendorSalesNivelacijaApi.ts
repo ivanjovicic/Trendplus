@@ -266,6 +266,64 @@ export interface VendorSalesNivelacijaPrePostPairResponse {
     current: VendorSalesNivelacijaResponse;
     previous?: VendorSalesNivelacijaResponse | null;
     previousError?: string | null;
+    outcomeLedger?: VendorSalesNivelacijaOutcomeLedger | null;
+    outcomeLedgerError?: string | null;
+}
+
+export interface VendorSalesNivelacijaOutcomeLedger {
+    population: string;
+    periodBasis: string;
+    stockEvidenceReason: string;
+    eventCount: number;
+    matureComparableCount: number;
+    isTruncated: boolean;
+    eventLimit: number;
+    events: VendorSalesNivelacijaOutcomeEvent[];
+    aggregates: VendorSalesNivelacijaOutcomeAggregate[];
+}
+
+export interface VendorSalesNivelacijaOutcomeEvent {
+    eventId: number;
+    eventDate: string;
+    storeId: number | null;
+    articleId: number;
+    articleName: string;
+    supplierId: number | null;
+    supplierName: string;
+    shoeTypeId: number | null;
+    shoeType: string;
+    discountDepthPct: number | null;
+    depthBand: string;
+    preUnits: number | null;
+    postUnits: number | null;
+    preRevenue: number | null;
+    postRevenue: number | null;
+    hasComparableWindows: boolean;
+    preAveragePrice: number | null;
+    postAveragePrice: number | null;
+    preMarginContribution: number | null;
+    postMarginContribution: number | null;
+    preCostCoveragePct: number | null;
+    postCostCoveragePct: number | null;
+    costEvidenceReason: string;
+    stockAtEvent: number | null;
+    sellThroughPct: number | null;
+    daysToClear: number | null;
+    stockEvidenceReason: string;
+}
+
+export interface VendorSalesNivelacijaOutcomeAggregate {
+    supplierId: number | null;
+    supplierName: string;
+    shoeTypeId: number | null;
+    shoeType: string;
+    depthBand: string;
+    eventCount: number;
+    matureComparableCount: number;
+    medianRevenueDelta: number | null;
+    medianUnitsDelta: number | null;
+    medianMarginDelta: number | null;
+    costCoveragePct: number | null;
 }
 
 export interface VendorSalesNivelacijaPrePostPairQuery extends VendorSalesNivelacijaQuery {
