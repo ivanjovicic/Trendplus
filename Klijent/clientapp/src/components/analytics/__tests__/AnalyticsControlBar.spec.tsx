@@ -46,6 +46,8 @@ describe("AnalyticsControlBar", () => {
     );
 
     expect(screen.getByTestId("analytics-control-bar")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-control-bar").querySelector(".analytics-control-bar__fields"))
+      .toHaveClass("analytics-control-bar__fields--overflow-safe");
     expect(screen.getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
     expect(screen.getByText("Opseg")).toBeInTheDocument();
     expect(screen.getByText("30 dana")).toBeInTheDocument();

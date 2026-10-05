@@ -3,7 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import puppeteer from "puppeteer";
 
-export const VIEWPORTS = [320, 375, 768, 1024, 1280];
+export const VIEWPORTS = [320, 360, 375, 390, 768, 1024, 1280];
+export const PUI39_LONG_STORE_OPTION = "Sintetička prodavnica sa izuzetno dugim nazivom za proveru overflow-safe kontrola u responsive rasporedu";
 
 const ROUTES = [
   { id: "app_shell", path: "/analytics" },
@@ -14,11 +15,13 @@ const ROUTES = [
   { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
   { id: "supplier", path: "/analytics/supplier" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
-  { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]' },
+  { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]', pui39Overflow: true },
+  { id: "shoe_type", path: "/analytics/shoe-type-sales-stats", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
+  { id: "pre_nivelacija", path: "/analytics/pre-nivelacija-prioriteti", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
   { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap" },
   { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
   { id: "articles", path: "/artikli/lista", readySelector: '[data-testid="article-list-table"]' },
-  { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post" },
+  { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
 ];
 
 const THEMES = ["light", "dark"];
@@ -84,10 +87,11 @@ function parseArgs(argv) {
 
 export function assertNoRootOverflow(metrics) {
   const overflowing = metrics.scrollWidth > metrics.viewportWidth + 1
-    || metrics.bodyScrollWidth > metrics.viewportWidth + 1;
+    || metrics.bodyScrollWidth > metrics.viewportWidth + 1
+    || (metrics.windowInnerWidth != null && metrics.windowInnerWidth !== metrics.viewportWidth);
   if (overflowing) {
     throw new Error(
-      `root horizontal overflow: viewport=${metrics.viewportWidth}, document=${metrics.scrollWidth}, body=${metrics.bodyScrollWidth}`,
+      `root horizontal overflow: viewport=${metrics.viewportWidth}, innerWidth=${metrics.windowInnerWidth ?? "n/a"}, document=${metrics.scrollWidth}, body=${metrics.bodyScrollWidth}`,
     );
   }
   return true;
@@ -96,11 +100,13 @@ export function assertNoRootOverflow(metrics) {
 export function evaluateGeometry(documentMetrics, viewportWidth) {
   return {
     viewportWidth,
+    windowInnerWidth: documentMetrics.windowInnerWidth,
     viewportHeight: documentMetrics.viewportHeight,
     scrollWidth: documentMetrics.scrollWidth,
     bodyScrollWidth: documentMetrics.bodyScrollWidth,
     rootOverflow: documentMetrics.scrollWidth > viewportWidth + 1
-      || documentMetrics.bodyScrollWidth > viewportWidth + 1,
+      || documentMetrics.bodyScrollWidth > viewportWidth + 1
+      || documentMetrics.windowInnerWidth !== viewportWidth,
     header: documentMetrics.header,
     visibleControlCount: documentMetrics.controls.length,
     minVisibleControlFontPx: documentMetrics.controls.length > 0
@@ -117,6 +123,7 @@ export function evaluateGeometry(documentMetrics, viewportWidth) {
 function runSelfTest() {
   const intentionalOverflow = {
     viewportWidth: 320,
+    windowInnerWidth: 320,
     viewportHeight: 900,
     scrollWidth: 321,
     bodyScrollWidth: 480,
@@ -229,6 +236,40 @@ async function fixtureResponse(request, options) {
       actionUrl: "/analytics/inventory", metadataJson: null, ledgerSnapshot: null, impactLedger: null,
       createdAtUtc: "2026-10-01T08:00:00Z", updatedAtUtc: "2026-10-02T00:00:00Z", resolvedAtUtc: null,
       createdByUserId: "fixture", updatedByUserId: "fixture", updatedByUserName: "Fixture", notes: [],
+    }) };
+  }
+
+  if (url.pathname === "/api/analytics/pre-nivelacija-prioriteti") {
+    return { status: 200, body: JSON.stringify({
+      generatedAtUtc: "2026-10-02T00:00:00Z",
+      formulaVersion: "responsive-fixture",
+      formulaDescription: "Sintetički fixture za responsive kontrolu filtera.",
+      modelEvidence: {
+        scoreBasis: "synthetic fixture",
+        scoreReferencePopulation: "synthetic fixture",
+        scoreNormalization: "synthetic fixture",
+        scenarioBasis: "synthetic fixture",
+        scenarioParameterVersion: "synthetic fixture",
+        scenarioDisclaimer: "Sintetički podaci; nije poslovna preporuka.",
+      },
+      summary: {
+        supplierCount: 0, candidatesCount: 0, highPriorityCount: 0, increaseFocusCount: 0,
+        maintainCount: 0, reviewCount: 0, doNotTrustCount: 0, insufficientDataCount: 0,
+        totalStockAtRisk: null, totalStockAtRiskCoverageEligible: 0, totalStockAtRiskCoverageTotal: 0,
+        estimatedAvoidableMarkdownLoss: null, estimatedAvoidableMarkdownLossCoverageEligible: 0,
+        estimatedAvoidableMarkdownLossCoverageTotal: 0, expectedHighlightRevenueUplift: null,
+        expectedHighlightRevenueUpliftCoverageEligible: 0, expectedHighlightRevenueUpliftCoverageTotal: 0,
+        averagePreNivelacijaScore: 0,
+      },
+      supplierLeaderboard: [],
+      filterFacets: {
+        suppliers: [], seasons: [], footwearTypes: [], stores: [{ id: 1, label: PUI39_LONG_STORE_OPTION }],
+      },
+      candidates: [],
+      queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
+      alerts: [], page: 1, pageSize: 20, totalCandidates: 0, recommendationAllowed: false,
+      evidenceWindow: null,
+      meta: { success: true, dataQualityStatus: "insufficient_data", emptyReason: "no_data_in_period" },
     }) };
   }
 
@@ -450,7 +491,7 @@ async function fixtureResponse(request, options) {
   }
 
   if (url.pathname === "/api/analytics/cached/filters/stores") {
-    return { status: 200, body: JSON.stringify([{ storeId: 1, storeName: "Sintetička prodavnica" }]) };
+    return { status: 200, body: JSON.stringify([{ storeId: 1, storeName: PUI39_LONG_STORE_OPTION }]) };
   }
 
   if (url.pathname === "/api/analytics/cached/products/decision-center") {
@@ -631,6 +672,7 @@ async function collectGeometry(page, viewportWidth) {
       }));
 
     return {
+      windowInnerWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       scrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body?.scrollWidth ?? 0,
@@ -765,6 +807,11 @@ async function run(options) {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
               await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
+            }
+            if (route.pui39Overflow) {
+              await page.waitForFunction((expectedLabel) => [...document.querySelectorAll(".analytics-control-bar select")]
+                .some((select) => [...select.options].some((option) => option.textContent?.trim() === expectedLabel)),
+              { timeout: options.timeoutMs }, PUI39_LONG_STORE_OPTION);
             }
             if (route.expandSelector) {
               await page.waitForFunction((selector) => {

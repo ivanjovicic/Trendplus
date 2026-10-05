@@ -152,13 +152,14 @@
 
 .analytics-control-bar__fields {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 12px;
   margin-top: 18px;
 }
 
 .analytics-control-bar__field {
   display: grid;
+  min-width: 0;
   gap: 6px;
 }
 
@@ -180,6 +181,10 @@
   color: var(--text-primary);
   padding: 0 12px;
   font-size: 13px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .analytics-control-bar__field select:focus,
@@ -187,21 +192,6 @@
   outline: 2px solid color-mix(in srgb, var(--info) 34%, transparent);
   outline-offset: 1px;
   border-color: var(--info);
-}
-
-.analytics-control-bar--responsive-pilot .analytics-control-bar__fields {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-}
-
-.analytics-control-bar--responsive-pilot .analytics-control-bar__field {
-  min-width: 0;
-}
-
-.analytics-control-bar--responsive-pilot .analytics-control-bar__field select,
-.analytics-control-bar--responsive-pilot .analytics-control-bar__field input {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
 }
 
 .analytics-control-bar__mobile-filter-summary {
@@ -230,10 +220,6 @@
   }
 
   .analytics-control-bar__field--wide {
-    grid-column: span 1;
-  }
-
-  .analytics-control-bar--responsive-pilot .analytics-control-bar__field--wide {
     grid-column: 1 / -1;
   }
 

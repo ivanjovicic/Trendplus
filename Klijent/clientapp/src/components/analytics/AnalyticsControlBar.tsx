@@ -115,7 +115,7 @@ export default function AnalyticsControlBar({
   }, [responsiveFilterLayout]);
 
   const fieldsContent = (
-    <div className="analytics-control-bar__fields">
+    <div className="analytics-control-bar__fields analytics-control-bar__fields--overflow-safe">
       {fields.map((field) => (
         <label
           key={field.key}
