@@ -35,7 +35,9 @@ See commit / agent report.
 
 ## Bundle / tip
 - Branch: `audit-recertify-3-2026-10-05`
-- Exact pre-FF tip SHA: recorded in `/workspace/out/analytics-audits-recertify-3-PUSH_INSTRUCTIONS.md` at bundle time
+- Commits on branch: `17a0fe0f` (UI fix) → `85fbb634` (docs/notes) → evidence tip commit (this file)
+- Exact pre-FF tip SHA: recorded in `/workspace/out/analytics-audits-recertify-3-PUSH_INSTRUCTIONS.md` at bundle time (avoids self-referential amend loop)
 - Requires origin/main: `ec03d814`
 - Bundle: `/workspace/out/analytics-audits-recertify-3.bundle`
 - HEAD == origin/main: NO until parent FF push
+- Focused tests: pass2 10/10; trust/Insight/Snapshot 37/37; encoding OK; tsc -b OK; queue 709 OK; planning PASS; agent-instructions PASS; git diff --check OK
