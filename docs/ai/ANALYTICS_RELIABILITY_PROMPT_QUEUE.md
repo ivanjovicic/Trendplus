@@ -28469,13 +28469,13 @@ Owner decision (Ivan, 2026-10-04): **approved**. For every undated decision surf
 - Checks run: API build; focused API contract/integration tests 117/117; frontend guardrail/typecheck and production build; focused frontend tests 69/69; governance validators; `git diff --check`.
 - Checks not run: full `dotnet test`; live/deployed browser/API proof. Full frontend analytics command had 1,033/1,035 pass with one unrelated Inventory assertion and one Product Decision render timeout; exact current-main Actions runs are recorded in the run log.
 - Run log: `.ai/runs/2026-10-05-RQ570-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct commit/push to `main`
 - Main commit SHA: `59d95ee5d9f4b727b7ed5ae1aeac31b2f2089e1a`
 - Main verification: `origin/main` freshly fetched at the implementation SHA; ancestor verification passed.
 - Missed: no live deployment proof.
 - Follow-up: post-close dependency cascade promoted RQ583/RQ584; primary next claim is RQ574.
-- Residual risk: current-main Analytics Tests & Data Integrity and Analytics Quality Gates runs are in progress; full local analytics group retains two unrelated/resource-related failures.
+- Residual risk: current-main Analytics Tests & Data Integrity and Analytics Quality Gates runs are red with unrelated/pre-existing failures classified in `.ai/runs/2026-10-05-RQ570-evidence.md`; local full analytics group also has unrelated/resource-sensitive failures.
 - Next: RQ574 - Missing category must not block 100% of Product Decision recommendations.
 - Prompt defect / scope repair: none.
 
@@ -28733,6 +28733,19 @@ Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment 
 ### Claim note 2026-10-05
 
 - RQ574 was claimed after RQ570 reached DONE on `origin/main` at `59d95ee5d9f4b727b7ed5ae1aeac31b2f2089e1a`. Post-close recovery found no matching lock, branch or open PR; no other Product Decision/Dashboard owner is active. Local lock: `.ai/task-locks/RQ574-codex.lock.md`. Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`.
+
+### Implementation delivery note 2026-10-05
+
+- Implementation SHA `dc7c55fb2342c919f85be3b12d4fc5758fd84df1` is freshly verified on `origin/main`; queue closure follows the mandatory post-close cascade.
+- Missing category or footwear type is now a warning when the alternate classification dimension is valid; only both missing block assortment decisions. Incomplete variants are a warning, and category/variant gaps reduce confidence. Missing supplier/cost policy remains unchanged. Missing MinStock stays on RQ483's reduced-confidence path with `lostSalesEstimate=null`.
+- Dashboard completeness now counts valid `TipObuce` as an alternate core assortment dimension to `Kategorija`.
+- Changed files: `Application/Analytics/ProductDecisionReasoningHelper.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/ProductDecisionReasoningHelperTests.cs`, `Api.Tests/ProductDecisionDisplayLabelTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `017_AnalyticsDashboardEnhancements.sql`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`.
+- Checks: focused backend reasoning/display/builder tests 42/42; API build; analytics guardrails/typecheck; focused Product Decision UI specs 32/32; `git diff --check`.
+- CI at implementation SHA: Analytics Tests & Data Integrity `37287380759` was `in_progress`; Analytics Quality Gates `37287380811` was `queued`. Not awaited. No live Dashboard SQL/deployment proof; the view definition must be applied by the existing SQL rollout/bootstrap process.
+- Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`
+- Evidence state: pending.
+- Main commit SHA: `dc7c55fb2342c919f85be3b12d4fc5758fd84df1`.
+- Next: complete post-close dependency cascade from the queue closure transition and route the next safe READY prompt.
 
 ## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
 
