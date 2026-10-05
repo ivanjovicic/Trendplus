@@ -38,7 +38,9 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(1_100m, root.GetProperty("totalRevenue").GetDecimal());
         Assert.Equal(2, root.GetProperty("totalTransactions").GetInt32());
         Assert.Equal(6, root.GetProperty("totalUnits").GetInt32());
-        Assert.Equal(550m, root.GetProperty("avgBasketValue").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("avgBasketValue").ValueKind);
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("basketMetricsReasonCode").GetString());
+        Assert.Equal("sales_document", root.GetProperty("salesUnit").GetString());
         Assert.InRange(root.GetProperty("avgItemPrice").GetDecimal(), 183.33m, 183.34m);
 
         var meta = root.GetProperty("meta");
@@ -59,7 +61,8 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(500m, root.GetProperty("totalRevenue").GetDecimal());
         Assert.Equal(2, root.GetProperty("totalTransactions").GetInt32());
         Assert.Equal(5, root.GetProperty("totalUnits").GetInt32());
-        Assert.Equal(250m, root.GetProperty("avgBasketValue").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("avgBasketValue").ValueKind);
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("basketMetricsReasonCode").GetString());
         Assert.Equal(100m, root.GetProperty("avgItemPrice").GetDecimal());
         Assert.True(root.GetProperty("meta").GetProperty("success").GetBoolean());
     }
@@ -75,6 +78,8 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(0m, root.GetProperty("totalRevenue").GetDecimal());
         Assert.Equal(0, root.GetProperty("totalTransactions").GetInt32());
         Assert.Equal(0, root.GetProperty("totalUnits").GetInt32());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("avgBasketValue").ValueKind);
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("basketMetricsReasonCode").GetString());
 
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());
@@ -357,7 +362,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
-    public async Task TransactionStats_DistinguishesAverageLinesFromAverageUnits()
+    public async Task TransactionStats_HidesReceiptMetricsButPreservesSalesDocumentValueAndCount()
     {
         await using var factory = CreateFactory();
         var root = await GetJsonAsync(
@@ -365,11 +370,40 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             "/api/analytics/cached/sales/transaction-stats?fromDate=2026-01-05&toDate=2026-01-07&storeId=1");
 
         Assert.Equal(2, root.GetProperty("totalTransactions").GetInt32());
-        // Receipt A: 2 lines (qty 2 + 1); receipt B: 1 line (qty 3) => avg lines = 1.5
-        Assert.Equal(1.5m, root.GetProperty("avgItemsPerTransaction").GetDecimal());
-        // Same receipts => avg units = (3 + 3) / 2 = 3.0
-        Assert.Equal(3.0m, root.GetProperty("avgUnitsPerTransaction").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("avgItemsPerTransaction").ValueKind);
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("avgUnitsPerTransaction").ValueKind);
         Assert.Equal(550m, root.GetProperty("avgTransactionValue").GetDecimal());
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("basketMetricsReasonCode").GetString());
+        Assert.Equal("sales_document", root.GetProperty("salesUnit").GetString());
+    }
+
+    [Fact]
+    public async Task WeeklyHeatmap_DisablesUnsupportedReceiptCountButKeepsRevenueAndUnits()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/advanced/v2/weekly-heatmap?fromDate=2026-01-05&toDate=2026-01-07");
+
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("transactionMetricReasonCode").GetString());
+        var cells = root.GetProperty("cells").EnumerateArray().ToArray();
+        Assert.NotEmpty(cells);
+        Assert.All(cells, cell => Assert.Equal(JsonValueKind.Null, cell.GetProperty("transactions").ValueKind));
+        Assert.Equal(1_300m, cells.Sum(cell => cell.GetProperty("revenue").GetDecimal()));
+        Assert.Equal(10, cells.Sum(cell => cell.GetProperty("units").GetInt32()));
+    }
+
+    [Fact]
+    public async Task BasketAffinity_ReturnsUnavailableReasonInsteadOfAnEmptyBasketResult()
+    {
+        await using var factory = CreateFactory();
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/advanced/v2/basket-affinity?fromDate=2026-01-05&toDate=2026-01-07");
+
+        Assert.Equal("receipt_grain_unavailable", root.GetProperty("reasonCode").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("totalMultiItemTransactions").ValueKind);
+        Assert.Empty(root.GetProperty("pairs").EnumerateArray());
     }
 
     [Fact]

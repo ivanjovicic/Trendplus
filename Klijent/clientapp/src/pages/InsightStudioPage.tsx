@@ -533,7 +533,7 @@ function OverviewTab({
               <div className="text-[11px]">{changeBadge(changelog.unitChangePct)}</div>
             </div>
             <div className="rounded-lg bg-surface-darker px-3 py-2">
-              <div className="text-[10px] text-muted uppercase">Transakcije</div>
+              <div className="text-[10px] text-muted uppercase">Prodajni dokumenti</div>
               <div className="text-sm font-bold text-foreground">{fmtNum(changelog.thisWeekTransactions)}</div>
             </div>
             <div className="rounded-lg bg-surface-darker px-3 py-2">
@@ -597,7 +597,7 @@ function OverviewTab({
             <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth. period" change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za izabrani period" />
             <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub={marginCoverageCopy?.subtext ?? "Procenjena profitabilnost"} accent={marginCoverageCopy?.isEstimated ? PAL.orange : PAL.green} icon="📈" tooltip={marginCoverageCopy?.tooltip ?? "(Prodajna - Nabavna) / Prodajna × 100"} />
             <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth. period" change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
-            <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg. ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}/tr`} accent={PAL.yellow} icon="🧾" tooltip="Prosečna vrednost transakcije" />
+            <KpiCard label="Prodajni dokumenti" value={fmtNum(kpi.transactions)} accent={PAL.yellow} icon="🧾" tooltip="Broj izvornih prodajnih dokumenata; nije potvrđen broj računa kupaca." />
             <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="SKU bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" tooltip="Artikli bez zaliha i artikli ispod minimalne količine" />
           </div>
         </div>
@@ -885,7 +885,7 @@ function CategoryTab({
     { key: "kategorije" as const, label: "Po Tipu Obuće" },
     { key: "pol" as const, label: "Po Polu" },
     { key: "cene" as const, label: "Cenovna Osetljivost" },
-    { key: "korpa" as const, label: "Basket Afinitet" },
+    { key: "korpa" as const, label: "Povezani tipovi" },
   ];
 
   return (
@@ -1070,10 +1070,12 @@ function CategoryTab({
       {subTab === "korpa" && basketAffinity && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h4 className="text-xs font-semibold text-[var(--text-primary)]">Basket Afinitet — koji se tipovi prodaju zajedno?</h4>
-            <span className="text-[10px] text-[var(--text-primary)]">({basketAffinity.totalMultiItemTransactions} multi-item transakcija)</span>
+            <h4 className="text-xs font-semibold text-[var(--text-primary)]">Povezani tipovi prodaje</h4>
+            {basketAffinity.totalMultiItemTransactions != null && <span className="text-[10px] text-[var(--text-primary)]">({basketAffinity.totalMultiItemTransactions} prodajnih dokumenata sa više tipova)</span>}
           </div>
-          {basketAffinity.pairs.length > 0 ? (
+          {basketAffinity.reasonCode === "receipt_grain_unavailable" ? (
+            <p role="status" className="text-sm text-[var(--text-primary)]">Nije dostupno: izvor ne potvrđuje da prodajni dokument odgovara računu kupca.</p>
+          ) : basketAffinity.pairs.length > 0 ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {basketAffinity.pairs.slice(0, 12).map((p, i) => (
                 <div key={i} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-2 flex items-center gap-3">
@@ -1086,7 +1088,7 @@ function CategoryTab({
               ))}
             </div>
           ) : (
-            <p className="text-[var(--text-primary)] text-sm">Nema dovoljno multi-item transakcija.</p>
+            <p className="text-[var(--text-primary)] text-sm">Podaci o povezanim tipovima prodaje nisu dostupni.</p>
           )}
         </div>
       )}
@@ -1302,6 +1304,9 @@ function DailyTab({
           {heatmapLoading ? <Skeleton rows={7} /> : heatmap ? (
             <div className="space-y-4">
               <h4 className="text-xs font-semibold text-[var(--text-primary)]">Prosečan prihod po danu u nedelji</h4>
+              {heatmap.transactionMetricReasonCode === "receipt_grain_unavailable" && (
+                <p role="status" className="text-xs text-[var(--text-primary)]">Broj računa nije prikazan jer izvor ne potvrđuje da prodajni dokument odgovara računu kupca. Prihod i komadi ostaju prikazani.</p>
+              )}
               <div className="grid grid-cols-7 gap-2">
                 {heatmap.byDay.map(d => {
                   const maxRev = Math.max(...heatmap.byDay.map(x => x.avgRevenue));
@@ -2273,7 +2278,7 @@ export default function InsightStudioPage() {
           <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth." change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za period" />
           <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub={marginCoverageCopy?.subtext ?? "Procenjena"} accent={marginCoverageCopy?.isEstimated ? PAL.orange : PAL.green} icon="📈" tooltip={marginCoverageCopy?.tooltip ?? "(Prodajna - Nabavna) / Prodajna × 100"} />
           <KpiCard label="Prodato kom." value={fmtNum(kpi.units)} sub="vs. preth." change={kpi.unitsChange} accent={PAL.purple} icon="👟" />
-          <KpiCard label="Transakcije" value={fmtNum(kpi.transactions)} sub={`Avg ${fmtRsd(kpi.transactions > 0 ? kpi.revenue / kpi.transactions : 0)}`} accent={PAL.yellow} icon="🧾" />
+          <KpiCard label="Prodajni dokumenti" value={fmtNum(kpi.transactions)} accent={PAL.yellow} icon="🧾" tooltip="Broj izvornih prodajnih dokumenata; nije potvrđen broj računa kupaca." />
           <KpiCard label="OOS / Malo" value={`${kpi.oosCount} / ${kpi.lowStockCount}`} sub="Bez zaliha / ispod min" accent={kpi.oosCount > 10 ? PAL.red : PAL.orange} icon="⚠️" />
         </div>
       )}

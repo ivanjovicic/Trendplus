@@ -236,10 +236,9 @@ public static class CachedAnalyticsEndpoints
                         var totalRevenue = aggregatedResult.Sum(x => x.TotalRevenue);
                         var totalUnits = aggregatedResult.Sum(x => x.TotalUnits);
                         var totalTransactions = aggregatedResult.Count;
-                        var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
                         var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
 
-                        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+                        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, null, avgItem);
                     },
                     ct,
                     loggerFactory: loggerFactory,
@@ -261,6 +260,8 @@ public static class CachedAnalyticsEndpoints
                     result.TotalUnits,
                     result.AvgBasketValue,
                     result.AvgItemPrice,
+                    result.BasketMetricsReasonCode,
+                    result.SalesUnit,
                     Meta = meta
                 });
             }
@@ -277,6 +278,8 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = (int?)null,
                     AvgBasketValue = (decimal?)null,
                     AvgItemPrice = (decimal?)null,
+                    BasketMetricsReasonCode = "receipt_grain_unavailable",
+                    SalesUnit = "sales_document",
                     Meta = meta
                 });
             }
@@ -293,6 +296,8 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = (int?)null,
                     AvgBasketValue = (decimal?)null,
                     AvgItemPrice = (decimal?)null,
+                    BasketMetricsReasonCode = "receipt_grain_unavailable",
+                    SalesUnit = "sales_document",
                     Meta = meta
                 });
             }
@@ -309,6 +314,8 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = (int?)null,
                     AvgBasketValue = (decimal?)null,
                     AvgItemPrice = (decimal?)null,
+                    BasketMetricsReasonCode = "receipt_grain_unavailable",
+                    SalesUnit = "sales_document",
                     Meta = meta
                 });
             }
@@ -331,6 +338,8 @@ public static class CachedAnalyticsEndpoints
                     TotalUnits = (int?)null,
                     AvgBasketValue = (decimal?)null,
                     AvgItemPrice = (decimal?)null,
+                    BasketMetricsReasonCode = "receipt_grain_unavailable",
+                    SalesUnit = "sales_document",
                     Meta = meta
                 });
             }
@@ -1796,8 +1805,6 @@ public static class CachedAnalyticsEndpoints
                         group ps by p.Id into g
                         select new
                         {
-                            LineCount = g.Count(),
-                            UnitCount = g.Sum(x => x.Kolicina),
                             TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                         }).ToListAsync(ct);
 
@@ -1808,10 +1815,11 @@ public static class CachedAnalyticsEndpoints
 
                     return new TransactionStatsDto
                     {
-                        AvgItemsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.LineCount), 2),
-                        AvgUnitsPerTransaction = Math.Round(perTransaction.Average(x => (decimal)x.UnitCount), 2),
+                        AvgItemsPerTransaction = null,
+                        AvgUnitsPerTransaction = null,
                         AvgTransactionValue = Math.Round(perTransaction.Average(x => x.TotalValue), 2),
-                        TotalTransactions = perTransaction.Count
+                        TotalTransactions = perTransaction.Count,
+                        BasketMetricsReasonCode = "receipt_grain_unavailable"
                     };
                 },
                 CacheExpiration.Medium,
@@ -3305,10 +3313,9 @@ public static class CachedAnalyticsEndpoints
             var totalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
             var totalTransactions = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
             var totalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
-            var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
             var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
 
-            return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+            return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, null, avgItem);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
         {
@@ -5283,10 +5290,9 @@ public static class CachedAnalyticsEndpoints
         var totalRevenue = totals?.TotalRevenue ?? 0m;
         var totalUnits = totals?.TotalUnits ?? 0;
         var totalTransactions = totals?.TotalTransactions ?? 0;
-        var avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0m;
         var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
 
-        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, avgBasket, avgItem);
+        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, null, avgItem);
     }
 
     private static async Task<InventoryStatusDto> BuildInventoryStatusSnapshotAsync(
@@ -5720,8 +5726,6 @@ public static class CachedAnalyticsEndpoints
                 group ps by p.Id into g
                 select new
                 {
-                    LineCount = g.Count(),
-                    UnitCount = g.Sum(x => x.Kolicina),
                     TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                 })
             : (
@@ -5735,8 +5739,6 @@ public static class CachedAnalyticsEndpoints
                 group ps by p.Id into g
                 select new
                 {
-                    LineCount = g.Count(),
-                    UnitCount = g.Sum(x => x.Kolicina),
                     TotalValue = g.Sum(x => x.Kolicina * x.Cena)
                 });
 
@@ -5744,8 +5746,6 @@ public static class CachedAnalyticsEndpoints
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                AvgItemsPerTransaction = g.Average(x => (decimal)x.LineCount),
-                AvgUnitsPerTransaction = g.Average(x => (decimal)x.UnitCount),
                 AvgTransactionValue = g.Average(x => x.TotalValue),
                 TotalTransactions = g.Count()
             })
@@ -5756,10 +5756,11 @@ public static class CachedAnalyticsEndpoints
 
         return new TransactionStatsDto
         {
-            AvgItemsPerTransaction = Math.Round(stats.AvgItemsPerTransaction, 2),
-            AvgUnitsPerTransaction = Math.Round(stats.AvgUnitsPerTransaction, 2),
+            AvgItemsPerTransaction = null,
+            AvgUnitsPerTransaction = null,
             AvgTransactionValue = Math.Round(stats.AvgTransactionValue, 2),
-            TotalTransactions = stats.TotalTransactions
+            TotalTransactions = stats.TotalTransactions,
+            BasketMetricsReasonCode = "receipt_grain_unavailable"
         };
     }
 
@@ -9106,14 +9107,17 @@ public class QuickInsightsDto
 
 public class TransactionStatsDto
 {
-    /// <summary>Average sale lines (prodajne stavke) per receipt. Not sold units.</summary>
-    public decimal AvgItemsPerTransaction { get; set; }
+    /// <summary>Unavailable until source lineage proves customer-receipt grain.</summary>
+    public decimal? AvgItemsPerTransaction { get; set; }
 
-    /// <summary>Average sold units (sum of line quantities) per receipt.</summary>
-    public decimal AvgUnitsPerTransaction { get; set; }
+    /// <summary>Unavailable until source lineage proves customer-receipt grain.</summary>
+    public decimal? AvgUnitsPerTransaction { get; set; }
 
-    public decimal AvgTransactionValue { get; set; }
+    /// <summary>Average value per source sales document; not a customer basket.</summary>
+    public decimal? AvgTransactionValue { get; set; }
     public int TotalTransactions { get; set; }
+    public string BasketMetricsReasonCode { get; set; } = "receipt_grain_unavailable";
+    public string SalesUnit { get; set; } = "sales_document";
 }
 
 public class StoreFilterOptionDto

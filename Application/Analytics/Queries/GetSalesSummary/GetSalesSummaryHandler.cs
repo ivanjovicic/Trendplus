@@ -40,9 +40,6 @@ namespace Application.Analytics.Queries.GetSalesSummary
             var totalTransactions = result?.TotalTransactions ?? 0;
             var totalUnits = result?.TotalUnits ?? 0;
 
-            var avgBasket = totalTransactions > 0
-                ? Math.Round(totalRevenue / totalTransactions, 2)
-                : 0m;
             var avgItem = totalUnits > 0
                 ? Math.Round(totalRevenue / totalUnits, 2)
                 : 0m;
@@ -51,7 +48,7 @@ namespace Application.Analytics.Queries.GetSalesSummary
                 totalRevenue,
                 totalTransactions,
                 totalUnits,
-                avgBasket,
+                null,
                 avgItem
             );
         }

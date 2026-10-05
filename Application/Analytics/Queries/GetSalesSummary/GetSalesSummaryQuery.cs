@@ -13,7 +13,9 @@ namespace Application.Analytics.Queries.GetSalesSummary
         decimal TotalRevenue,
         int TotalTransactions,
         int TotalUnits,
-        decimal AvgBasketValue,
-        decimal AvgItemPrice
+        decimal? AvgBasketValue,
+        decimal AvgItemPrice,
+        string? BasketMetricsReasonCode = "receipt_grain_unavailable",
+        string SalesUnit = "sales_document"
     );
 }

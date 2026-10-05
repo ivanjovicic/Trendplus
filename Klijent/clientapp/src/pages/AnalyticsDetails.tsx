@@ -404,10 +404,10 @@ export default function AnalyticsDetails() {
         <>
           <section className="ad-grid ad-kpi-grid">
             <article className="ad-kpi-card"><span>Promet</span><strong>{fmtRsd(summary?.totalRevenue, 0, "Nije dostupno")}</strong><small>Ukupno u periodu</small></article>
-            <article className="ad-kpi-card"><span>Transakcije</span><strong>{fmtNumber(summary?.totalTransactions, 0, "Nije dostupno")}</strong><small>Ukupan broj racuna</small></article>
+            <article className="ad-kpi-card"><span>Prodajni dokumenti</span><strong>{fmtNumber(summary?.totalTransactions, 0, "Nije dostupno")}</strong><small>Broj izvornih prodajnih dokumenata</small></article>
             <article className="ad-kpi-card"><span>Jedinice</span><strong>{fmtNumber(summary?.totalUnits, 0, "Nije dostupno")}</strong><small>Ukupan broj komada</small></article>
             <article className="ad-kpi-card"><span>Promet/dan</span><strong>{fmtRsd(derived.revPerDay, 0, "Nije dostupno")}</strong><small>Formula: Promet / broj dana</small></article>
-            <article className="ad-kpi-card"><span>Transakcije/dan</span><strong>{fmtNumber(derived.txPerDay, 1, "Nije dostupno")}</strong><small>Formula: Racuni / broj dana</small></article>
+            <article className="ad-kpi-card"><span>Prodajni dokumenti/dan</span><strong>{fmtNumber(derived.txPerDay, 1, "Nije dostupno")}</strong><small>Formula: prodajni dokumenti / broj dana</small></article>
             <article className="ad-kpi-card"><span>Jedinice/dan</span><strong>{fmtNumber(derived.unitsPerDay, 1, "Nije dostupno")}</strong><small>Formula: Komadi / broj dana</small></article>
           </section>
 

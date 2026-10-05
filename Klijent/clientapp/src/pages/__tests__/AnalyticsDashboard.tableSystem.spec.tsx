@@ -151,6 +151,9 @@ describe("AnalyticsDashboard table system", () => {
         totalRevenue: 12345,
         totalTransactions: 12,
         totalUnits: 8,
+        avgBasketValue: null,
+        basketMetricsReasonCode: "receipt_grain_unavailable",
+        salesUnit: "sales_document",
       },
       inventory: { totalSkuCount: 100, outOfStockCount: 5, lowStockCount: 10 },
       dailySales: [],
@@ -162,7 +165,14 @@ describe("AnalyticsDashboard table system", () => {
       hourData: [],
       paymentData: [],
       quickInsights: null,
-      transactionStats: null,
+      transactionStats: {
+        totalTransactions: 12,
+        avgTransactionValue: 1028.75,
+        avgItemsPerTransaction: null,
+        avgUnitsPerTransaction: null,
+        basketMetricsReasonCode: "receipt_grain_unavailable",
+        salesUnit: "sales_document",
+      },
       advanced: null,
       topAdvanced: {
         byRevenue: topRows,
@@ -478,5 +488,21 @@ describe("AnalyticsDashboard table system", () => {
     // SKU-204 (zero trend) should NOT be in losers
     expect(within(losersSection).queryByText("Zero Trend Product (Measured)")).not.toBeInTheDocument();
     expect(screen.getByText("Zero Trend Product (Measured)").closest("tr")?.textContent).toContain("Bez promene");
+  });
+
+  it("explains unavailable receipt-grain metrics while retaining sales documents", async () => {
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /prikaži detaljnu analizu/i }),
+    );
+    expect(await screen.findByText(/izvor ne potvrdi da dokument predstavlja račun kupca/i)).toBeInTheDocument();
+    expect(screen.getByText("Prosečna korpa")).toBeInTheDocument();
+    expect(screen.getByText("Prodajni dokumenti")).toBeInTheDocument();
+    expect(screen.getByText("Stavki po računu")).toBeInTheDocument();
   });
 });

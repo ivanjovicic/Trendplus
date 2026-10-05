@@ -14,8 +14,8 @@ Purpose: add follow-up reliability prompts for Advanced/V2 analytics and action-
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | RQ13 | WAITING | advanced-date-boundaries | Fix date-only toDate exclusion in Advanced/V2 analytics |
-| RQ14 | WAITING | heatmap-transaction-semantics | Ensure weekly heatmap transaction count means receipts, not lines |
-| RQ15 | WAITING | basket-affinity-denominator | Fix/define basket affinity support denominator |
+| RQ14 | OBSOLETE | heatmap-transaction-semantics | Replaced by RQ577: unsupported receipt-grain count is unavailable |
+| RQ15 | OBSOLETE | basket-affinity-denominator | Replaced by RQ577: basket affinity is gated until receipt grain is proven |
 | RQ16 | WAITING | lifecycle-zero-baseline | Make lifecycle no-baseline trend explicit |
 | RQ17 | WAITING | smart-reorder-cost-trust | Prevent missing cost from inflating reorder expected profit |
 | RQ18 | WAITING | v2-frontend-trust-types | Expose backend cost/margin coverage metadata in TS types |
@@ -80,7 +80,7 @@ Advanced/V2 endpoints parse `toDate` as an exact UTC instant and query `<= toDat
 
 ## RQ14 - Weekly heatmap transaction semantics
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: RQ13 DONE or explicit unblocking
 Priority: P1
 Type: backend/tests
@@ -89,6 +89,8 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ14-<agent>.lock.md`
 Commit suggestion: `test(analytics): clarify heatmap transaction counts`
+
+Replacement: RQ577. The source receipt grain is unproven, so the heatmap count is explicitly unavailable with `receipt_grain_unavailable`; revenue and units remain available. See `.ai/runs/2026-10-05-RQ577-evidence.md`.
 
 ### Why
 
@@ -127,7 +129,7 @@ Weekly heatmap appears to count sale lines as transactions. If UI labels the met
 
 ## RQ15 - Basket affinity support denominator
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: RQ13 DONE or explicit unblocking
 Priority: P1
 Type: backend/tests
@@ -136,6 +138,8 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ15-<agent>.lock.md`
 Commit suggestion: `fix(analytics): correct basket affinity denominator`
+
+Replacement: RQ577. Basket affinity is explicitly unavailable until source lineage proves receipt grain, so no denominator is presented. See `.ai/runs/2026-10-05-RQ577-evidence.md`.
 
 ### Why
 

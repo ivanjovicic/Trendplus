@@ -2,8 +2,10 @@ export interface SalesSummary {
   totalRevenue: number;
   totalTransactions: number;
   totalUnits: number;
-  avgBasketValue: number;
+  avgBasketValue: number | null;
   avgItemPrice: number;
+  basketMetricsReasonCode?: string | null;
+  salesUnit?: "sales_document" | string;
 }
 
 export const ANALYTICS_CRITICAL_METRIC_KEYS = [
@@ -345,12 +347,15 @@ export interface QuickInsights {
 }
 
 export interface TransactionStats {
-  /** Average sale lines (prodajne stavke) per receipt — not sold units. */
-  avgItemsPerTransaction: number;
-  /** Average sold units (sum of line quantities) per receipt. */
-  avgUnitsPerTransaction: number;
-  avgTransactionValue: number;
+  /** Unavailable until source lineage proves customer-receipt grain. */
+  avgItemsPerTransaction: number | null;
+  /** Unavailable until source lineage proves customer-receipt grain. */
+  avgUnitsPerTransaction: number | null;
+  /** Average per source sales document, not a customer basket. */
+  avgTransactionValue: number | null;
   totalTransactions: number;
+  basketMetricsReasonCode: string;
+  salesUnit: "sales_document" | string;
 }
 
 export interface CategoryTrendPoint {

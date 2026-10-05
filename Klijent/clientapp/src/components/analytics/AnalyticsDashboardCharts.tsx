@@ -87,7 +87,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
     <>
       {dailySales.length > 0 && (
         <section className="analytics-panel">
-          <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i transakcija po danima." /></h3>
+          <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i broja prodajnih dokumenata po danima." /></h3>
           <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada, rasta i nestabilnosti.</p>
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height="100%">
@@ -99,12 +99,12 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                   formatter={(value: number | string | undefined, name?: string) => [
                     name === "totalRevenue" ? formatChartValue(value, formatCurrency) : formatChartValue(value, formatNumber),
-                    name === "totalRevenue" ? "Promet" : "Transakcije",
+                    name === "totalRevenue" ? "Promet" : "Prodajni dokumenti",
                   ]}
                 />
                 <Legend />
                 <Line type="monotone" dataKey="totalRevenue" stroke="var(--success)" strokeWidth={2.5} dot={false} name="Promet" />
-                <Line type="monotone" dataKey="transactionCount" stroke="var(--info)" strokeWidth={2} dot={false} name="Transakcije" />
+                <Line type="monotone" dataKey="transactionCount" stroke="var(--info)" strokeWidth={2} dot={false} name="Prodajni dokumenti" />
               </LineChart>
             </ResponsiveContainer>
           </div>

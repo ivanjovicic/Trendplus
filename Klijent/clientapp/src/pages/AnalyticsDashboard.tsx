@@ -122,7 +122,7 @@ const EXECUTIVE_OVERVIEW_METRIC_KEYS: AnalyticsMetricKey[] = [
 
 const HELP: Record<string, string> = {
   promet: "Ukupan novac od prodaje u izabranom periodu.",
-  transakcije: "Jedan račun = jedna transakcija.",
+  transakcije: "Broj izvornih prodajnih dokumenata; njihova jednakost sa računima kupaca nije potvrđena.",
   jedinice: "Ukupan broj prodatih komada.",
   sku: "Jedinstvena interna šifra artikla.",
   velocity: ANALYTICS_VELOCITY_HELP,
@@ -1691,7 +1691,7 @@ export default function AnalyticsDashboard() {
                           Period: <strong>{selectedDays} dana</strong>
                         </span>
                         <span>
-                          Transakcije:{" "}
+                          Prodajni dokumenti:{" "}
                           <strong>
                             {summary == null
                               ? "Nije dostupno"
@@ -1711,7 +1711,7 @@ export default function AnalyticsDashboard() {
                         <h2>Ključni KPI strip</h2>
                       </div>
                       <p className="section-note">
-                        Transakcije u periodu:{" "}
+                        Prodajni dokumenti u periodu:{" "}
                         <strong>
                           {summary == null
                             ? "Nije dostupno"
@@ -2371,6 +2371,11 @@ export default function AnalyticsDashboard() {
                   <InfoTip text="Ostali KPI-jevi i signali koji ne moraju biti iznad folda, ali su korisni za dublji uvid." />
                 </h3>
                 <div className="analytics-card-grid compact">
+                  {summary.basketMetricsReasonCode === "receipt_grain_unavailable" && (
+                    <p role="note" className="col-span-full text-xs text-[var(--text-primary)]">
+                      Prosečna korpa i stavke po računu nisu dostupne dok izvor ne potvrdi da dokument predstavlja račun kupca.
+                    </p>
+                  )}
                   <MetricCard
                     label="Ukupan promet"
                     value={fmtRsd(summary.totalRevenue)}
@@ -2378,7 +2383,7 @@ export default function AnalyticsDashboard() {
                     infoTip={HELP.promet}
                   />
                   <MetricCard
-                    label="Transakcije"
+                    label="Prodajni dokumenti"
                     value={fmtNumber(summary.totalTransactions)}
                     infoTip={HELP.transakcije}
                   />
@@ -2392,7 +2397,7 @@ export default function AnalyticsDashboard() {
                     value={fmtRsd(derived.revenuePerDay, 0, "Nije dostupno")}
                   />
                   <MetricCard
-                    label="Transakcije po danu"
+                    label="Prodajni dokumenti po danu"
                     value={fmtNumber(derived.transactionsPerDay, 1, "Nije dostupno")}
                   />
                   <MetricCard
@@ -2425,9 +2430,9 @@ export default function AnalyticsDashboard() {
                   />
                   <MetricCard
                     label="Prosečna korpa"
-                    value={fmtRsd(summary.avgBasketValue)}
+                    value={fmtRsd(summary.avgBasketValue, 0, "Nije dostupno")}
                     tone="neutral"
-                    infoTip="Prosečna vrednost jednog računa."
+                    infoTip="Nije dostupno: izvorni prodajni dokument nije potvrđen kao račun kupca."
                   />
                 </div>
               </section>
@@ -2457,19 +2462,19 @@ export default function AnalyticsDashboard() {
                     tone="neutral"
                   />
                   <MetricCard
-                    label="Stavki po transakciji"
+                    label="Stavki po računu"
                     value={
-                      transactionStats
+                      transactionStats?.avgItemsPerTransaction != null
                         ? fmtNumber(transactionStats.avgItemsPerTransaction, 2)
                         : "Nije dostupno"
                     }
                     tone="neutral"
-                    infoTip="Prosečan broj prodajnih stavki (linija) po računu, ne broj komada."
+                    infoTip="Nije dostupno: izvorni prodajni dokument nije potvrđen kao račun kupca (receipt_grain_unavailable)."
                   />
                   <MetricCard
-                    label="Vrednost transakcije"
+                    label="Prosečna vrednost prodajnog dokumenta"
                     value={
-                      transactionStats
+                      transactionStats?.avgTransactionValue != null
                         ? fmtRsd(transactionStats.avgTransactionValue)
                         : "Nije dostupno"
                     }

@@ -324,7 +324,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
     index: "03",
     title: "Pregled prodaje dostupan",
     status: hasWarnings ? "warning" : "ready",
-    reason: `Prihod ${fmtRsd(summary?.totalRevenue ?? null, 0, "-")}, ${formatLoadCount(summary?.totalTransactions)} transakcija i ${formatLoadCount(summary?.totalUnits)} komada su dostupni u dashboard bootstrap-u.`,
+    reason: `Prihod ${fmtRsd(summary?.totalRevenue ?? null, 0, "-")}, ${formatLoadCount(summary?.totalTransactions)} prodajnih dokumenata i ${formatLoadCount(summary?.totalUnits)} komada su dostupni u dashboard bootstrap-u.`,
     actionLabel: "Otvori Trendplus pregled",
     href: "/analytics",
     meta: bootstrap.dailySales.length > 0 ? `${formatLoadCount(bootstrap.dailySales.length)} dnevnih tačaka` : "bez dnevne serije",

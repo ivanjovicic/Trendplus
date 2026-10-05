@@ -8,7 +8,7 @@ export interface HeatmapCell {
   weekStart: string;
   revenue: number;
   units: number;
-  transactions: number;
+  transactions: number | null;
 }
 
 export interface DayAggregate {
@@ -23,6 +23,7 @@ export interface DayAggregate {
 export interface WeeklyHeatmap {
   cells: HeatmapCell[];
   byDay: DayAggregate[];
+  transactionMetricReasonCode: string;
 }
 
 export interface BasketPair {
@@ -34,7 +35,8 @@ export interface BasketPair {
 
 export interface BasketAffinity {
   pairs: BasketPair[];
-  totalMultiItemTransactions: number;
+  totalMultiItemTransactions: number | null;
+  reasonCode: string | null;
 }
 
 export interface VelocityMarginItem {

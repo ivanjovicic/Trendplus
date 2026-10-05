@@ -60,7 +60,7 @@ public static class InsightStudioV2Endpoints
                         weekStart = g.Key.WeekStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                         revenue = g.Sum(s => s.Kolicina * s.Cena),
                         units = g.Sum(s => s.Kolicina),
-                        transactions = g.Count()
+                        transactions = (int?)null
                     })
                     .OrderBy(x => x.weekStart)
                     .ThenBy(x => x.day)
@@ -81,7 +81,12 @@ public static class InsightStudioV2Endpoints
                     .OrderBy(x => x.day)
                     .ToList();
 
-                return Results.Ok(new { cells = byDayAndWeek, byDay });
+                return Results.Ok(new
+                {
+                    cells = byDayAndWeek,
+                    byDay,
+                    transactionMetricReasonCode = "receipt_grain_unavailable"
+                });
             }
             catch (Exception ex)
             {
@@ -92,93 +97,17 @@ public static class InsightStudioV2Endpoints
 
         // â”€â”€â”€ BASKET AFFINITY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         group.MapGet("/basket-affinity", async (
-            ITrendplusDbContext db,
             HttpContext httpContext,
-            DateTime? fromDate = null,
-            DateTime? toDate = null,
-            int minSupport = 3,
             CancellationToken ct = default) =>
         {
             try
             {
-                var fromUtc = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : DateTime.UtcNow.AddDays(-90);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
-
-                // Get multi-item transactions: aggregate distinct categories per sale
-                var basketItems = new List<List<string>>();
-                var dbContext = db as DbContext;
-                if (dbContext == null)
+                return Results.Ok(new
                 {
-                    await HandledErrorLogging.PersistHandledIssueAsync(
-                        httpContext,
-                        level: "Error",
-                        message: "Insight Studio V2 basket-affinity failed: Database context unavailable.",
-                        exceptionType: nameof(InvalidOperationException),
-                        stackTrace: null,
-                        ct);
-                    return Results.Problem(detail: "Database context unavailable", statusCode: 500);
-                }
-
-                var conn = dbContext.Database.GetDbConnection();
-                await using (conn)
-                {
-                    if (conn.State != System.Data.ConnectionState.Open)
-                        await conn.OpenAsync(ct);
-
-                    await using var cmd = conn.CreateCommand();
-                          cmd.CommandText = @"
-                           SELECT ps.id_prodaja,
-                               array_agg(DISTINCT COALESCE(a.""Kategorija"", 'Ostalo')) AS categories
-                           FROM prodaja_stavke ps
-                           JOIN prodaja_zaglavlje pz ON ps.id_prodaja = pz.id
-                           LEFT JOIN ""Artikli"" a ON ps.id_artikal = a.""Id""
-                           WHERE pz.datum_prodaje >= @from AND pz.datum_prodaje <= @to
-                           GROUP BY ps.id_prodaja
-                           HAVING COUNT(*) >= 2;";
-
-                    var pFrom = cmd.CreateParameter(); pFrom.ParameterName = "from"; pFrom.Value = fromUtc; cmd.Parameters.Add(pFrom);
-                    var pTo = cmd.CreateParameter(); pTo.ParameterName = "to"; pTo.Value = to; cmd.Parameters.Add(pTo);
-
-                    await using var reader = await cmd.ExecuteReaderAsync(ct);
-                    while (await reader.ReadAsync(ct))
-                    {
-                        // categories is a PostgreSQL text[] mapped to string[] by Npgsql
-                        var categories = reader.IsDBNull(1) ? Array.Empty<string>() : (string[])reader.GetValue(1);
-                        basketItems.Add(categories.Distinct().ToList());
-                    }
-                }
-
-                if (basketItems.Count == 0)
-                    return Results.Ok(new { pairs = new List<object>(), totalMultiItemTransactions = 0 });
-
-                var pairCounts = basketItems
-                    .SelectMany(basket => basket
-                        .SelectMany((item, i) => basket.Skip(i + 1)
-                            .Select(other => string.Compare(item, other, StringComparison.Ordinal) < 0
-                                ? (item: item, other: other)
-                                : (item: other, other: item))))
-                    .GroupBy(pair => pair)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                var pairs = pairCounts
-                    .Where(kv => kv.Value >= minSupport)
-                    .OrderByDescending(kv => kv.Value)
-                    .Take(20)
-                    .Select(kv => new
-                    {
-                        categoryA = kv.Key.item,
-                        categoryB = kv.Key.other,
-                        coOccurrences = kv.Value,
-                        supportPct = basketItems.Count > 0
-                            ? (double)kv.Value / basketItems.Count * 100 : 0
-                    })
-                    .ToList();
-
-                return Results.Ok(new { pairs, totalMultiItemTransactions = basketItems.Count });
+                    pairs = Array.Empty<object>(),
+                    totalMultiItemTransactions = (int?)null,
+                    reasonCode = "receipt_grain_unavailable"
+                });
             }
             catch (Exception ex)
             {
