@@ -132,3 +132,11 @@ Local proof after those edits, base `7265745a`:
 - `npm run build`: pass.
 
 Recovery scan of active queue headers on this base: canonical pointer remains RQ588 IN_PROGRESS. Supplemental UI READY remains P-UI-39 plus P-UI-40, P-UI-41, P-UI-47, P-UI-49 and P-UI-52. RQ48, RQ49, RQ88, RQ584, RQ590 and RQ591 stay DONE. The delivery tip is the commit that contains this section; verify `HEAD == origin/main` after push.
+
+## Frontend quality-gate follow-up on `ef266796`
+
+Exact-main Analytics Quality Gates run `37358374846` failed the frontend job: 3 tests, 1064 passed. Planning Governance on that SHA succeeded. The backend suite was not part of that workflow.
+
+The dashboard tests clicked `Prikaži detaljnu analizu` while `loading` still disabled the button. `load()` then sets `showDetailedAnalysis` back to false, so the gainers section and the receipt-grain note never stayed open. Those tests now wait until the button is enabled. The inventory empty-state reset now waits for the store options to settle before clicking `Poništi filtere`, matching the sibling test that already passed on that run.
+
+Local `npm run test:analytics` after the change: 144 files, 1067 passed.
