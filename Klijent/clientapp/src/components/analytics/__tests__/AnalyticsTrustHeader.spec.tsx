@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -33,6 +33,11 @@ function renderHeader(overrides: Partial<ComponentProps<typeof AnalyticsTrustHea
   );
 }
 
+
+function expandTrustDetails() {
+  fireEvent.click(screen.getByTestId("analytics-trust-details-toggle"));
+}
+
 describe("AnalyticsTrustHeader", () => {
   it("renders decision context, freshness, data quality summary and support links", () => {
     renderHeader();
@@ -40,7 +45,10 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByRole("heading", { name: "Izvršni pregled" })).toBeInTheDocument();
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
     expect(screen.getByText("Podaci deluju pouzdano")).toBeInTheDocument();
-    expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Sveže");
+    expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "false");
+    expandTrustDetails();
+    expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("analytics_daily_summary")).toBeInTheDocument();
     expect(screen.getByText("mv_analytics_daily_summary")).toBeInTheDocument();
 
@@ -69,7 +77,8 @@ describe("AnalyticsTrustHeader", () => {
       },
     });
 
-    expect(screen.getByText("Nije poznato")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Nije poznato");
+    expandTrustDetails();
     expect(screen.getByText("Import dokaz nije vezan za izabranu prodavnicu")).toBeInTheDocument();
     expect(screen.getByText("Posmatrani period")).toBeInTheDocument();
   });
@@ -103,6 +112,7 @@ describe("AnalyticsTrustHeader", () => {
         operationsIntegritySourceGeneration: "generation-7",
       },
     });
+    expandTrustDetails();
 
     expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent("Samo signal");
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Provereno za ovaj kontekst");
@@ -123,6 +133,7 @@ describe("AnalyticsTrustHeader", () => {
         operationsIntegrityContextFingerprint: "integrity-context-without-id",
       },
     });
+    expandTrustDetails();
 
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno — dokaz nije dostupan");
     expect(screen.getByTestId("analytics-trust-integrity-state")).not.toHaveClass("ath-trust-state-verified");
@@ -150,6 +161,7 @@ describe("AnalyticsTrustHeader", () => {
         operationsIntegrityContextFingerprint: "state-context-1",
       },
     });
+    expandTrustDetails();
 
     expect(screen.getByTestId("analytics-trust-readiness-state")).toHaveTextContent(readinessLabel);
     const integrityState = screen.getByTestId("analytics-trust-integrity-state");
@@ -169,6 +181,7 @@ describe("AnalyticsTrustHeader", () => {
         operationsIntegrityContextFingerprint: "old-integrity-context",
       },
     });
+    expandTrustDetails();
 
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije provereno za izabrani kontekst");
     expect(screen.getByTestId("analytics-trust-integrity-state")).not.toHaveClass("ath-trust-state-verified");
@@ -204,6 +217,7 @@ describe("AnalyticsTrustHeader", () => {
         operationsIntegrityContextMatches: false,
       },
     });
+    expandTrustDetails();
 
     expect(screen.getByTestId("analytics-trust-integrity-state")).toHaveTextContent("Nije nezavisno provereno");
     expect(screen.queryByRole("link", { name: "Pregledaj dokaz" })).not.toBeInTheDocument();
@@ -222,16 +236,17 @@ describe("AnalyticsTrustHeader", () => {
       dataFreshnessStatus: "stale",
       provenanceBasis: "mv_supplier_decision_score_cache_90d",
     });
+    expandTrustDetails();
 
     expect(screen.getByText("Postoje upozorenja")).toBeInTheDocument();
-    expect(screen.getByText("Zastarelo")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Zastarelo");
     expect(screen.getByText("requested_window -> celokupna istorija")).toBeInTheDocument();
-    expect(screen.getByText("All-time fallback")).toBeInTheDocument();
+    expect(screen.getAllByText("All-time fallback").length).toBeGreaterThan(0);
     expect(screen.getByText("keš signala odluke dobavljača")).toBeInTheDocument();
     expect(screen.getByText(/Pomoćni skup je aktivan\./i)).toBeInTheDocument();
     expect(screen.getByText(/Nema dovoljno zapisa u traženom periodu/i)).toBeInTheDocument();
     expect(screen.queryByText(/NO_WINDOW_ROWS/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Preporuka nije dostupna/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
   });
 
@@ -246,10 +261,11 @@ describe("AnalyticsTrustHeader", () => {
       recommendationNote: "Ne prikazuj konačnu preporuku bez jačeg signala.",
       emptyStateReason: "Nema dovoljno podataka za izabrani period.",
     });
+    expandTrustDetails();
 
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
     expect(screen.getByText("Nedovoljno podataka")).toBeInTheDocument();
-    expect(screen.getByText(/Preporuka je gated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preporuka nije dostupna/i)).toBeInTheDocument();
     expect(screen.getByText("Detaljan kvalitet podataka nije dostupan za ovaj ekran.")).toBeInTheDocument();
     expect(screen.getByText("Ne prikazuj konačnu preporuku bez jačeg signala.")).toBeInTheDocument();
     expect(screen.getByText("Nema dovoljno podataka za izabrani period.")).toBeInTheDocument();
@@ -266,7 +282,7 @@ describe("AnalyticsTrustHeader", () => {
   ])("does not invent a recommendation gate for $mode when permission is $recommendationAllowed", ({ mode, recommendationAllowed }) => {
     renderHeader({ mode, recommendationAllowed });
 
-    expect(screen.queryByText(/Preporuka je gated/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Preporuka nije dostupna/i)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -275,7 +291,7 @@ describe("AnalyticsTrustHeader", () => {
   ])("keeps the recommendation gate for recommendation mode when permission is $recommendationAllowed", ({ mode, recommendationAllowed }) => {
     renderHeader({ mode, recommendationAllowed });
 
-    expect(screen.getByText(/Preporuka je gated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preporuka nije dostupna/i)).toBeInTheDocument();
   });
 
   it.each([
@@ -284,7 +300,7 @@ describe("AnalyticsTrustHeader", () => {
   ])("preserves $label freshness warning for harmless token formatting", ({ value, label }) => {
     renderHeader({ dataFreshnessStatus: value });
 
-    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent(label);
   });
 
   it("keeps supported freshness normalization and fails closed for unknown tokens and non-finite counts", () => {
@@ -302,8 +318,9 @@ describe("AnalyticsTrustHeader", () => {
         ignoredRowsCount: Number.NEGATIVE_INFINITY,
       },
     });
+    expandTrustDetails();
 
-    expect(screen.getByText("Zastarelo")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Zastarelo");
     expect(screen.getByText(/Osvežavanje je u toku \(Obrada podataka\)/)).toBeInTheDocument();
     expect(screen.getByText(/Dodatni razlog pomoćnog skupa nije naveden/i)).toBeInTheDocument();
     expect(screen.queryByText(/internal_secret/i)).not.toBeInTheDocument();
@@ -319,6 +336,7 @@ describe("AnalyticsTrustHeader", () => {
       fallbackReason: "sql_timeout_v2 at internal_table",
       fallbackReasonCode: "internal_secret_fallback",
     });
+    expandTrustDetails();
 
     expect(screen.queryByText(/sql_timeout_v2|internal_table|internal_secret_fallback/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/Dodatni razlog pomoćnog skupa nije naveden/i).length).toBeGreaterThan(0);
@@ -333,7 +351,29 @@ describe("AnalyticsTrustHeader", () => {
       emptyStateReason: {} as never,
       fallbackReason: {} as never,
     });
+    expandTrustDetails();
 
     expect(screen.getByText("Izvor podataka nije naveden")).toBeInTheDocument();
   });
+
+  it("keeps critical trust cues above the fold while details stay collapsed by default", () => {
+    renderHeader({
+      dataFreshnessStatus: "stale",
+      isPartial: true,
+      recommendationAllowed: false,
+      dataQualityStatus: "warning",
+    });
+
+    expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("analytics-trust-details-panel")).not.toBeVisible();
+    expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Zastarelo");
+    expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preporuka nije dostupna/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Kvalitet podataka" })).not.toBeInTheDocument();
+
+    expandTrustDetails();
+    expect(screen.getByTestId("analytics-trust-details-panel")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Kvalitet podataka" })).toBeInTheDocument();
+  });
+
 });

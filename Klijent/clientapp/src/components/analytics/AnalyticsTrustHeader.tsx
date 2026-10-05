@@ -1,4 +1,5 @@
-﻿import { Link } from "react-router-dom";
+﻿import { useId, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatDate, formatDateTime } from "../../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
 import { supplierDecisionDatasetLabel, supplierDecisionProvenanceLabel, supplierDecisionReasonText } from "../../utils/supplierDecisionLabels";
@@ -302,13 +303,22 @@ export default function AnalyticsTrustHeader({
     ? `/api/analytics/operations-integrity/evidence/${encodeURIComponent(evidenceId)}`
     : null;
 
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const periodSummary = hasPeriod
+    ? `${formatDate(safeRequestedFrom)} - ${formatDate(safeRequestedTo)}`
+    : "Period nije definisan";
+  const detailsId = useId();
+
   return (
-    <section className="analytics-trust-header" aria-label="Kontekst pouzdanosti analitike">
+    <section
+      className={`analytics-trust-header${detailsExpanded ? " analytics-trust-header--expanded" : " analytics-trust-header--collapsed"}${compact ? " analytics-trust-header--compact" : ""}`}
+      aria-label="Kontekst pouzdanosti analitike"
+    >
       <div className="ath-main">
         <div className="ath-main-copy">
           <p className="ath-overline">{MODE_LABELS[mode]}</p>
           <h1 className="ath-title">{title}</h1>
-          <p className="ath-description">{description}</p>
+          <p className={`ath-description${detailsExpanded ? "" : " ath-description--clamp"}`}>{description}</p>
           {refreshIsRunning ? (
             <p className="ath-live">Osvežavanje je u toku{refreshStepLabel ? ` (${refreshStepLabel})` : ""}</p>
           ) : null}
@@ -318,7 +328,64 @@ export default function AnalyticsTrustHeader({
         </div>
       </div>
 
-      <div className="ath-meta-grid">
+      <div className="ath-context-strip" data-testid="analytics-trust-context-strip">
+        <div className="ath-context-item">
+          <span className="ath-context-key">Period</span>
+          <strong className="ath-context-value">{periodSummary}</strong>
+        </div>
+        <div className="ath-context-item">
+          <span className="ath-context-key">Svežina</span>
+          <span className={`ath-freshness-badge ath-freshness-${freshness}`}>{FRESHNESS_LABELS[freshness]}</span>
+        </div>
+        {hasEffectivePeriod && (safeEffectiveFrom !== safeRequestedFrom || safeEffectiveTo !== safeRequestedTo) ? (
+          <div className="ath-context-item">
+            <span className="ath-context-key">Efektivni period</span>
+            <strong className="ath-context-value">{formatDate(safeEffectiveFrom)} - {formatDate(safeEffectiveTo)}</strong>
+          </div>
+        ) : null}
+      </div>
+
+      {showFallbackBanner ? (
+        <div className="ath-banner ath-banner-warning" role="note">
+          <strong>Pomoćni skup je aktivan.</strong>{" "}
+          Za traženi period nema dovoljno podataka. Korišćen je skup podataka {effectiveLabel ?? normalizedEffectiveDataset ?? "Nije dostupno"} kao pomoćni signal.
+          {fallbackReasonText ? ` ${fallbackReasonText}` : null}
+          {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
+        </div>
+      ) : null}
+
+      {showGatedBanner ? (
+        <div className="ath-banner ath-banner-neutral" role="note">
+          <strong>Preporuka nije dostupna.</strong> Sistem ne prikazuje konačnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
+        </div>
+      ) : null}
+
+      {showPartialBanner ? (
+        <div className="ath-banner ath-banner-warning" role="note">
+          <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
+        </div>
+      ) : null}
+
+      {recommendationNoteText ? <p className="ath-note">{recommendationNoteText}</p> : null}
+      {emptyStateReasonText ? <p className="ath-empty-reason">{emptyStateReasonText}</p> : null}
+
+      <div className="ath-details-toggle-row">
+        <button
+          type="button"
+          className="ath-details-toggle"
+          aria-expanded={detailsExpanded}
+          aria-controls={detailsId}
+          data-testid="analytics-trust-details-toggle"
+          onClick={() => setDetailsExpanded((open) => !open)}
+        >
+          {detailsExpanded ? "Sakrij detalje pouzdanosti" : "Prikaži detalje pouzdanosti"}
+        </button>
+      </div>
+
+      <div className="ath-details-panel" id={detailsId} data-testid="analytics-trust-details-panel" hidden={!detailsExpanded}>
+        {detailsExpanded ? (
+          <>
+        <div className="ath-meta-grid">
         {showOperationsTrust ? <>
         <div className="ath-meta-item" data-testid="analytics-trust-readiness">
           <span className="ath-meta-key">Spremnost odluke</span>
@@ -328,7 +395,7 @@ export default function AnalyticsTrustHeader({
           {readinessReason ? <span className="ath-meta-subtle">{readinessReason}</span> : null}
         </div>
         <div className="ath-meta-item" data-testid="analytics-trust-integrity">
-          <span className="ath-meta-key">Integritet Operacije</span>
+          <span className="ath-meta-key">Integritet operacija</span>
           <strong className={`ath-trust-state ath-trust-state-${integrityState}`} data-testid="analytics-trust-integrity-state">
             {trustPending ? "Provera u toku" : integrityLabels[integrityState]}
           </strong>
@@ -403,54 +470,32 @@ export default function AnalyticsTrustHeader({
         ) : null}
       </div>
 
-      {showFallbackBanner ? (
-        <div className="ath-banner ath-banner-warning" role="note">
-          <strong>Pomoćni skup je aktivan.</strong>{" "}
-          Za traženi period nema dovoljno podataka. Korišćen je skup podataka {effectiveLabel ?? normalizedEffectiveDataset ?? "n/a"} kao pomoćni signal.
-          {fallbackReasonText ? ` ${fallbackReasonText}` : null}
-          {fallbackReasonLabel ? <span className="ath-banner-code"> ({fallbackReasonLabel})</span> : null}
+        <div className={`ath-summary ${compact ? "ath-summary-compact" : ""}`}>
+          {compact ? null : <h2>Sažetak kvaliteta podataka</h2>}
+          {hasSummary ? (
+            <div className={compact ? "ath-summary-chips" : "ath-summary-grid"}>
+              <div><span>Artikli bez dobavljača</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
+              <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
+              <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
+              <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary.insufficientSignalCount)}</strong></div>
+              <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
+            </div>
+          ) : (
+            <p className={`ath-summary-missing ${compact ? "ath-summary-missing-compact" : ""}`}>Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
+          )}
         </div>
-      ) : null}
 
-      {showGatedBanner ? (
-        <div className="ath-banner ath-banner-neutral" role="note">
-          <strong>Preporuka je gated.</strong> Sistem ne prikazuje konačnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
+        <div className="ath-footer">
+          {renderLink(resolvedDataQualityHref, "Kvalitet podataka", "ath-footer-link")}
+          {renderLink(resolvedRefreshStatusHref, "Status osvežavanja", "ath-footer-link")}
+          {methodologyHref ? renderLink(methodologyHref, methodologyLabel ?? "Metodologija i tumačenje signala", "ath-footer-link") : null}
         </div>
-      ) : null}
-
-      {showPartialBanner ? (
-        <div className="ath-banner ath-banner-warning" role="note">
-          <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
-        </div>
-      ) : null}
-
-      {recommendationNoteText ? <p className="ath-note">{recommendationNoteText}</p> : null}
-      {emptyStateReasonText ? <p className="ath-empty-reason">{emptyStateReasonText}</p> : null}
-
-      <div className={`ath-summary ${compact ? "ath-summary-compact" : ""}`}>
-        {compact ? null : <h2>Sažetak kvaliteta podataka</h2>}
-        {hasSummary ? (
-          <div className={compact ? "ath-summary-chips" : "ath-summary-grid"}>
-            <div><span>Artikli bez dobavljača</span><strong>{renderSummaryValue(dataQualitySummary.missingSupplierCount)}</strong></div>
-            <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
-            <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
-            <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary.insufficientSignalCount)}</strong></div>
-            <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
-          </div>
-        ) : (
-          <p className={`ath-summary-missing ${compact ? "ath-summary-missing-compact" : ""}`}>Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
-        )}
-      </div>
-
-      <div className="ath-footer">
-        {renderLink(resolvedDataQualityHref, "Kvalitet podataka", "ath-footer-link")}
-        {renderLink(resolvedRefreshStatusHref, "Status osvežavanja", "ath-footer-link")}
-        {methodologyHref ? renderLink(methodologyHref, methodologyLabel ?? "Metodologija i tumačenje signala", "ath-footer-link") : null}
+          </>
+        ) : null}
       </div>
     </section>
   );
 }
 
 export type { AnalyticsTrustHeaderProps };
-
 
