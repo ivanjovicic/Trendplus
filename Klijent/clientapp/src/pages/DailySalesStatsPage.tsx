@@ -1399,7 +1399,8 @@ export default function DailySalesStatsPage() {
           ? "Mešovita osnova"
           : "Nepoznata osnova";
     const duplicateReceipts = finiteOrNull(metadata?.duplicateReceiptGroupCount);
-    const receiptReconciliationUnavailable = metadata?.receiptReconciliation?.status === "unavailable";
+    const receiptReconciliationStatus = metadata?.receiptReconciliation?.status;
+    const receiptReconciliationUnavailable = receiptReconciliationStatus !== "verified";
     const receiptMismatch = receiptReconciliationUnavailable
       ? null
       : finiteOrNull(metadata?.receiptAmountMismatchCount);
@@ -1507,8 +1508,12 @@ export default function DailySalesStatsPage() {
       label: "Neusklađeni računi",
       value: fmtNumber(receiptMismatch),
       tone: receiptMismatch == null ? "info" : receiptMismatch > 0 ? "danger" : "good",
-      description: receiptReconciliationUnavailable
-        ? "Nije dostupno: dnevnik nema pouzdan identitet računa za poređenje; vrednost nije prikazana kao 0."
+      description: receiptReconciliationStatus === "unverified"
+        ? metadata?.receiptReconciliation?.reasonCode === "no_matches"
+          ? "Nije potvrđeno: nijedan račun nije podudaran sa dnevnikom prodaje; vrednost nije prikazana kao 0."
+          : "Nije potvrđeno: nema populacije računa za poređenje; vrednost nije prikazana kao 0."
+        : receiptReconciliationUnavailable
+          ? "Nije dostupno: dnevnik nema pouzdan identitet računa za poređenje; vrednost nije prikazana kao 0."
         : "Računi gde dnevnik i suma stavki ne daju isti iznos.",
     },
     {
