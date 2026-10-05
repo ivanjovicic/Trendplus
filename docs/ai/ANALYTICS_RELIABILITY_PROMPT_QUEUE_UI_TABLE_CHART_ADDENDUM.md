@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ47 - Supplier action source key filter lineage
-Main queue primary READY prompt: RQ590; RQ47 is IN_PROGRESS in this addendum
+Current READY prompt: none in this addendum pending post-close recovery after RQ47 DONE
+Main queue primary READY prompt: RQ590
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -523,7 +523,7 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 
 ## RQ47 - Supplier action source key filter lineage
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P1
 Type: frontend/backend-contract/tests
@@ -564,6 +564,25 @@ Supplier action source keys omit season/minRevenue/onlyHighConfidence even thoug
 ### Acceptance
 
 - Action lineage accurately identifies the scorecard context that created it.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: Confirmed season, minimum revenue and confidence filters are identity-defining and included in supplier action source keys; added a regression that each filter variant receives a distinct key.
+- Changed files: `Klijent/clientapp/src/pages/SupplierDecisionHubPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierDecisionHubPage.spec.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-05-RQ47-evidence.md`.
+- Checks run: `npm run test -- --run src/pages/__tests__/SupplierDecisionHubPage.spec.tsx` (19/19); `npm run typecheck`; `npm run check:analytics-guardrails`; `git diff --check`.
+- Checks not run: production build and live-provider/browser evidence were not required for this isolated source-key contract.
+- Run log: `.ai/runs/2026-10-05-RQ47-evidence.md`
+- Evidence state: pending post-close routing recovery
+- Delivery mode: direct-main
+- Main commit SHA: `e3c2debea6d4c0175b366dbb786c70f7f9124ca9`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `e3c2debea6d4c0175b366dbb786c70f7f9124ca9`
+- Missed: none known
+- Follow-up: pending post-close recovery
+- Residual risk: none known for the source-key identity contract; neighboring action de-duplication remains separately owned by RQ48.
+- Post-close routing: pending post-delivery recovery
+- Prompt defect / scope repair: the key implementation already included the named filters; RQ47 was narrowed to adding the missing counterexample proof.
 
 ---
 
