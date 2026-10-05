@@ -1001,7 +1001,7 @@ export interface AnalyticsDashboardBootstrap {
   meta?: AnalyticsResponseMeta | null;
 }
 
-export type DataQualityIssueType = "missingSupplier" | "missingShoeType" | "invalidName";
+export type DataQualityIssueType = "missingSupplier" | "missingShoeType" | "missingCost" | "invalidName";
 export type DataQualitySortBy = "sales30d" | "lastUpdated" | "stock" | "name";
 export type DataQualitySortDir = "asc" | "desc";
 

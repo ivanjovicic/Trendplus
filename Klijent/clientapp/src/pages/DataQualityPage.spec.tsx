@@ -266,6 +266,34 @@ describe("DataQualityPage", () => {
     vi.mocked(getAnalyticsDataQualityTrend).mockResolvedValue(trend());
   });
 
+  it("routes missing-cost workflow to missing-cost top offenders without supplier fallback", async () => {
+    vi.mocked(getDataQualityTopOffenders).mockResolvedValue(topOffenders({
+      issueType: "missingCost",
+      items: [
+        {
+          sku: "SKU-COST-7",
+          productId: "707",
+          name: "Artikal bez nabavne cene",
+          supplierName: "Dobavljač Y",
+          shoeTypeName: "Patika",
+          sales30d: 48000,
+          revenueImpactRsd: 48000,
+          revenueImpactPct: 4,
+          actionUrl: "/artikli/707/edit",
+        },
+      ],
+    }));
+
+    renderPage("/analytics/data-quality?type=missingCost");
+
+    expect(await screen.findByRole("tab", { name: "Nedostaje nabavna cena" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByTestId("data-quality-top-offenders-table")).toBeInTheDocument();
+    expect(screen.getByText("Artikal bez nabavne cene")).toBeInTheDocument();
+    expect(screen.queryByTestId("data-quality-issues-table")).not.toBeInTheDocument();
+    expect(vi.mocked(getDataQualityIssues)).not.toHaveBeenCalled();
+    expect(vi.mocked(getDataQualityTopOffenders).mock.calls.some(([issueType]) => issueType === "missingCost")).toBe(true);
+  });
+
   it("renders warning health, issue table, top offenders, trend and export context", async () => {
     renderPage();
 
