@@ -4441,10 +4441,10 @@ Cover the six current Operations screens:
 - Checks run: `dotnet build Api/Api.csproj --no-restore --verbosity quiet` passed (0 errors); `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~OperationsSourceFreshnessServiceTests --verbosity quiet` passed (2/2); focused frontend tests passed (49/49); `npm run check:analytics-guardrails` passed including encoding, baseline self-test and TypeScript; `npm run build` passed; instruction, prompt-queue and planning validators/self-tests passed; `git diff --check` passed.
 - Checks not run: full API suite; live deployment/browser validation; GitHub Actions status inspection.
 - Run log: `.ai/runs/2026-10-05-RQ569-evidence.md`
-- Evidence state: pending post-close routing synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `8a784df0f298bc9837e106faf7604113e9d066a3`
-- Main verification: fresh fetch resolved `origin/main` to `8a784df0f298bc9837e106faf7604113e9d066a3`; `git merge-base --is-ancestor` confirmed the implementation commit is on main.
+- Main verification: fresh fetch resolved `origin/main` to `b94136ad0f5410f02c0cd21c3786a01807389394`; ancestry checks confirmed the implementation SHA and closure SHA are on main.
 - Missed: no known repository-local RQ569 acceptance gap; live deployment/browser evidence remains outside this prompt's repository-local delivery gate.
 - Follow-up: RQ570 is the primary next candidate; RQ552/NV-I2, RQ576 and RQ579 are also dependency-complete READY lanes. RQ453 follows RQ552. RQ553 and the existing independent READY lanes remain routed separately.
 - Residual risk: global `DataImportBatch` evidence cannot certify store-specific imports; those views intentionally remain `unknown` until store-scoped source evidence exists. Current production deployment has not been verified.

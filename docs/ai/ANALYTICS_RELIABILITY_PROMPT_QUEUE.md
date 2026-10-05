@@ -29152,7 +29152,7 @@ Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from th
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
 Status: WAITING
-Ready after: `RQ569` DONE (owner decision resolved 2026-10-04; freshness contract) — STAB16 worker deployment is not required for the banner/alert logic
+Ready after: `RQ569` and `RQ570` DONE (serialize the shared trust/freshness period surface; STAB16 worker deployment is not required for the banner/alert logic)
 Priority: P2
 Type: backend/frontend/ops
 Feature family: analytics-freshness-sla-alert
@@ -29207,7 +29207,7 @@ Owner decision (Ivan, 2026-10-04): default SLA is **warning after 48 hours** and
 ## RQ584 - Daily Sales: one `toDate` contract with the other Operations endpoints
 
 Status: WAITING
-Ready after: `RQ569` DONE (shared Daily Sales metadata)
+Ready after: `RQ569` and `RQ570` DONE (serialize the shared Daily Sales period contract)
 Priority: P3
 Type: backend/frontend/tests
 Feature family: daily-sales-todate-contract
