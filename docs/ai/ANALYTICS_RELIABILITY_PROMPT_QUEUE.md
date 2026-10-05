@@ -26910,7 +26910,7 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 - Status: DONE
 - Completion: Operational Actions and Decision Board reads now exclude exact `smoke` source-key segments through one shared positive-only predicate; filtered fixture counts remain visible, and empty operational samples do not generate outcome/sample-quality cards.
 - Changed files: `Application/Analytics/AnalyticsActionFixturePolicy.cs`, `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`, `Api/Endpoints/AnalyticsActionsEndpoints.cs`, `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api/Dtos/DecisionBoardDtos.cs`, `Api.Tests/AnalyticsActionsEndpointsTests.cs`, `Api.Tests/DecisionBoardEndpointsTests.cs`, and `.ai/runs/2026-10-05-RQ479-evidence.md`.
-- Checks run: focused Actions/Decision Board/service suite 118/118; `dotnet build Api/Api.csproj --no-restore --verbosity quiet -clp:ErrorsOnly`; instruction, queue and planning validators; `git diff --check`.
+- Checks run: focused Actions/Decision Board/service suite 118/118; `dotnet build Api/Api.csproj --no-restore --verbosity quiet -clp:ErrorsOnly`; instruction, queue and planning validators; `git diff --check`. Current-main Actions run `37321106420` was inspected and classified: RQ453 manifest failed because its required `trust-state` suite had `executed=0`; backend suite finished 1753 passed / 50 failed / 40 skipped.
 - Checks not run: live production/provider GET and post-deploy smoke verification; no production data mutation was performed.
 - Run log: `.ai/runs/2026-10-05-RQ479-evidence.md`
 - Evidence state: synchronized
@@ -26919,7 +26919,7 @@ Known smoke fixtures cannot silently appear as live operational actions in a pil
 - Main verification: fresh fetch verified `HEAD == origin/main == d8a868c7a591ecdffbf8db1b3ca8af2c598a1a37`; implementation SHA is on current `main`.
 - Missed: source-side/test-tenant provenance and owner-authorized cleanup remain follow-up work; this change only quarantines positive marker matches at read time.
 - Follow-up: dependency-complete RQ582 is the primary next candidate after the full post-close scan; RQ584, RQ586 and RQ588 remain ready candidates subject to collision checks.
-- Residual risk: fixtures using a different key convention or non-test creation path are not classified by this exact reserved marker.
+- Residual risk: fixtures using a different key convention or non-test creation path are not classified by this exact reserved marker. The red current-main workflow is not passing proof: its Actions route smoke test hits the unregistered `OperationsAnalyticsIntegrityRegistry` in its isolated test host while mapping Cached Analytics endpoints, and other failures include missing `PerformanceLogs`/`DnevnikPromena` relations and non-relational diagnostic calls; these are outside RQ479 paths. The RQ453 manifest also reports the required trust-state artifact as zero executed despite its runner step being marked successful.
 - Post-close routing: RQ582 is the next candidate; the post-delivery scan and claim are recorded in the run log.
 - Prompt defect / scope repair: repaired `Owned paths`/`Avoid paths` to include the Decision Board action/outcome projections required by the 2026-10-04 acceptance addendum; production cleanup remains out of scope.
 
@@ -29289,7 +29289,7 @@ Seven production endpoints return `pol: "NeodreÄ‘eno"` instead of `"Neodređe
 
 ## RQ582 - Decide the future of Insight Studio and the legacy Advanced surfaces (stale snapshots, unknown identities)
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ581` DONE (owner decision resolved 2026-10-04; serialize the Insight Studio family)
 Priority: P2
 Type: product decision/frontend/governance
@@ -29297,6 +29297,8 @@ Feature family: insight-studio-quarantine
 Parallel-safe: no
 Owner: Product owner + Analytics Reliability
 Commit suggestion: `chore(analytics): quarantine uncertified Insight Studio surfaces`
+
+Owner recovery/claim 2026-10-05 after RQ479: fresh `origin/main` is `2c4ecc158f2df0d60d1d6ea5d47cd06ba89ba894`. The full 12-file RQ queue/addendum set, SQL queue, UI queue/addendum and master roadmap were scanned. RQ581 is DONE and the owner decision is resolved; no RQ582 lock, branch or open PR exists. P-UI-49 owns disjoint shared state components; P-UI-52 explicitly leaves the Insight Studio navigation entry to RQ582. Promoted RQ582 WAITING -> READY -> IN_PROGRESS as the dependency-complete P2 successor. Local lock: `.ai/task-locks/RQ582-codex.lock.md`.
 
 ### Problem
 
