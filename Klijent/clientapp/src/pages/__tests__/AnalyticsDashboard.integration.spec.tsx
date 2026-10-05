@@ -97,7 +97,7 @@ describe("AnalyticsDashboard (integration)", () => {
     expect(detailedHeader).toBeInTheDocument();
   });
 
-  it("keeps the worker refresh banner below the executive KPI strip", async () => {
+  it("does not render a duplicate page-level refresh banner", async () => {
     server.use(
       rest.get("/api/analytics/cached/dashboard/bootstrap", (_req, res, ctx) =>
         res(
@@ -116,13 +116,10 @@ describe("AnalyticsDashboard (integration)", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() =>
-      expect(container.querySelector(".analytics-refresh-banner")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(container.querySelector(".analytics-executive-kpis")).toBeInTheDocument());
     const kpis = container.querySelector(".analytics-executive-kpis");
     const refreshBanner = container.querySelector(".analytics-refresh-banner");
     expect(kpis).not.toBeNull();
-    expect(refreshBanner).not.toBeNull();
-    expect(kpis!.compareDocumentPosition(refreshBanner!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(refreshBanner).toBeNull();
   });
 });
