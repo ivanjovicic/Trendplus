@@ -6,8 +6,8 @@ Date: 2026-10-05
 Agent/tool: Cursor Cloud
 Delivery target: main
 Working branch / PR: `cursor/review-recertify-daily-e050`, direct delivery to main
-Main commit SHA: close-out commit on top of `90a47a5427bb37de7e7e58af99489e2497c8b70f`; exact tip is verified after push
-Implementation SHA: `ee33c490b9865279d04b25146f6e38d00a891763` for the half-open contract and retail-store seed; CI close-out follows in the next commit
+Main commit SHA: close-out implementation `97d50a5b103e619cac7a7ee41eb55f91cb797e9f` on top of `90a47a5427bb37de7e7e58af99489e2497c8b70f`; the docs stamp that records this SHA is the delivery tip and is verified with `HEAD == origin/main` after push
+Implementation SHA: `97d50a5b103e619cac7a7ee41eb55f91cb797e9f` (CI close-out). Half-open contract and retail-store seed remain `ee33c490b9865279d04b25146f6e38d00a891763`
 RQ561 assertion SHA: `ee33c490b9865279d04b25146f6e38d00a891763` (six-screen 1/1 on run `37353827984`)
 Main verification: `ee33c490` was `origin/main` before the presentation pass advanced main to `90a47a54`. This close-out is rebased onto that SHA. Tip equality is checked after push.
 Evidence state: synchronized
