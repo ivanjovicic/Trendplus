@@ -1272,6 +1272,8 @@ export default function PreNivelacijaPriorityPage() {
         description="Operativna podrška za odluke po SKU pre faze sniženja."
         periodFrom={data?.evidenceWindow?.salesWindowFromUtc ?? null}
         periodTo={data?.evidenceWindow?.salesWindowToUtc ?? null}
+        observedPeriodFrom={dataMeta?.observedPeriodFromUtc}
+        observedPeriodTo={dataMeta?.observedPeriodToUtc}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
         dataSource={`Analitika pre-nivelacije (opseg: ${dataScope})`}
         provenanceBasis={evidenceBasis}

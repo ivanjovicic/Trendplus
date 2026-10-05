@@ -30,6 +30,12 @@ public class AnalyticsResponseMetaDto
     public double? AttributionCoveragePct { get; set; }
     public DateTime? ObservedPeriodFromUtc { get; set; }
     public DateTime? ObservedPeriodToUtc { get; set; }
+    public string? DataFreshnessStatus { get; set; }
+    public string? DataFreshnessReasonCode { get; set; }
+    public string? DataFreshnessEvidenceId { get; set; }
+    public DateTime? DataFreshnessEvidenceAtUtc { get; set; }
+    public string? DataFreshnessSourceGeneration { get; set; }
+    public string? DataFreshnessContextFingerprint { get; set; }
     public string? DataQualityStatus { get; set; }
     public bool? RecommendationAllowed { get; set; }
     public bool IsPartial { get; set; }

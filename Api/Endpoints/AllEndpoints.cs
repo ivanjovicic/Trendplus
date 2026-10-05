@@ -2183,6 +2183,7 @@ public static class AllEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw2,
+            OperationsSourceFreshnessService sourceFreshness,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -2277,7 +2278,17 @@ public static class AllEndpoints
                         normalizedDataScope,
                         storeId,
                         sezonaId);
-                    return Results.Ok(cachedResponse);
+                    var cachedJson = JsonSerializer.Serialize(
+                        cachedResponse,
+                        cachedResponse.GetType(),
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    var refreshedJson = await sourceFreshness.ApplyJsonAsync(
+                        cachedJson,
+                        normalizedDataScope,
+                        storeId,
+                        "recommendation",
+                        ct);
+                    return Results.Content(refreshedJson, "application/json");
                 }
 
                 logger.LogInformation(
@@ -2891,6 +2902,7 @@ public static class AllEndpoints
                     reasonCodes: shoeReadiness?.ReasonCodes,
                     evidenceReferences: shoeReadiness?.EvidenceReferences,
                     repairPath: shoeReadiness?.RepairPath);
+                await sourceFreshness.ApplyAsync(shoeTrustMeta, normalizedDataScope, storeId, "recommendation", ct);
                 shoeTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
                     "shoe-type",
                     shoeTrustMeta,
@@ -2973,6 +2985,7 @@ public static class AllEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             AnalyticsRefreshStatusService refreshStatusService,
+            OperationsSourceFreshnessService sourceFreshness,
             int? sezonaId = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -3060,8 +3073,7 @@ public static class AllEndpoints
                             Provider = ResolveAnalyticsCacheProvider(cache)
                         };
 
-                    return Results.Content(
-                        ApplyColorSalesCacheMetadata(
+                    var cachedJson = ApplyColorSalesCacheMetadata(
                             cachedResponse.JsonPayload,
                             cachedMetadata,
                             cachePolicy,
@@ -3069,8 +3081,14 @@ public static class AllEndpoints
                             fromUtc ?? DateTime.MinValue,
                             toUtc ?? DateTime.MinValue,
                             normalizedDataScope,
-                            storeId),
-                        "application/json");
+                            storeId);
+                    var refreshedJson = await sourceFreshness.ApplyJsonAsync(
+                        cachedJson,
+                        normalizedDataScope,
+                        storeId,
+                        "signal",
+                        ct);
+                    return Results.Content(refreshedJson, "application/json");
                 }
 
                 var dataWindow = await (
@@ -3854,8 +3872,7 @@ public static class AllEndpoints
                     cachePolicy.Ttl,
                     ct);
 
-                return Results.Content(
-                    ApplyColorSalesCacheMetadata(
+                var responseWithCacheMeta = ApplyColorSalesCacheMetadata(
                         responseJson,
                         cacheMetadata,
                         cachePolicy,
@@ -3863,8 +3880,14 @@ public static class AllEndpoints
                         fromUtc ?? DateTime.MinValue,
                         toUtc ?? DateTime.MinValue,
                         normalizedDataScope,
-                        storeId),
-                    "application/json");
+                        storeId);
+                var responseWithSourceFreshness = await sourceFreshness.ApplyJsonAsync(
+                    responseWithCacheMeta,
+                    normalizedDataScope,
+                    storeId,
+                    "signal",
+                    ct);
+                return Results.Content(responseWithSourceFreshness, "application/json");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -3927,6 +3950,7 @@ public static class AllEndpoints
             IAnalyticsCacheService cache,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IOperationsAnalyticsIntegrityService integrityService,
+            OperationsSourceFreshnessService sourceFreshness,
             HttpContext httpContext,
             int? vendorId = null,
             DateTime? eventDate = null,
@@ -4002,7 +4026,10 @@ public static class AllEndpoints
                         endpointStopwatch.ElapsedMilliseconds);
 
                     await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(cachedResponse, integrityService, ct);
-                    return Results.Ok(ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, integrityRegistry));
+                    ApplyVendorSalesNivelacijaMeta(cachedResponse, correlationId, integrityRegistry);
+                    if (cachedResponse.Meta is not null)
+                        await sourceFreshness.ApplyAsync(cachedResponse.Meta, normalizedDataScope, storeId, "report", ct);
+                    return Results.Ok(cachedResponse);
                 }
 
                 logger.LogInformation(
@@ -5140,6 +5167,8 @@ public static class AllEndpoints
 
                 await EnsureVendorSalesNivelacijaIntegrityEvidenceAsync(response, integrityService, ct);
                 ApplyVendorSalesNivelacijaMeta(response, correlationId, integrityRegistry);
+                if (response.Meta is not null)
+                    await sourceFreshness.ApplyAsync(response.Meta, normalizedDataScope, storeId, "report", ct);
 
                 await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
 

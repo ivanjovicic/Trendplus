@@ -17,7 +17,9 @@ function parseAuthoritativeRefreshAt(
 }
 
 export function buildSupplierSalesStatsTrustProjection(
-  meta?: Pick<AnalyticsResponseMeta, "success" | "emptyReason" | "isPartial" | "lastRefreshAtUtc"> | null,
+  meta?: Pick<AnalyticsResponseMeta, "success" | "emptyReason" | "isPartial" | "lastRefreshAtUtc">
+    & Partial<Pick<AnalyticsResponseMeta, "dataFreshnessStatus">>
+    | null,
 ): SupplierSalesStatsTrustProjection {
   return {
     lastRefreshAt: parseAuthoritativeRefreshAt(meta),

@@ -16,7 +16,9 @@ const EMPTY_REASON_MESSAGES: Record<string, string> = {
 };
 
 export function getAnalyticsDataFreshnessStatus(
-  meta?: Pick<AnalyticsResponseMeta, "success" | "emptyReason" | "isPartial" | "lastRefreshAtUtc"> | null,
+  meta?: Pick<AnalyticsResponseMeta, "success" | "emptyReason">
+    & Partial<Pick<AnalyticsResponseMeta, "dataFreshnessStatus">>
+    | null,
 ): "fresh" | "stale" | "critical" | "unknown" {
   if (!meta || meta.success !== true) {
     return "unknown";
@@ -26,12 +28,8 @@ export function getAnalyticsDataFreshnessStatus(
     return "unknown";
   }
 
-  if (meta.isPartial === true) {
-    return "stale";
-  }
-
-  const lastRefreshAtUtc = typeof meta.lastRefreshAtUtc === "string" ? meta.lastRefreshAtUtc.trim() : "";
-  return lastRefreshAtUtc && Number.isFinite(Date.parse(lastRefreshAtUtc)) ? "fresh" : "unknown";
+  const status = typeof meta.dataFreshnessStatus === "string" ? meta.dataFreshnessStatus.trim().toLowerCase() : "";
+  return status === "fresh" || status === "stale" || status === "critical" ? status : "unknown";
 }
 
 export function getAnalyticsEmptyReasonMessage(emptyReason?: string | null): string | null {

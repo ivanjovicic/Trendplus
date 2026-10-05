@@ -1134,6 +1134,8 @@ export default function ShoeTypeSalesStatsPage() {
         description="Podržavajući signal za analizu asortimana po tipu obuće; nije samostalna konačna preporuka."
         periodFrom={data?.fromDate ? toDateOnly(data.fromDate) : activeFilters.fromDate}
         periodTo={toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate}
+        observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
+        observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Analitika prodajnih činjenica (opseg: ${dataScopeLabel(data?.dataScope === "existing" || data?.dataScope === "imported" ? data.dataScope : dataScope)})`}

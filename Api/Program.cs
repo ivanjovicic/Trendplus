@@ -469,6 +469,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<WorkerRuntimePolicyService>();
     builder.Services.AddScoped<WorkerRegistryService>();
     builder.Services.AddScoped<AnalyticsRefreshStatusService>();
+    builder.Services.AddScoped<OperationsSourceFreshnessService>();
     builder.Services.AddSingleton<BackendRoutingPreferenceService>();
     builder.Services.AddSingleton<ISourceSessionFactory, SourceSessionFactory>();
     builder.Services.AddSingleton<NamedSourceDiscoveryService>();

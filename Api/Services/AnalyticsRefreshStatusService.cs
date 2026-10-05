@@ -591,7 +591,7 @@ public sealed class AnalyticsRefreshStatusService
         return "critical";
     }
 
-    private static string ResolveOverallFreshness(DateTime? lastSuccess, DateTime? lastFailure, DateTime nowUtc)
+    internal static string ResolveOverallFreshness(DateTime? lastSuccess, DateTime? lastFailure, DateTime nowUtc)
     {
         if (!lastSuccess.HasValue)
         {

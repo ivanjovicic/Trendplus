@@ -63,6 +63,12 @@ export interface AnalyticsContextDescriptor {
   effectivePeriodToUtc?: string | null;
   observedPeriodFromUtc?: string | null;
   observedPeriodToUtc?: string | null;
+  dataFreshnessStatus?: AnalyticsFreshnessStatus | string | null;
+  dataFreshnessReasonCode?: string | null;
+  dataFreshnessEvidenceId?: string | null;
+  dataFreshnessEvidenceAtUtc?: string | null;
+  dataFreshnessSourceGeneration?: string | null;
+  dataFreshnessContextFingerprint?: string | null;
   requestedDataScope?: string | null;
   effectiveDataScope?: string | null;
   dataScopeSource?: string | null;
@@ -108,6 +114,12 @@ export interface AnalyticsResponseMeta {
   attributionCoveragePct?: number | null;
   observedPeriodFromUtc?: string | null;
   observedPeriodToUtc?: string | null;
+  dataFreshnessStatus?: AnalyticsFreshnessStatus | string | null;
+  dataFreshnessReasonCode?: string | null;
+  dataFreshnessEvidenceId?: string | null;
+  dataFreshnessEvidenceAtUtc?: string | null;
+  dataFreshnessSourceGeneration?: string | null;
+  dataFreshnessContextFingerprint?: string | null;
   dataQualityStatus?: "good" | "warning" | "critical" | "insufficient_data" | string | null;
   recommendationAllowed?: boolean | null;
   isPartial?: boolean;

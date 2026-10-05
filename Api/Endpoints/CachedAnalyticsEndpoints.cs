@@ -742,6 +742,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            OperationsSourceFreshnessService sourceFreshness,
             HttpContext httpContext,
             ILoggerFactory loggerFactory,
             int page = 1,
@@ -952,6 +953,7 @@ public static class CachedAnalyticsEndpoints
                     salesWindowEndUtc,
                     normalizedDataScope,
                     storeId);
+                await sourceFreshness.ApplyAsync(listMeta, normalizedDataScope, storeId, "recommendation", ct);
                 return Results.Ok(paged with { Meta = listMeta });
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

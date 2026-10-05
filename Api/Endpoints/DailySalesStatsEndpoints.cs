@@ -25,6 +25,7 @@ public static class DailySalesStatsEndpoints
             ILogger<Program> logger,
             HttpContext httpContext,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            OperationsSourceFreshnessService sourceFreshness,
             CancellationToken ct) =>
         {
             try
@@ -94,6 +95,12 @@ public static class DailySalesStatsEndpoints
                         evidenceReferences: ["daily_sales.rows", "daily_sales.shifts"],
                         repairPath: "Daily Sales kvalitet i opseg podataka");
                 }
+                await sourceFreshness.ApplyAsync(
+                    result.Meta,
+                    normalizedDataScope,
+                    request.StoreId,
+                    "signal",
+                    ct);
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -70,6 +70,7 @@ public static class PreNivelacijaPriorityEndpoints
             IAnalyticsCacheService cache,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IOperationsAnalyticsIntegrityService integrityService,
+            OperationsSourceFreshnessService sourceFreshness,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
             HttpContext httpContext,
@@ -729,6 +730,8 @@ public static class PreNivelacijaPriorityEndpoints
                     storeId));
             await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
             ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
+            if (response.Meta is not null)
+                await sourceFreshness.ApplyAsync(response.Meta, normalizedDataScope, storeId, "recommendation", ct);
 
                 return Results.Ok(response);
             }
@@ -748,6 +751,8 @@ public static class PreNivelacijaPriorityEndpoints
                     new PreNivelacijaFilterFacetsDto());
                 await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
                 ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
+                if (response.Meta is not null)
+                    await sourceFreshness.ApplyAsync(response.Meta, normalizedDataScope, storeId, "recommendation", ct);
                 return Results.Ok(response);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -776,6 +781,8 @@ public static class PreNivelacijaPriorityEndpoints
                     new PreNivelacijaFilterFacetsDto());
                 await EnsureNivelacijaFamilyEvidenceAsync(response, integrityService, storeId, normalizedDataScope, ct);
                 ApplyNivelacijaFamilyEvidence(response, integrityRegistry, storeId, normalizedDataScope);
+                if (response.Meta is not null)
+                    await sourceFreshness.ApplyAsync(response.Meta, normalizedDataScope, storeId, "recommendation", ct);
                 return Results.Ok(response);
             }
         })

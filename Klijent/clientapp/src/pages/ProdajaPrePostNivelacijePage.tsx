@@ -1578,6 +1578,8 @@ export default function ProdajaPrePostNivelacijePage() {
         description="Analiza prozora događaja: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
+        observedPeriodFrom={dataMeta?.observedPeriodFromUtc}
+        observedPeriodTo={dataMeta?.observedPeriodToUtc}
         lastRefreshAt={dataMeta?.lastRefreshAtUtc ?? null}
         dataSource={`Analitika nivelacije (opseg: ${dataScopeLabel(effectiveDataScope)}${effectiveStoreId != null ? `, objekat: ${effectiveStoreId}` : ""})`}
         mode="report"

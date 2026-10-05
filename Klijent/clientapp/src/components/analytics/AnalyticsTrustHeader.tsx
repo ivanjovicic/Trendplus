@@ -72,6 +72,19 @@ const FRESHNESS_LABELS: Record<string, string> = {
   unknown: "Nije poznato",
 };
 
+const FRESHNESS_REASON_LABELS: Record<string, string> = {
+  source_import_recent_success: "Potvrđeno poslednjim uspešnim importom",
+  source_import_older_than_24h: "Poslednji uspešan import je stariji od 24 sata",
+  source_import_older_than_72h: "Poslednji uspešan import je stariji od 72 sata",
+  source_import_failure_after_success: "Zabeležen je neuspešan import nakon poslednjeg uspeha",
+  source_import_evidence_missing: "Nema trajnog dokaza o uspešnom importu",
+  source_import_not_store_scoped: "Import dokaz nije vezan za izabranu prodavnicu",
+  source_watermark_unavailable_for_existing_data: "Trajni izvorni watermark nije dostupan za postojeće podatke",
+  source_scope_contains_unwatermarked_rows: "Izabrani skup sadrži redove bez zajedničkog trajnog watermark-a",
+  source_freshness_context_unavailable: "Svežina nije vezana za potpuni kontekst ovog upita",
+  source_freshness_evidence_unavailable: "Dokaz o svežini trenutno nije dostupan",
+};
+
 const REFRESH_STEP_LABELS: Record<string, string> = {
   sales_facts_refresh: "osvežavanje prodajnih činjenica",
   product_dim_refresh: "osvežavanje proizvoda",
@@ -212,6 +225,7 @@ export default function AnalyticsTrustHeader({
     ? "Učitavanje pouzdanosti"
     : (normalizedStatus ? STATUS_LABELS[normalizedStatus] : "Status kvaliteta nije dostupan");
   const freshness = normalizeFreshness(dataFreshnessStatus);
+  const freshnessReasonCode = meta?.dataFreshnessReasonCode?.trim() || null;
   const safePeriodFrom = typeof periodFrom === "string" ? periodFrom.trim() : null;
   const safePeriodTo = typeof periodTo === "string" ? periodTo.trim() : null;
   const safeRequestedFrom = typeof requestedPeriodFrom === "string" ? requestedPeriodFrom.trim() : safePeriodFrom;
@@ -359,6 +373,14 @@ export default function AnalyticsTrustHeader({
           <span className={`ath-freshness-badge ath-freshness-${freshness}`}>
             {FRESHNESS_LABELS[freshness]}
           </span>
+          {freshnessReasonCode ? (
+            <span className="ath-meta-subtle">
+              {FRESHNESS_REASON_LABELS[freshnessReasonCode] ?? "Razlog stanja svežine nije mapiran."}
+            </span>
+          ) : null}
+          {meta?.dataFreshnessEvidenceId ? (
+            <span className="ath-meta-subtle">ID dokaza: {meta.dataFreshnessEvidenceId}</span>
+          ) : null}
         </div>
         <div className="ath-meta-item">
           <span className="ath-meta-key">Izvor podataka</span>

@@ -1934,6 +1934,8 @@ export default function DailySalesStatsPage() {
         description="Dnevni pregled po smenama: količine, prihodi i top dobavljači."
         periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
         periodTo={data?.requestedTo ?? activeFilters.toDate}
+        observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
+        observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
         dataFreshnessStatus={trustDataFreshnessStatus}
         dataSource={`Dnevna prodaja (opseg: ${dataScopeLabel(normalizeDataScope(data?.dataScope ?? memoizedQueryDataScope))})`}

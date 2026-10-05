@@ -56,6 +56,24 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByRole("link", { name: "Metodologija i tumačenje signala" })).toHaveAttribute("href", "/docs/methodology");
   });
 
+  it("explains source freshness evidence and the observed sales horizon", () => {
+    renderHeader({
+      observedPeriodFrom: "2026-05-12T00:00:00Z",
+      observedPeriodTo: "2026-05-28T00:00:00Z",
+      dataFreshnessStatus: "unknown",
+      meta: {
+        success: true,
+        dataFreshnessStatus: "unknown",
+        dataFreshnessReasonCode: "source_import_not_store_scoped",
+        dataFreshnessEvidenceId: null,
+      },
+    });
+
+    expect(screen.getByText("Nije poznato")).toBeInTheDocument();
+    expect(screen.getByText("Import dokaz nije vezan za izabranu prodavnicu")).toBeInTheDocument();
+    expect(screen.getByText("Posmatrani period")).toBeInTheDocument();
+  });
+
   it("shows running subtitle while refresh is active", () => {
     renderHeader({ refreshIsRunning: true, refreshCurrentStep: "supplier_decision_mvs" });
 

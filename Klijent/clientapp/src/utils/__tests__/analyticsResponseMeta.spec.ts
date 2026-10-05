@@ -16,11 +16,14 @@ import {
 
 describe("analyticsResponseMeta", () => {
   it.each([
-    [{ success: true, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "fresh"],
-    [{ success: true, lastRefreshAtUtc: " 2026-07-01T08:00:00Z " }, "fresh"],
+    [{ success: true, dataFreshnessStatus: "fresh", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "fresh"],
+    [{ success: true, dataFreshnessStatus: "stale", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "stale"],
+    [{ success: true, dataFreshnessStatus: "critical", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "critical"],
+    [{ success: true, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
+    [{ success: true, dataFreshnessStatus: "unsupported", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
     [{ success: true, lastRefreshAtUtc: null }, "unknown"],
     [{ success: true, lastRefreshAtUtc: "not-a-date" }, "unknown"],
-    [{ success: true, isPartial: true, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "stale"],
+    [{ success: true, isPartial: true, dataFreshnessStatus: "fresh", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "fresh"],
     [{ success: true, emptyReason: "no_data_in_period", lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
     [{ success: false, lastRefreshAtUtc: "2026-07-01T08:00:00Z" }, "unknown"],
     [null, "unknown"],

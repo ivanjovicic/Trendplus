@@ -1723,6 +1723,8 @@ export default function InventoryPage() {
         description="Operativni pregled zaliha: dopuna, rizik nestanka, višak, transferi i tok odluka. Izabrani period važi za listu i detalj; snapshot paneli su označeni zasebno."
         periodFrom={periodFrom}
         periodTo={periodTo}
+        observedPeriodFrom={primaryMeta?.observedPeriodFromUtc}
+        observedPeriodTo={primaryMeta?.observedPeriodToUtc}
         lastRefreshAt={primaryRefreshAt}
         dataSource="Snimak analitike zaliha"
         dataQualityStatus={primaryMeta?.dataQualityStatus ?? null}
