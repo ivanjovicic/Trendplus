@@ -22,6 +22,7 @@ Evidence state: synchronized
 - Inventory valuation aggregate returns `null` total value when stock exists but no unit cost is known. Insights tests expect `estimated_from_sale_cost` from the sale-line `NabavnaCena`, matching `InventoryValuationAndAgingPolicy`.
 - Reorder presentation test covers revenue `null` with procurement cost `2000`: revenue stays `N/D`. `ReorderPlan` import restored so typecheck compiles.
 - RQ49 marked DONE because the RQ591 field split plus this presentation proof meets its acceptance. RQ48 summary row corrected from READY to DONE to match its section. RQ588 remains the canonical IN_PROGRESS owner and was not taken.
+- Exact-main CI on `4ed7012d` (run `37348409907`) failed RQ561 because date-only `toDate=2026-07-07` now echoes exclusive `requestedTo=2026-07-08T00:00:00Z`. Row counts and revenue had already matched. The six-screen assertion now expects that exclusive bound. The same run's `integrityRegistry` body-inference failures are the binding defect fixed in this delivery. Markdown margin `-832` and the supplier drift-evidence string mismatch were already red on that pre-change SHA.
 
 ## Files changed
 

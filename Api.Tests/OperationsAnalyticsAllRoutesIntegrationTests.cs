@@ -128,7 +128,8 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             540m,
             daily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal($"{FromDate}T00:00:00Z", daily.GetProperty("requestedFrom").GetString());
-        Assert.Equal($"{ToDate}T00:00:00Z", daily.GetProperty("requestedTo").GetString());
+        // Date-only toDate is the inclusive calendar day. Daily Sales stores the next exclusive midnight.
+        Assert.Equal("2026-07-08T00:00:00Z", daily.GetProperty("requestedTo").GetString());
         Assert.Equal("all", daily.GetProperty("dataScope").GetString());
         Assert.Equal("all", daily.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
         Assert.Equal("sale_snapshot", daily.GetProperty("meta").GetProperty("attributionBasis").GetString());
