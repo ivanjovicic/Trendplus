@@ -7,6 +7,7 @@ using Domain.Model;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Trendplus2.Dtos;
@@ -70,7 +71,7 @@ public static class PreNivelacijaPriorityEndpoints
             IAnalyticsDbContext analyticsDb,
             IPreNivelacijaScoringService scoring,
             IAnalyticsCacheService cache,
-            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            [FromServices] OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IOperationsAnalyticsIntegrityService integrityService,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory,

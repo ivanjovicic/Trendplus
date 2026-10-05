@@ -11,6 +11,7 @@ import type {
   CategoryStat,
   GenderStat,
   ReorderItem,
+  ReorderPlan,
 } from "./insightStudioApi";
 import type {
   DepletionForecast,

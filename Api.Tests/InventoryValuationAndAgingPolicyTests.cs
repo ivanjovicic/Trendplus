@@ -48,6 +48,18 @@ public class InventoryValuationAndAgingPolicyTests
         Assert.Equal(2, aggregate.UnknownValueUnits);
     }
 
+    [Fact(DisplayName = "Aggregate valuation stays null when no unit has a cost")]
+    public void AggregateValuation_UnknownStock_DoesNotBecomeZero()
+    {
+        var aggregate = InventoryValuationAndAgingPolicy.AggregateValuation([
+            (4, new InventoryArticleValuation(null, InventoryValuationBases.Unknown, false)),
+        ]);
+
+        Assert.Null(aggregate.TotalValue);
+        Assert.Equal(0m, aggregate.ValueCoveragePct);
+        Assert.Equal(4, aggregate.UnknownValueUnits);
+    }
+
     [Fact(DisplayName = "Aging without reliable receipt is unknown")]
     public void Aging_WithoutReceipt_IsUnknown()
     {

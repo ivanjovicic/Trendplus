@@ -57,7 +57,7 @@ public sealed class OperationsSourceFreshnessService
                 storeId,
                 meta.RequestedPeriodFromUtc,
                 meta.RequestedPeriodToUtc,
-                meta.Context?.DateBoundaryConvention);
+                meta.DateBoundaryConvention ?? meta.Context?.DateBoundaryConvention);
             meta.ObservedPeriodFromUtc = await headers
                 .Select(header => (DateTime?)header.DatumProdaje)
                 .MinAsync(ct);

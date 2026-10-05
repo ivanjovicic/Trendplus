@@ -121,7 +121,7 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal(1, topAged.GetProperty("storeId").GetInt32());
         Assert.Equal(1, topAged.GetProperty("supplierId").GetInt32());
         Assert.Equal(100m, topAged.GetProperty("unitCost").GetDecimal());
-        Assert.Equal("article_master", topAged.GetProperty("costSource").GetString());
+        Assert.Equal("estimated_from_sale_cost", topAged.GetProperty("costSource").GetString());
         Assert.False(topAged.GetProperty("costMissing").GetBoolean());
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topAged.GetProperty("stockCoverStatus").GetString());
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topAged.GetProperty("sellThroughStatus").GetString());
@@ -134,7 +134,7 @@ public sealed class InventoryListEndpointIntegrationTests
         Assert.Equal(1, topCapital.GetProperty("storeId").GetInt32());
         Assert.Equal(1, topCapital.GetProperty("supplierId").GetInt32());
         Assert.Equal(100m, topCapital.GetProperty("unitCost").GetDecimal());
-        Assert.Equal("article_master", topCapital.GetProperty("costSource").GetString());
+        Assert.Equal("estimated_from_sale_cost", topCapital.GetProperty("costSource").GetString());
         Assert.False(topCapital.GetProperty("costMissing").GetBoolean());
         Assert.Equal(InventorySignalCalculator.StockCoverOutOfStockRisk, topCapital.GetProperty("stockCoverStatus").GetString());
         Assert.Equal(InventorySignalCalculator.SellThroughInsufficientData, topCapital.GetProperty("sellThroughStatus").GetString());

@@ -23,7 +23,7 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
 | RQ47 | DONE | action-source-key-lineage | Include relevant filters in supplier action source keys |
 | RQ48 | READY | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
-| RQ49 | WAITING | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
+| RQ49 | DONE | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
 | RQ50 | WAITING | chart-topn-semantics | Label top-N charts and rest/tail behavior explicitly |
 
 ---
@@ -636,7 +636,7 @@ Owner completion 2026-10-05: RQ48 moved `READY -> DONE` after `loadOpenSupplierA
 
 ## RQ49 - Reorder value field semantic drift
 
-Status: WAITING
+Status: DONE
 Ready after: RQ33/RQ38 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -675,6 +675,8 @@ Legacy reorder `totalReorderValue` historically means selling-price potential va
 ### Acceptance
 
 - Same field name no longer means cost in one path and revenue in another.
+
+Owner completion 2026-10-05: RQ49 acceptance is satisfied by the RQ591 reorder split plus the same-day review. `buildLegacyReorderFallbackFromSignals` maps `expectedRevenueFromReorder` to `potentialRevenueRsd`/`totalReorderValue` and `totalReorderCost` to `estimatedProcurementCostRsd`. Missing revenue stays null and the presentation layer renders `N/D` instead of the procurement cost or zero. Focused proof: `analyticsIntelligenceDerived.spec.ts` and `insightStudioTrustPresentation.spec.ts`. Run log: `.ai/runs/2026-10-05-review-recertify-evidence.md`.
 
 ---
 

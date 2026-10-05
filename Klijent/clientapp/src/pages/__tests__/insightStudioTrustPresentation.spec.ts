@@ -77,6 +77,23 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
     expect(view.basisNote).toBeNull();
   });
 
+  it("does not present procurement cost as potential revenue when revenue is missing", () => {
+    const view = presentReorderV1Summary({
+      criticalCount: 0,
+      urgentCount: 0,
+      recommendedCount: 1,
+      potentialRevenueRsd: null,
+      estimatedProcurementCostRsd: 2000,
+      costCoveragePct: 40,
+      reorderValueBasis: "unavailable",
+      totalReorderValue: null,
+    } as any);
+
+    expect(view.potentialRevenueLabel).toBe("N/D");
+    expect(view.procurementCostLabel).toContain("2.000");
+    expect(view.potentialRevenueLabel).not.toContain("2.000");
+  });
+
   it("keeps nullable profit lift out of fake zero percent", () => {
     expect(presentSignedInsightPercent(null)).toBe("N/D");
     expect(presentSignedInsightPercent(12.5)).toBe("+12,5%");

@@ -3989,7 +3989,7 @@ public static class AllEndpoints
             TrendplusDbContext trendplusDb,
             ILogger<Program> logger,
             IAnalyticsCacheService cache,
-            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            [FromServices] OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IOperationsAnalyticsIntegrityService integrityService,
             IServiceProvider serviceProvider,
             HttpContext httpContext,

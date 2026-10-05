@@ -107,7 +107,7 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.Equal(30, defaultRoot.GetProperty("dateRows").GetArrayLength());
     }
 
-    [Fact(DisplayName = "Daily sales timestamp end matches Supplier and date-only end stays inclusive")]
+    [Fact(DisplayName = "Daily sales timestamp end matches Supplier and date-only calendar day expands to the next exclusive bound")]
     public async Task DailySalesStats_TimestampToDateMatchesSupplierAndDateOnlyRemainsInclusive()
     {
         await using var factory = CreateFactory();
@@ -123,7 +123,7 @@ public sealed class DailySalesStatsIntegrationTests
             "/api/analytics/supplier-sales-stats?fromDate=2026-01-01&toDate=2026-01-02T00:00:00Z&storeId=1&dataScope=all");
 
         Assert.Equal("half_open_utc", timestampDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
-        Assert.Equal("inclusive_utc_day", legacyDateOnlyDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
+        Assert.Equal("half_open_utc", legacyDateOnlyDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
         Assert.Equal(1, timestampDaily.GetProperty("dateRows").GetArrayLength());
         Assert.Equal(2, legacyDateOnlyDaily.GetProperty("dateRows").GetArrayLength());
         Assert.Equal(10, timestampDaily.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());

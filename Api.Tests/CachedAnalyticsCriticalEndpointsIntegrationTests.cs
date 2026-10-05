@@ -301,7 +301,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Equal(12, root.GetProperty("totalOnHand").GetInt32());
         Assert.Equal(1, root.GetProperty("lowStockCount").GetInt32());
         Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
-        Assert.Equal(2_200m, root.GetProperty("estimatedInventoryValue").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("estimatedInventoryValue").ValueKind);
 
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());

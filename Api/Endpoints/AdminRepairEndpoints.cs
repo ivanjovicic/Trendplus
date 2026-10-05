@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Api.Models;
+using Microsoft.AspNetCore.Mvc;
 using Api.Services;
 using Infrastructure.Services.Caching;
 
@@ -34,7 +35,7 @@ public static class AdminRepairEndpoints
         group.MapPost("/nivelacije", async (
             NivelacijaRepairRequest request,
             INivelacijaRepairService repairService,
-            AnalyticsCacheAdminService cacheAdmin,
+            [FromServices] AnalyticsCacheAdminService cacheAdmin,
             HttpContext httpContext,
             IConfiguration configuration,
             CancellationToken ct) =>

@@ -741,7 +741,7 @@ public static class CachedAnalyticsEndpoints
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
             IAnalyticsDbContext analyticsDb,
-            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            [FromServices] OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IServiceProvider serviceProvider,
             HttpContext httpContext,
             ILoggerFactory loggerFactory,

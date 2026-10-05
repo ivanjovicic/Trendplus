@@ -11,20 +11,14 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1321,
+      "line": 1309,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1322,
+      "line": 1310,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
-    },
-    {
-      "file": "src/pages/AnalyticsActionsPage.tsx",
-      "rule": "fake_zero_fallback",
-      "line": 301,
-      "reason": "Existing action metadata fallback requires a reviewed trust-contract exception."
     },
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
@@ -39,15 +33,9 @@
       "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
     },
     {
-      "file": "src/pages/ArtikliListPage.tsx",
-      "rule": "fake_zero_fallback",
-      "line": 189,
-      "reason": "Existing article-list fallback requires a reviewed unavailable-value exception."
-    },
-    {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 939,
+      "line": 947,
       "reason": "Store-filter discovery failure must clear stale store-scoped rows before falling back to the all-stores scope."
     },
     {
@@ -101,19 +89,19 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 685,
+      "line": 673,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 152,
+      "line": 153,
       "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 685,
+      "line": 673,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {

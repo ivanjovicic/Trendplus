@@ -58,7 +58,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 2,
             dataScope: "all",
@@ -127,7 +127,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var imported = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 3,
             dataScope: "imported",
@@ -171,14 +171,14 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var imported = await service.GetDailySalesAsync(
             new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 2, 3, 0, 0, 0, DateTimeKind.Utc),
             1,
             3,
             "imported",
             CancellationToken.None);
         var existing = await service.GetDailySalesAsync(
             new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 2, 3, 0, 0, 0, DateTimeKind.Utc),
             1,
             3,
             "existing",
@@ -233,7 +233,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 2, 11, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "imported",
@@ -272,7 +272,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 2, 2, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "imported",
@@ -315,7 +315,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 11, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "all",
@@ -365,7 +365,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 3, 11, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 12, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "all",
@@ -392,7 +392,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 4, 7, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 4, 8, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "all",
@@ -438,7 +438,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 3, 26, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 27, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "all",
@@ -495,7 +495,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 3, 23, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 3, 23, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 3, 24, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 5,
             dataScope: "all",
@@ -579,7 +579,7 @@ public sealed class DailySalesStatsServiceTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         var result = await service.GetDailySalesAsync(
             requestedFromUtc: new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc),
-            requestedToUtc: new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc),
+            requestedToUtc: new DateTime(2026, 5, 6, 0, 0, 0, DateTimeKind.Utc),
             storeId: 1,
             topN: 2,
             dataScope: "all",
@@ -634,7 +634,7 @@ public sealed class DailySalesStatsServiceTests
         var request = new
         {
             From = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            To = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+            To = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc)
         };
 
         var beforeMasterMutation = await service.GetDailySalesAsync(
@@ -706,7 +706,7 @@ public sealed class DailySalesStatsServiceTests
         await db.SaveChangesAsync();
 
         var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
-            .GetDailySalesAsync(timestamps[0].Date, timestamps[^1].Date, 1, 5, "all");
+            .GetDailySalesAsync(timestamps[0].Date, timestamps[^1].Date.AddDays(1), 1, 5, "all");
 
         var row = Assert.Single(result.DateRows);
         Assert.Equal(2, row.FirstShiftTotalItems);
@@ -745,7 +745,7 @@ public sealed class DailySalesStatsServiceTests
         var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
             .GetDailySalesAsync(
                 new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 8, 2, 0, 0, 0, DateTimeKind.Utc),
                 1,
                 5,
                 "all");
@@ -791,7 +791,7 @@ public sealed class DailySalesStatsServiceTests
         var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
             .GetDailySalesAsync(
                 new DateTime(2026, 7, 6, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 8, 6, 0, 0, 0, DateTimeKind.Utc),
                 storeId: 1,
                 topN: 15,
                 dataScope: "all",
@@ -854,7 +854,7 @@ public sealed class DailySalesStatsServiceTests
         var result = await new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance)
             .GetDailySalesAsync(
                 new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc),
                 storeId: 1,
                 topN: 15,
                 dataScope: "all",
@@ -909,7 +909,7 @@ public sealed class DailySalesStatsServiceTests
 
         var result = await service.GetDailySalesAsync(
             new DateTime(2026, 3, 29, 0, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 3, 29, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 30, 0, 0, 0, DateTimeKind.Utc),
             1,
             5,
             "all");
@@ -918,6 +918,53 @@ public sealed class DailySalesStatsServiceTests
         Assert.Equal(2, row.FirstShiftTotalItems);
         Assert.Equal("Europe/Belgrade", result.Metadata.ShiftTimeZone);
         Assert.Equal("utc_instant", result.Metadata.ShiftTimestampBasis);
+    }
+
+    [Fact]
+    public async Task GetDailySalesAsync_ExcludesSaleExactlyAtExclusiveEnd()
+    {
+        await using var db = CreateDbContext();
+        SeedSuppliersAndArticles(db);
+        var fromUtc = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
+        var toExclusiveUtc = new DateTime(2026, 6, 16, 0, 0, 0, DateTimeKind.Utc);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 1500,
+                BrojRacuna = "1500",
+                DatumProdaje = new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 1501,
+                BrojRacuna = "1501",
+                DatumProdaje = toExclusiveUtc,
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 1500, IdProdaja = 1500, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+            new ProdajaStavka { Id = 1501, IdProdaja = 1501, IdArtikal = 101, Kolicina = 9, Cena = 100m });
+        await db.SaveChangesAsync();
+
+        var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
+        var result = await service.GetDailySalesAsync(
+            fromUtc,
+            toExclusiveUtc,
+            1,
+            5,
+            "all",
+            CancellationToken.None,
+            requestedToIsExclusive: true);
+
+        var row = Assert.Single(result.DateRows, x => x.TotalItemsSold > 0);
+        Assert.Equal(fromUtc.Date, row.Date.Date);
+        Assert.Equal(2, row.TotalItemsSold);
+        Assert.Equal(200m, row.TotalRevenue);
+        Assert.Equal(toExclusiveUtc, result.Meta.RequestedPeriodToUtc);
+        Assert.DoesNotContain(result.DateRows, x => x.Date.Date == toExclusiveUtc.Date && x.TotalItemsSold > 0);
     }
 
     private static TrendplusDbContext CreateDbContext()

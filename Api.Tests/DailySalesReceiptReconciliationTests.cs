@@ -262,7 +262,7 @@ public sealed class DailySalesReceiptReconciliationTests
         var service = new DailySalesStatsService(db, NullLogger<DailySalesStatsService>.Instance);
         return await service.GetDailySalesAsync(
             requestedFromUtc: SaleDate.Date,
-            requestedToUtc: SaleDate.Date,
+            requestedToUtc: SaleDate.Date.AddDays(1),
             storeId: 1,
             topN: 5,
             dataScope: "all",

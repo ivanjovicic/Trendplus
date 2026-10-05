@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Api.Endpoints;
 using Api.Models;
 using Api.Services;
+using Infrastructure.Services.Caching;
 using Trendplus2.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -129,6 +130,10 @@ public sealed class AdminRepairAuthorizationTests
             var service = new RecordingNivelacijaRepairService();
             builder.Services.AddSingleton<INivelacijaRepairService>(service);
             builder.Services.AddSingleton<ILogger<Program>>(NullLogger<Program>.Instance);
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSingleton<IAnalyticsCacheService, NoopAnalyticsCacheService>();
+            builder.Services.AddSingleton<AnalyticsCacheAdminService>();
+            builder.Services.AddSingleton<ILogger<AnalyticsCacheAdminService>>(NullLogger<AnalyticsCacheAdminService>.Instance);
 
             var app = builder.Build();
             app.UseRouting();
@@ -174,5 +179,22 @@ public sealed class AdminRepairAuthorizationTests
                 RemainingIssuesAfterRepair = 0
             });
         }
+    }
+
+    private sealed class NoopAnalyticsCacheService : IAnalyticsCacheService
+    {
+        public bool IsRedisAvailable => false;
+        public bool IsRedisEnabled => false;
+        public void SetRedisEnabled(bool enabled) { }
+        public CacheFootprintSnapshot GetFootprintSnapshot()
+            => new("memory", false, false, 0);
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
+            => Task.FromResult<T?>(null);
+        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+            => Task.CompletedTask;
+        public Task RemoveAsync(string key, CancellationToken ct = default) => Task.CompletedTask;
+        public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default) => Task.CompletedTask;
+        public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+            => await factory();
     }
 }

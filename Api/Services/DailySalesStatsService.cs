@@ -58,9 +58,9 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var existingOnly = string.Equals(normalizedScope, "existing", StringComparison.Ordinal);
 
         var fromDateUtc = DateTime.SpecifyKind(requestedFromUtc.Date, DateTimeKind.Utc);
-        var toDateExclusiveUtc = requestedToIsExclusive
-            ? DateTime.SpecifyKind(requestedToUtc, DateTimeKind.Utc)
-            : DateTime.SpecifyKind(requestedToUtc.Date.AddDays(1), DateTimeKind.Utc);
+        // Callers pass a half-open end. The flag remains for source compatibility and no longer adds a day.
+        _ = requestedToIsExclusive;
+        var toDateExclusiveUtc = DateTime.SpecifyKind(requestedToUtc, DateTimeKind.Utc);
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
         // The table population is line/article scoped. Reuse its receipt identity for
         // every receipt diagnostic so existing/imported views cannot inherit evidence

@@ -26,7 +26,7 @@ public static class DailySalesStatsEndpoints
             IAnalyticsCacheService cache,
             ILogger<Program> logger,
             HttpContext httpContext,
-            OperationsAnalyticsIntegrityRegistry integrityRegistry,
+            [FromServices] OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IServiceProvider serviceProvider,
             CancellationToken ct) =>
         {
@@ -129,6 +129,7 @@ public static class DailySalesStatsEndpoints
                         evidenceReferences: ["daily_sales.rows", "daily_sales.shifts"],
                         repairPath: "Daily Sales kvalitet i opseg podataka");
                 }
+                result.Meta.DateBoundaryConvention = "half_open_utc";
                 await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
                     serviceProvider,
                     result.Meta,
@@ -137,7 +138,6 @@ public static class DailySalesStatsEndpoints
                     "signal",
                     ct,
                     defaultPeriodBasis);
-                result.Meta.DateBoundaryConvention = usesHalfOpenTo ? "half_open_utc" : "inclusive_utc_day";
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

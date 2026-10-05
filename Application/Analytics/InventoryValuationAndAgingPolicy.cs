@@ -143,7 +143,7 @@ public static class InventoryValuationAndAgingPolicy
                     : InventoryValuationBases.Unknown;
 
         return new InventoryValuationAggregate(
-            Math.Round(totalValue, 2),
+            valuedUnits == 0 ? null : Math.Round(totalValue, 2),
             coveragePct,
             valuedUnits,
             unknownUnits,
