@@ -22,7 +22,7 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ45 | DONE | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
 | RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
 | RQ47 | DONE | action-source-key-lineage | Include relevant filters in supplier action source keys |
-| RQ48 | READY | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
+| RQ48 | DONE | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
 | RQ49 | DONE | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
 | RQ50 | WAITING | chart-topn-semantics | Label top-N charts and rest/tail behavior explicitly |
 

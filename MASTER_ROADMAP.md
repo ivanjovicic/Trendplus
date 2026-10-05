@@ -1,5 +1,7 @@
 # Trendplus Master Roadmap
 
+Owner recertification 2026-10-05: Daily Sales half-open service contract, freshness boundary, Minimal API `[FromServices]` bindings, reorder revenue/cost presentation, and unknown inventory value `null` are on this delivery. Recovery scan of active RQ/SQL/UI queues from base `4ed7012d` found no new dependency-complete RQ successor. Canonical pointer remains `RQ588` IN_PROGRESS (owned elsewhere). Supplemental UI READY lanes stay `P-UI-39` primary plus `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49`, `P-UI-52`. RQ48 summary row is DONE to match its section. RQ49 is DONE because the RQ591 split plus the null-revenue presentation proof covers its acceptance. Evidence: `.ai/runs/2026-10-05-review-recertify-evidence.md`.
+
 Owner completion 2026-10-05: RQ571 Pre-Nivelacija horizon/population safety is delivered to `origin/main` at `f6a9aa451bb46af9cce61a881a45ab586ada1b2a`; completion evidence is in `.ai/runs/2026-10-05-RQ571-evidence.md`.
 
 Owner completion 2026-10-05: RQ587 is DONE on `origin/main` `ff8d231881b33c48389033ff13f201518bb3577f` (startup initialization outcome on `/ready` + Admin diagnostics). RQ575 categorical dimension coverage gate delivered on branch `cursor/rq575-dimension-coverage-e050` with focused backend/frontend proof; post-close primary READY is RQ552. Evidence: `.ai/runs/2026-10-05-RQ587-evidence.md`, `.ai/runs/2026-10-05-RQ575-evidence.md`.
