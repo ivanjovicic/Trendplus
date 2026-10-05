@@ -3,6 +3,7 @@ import { fmtPct } from "../../utils/analyticsFormatters";
 import {
   buildAgingResultFromSignals,
   buildCategoryIntelligenceFromSignals,
+  buildLegacyReorderFallbackFromSignals,
   buildDepletionResultFromSignals,
   buildPriceSensitivityFromSignals,
   buildSmartReorderFromSignals,
@@ -53,6 +54,48 @@ function inventoryItem(
     ...overrides,
   };
 }
+
+describe("buildLegacyReorderFallbackFromSignals (RQ591 review)", () => {
+  it("keeps potential revenue and procurement cost in separate fields", () => {
+    const plan = buildLegacyReorderFallbackFromSignals({
+      items: [],
+      byCategoryPlan: [],
+      bySupplierPlan: [],
+      summary: {
+        criticalCount: 1,
+        urgentCount: 0,
+        recommendedCount: 1,
+        totalReorderCost: 2000,
+        expectedRevenueFromReorder: 5000,
+        expectedProfitFromReorder: 3000,
+      },
+    });
+
+    expect(plan?.summary.totalReorderValue).toBe(5000);
+    expect(plan?.summary.potentialRevenueRsd).toBe(5000);
+    expect(plan?.summary.estimatedProcurementCostRsd).toBe(2000);
+  });
+
+  it("preserves unavailable revenue instead of fabricating zero", () => {
+    const plan = buildLegacyReorderFallbackFromSignals({
+      items: [],
+      byCategoryPlan: [],
+      bySupplierPlan: [],
+      summary: {
+        criticalCount: 1,
+        urgentCount: 0,
+        recommendedCount: 1,
+        totalReorderCost: null,
+        expectedRevenueFromReorder: null,
+        expectedProfitFromReorder: null,
+      },
+    });
+
+    expect(plan?.summary.totalReorderValue).toBeNull();
+    expect(plan?.summary.potentialRevenueRsd).toBeNull();
+    expect(plan?.summary.estimatedProcurementCostRsd).toBeNull();
+  });
+});
 
 describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
   it("emits revShare in percent units for a 25%/75% split", () => {
