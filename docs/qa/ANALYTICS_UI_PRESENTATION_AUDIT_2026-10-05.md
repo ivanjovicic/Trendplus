@@ -65,3 +65,6 @@ Quality review found **incomplete** pass-2 claim #6 (Insight `N/D`):
 
 Both closed in the same recertify pass with guardrail extensions in `analyticsPresentationPass2.spec.ts`.
 Do **not** treat pass-2 residual list as fully closed without this recertify.
+
+## Recertify-2 2026-10-05
+Adversarial re-check after tip `1ccaf3eb` found residual user-facing „N/A“ teaching text on Analytics Actions and `Avg marza` headers in Insight Studio (plus nivelacija FE manual). Closed in the same pass; trust/N/D/IntelligenceSnapshot claims from first recertify remain valid.

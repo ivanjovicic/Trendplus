@@ -82,3 +82,6 @@ Falsified against `origin/main` tip after docs audit:
 - **Missed adjacent surface:** `IntelligenceSnapshotPanel` (Insight Studio) still used `n/a` + English card titles — fixed.
 - Evidence SHA fields that said "pending" after FF: updated in evidence run file.
 - RQ588 remains IN_PROGRESS elsewhere (not claimed). Queue lock file may be absent — residual for owning agent, not this task.
+
+## Recertify-2 2026-10-05
+SHA truth on accuracy + first-recertify evidence files was still stale after FF (`pending` / pre-FF tip). Presentation residual „N/A“ teaching text on Actions was still open despite glossary/canonical label work. Closed without new READY prompts. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_2_2026-10-05.md`.

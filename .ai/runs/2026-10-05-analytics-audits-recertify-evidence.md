@@ -23,9 +23,12 @@
 See commit message / agent report for vitest + validators.
 
 ## Bundle / tip
-- Final tip: `6e64c1a5`
-- Requires origin/main: `e12655fd`
-- Bundle: `/workspace/out/analytics-audits-recertify.bundle`
-- HEAD == origin/main: NO until parent FF push
+- Pre-FF tip of recertify commits: `6e64c1a5` (docs) after `b97eb0a3` (UI fix)
+- Landed on origin/main after parent FF + evidence commit: **`1ccaf3eb`**
+- Bundle used: `/workspace/out/analytics-audits-recertify.bundle`
+- HEAD == origin/main after FF: YES (`1ccaf3eb`)
 - Focused tests: 17/17 passed (insightStudioTrustPresentation, IntelligenceSnapshotPanel, analyticsPresentationPass2)
 - Validators: check-prompt-queues OK; planning PASS; agent-instructions PASS; check:encoding OK; tsc -b OK; git diff --check OK
+
+## Recertify-2 note
+Second adversarial pass found this evidence file still claimed pre-FF tip/`NO` after main already advanced to `1ccaf3eb` — same class of SHA drift the first recertify criticized. Corrected here; product leftovers fixed in recertify-2 commit.

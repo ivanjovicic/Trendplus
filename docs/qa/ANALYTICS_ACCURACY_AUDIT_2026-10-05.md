@@ -22,7 +22,7 @@ Oznake: **code** = iz koda/testova na bazi; **fix** = ispravljeno u ovom deliver
 | 5 | Focused regression tests added/green | PASS (4/4) |
 | 6 | Backend remains authoritative; unknown↛0 in changed paths | PASS |
 | 7 | Docs/evidence durable under `.ai/runs/` (+ qa audit) | PASS |
-| 8 | Logical commit(s) + PC bundle FF push to main | pending at evidence write |
+| 8 | Logical commit(s) + PC bundle FF push to main | PASS (`7aed4aad` on main; later tips supersede) |
 | 9 | Trendplus2 working tree untouched; no cloud agents | PASS |
 | 10 | Residuals explicitly classified (no silent green) | PASS |
 

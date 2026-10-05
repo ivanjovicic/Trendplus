@@ -126,3 +126,5 @@ When docs conflict, prefer: (1) current code + focused tests, (2) this glossary 
 Evidence for introduction: `.ai/runs/2026-10-05-analytics-business-docs-audit-evidence.md`, `docs/qa/ANALYTICS_BUSINESS_DOCS_PROMPT_AUDIT_2026-10-05.md`.
 
 Recertify 2026-10-05: clarified that `unitsSold` is quantity (not Promet/Prihod); Insight Studio trust helper uses `ANALYTICS_UNAVAILABLE_LABEL` (not `N/D`). See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_2026-10-05.md`.
+
+Recertify-2 2026-10-05: Actions outcome hint and nivelacija FE manual aligned to **Nije dostupno**; Insight average-margin headers use **Prosečna marža** (no `Avg marza`). Evidence SHA drift on prior audit run files corrected. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_2_2026-10-05.md`.

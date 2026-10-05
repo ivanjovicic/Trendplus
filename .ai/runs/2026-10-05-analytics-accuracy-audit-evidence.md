@@ -4,7 +4,7 @@ Date: 2026-10-05
 Agent/tool: Grok Bot (executor, `/workspace/rh`)
 Delivery target: main
 Base SHA at start: `4ed7012dfa2ed768f835797db40079e7a8a842bc`
-Main commit SHA: pending
+Main commit SHA after FF: `7aed4aad` (accuracy nullability tip). Later main tip advances beyond this SHA.
 
 ## What was done
 - Fetched `origin/main` (`4ed7012`, newer than expected `c9c4167`).
@@ -41,3 +41,7 @@ Main commit SHA: pending
 
 ## Next
 - Owner: optional follow-up to make PDC money summary totals coverage-aware.
+
+
+## Recertify-2 note (2026-10-05)
+Evidence previously left `Main commit SHA: pending` after the fix already landed on main as `7aed4aad`. Updated for truth sync only; no product change in this note.
