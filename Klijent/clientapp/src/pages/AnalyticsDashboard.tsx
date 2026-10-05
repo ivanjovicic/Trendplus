@@ -333,7 +333,7 @@ function topProductTrustLabel(row: Pick<TopProductAdvancedItem, "marginQualityLa
   if (row.marginImpact == null || row.dataQualityStatus === "insufficient_data") {
     return "Nedovoljno podataka";
   }
-  return "Margin signal dostupan";
+  return "Signal marže je dostupan";
 }
 
 function topProductTrustDetail(row: Pick<TopProductAdvancedItem, "marginQualityTooltip" | "statusReason" | "reasonCodes" | "dataQualityStatus" | "marginImpact">): string | null {
@@ -2995,7 +2995,7 @@ export default function AnalyticsDashboard() {
                     ["Elasticnost", HELP.elasticnost],
                     ["Kompletnost (Completeness)", HELP.completeness],
                     ["Svežina podataka", HELP.freshness],
-                    ["Uticaj na maržu (Margin impact)", HELP.margin],
+                    ["Uticaj na maržu", HELP.margin],
                     ["SKU", HELP.sku],
                   ].map(([term, text]) => (
                     <article key={term} className="glossary-card">

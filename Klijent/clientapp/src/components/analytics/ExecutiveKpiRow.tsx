@@ -110,7 +110,7 @@ export default function ExecutiveKpiRow(props: Props) {
           Obuhvat: {props.dataQualityScopeLabel ?? "Artikli u skupu odluka"} · Bez dobavljača: {fmtNumber(props.missingSupplierCount, 0, "-")} | Bez cene: {fmtNumber(props.missingCostCount, 0, "-")}
         </small>
         <KpiExplainButton metricKey="dataReadinessScore" ariaLabel="Kako je izračunata spremnost za preporuke" />
-        <Link to="/analytics/data-quality" className="exec-dq-link">Otvori Data Quality</Link>
+        <Link to="/analytics/data-quality" className="exec-dq-link">Otvori kvalitet podataka</Link>
       </article>
     </div>
   );

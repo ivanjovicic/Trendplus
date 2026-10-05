@@ -1147,7 +1147,7 @@ function MatrixTab({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Matrica brzine i marže (Velocity × Margin)" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
+      <SectionHeader title="Matrica brzine i marže (Velocity × Marža)" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>

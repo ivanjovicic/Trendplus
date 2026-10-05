@@ -475,7 +475,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(await screen.findByTestId("analytics-control-bar")).toBeInTheDocument();
     expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Primeni filtere/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Reset filtera/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Poništi filtere/i })).toBeInTheDocument();
   });
 
   it("keeps the trust header as the only page-level h1", async () => {
@@ -1448,7 +1448,7 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     expect(await screen.findByLabelText("Dobavljač")).toHaveValue("11");
-    fireEvent.click(screen.getByRole("button", { name: "Reset filtera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Poništi filtere" }));
 
     await waitFor(() => expect(screen.getByLabelText("Dobavljač")).toHaveValue(""));
     expect(screen.getByLabelText("Min. skor")).toHaveValue(40);

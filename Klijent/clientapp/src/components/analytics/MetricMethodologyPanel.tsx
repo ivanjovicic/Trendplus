@@ -96,10 +96,10 @@ export default function MetricMethodologyPanel({
               </section>
               {renderList("Šta može da ograniči pouzdanost", item.limitations)}
               {renderList("Kada signal nije pouzdan", item.blockedWhen)}
-              {renderList("Povezane Data Quality provere", item.dataQualityDependencies)}
+              {renderList("Povezane provere kvaliteta podataka", item.dataQualityDependencies)}
               {dataQualityHref ? (
                 <Link to={dataQualityHref} className="metric-methodology-link">
-                  Otvori Data Quality
+                  Otvori kvalitet podataka
                 </Link>
               ) : null}
             </>

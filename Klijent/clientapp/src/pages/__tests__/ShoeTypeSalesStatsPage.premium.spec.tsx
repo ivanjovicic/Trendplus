@@ -1064,7 +1064,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     });
 
     vi.setSystemTime(new Date("2026-05-01T12:00:00Z"));
-    fireEvent.click(screen.getByRole("button", { name: "Reset filtera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Poništi filtere" }));
 
     await waitFor(() => {
       expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(

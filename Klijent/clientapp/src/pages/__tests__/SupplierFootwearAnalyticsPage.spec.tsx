@@ -209,7 +209,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(await screen.findByTestId("analytics-control-bar")).toBeInTheDocument();
     expect(await screen.findByTestId("supplier-footwear-analytics-data-table")).toBeInTheDocument();
     expect(screen.getByText("Primeni filtere")).toBeInTheDocument();
-    expect(screen.getByText("Reset filtera")).toBeInTheDocument();
+    expect(screen.getByText("Poništi filtere")).toBeInTheDocument();
     expect(within(await screen.findByTestId("analytics-control-bar")).getByText("Kvalitet podataka")).toBeInTheDocument();
     expect(await screen.findByText(/Prikazano:\s*1 red/i)).toBeInTheDocument();
     expect(screen.getByText("Sveže")).toBeInTheDocument();
