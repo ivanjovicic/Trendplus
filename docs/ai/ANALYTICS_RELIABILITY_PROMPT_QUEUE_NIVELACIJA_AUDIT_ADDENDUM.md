@@ -1163,11 +1163,17 @@ RQ529 is DONE. Reuse shared components/labels where applicable; no remaining sta
 
 - Date: 2026-10-05
 - Status: DONE
-- Delivery: `origin/main` at `e20fdb50` (fast-forward merge from `cursor/rq553-nivelacija-copy-e050`).
-- Scope: canonical nivelacija screen labels, Serbian Pre-Nivelacija recommendation/alert/queue copy, `/nivelacije` URL filter state + a11y, `/nivelacija` load retry + alert semantics, copy guardrail tests.
-- Validation: `dotnet test --filter PreNivelacijaLocalizedCopyTests` pass; focused Vitest `NivelacijePage`, `analyticsRouteDefinitions.nivelacija`, `PreNivelacijaScoringServiceTests` pass.
+- Completion: canonical nivelacija screen labels, Serbian Pre-Nivelacija recommendation/alert/queue copy, `/nivelacije` URL filter state + a11y, `/nivelacija` load retry + alert semantics, copy guardrail tests.
+- Changed files: implementation and test files listed in `.ai/runs/2026-10-05-RQ553-evidence.md`.
+- Checks run: localized API copy/scoring tests; focused Vitest `NivelacijePage` and route-label tests; API/frontend build and guardrails.
+- Checks not run: full frontend suite, full .NET suite and deployed/browser proof.
 - Run log: `.ai/runs/2026-10-05-RQ553-evidence.md`
 - Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `e20fdb50` (implementation; evidence sync descendant `75dda5ea`).
+- Main verification: fresh `origin/main` contains the implementation and evidence commits; ancestry check passed.
+- Missed: full frontend/.NET suites and deployed/browser proof.
+- Residual risk: non–Pre-Nivelacija fixtures may still contain unrelated English labels; deployed acceptance remains external.
 - Follow-up: RQ453 and parallel READY lanes per main queue post-close cascade.
 
 ---

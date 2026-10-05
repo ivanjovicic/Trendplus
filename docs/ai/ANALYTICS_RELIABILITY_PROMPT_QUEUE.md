@@ -29046,11 +29046,17 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 
 - Date: 2026-10-05
 - Status: DONE
-- Delivery: `origin/main` at `9f25bf8e` (fast-forward from `cursor/rq578-data-quality-health-e050`).
-- Scope: explicit half-open health periods, observed sales horizon, separate master-data completeness counts, truthful issue-list limitation state, Decision Board worst-badge status, and Serbian Data Quality UI copy.
-- Validation: focused backend 18/18; broader Data Quality/health suite 99 passed, 1 skipped because the PostgreSQL integration fixture was unavailable; frontend Data Quality/schema tests 31/31; analytics guardrails, typecheck, API Release build and `git diff --check` passed.
+- Completion: explicit half-open health periods, observed sales horizon, separate master-data completeness counts, truthful issue-list limitation state, Decision Board worst-badge status, and Serbian Data Quality UI copy.
+- Changed files: implementation and contract files listed in `.ai/runs/2026-10-05-RQ578-evidence.md`.
+- Checks run: focused backend 18/18; broader Data Quality/health suite 99 passed; frontend Data Quality/schema tests 31/31; analytics guardrails, typecheck, API Release build and `git diff --check` passed.
+- Checks not run: one PostgreSQL integration test was skipped because the local integration fixture was unavailable; full frontend suite and deployed/live proof were not run.
 - Run log: `.ai/runs/2026-10-05-RQ578-evidence.md`
 - Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `9f25bf8e`
+- Main verification: fresh `origin/main` contains `9f25bf8e`; ancestry check passed.
+- Missed: local PostgreSQL integration execution and deployed/live verification.
+- Residual risk: first deployed/live Data Quality response still requires verification; existing unrelated API analyzer warnings remain.
 - Follow-up: RQ579 is promoted as the next primary READY lane; RQ452 remains blocked by its RQ451/RQ448 start gates.
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
