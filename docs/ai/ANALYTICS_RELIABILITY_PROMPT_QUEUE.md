@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ571 (P1); additional independent READY lanes: RQ586 and RQ588 (P3). RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
+Current READY prompt: RQ586 (P3); additional independent READY lane: RQ588 (P3). RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -28501,7 +28501,7 @@ Owner decision (Ivan, 2026-10-04): **approved**. For every undated decision surf
 
 ## RQ571 - Pre-Nivelacija: anchor recency to the source horizon and keep non-decision stock out of markdown queues
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ569` DONE (shared Pre-Nivelacija trust/freshness metadata); claim sequentially with `RQ552`/`RQ556` (same endpoint/service files)
 Priority: P1
 Type: backend/frontend/tests
@@ -28567,6 +28567,25 @@ Owner decision (Ivan, 2026-10-04): default retail decision scope is **Trend PLUS
 - `RQ569` DONE; sequential with `RQ552` and `RQ556`; `RQ548` oracle exists (DONE).
 
 Claim 2026-10-05: post-close recovery at `origin/main` `959a67eb02749d76d3ec70eb9ea267742257a3a0` found RQ571 dependency-complete after RQ569 and RQ552 DONE. The Nivelacija addendum confirms the resolved store/Oprema population policy is owned here and RQ556's separate v9 weight approval is not a start gate. No RQ571 lock, matching branch or open PR existed; no active claim owns the Pre-Nivelacija endpoint/service/test paths. Local lock: `.ai/task-locks/RQ571-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: Anchored Pre-Nivelacija recency and windows to the approved retail source horizon, separated excluded/non-footwear inventory into non-actionable cleanup lists, and exposed provenance and population policy in the page.
+- Changed files: API endpoint/model; oracle, population and page tests/fixtures; Pre-Nivelacija page/types/schema; RQ queue and active addenda; roadmap; RQ571/RQ584 evidence logs.
+- Checks run: focused API oracle/population tests 20/20; API build; page spec 56/56; instruction, queue and planning validators plus self-tests; `git diff --check`.
+- Checks not run: full suites; deployed/browser evidence. The broader Pre-Nivelacija filter had one failure in unchanged scoring-service test `SimulateScenarios_WithReliableEqualCost_KeepsGenuineZeroMargin` (expected 0, actual -832). Analytics guardrails had six reported violations in unchanged Daily Sales/Supplier pages; typecheck reports an unchanged missing `ReorderPlan` symbol.
+- Run log: `.ai/runs/2026-10-05-RQ571-evidence.md`
+- Evidence state: pending post-close recovery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `f6a9aa451bb46af9cce61a881a45ab586ada1b2a`
+- Main verification: passed; fresh `origin/main` resolved to this SHA and contains the implementation commit.
+- Missed: none known
+- Follow-up: pending post-close dependency cascade
+- Residual risk: exact-SHA Analytics Quality Gates is queued; Planning Governance and Analytics Tests & Data Integrity are in progress. The local guardrail/typecheck and unrelated scoring-test failures are recorded in the run log.
+- Post-close routing: pending fresh scan after this terminal queue transition
+- Prompt defect / scope repair: expanded owned paths to include the endpoint/model, existing page, types/schema, tests and fixture required by acceptance; explicit cleanup projections and methodology display were added to the in-scope work.
 
 ## RQ572 - Dashboard bootstrap: one resolved period for every section, truthful Pilot Readiness, executive suppliers from real revenue
 
