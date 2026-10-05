@@ -740,6 +740,50 @@ describe("buildExecutiveFallbackProductCards (RQ72)", () => {
 });
 
 describe("buildExecutiveFallbackSupplierCards", () => {
+  it("ranks supplier cards without using revenue as expected impact", () => {
+    const summary = supplierSummary({
+      topGrowSuppliers: [
+        {
+          supplierId: 1,
+          supplierName: "Visok prihod, nisko poverenje",
+          revenue: 9_000_000,
+          mlSupplierScore: 70,
+          supplierQualityIndex: 70,
+          recommendationCode: "EXPAND",
+          confidenceScore: 55,
+          reliabilityPct: 55,
+          dataQualityStatus: "good",
+          statusReason: "Signal za proveru.",
+          reasonCodes: ["supplier_grow"],
+        },
+        {
+          supplierId: 2,
+          supplierName: "Niži prihod, visoko poverenje",
+          revenue: 10_000,
+          mlSupplierScore: 90,
+          supplierQualityIndex: 90,
+          recommendationCode: "EXPAND",
+          confidenceScore: 90,
+          reliabilityPct: 90,
+          dataQualityStatus: "good",
+          statusReason: "Signal sa višim poverenjem.",
+          reasonCodes: ["supplier_grow"],
+        },
+      ],
+      trustMetadata: { recommendationAllowed: true, dataCoverageStatus: "good" },
+    });
+
+    const cards = buildExecutiveFallbackSupplierCards(summary);
+
+    expect(cards.map((card) => card.title)).toEqual([
+      "Niži prihod, visoko poverenje",
+      "Visok prihod, nisko poverenje",
+    ]);
+    expect(cards.map((card) => card.expectedImpactRsd)).toEqual([null, null]);
+    expect(cards.map((card) => card.impactScore)).toEqual([0, 0]);
+    expect(cards[1].priorityScore).toBeLessThan(cards[0].priorityScore);
+  });
+
   it.each([
     ["generated-only", "2026-06-30T09:05:00Z", null, "2026-06-30T09:05:00Z"],
     ["refresh-only", null, "2026-06-30T09:00:00Z", "2026-06-30T09:00:00Z"],

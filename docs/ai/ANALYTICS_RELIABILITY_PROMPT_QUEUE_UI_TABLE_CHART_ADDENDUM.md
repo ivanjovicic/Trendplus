@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum pending post-close recovery after RQ47 DONE
-Main queue primary READY prompt: RQ590
+Current READY prompt: RQ48 - Supplier action duplicate guard pagination
+Main queue primary READY prompt: RQ79; RQ74 is IN_PROGRESS
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -21,8 +21,8 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ44 | DONE | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
 | RQ45 | DONE | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
 | RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
-| RQ47 | WAITING | action-source-key-lineage | Include relevant filters in supplier action source keys |
-| RQ48 | WAITING | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
+| RQ47 | DONE | action-source-key-lineage | Include relevant filters in supplier action source keys |
+| RQ48 | READY | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
 | RQ49 | WAITING | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
 | RQ50 | WAITING | chart-topn-semantics | Label top-N charts and rest/tail behavior explicitly |
 
@@ -588,7 +588,7 @@ Supplier action source keys omit season/minRevenue/onlyHighConfidence even thoug
 
 ## RQ48 - Supplier action duplicate guard pagination
 
-Status: WAITING
+Status: READY
 Ready after: RQ47 or explicit unblocking
 Priority: P2
 Type: frontend/API-contract/tests
@@ -597,6 +597,8 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ48-<agent>.lock.md`
 Commit suggestion: `fix(analytics): avoid paginated action duplicate blind spot`
+
+Owner promotion 2026-10-05 after RQ47: RQ47 is DONE on current `origin/main`; the duplicate guard remains a separate same-page follow-up with no conflicting active Supplier Decision Hub page owner, lock, branch or PR. RQ48 is promoted as an independent READY lane while RQ74 is IN_PROGRESS.
 
 ### Why
 

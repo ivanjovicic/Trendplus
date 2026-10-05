@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (`RQ73` DONE; `RQ75` DONE; `RQ76` DONE; `RQ95` DONE; next is `BCI05` re-entry)
-Main queue READY prompt: none (RQ01–RQ13 DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`)
+Current READY prompt: RQ79 - Pilot intake durable percent unit mismatch
+Main queue primary READY prompt: RQ79; RQ74 is IN_PROGRESS in this addendum
 
 Use with:
 
@@ -21,12 +21,12 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 |---|---|---|---|
 | RQ72 | DONE | executive-product-impact-fallback | Remove Executive fallback lost-sales expected-impact override |
 | RQ73 | DONE | executive-inventory-signal-impact | Prevent weak inventory signals from ranking as expected impact |
-| RQ74 | WAITING | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
+| RQ74 | DONE | executive-supplier-revenue-ranking | Align supplier ranking impact with visible expected impact |
 | RQ75 | DONE | data-quality-health-no-sales | Prevent no-sales/insufficient health from showing green |
 | RQ76 | DONE | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
 | RQ77 | DONE | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
 | RQ78 | DONE | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
-| RQ79 | WAITING | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
+| RQ79 | READY | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
 | RQ80 | WAITING | data-quality-missing-cost-workflow | Add/clarify missing-cost issue workflow |
 | RQ91 | DONE | data-quality-topoffender-dataorigin-sql | Fix TopOffenders SQL/schema so `DataOrigin` exists for scoped queries |
 | RQ92 | DONE | data-quality-issues-empty-list | Restore seeded Data Quality issues list/pagination results |
@@ -156,7 +156,7 @@ Executive inventory cards call `buildInventorySignalActionSpec`, which can retur
 
 ## RQ74 - Executive supplier revenue ranking vs expected impact display
 
-Status: WAITING
+Status: DONE
 Ready after: RQ40/RQ47 or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -165,6 +165,10 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ74-<agent>.lock.md`
 Commit suggestion: `fix(analytics): align executive supplier impact ranking`
+
+Owner completion 2026-10-05: supplier summary revenue no longer contributes to fallback card priority or impact score while expected impact remains unavailable. Confidence/status semantics and trust gating are preserved. Focused regression verifies that high revenue cannot outrank higher-confidence supplier evidence and both impact fields remain unavailable/zero. Run log: `.ai/runs/2026-10-05-RQ74-evidence.md`; evidence state: pending post-close recovery.
+
+Owner claim 2026-10-05 after RQ47: post-close recovery base `8bc4231e74ac4d83dc174bcae8018930d4dbc44c` confirms RQ40 and RQ47 DONE. The existing supplier card maps revenue to impact/ranking while `expectedImpactRsd` is null. No active Executive Board page lock, branch or PR was found. Claimed P1 as the highest-priority collision-safe lane; local lock `.ai/task-locks/RQ74-codex.lock.md`.
 
 ### Why
 
@@ -385,7 +389,7 @@ Use the canonical dataScope matrix from RQ05/Q81. If sale header origin is the s
 
 ## RQ79 - Pilot intake durable percent unit mismatch
 
-Status: WAITING
+Status: READY
 Ready after: RQ40 or explicit unblocking
 Priority: P1
 Type: backend-report/tests
@@ -394,6 +398,8 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ79-<agent>.lock.md`
 Commit suggestion: `fix(reports): format pilot intake percent rows`
+
+Owner promotion 2026-10-05 after RQ47: RQ40 is DONE, RQ466/RQ462 are DONE, and the durable formatter still writes ratio text as if it were a percent. No active Data Quality report lock/branch/PR was found; RQ79 is READY as a disjoint backend-report lane. RQ80 shares `DataQualityEndpoints.cs`/`DataQualityPage.tsx` and is sequenced after RQ79 releases those paths.
 
 ### Why
 
@@ -430,7 +436,7 @@ Pilot intake durable rows store `RevenueWithoutCostPercent` ratio as string `0.#
 ## RQ80 - Missing-cost issue workflow
 
 Status: WAITING
-Ready after: RQ75/RQ78 or explicit unblocking
+Ready after: RQ75/RQ78 DONE and RQ79 releases shared Data Quality reporting paths
 Priority: P1
 Type: backend/frontend-contract/tests
 Feature family: data-quality-missing-cost-workflow

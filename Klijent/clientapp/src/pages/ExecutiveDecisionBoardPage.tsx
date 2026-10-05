@@ -628,7 +628,7 @@ export function buildExecutiveFallbackSupplierCards(summary: SummaryResponse | n
       const confidenceTone = recommendationAllowed
         ? confidenceToneFromValue(confidenceScore)
         : "insufficient";
-      const impact = item.revenue > 0 ? item.revenue : null;
+      const impact = null;
       const dataQualityStatus = recommendationAllowed
         ? trustMetadata?.dataCoverageStatus ?? "unknown"
         : "insufficient_data";
