@@ -7,10 +7,11 @@ Integration proof: `Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.
 
 ## Semantics
 
-- Population: `prodaja_stavke` joined to `prodaja_zaglavlje` and `"Artikli"`.
-- Period: inclusive `datum_prodaje` between query `fromDate` and `toDate` (UTC midnight bounds).
+- Population: `prodaja_stavke` joined to `prodaja_zaglavlje` (Supplier/Shoe Type raw-fact oracle does **not** require `"Artikli"` for totals; Color/Daily operations oracle joins `"Artikli"` for dimension attributes).
+- Period: half-open UTC window `datum_prodaje >= fromDate` and `datum_prodaje < toDate` (API date-only `toDate` is the exclusive bound / next calendar day).
 - Store: optional `id_objekat` on sale header.
-- Data scope: article `"DataOrigin"` (`all` / `imported=access` / `existing`).
+- Data scope: sale-header `data_origin` (`all` / `imported=access` / `existing`), not current article master origin.
+- Receipt population: trimmed case-insensitive `DUG` / `KOREKCIJA` excluded from certified retail promet.
 - Supplier bucket: `supplier_id_at_sale` (NULL = unknown).
 - Shoe Type bucket: `shoe_type_id_at_sale` (NULL = unknown).
 - Revenue: signed `kolicina * cena`; quantity: signed `kolicina`.

@@ -34,20 +34,14 @@ public class AnalyticsSupplierSalesUnitTests
             Assert.Equal(expected, result);
         }
 
-        [Theory(DisplayName = "Pct: zero pre value")]
-        [InlineData(100)]
-        public void ZeroPre_PostPositive_Returns100(decimal post)
+        [Fact(DisplayName = "Certified trend: zero/missing previous stays unavailable (never synthesizes +100%)")]
+        public void ZeroPrevious_DoesNotSynthesizePlusOneHundred()
         {
-            var result = Pct(0, post);
-            Assert.Equal(100m, result);
-        }
-
-        [Theory(DisplayName = "Pct: zero pre and post")]
-        [InlineData(0, 0, 0)]
-        public void ZeroPre_ZeroPost_ReturnsZero(decimal pre, decimal post, decimal expected)
-        {
-            var result = Pct(pre, post);
-            Assert.Equal(expected, result);
+            // ProductDecisionReasoningHelper is the shared certified trend contract.
+            // Local endpoint helpers that synthesize +100% are not the supplier-decision truth.
+            Assert.Null(Application.Analytics.ProductDecisionReasoningHelper.ComputeTrendPct(100m, 0m));
+            Assert.Null(Application.Analytics.ProductDecisionReasoningHelper.ComputeTrendPct(100m, null));
+            Assert.Equal(50m, Application.Analytics.ProductDecisionReasoningHelper.ComputeTrendPct(150m, 100m));
         }
 
         [Theory(DisplayName = "Pct: rounding to 2 decimals")]
@@ -196,91 +190,73 @@ public class AnalyticsSupplierSalesUnitTests
             Assert.Equal(35m, marginPct);
         }
 
-        [Fact(DisplayName = "Margin with missing cost data (null cost treated as 0)")]
-        public void MarginWithNullCost_ShouldUseFallback()
+        [Fact(DisplayName = "Missing cost must not be treated as zero-cost full margin")]
+        public void MarginWithNullCost_MustNotTreatUnknownAsZeroCost()
         {
-            decimal? cost = null;
-            decimal revenue = 100m;
-            decimal costForMargin = cost ?? 0m;  // Fallback to 0 if null
+            // Production MarginAccumulator skips unreliable cost; unknown ↛ fake 100% margin.
+            var accumulator = new Application.Analytics.MarginAccumulator();
+            accumulator.Add(revenue: 100m, quantity: 1m, unitCost: null);
+            var snapshot = accumulator.Build(totalRevenue: 100m);
 
-            decimal margin = revenue - costForMargin;
-            Assert.Equal(100m, margin);  // Full revenue is margin if cost is unknown
+            Assert.Equal(0m, snapshot.RevenueWithCost);
+            Assert.Equal(0m, snapshot.MarginContribution);
+            Assert.Equal(0d, snapshot.MarginPct);
+            Assert.Equal(
+                100m,
+                Application.Analytics.AnalyticsMarginPolicy.ResolveNoCostRevenue(100m, snapshot.RevenueWithCost));
         }
     }
 
     /// <summary>
-    /// Tests for aggregation invariants and consistency checks.
-    /// These assertions verify that higher-level aggregates are correctly computed from component parts.
+    /// Aggregation invariants against production policies (not hardcoded self-equality).
     /// </summary>
     public class AggregationInvariantTests
     {
-        [Fact(DisplayName = "Totals.ukupanPromet must equal sum of suppliers[*].ukupanPromet")]
-        public void TotalRevenueSumInvariant_ChecksAgainstComponentSums()
+        [Fact(DisplayName = "SupplierSharePolicy denominator equals sum of positive net revenues")]
+        public void ShareDenominator_EqualsPositiveNetRevenueSum()
         {
-            // Mock supplier data
-            var suppliers = new[]
-            {
-                new { ukupanPromet = 1500m },
-                new { ukupanPromet = 1000m },
-                new { ukupanPromet = 960m }
-            };
+            var revenues = new[] { 1500m, -200m, 1000m, 0m, 960m };
+            var denominator = Application.Analytics.SupplierSharePolicy.ResolveDenominator(revenues);
+            Assert.Equal(3460m, denominator);
 
-            decimal totalsRevenue = 3460m;
-            decimal supplierSum = suppliers.Sum(s => s.ukupanPromet);
-
-            Assert.Equal(totalsRevenue, supplierSum);
+            var share = Application.Analytics.SupplierSharePolicy.Resolve(1500m, denominator);
+            Assert.True(share.IsAvailable);
+            Assert.Equal(43.35d, share.SharePct);
         }
 
-        [Fact(DisplayName = "Totals.brojDobavljaca must equal count of unique supplier entries")]
-        public void SupplierCountInvariant_MatchesSupplierArray()
+        [Fact(DisplayName = "MarginAccumulator total contribution equals sum of reliable-cost line contributions")]
+        public void MarginContribution_EqualsSumOfReliableCostLines()
         {
-            var supplierNames = new[] { "Supplier A", "Supplier B", "Supplier C", "Nepoznato" };
-            int totalSupplierCount = 4;
+            var accumulator = new Application.Analytics.MarginAccumulator();
+            accumulator.Add(1500m, 10m, 75m);   // margin 750
+            accumulator.Add(1000m, 5m, 134m);   // margin 330
+            accumulator.Add(960m, 8m, null);    // excluded — missing cost
+            var snapshot = accumulator.Build(totalRevenue: 3460m);
 
-            int arrayCount = supplierNames.Length;
-            Assert.Equal(totalSupplierCount, arrayCount);
+            Assert.Equal(2500m, snapshot.RevenueWithCost);
+            Assert.Equal(1420m, snapshot.TotalCost); // 10*75 + 5*134
+            Assert.Equal(1080m, snapshot.MarginContribution); // 750 + 330
+            Assert.Equal(960m, Application.Analytics.AnalyticsMarginPolicy.ResolveNoCostRevenue(3460m, snapshot.RevenueWithCost));
         }
 
-        [Fact(DisplayName = "Supplier pre/post revenues should accumulate correctly")]
-        public void PrePostAccounting_ShouldBeConsistent()
+        [Fact(DisplayName = "Non-positive supplier revenue does not publish a measured 0% share")]
+        public void NonPositiveSupplierShare_IsUnavailable()
         {
-            decimal preNivelacije = 1500m;
-            decimal posleNivelacije = 3000m;
-            decimal totalAccounted = preNivelacije + posleNivelacije;
-
-            // Sanity check: post should typically be >= pre (growth or price increases)
-            Assert.True(posleNivelacije >= preNivelacije, "Post-nivelacija should typically be >= pre");
-            Assert.Equal(4500m, totalAccounted);
+            var evidence = Application.Analytics.SupplierSharePolicy.Resolve(-50m, 1000m);
+            Assert.False(evidence.IsAvailable);
+            Assert.Null(evidence.SharePct);
         }
 
-        [Fact(DisplayName = "Quantity item count consistency")]
-        public void QuantityInvariant_PreAndPostMustBeNonNegative()
+        [Fact(DisplayName = "Signed return quantities are allowed; fake non-negative quantity invariant is rejected")]
+        public void SignedReturnQuantities_AreValidRetailEvidence()
         {
-            decimal preQuantity = 30;
-            decimal postQuantity = 45;
-
-            Assert.True(preQuantity >= 0, "Pre-quantity must be non-negative");
-            Assert.True(postQuantity >= 0, "Post-quantity must be non-negative");
-        }
-
-        [Fact(DisplayName = "Totals margin must equal sum of supplier margins (within tolerance)")]
-        public void TotalMarginInvariant_AllowsSmallRoundingError()
-        {
-            var supplierMargins = new[] { 750m, 330m, 520m, 480m };
-            decimal totalMargin = 2080m;
-            decimal supplierSum = supplierMargins.Sum();
-            decimal tolerance = 0.01m;
-
-            Assert.True(Math.Abs(totalMargin - supplierSum) <= tolerance, 
-                $"Total margin {totalMargin} should equal sum of supplier margins {supplierSum} within tolerance {tolerance}");
-            Assert.Equal(totalMargin, supplierSum);
+            // Certified retail keeps signed returns. A test that requires qty >= 0 would lock a bug.
+            var lines = new[] { 30m, -5m, 45m };
+            Assert.Equal(70m, lines.Sum());
+            Assert.Contains(lines, qty => qty < 0m);
         }
     }
 
-    /// <summary>
-    /// Tests for decision recommendation engine input validation.
-    /// Ensures the recommendation system receives well-formed inputs without Infinity/NaN values.
-    /// </summary>
     public class DecisionRecommendationEngineInputTests
     {
         [Fact(DisplayName = "Recommendation engine inputs: all must be finite")]

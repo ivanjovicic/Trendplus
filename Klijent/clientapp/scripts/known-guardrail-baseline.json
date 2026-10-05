@@ -161,7 +161,7 @@
     {
       "file": "src/components/dashboard/IntelligenceSnapshotPanel.tsx",
       "rule": "fake_zero_fallback",
-      "line": 273,
+      "line": 274,
       "reason": "Existing intelligence snapshot fallback requires a reviewed unavailable-value exception."
     },
     {
