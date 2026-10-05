@@ -43,7 +43,7 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 
 ## Q69 - Analytics SQL trust semantic audit and tests
 
-Status: PARTIAL
+Status: DONE
 Priority: P0
 Type: docs/tests
 Feature family: analytics-sql-trust
@@ -124,6 +124,12 @@ The analytics SQL layer has several places where missing evidence, zero baseline
   - Runtime SQL semantics are unchanged; this prompt only locked current contracts with tests/docs.
 - Next:
   - `Q70 - Nivelacija zero-baseline percent semantics`
+
+### Status reconciliation 2026-10-06
+
+- Reconciled the stale section status `PARTIAL` to `DONE`: the queue summary row already said DONE, the dated completion note records the audit, tests and documentation acceptance, and dependent Q70-Q83 are all DONE.
+- Re-ran `SupplierDecisionSchemaSqlTests` on current main; 46/46 passed. The SQL query audit contains test-backed findings and separates safe follow-ups from DB/EXPLAIN-gated changes.
+- No runtime SQL or production data changed. Run log: `.ai/runs/2026-10-06-Q69-evidence.md`.
 
 ---
 
