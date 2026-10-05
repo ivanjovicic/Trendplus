@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue primary READY prompt: `RQ48` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
+Main queue primary READY prompt: `RQ88` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -32,7 +32,7 @@ Purpose: preserve the original Advanced/V2 acceptance records and their traceabi
 - `RQ21` and `RQ22` are OBSOLETE because completed action-outcome owners `RQ81`, `RQ84`, `RQ86` and `RQ93` cover their acceptance, with named regression tests on the individual prompts.
 - `RQ14` and `RQ15` remain OBSOLETE only because `RQ577` explicitly suppresses the unsupported receipt-grain measures.
 - `RQ591` is the named frontend trust/derived-metric certification owner for `RQ18` (V2 metadata types); its frontend scope is grouped with legacy type/derived-metric work in the main queue.
-- `RQ18` remains WAITING under RQ591 for frontend type/derived-metric integration. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
+- `RQ18` remains WAITING in this addendum for traceability; replacement acceptance is satisfied by completed `RQ591` on main. Re-exposure still requires freshness/horizon, oracle/golden and identity/provenance certification.
 
 ---
 

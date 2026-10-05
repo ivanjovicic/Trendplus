@@ -588,7 +588,7 @@ Supplier action source keys omit season/minRevenue/onlyHighConfidence even thoug
 
 ## RQ48 - Supplier action duplicate guard pagination
 
-Status: READY
+Status: DONE
 Ready after: RQ47 or explicit unblocking
 Priority: P2
 Type: frontend/API-contract/tests
@@ -629,6 +629,8 @@ Supplier Decision UI duplicate guard fetches only page 1 with pageSize 200 per o
 ### Acceptance
 
 - Existing open actions beyond page 1 are not missed by the UI guard.
+
+Owner completion 2026-10-05: RQ48 moved `READY -> DONE` after `loadOpenSupplierActionSourceKeys` paginated supplier open actions (200/page, max 50 pages/status) for `new`/`accepted`/`deferred` instead of only fetching page 1. Focused proof: `supplierOpenActionKeys.spec.ts` 2/2 and `SupplierDecisionHubPage.spec.tsx` 19/19; typecheck pass. Delivered on `main`; run log `.ai/runs/2026-10-05-RQ48-evidence.md`. Evidence state: synchronized. Primary READY advances to `RQ88`.
 
 ---
 
