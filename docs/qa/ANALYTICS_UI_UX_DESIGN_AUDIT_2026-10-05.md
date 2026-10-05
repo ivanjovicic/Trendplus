@@ -86,3 +86,6 @@ Re-checked claimed P0/P1 UX fixes against current tip: TrustHeader still default
 
 ## Recertify-2 2026-10-05
 Re-verified Trust collapse P0 still holds (`AnalyticsTrustHeader` details collapsed by default; critical stale/partial/gated cues above the fold). No UX redesign in this pass.
+
+## Recertify-3
+Trust-collapse / sticky-identity / reset-DQ P0 claims re-verified OK. No UX redesign in this pass; presentation leftovers closed separately.

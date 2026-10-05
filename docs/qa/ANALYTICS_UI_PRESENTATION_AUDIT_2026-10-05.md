@@ -68,3 +68,6 @@ Do **not** treat pass-2 residual list as fully closed without this recertify.
 
 ## Recertify-2 2026-10-05
 Adversarial re-check after tip `1ccaf3eb` found residual user-facing „N/A“ teaching text on Analytics Actions and `Avg marza` headers in Insight Studio (plus nivelacija FE manual). Closed in the same pass; trust/N/D/IntelligenceSnapshot claims from first recertify remain valid.
+
+## Recertify-3 (2026-10-05)
+Adversarial re-check after tip `ec03d814` found residual Color PoP `N/A` teaching text, Color English numerator/denominator export/detail labels, and incomplete Global Trends Serbianization (Price N/A, Loading…, Run Sync, type-empty English, Cijena). Closed in the same pass. Prior recertify-1/2 Insight/Actions/manual claims remain valid. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_3_2026-10-05.md`.

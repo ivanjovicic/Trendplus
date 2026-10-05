@@ -39,3 +39,8 @@ See commit / agent report.
 - HEAD == origin/main: NO until parent FF push
 - Focused tests: 46/46
 - Validators: check-prompt-queues OK (709); planning PASS; agent-instructions PASS; check:encoding OK; tsc -b OK; git diff --check OK
+
+## Post-FF truth (recertify-3)
+- Landed on origin/main after parent FF: **`ec03d814`**
+- HEAD == origin/main after FF: YES (`ec03d814`)
+- Earlier lines saying `NO until parent FF` are historical pre-push notes, not current tip state.
