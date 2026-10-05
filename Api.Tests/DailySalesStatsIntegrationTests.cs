@@ -39,6 +39,10 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.True(root.TryGetProperty("metadata", out _));
         Assert.True(root.TryGetProperty("meta", out var meta));
         Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal(new DateTime(2026, 1, 1), meta.GetProperty("requestedPeriodFromUtc").GetDateTime().Date);
+        Assert.Equal(new DateTime(2026, 1, 3), meta.GetProperty("requestedPeriodToUtc").GetDateTime().Date);
+        Assert.Equal(new DateTime(2026, 1, 1), meta.GetProperty("effectivePeriodFromUtc").GetDateTime().Date);
+        Assert.Equal(new DateTime(2026, 1, 3), meta.GetProperty("effectivePeriodToUtc").GetDateTime().Date);
         Assert.Equal(JsonValueKind.Null, meta.GetProperty("emptyReason").ValueKind);
 
         Assert.Equal(JsonValueKind.Array, root.GetProperty("topSuppliers").ValueKind);
@@ -85,20 +89,20 @@ public sealed class DailySalesStatsIntegrationTests
 
         Assert.Equal(canonicalRoot.GetProperty("requestedFrom").GetDateTime(), aliasRoot.GetProperty("requestedFrom").GetDateTime());
         Assert.Equal(canonicalRoot.GetProperty("requestedTo").GetDateTime(), aliasRoot.GetProperty("requestedTo").GetDateTime());
-        Assert.Equal(3, aliasRoot.GetProperty("metadata").GetProperty("totalDays").GetInt32());
-        Assert.Equal(3, aliasRoot.GetProperty("dateRows").GetArrayLength());
+        Assert.Equal(2, aliasRoot.GetProperty("metadata").GetProperty("totalDays").GetInt32());
+        Assert.Equal(2, aliasRoot.GetProperty("dateRows").GetArrayLength());
         Assert.Equal(CanonicalizeJson(canonicalRoot.GetRawText()), CanonicalizeJson(aliasRoot.GetRawText()));
 
         // The established names stay authoritative if both spellings are supplied.
         Assert.Equal(canonicalRoot.GetProperty("requestedFrom").GetDateTime(), mixedRoot.GetProperty("requestedFrom").GetDateTime());
         Assert.Equal(canonicalRoot.GetProperty("requestedTo").GetDateTime(), mixedRoot.GetProperty("requestedTo").GetDateTime());
 
-        // Undated requests use the last 30 calendar days ending at the scoped sales horizon.
+        // Undated requests use a 30-day half-open window ending one day after the scoped sales horizon.
         var defaultTo = defaultRoot.GetProperty("requestedTo").GetDateTime().Date;
         var defaultFrom = defaultRoot.GetProperty("requestedFrom").GetDateTime().Date;
-        Assert.Equal(new DateTime(2026, 1, 2), defaultTo);
+        Assert.Equal(new DateTime(2026, 1, 3), defaultTo);
         Assert.Equal("source_horizon", defaultRoot.GetProperty("meta").GetProperty("defaultPeriodBasis").GetString());
-        Assert.Equal(29, (defaultTo - defaultFrom).TotalDays);
+        Assert.Equal(30, (defaultTo - defaultFrom).TotalDays);
         Assert.Equal(30, defaultRoot.GetProperty("dateRows").GetArrayLength());
     }
 
@@ -130,7 +134,7 @@ public sealed class DailySalesStatsIntegrationTests
         var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(1, root.GetProperty("storeId").GetInt32());
-        Assert.Equal(3, root.GetProperty("dateRows").GetArrayLength());
+        Assert.Equal(2, root.GetProperty("dateRows").GetArrayLength());
         Assert.All(root.GetProperty("dateRows").EnumerateArray(), row =>
         {
             Assert.Equal(0, row.GetProperty("totalItemsSold").GetInt32());
@@ -187,9 +191,9 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_AdjacentDayWindowsDoNotOverlap()
     {
         await using var factory = CreateFactory();
-        var jan1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-01&storeId=1&topN=3&dataScope=all");
-        var jan2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-02&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
-        var both = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+        var jan1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+        var jan2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-02&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var both = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(10, jan1.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(12, jan2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
@@ -237,7 +241,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_SingleDayRangeReturnsSingleRow()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-01&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(1, root.GetProperty("dateRows").GetArrayLength());
         var row = root.GetProperty("dateRows").EnumerateArray().First();
@@ -248,7 +252,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_ShiftDistributionIsAccurate()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
 
         var dateRows = root.GetProperty("dateRows").EnumerateArray().ToList();
         Assert.True(dateRows.Count > 0, "Should have at least one date row");
