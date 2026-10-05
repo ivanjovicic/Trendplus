@@ -13,6 +13,42 @@ namespace Api.Tests;
 public sealed class ProductDecisionCenterBuilderIntegrationTests
 {
     [Fact]
+    public async Task MissingCategoryWithFootwearTypeAndUnconfiguredMinStock_KeepsReplenishmentAndUnknownLostSales()
+    {
+        var databaseName = $"product-decision-missing-category-{Guid.NewGuid():N}";
+        await using var db = CreateDbContext(databaseName);
+        var fromDate = PilotAnalyticsSeedPack.ProductDecisionFromUtc;
+        var toDate = PilotAnalyticsSeedPack.ProductDecisionToUtc;
+        PilotAnalyticsSeedPack.SeedProductDecisionCenter(db, fromDate, toDate);
+        db.TipoviObuce.Add(new TipObuce { Id = 1, Naziv = "Patike", DataOrigin = "existing" });
+        var article = db.Artikli.Local.Single(item => item.Id == 101);
+        article.Kategorija = null;
+        article.IDTipObuce = 1;
+        article.MinimalnaKolicina = null;
+        await db.SaveChangesAsync();
+
+        var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
+            db,
+            fromDate,
+            toDate,
+            storeId: 1,
+            supplierId: null,
+            top: 50,
+            dataScope: "all",
+            CancellationToken.None);
+
+        var row = Assert.Single(response.Rows.Where(item => item.ProductId == 101));
+        Assert.Contains(row.RecommendationStatus, new[] { "REPLENISH", "BOOST" });
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.CategoryMissing, row.ReasonCodes);
+        Assert.Contains("category_missing", row.WarningCodes);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.MinimumStockNotConfigured, row.ReasonCodes);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, row.ReasonCodes);
+        Assert.Equal("warning", row.DataQualityStatus);
+        Assert.Null(row.LostSalesEstimate);
+        Assert.True(row.ConfidencePct < 99);
+    }
+
+    [Fact]
     public async Task BuildProductDecisionCenter_ComputesDecisionFinancialAndConfidenceContracts()
     {
         var databaseName = $"product-decision-builder-{Guid.NewGuid():N}";

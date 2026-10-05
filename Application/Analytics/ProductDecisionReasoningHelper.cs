@@ -22,6 +22,7 @@ public static class ProductDecisionReasoningHelper
         public int LostSalesImpactWindowDays { get; init; } = 14;
         public int NewProductConfidencePenaltyPct { get; init; } = 15;
         public int UnconfiguredMinStockConfidencePenaltyPct { get; init; } = 15;
+        public int IncompleteAssortmentConfidencePenaltyPct { get; init; } = 10;
 
         public static ThresholdPolicy Default { get; } = new();
     }
@@ -51,6 +52,9 @@ public static class ProductDecisionReasoningHelper
         public const string LowVelocityReview = "low_velocity_review";
         public const string NoBaseline = "no_baseline";
         public const string MinimumStockNotConfigured = "minimum_stock_not_configured";
+        public const string CategoryMissing = "category_missing";
+        public const string FootwearTypeMissing = "footwear_type_missing";
+        public const string VariantDataIncomplete = "variant_data_incomplete";
     }
 
     public sealed record Input(
@@ -69,7 +73,8 @@ public static class ProductDecisionReasoningHelper
         int? MinStock,
         int? DaysSinceLastSale,
         bool IsNewProduct = false,
-        decimal? StockCoverDays = null);
+        decimal? StockCoverDays = null,
+        bool MissingFootwearType = false);
 
     public sealed record Result(
         string RecommendationStatus,
@@ -99,7 +104,7 @@ public static class ProductDecisionReasoningHelper
     {
         var effectivePolicy = policy ?? ThresholdPolicy.Default;
 
-        if (input.MissingSupplier || input.MissingCost || input.MissingCategory)
+        if (input.MissingSupplier || input.MissingCost || (input.MissingCategory && input.MissingFootwearType))
             return "FIX_DATA";
 
         if (!input.CurrentStock.HasValue)
@@ -178,8 +183,17 @@ public static class ProductDecisionReasoningHelper
         if (input.MissingSupplier) codes.Add(ReasonCodes.MissingSupplier);
         if (input.MissingCost) codes.Add(ReasonCodes.MissingCost);
 
-        if (input.MissingCategory || input.MissingVariantData)
+        if (input.MissingCategory && !input.MissingFootwearType)
+            codes.Add(ReasonCodes.CategoryMissing);
+
+        if (input.MissingFootwearType && !input.MissingCategory)
+            codes.Add(ReasonCodes.FootwearTypeMissing);
+
+        if (input.MissingFootwearType && input.MissingCategory)
             codes.Add(ReasonCodes.DataQualityBlocker);
+
+        if (input.MissingVariantData)
+            codes.Add(ReasonCodes.VariantDataIncomplete);
 
         if (!input.StockGap.HasValue || !input.CurrentStock.HasValue || !input.MinStock.HasValue)
             codes.Add(ReasonCodes.StockEvidenceUnavailable);

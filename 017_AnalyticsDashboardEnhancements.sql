@@ -278,7 +278,11 @@ SELECT
   CASE
     WHEN COUNT(*) = 0 THEN 0
     ELSE 1.0 - (COUNT(*) FILTER (
-      WHERE a."Naziv" IS NULL OR a."PLU" IS NULL OR a."Kategorija" IS NULL
+      WHERE a."Naziv" IS NULL OR a."PLU" IS NULL OR (
+        a."Kategorija" IS NULL AND NOT EXISTS (
+          SELECT 1 FROM "TipoviObuce" t WHERE t."Id" = a."IDTipObuce"
+        )
+      )
     )::decimal / COUNT(*)::decimal)
   END AS completeness_score,
   MAX(a."UpdatedAt") AS last_import

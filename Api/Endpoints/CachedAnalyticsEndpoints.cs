@@ -3584,7 +3584,11 @@ public static class CachedAnalyticsEndpoints
             SELECT
                 COUNT(*)::int AS total_sku,
                 COUNT(*) FILTER (
-                  WHERE "Naziv" IS NULL OR "PLU" IS NULL OR "Kategorija" IS NULL
+                WHERE "Naziv" IS NULL OR "PLU" IS NULL OR (
+                    "Kategorija" IS NULL AND NOT EXISTS (
+                        SELECT 1 FROM "TipoviObuce" t WHERE t."Id" = "Artikli"."IDTipObuce"
+                    )
+                )
                 )::int AS missing_sku,
                 MAX("UpdatedAt") AS last_import
             FROM "Artikli";
@@ -6500,13 +6504,15 @@ public static class CachedAnalyticsEndpoints
 
             var missingSupplier = !article.SupplierId.HasValue || string.IsNullOrWhiteSpace(article.SupplierName);
             var missingCost = !article.UnitCost.HasValue;
-            var missingCategory = string.IsNullOrWhiteSpace(article.Category) && string.IsNullOrWhiteSpace(article.ShoeTypeName);
+            var missingCategory = string.IsNullOrWhiteSpace(article.Category);
+            var missingFootwearType = string.IsNullOrWhiteSpace(article.ShoeTypeName);
             var missingVariantData = string.IsNullOrWhiteSpace(article.Color) || string.IsNullOrWhiteSpace(article.Size);
             var missingMarginCoverage = !marginCoveragePct.HasValue;
+            var missingAssortmentDimension = missingCategory && missingFootwearType;
 
-            var dataQualityStatus = missingSupplier || missingCost || missingCategory
+            var dataQualityStatus = missingSupplier || missingCost || missingAssortmentDimension
                 ? "critical"
-                : (!currentStockAvailable || !stockTargetConfigured || missingMarginCoverage || marginCoveragePct is < 60m || missingVariantData ? "warning" : "good");
+                : (!currentStockAvailable || !stockTargetConfigured || missingMarginCoverage || marginCoveragePct is < 60m || missingCategory || missingFootwearType || missingVariantData ? "warning" : "good");
 
             var reasoning = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
                 MissingSupplier: missingSupplier,
@@ -6526,7 +6532,8 @@ public static class CachedAnalyticsEndpoints
                 IsNewProduct: !hasPreviousBaseline || previousRevenueValue <= 0m,
                 StockCoverDays: article.CurrentStock.HasValue && velocityUnitsPerDay > 0m
                     ? article.CurrentStock.Value / velocityUnitsPerDay
-                    : null), thresholdPolicy);
+                    : null,
+                MissingFootwearType: missingFootwearType), thresholdPolicy);
 
             var recommendationStatus = reasoning.RecommendationStatus;
 
@@ -6541,6 +6548,10 @@ public static class CachedAnalyticsEndpoints
                 isNewProduct,
                 !stockTargetConfigured,
                 thresholdPolicy);
+            if (missingCategory || missingFootwearType || missingVariantData)
+            {
+                confidencePct = Math.Max(5, confidencePct - thresholdPolicy.IncompleteAssortmentConfidencePenaltyPct);
+            }
 
             var reasonCodes = reasoning.ReasonCodes;
 
@@ -7973,6 +7984,9 @@ public static class CachedAnalyticsEndpoints
             "data_quality_critical" => "Kvalitet podataka je kritičan",
             "insufficient_data" => "Nedovoljno podataka",
             "data_quality_blocker" => "Blokada kvaliteta podataka",
+            "category_missing" => "Nedostaje kategorija; tip obuće je korišćen za klasifikaciju",
+            "footwear_type_missing" => "Nedostaje tip obuće; kategorija je korišćena za klasifikaciju",
+            "variant_data_incomplete" => "Nedostaju podaci o boji ili veličini",
             _ => string.IsNullOrWhiteSpace(code) ? "Nije poznato" : code
         };
     }
@@ -8203,7 +8217,10 @@ public static class CachedAnalyticsEndpoints
                 || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)))
+                || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "category_missing", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "footwear_type_missing", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(code, "variant_data_incomplete", StringComparison.OrdinalIgnoreCase)))
         {
             foreach (var code in row.ReasonCodes.Where(code =>
                          string.Equals(code, "missing_cost", StringComparison.OrdinalIgnoreCase)
@@ -8212,7 +8229,10 @@ public static class CachedAnalyticsEndpoints
                          || string.Equals(code, "low_sample_size", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(code, "no_sales_in_period", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(code, "missing_last_sale", StringComparison.OrdinalIgnoreCase)
-                         || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)))
+                         || string.Equals(code, "margin_coverage_unavailable", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "category_missing", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "footwear_type_missing", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(code, "variant_data_incomplete", StringComparison.OrdinalIgnoreCase)))
             {
                 AddWarning(code);
             }

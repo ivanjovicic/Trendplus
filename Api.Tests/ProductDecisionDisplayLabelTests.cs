@@ -9,6 +9,9 @@ public sealed class ProductDecisionDisplayLabelTests
     [InlineData(null, "Nije poznato")]
     [InlineData("", "Nije poznato")]
     [InlineData("missing_cost", "Nedostaje nabavna cena")]
+    [InlineData("category_missing", "Nedostaje kategorija; tip obuće je korišćen za klasifikaciju")]
+    [InlineData("footwear_type_missing", "Nedostaje tip obuće; kategorija je korišćena za klasifikaciju")]
+    [InlineData("variant_data_incomplete", "Nedostaju podaci o boji ili veličini")]
     [InlineData("future_warning", "future_warning")]
     public void WarningCodeLabel_NeverReturnsNull(string? code, string expected)
     {

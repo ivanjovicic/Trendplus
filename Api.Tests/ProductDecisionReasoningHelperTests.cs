@@ -99,6 +99,83 @@ public class ProductDecisionReasoningHelperTests
         Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.InsufficientHistory, result.ReasonCodes);
     }
 
+    [Fact(DisplayName = "Missing category with footwear type warns without blocking recommendation")]
+    public void MissingCategoryWithFootwearType_IsWarningNotBlocker()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: true,
+            MissingVariantData: false,
+            Revenue: 80_000m,
+            UnitsSold: 40,
+            VelocityUnitsPerDay: 1m,
+            MarginPct: 30m,
+            MarginCoveragePct: 100m,
+            TrendPct: 12m,
+            StockGap: 5,
+            CurrentStock: 0,
+            MinStock: 5,
+            DaysSinceLastSale: 1,
+            MissingFootwearType: false));
+
+        Assert.Equal("BOOST", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.CategoryMissing, result.ReasonCodes);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, result.ReasonCodes);
+    }
+
+    [Fact(DisplayName = "Missing category and footwear type block assortment recommendation")]
+    public void MissingCategoryAndFootwearType_MapsToFixData()
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: true,
+            MissingVariantData: false,
+            Revenue: 80_000m,
+            UnitsSold: 40,
+            VelocityUnitsPerDay: 1m,
+            MarginPct: 30m,
+            MarginCoveragePct: 100m,
+            TrendPct: 12m,
+            StockGap: 5,
+            CurrentStock: 0,
+            MinStock: 5,
+            DaysSinceLastSale: 1,
+            MissingFootwearType: true));
+
+        Assert.Equal("FIX_DATA", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, result.ReasonCodes);
+    }
+
+    [Theory(DisplayName = "Missing minimum stock remains a confidence warning, not a universal blocker")]
+    [InlineData(null)]
+    [InlineData(0)]
+    public void MissingMinimumStock_DoesNotBlockAndKeepsUnknownLostSales(int? minStock)
+    {
+        var result = ProductDecisionReasoningHelper.Evaluate(new ProductDecisionReasoningHelper.Input(
+            MissingSupplier: false,
+            MissingCost: false,
+            MissingCategory: false,
+            MissingVariantData: false,
+            Revenue: 80_000m,
+            UnitsSold: 40,
+            VelocityUnitsPerDay: 1m,
+            MarginPct: 30m,
+            MarginCoveragePct: 100m,
+            TrendPct: 12m,
+            StockGap: null,
+            CurrentStock: 2,
+            MinStock: minStock,
+            DaysSinceLastSale: 1,
+            IsNewProduct: true,
+            StockCoverDays: 2m));
+
+        Assert.Equal("BOOST", result.RecommendationStatus);
+        Assert.Contains(ProductDecisionReasoningHelper.ReasonCodes.StockEvidenceUnavailable, result.ReasonCodes);
+        Assert.DoesNotContain(ProductDecisionReasoningHelper.ReasonCodes.DataQualityBlocker, result.ReasonCodes);
+    }
+
     [Fact(DisplayName = "Missing stock evidence -> INSUFFICIENT_DATA + stock_evidence_unavailable")]
     public void MissingStockEvidence_MapsToInsufficientDataWithExplicitCode()
     {
