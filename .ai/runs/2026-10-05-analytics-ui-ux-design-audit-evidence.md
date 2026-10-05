@@ -2,26 +2,32 @@
 
 - Queue: direct-user-request
 - Worktree: `/workspace/ui-rebase/repo` on branch `ui-ux-audit`
-- Base `origin/main`: `cd29c12d`
-- Author commits: see git log on tip after push
+- Base `origin/main` at start of bundle: `cd29c12d`
+- Author: Ivan Jovicic (repo convention)
 - No Trendplus2 WT edits; no cloud agents
 
-## Commands
+## Commits (origin/main..tip)
 
-```text
-git fetch --all --prune
-# checkout ui-ux-audit from origin/main
-npm test -- --run AnalyticsTrustHeader AnalyticsDataTable ExecutiveKpiRow MetricMethodologyPanel
-npm test -- --run SupplierFootwear ShoeType premium PreNivelacija Color Daily premium ControlBar
-npx tsc -b
-npm run check:encoding
-git diff --check
-```
-
-## Key change
-
-`AnalyticsTrustHeader` collapses meta/summary/footer by default; critical banners + period/freshness strip remain visible. Toggle: „Prikaži/Sakrij detalje pouzdanosti“.
+1. `01082190` fix(analytics-ui): collapse trust details above the fold
+2. `8f861298` fix(analytics-ui): enable sticky table pilot and compact filters
+3. `a9b64b5e` fix(analytics-ui): Serbianize reset and Data Quality action labels
+4. `faed6ec8` docs(analytics): record UI/UX design audit findings
+5. docs(evidence): tip bookkeeping (final tip = `git rev-parse HEAD` on this branch)
 
 ## Bundle
 
-Parent FF push via `/workspace/out/analytics-ui-ux-design-audit.bundle` (created after commit).
+- Path: `/workspace/out/analytics-ui-ux-design-audit.bundle`
+- Requires: `cd29c12d`
+- Contains: HEAD of `ui-ux-audit` at bundle time
+
+## Validation
+
+- TrustHeader + DataTable: 28 passed
+- Broader page suite (Footwear/Shoe premium/PreNivelacija/Color/Daily premium/ControlBar): 168+ passed after PreNivelacija mobile summary tweak
+- `npx tsc -b`: OK
+- `npm run check:encoding`: OK
+- `git diff --check`: OK
+
+## After parent FF
+
+Record final `origin/main` SHA and CI status; HEAD must equal origin/main.
