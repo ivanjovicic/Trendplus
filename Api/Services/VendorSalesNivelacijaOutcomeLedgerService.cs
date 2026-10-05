@@ -1,5 +1,4 @@
 using Api.Models;
-using Application.Analytics;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -130,11 +129,11 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
                         && preMetrics.Revenue.HasValue && postMetrics.Revenue.HasValue,
                     PreAveragePrice = preMetrics.Units > 0 && preMetrics.Revenue.HasValue ? preMetrics.Revenue / preMetrics.Units : null,
                     PostAveragePrice = postMetrics.Units > 0 && postMetrics.Revenue.HasValue ? postMetrics.Revenue / postMetrics.Units : null,
-                    PreMarginContribution = preMetrics.Margin, PostMarginContribution = postMetrics.Margin,
-                    PreCostCoveragePct = preMetrics.CoveragePct, PostCostCoveragePct = postMetrics.CoveragePct,
-                    CostEvidenceReason = preMetrics.Margin.HasValue && postMetrics.Margin.HasValue
+                    PreMarginContribution = preMetrics.MarginContribution, PostMarginContribution = postMetrics.MarginContribution,
+                    PreCostCoveragePct = preMetrics.CostCoveragePct, PostCostCoveragePct = postMetrics.CostCoveragePct,
+                    CostEvidenceReason = preMetrics.MarginContribution.HasValue && postMetrics.MarginContribution.HasValue
                         ? "sale_time_cost_fully_covered"
-                        : preMetrics.CoveragePct.HasValue || postMetrics.CoveragePct.HasValue
+                        : preMetrics.CostCoveragePct.HasValue || postMetrics.CostCoveragePct.HasValue
                             ? "uncovered_sale_time_cost"
                             : "sale_cost_evidence_unavailable"
                 });
@@ -166,30 +165,20 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
         };
     }
 
-    private static PeriodMetrics Period(IReadOnlyCollection<SaleRow> rows, IReadOnlyDictionary<int, decimal?> snapshots, bool emptyWindowIsZero)
-    {
-        var revenue = rows.Sum(row => row.Price * row.Quantity);
-        if (rows.Count == 0) return emptyWindowIsZero
-            ? new PeriodMetrics(0m, 0m, null, null)
-            : new PeriodMetrics(null, null, null, null);
-        decimal coveredRevenue = 0m;
-        decimal margin = 0m;
-        var allCovered = true;
-        foreach (var row in rows)
-        {
-            snapshots.TryGetValue(row.Id, out var snapshot);
-            var cost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+    private static VendorSalesNivelacijaOutcomePeriodEvidence Period(
+        IReadOnlyCollection<SaleRow> rows,
+        IReadOnlyDictionary<int, decimal?> snapshots,
+        bool emptyWindowIsZero)
+        => VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(
+            rows.Select(row => new VendorSalesNivelacijaOutcomeSaleLineFact(
+                row.Id,
+                row.Quantity,
+                row.Price,
                 row.LineCost,
-                snapshot,
                 row.ProductCostRsd,
-                row.ProductCostLegacy).UnitCost;
-            if (cost is null) { allCovered = false; continue; }
-            coveredRevenue += row.Price * row.Quantity;
-            margin += (row.Price - cost.Value) * row.Quantity;
-        }
-        var coverage = revenue > 0 ? decimal.Round(coveredRevenue / revenue * 100m, 2) : (decimal?)null;
-        return new PeriodMetrics(rows.Sum(row => (decimal)row.Quantity), revenue, coverage, allCovered ? margin : null);
-    }
+                row.ProductCostLegacy)).ToArray(),
+            snapshots,
+            emptyWindowIsZero);
 
     private static string DepthBand(decimal? depth) => depth switch
     {
@@ -212,5 +201,4 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
         int? SupplierId, string SupplierName, int? ShoeTypeId, string ShoeType, decimal? Depth);
     private sealed record SaleRow(int Id, int ArticleId, DateTime Date, int? StoreId, int Quantity,
         decimal Price, decimal? LineCost, decimal? ProductCostRsd, decimal? ProductCostLegacy);
-    private sealed record PeriodMetrics(decimal? Units, decimal? Revenue, decimal? CoveragePct, decimal? Margin);
 }

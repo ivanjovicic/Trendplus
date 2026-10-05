@@ -1,4 +1,5 @@
 using Api.Models;
+using Api.Services;
 using Xunit;
 
 namespace Api.Tests;
@@ -26,11 +27,48 @@ public sealed class VendorSalesNivelacijaOutcomeLedgerContractTests
         Assert.Equal(typeof(decimal?), typeof(VendorSalesNivelacijaOutcomeEventDto).GetProperty(nameof(VendorSalesNivelacijaOutcomeEventDto.PreRevenue))!.PropertyType);
 
         var source = ReadRepoFile("Api/Services/VendorSalesNivelacijaOutcomeLedgerService.cs");
+        var policy = ReadRepoFile("Api/Services/VendorSalesNivelacijaOutcomeEvidencePolicy.cs");
         Assert.Contains("historical_stock_unavailable", ReadRepoFile("Api/Models/VendorSalesNivelacijaModels.cs"));
-        Assert.Contains("emptyWindowIsZero", source);
-        Assert.Contains("new PeriodMetrics(null, null, null, null)", source);
-        Assert.Contains("allCovered ? margin : null", source);
-        Assert.Contains("AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(", source);
+        Assert.Contains("emptyWindowIsZero", policy);
+        Assert.Contains("new VendorSalesNivelacijaOutcomePeriodEvidence(null, null, null, null)", policy);
+        Assert.Contains("allCovered ? margin : null", policy);
+        Assert.Contains("AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(", policy);
+    }
+
+    [Fact]
+    public void MatureMarkdownFixtureMatchesIndependentSaleTimeCostOracle()
+    {
+        var preLines = new[]
+        {
+            new VendorSalesNivelacijaOutcomeSaleLineFact(1, 2, 100m, 40m, 70m, 65m),
+            new VendorSalesNivelacijaOutcomeSaleLineFact(2, 1, 90m, null, null, null)
+        };
+        var pre = VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(
+            preLines,
+            new Dictionary<int, decimal?> { [2] = 55m },
+            emptyWindowIsZero: false);
+
+        // Independent raw fixture oracle: revenue=290, units=3,
+        // cost=(2*40)+(1*55)=135 and contribution=155 RSD.
+        Assert.Equal(3m, pre.Units);
+        Assert.Equal(290m, pre.Revenue);
+        Assert.Equal(100m, pre.CostCoveragePct);
+        Assert.Equal(155m, pre.MarginContribution);
+
+        var uncovered = VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(
+            [new VendorSalesNivelacijaOutcomeSaleLineFact(3, 2, 100m, null, null, null)],
+            new Dictionary<int, decimal?>(),
+            emptyWindowIsZero: false);
+        Assert.Equal(0m, uncovered.CostCoveragePct);
+        Assert.Null(uncovered.MarginContribution);
+
+        var missingPreWindow = VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(
+            [], new Dictionary<int, decimal?>(), emptyWindowIsZero: false);
+        var observedEmptyPostWindow = VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(
+            [], new Dictionary<int, decimal?>(), emptyWindowIsZero: true);
+        Assert.Null(missingPreWindow.Revenue);
+        Assert.Equal(0m, observedEmptyPostWindow.Revenue);
+        Assert.Null(observedEmptyPostWindow.MarginContribution);
     }
 
     [Fact]
