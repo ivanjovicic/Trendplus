@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ570` (claimed IN_PROGRESS); additional independently claimable lanes include `RQ552`, `RQ553`, `RQ574`, `RQ576`, `RQ578`, `RQ579`, `RQ580`, `RQ581`, `RQ586`, `RQ587`, `RQ588` and `RQ479`. `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Current READY prompt: `RQ574` (claimed IN_PROGRESS); additional independently claimable lanes include `RQ552`, `RQ553`, `RQ576`, `RQ578`, `RQ579`, `RQ580`, `RQ581`, `RQ583`, `RQ584`, `RQ586`, `RQ587`, `RQ588` and `RQ479`. `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -28391,7 +28391,7 @@ Source audit: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/202
 
 ## RQ570 - Anchor default analysis periods to the observed data horizon and suppress beyond-horizon comparisons
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ569` is DONE (owner decision resolved 2026-10-04; reuses its observed-horizon/source-freshness contract)
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -28458,6 +28458,26 @@ Owner decision (Ivan, 2026-10-04): **approved**. For every undated decision surf
 
 - Presentation pattern for beyond-horizon periods: trust strip shows "Period … · Podaci do …" as two facts; charts render "nema podataka" after the horizon, never 0 (design system §5.3). Emit a machine-readable `beyond_source_horizon` reason so the P-UI-49 taxonomy can render it.
 - P-UI-51 (Executive Board period/scope/URL controls) waits for this prompt. Audit: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`; design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: Undated scoped analytics periods now end at the observed sale horizon; explicit dates remain unchanged. Beyond-horizon comparisons return null with `beyond_source_horizon`, and the trust metadata/UI show the basis and observed period.
+- Changed files: shared resolver, analytics endpoint/meta contracts, Dashboard and Product Decision pages, focused API/UI tests, guardrail baseline, this queue, roadmap and `.ai/runs/2026-10-05-RQ570-evidence.md`.
+- Contract/runtime behavior changed: source-horizon-anchored 30-calendar-day defaults across the in-scope surfaces; freshness remains separate; beyond-horizon trends are unavailable rather than fabricated.
+- Checks run: API build; focused API contract/integration tests 117/117; frontend guardrail/typecheck and production build; focused frontend tests 69/69; governance validators; `git diff --check`.
+- Checks not run: full `dotnet test`; live/deployed browser/API proof. Full frontend analytics command had 1,033/1,035 pass with one unrelated Inventory assertion and one Product Decision render timeout; exact current-main Actions runs are recorded in the run log.
+- Run log: `.ai/runs/2026-10-05-RQ570-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct commit/push to `main`
+- Main commit SHA: `59d95ee5d9f4b727b7ed5ae1aeac31b2f2089e1a`
+- Main verification: `origin/main` freshly fetched at the implementation SHA; ancestor verification passed.
+- Missed: no live deployment proof.
+- Follow-up: post-close dependency cascade promoted RQ583/RQ584; primary next claim is RQ574.
+- Residual risk: current-main Analytics Tests & Data Integrity and Analytics Quality Gates runs are in progress; full local analytics group retains two unrelated/resource-related failures.
+- Next: RQ574 - Missing category must not block 100% of Product Decision recommendations.
+- Prompt defect / scope repair: none.
 
 ## RQ571 - Pre-Nivelacija: anchor recency to the source horizon and keep non-decision stock out of markdown queues
 
@@ -28656,7 +28676,7 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: owner decision resolved 2026-10-04; no blocking dependency. Do not run concurrently with another active Product Decision/Dashboard owner on the same files.
 Priority: P1
 Type: backend/policy/tests
@@ -28709,6 +28729,10 @@ Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment 
 ### Dependencies
 
 - No blocking dependency. `RQ573` follows this policy so row-order/payload work uses the approved actionability semantics.
+
+### Claim note 2026-10-05
+
+- RQ574 was claimed after RQ570 reached DONE on `origin/main` at `59d95ee5d9f4b727b7ed5ae1aeac31b2f2089e1a`. Post-close recovery found no matching lock, branch or open PR; no other Product Decision/Dashboard owner is active. Local lock: `.ai/task-locks/RQ574-codex.lock.md`. Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`.
 
 ## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
 
@@ -29151,7 +29175,7 @@ Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from th
 
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
-Status: WAITING
+Status: READY
 Ready after: `RQ569` and `RQ570` DONE (serialize the shared trust/freshness period surface; STAB16 worker deployment is not required for the banner/alert logic)
 Priority: P2
 Type: backend/frontend/ops
@@ -29206,7 +29230,7 @@ Owner decision (Ivan, 2026-10-04): default SLA is **warning after 48 hours** and
 
 ## RQ584 - Daily Sales: one `toDate` contract with the other Operations endpoints
 
-Status: WAITING
+Status: READY
 Ready after: `RQ569` and `RQ570` DONE (serialize the shared Daily Sales period contract)
 Priority: P3
 Type: backend/frontend/tests
