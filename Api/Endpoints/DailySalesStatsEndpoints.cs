@@ -56,25 +56,25 @@ public static class DailySalesStatsEndpoints
                     }
 
                     requestedFrom = defaultPeriod.FromUtc;
-                    requestedTo = defaultPeriod.HorizonUtc;
+                    requestedTo = defaultPeriod.ToUtc;
                     defaultPeriodBasis = "source_horizon";
                 }
                 // Keep the established fromDate/toDate names authoritative while also
                 // accepting the shorter aliases used by direct API links.
-                var toUtc = NormalizeUtcDate(requestedTo) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-                var fromUtc = NormalizeUtcDate(requestedFrom) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
+                var toUtc = NormalizeUtcDate(requestedTo) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+                var fromUtc = NormalizeUtcDate(requestedFrom) ?? toUtc.AddDays(-DefaultWindowDays);
 
-                if (fromUtc > toUtc)
+                if (fromUtc >= toUtc)
                 {
                     return Results.BadRequest(new
                     {
-                        message = "Neispravan period: fromDate mora biti manji ili jednak toDate.",
+                        message = "Neispravan period: fromDate mora biti manji od ekskluzivnog toDate.",
                         fromDate = fromUtc,
                         toDate = toUtc
                     });
                 }
 
-                var totalDays = (int)(toUtc.Date - fromUtc.Date).TotalDays + 1;
+                var totalDays = (int)(toUtc.Date - fromUtc.Date).TotalDays;
                 if (totalDays > MaxRangeDays)
                 {
                     return Results.BadRequest(new
@@ -110,7 +110,7 @@ public static class DailySalesStatsEndpoints
                     integrityRegistry,
                     OperationsAnalyticsIntegrityFamilies.SalesDashboard,
                     fromUtc.Date,
-                    toUtc.Date.AddDays(1),
+                    toUtc.Date,
                     normalizedDataScope,
                     request.StoreId);
                 if (result.Meta.DecisionReadiness is null)
@@ -128,8 +128,8 @@ public static class DailySalesStatsEndpoints
                     normalizedDataScope,
                     request.StoreId,
                     "signal",
-                    ct);
-                result.Meta.DefaultPeriodBasis = defaultPeriodBasis;
+                    ct,
+                    defaultPeriodBasis);
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
