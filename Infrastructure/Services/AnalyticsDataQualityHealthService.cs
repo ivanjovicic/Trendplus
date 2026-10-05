@@ -137,8 +137,7 @@ public sealed class AnalyticsDataQualityHealthService
         string? dataScope,
         CancellationToken ct)
     {
-        // Inclusive display end stays compatible with existing health/report consumers.
-        var windowToUtc = windowToExclusiveUtc.AddTicks(-1);
+        var windowToUtc = windowToExclusiveUtc;
         var normalizedDataScope = NormalizeDataScope(dataScope);
         var importedOnly = normalizedDataScope == "imported";
         var existingOnly = normalizedDataScope == "existing";

@@ -74,7 +74,7 @@ public sealed class AnalyticsDataQualityHealthServiceTests
 
         Assert.Equal(100m, snapshot.TotalRevenue);
         Assert.Equal(fromUtc, snapshot.WindowFromUtc);
-        Assert.Equal(toExclusiveUtc.AddTicks(-1), snapshot.WindowToUtc);
+        Assert.Equal(toExclusiveUtc, snapshot.WindowToUtc);
         Assert.Equal(30, snapshot.LookbackDays);
         Assert.Equal(new DateTime(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc), snapshot.ObservedPeriodToUtc);
     }
