@@ -58,15 +58,15 @@ public static class DailySalesStatsEndpoints
                 }
                 // Keep the established fromDate/toDate names authoritative while also
                 // accepting the shorter aliases used by direct API links.
+                // Date-only and timestamp ends are the same half-open instant.
+                // The UI turns an inclusive calendar "Do" into the next exclusive day before calling.
                 var hasExplicitTimestampTo = requestedTo.HasValue
                     && HasTimestampBound(httpContext.Request, request.ToDate.HasValue ? "toDate" : "to");
-                var usesHalfOpenTo = hasExplicitTimestampTo || defaultPeriodBasis is not null || !requestedTo.HasValue;
                 var normalizedToUtc = hasExplicitTimestampTo
                     ? NormalizeUtcInstant(requestedTo)
                     : NormalizeUtcDate(requestedTo);
-                var toUtc = usesHalfOpenTo
-                    ? normalizedToUtc ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc)
-                    : DateTime.SpecifyKind(normalizedToUtc!.Value.AddDays(1), DateTimeKind.Utc);
+                var toUtc = normalizedToUtc
+                    ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
                 var fromUtc = NormalizeUtcDate(requestedFrom) ?? toUtc.AddDays(-DefaultWindowDays);
                 var lastIncludedDateUtc = DateTime.SpecifyKind(toUtc.AddTicks(-1).Date, DateTimeKind.Utc);
 

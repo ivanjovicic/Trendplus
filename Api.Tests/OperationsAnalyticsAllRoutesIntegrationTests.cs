@@ -128,8 +128,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
             540m,
             daily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal($"{FromDate}T00:00:00Z", daily.GetProperty("requestedFrom").GetString());
-        // Date-only toDate is the inclusive calendar day. Daily Sales stores the next exclusive midnight.
-        Assert.Equal("2026-07-08T00:00:00Z", daily.GetProperty("requestedTo").GetString());
+        Assert.Equal($"{ToDate}T00:00:00Z", daily.GetProperty("requestedTo").GetString());
         Assert.Equal("all", daily.GetProperty("dataScope").GetString());
         Assert.Equal("all", daily.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
         Assert.Equal("sale_snapshot", daily.GetProperty("meta").GetProperty("attributionBasis").GetString());
@@ -445,7 +444,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
 
         var negativeStoreDaily = await GetJsonAsync(
             client,
-            "/api/analytics/daily-sales?fromDate=2026-09-12&toDate=2026-09-12&storeId=-1&dataScope=all&topN=25");
+            "/api/analytics/daily-sales?fromDate=2026-09-12&toDate=2026-09-13&storeId=-1&dataScope=all&topN=25");
         Assert.Equal(2, negativeStoreDaily.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(250m, negativeStoreDaily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal(-1, negativeStoreDaily.GetProperty("storeId").GetInt32());
