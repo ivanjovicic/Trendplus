@@ -20,6 +20,8 @@ import {
 export default function NivelacijaCenaPage() {
     const [artikli, setArtikli] = useState<Artikal[]>([]);
     const [loading, setLoading] = useState(true);
+    const [catalogLoadError, setCatalogLoadError] = useState<string | null>(null);
+    const [catalogReloadNonce, setCatalogReloadNonce] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
     const [query, setQuery] = useState("");
@@ -45,19 +47,19 @@ export default function NivelacijaCenaPage() {
     useEffect(() => {
         const load = async () => {
             setLoading(true);
-            setError(null);
+            setCatalogLoadError(null);
             try {
                 const data = await getArtikli();
                 setArtikli(data);
             } catch (e: any) {
-                setError(e?.message ?? "Greška pri učitavanju artikala");
+                setCatalogLoadError(e?.message ?? "Greška pri učitavanju artikala");
             } finally {
                 setLoading(false);
             }
         };
 
-        load();
-    }, []);
+        void load();
+    }, [catalogReloadNonce]);
 
     useEffect(() => {
         const onWindowKeyDown = (event: KeyboardEvent) => {
@@ -169,6 +171,19 @@ export default function NivelacijaCenaPage() {
                 ]}
             />
 
+            {catalogLoadError ? (
+                <div className="form-error" role="alert">
+                    <p>{catalogLoadError}</p>
+                    <button
+                        type="button"
+                        className="btn btn--secondary mt-2"
+                        onClick={() => setCatalogReloadNonce((value) => value + 1)}
+                    >
+                        Pokušaj ponovo
+                    </button>
+                </div>
+            ) : null}
+
             <FormLayout
                 main={(
                     <>
@@ -230,7 +245,7 @@ export default function NivelacijaCenaPage() {
                         title="Pregled nivelacije"
                         actions={(
                             <>
-                                {error ? <p className="form-error">{error}</p> : null}
+                                {error ? <p className="form-error" role="alert">{error}</p> : null}
                                 {success ? <p className="validation-list__item validation-list__item--valid">{success}</p> : null}
                                 {saveDisabledReason ? <p className="form-helper">{saveDisabledReason}</p> : null}
                                 <button type="button" className="btn btn--primary btn--full" disabled={!canSave} onClick={() => void save()}>

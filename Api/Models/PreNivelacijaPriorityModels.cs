@@ -183,8 +183,8 @@ public sealed class PreNivelacijaQueueItemDto
     public string SupplierName { get; set; } = "N/A";
     public decimal PreNivelacijaScore { get; set; }
     public string PriorityBand { get; set; } = "neutral";
-    public string Owner { get; set; } = "Unassigned";
-    public string Status { get; set; } = "Unassigned";
+    public string Owner { get; set; } = "Nedodeljeno";
+    public string Status { get; set; } = "Nedodeljeno";
     public DateTime DueDateUtc { get; set; }
 }
 
@@ -256,7 +256,7 @@ public sealed class PreNivelacijaSkuCandidateDto
 public sealed class PreNivelacijaRecommendationDto
 {
     public string Status { get; set; } = "insufficient_data";
-    public string Label { get; set; } = "Insufficient data";
+    public string Label { get; set; } = "Nedovoljno podataka";
     public string Summary { get; set; } = string.Empty;
     public double ConfidencePct { get; set; }
     public double ReliabilityPct { get; set; }

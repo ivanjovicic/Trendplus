@@ -56,7 +56,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/nivelacije-pre-post",
-        label: "Pre/Post nivelacija",
+        label: "Pre/Posle nivelacije",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -68,7 +68,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/pre-nivelacija-prioriteti",
-        label: "Prioriteti Pre-Nivelacije",
+        label: "Prioriteti nivelacije",
         isDurableReport: false,
         legacyAliases: [],
     },

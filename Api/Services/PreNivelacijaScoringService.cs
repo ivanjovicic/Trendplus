@@ -313,11 +313,11 @@ public sealed class PreNivelacijaScoringService : IPreNivelacijaScoringService
     {
         return status switch
         {
-            "increase_focus" => "Increase focus",
-            "maintain" => "Maintain",
-            "review" => "Review",
-            "do_not_trust" => "Do not trust",
-            _ => "Insufficient data"
+            "increase_focus" => "Pojačaj fokus",
+            "maintain" => "Održi",
+            "review" => "Pregledaj",
+            "do_not_trust" => "Ne pouzdavaj",
+            _ => "Nedovoljno podataka"
         };
     }
 

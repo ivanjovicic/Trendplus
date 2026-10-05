@@ -1268,7 +1268,7 @@ export default function PreNivelacijaPriorityPage() {
   return (
     <div className="pnp-decision-page">
         <AnalyticsTrustHeader
-        title="Prioriteti pre-nivelacije"
+        title="Prioriteti nivelacije"
         description="Operativna podrška za odluke po SKU pre faze sniženja."
         periodFrom={data?.evidenceWindow?.salesWindowFromUtc ?? null}
         periodTo={data?.evidenceWindow?.salesWindowToUtc ?? null}
@@ -1319,7 +1319,7 @@ export default function PreNivelacijaPriorityPage() {
       />
       <header className="pnp-decision-header">
         <div>
-          <h2 className="pnp-decision-title">Prioriteti pre-nivelacije</h2>
+          <h2 className="pnp-decision-title">Prioriteti nivelacije</h2>
           <p className="pnp-decision-subtitle">
             Operativna podrška za odluke po SKU pre faze sniženja: gde treba pojačati izlaganje,
             šta zadržati pod nadzorom i šta spustiti iz fokusa.

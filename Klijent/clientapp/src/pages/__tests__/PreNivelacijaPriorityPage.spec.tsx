@@ -485,8 +485,8 @@ describe("PreNivelacijaPriorityPage", () => {
     await screen.findByTestId("pre-nivelacija-prioriteti-data-table");
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Prioriteti pre-nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Prioriteti nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Prioriteti nivelacije" })).toBeInTheDocument();
   });
 
   it("shows the backend evidence window in the trust header", async () => {

@@ -1560,7 +1560,7 @@ export default function ProdajaPrePostNivelacijePage() {
   return (
     <div className="ppn-decision-page">
       <AnalyticsTrustHeader
-        title="Prodaja pre/posle nivelacije"
+        title="Pre/Posle nivelacije"
         description="Analiza prozora događaja: poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču."
         periodFrom={activeFilters.fromDate}
         periodTo={activeFilters.toDate}
@@ -1616,7 +1616,7 @@ export default function ProdajaPrePostNivelacijePage() {
       />
       <header className="ppn-decision-header">
         <div>
-          <h2 className="ppn-decision-title">Prodaja pre/posle nivelacije</h2>
+          <h2 className="ppn-decision-title">Pre/Posle nivelacije</h2>
           <p className="ppn-decision-subtitle">
             Analiza prozora događaja poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
             Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.

@@ -3459,7 +3459,7 @@ public static class AllEndpoints
                             ? comparableRecommendation with
                             {
                                 Status = "insufficient_data",
-                                Label = "Insufficient data",
+                                Label = "Nedovoljno podataka",
                                 Summary = "Signed promet nema pozitivan ili potpun imenilac za pouzdanu preporuku.",
                                 DataQualityStatus = "insufficient_data",
                                 RecommendationAllowed = false,
@@ -3471,7 +3471,7 @@ public static class AllEndpoints
                             : comparableRecommendation;
                         var exposedRecommendationStatus = exposedRecommendation.Status;
                         var exposedRecommendationLabel = exposedRecommendationBlocked
-                            ? "Insufficient data"
+                            ? "Nedovoljno podataka"
                             : exposedRecommendation.Label;
                         var exposedRecommendationSummary = exposedRecommendation.Summary;
                         var exposedRecommendationDataQualityStatus = exposedRecommendation.DataQualityStatus;

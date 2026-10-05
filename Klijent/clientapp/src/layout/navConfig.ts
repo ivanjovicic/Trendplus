@@ -251,7 +251,7 @@ export const NAV_GROUPS: NavGroup[] = [
         badge: { label: "Support", tone: "warning", title: "Pomoćni administrativni ekran" },
       },
       { to: "/admin/configuration", label: "Konfiguracija", icon: Settings2 },
-      { to: "/admin/nivelacija-repair", label: "Nivelacija Repair", icon: Zap },
+      { to: "/admin/nivelacija-repair", label: "Popravka nivelacija", icon: Zap },
     ],
   },
 ];

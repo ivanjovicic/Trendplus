@@ -590,8 +590,8 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     await screen.findByText("Prioritetna lista dobavljača");
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Prodaja pre/posle nivelacije" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Prodaja pre/posle nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Pre/Posle nivelacije" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Pre/Posle nivelacije" })).toBeInTheDocument();
   });
 
   it("reloads both period requests when global dataScope changes", async () => {

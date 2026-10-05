@@ -1745,11 +1745,13 @@ public static class PreNivelacijaPriorityEndpoints
             SupplierName = sku.SupplierName,
             PreNivelacijaScore = sku.PreNivelacijaScore,
             PriorityBand = sku.PriorityBand,
-            Owner = "Unassigned",
-            Status = status ?? "Unassigned",
+            Owner = "Nedodeljeno",
+            Status = status ?? "Nedodeljeno",
             DueDateUtc = dueDateUtc
         };
     }
+
+    private static readonly CultureInfo SerbianNumberCulture = CultureInfo.GetCultureInfo("sr-Latn-RS");
 
     private static List<PreNivelacijaAlertDto> BuildAlerts(
         IReadOnlyList<PreNivelacijaSkuCandidateDto> candidates,
@@ -1765,7 +1767,7 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 Type = "NoSaleStockPressure",
                 Severity = "critical",
-                Message = $"{sku.Sku} ({sku.SupplierName}) nema prodaju {sku.DaysSinceLastSale} dana uz zalihu {sku.StockUnits}.",
+                Message = $"{sku.Sku} ({sku.SupplierName}) nema prodaju {sku.DaysSinceLastSale.ToString(SerbianNumberCulture)} dana uz zalihu {sku.StockUnits.ToString(SerbianNumberCulture)}.",
                 SupplierName = sku.SupplierName,
                 ArtikalId = sku.ArtikalId
             });
@@ -1779,7 +1781,7 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 Type = "RepeatedMarkdownLowSellThrough",
                 Severity = "warning",
-                Message = $"{sku.Sku} ima ponovljene markdown-e ({sku.MarkdownEvents}) i nizak velocity ({sku.Velocity180:0.000}).",
+                Message = $"{sku.Sku} ima ponovljena sniženja ({sku.MarkdownEvents.ToString(SerbianNumberCulture)}) i nisku brzinu prodaje ({sku.Velocity180.ToString("N3", SerbianNumberCulture)}).",
                 SupplierName = sku.SupplierName,
                 ArtikalId = sku.ArtikalId
             });
@@ -1793,7 +1795,7 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 Type = "SupplierRiskClusterWoW",
                 Severity = "warning",
-                Message = $"{sup.SupplierName} ima rast rizika {sup.WeekOverWeekRiskDeltaPct:0.##}% WoW uz {sup.HighPrioritySkuCount} high-priority SKU.",
+                Message = $"{sup.SupplierName} ima rast rizika {sup.WeekOverWeekRiskDeltaPct.ToString("0.##", SerbianNumberCulture)}% nedeljna promena uz {sup.HighPrioritySkuCount.ToString(SerbianNumberCulture)} SKU visokog prioriteta.",
                 SupplierName = sup.SupplierName
             });
         }

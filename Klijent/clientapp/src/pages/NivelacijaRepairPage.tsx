@@ -87,7 +87,7 @@ export default function NivelacijaRepairPage() {
   return (
     <div className="nivelacija-repair-page">
       <header className="nivelacija-repair-header">
-        <h1>Nivelacija Repair — Preflight i Dry Run</h1>
+        <h1>Popravka nivelacija — preflight i dry run</h1>
         <p>Provera i simulacija popravki za redove nivelacije</p>
       </header>
 

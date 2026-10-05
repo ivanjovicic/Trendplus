@@ -163,6 +163,7 @@ public sealed class PreNivelacijaScoringServiceTests
         Assert.False(result.Recommendation.RecommendationAllowed);
         Assert.Equal("insufficient_data", result.Recommendation.Status);
         Assert.Equal("insufficient_data", result.Recommendation.DataQualityStatus);
+        Assert.Equal("Nedovoljno podataka", result.Recommendation.Label);
         Assert.Contains("missing_evidence", result.Recommendation.ReasonCodes);
     }
 
