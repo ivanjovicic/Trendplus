@@ -88,8 +88,8 @@ function deferred<T>() {
 
 function response(overrides: Partial<DailySalesTableResponse> = {}): DailySalesTableResponse {
   return {
-    requestedFrom: "2026-04-01",
-    requestedTo: "2026-04-30",
+    requestedFrom: "2026-04-01T00:00:00Z",
+    requestedTo: "2026-05-01T00:00:00Z",
     storeId: null,
     topN: 5,
     dataScope: "all",
@@ -175,6 +175,29 @@ describe("DailySalesStatsPage premium controls", () => {
       expect(vi.mocked(getDailySalesStats).mock.calls.map(([query]) => query.dataScope)).toEqual([scope, scope]);
     },
   );
+
+  it("converts the inclusive UI end date to the shared exclusive API boundary", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?fromDate=2026-04-01&toDate=2026-04-30"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getDailySalesStats).toHaveBeenCalledTimes(2);
+    });
+
+    const currentRequest = vi.mocked(getDailySalesStats).mock.calls
+      .map(([query]) => query)
+      .find((query) => query.fromDate === "2026-04-01T00:00:00Z");
+
+    expect(currentRequest).toMatchObject({
+      fromDate: "2026-04-01T00:00:00Z",
+      toDate: "2026-05-01T00:00:00.000Z",
+    });
+  });
 
   it("normalizes an invalid URL scope to all", async () => {
     render(
