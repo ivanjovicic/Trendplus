@@ -4,8 +4,8 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending regression-test follow-up delivery
-Main verification: original implementation is on main at `575af2ab3f48eb9668477b9b95b90928b4a61aec`; verify the follow-up after push
+Main commit SHA: `1460987fb726cf7f70687050c3cb518b05d5c8fd`
+Main verification: pushed to origin/main; fresh fetch confirmed `HEAD == origin/main == 1460987fb726cf7f70687050c3cb518b05d5c8fd`
 Evidence state: pending
 
 ## What was done
@@ -51,6 +51,7 @@ Evidence state: pending
 - Live production admin-key acceptance -> not run; no production write was attempted. The UI sends the credential to the existing server-side `AdminAccessControl` boundary.
 - Remote Planning Governance run `37386822805` -> green on `575af2ab3f48eb9668477b9b95b90928b4a61aec`.
 - GitHub Analytics Quality Gates run `37386823059` -> completed red on implementation SHA `575af2ab3f48eb9668477b9b95b90928b4a61aec`; its ConfigurationPage assertion was corrected in this follow-up. The separate PreNivelacija failure passed locally in isolation; exact-main CI for the correction remains pending.
+- Correction-SHA Analytics Quality Gates run `37387704537` -> queued; Planning Governance run `37387704648` -> in progress on `1460987fb726cf7f70687050c3cb518b05d5c8fd`.
 
 ## Documentation impact
 - Updated the UI queue claim, cross-program current pointer and stale RQ supplemental pointers.

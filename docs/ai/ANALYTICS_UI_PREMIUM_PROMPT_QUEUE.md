@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-48 (IN_PROGRESS; resumed for a focused CI regression-test correction). Collision-safe READY lanes: `P-UI-41`, `P-UI-45`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-41 (READY; RQ576 Inventory-path collision is clear). Other collision-safe READY lanes: `P-UI-45`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -2664,7 +2664,7 @@ Priority: P1
 Type: frontend/css/tests
 Feature family: report-inventory-intrinsic-overflow
 Parallel-safe: yes
-Owner: Codex
+Owner: unassigned
 Commit suggestion: `fix(ui): contain wide report tables and inventory panels on phones`
 
 ### Problem
@@ -2715,6 +2715,8 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 - None. RQ576 (inventory valuation/aging) is DONE on `main` at `e5e2dc83bf73eee8b34f0b7e3565afa272625535`; the RQ576-owned page/KPI paths were verified separate from `InventoryInsightPanels.tsx`.
 
 Owner promotion/claim 2026-10-06: refreshed `origin/main` at implementation base `575af2ab3f48eb9668477b9b95b90928b4a61aec`; confirmed RQ576 is DONE and its former P-UI-41 Inventory-path collision is released. No matching P-UI-41 lock, branch or open PR exists. P-UI-41 moved READY -> IN_PROGRESS for the scoped Pilot intake/Inventory overflow fix; local lock `.ai/task-locks/P-UI-41-codex.lock.md`.
+
+Owner release 2026-10-06: P-UI-41 was returned to READY before implementation while the same workspace resumed P-UI-48 for its in-scope CI test correction. The P-UI-41 local lock was removed; RQ576's path collision remains clear.
 
 Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be47dd4585ffd40dbb34a40cd6`, Analytics Quality Gates run `37386823059` failed the broad ConfigurationPage refresh-button count against the two independent settings refresh controls. P-UI-48 resumed IN_PROGRESS to correct the assertion to the worker control's accessible name. P-UI-41 returned to READY before implementation so this workspace has one active claim; its RQ576 collision remains clear.
 
@@ -3075,7 +3077,7 @@ Theme colours come from three competing sources: `ThemeContext.tsx` inline varia
 
 ## P-UI-48 - Remove one-click ops toggles from the business header and require confirmation
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-40 is DONE (same `HeaderStatus.tsx`/`AppLayout.tsx` files; registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P1
 Type: frontend/tests
@@ -3167,9 +3169,25 @@ The UX defect is therefore global placement, misleading action naming and missin
 - Date: 2026-10-06
 - Current status: IN_PROGRESS
 - Trigger: GitHub Analytics Quality Gates run `37386823059` on implementation SHA `575af2ab3f48eb9668477b9b95b90928b4a61aec` failed `ConfigurationPage.spec.tsx` because the test counted both the worker refresh and the separate Configuration refresh by a shared text regex. The worker-specific accessible control remains unique.
-- Follow-up: assertion now names `Osveži status workera`; focused ConfigurationPage spec passes 5/5 locally. The same CI run's `PreNivelacijaPriorityPage` period-fixture failure (`unknown|unknown`) passes in a local isolated rerun (1/1; 55 skipped) and is recorded as a remote-run discrepancy. Regression-test delivery to `main` remains pending.
+- Follow-up: assertion now names `Osveži status workera`; focused ConfigurationPage spec passes 5/5 locally. The same CI run's `PreNivelacijaPriorityPage` period-fixture failure (`unknown|unknown`) passes in a local isolated rerun (1/1; 55 skipped) and is recorded as a remote-run discrepancy.
 - Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
 - Evidence state: pending
+
+### Follow-up completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: changed the ConfigurationPage regression assertion from a broad refresh-text count to the unique worker refresh accessible name, preserving the separate Configuration refresh control.
+- Changed files: `Klijent/clientapp/src/pages/__tests__/ConfigurationPage.spec.tsx`; this queue, `MASTER_ROADMAP.md`, five RQ supplemental pointers and `.ai/runs/2026-10-06-P-UI-48-evidence.md`.
+- Checks run: focused ConfigurationPage tests 5/5; isolated prior CI PreNivelacija failure 1/1; queue, agent-instruction and planning validators; `git diff --check`.
+- Checks not run: full analytics suite; correction-SHA remote checks have not completed (Analytics Quality Gates `37387704537` queued; Planning Governance `37387704648` in progress).
+- Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: `1460987fb726cf7f70687050c3cb518b05d5c8fd`
+- Main verification: pushed to origin/main; fresh fetch confirmed `HEAD == origin/main == 1460987fb726cf7f70687050c3cb518b05d5c8fd`.
+- Post-close routing: run the mandatory full queue cascade from the terminal closure SHA before synchronizing evidence.
+- Residual: correction-SHA CI is still queued/in progress; the earlier remote-only PreNivelacija test discrepancy passed locally in isolation.
 - Prompt defect / scope repair: added a shared confirmation modal and listed its explicit frontend/test/service files in Owned paths; reused the existing `X-Admin-Key` contract without changing server authorization.
 
 ---
