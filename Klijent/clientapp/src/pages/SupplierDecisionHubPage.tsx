@@ -286,7 +286,7 @@ function mapSupplierActionPriority(row: DecisionRow, recommendationAllowed: bool
   return row.status === "do_not_trust" || row.status === "review" ? "P1" : "P2";
 }
 
-function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, recommendationAllowed: boolean): string {
+export function buildSupplierActionSourceKey(row: DecisionRow, filters: ActiveFilters, recommendationAllowed: boolean): string {
   const actionKind = recommendationAllowed ? "negotiation" : "signal_check";
   return `supplier:${actionKind}:${row.supplierId}:${filters.fromDate}:${filters.toDate}:${filters.category ?? "all"}:${filters.gender ?? "all"}:${filters.seasonId ?? "all"}:${filters.minRevenue ?? "all"}:${filters.onlyHighConfidence}:${filters.excludeOosBeforeMarkdown}:${filters.storeId ?? "all"}:${filters.dataScope ?? "all"}`;
 }

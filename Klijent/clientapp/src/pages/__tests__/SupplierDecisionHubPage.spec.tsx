@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import SupplierDecisionHubPage from "../SupplierDecisionHubPage";
+import SupplierDecisionHubPage, { buildSupplierActionSourceKey } from "../SupplierDecisionHubPage";
 
 vi.mock("../../utils/apiUrl", () => ({
   apiUrl: (path: string) => path,
@@ -127,6 +127,28 @@ function renderPage() {
 describe("SupplierDecisionHubPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("keys supplier actions by season, minimum revenue, and confidence filters", () => {
+    const row = { supplierId: 11 } as Parameters<typeof buildSupplierActionSourceKey>[0];
+    const filters: Parameters<typeof buildSupplierActionSourceKey>[1] = {
+      fromDate: "2026-09-01",
+      toDate: "2026-09-30",
+      category: null,
+      gender: null,
+      seasonId: null,
+      minRevenue: null,
+      onlyHighConfidence: false,
+      excludeOosBeforeMarkdown: false,
+      supplierId: 11,
+      storeId: null,
+      dataScope: "existing",
+    };
+    const baseKey = buildSupplierActionSourceKey(row, filters, true);
+
+    expect(buildSupplierActionSourceKey(row, { ...filters, seasonId: 4 }, true)).not.toBe(baseKey);
+    expect(buildSupplierActionSourceKey(row, { ...filters, minRevenue: 5000 }, true)).not.toBe(baseKey);
+    expect(buildSupplierActionSourceKey(row, { ...filters, onlyHighConfidence: true }, true)).not.toBe(baseKey);
   });
 
   it("renders clear Serbian scorecard explanation and filter controls", async () => {
