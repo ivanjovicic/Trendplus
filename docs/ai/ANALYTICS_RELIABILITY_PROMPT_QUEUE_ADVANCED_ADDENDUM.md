@@ -7,36 +7,39 @@ Main queue primary READY prompt: `RQ584` in `docs/ai/ANALYTICS_RELIABILITY_PROMP
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-Purpose: preserve the original Advanced/V2 acceptance records. The records stay WAITING under their original gates; active certification ownership is consolidated into `RQ589` and `RQ591` in the main queue.
+Purpose: preserve the original Advanced/V2 acceptance records and their traceability. Backend acceptance for RQ13/RQ16/RQ17/RQ19/RQ20/RQ23/RQ24 is replaced by completed `RQ589`; frontend trust typing RQ18 remains owned by `RQ591` in the main queue.
 
 ## Status summary
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ13 | WAITING | advanced-date-boundaries | Fix date-only toDate exclusion in Advanced/V2 analytics |
+| RQ13 | OBSOLETE | advanced-date-boundaries | Replaced by completed RQ589 half-open date-boundary contract |
 | RQ14 | OBSOLETE | heatmap-transaction-semantics | Replaced by RQ577: unsupported receipt-grain count is unavailable |
 | RQ15 | OBSOLETE | basket-affinity-denominator | Replaced by RQ577: basket affinity is gated until receipt grain is proven |
-| RQ16 | WAITING | lifecycle-zero-baseline | Make lifecycle no-baseline trend explicit |
-| RQ17 | WAITING | smart-reorder-cost-trust | Prevent missing cost from inflating reorder expected profit |
+| RQ16 | OBSOLETE | lifecycle-zero-baseline | Replaced by completed RQ589 null-baseline lifecycle contract |
+| RQ17 | OBSOLETE | smart-reorder-cost-trust | Replaced by completed RQ589 nullable missing-cost profit contract |
 | RQ18 | WAITING | v2-frontend-trust-types | Expose backend cost/margin coverage metadata in TS types |
-| RQ19 | WAITING | weekly-changelog-oos-semantics | Fix current OOS vs new OOS wording/calculation |
-| RQ20 | WAITING | weekly-changelog-zero-baseline | Make weekly zero-baseline percent changes explicit |
-| RQ21 | WAITING | outcome-not-measured-semantics | Ensure notMeasured does not inflate measured coverage |
-| RQ22 | WAITING | outcome-realization-denominator | Define realization ratio denominator and subset warnings |
-| RQ23 | WAITING | supplier-score-v2-empty-meta | Add no-data meta to supplier scoring V2 empty results |
-| RQ24 | WAITING | advanced-v2-meta-contract | Standardize Advanced/V2 reliability meta/warnings |
+| RQ19 | OBSOLETE | weekly-changelog-oos-semantics | Replaced by completed RQ589 current-snapshot OOS scope contract |
+| RQ20 | OBSOLETE | weekly-changelog-zero-baseline | Replaced by completed RQ589 null comparison-baseline contract |
+| RQ21 | OBSOLETE | outcome-not-measured-semantics | Replaced by completed RQ81/RQ86/RQ93 measured-evidence contract |
+| RQ22 | OBSOLETE | outcome-realization-denominator | Replaced by completed RQ84 measured-impact sample and subset warnings |
+| RQ23 | OBSOLETE | supplier-score-v2-empty-meta | Replaced by completed RQ589 supplier items/meta envelope |
+| RQ24 | OBSOLETE | advanced-v2-meta-contract | Replaced by completed RQ589 shared V2 success/empty/freshness metadata |
 
 ## Advanced/V2 consolidation map (2026-10-05)
 
-- `RQ589` is the named Advanced/V2 backend certification owner for `RQ13`, `RQ16`, `RQ17`, and `RQ19`-`RQ24`; each original acceptance remains traceable in this addendum. `RQ14` and `RQ15` remain OBSOLETE only because `RQ577` explicitly suppresses the unsupported receipt-grain measures.
+- `RQ589` completed the Advanced/V2 backend acceptance for `RQ13`, `RQ16`, `RQ17`, `RQ19`, `RQ20`, `RQ23` and `RQ24`; original criteria remain traceable below with OBSOLETE replacement status.
+- `RQ21` and `RQ22` are OBSOLETE because completed action-outcome owners `RQ81`, `RQ84`, `RQ86` and `RQ93` cover their acceptance, with named regression tests on the individual prompts.
+- `RQ14` and `RQ15` remain OBSOLETE only because `RQ577` explicitly suppresses the unsupported receipt-grain measures.
 - `RQ591` is the named frontend trust/derived-metric certification owner for `RQ18` (V2 metadata types); its frontend scope is grouped with legacy type/derived-metric work in the main queue.
-- These mappings do not change legacy status. Do not mark a mapped prompt OBSOLETE until its replacement acceptance is met or its surface is explicitly retired. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
+- `RQ18` remains WAITING under RQ591 for frontend type/derived-metric integration. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
 
 ---
 
 ## RQ13 - Advanced/V2 date boundary correctness
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - half-open local-date bounds, proved by `V2DateOnlyUpperBound_IncludesTheEntireFinalCalendarDay_AndReportsUnknownFreshness`.
 Ready after: RQ01 DONE or explicit reprioritization
 Priority: P0
 Type: backend/tests
@@ -185,7 +188,8 @@ Basket affinity includes multi-line sales using `COUNT(*) >= 2`, but pairs are b
 
 ## RQ16 - Lifecycle zero-baseline trend semantics
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - nullable trend and `baselineStatus`, proved by `ProductLifecycle_ReportsNoBaselineInsteadOfZeroPercentGrowth`.
 Ready after: RQ13 DONE or SQL queue Q70 evidence if relevant
 Priority: P1
 Type: backend/tests
@@ -229,7 +233,8 @@ Product lifecycle maps first-half zero and second-half positive units to `100%` 
 
 ## RQ17 - Smart reorder missing-cost expected profit
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - missing cost preserves null profit and unreliable status, proved by `SmartReorder_KeepsProfitUnknownWhenRecommendedUnitsHaveNoCost`.
 Ready after: RQ01 DONE or explicit reprioritization
 Priority: P0
 Type: backend/tests
@@ -326,7 +331,8 @@ Advanced/V2 backend returns cost/margin coverage metadata, but TypeScript types 
 
 ## RQ19 - Weekly changelog OOS semantics
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - OOS is explicitly the current snapshot because transition history is unavailable.
 Ready after: RQ13 DONE or explicit unblocking
 Priority: P1
 Type: backend/tests
@@ -372,7 +378,8 @@ Weekly changelog comment says “new OOS this week” but code counts all curren
 
 ## RQ20 - Weekly changelog zero-baseline percent semantics
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - missing prior comparison returns null plus `no_baseline`, proved by `WeeklyChangelog_LeavesPercentChangesUnknownWithoutPriorWeekBaseline`.
 Ready after: RQ19 DONE or explicit unblocking
 Priority: P1
 Type: backend/tests
@@ -416,7 +423,7 @@ Weekly changelog uses 0/100 percent fallbacks when previous week is zero. This h
 
 ## RQ21 - Outcome summary notMeasured semantics
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: RQ01 DONE or explicit reprioritization
 Priority: P0
 Type: backend/tests
@@ -424,6 +431,7 @@ Feature family: outcome-not-measured-semantics
 Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ21-<agent>.lock.md`
+Replacement: RQ86 requires measured evidence before an outcome counts as measured; RQ81/RQ93 clear measured timestamps and amounts for `not_measured`. `AnalyticsActionItemServiceTests.GetOutcomeSummaryAsync_ReturnsSupportedCohortBuckets_AndKeepsUnknownImpactNull` proves notMeasured is counted separately and excluded from `MeasuredCount`.
 Commit suggestion: `fix(analytics): keep not measured out of measured coverage`
 
 ### Why
@@ -459,7 +467,7 @@ Action outcome summary treats any outcome status except pending as measured. `no
 
 ## RQ22 - Outcome realization denominator contract
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: RQ21 DONE
 Priority: P1
 Type: backend/tests/docs
@@ -467,6 +475,7 @@ Feature family: outcome-realization-denominator
 Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ22-<agent>.lock.md`
+Replacement: RQ84 separates measured outcomes from the measured-impact sample and requires subset visibility/warnings. `AnalyticsActionItemServiceTests.GetOutcomeSummaryAsync_AddsCoverageAndMissingImpactWarnings_WhenClosedCoverageIsLow` proves the bounded denominator and warns when the impact sample is incomplete.
 Commit suggestion: `test(analytics): define realization denominator`
 
 ### Why
@@ -504,7 +513,8 @@ Realization ratio is calculated on the subset with measured impact and expected 
 
 ## RQ23 - Supplier scoring V2 no-data meta
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ589 DONE - supplier items envelope carries explicit freshness metadata, proved by `SupplierScoringV2_UsesItemsEnvelopeWithUnknownFreshnessMeta`.
 Ready after: RQ13 DONE or explicit unblocking
 Priority: P1
 Type: backend-contract/tests
@@ -548,8 +558,8 @@ Supplier scoring V2 returns a bare empty list when total revenue is zero. No-dat
 
 ## RQ24 - Advanced/V2 reliability meta contract
 
-Status: WAITING
-Ready after: RQ13/RQ17/RQ21 DONE or explicit planning task
+Status: OBSOLETE
+Replacement: RQ589 DONE - all successful V2 responses carry success/empty/freshness metadata; RQ21 is replaced by completed action-outcome owners RQ81/RQ84/RQ86/RQ93.
 Priority: P1
 Type: backend-contract/docs
 Feature family: advanced-v2-meta-contract

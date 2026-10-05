@@ -29765,7 +29765,7 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 
 ## RQ589 - Certify Advanced/V2 analytics backend contracts
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ582 DONE; certify one Insight Studio owner lane at a time
 Priority: P2
 Type: backend/tests/certification
@@ -29775,21 +29775,21 @@ Owner: Analytics Reliability
 Owned paths: `Api/Endpoints/InsightStudioV2Endpoints.cs`, focused Advanced/V2 endpoint tests, `Klijent/clientapp/src/services/insightStudioV2Api.ts` only for compatible response-contract fields
 Avoid paths: legacy Advanced endpoints (`RQ590`), frontend-derived analytics (`RQ591`), formula changes without source evidence, route/navigation exposure
 
-Owner claim 2026-10-05 after RQ582: fresh post-close `origin/main` is `9f4fe6079afce7991f3898f6b566dc637d3aa11a`. The full active RQ queue/addendum set, SQL queue, UI queue/addendum and master roadmap were scanned. RQ582 is DONE; RQ589 is the dependency-complete P2 backend owner and has no conflicting active owner, lock, branch or PR. RQ584/RQ586/RQ588 remain independent P3 lanes; RQ590/RQ591 remain sequenced behind the exclusive Insight Studio certification family. Local lock: `.ai/task-locks/RQ589-codex.lock.md`.
+Owner claim 2026-10-05 after RQ582: fresh post-close `origin/main` is `9f4fe6079afce7991f3898f6b566dc637d3aa11a`. The full active RQ queue/addendum set, SQL queue, UI queue/addendum and master roadmap were scanned. RQ582 is DONE; RQ589 is the dependency-complete P2 backend owner and has no conflicting active owner, lock, branch or PR. RQ584/RQ586/RQ588 remain independent P3 lanes; RQ590/RQ591 remain sequenced behind the exclusive Insight Studio certification family. Scope repair: RQ21/RQ22 were moved out of this V2 owner because their `AnalyticsActionItemService` acceptance is already proved by completed RQ81/RQ84/RQ86/RQ93 and the named summary regressions; they are OBSOLETE with replacement evidence in the Advanced addendum. Local lock: `.ai/task-locks/RQ589-codex.lock.md`.
 
 ### Problem
 
-Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, empty-result, outcome-coverage and response-meta contracts recorded as RQ13 and RQ16-RQ24 in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`. The route remains quarantined until those original requirements are proved.
+Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, empty-result and response-meta contracts recorded as RQ13, RQ16-RQ17, RQ19-RQ20 and RQ23-RQ24 in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`. The route remains quarantined until those original requirements are proved.
 
 ### Evidence
 
-- The linked RQ13/RQ16-RQ24 entries contain the original issue evidence and acceptance criteria; RQ14/RQ15 are already explicitly replaced by RQ577.
+- The linked RQ13/RQ16-RQ24 entries contain the original issue evidence and acceptance criteria; RQ14/RQ15 are replaced by RQ577 and RQ21/RQ22 by completed action-outcome owners RQ81/RQ84/RQ86/RQ93.
 - RQ582 found stale/unknown intelligence snapshots and missing inventory relations; certification must preserve unavailable/stale semantics rather than manufacture valid zero values.
 
 ### Scope
 
-- Reconcile and execute the original backend/contract acceptance for RQ13, RQ16, RQ17 and RQ19-RQ24. RQ18's frontend type work belongs to RQ591.
-- Keep each decision on backend response contracts and prove empty, missing-cost, zero-baseline, not-measured and partial-data cases with focused fixtures.
+- Reconcile and execute the original V2 backend acceptance for RQ13, RQ16, RQ17, RQ19, RQ20, RQ23 and RQ24. RQ18's frontend type work belongs to RQ591; RQ21/RQ22 are replaced by completed action-outcome prompts.
+- Keep each decision on backend response contracts and prove empty, missing-cost, zero-baseline, source-freshness-unknown and partial-data cases with focused fixtures. RQ21/RQ22 action-outcome acceptance belongs to completed RQ81/RQ84/RQ86/RQ93.
 - Keep Insight Studio hidden behind its experimental flag; this prompt does not authorize re-exposure.
 
 ### Read first
@@ -29816,6 +29816,25 @@ Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, emp
 ### Dependencies
 
 - RQ582 DONE. RQ14/RQ15 remain covered by RQ577 and are not reopened.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: Corrected V2 date-only upper bounds, lifecycle/comparison baselines, smart-reorder missing-cost profit, weekly OOS scope, supplier scoring envelope and shared response metadata. Insight Studio remains quarantined.
+- Changed files: `Api/Endpoints/InsightStudioPeriod.cs`; `Api/Endpoints/InsightStudioV2Endpoints.cs`; `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`; `Klijent/clientapp/src/services/insightStudioV2Api.ts`; `Klijent/clientapp/src/pages/InsightStudioPage.tsx`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-05-RQ589-evidence.md`.
+- Checks run: six focused V2 integration tests; `npm run check:analytics-guardrails`; queue/governance validators; `git diff --check`.
+- Checks not run: production build and live-provider freshness/oracle/golden/identity evidence are outside the repo-local slice; CI status is recorded in the run log.
+- Run log: `.ai/runs/2026-10-05-RQ589-evidence.md`
+- Evidence state: pending post-close routing cascade
+- Delivery mode: direct-main
+- Main commit SHA: `5224926be459dd7b4ddb63f60276fe93fd5b691a`
+- Main verification: passed - fresh `origin/main` contains implementation SHA `5224926be459dd7b4ddb63f60276fe93fd5b691a`
+- Missed: RQ591 still owns frontend null typing/presentation for quarantined lifecycle and reorder metrics.
+- Follow-up: release the exclusive Insight Studio family, then re-evaluate and claim the next collision-safe READY prompt.
+- Residual risk: no live freshness, horizon, oracle/golden or identity/provenance proof was available; route remains quarantined.
+- Post-close routing: pending post-delivery recovery
+- Prompt defect / scope repair: RQ21/RQ22 were removed from RQ589 and marked OBSOLETE based on completed RQ81/RQ84/RQ86/RQ93 contracts and their named regression tests.
 
 ## RQ590 - Certify legacy Advanced backend contracts
 
