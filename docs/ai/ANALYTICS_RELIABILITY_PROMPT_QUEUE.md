@@ -28391,7 +28391,7 @@ Source audit: `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/202
 
 ## RQ570 - Anchor default analysis periods to the observed data horizon and suppress beyond-horizon comparisons
 
-Status: WAITING
+Status: READY
 Ready after: `RQ569` is DONE (owner decision resolved 2026-10-04; reuses its observed-horizon/source-freshness contract)
 Priority: P1
 Type: backend/frontend/contract/tests
@@ -28766,7 +28766,7 @@ The owner cannot learn anything from these charts; they look like real distribut
 
 ## RQ576 - Inventory: truthful stock valuation and aging (no import-time "movement", no 0-cost value)
 
-Status: WAITING
+Status: READY
 Ready after: `RQ569` DONE (owner decision resolved 2026-10-04; Inventory trust surface)
 Priority: P1
 Type: backend/frontend/tests
@@ -28947,7 +28947,7 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
-Status: WAITING
+Status: READY
 Ready after: `RQ569` DONE (shared Operations integrity/freshness metadata)
 Priority: P2
 Type: backend/tests

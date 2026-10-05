@@ -2,8 +2,9 @@
 
 Date: 2026-09-23
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ569 (primary; Operations source horizon/freshness after RQ564). Additional parallel-safe READY: RQ553 (Nivelacija copy/a11y). RQ552 waits for RQ569; RQ453 follows RQ552. RQ564 is DONE on current main. RQ565-RQ566 remain externally gated.
-Owner claim 2026-10-05: refreshed `origin/main` at `153b8ac544076ec8f83e2a5004ef0c784b3d54d1`; RQ564 and RQ567 are DONE, and no RQ569 lock, matching branch or open PR exists. Claimed primary P0 RQ569 for repository-local Operations source-horizon and durable-freshness contract work. Local lock: `.ai/task-locks/RQ569-codex.lock.md`.
+Current READY prompt: RQ570 (primary; source-horizon anchored periods). Additional READY lanes: RQ552, RQ553, RQ574, RQ576, RQ578, RQ579, RQ580, RQ581, RQ586, RQ587, RQ588 and RQ479 subject to their existing collision/owner notes. RQ453 follows RQ552. RQ565-RQ566 remain externally gated.
+Owner claim 2026-10-05: refreshed `origin/main` at `153b8ac544076ec8f83e2a5004ef0c784b3d54d1`; RQ564 and RQ567 are DONE, and no RQ569 lock, matching branch or open PR exists. Claimed primary P0 RQ569 for repository-local Operations source-horizon and durable-freshness contract work. Local lock was removed before delivery.
+Owner recovery 2026-10-05 after RQ569: refreshed `origin/main` at `8a784df0f298bc9837e106faf7604113e9d066a3`; RQ570 (P1) is dependency-complete and becomes primary READY. RQ552 (P2), RQ576 (P1) and RQ579 (P2) are also dependency-complete READY. No matching lock, branch or open PR exists for those candidates. RQ571 remains sequenced after the shared Pre-Nivelacija owner RQ552; RQ453 waits for RQ552 DONE. RQ583/RQ584 remain WAITING for serialization with RQ570's shared freshness/Operations period surfaces.
 Owner post-close routing refresh 2026-10-04 after RQ564 hardening: dependency audit against the full active RQ queue/addenda confirms RQ569 is the next primary repository-local P0; RQ552 remains WAITING until RQ569 is DONE; RQ453 remains WAITING until RQ552 is DONE after RQ564/RQ569. RQ553 remains an independent parallel-safe frontend copy/a11y lane. RQ545's deployed/provider acceptance is not a start gate for RQ564 or RQ569.
 Owner recovery 2026-10-04 after RQ567: the prior "no other READY" conclusion was stale. RQ541-RQ544, RQ547-RQ550 and RQ568 are DONE, and RQ545's remaining work is deployed/provider acceptance that the RQ564 prompt explicitly says is not a local start gate. Fresh collision checks found no RQ564 lock, matching branch or open PR. RQ564 is therefore promoted WAITING -> READY as the next P0 repository-local reliability task. RQ553 is independently READY in the Nivelacija addendum after RQ529 DONE. RQ552 is narrowed to its still-live performance/cache-invalidation residual and sequenced after RQ564 because price-event writes must invalidate the new Nivelacija integrity generation consistently. Live Daily Sales evidence also exposed a separate source-horizon/freshness gap; RQ569 is registered below and waits for RQ564 so the same context/generation contract is reused. RQ453 is scope-repaired into the non-skippable repository certification gate after RQ564/RQ569 rather than waiting for deployed browser/certificate work.
 Owner completion 2026-10-04: RQ567 moved IN_PROGRESS -> DONE on implementation SHA `419d77674692995653c65db73ab2892520e4f890`, freshly verified on `origin/main`. All six current Operations screens use the shared readiness/integrity surface; exact family context/generation binding prevents stale green states, and missing proof is explicitly unverified. Focused frontend tests passed 58/58; API tests passed 50/50 with zero skips; API/frontend builds, guardrail scan, prompt-queue/instruction/planning validators and `git diff --check` passed. Run log `.ai/runs/2026-10-04-RQ567-evidence.md`; evidence state synchronized. No business recommendation formulas or statuses changed. Deployed API/browser proof is not claimed; live API trust metadata remains null until deployment. Post-close cascade: RQ564 is primary READY and RQ553 is additional parallel-safe READY; RQ565-RQ566 remain externally gated.
@@ -212,7 +213,7 @@ Prompts not explicitly marked `READY` or `DONE` remain `WAITING`. Promote only t
 | RQ566 | WAITING | P1 | negative-id-post-deploy-verification | Verify negative-ID repair, sync worker/checkpoints and Daily Sales timezone after deployment |
 | RQ567 | DONE | P1 | operations-visible-trust-readiness | Consume backend decision-readiness and integrity evidence on all six current Operations screens |
 | RQ568 | DONE | P1 | prepost-certification-schema-parity | Execute the canonical Pre/Post compatibility view in the six-route Testcontainers certification harness |
-| RQ569 | READY | P0 | operations-source-horizon-freshness | Bind requested periods to observed source horizon and durable import/refresh freshness across Operations |
+| RQ569 | DONE | P0 | operations-source-horizon-freshness | Bind requested periods to observed source horizon and durable import/refresh freshness across Operations |
 
 ---
 
@@ -4368,7 +4369,7 @@ A simplified test-only view would be dangerous because it could pass while produ
 
 ## RQ569 - Bind Operations trust to source horizon and durable freshness
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ564 is DONE on current main; no production/provider access is required for repository-local contract work
 Priority: P0
 Type: backend/frontend/contract/tests
@@ -4430,3 +4431,22 @@ Cover the six current Operations screens:
 - Production runtime `02f99158` (build 2026-10-04T16:56:14Z): Daily/Supplier/Shoe Type/Color for `2026-09-04..2026-10-04` return zero rows/totals with `dataWindowTo=2026-08-05T00:00:00Z`; `/api/analytics/cached/validation/freshness` → `lastImport=2026-08-12T10:30:04Z`, `freshnessHours=1279.6`; `/api/analytics/refresh-status` → all jobs `unknown`.
 - For the in-horizon window `2026-07-07..2026-08-06T00:00:00Z` the six-screen family reconciles: Daily, Supplier, Shoe Type, Color, dated Dashboard summary and KPI snapshot all return 1,561,120 RSD / 307 units.
 - Related follow-ups registered outside this prompt so RQ569 scope stays unchanged: `RQ570` (horizon-anchored defaults and beyond-horizon PoP suppression on all surfaces), `RQ571` (Pre-Nivelacija anchor), `RQ579` (non-vacuous integrity), `RQ583` (freshness SLA/banner), `RQ584` (Daily `toDate` contract).
+
+#### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: All six Operations surfaces now report a request-scoped observed sales horizon and backend-owned source freshness from durable Access import evidence. Store-filtered and unwatermarked populations fail closed to `unknown`; readiness consumes the existing freshness policy, and the shared trust header explains freshness reasons/evidence.
+- Changed files: `Api/Dtos/AnalyticsResponseMetaDto.cs`; `Api/Endpoints/AllEndpoints.cs`; `Api/Endpoints/CachedAnalyticsEndpoints.cs`; `Api/Endpoints/DailySalesStatsEndpoints.cs`; `Api/Endpoints/PreNivelacijaPriorityEndpoints.cs`; `Api/Program.cs`; `Api/Services/AnalyticsRefreshStatusService.cs`; `Api/Services/OperationsSourceFreshnessService.cs`; `Api.Tests/OperationsSourceFreshnessServiceTests.cs`; `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`; `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/pages/InventoryPage.tsx`; `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`; `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`; `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`; `Klijent/clientapp/src/types/analytics.ts`; `Klijent/clientapp/src/utils/analyticsResponseMeta.ts`; `Klijent/clientapp/src/utils/supplierSalesStatsTrust.ts`; `Klijent/clientapp/src/utils/__tests__/analyticsResponseMeta.spec.ts`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`; this queue addendum; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-05-RQ569-evidence.md`.
+- Checks run: `dotnet build Api/Api.csproj --no-restore --verbosity quiet` passed (0 errors); `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~OperationsSourceFreshnessServiceTests --verbosity quiet` passed (2/2); focused frontend tests passed (49/49); `npm run check:analytics-guardrails` passed including encoding, baseline self-test and TypeScript; `npm run build` passed; instruction, prompt-queue and planning validators/self-tests passed; `git diff --check` passed.
+- Checks not run: full API suite; live deployment/browser validation; GitHub Actions status inspection.
+- Run log: `.ai/runs/2026-10-05-RQ569-evidence.md`
+- Evidence state: pending post-close routing synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `8a784df0f298bc9837e106faf7604113e9d066a3`
+- Main verification: fresh fetch resolved `origin/main` to `8a784df0f298bc9837e106faf7604113e9d066a3`; `git merge-base --is-ancestor` confirmed the implementation commit is on main.
+- Missed: no known repository-local RQ569 acceptance gap; live deployment/browser evidence remains outside this prompt's repository-local delivery gate.
+- Follow-up: RQ570 is the primary next candidate; RQ552/NV-I2, RQ576 and RQ579 are also dependency-complete READY lanes. RQ453 follows RQ552. RQ553 and the existing independent READY lanes remain routed separately.
+- Residual risk: global `DataImportBatch` evidence cannot certify store-specific imports; those views intentionally remain `unknown` until store-scoped source evidence exists. Current production deployment has not been verified.
+- Post-close routing: RQ570 promoted as primary READY; RQ552, RQ576 and RQ579 promoted as additional READY candidates after the current-main dependency/collision refresh; full queue recovery details are in the run log.
+- Prompt defect / scope repair: import batches are not store-scoped in the current schema, so store-filtered and mixed/existing data cannot truthfully inherit their timestamp. They return `unknown` without synthetic freshness.
