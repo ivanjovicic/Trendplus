@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ574` (claimed IN_PROGRESS); additional independently claimable lanes include `RQ552`, `RQ553`, `RQ576`, `RQ578`, `RQ579`, `RQ580`, `RQ581`, `RQ583`, `RQ584`, `RQ586`, `RQ587`, `RQ588` and `RQ479`. `RQ577` is sequenced after `RQ574`; `RQ582` after `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
+Current READY prompt: `RQ573` (claimed IN_PROGRESS); additional independently claimable lanes include `RQ552`, `RQ553`, `RQ576`, `RQ578`, `RQ579`, `RQ580`, `RQ581`, `RQ583`, `RQ584`, `RQ586`, `RQ587`, `RQ588` and `RQ479`. `RQ575` and `RQ577` have satisfied their listed dependencies but remain serialized behind RQ573 on the shared CachedAnalyticsEndpoints/Dashboard path; `RQ572` and `RQ585` still wait for RQ573. `RQ582` follows `RQ581`. See `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md` and `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -28611,7 +28611,7 @@ The same 836,350 / 15 / 145 figures were already reported by the 2026-08-19 prod
 
 ## RQ573 - Product Decision: stop FIX_DATA rows from hiding sold articles and bound the payload
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: `RQ569` DONE AND `RQ574` DONE (shared Product Decision semantics/path); may be promoted earlier only if both delivered diffs are already clear of the owned region
 Priority: P1
 Type: backend/frontend/performance/tests
@@ -28673,6 +28673,10 @@ The response is also 13.26 MB for 500 rows (~28 KB/row: `whyPanel` ~10.6 KB, `ev
 
 - Retained live evidence at 22:50 CEST: `GET /api/analytics/decision-board` for `2026-07-07..2026-08-06` took 17.3 s (`BOARD_PARTIAL`). Current `DecisionBoardEndpoints.cs` awaits Product Decision, inventory insights, inventory workflow, supplier summary, actions, refresh status and Data Quality in sequence. This proves a sequential composition shape, **not** that Product Decision alone caused all 17.3 s; no per-section deployed timing was captured.
 - Acceptance extension: when this prompt bounds the PDC payload/ordering, record Product Decision **and** Board latency before/after for the same fixed period. Preserve all Board numeric/trust outputs. If Board still breaches the existing Decision Board budget (p95 target <= 2 s), hand off to the existing PERF measurement/backlog owner for section timing and bounded composition work; do not invent indexes or parallelize source calls in RQ573. `PROD-AN-02` remains superseded by this measured handoff.
+
+### Claim note 2026-10-05
+
+- RQ573 was promoted and claimed after RQ574 DONE. Recovery base: `origin/main` `3363039707692f85a0e30367e8e77b871b70bd94`; dependencies RQ569/RQ574 are DONE. No matching RQ573 lock, branch or open PR existed before this claim. Local lock: `.ai/task-locks/RQ573-codex.lock.md`; run log: `.ai/runs/2026-10-05-RQ573-evidence.md`.
 
 ## RQ574 - Missing category must not block 100% of Product Decision recommendations
 
@@ -28743,14 +28747,15 @@ Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment 
 - Checks: focused backend reasoning/display/builder tests 43/43 (including MinStock null/zero endpoint fixtures); API build; analytics guardrails/typecheck; focused Product Decision UI specs 32/32; `git diff --check`.
 - CI: Analytics Tests & Data Integrity `37287888075` on final test SHA was `in_progress`; Analytics Quality Gates `37287380811` on implementation SHA completed red on one unrelated Inventory queue-status assertion (1,034 passed/1 failed). Not awaited. No live Dashboard SQL/deployment proof; the view definition must be applied by the existing SQL rollout/bootstrap process.
 - Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`
-- Evidence state: pending.
+- Evidence state: synchronized.
 - Main commit SHA: `046120c95df1b29f6b7394d65ff4492874073bfd`.
-- Next: complete post-close dependency cascade from the queue closure transition and route the next safe READY prompt.
+- Post-close recovery base: `3363039707692f85a0e30367e8e77b871b70bd94`; RQ573 was promoted/claimed as the next P1. RQ575/RQ577 are held for serialization on shared endpoint/Dashboard files; RQ572/RQ585 still wait for RQ573.
+- Next: RQ573 - Product Decision: stop FIX_DATA rows from hiding sold articles and bound the payload.
 
 ## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
 
 Status: WAITING
-Ready after: `RQ569` DONE AND `RQ574` DONE (category/gender semantics resolved and implemented)
+Ready after: `RQ569` DONE AND `RQ574` DONE (category/gender semantics resolved and implemented); serialize after RQ573 while it owns the shared CachedAnalyticsEndpoints/Dashboard path
 Priority: P2
 Type: backend/frontend/tests
 Feature family: categorical-dimension-coverage-gate
@@ -28870,7 +28875,7 @@ For aging, exclude synthetic import-time `Ulaz robe` rows. Inventory age must co
 ## RQ577 - Decide and label the sale-header grain before showing basket metrics
 
 Status: WAITING
-Ready after: `RQ574` DONE (owner decision resolved 2026-10-04; serialize shared Dashboard/bootstrap ownership)
+Ready after: `RQ574` DONE (owner decision resolved 2026-10-04); serialize after RQ573 while it owns the shared CachedAnalyticsEndpoints/Dashboard bootstrap path
 Priority: P1
 Type: contract/backend/frontend
 Feature family: sales-header-grain-basket-metrics
