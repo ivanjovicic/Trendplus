@@ -1,3 +1,4 @@
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 ﻿import React, { useState } from "react";
 import { useToast } from "../components/Toast";
 import SearchableSelect from "../components/SearchableSelect";
@@ -36,7 +37,7 @@ export function formatTrendNumber(value: unknown, digits: number): string {
         : typeof value === "string" && value.trim() !== ""
             ? Number(value)
             : Number.NaN;
-    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "N/A";
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : ANALYTICS_UNAVAILABLE_LABEL;
 }
 
 export function asStringList(value: unknown): string[] {
@@ -70,7 +71,7 @@ export default function GlobalTrendsPage() {
     const [filterActivationDate, setFilterActivationDate] = useState<string | undefined>(undefined);
 
     const PYTHON_API = import.meta.env.VITE_PYTHON_API_URL || "http://localhost:8000";
-    const categories = ["Patike", "Sandale", "Cipele", "Cizme"];
+    const categories = ["Patike", "Sandale", "Cipele", "Čizme"];
 
     const fetchTrends = async () => {
         setLoading(true);
@@ -95,10 +96,10 @@ export default function GlobalTrendsPage() {
             }
             
             setTrends(data.trends || []);
-            toast.success(`Loaded ${data.trends?.length || 0} trending hashtags for ${data.category}`);
+            toast.success(`Učitano ${data.trends?.length || 0} trendova za ${data.category}`);
         } catch (error) {
             console.error("❌ Fetch trends error:", error);
-            toast.error(error instanceof Error ? error.message : "Failed to fetch trends");
+            toast.error(error instanceof Error ? error.message : "Neuspešno učitavanje trendova");
         } finally {
             setLoading(false);
         }
@@ -110,10 +111,10 @@ export default function GlobalTrendsPage() {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             setScrapedProducts(Array.isArray(data) ? data : []);
-            toast.success(`Loaded ${Array.isArray(data) ? data.length : 0} products from ${source}`);
+            toast.success(`Učitano ${Array.isArray(data) ? data.length : 0} proizvoda iz izvora ${source}`);
         } catch (err) {
             console.error("Failed to fetch scraped products:", err);
-            toast.error(err instanceof Error ? err.message : "Failed to load products");
+            toast.error(err instanceof Error ? err.message : "Neuspešno učitavanje proizvoda");
         }
     };
 
@@ -151,7 +152,7 @@ export default function GlobalTrendsPage() {
             const data = await response.json();
             // Python response forwarded by backend contains 'results' array
             setScraperResults(data.results || []);
-            toast.success("Scrapers completed!")
+            toast.success("Scraperi su završeni.")
 
             // If Zalando was scraped, fetch stored products from backend
             const zalandoResult = (data.results || []).find((r: any) => r.source && r.source.toLowerCase() === "zalando");
@@ -198,7 +199,7 @@ export default function GlobalTrendsPage() {
                 Patike: "sneaker",
                 Sandale: "sandale",
                 Cipele: "schuhe",
-                Cizme: "stiefel",
+                Čizme: "stiefel",
             };
 
             const payload: any = {
@@ -254,7 +255,7 @@ export default function GlobalTrendsPage() {
                 Patike: "sneakers-92",
                 Sandale: "sandalen-...",
                 Cipele: "schuhe-82",
-                Cizme: "stiefel-85",
+                Čizme: "stiefel-85",
             };
 
             const payload: any = {
@@ -280,7 +281,7 @@ export default function GlobalTrendsPage() {
     const openImageModal = (src: string | undefined, title?: string) => {
         if (!src) return;
         setImageModalSrc(src);
-        setImageModalTitle(title || "Image");
+        setImageModalTitle(title || "Slika");
         setImageModalOpen(true);
     };
 
@@ -405,8 +406,8 @@ export default function GlobalTrendsPage() {
 
                                         {/* Social Stats */}
                                         <div className="text-xs text-muted border-t border-border pt-4">
-                                            <div>📱 TikTok: {formatTrendNumber(Number(trend.tiktokViews) / 1000000000, 1)}B views</div>
-                                            <div>📸 Instagram: {formatTrendNumber(Number(trend.instagramPosts) / 1000000, 1)}M posts</div>
+                                            <div>📱 TikTok: {formatTrendNumber(Number(trend.tiktokViews) / 1000000000, 1)}B pregleda</div>
+                                            <div>📸 Instagram: {formatTrendNumber(Number(trend.instagramPosts) / 1000000, 1)}M objava</div>
                                         </div>
                                     </div>
                                 </div>
@@ -462,7 +463,7 @@ export default function GlobalTrendsPage() {
                             <SearchableSelect 
                                 value={filterBrand}
                                 onChange={setFilterBrand}
-                                placeholder="Select or type brand…"
+                                placeholder="Izaberite ili unesite brend…"
                                 options={popularBrands}
                                 multiple={true}
                             />
@@ -534,7 +535,7 @@ export default function GlobalTrendsPage() {
                                 onChange={(e) => setFilterSort(e.target.value)}
                             >
                                 <option value="popularity">🔥 Popularnost</option>
-                                <option value="price-asc">💸 Cena: rasтуće</option>
+                                <option value="price-asc">💸 Cena: rastuće</option>
                                 <option value="price-desc">💰 Cena: opadajuće</option>
                                 <option value="new">✨ Novo u ponudi</option>
                             </select>
@@ -592,7 +593,7 @@ export default function GlobalTrendsPage() {
                                 <div key={index} className="card">
                                     <h3 className="text-xl font-semibold mb-4">{result.source}</h3>
                                     <div className="text-4xl font-extrabold text-accent-success mb-2">{result.productsCount}</div>
-                                    <div className="text-sm text-muted">products scraped</div>
+                                    <div className="text-sm text-muted">proizvoda prikupljeno</div>
                                     <div className="mt-4 px-3 py-2 rounded text-center font-semibold bg-accent-success/10 text-accent-success">
                                         ✅ {result.status}
                                     </div>

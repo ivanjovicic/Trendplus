@@ -141,7 +141,7 @@ function CategoryPanel({
                 Categories in DB
             </div>
             {categories.length === 0 && (
-                <div style={{ color: "var(--text-secondary, var(--theme-color-9ca3af, #9ca3af))", fontSize: 12, fontStyle: "italic" }}>No data — sync first</div>
+                <div style={{ color: "var(--text-secondary, var(--theme-color-9ca3af, #9ca3af))", fontSize: 12, fontStyle: "italic" }}>Nema podataka — prvo uradite sinhronizaciju</div>
             )}
             {categories.map((c) => {
                 const key    = c.category ?? "";
@@ -526,7 +526,7 @@ export default function GoogleShoppingTrendsPage() {
                     {!selectedType && categories.length === 0 && (
                         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c-9ca3af, var(--theme-color-9ca3af, #9ca3af))" }}>
                             <div style={{ fontSize: 40 }}>🛍️</div>
-                            <div style={{ fontWeight: 600, marginTop: 12 }}>No data yet</div>
+                            <div style={{ fontWeight: 600, marginTop: 12 }}>Još nema podataka</div>
                             <div style={{ fontSize: 13, marginTop: 4 }}>Use the sync panel above to fetch shoes from Google Shopping.</div>
                         </div>
                     )}

@@ -362,7 +362,7 @@ function DataQualityTrendChart({ dataScope }: { dataScope?: string | null }) {
       </div>
 
       <div className="data-quality-trend-stage">
-        <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label="Data quality trend chart">
+        <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label="Grafikon trenda kvaliteta podataka">
           <path className={`trend-line ${chart.missingCostTone}`} d={chart.missingCostPath} />
           <path className={`trend-line ${chart.unknownSupplierTone}`} d={chart.unknownSupplierPath} />
         </svg>
@@ -533,7 +533,7 @@ export default function DataQualityPage() {
           setError({
             message: issuesResult.reason instanceof Error
               ? issuesResult.reason.message
-              : "Data quality podaci nisu dostupni.",
+              : "Podaci o kvalitetu nisu dostupni.",
           });
         }
       }
@@ -592,7 +592,7 @@ export default function DataQualityPage() {
       setError({
         message: reason instanceof Error
           ? reason.message
-          : "Data quality podaci nisu dostupni.",
+          : "Podaci o kvalitetu nisu dostupni.",
       });
       setHealthError(null);
       setRefreshStatus(null);
@@ -792,7 +792,7 @@ export default function DataQualityPage() {
         <PilotImportReadinessCard report={intakeReport} refreshStatus={refreshStatus} />
       ) : null}
 
-      <div className="data-quality-tabs" role="tablist" aria-label="Data quality views">
+      <div className="data-quality-tabs" role="tablist" aria-label="Načini prikaza kvaliteta podataka">
         {VIEW_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -901,7 +901,7 @@ export default function DataQualityPage() {
         </section>
       ) : null}
 
-      {viewMode === "issues" ? <div className="data-quality-tabs" role="tablist" aria-label="Data quality issue tabs">
+      {viewMode === "issues" ? <div className="data-quality-tabs" role="tablist" aria-label="Kartice problema kvaliteta podataka">
         {ISSUE_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -918,7 +918,7 @@ export default function DataQualityPage() {
 
       {viewMode === "issues" ? <details className="data-quality-low-priority" open={issueType === "invalidName"}>
         <summary>Low priority issues</summary>
-        <div className="data-quality-tabs" role="tablist" aria-label="Low priority issue tabs">
+        <div className="data-quality-tabs" role="tablist" aria-label="Kartice problema nižeg prioriteta">
           {LOW_PRIORITY_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -1071,7 +1071,7 @@ export default function DataQualityPage() {
             toolbar={(
               <AnalyticsTableToolbar
                 tableKey={`data-quality-${issueType}`}
-                tableTitle={`Data quality - ${issueLabel(issueType)}`}
+                tableTitle={`Kvalitet podataka — ${issueLabel(issueType)}`}
                 columns={analyticsColumns}
                 rows={data.items}
                 filters={toolbarFilters}

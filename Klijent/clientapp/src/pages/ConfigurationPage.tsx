@@ -147,10 +147,10 @@ export default function ConfigurationPage() {
         const data = (await res.json()) as PendingBatchesData;
         setBatches(data.batches || []);
       } else {
-        setError("Failed to load pending batches");
+        setError("Neuspešno učitavanje pending batch-eva");
       }
     } catch (e) {
-      setError("Error loading pending batches");
+      setError("Greška pri učitavanju pending batch-eva");
       console.error(e);
     } finally {
       setLoading(false);
@@ -252,19 +252,19 @@ export default function ConfigurationPage() {
       const res = await fetchWithTimeout(apiUrl(`/api/admin/requeue-batch/${batchId}`), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
       const result = (await res.json()) as { success: boolean; message: string };
       if (result.success) {
-        showToast("Batch requeued", "success");
+        showToast("Batch je ponovo stavljen u red", "success");
         await loadPendingBatches();
       } else {
-        showToast(`Requeue failed: ${result.message}`, "error");
+        showToast(`Ponovno stavljanje u red nije uspelo: ${result.message}`, "error");
       }
     } catch (e) {
-      showToast("Error requeuing batch", "error");
+      showToast("Greška pri ponovnom stavljanju batch-a u red", "error");
       console.error(e);
     }
   };
 
   const runStaleRecovery = async () => {
-    if (!window.confirm("Run stale batch recovery? This may mark old pending batches as failed.")) return;
+    if (!window.confirm("Pokrenuti oporavak zastarelih batch-eva? Stari pending batch-evi mogu biti označeni kao neuspešni.")) return;
 
     try {
       const res = await fetchWithTimeout(apiUrl("/api/admin/run-stale-recovery"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
@@ -274,7 +274,7 @@ export default function ConfigurationPage() {
         await loadPendingBatches();
       }
     } catch (e) {
-      showToast("Error running stale recovery", "error");
+      showToast("Greška pri oporavku zastarelih batch-eva", "error");
       console.error(e);
     }
   };
@@ -570,7 +570,7 @@ export default function ConfigurationPage() {
                             <span className={`health-status ${ping.success ? "ok" : "error"}`}>
                               {ping.success ? (
                                 <>
-                                  <CheckCircle size={16} /> OK ({ping.latencyMs}ms)
+                                  <CheckCircle size={16} /> U redu ({ping.latencyMs} ms)
                                 </>
                               ) : (
                                 <>
@@ -579,12 +579,14 @@ export default function ConfigurationPage() {
                               )}
                             </span>
                           ) : (
-                            <span className="health-status off">N/A</span>
+                            <span className="health-status off">Nije dostupno</span>
                           )}
                           <button
+                            type="button"
                             className="btn-small"
                             onClick={() => void runProviderPing(provider)}
                             title="Ponovo proveri"
+                            aria-label="Ponovo proveri povezanost"
                           >
                             <RefreshCw size={14} />
                           </button>
@@ -748,7 +750,7 @@ export default function ConfigurationPage() {
                 </div>
                 <div className="card-content">
                   <div className="health-item">
-                    <span className="health-label">Redis state</span>
+                    <span className="health-label">Stanje Redis-a</span>
                     <span className={`health-status ${redisStatus?.enabled ? "ok" : "off"}`}>
                       {redisStatus
                         ? redisStatus.enabled
@@ -756,7 +758,7 @@ export default function ConfigurationPage() {
                             ? "Uključen"
                             : "Uključen (nedostupan)"
                           : "Isključen"
-                        : "N/A"}
+                        : "Nije dostupno"}
                     </span>
                   </div>
                   <div className="action-group">

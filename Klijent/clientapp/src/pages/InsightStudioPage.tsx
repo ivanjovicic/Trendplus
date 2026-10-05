@@ -89,6 +89,7 @@ import {
   mergeSmartReorderAsPrimary,
 } from "../services/analyticsIntelligenceDerived";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import {
   isEstimatedCategoryRevenue,
@@ -317,7 +318,7 @@ const fmtNum = (v: number) => v.toLocaleString("sr-RS");
 
 export function changeBadge(change: number | null | undefined, suffix = "%") {
   if (change == null || Number.isNaN(change)) {
-    return <span className="ml-1 text-[11px] font-semibold text-warning">N/D</span>;
+    return <span className="ml-1 text-[11px] font-semibold text-warning">{ANALYTICS_UNAVAILABLE_LABEL}</span>;
   }
 
   if (change > 0) {
@@ -698,7 +699,7 @@ function SupplierTab({
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-supplier-scorecard-v2"
-              tableTitle="Insight Studio - dobavljaci 2.0"
+              tableTitle="Insight Studio — dobavljači 2.0"
               columns={supplierV2Columns}
               rows={data}
               filters={analyticsContext.filters}
@@ -729,7 +730,7 @@ function SupplierTab({
                       "insight-supplier-scorecard-v2",
                       String(s.dobavljacId ?? s.dobavljacNaziv),
                       s.dobavljacNaziv,
-                      "Insight Studio - dobavljaci 2.0",
+                      "Insight Studio — dobavljači 2.0",
                       supplierV2Columns,
                       s
                     );
@@ -815,7 +816,7 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-supplier-scorecard-v1"
-            tableTitle="Insight Studio - dobavljaci"
+            tableTitle="Insight Studio — dobavljači"
             columns={supplierV1Columns}
             rows={data}
             filters={analyticsContext.filters}
@@ -837,7 +838,7 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
                   "insight-supplier-scorecard-v1",
                   String(s.dobavljacId ?? s.dobavljacNaziv),
                   s.dobavljacNaziv,
-                  "Insight Studio - dobavljaci",
+                  "Insight Studio — dobavljači",
                   supplierV1Columns,
                   s
                 );
@@ -896,9 +897,9 @@ function CategoryTab({
   if (!byCategory.length) return <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p>;
 
   const subTabs = [
-    { key: "kategorije" as const, label: "Po Tipu Obuće" },
-    { key: "pol" as const, label: "Po Polu" },
-    { key: "cene" as const, label: "Cenovna Osetljivost" },
+    { key: "kategorije" as const, label: "Po tipu obuće" },
+    { key: "pol" as const, label: "Po polu" },
+    { key: "cene" as const, label: "Cenovna osetljivost" },
     { key: "korpa" as const, label: "Povezani tipovi" },
   ];
 
@@ -943,7 +944,7 @@ function CategoryTab({
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-category-performance"
-                tableTitle="Insight Studio - kategorije"
+                tableTitle="Insight Studio — kategorije"
                 columns={categoryColumns}
                 rows={byCategory}
                 filters={analyticsContext.filters}
@@ -965,7 +966,7 @@ function CategoryTab({
                   <tr
                     key={i}
                     className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                    onClick={() => analyticsContext.openSnapshotDetail("insight-category-performance", cat.kategorija, cat.kategorija, "Insight Studio - kategorije", categoryColumns, cat)}
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-category-performance", cat.kategorija, cat.kategorija, "Insight Studio — kategorije", categoryColumns, cat)}
                   >
                     <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{cat.kategorija}</td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(cat.revShare)}</td>
@@ -1001,7 +1002,7 @@ function CategoryTab({
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-gender-breakdown"
-                tableTitle="Insight Studio - po polu"
+                tableTitle="Insight Studio — po polu"
                 columns={genderColumns}
                 rows={byGender}
                 filters={analyticsContext.filters}
@@ -1019,7 +1020,7 @@ function CategoryTab({
                   <tr
                     key={i}
                     className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                    onClick={() => analyticsContext.openSnapshotDetail("insight-gender-breakdown", g.pol, g.pol, "Insight Studio - po polu", genderColumns, g)}
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-gender-breakdown", g.pol, g.pol, "Insight Studio — po polu", genderColumns, g)}
                   >
                     <td className="px-3 py-2 text-[var(--text-primary)] flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />{g.pol}
@@ -1042,7 +1043,7 @@ function CategoryTab({
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-price-sensitivity"
-                tableTitle="Insight Studio - cenovna osetljivost"
+                tableTitle="Insight Studio — cenovna osetljivost"
                 columns={priceSensitivityColumns}
                 rows={priceSensitivity.bands}
                 filters={analyticsContext.filters}
@@ -1067,7 +1068,7 @@ function CategoryTab({
                   <tr
                     key={i}
                     className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                    onClick={() => analyticsContext.openSnapshotDetail("insight-price-sensitivity", b.priceBand, b.priceBand, "Insight Studio - cenovna osetljivost", priceSensitivityColumns, b)}
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-price-sensitivity", b.priceBand, b.priceBand, "Insight Studio — cenovna osetljivost", priceSensitivityColumns, b)}
                   >
                     <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{b.priceBand}</td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{b.skuCount}</td>
@@ -1254,7 +1255,7 @@ function DailyTab({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Analiza Dana & Tjedna Potražnja" subtitle="Z-score detekcija anomalija i heatmap nedeljne aktivnosti" />
+      <SectionHeader title="Analiza dana i nedeljne potražnje" subtitle="Detekcija neuobičajenih dana i pregled aktivnosti po danima u nedelji" />
       <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
         Primarni prikaz koristi intelligence inventory signal layer. Legacy depletion forecast ostaje fallback ako signal cache nije spreman.
       </div>
@@ -1357,7 +1358,7 @@ function DailyTab({
                     <CartesianGrid stroke="var(--c-2a3045, var(--theme-color-2a3045, #2A3045))" vertical={false} />
                     <XAxis dataKey="dayName" tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, #8A95B0))", fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: "var(--c-8a95b0, var(--theme-color-8a95b0, #8A95B0))", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtRsd(v)} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Avg Prihod"]} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number | string | undefined) => [fmtRsd(Number(v ?? 0)), "Prosečan promet"]} />
                     <Bar dataKey="avgRevenue" fill={PAL.blue} radius={[4, 4, 0, 0]}>
                       {heatmap.byDay.map((d, i) => {
                         const maxR = Math.max(...heatmap.byDay.map(x => x.avgRevenue));
@@ -1468,7 +1469,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-abc-classification"
-            tableTitle="Insight Studio - ABC klasifikacija"
+            tableTitle="Insight Studio — ABC klasifikacija"
             columns={abcColumns}
             rows={displayed}
             filters={analyticsContext.filters}
@@ -1488,7 +1489,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
               <tr
                 key={item.artikalId}
                 className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                onClick={() => analyticsContext.openSnapshotDetail("insight-abc-classification", String(item.artikalId), item.naziv, "Insight Studio - ABC klasifikacija", abcColumns, item)}
+                onClick={() => analyticsContext.openSnapshotDetail("insight-abc-classification", String(item.artikalId), item.naziv, "Insight Studio — ABC klasifikacija", abcColumns, item)}
               >
                 <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{item.naziv}</td>
                 <td className="px-3 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
@@ -1528,7 +1529,7 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
         <div className="mb-3 p-3">
           <AnalyticsTableToolbar
             tableKey="insight-lifecycle"
-            tableTitle="Insight Studio - zivotni ciklus"
+            tableTitle="Insight Studio — životni ciklus"
             columns={lifecycleColumns}
             rows={data.items.slice(0, 30)}
             filters={analyticsContext.filters}
@@ -1547,13 +1548,13 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
               <tr
                 key={it.artikalId}
                 className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                onClick={() => analyticsContext.openSnapshotDetail("insight-lifecycle", String(it.artikalId), it.naziv, "Insight Studio - zivotni ciklus", lifecycleColumns, it)}
+                onClick={() => analyticsContext.openSnapshotDetail("insight-lifecycle", String(it.artikalId), it.naziv, "Insight Studio — životni ciklus", lifecycleColumns, it)}
               >
                 <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{it.naziv}</td>
                 <td className="px-3 py-2 text-[var(--text-primary)]">{it.kategorija}</td>
                 <td className="px-3 py-2 text-right">{it.totalUnits}</td>
                 <td className="px-3 py-2 text-right" style={{ color: it.trendPct == null ? PAL.textSecondary : it.trendPct >= 0 ? PAL.green : PAL.red }}>
-                  {it.trendPct == null ? "N/D" : `${it.trendPct >= 0 ? "+" : ""}${it.trendPct.toFixed(0)}%`}
+                  {it.trendPct == null ? ANALYTICS_UNAVAILABLE_LABEL : `${it.trendPct >= 0 ? "+" : ""}${it.trendPct.toFixed(0)}%`}
                 </td>
                 <td className="px-3 py-2 text-right text-[var(--text-primary)]">{it.currentStock}</td>
                 <td className="px-3 py-2 text-center"><Badge label={STAGE_LABELS[it.stage]} color={STAGE_COLORS[it.stage]} /></td>
@@ -1586,7 +1587,7 @@ function StockTab({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Stanje Zaliha & Prognoza Iscrpljenja" subtitle="Aging analiza + automatski forecast datuma OOS-a" />
+      <SectionHeader title="Stanje zaliha i prognoza iscrpljenja" subtitle="Starenje zaliha i procena datuma rasprodaje" />
       <div className="flex gap-2">
         <button onClick={() => setSubView("aging")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "aging" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📦 Aging</button>
         <button onClick={() => setSubView("depletion")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "depletion" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📉 Deplecija</button>
@@ -1624,7 +1625,7 @@ function StockTab({
               <div className="mb-3 p-3">
                 <AnalyticsTableToolbar
                   tableKey="insight-aging-stock"
-                  tableTitle="Insight Studio - aging stock"
+                  tableTitle="Insight Studio — starenje zaliha"
                   columns={agingColumns}
                   rows={filter === "Sve" ? agingItems : agingItems.filter(x => x.agingCategory === filter)}
                   filters={analyticsContext.filters}
@@ -1645,7 +1646,7 @@ function StockTab({
                       <tr
                         key={item.id}
                         className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                        onClick={() => analyticsContext.openSnapshotDetail("insight-aging-stock", String(item.id), item.naziv, "Insight Studio - aging stock", agingColumns, item)}
+                        onClick={() => analyticsContext.openSnapshotDetail("insight-aging-stock", String(item.id), item.naziv, "Insight Studio — starenje zaliha", agingColumns, item)}
                       >
                         <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{item.naziv}</td>
                         <td className="px-3 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
@@ -1686,7 +1687,7 @@ function StockTab({
               <div className="mb-3 p-3">
                 <AnalyticsTableToolbar
                   tableKey="insight-stock-depletion"
-                  tableTitle="Insight Studio - stock depletion"
+                  tableTitle="Insight Studio — iscrpljenje zaliha"
                   columns={depletionColumns}
                   rows={depletion.forecasts.slice(0, 30)}
                   filters={analyticsContext.filters}
@@ -1706,7 +1707,7 @@ function StockTab({
                     <tr
                       key={f.artikalId}
                       className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                      onClick={() => analyticsContext.openSnapshotDetail("insight-stock-depletion", String(f.artikalId), f.naziv, "Insight Studio - stock depletion", depletionColumns, f)}
+                      onClick={() => analyticsContext.openSnapshotDetail("insight-stock-depletion", String(f.artikalId), f.naziv, "Insight Studio — iscrpljenje zaliha", depletionColumns, f)}
                     >
                       <td className="px-3 py-2 text-[var(--text-primary)] max-w-[140px] truncate">{f.naziv}</td>
                       <td className="px-3 py-2 text-[var(--text-primary)]">{f.kategorija}</td>
@@ -1792,7 +1793,7 @@ function ReorderTab2({
             <div className="text-lg font-bold text-[var(--text-primary)]">
               {useSmart
                 ? fmtRsd(smartData!.summary.totalReorderCost)
-                : (v1SummaryPresentation?.potentialRevenueLabel ?? "N/D")}
+                : (v1SummaryPresentation?.potentialRevenueLabel ?? ANALYTICS_UNAVAILABLE_LABEL)}
             </div>
           </div>
           {useSmart && (
@@ -1803,7 +1804,7 @@ function ReorderTab2({
               </div>
               <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
                 <div className="text-[10px] text-[var(--text-primary)] uppercase">Očekivani profit</div>
-                <div className="text-lg font-bold text-[var(--text-primary)]">{smartProfitPresentation?.profitLabel ?? "N/D"}</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">{smartProfitPresentation?.profitLabel ?? ANALYTICS_UNAVAILABLE_LABEL}</div>
               </div>
             </>
           )}
@@ -1850,7 +1851,7 @@ function ReorderTab2({
             <div className="mb-3 p-3">
               <AnalyticsTableToolbar
                 tableKey="insight-smart-reorder-items"
-                tableTitle="Insight Studio - smart reorder po artiklima"
+                tableTitle="Insight Studio — predlog dopune po artiklima"
                 columns={reorderItemColumns}
                 rows={displayed}
                 filters={analyticsContext.filters}
@@ -1876,7 +1877,7 @@ function ReorderTab2({
                   <tr
                     key={item.artikalId}
                     className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                    onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-items", String(item.artikalId), item.naziv, "Insight Studio - smart reorder po artiklima", reorderItemColumns, item)}
+                    onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-items", String(item.artikalId), item.naziv, "Insight Studio — predlog dopune po artiklima", reorderItemColumns, item)}
                   >
                     <td className="px-3 py-2 text-[var(--text-primary)] max-w-[130px] truncate">{item.naziv}</td>
                     <td className="px-2 py-2 text-[var(--text-primary)]">{item.kategorija}</td>
@@ -1910,7 +1911,7 @@ function ReorderTab2({
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-smart-reorder-categories"
-              tableTitle="Insight Studio - smart reorder po kategorijama"
+              tableTitle="Insight Studio — predlog dopune po kategorijama"
               columns={reorderCategoryColumns}
               rows={smartData!.byCategoryPlan}
               filters={analyticsContext.filters}
@@ -1933,7 +1934,7 @@ function ReorderTab2({
                 <tr
                   key={i}
                   className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-categories", c.kategorija, c.kategorija, "Insight Studio - smart reorder po kategorijama", reorderCategoryColumns, c)}
+                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-categories", c.kategorija, c.kategorija, "Insight Studio — predlog dopune po kategorijama", reorderCategoryColumns, c)}
                 >
                   <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{c.kategorija}</td>
                   <td className="px-3 py-2 text-right text-[var(--text-primary)]">{c.totalItems}</td>
@@ -1954,7 +1955,7 @@ function ReorderTab2({
           <div className="mb-3 p-3">
             <AnalyticsTableToolbar
               tableKey="insight-smart-reorder-suppliers"
-              tableTitle="Insight Studio - smart reorder po dobavljacima"
+              tableTitle="Insight Studio — predlog dopune po dobavljačima"
               columns={reorderSupplierColumns}
               rows={smartData!.bySupplierPlan}
               filters={analyticsContext.filters}
@@ -1975,7 +1976,7 @@ function ReorderTab2({
                 <tr
                   key={i}
                   className="cursor-pointer border-b border-[var(--border-default)] hover:bg-[var(--surface-light)] transition"
-                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-suppliers", s.dobavljac, s.dobavljac, "Insight Studio - smart reorder po dobavljacima", reorderSupplierColumns, s)}
+                  onClick={() => analyticsContext.openSnapshotDetail("insight-smart-reorder-suppliers", s.dobavljac, s.dobavljac, "Insight Studio — predlog dopune po dobavljačima", reorderSupplierColumns, s)}
                 >
                   <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{s.dobavljac}</td>
                   <td className="px-3 py-2 text-right text-[var(--text-primary)]">{s.totalItems}</td>

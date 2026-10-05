@@ -2994,7 +2994,7 @@ export default function AnalyticsDashboard() {
                     ["Momentum", HELP.momentum],
                     ["Elasticnost", HELP.elasticnost],
                     ["Kompletnost (Completeness)", HELP.completeness],
-                    ["Svežina podataka (Data Health)", HELP.freshness],
+                    ["Svežina podataka", HELP.freshness],
                     ["Uticaj na maržu (Margin impact)", HELP.margin],
                     ["SKU", HELP.sku],
                   ].map(([term, text]) => (

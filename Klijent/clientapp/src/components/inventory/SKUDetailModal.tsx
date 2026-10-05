@@ -178,12 +178,12 @@ export function SKUDetailModal({
                         <span>Dokument: {entry.brojDokumenta ?? "Nije upisan"}</span>
                         <span>Korisnik: {entry.korisnikIme ?? "Nepoznato"}</span>
                         <span>Prodavnica: {entry.storeName ?? detailData.storeName ?? "Nije vezano"}</span>
-                        <span>Dobavljac: {entry.supplierName ?? detailData.supplierName ?? "Nije vezano"}</span>
+                        <span>Dobavljač: {entry.supplierName ?? detailData.supplierName ?? "Nije vezano"}</span>
                       </div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-right">
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-primary)]">Količina / iznos</div>
-                      <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{entry.kolicina == null ? "N/A" : formatNumber(entry.kolicina)}</div>
+                      <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{entry.kolicina == null ? "Nije dostupno" : formatNumber(entry.kolicina)}</div>
                       <div className="text-xs text-[var(--text-primary)]">{formatCurrency(entry.iznos)}</div>
                     </div>
                   </div>

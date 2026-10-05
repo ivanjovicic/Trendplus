@@ -11,7 +11,7 @@ export function resolveToolbarMetricsStatus(value: string | null | undefined): s
 export function formatPrePostAnalysisWindowHint(windowDays: number | null | undefined): string {
   const normalized = finiteToolbarCount(windowDays);
   if (normalized == null) {
-    return "Analiza poredjena po nivelacionom prozoru: prozor nije dostupan.";
+    return "Analiza poređena po nivelacionom prozoru: prozor nije dostupan.";
   }
-  return `Analiza poredjena po nivelacionom prozoru od ${normalized} dana.`;
+  return `Analiza poređena po nivelacionom prozoru od ${normalized} dana.`;
 }

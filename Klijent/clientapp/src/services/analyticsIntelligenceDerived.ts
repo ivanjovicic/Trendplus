@@ -364,7 +364,7 @@ export function buildAgingResultFromSignals(
         id: item.articleId,
         naziv: item.productName,
         kategorija: item.category,
-        pol: "N/A",
+        pol: "Nepoznato",
         kolicina: Math.round(item.stockQty),
         stockValue: stockValue == null ? null : round(stockValue, 2),
         dobavljacNaziv: item.supplierName,

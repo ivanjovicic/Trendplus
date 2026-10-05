@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useToast } from "../components/Toast";
 import SearchableSelect from "../components/SearchableSelect";
 import { deichmannBrands } from "../components/brands";
@@ -42,7 +42,7 @@ export default function DeichmannPage() {
         { label: "42.5", value: "425-120944" },
     ];
 
-    // sizes not selected by default � show all until user chooses
+    // sizes not selected by default — show all until user chooses
     const [size, setSize] = useState<string[] | undefined>(undefined);
     const [saleOnly, setSaleOnly] = useState<boolean>(false);
     const [isNewOnly, setIsNewOnly] = useState<boolean>(false);
@@ -54,7 +54,7 @@ export default function DeichmannPage() {
     const [imageModalSrc, setImageModalSrc] = useState("");
     const [imageModalTitle, setImageModalTitle] = useState("");
 
-    const categories = ["Patike", "Sandale", "Cipele", "Cizme"];
+    const categories = ["Patike", "Sandale", "Cipele", "Čizme"];
 
     const sortOptions = [
         { label: "Najnovije", value: "new-desc" },
@@ -67,7 +67,7 @@ export default function DeichmannPage() {
     const openImage = (src?: string, title?: string) => {
         if (!src) return;
         setImageModalSrc(src);
-        setImageModalTitle(title || "Image");
+        setImageModalTitle(title || "Slika");
         setImageModalOpen(true);
     };
 
@@ -78,7 +78,7 @@ export default function DeichmannPage() {
                 Patike: "sneakers-92",
                 Sandale: "sandalen-...",
                 Cipele: "schuhe-82",
-                Cizme: "stiefel-85",
+                Čizme: "stiefel-85",
             };
 
             const payload: any = {
@@ -116,10 +116,10 @@ export default function DeichmannPage() {
             console.log("? Deichmann scraper response:", data);
             const items = data.items || [];
             setResults(items);
-            toast.success(`Deichmann: ucitano ${data.count ?? items.length} stavki`);
+            toast.success(`Deichmann: učitano ${data.count ?? items.length} stavki`);
         } catch (e) {
             console.error(e);
-            toast.error(e instanceof Error ? e.message : "Gre�ka pri pokretanju Deichmann scraper-a");
+            toast.error(e instanceof Error ? e.message : "Greška pri pokretanju Deichmann scraper-a");
         } finally {
             setLoading(false);
         }
@@ -127,7 +127,7 @@ export default function DeichmannPage() {
 
     return (
         <div className="max-w-[1200px] mx-auto my-8 px-4">
-            <h1 className="text-2xl font-bold mb-3 text-foreground">Deichmann � Scraper EU tr�i�ta</h1>
+            <h1 className="text-2xl font-bold mb-3 text-foreground">Deichmann — scraper EU tržišta</h1>
 
             <div className="bg-surface-elevated border border-border rounded-xl p-4 mb-6 transition-colors">
                 <div className="flex gap-3 items-center flex-wrap">
@@ -158,7 +158,7 @@ export default function DeichmannPage() {
                         <SearchableSelect 
                             value={filterBrand}
                             onChange={setFilterBrand}
-                            placeholder="Select or type brand�"
+                            placeholder="Izaberite ili unesite brend…"
                             options={deichmannBrands}
                             multiple={true}
                         />
@@ -172,9 +172,9 @@ export default function DeichmannPage() {
                             onChange={(e) => setFilterGender(e.target.value)}
                         >
                             <option value="">Unisex</option>
-                            <option value="women">?? �ene</option>
-                            <option value="men">?? Mu�karci</option>
-                            <option value="kids">?? Deca</option>
+                            <option value="women">Žene</option>
+                            <option value="men">Muškarci</option>
+                            <option value="kids">Deca</option>
                         </select>
                     </div>
 
@@ -185,15 +185,15 @@ export default function DeichmannPage() {
                             value={filterSort}
                             onChange={(e) => setFilterSort(e.target.value)}
                         >
-                            <option value="popularity">?? Popularnost</option>
-                            <option value="price-asc">?? Cena: raste</option>
-                            <option value="price-desc">?? Cena: pada</option>
-                            <option value="new">? Novo u ponudi</option>
+                            <option value="popularity">Popularnost</option>
+                            <option value="price-asc">Cena: raste</option>
+                            <option value="price-desc">Cena: pada</option>
+                            <option value="new">Novo u ponudi</option>
                         </select>
                     </div>
 
                     <div className="min-w-[150px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (�)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Min cena (€)</label>
                         <input
                             type="number"
                             className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
@@ -204,7 +204,7 @@ export default function DeichmannPage() {
                     </div>
 
                     <div className="min-w-[150px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (�)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Max cena (€)</label>
                         <input
                             type="number"
                             className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-[var(--focus-ring)] focus:ring-opacity-50 outline-none transition-all"
@@ -215,7 +215,7 @@ export default function DeichmannPage() {
                     </div>
 
                     <div className="min-w-[220px]">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Velicina (EUR)</label>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1 ml-1">Veličina (EUR)</label>
                         <SearchableSelect
                             value={size ?? []}
                             onChange={(v) => setSize(v as string[])}

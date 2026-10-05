@@ -19,6 +19,7 @@ import {
   type AnalyticsPeriodPreset,
   getAnalyticsPeriodPresetRange,
 } from "../utils/analyticsPeriodPresets";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import { projectInventoryRatios } from "../utils/inventoryRatioState";
 import {
@@ -105,7 +106,7 @@ interface TrendPoint {
 }
 
 const tone = (s?: string | null): Tone => (!s ? "neutral" : s === "error" ? "critical" : (s as Tone));
-const toneText = (t: Tone) => (t === "good" ? "Dobro" : t === "warning" ? "Upozorenje" : t === "critical" ? "Kriticno" : "Neutralno");
+const toneText = (t: Tone) => (t === "good" ? "Dobro" : t === "warning" ? "Upozorenje" : t === "critical" ? "Kritično" : "Neutralno");
 export function getTrendDirection(value?: number | null): TrendDirection {
   if (value == null || !Number.isFinite(value)) return "neutral";
   return value > 0 ? "up" : value < 0 ? "down" : "neutral";
@@ -331,7 +332,7 @@ export default function AnalyticsDetails() {
       <header className="ad-header">
         <div>
           <h1>Detaljne analize</h1>
-          <p>{healthText || "Premium dark analytics pregled"}</p>
+          <p>{healthText || "Detaljan pregled prodaje, zaliha i kvaliteta podataka"}</p>
         </div>
         <div className="ad-controls">
           <select
@@ -351,15 +352,15 @@ export default function AnalyticsDetails() {
               </option>
             ))}
           </select>
-          <button onClick={() => void load()} disabled={loading}>
-            Osvezi
+          <button type="button" onClick={() => void load()} disabled={loading} aria-label="Osveži podatke">
+            Osveži
           </button>
         </div>
       </header>
 
       <section className="ad-panel ad-legacy-banner">
-        <strong>Legacy prikaz</strong>
-        <p>Ovo je detaljni/legacy prikaz. Glavni analytics dashboard je <Link to="/analytics">Pregled poslovanja</Link>.</p>
+        <strong>Stariji detaljni prikaz</strong>
+        <p>Ovo je stariji detaljni prikaz. Glavni ekran analitike je <Link to="/analytics">Pregled poslovanja</Link>.</p>
       </section>
 
       {preset === "custom" && (
@@ -377,7 +378,7 @@ export default function AnalyticsDetails() {
 
       {errors.length > 0 && (
         <section className="ad-panel ad-error">
-          <h3>Greske pri ucitavanju</h3>
+          <h3>Greške pri učitavanju</h3>
           {errors.map((x, i) => (
             <div key={`e-${i}`}>- {x}</div>
           ))}
@@ -413,12 +414,12 @@ export default function AnalyticsDetails() {
 
           <section className="ad-grid ad-risk-grid">
             <article className={`ad-risk-card ${metric.inStock == null ? "neutral" : metric.inStock >= 95 ? "good" : metric.inStock >= 90 ? "warning" : "critical"}`}>
-              <span>In-stock %</span><strong>{fmtPct(metric.inStock, 1, "Nije dostupno")}</strong><small>(SKU na stanju / ukupan SKU) * 100</small>
+              <span>Na stanju %</span><strong>{fmtPct(metric.inStock, 1, "Nije dostupno")}</strong><small>(SKU na stanju / ukupan SKU) * 100</small>
             </article>
-            <article className={`ad-risk-card ${tone(validL?.status)}`}><span>OOS + Lost sales</span><strong>{fmtNumber(inventory?.outOfStockCount, 0, "Nije dostupno")} | {fmtRsd(validL?.lostSalesEstimate, 0, "Nije dostupno")}</strong><small>Rizik od rasprodatosti</small></article>
-            <article className={`ad-risk-card ${metric.red == null ? "neutral" : metric.red < 8 ? "good" : metric.red < 15 ? "warning" : "critical"}`}><span>Red zone SKU %</span><strong>{fmtPct(metric.red, 1, "Nije dostupno")}</strong><small>Niska zaliha / ukupan SKU</small></article>
+            <article className={`ad-risk-card ${tone(validL?.status)}`}><span>Rasprodato + izgubljena prodaja</span><strong>{fmtNumber(inventory?.outOfStockCount, 0, "Nije dostupno")} | {fmtRsd(validL?.lostSalesEstimate, 0, "Nije dostupno")}</strong><small>Rizik od rasprodatosti</small></article>
+            <article className={`ad-risk-card ${metric.red == null ? "neutral" : metric.red < 8 ? "good" : metric.red < 15 ? "warning" : "critical"}`}><span>SKU u crvenoj zoni %</span><strong>{fmtPct(metric.red, 1, "Nije dostupno")}</strong><small>Niska zaliha / ukupan SKU</small></article>
             <article className={`ad-risk-card ${metric.pareto != null && metric.pareto > 85 ? "warning" : "good"}`}><span>Pareto 80/20</span><strong>{fmtPct(metric.pareto, 1, "Nije dostupno")}</strong><small>Udeo prometa top 20 SKU</small></article>
-            <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Data Health</span><strong>{validC?.score == null ? "N/A" : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? "N/A" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong><small>Completeness + freshness</small></article>
+            <article className={`ad-risk-card ${tone(validF?.status)}`}><span>Kvalitet podataka</span><strong>{validC?.score == null ? ANALYTICS_UNAVAILABLE_LABEL : fmtPct(validC.score * 100)} | {validF?.freshnessHours == null ? ANALYTICS_UNAVAILABLE_LABEL : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong><small>Potpunost + svežina</small></article>
           </section>
 
           <section className="ad-grid ad-main-grid">
@@ -444,28 +445,28 @@ export default function AnalyticsDetails() {
               ) : (
                 <div className="ad-empty">Nema podataka za trend grafikon.</div>
               )}
-              <div className="ad-meta"><span>Momentum: {fmtPct(metric.pct, 1, "Nije dostupno")}</span><span>Slope: {metric.sl == null ? "Nije dostupno" : fmtNumber(metric.sl, 2)}</span></div>
+              <div className="ad-meta"><span>Momentum: {fmtPct(metric.pct, 1, "Nije dostupno")}</span><span>Nagib: {metric.sl == null ? "Nije dostupno" : fmtNumber(metric.sl, 2)}</span></div>
             </article>
             <article className="ad-panel">
-              <h3>Quick Insights</h3>
+              <h3>Brzi uvidi</h3>
               {(adv?.insights ?? []).slice(0, 3).map((x, i) => (
                 <div key={`qi-${i}`} className={`ad-insight ${tone(x.color)}`}>
                   <strong>{x.badge}</strong>
                   <p>{x.description}</p>
                 </div>
               ))}
-              {(adv?.insights?.length ?? 0) === 0 && <div className="ad-empty">Nema insight signala.</div>}
+              {(adv?.insights?.length ?? 0) === 0 && <div className="ad-empty">Nema uvida za ovaj period.</div>}
             </article>
           </section>
 
           <section className="ad-grid ad-main-grid">
             <article className="ad-panel">
-              <h3>Top gainers</h3>
+              <h3>Najveći rast</h3>
               {gainers.length === 0 && <div className="ad-empty">Nema pozitivnih trendova.</div>}
               {gainers.map((x) => <div key={`g-${x.productId}`} className="ad-row"><span>{x.productName}</span><strong className="up">+{fmtPct(x.trendPct)}</strong></div>)}
             </article>
             <article className="ad-panel">
-              <h3>Top losers</h3>
+              <h3>Najveći pad</h3>
               {losers.length === 0 && <div className="ad-empty">Nema negativnih trendova.</div>}
               {losers.map((x) => <div key={`l-${x.productId}`} className="ad-row"><span>{x.productName}</span><strong className="down">{fmtPct(x.trendPct)}</strong></div>)}
             </article>
@@ -475,11 +476,11 @@ export default function AnalyticsDetails() {
             <div className="ad-top-head">
               <h3>Top proizvodi (kratka lista, max 5)</h3>
               <div className="ad-tabs">
-                <button className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Promet</button>
-                <button className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Komadi</button>
-                <button className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>{ANALYTICS_VELOCITY_SHORT_LABEL}</button>
-                <button className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Marza</button>
-                <button onClick={() => setShowFullList(true)}>Prikazi celu listu</button>
+                <button type="button" className={topTab === "revenue" ? "active" : ""} onClick={() => setTopTab("revenue")}>Promet</button>
+                <button type="button" className={topTab === "units" ? "active" : ""} onClick={() => setTopTab("units")}>Komadi</button>
+                <button type="button" className={topTab === "velocity" ? "active" : ""} onClick={() => setTopTab("velocity")}>{ANALYTICS_VELOCITY_SHORT_LABEL}</button>
+                <button type="button" className={topTab === "margin" ? "active" : ""} onClick={() => setTopTab("margin")}>Marža</button>
+                <button type="button" onClick={() => setShowFullList(true)} aria-label="Prikaži celu listu proizvoda">Prikaži celu listu</button>
               </div>
             </div>
             <div className="ad-table-head">
@@ -510,22 +511,22 @@ export default function AnalyticsDetails() {
 
           <section className="ad-grid ad-main-grid">
             <article className="ad-panel">
-              <h3>Data quality</h3>
-              <div className="ad-row"><span>Completeness</span><strong>{validC?.score == null ? "Nije dostupno" : fmtPct(validC.score * 100)}</strong></div>
-              <div className="ad-row"><span>Missing core fields</span><strong>{validC?.affectedSku ?? "Nije dostupno"}</strong></div>
-              <div className="ad-row"><span>Freshness</span><strong>{validF?.freshnessHours == null ? "Nije dostupno" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong></div>
-              <div className="ad-row"><span>Lost sales estimate</span><strong>{fmtRsd(validL?.lostSalesEstimate, 0, "Nije dostupno")}</strong></div>
+              <h3>Kvalitet podataka</h3>
+              <div className="ad-row"><span>Potpunost</span><strong>{validC?.score == null ? "Nije dostupno" : fmtPct(validC.score * 100)}</strong></div>
+              <div className="ad-row"><span>Nedostajuća osnovna polja</span><strong>{validC?.affectedSku ?? "Nije dostupno"}</strong></div>
+              <div className="ad-row"><span>Svežina podataka</span><strong>{validF?.freshnessHours == null ? "Nije dostupno" : `${fmtNumber(validF.freshnessHours, 1)}h`}</strong></div>
+              <div className="ad-row"><span>Procena izgubljene prodaje</span><strong>{fmtRsd(validL?.lostSalesEstimate, 0, "Nije dostupno")}</strong></div>
               <div className="ad-row">
-                <span>Negative qty</span>
+                <span>Negativne količine</span>
                 <strong>
                   {validN?.negativeQtyCount == null
-                    ? "N/A"
+                    ? ANALYTICS_UNAVAILABLE_LABEL
                     : `${fmtNumber(validN.negativeQtyCount)}${validN.totalRows && validN.totalRows > 0 ? ` (${fmtPct((validN.negativeQtyCount / validN.totalRows) * 100, 3)})` : ""}`}
                 </strong>
               </div>
             </article>
             <article className="ad-panel">
-              <h3>Recommended actions</h3>
+              <h3>Preporučene akcije</h3>
               {(adv?.actions ?? []).slice(0, 5).map((a, i) => (
                 <div key={`ra-${i}`} className="ad-action">
                   <strong>[{a.priority}] {a.title}</strong>

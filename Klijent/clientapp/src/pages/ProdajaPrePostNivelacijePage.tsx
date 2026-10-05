@@ -1636,7 +1636,7 @@ export default function ProdajaPrePostNivelacijePage() {
         secondaryActions={[
           {
             key: "reset",
-            label: "Reset",
+            label: "Poništi filtere",
             onClick: handleResetFilters,
             disabled: loading,
             tone: "secondary",

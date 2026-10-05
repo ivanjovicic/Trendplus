@@ -1,6 +1,7 @@
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { SizeCurvePointDto } from "../../types/analytics";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../../utils/analyticsConstants";
 import { fmtPct, fmtPctFromRatio, fmtSignedPct } from "../../utils/analyticsFormatters";
 
 type SizeCurveVisualizationProps = {
@@ -10,7 +11,7 @@ type SizeCurveVisualizationProps = {
 
 export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisualizationProps) {
   const formatDeltaPct = (value: number | null | undefined, digits = 1) =>
-    value == null || Number.isNaN(value) ? "N/A" : fmtSignedPct(value, digits).replace("%", "pp");
+    value == null || Number.isNaN(value) ? ANALYTICS_UNAVAILABLE_LABEL : fmtSignedPct(value, digits).replace("%", "pp");
   const hasMissingEvidence = (item: SizeCurvePointDto) =>
     item.evidenceStatus === "missing"
     || item.evidenceStatus == null
@@ -55,7 +56,7 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
                 contentStyle={{ background: "var(--surface-default)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
                 formatter={(value: ValueType | undefined, name: NameType | undefined) => {
                   if (Array.isArray(value) || value == null || Number.isNaN(Number(value))) {
-                    return ["N/A", name];
+                    return [ANALYTICS_UNAVAILABLE_LABEL, name];
                   }
 
                   return [fmtPct(Number(value), 1), name];

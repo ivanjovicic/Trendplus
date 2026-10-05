@@ -113,10 +113,10 @@ describe("AnalyticsDetails period state", () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText("100,0%")).toBeInTheDocument());
-    expect(within(getRiskCard("Red zone SKU %")).getByText("0,0%")).toBeInTheDocument();
-    expect(getRiskCard("In-stock %")).toHaveClass("good");
-    expect(getRiskCard("Red zone SKU %")).toHaveClass("good");
+    await waitFor(() => expect(within(getRiskCard("Na stanju %")).getByText("100,0%")).toBeInTheDocument());
+    expect(within(getRiskCard("SKU u crvenoj zoni %")).getByText("0,0%")).toBeInTheDocument();
+    expect(getRiskCard("Na stanju %")).toHaveClass("good");
+    expect(getRiskCard("SKU u crvenoj zoni %")).toHaveClass("good");
   });
 
   it.each([
@@ -133,12 +133,12 @@ describe("AnalyticsDetails period state", () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText(available)).toBeInTheDocument());
-    expect(within(getRiskCard("Red zone SKU %")).getByText(red)).toBeInTheDocument();
-    expect(getRiskCard("In-stock %")).toHaveClass(availableTone);
-    expect(getRiskCard("Red zone SKU %")).toHaveClass(redTone);
-    expect(getRiskCard("In-stock %")).not.toHaveClass("critical");
-    expect(getRiskCard("Red zone SKU %")).not.toHaveClass("critical");
+    await waitFor(() => expect(within(getRiskCard("Na stanju %")).getByText(available)).toBeInTheDocument());
+    expect(within(getRiskCard("SKU u crvenoj zoni %")).getByText(red)).toBeInTheDocument();
+    expect(getRiskCard("Na stanju %")).toHaveClass(availableTone);
+    expect(getRiskCard("SKU u crvenoj zoni %")).toHaveClass(redTone);
+    expect(getRiskCard("Na stanju %")).not.toHaveClass("critical");
+    expect(getRiskCard("SKU u crvenoj zoni %")).not.toHaveClass("critical");
   });
 
   it("keeps the error state separate from unavailable inventory ratios", async () => {
@@ -150,8 +150,8 @@ describe("AnalyticsDetails period state", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Greske pri ucitavanju")).toBeInTheDocument();
-    await waitFor(() => expect(within(getRiskCard("In-stock %")).getByText("Nije dostupno")).toBeInTheDocument());
+    expect(await screen.findByText("Greške pri učitavanju")).toBeInTheDocument();
+    await waitFor(() => expect(within(getRiskCard("Na stanju %")).getByText("Nije dostupno")).toBeInTheDocument());
     expect(screen.getByText(/inventory unavailable/)).toBeInTheDocument();
   });
 });

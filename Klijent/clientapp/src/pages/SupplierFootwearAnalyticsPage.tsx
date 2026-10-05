@@ -814,7 +814,7 @@ export default function SupplierFootwearAnalyticsPage({
       periodTo: activeFilters.toDate,
       lastRefreshAt: data.meta?.lastRefreshAtUtc ?? null,
       dataFreshnessStatus: resolveSupplierFootwearFreshnessStatus(data),
-      dataSource: "Supplier sales nivelacija po dobavljaču i tipu obuće",
+      dataSource: "Prodaja po dobavljaču — nivelacija po tipu obuće",
       dataQualityStatus: dataQualityStatus ?? (showMetaWarning ? "warning" : "good"),
       recommendationAllowed,
       recommendationNote: previousPeriodState === "failed"
@@ -926,7 +926,7 @@ export default function SupplierFootwearAnalyticsPage({
           periodTo={activeFilters.toDate}
           lastRefreshAt={data?.meta?.lastRefreshAtUtc ?? null}
           dataFreshnessStatus={resolveSupplierFootwearFreshnessStatus(data)}
-          dataSource="Supplier sales nivelacija"
+          dataSource="Prodaja po dobavljaču — nivelacija"
           dataQualityStatus={dataQualityStatus}
           mode="signal"
           recommendationNote="Asortiman je pomoćni signal. Finalna odluka ostaje u centralnom dobavljačkom pregledu."
