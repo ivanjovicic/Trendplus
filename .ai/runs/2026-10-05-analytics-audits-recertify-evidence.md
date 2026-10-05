@@ -21,3 +21,11 @@
 
 ## Validation
 See commit message / agent report for vitest + validators.
+
+## Bundle / tip
+- Final tip: `6e64c1a5`
+- Requires origin/main: `e12655fd`
+- Bundle: `/workspace/out/analytics-audits-recertify.bundle`
+- HEAD == origin/main: NO until parent FF push
+- Focused tests: 17/17 passed (insightStudioTrustPresentation, IntelligenceSnapshotPanel, analyticsPresentationPass2)
+- Validators: check-prompt-queues OK; planning PASS; agent-instructions PASS; check:encoding OK; tsc -b OK; git diff --check OK
