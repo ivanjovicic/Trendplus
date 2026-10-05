@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ95` DONE; next is `BCI05` re-entry)
+Current READY prompt: RQ88 (supplemental independent lane); main queue primary READY is RQ590
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -20,13 +20,13 @@ Purpose: queue follow-up fixes for action/outcome semantics, measurement evidenc
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
 | RQ81 | DONE | action-outcome-not-measured-date | Prevent `not_measured` from getting fake measured timestamp |
-| RQ82 | WAITING | action-outcome-open-vs-closed-denominator | Decide whether open actions can count as measured outcomes |
+| RQ82 | DONE | action-outcome-open-vs-closed-denominator | Decide whether open actions can count as measured outcomes |
 | RQ83 | DONE | action-outcome-rate-denominators | Align outcome coverage and rate denominator semantics |
 | RQ84 | DONE | action-outcome-impact-sample | Separate measured outcome count from measured-impact sample |
 | RQ85 | DONE | action-outcome-default-window | Decide default created/resolved/measured window semantics |
 | RQ86 | DONE | action-outcome-evidence-requirements | Prevent success/neutral/negative without evidence looking authoritative |
 | RQ87 | DONE | action-outcome-resolution-ledger | Make outcome resolution snapshot self-contained |
-| RQ88 | WAITING | action-count-closed-kpi-split | Split or relabel done/rejected closed KPI |
+| RQ88 | READY | action-count-closed-kpi-split | Split or relabel done/rejected closed KPI |
 | RQ90 | DONE | analytics-actions-list-contract | Preserve canonical filters, search and priority ordering in action lists |
 | RQ93 | DONE | action-outcome-not-measured-snapshot-clear | Clear measured fields inside resolution snapshot for `not_measured` |
 | RQ95 | DONE | action-outcome-resolution-note-encoding | Fix mojibake expected resolution note in outcome ledger tests |
@@ -414,7 +414,7 @@ Resolution snapshot should include enough immutable fields to reconstruct the ou
 
 ## RQ88 - Closed KPI done/rejected split
 
-Status: WAITING
+Status: READY
 Ready after: RQ82 or explicit unblocking
 Priority: P2
 Type: frontend-ux/tests
@@ -423,6 +423,8 @@ Parallel-safe: yes
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ88-<agent>.lock.md`
 Commit suggestion: `fix(actions): split closed action KPI`
+
+Owner promotion 2026-10-05 after RQ589 recovery: RQ82 section is already DONE; its stale summary row was repaired to DONE. RQ88 has no competing action KPI owner or active path lock and is parallel-safe; promoted as a supplemental READY lane while RQ47 is IN_PROGRESS.
 
 ### Why
 

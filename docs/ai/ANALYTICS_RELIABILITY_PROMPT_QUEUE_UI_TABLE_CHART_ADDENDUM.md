@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum (next global: RQ51)
-Main queue READY prompt: none (RQ01–RQ13 DONE)
+Current READY prompt: RQ47 - Supplier action source key filter lineage
+Main queue primary READY prompt: RQ590; RQ47 is IN_PROGRESS in this addendum
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -523,7 +523,7 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 
 ## RQ47 - Supplier action source key filter lineage
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ01 or explicit reprioritization
 Priority: P1
 Type: frontend/backend-contract/tests
@@ -532,6 +532,8 @@ Parallel-safe: no
 Owner: unassigned
 Local lock: `.ai/task-locks/RQ47-<agent>.lock.md`
 Commit suggestion: `fix(analytics): include scorecard filters in action source keys`
+
+Owner claim 2026-10-05 after RQ589 post-close recovery: RQ01 is DONE; code already keys actions by season, minRevenue and onlyHighConfidence but lacked a focused identity regression. No active lock, branch, PR or overlapping page owner was found. Claimed as the highest-priority collision-safe repo-local lane after RQ589; local lock `.ai/task-locks/RQ47-codex.lock.md`.
 
 ### Why
 

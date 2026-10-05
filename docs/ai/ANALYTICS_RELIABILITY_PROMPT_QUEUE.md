@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ584; additional independent READY lanes: RQ586 and RQ588. RQ589 Advanced/V2 backend certification is IN_PROGRESS after RQ582 DONE; RQ590/RQ591 remain sequential WAITING owners. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
+Current READY prompt: RQ590; additional independent READY lanes: RQ88, RQ584, RQ586 and RQ588. RQ47 Supplier action source-key lineage is IN_PROGRESS; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE; RQ591 remains WAITING behind the exclusive certification family. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -29826,19 +29826,19 @@ Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, emp
 - Checks run: six focused V2 integration tests; `npm run check:analytics-guardrails`; queue/governance validators; `git diff --check`.
 - Checks not run: production build and live-provider freshness/oracle/golden/identity evidence are outside the repo-local slice; CI status is recorded in the run log.
 - Run log: `.ai/runs/2026-10-05-RQ589-evidence.md`
-- Evidence state: pending post-close routing cascade
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `5224926be459dd7b4ddb63f60276fe93fd5b691a`
 - Main verification: passed - fresh `origin/main` contains implementation SHA `5224926be459dd7b4ddb63f60276fe93fd5b691a`
 - Missed: RQ591 still owns frontend null typing/presentation for quarantined lifecycle and reorder metrics.
-- Follow-up: release the exclusive Insight Studio family, then re-evaluate and claim the next collision-safe READY prompt.
+- Follow-up: RQ47 is claimed; RQ590 is primary READY and RQ88 is a supplemental independent READY lane.
 - Residual risk: no live freshness, horizon, oracle/golden or identity/provenance proof was available; route remains quarantined.
-- Post-close routing: pending post-delivery recovery
+- Post-close routing: after recovery from `84d098eb4778a58e5fe56850030decf517460a97`, RQ47 was promoted and claimed; RQ590 and RQ88 were promoted as separate collision-safe lanes. Full scan and candidate matrix are recorded in this run log.
 - Prompt defect / scope repair: RQ21/RQ22 were removed from RQ589 and marked OBSOLETE based on completed RQ81/RQ84/RQ86/RQ93 contracts and their named regression tests.
 
 ## RQ590 - Certify legacy Advanced backend contracts
 
-Status: WAITING
+Status: READY
 Ready after: RQ582 DONE and RQ589 releases the exclusive Insight Studio certification family
 Priority: P2
 Type: backend/tests/certification
@@ -29847,6 +29847,8 @@ Parallel-safe: no (exclusive Insight Studio certification family)
 Owner: Analytics Reliability
 Owned paths: `Api/Endpoints/InsightStudioEndpoints.cs`, focused legacy Advanced endpoint tests
 Avoid paths: Advanced/V2 endpoints (`RQ589`), frontend-derived analytics (`RQ591`), formula changes without source evidence, route/navigation exposure
+
+Owner promotion 2026-10-05 after RQ589: post-close recovery base `84d098eb4778a58e5fe56850030decf517460a97` confirms RQ582 and RQ589 DONE. RQ25-RQ33 legacy acceptance remains consolidated under this exclusive same-family owner; no conflicting active legacy endpoint lock/branch/PR was found. RQ590 is READY; RQ47 is the claimed independent P1 lane.
 
 ### Problem
 
