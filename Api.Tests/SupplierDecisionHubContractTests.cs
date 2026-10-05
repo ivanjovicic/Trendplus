@@ -426,7 +426,7 @@ public sealed class SupplierDecisionHubContractTests
     }
 
     [Fact]
-    public void BuildSupplierDecisionReportResponse_ExactRollingWindowUsesRefreshAnchor()
+    public void BuildSupplierDecisionReportResponse_ExplicitRollingLengthWindowUsesDateLabelAndRefreshAnchor()
     {
         var filters = Filters90Days();
         var dataset = Dataset(Row(1, "A"), Row(2, "B"), Row(3, "C"));
@@ -441,8 +441,73 @@ public sealed class SupplierDecisionHubContractTests
 
         Assert.False(report.UsedFallback);
         Assert.True(report.RecommendationAllowed);
-        Assert.Equal("Poslednjih 90 dana", report.Period.EffectivePeriodLabel);
+        Assert.Equal("03.04.2026 - 01.07.2026", report.Period.Label);
+        Assert.Equal("03.04.2026 - 01.07.2026", report.Period.EffectivePeriodLabel);
         Assert.Contains(report.Payload.Metadata, item => item.Key == "provenanceBasis" && item.Value == "mv_supplier_decision_score_cache_90d");
+    }
+
+    [Theory]
+    [InlineData(2026, 6, 1, 2026, 6, 30, "01.06.2026 - 30.06.2026")]
+    [InlineData(2026, 4, 3, 2026, 7, 1, "03.04.2026 - 01.07.2026")]
+    [InlineData(2026, 1, 3, 2026, 7, 1, "03.01.2026 - 01.07.2026")]
+    public void SupplierReportExplicitRangesUseDateLabelsAcrossSuccessAndError(
+        int fromYear,
+        int fromMonth,
+        int fromDay,
+        int toYear,
+        int toMonth,
+        int toDay,
+        string expectedLabel)
+    {
+        var filters = Filters(
+            from: new DateTime(fromYear, fromMonth, fromDay, 0, 0, 0, DateTimeKind.Utc),
+            to: new DateTime(toYear, toMonth, toDay, 0, 0, 0, DateTimeKind.Utc));
+        var dataset = Dataset(Row(1, "A"), Row(2, "B"), Row(3, "C"));
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters);
+        var errorReport = SupplierDecisionHubEndpoints.BuildSupplierDecisionErrorReportResponse(
+            filters,
+            errorCode: "supplier_decision_schema_missing",
+            message: "Supplier scorecard nije dostupan.",
+            correlationId: "supplier-contract-test");
+
+        Assert.Equal(expectedLabel, report.Period.Label);
+        Assert.Equal(expectedLabel, report.Period.EffectivePeriodLabel);
+        Assert.Equal(expectedLabel, errorReport.Period.Label);
+    }
+
+    [Fact]
+    public void SupplierReportUndatedRequestsKeepRollingPeriodLabel()
+    {
+        var filters = new SupplierDecisionHubEndpoints.SupplierDecisionHubFilters(
+            FromDate: new DateTime(2026, 4, 3, 0, 0, 0, DateTimeKind.Utc),
+            ToDate: new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            HasExplicitDateRange: false,
+            Category: null,
+            Gender: null,
+            SeasonId: null,
+            MinRevenue: null,
+            OnlyHighConfidence: false,
+            ExcludeOosBeforeMarkdown: false,
+            SupplierId: null,
+            StoreId: null,
+            DataScope: "all");
+        var dataset = Dataset(Row(1, "A"), Row(2, "B"), Row(3, "C"));
+        var report = SupplierDecisionHubEndpoints.BuildSupplierDecisionReportResponse(
+            SupplierDecisionHubEndpoints.BuildSummaryResponse(dataset, filters),
+            dataset,
+            filters);
+        var errorReport = SupplierDecisionHubEndpoints.BuildSupplierDecisionErrorReportResponse(
+            filters,
+            errorCode: "supplier_decision_schema_missing",
+            message: "Supplier scorecard nije dostupan.",
+            correlationId: "supplier-contract-test");
+
+        Assert.Equal("Poslednjih 180 dana", report.Period.Label);
+        Assert.Equal("Poslednjih 180 dana", report.Period.EffectivePeriodLabel);
+        Assert.Equal("Poslednjih 180 dana", errorReport.Period.Label);
     }
 
     [Fact]

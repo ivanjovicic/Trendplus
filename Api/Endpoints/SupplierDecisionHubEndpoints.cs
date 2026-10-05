@@ -3323,7 +3323,7 @@ SELECT
 
     private static string BuildEffectivePeriodLabel(SupplierDecisionHubFilters filters, string dataset)
     {
-        if (dataset == "custom_range")
+        if (filters.HasExplicitDateRange)
         {
             return $"{filters.FromDate:dd.MM.yyyy} - {filters.ToDate:dd.MM.yyyy}";
         }
@@ -3344,14 +3344,7 @@ SELECT
             return "Poslednjih 180 dana";
         }
 
-        var requestedDays = GetRequestedRangeDays(filters);
-        return requestedDays switch
-        {
-            30 => "Poslednjih 30 dana",
-            90 => "Poslednjih 90 dana",
-            180 => "Poslednjih 180 dana",
-            _ => $"{filters.FromDate:dd.MM.yyyy} - {filters.ToDate:dd.MM.yyyy}"
-        };
+        return $"{filters.FromDate:dd.MM.yyyy} - {filters.ToDate:dd.MM.yyyy}";
     }
 
     private static string FormatSupplierCoverageLabel(string? status)
