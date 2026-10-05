@@ -22,6 +22,8 @@ public class AnalyticsResponseMetaDto
     public DateTime? RequestedPeriodToUtc { get; set; }
     public DateTime? EffectivePeriodFromUtc { get; set; }
     public DateTime? EffectivePeriodToUtc { get; set; }
+    /// <summary>Daily Sales date-bound contract: half_open_utc for timestamp bounds, inclusive_utc_day for date-only bounds.</summary>
+    public string? DateBoundaryConvention { get; set; }
     public string? RequestedDataScope { get; set; }
     public string? EffectiveDataScope { get; set; }
     public string? DataScopeSource { get; set; }

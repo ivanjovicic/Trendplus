@@ -25,7 +25,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_ReturnsValidJsonContract()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(JsonValueKind.Object, root.ValueKind);
         Assert.True(root.TryGetProperty("requestedFrom", out _));
@@ -39,6 +39,7 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.True(root.TryGetProperty("metadata", out _));
         Assert.True(root.TryGetProperty("meta", out var meta));
         Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal("half_open_utc", meta.GetProperty("dateBoundaryConvention").GetString());
         Assert.Equal(new DateTime(2026, 1, 1), meta.GetProperty("requestedPeriodFromUtc").GetDateTime().Date);
         Assert.Equal(new DateTime(2026, 1, 3), meta.GetProperty("requestedPeriodToUtc").GetDateTime().Date);
         Assert.Equal(new DateTime(2026, 1, 1), meta.GetProperty("effectivePeriodFromUtc").GetDateTime().Date);
@@ -54,7 +55,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_MatchesGoldenSnapshot()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         GoldenSnapshotAssert.Matches("daily-sales-stats.contract.json", ProjectSnapshot(root));
     }
@@ -65,7 +66,7 @@ public sealed class DailySalesStatsIntegrationTests
         await using var factory = CreateFactory();
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/analytics/daily-sales?fromDate=2026-01-03&toDate=2026-01-01");
+        var response = await client.GetAsync("/api/analytics/daily-sales?fromDate=2026-01-03&toDate=2026-01-01T00:00:00Z");
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
         AssertInvalidRangeIsNotEmptySuccess(await response.Content.ReadAsStringAsync());
@@ -78,13 +79,13 @@ public sealed class DailySalesStatsIntegrationTests
 
         var aliasRoot = await GetJsonRootAsync(
             factory,
-            "/api/analytics/daily-sales?from=2026-01-01&to=2026-01-03&topN=3&dataScope=all");
+            "/api/analytics/daily-sales?from=2026-01-01&to=2026-01-03T00:00:00Z&topN=3&dataScope=all");
         var canonicalRoot = await GetJsonRootAsync(
             factory,
-            "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&topN=3&dataScope=all");
+            "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&topN=3&dataScope=all");
         var mixedRoot = await GetJsonRootAsync(
             factory,
-            "/api/analytics/daily-sales?from=2026-01-02&to=2026-01-02&fromDate=2026-01-01&toDate=2026-01-03&topN=3&dataScope=all");
+            "/api/analytics/daily-sales?from=2026-01-02&to=2026-01-02T00:00:00Z&fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&topN=3&dataScope=all");
         var defaultRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales");
 
         Assert.Equal(canonicalRoot.GetProperty("requestedFrom").GetDateTime(), aliasRoot.GetProperty("requestedFrom").GetDateTime());
@@ -106,14 +107,40 @@ public sealed class DailySalesStatsIntegrationTests
         Assert.Equal(30, defaultRoot.GetProperty("dateRows").GetArrayLength());
     }
 
+    [Fact(DisplayName = "Daily sales timestamp end matches Supplier and date-only end stays inclusive")]
+    public async Task DailySalesStats_TimestampToDateMatchesSupplierAndDateOnlyRemainsInclusive()
+    {
+        await using var factory = CreateFactory();
+
+        var timestampDaily = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02T00:00:00Z&storeId=1&topN=10&dataScope=all");
+        var legacyDateOnlyDaily = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=10&dataScope=all");
+        var supplier = await GetJsonRootAsync(
+            factory,
+            "/api/analytics/supplier-sales-stats?fromDate=2026-01-01&toDate=2026-01-02T00:00:00Z&storeId=1&dataScope=all");
+
+        Assert.Equal("half_open_utc", timestampDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
+        Assert.Equal("inclusive_utc_day", legacyDateOnlyDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
+        Assert.Equal(1, timestampDaily.GetProperty("dateRows").GetArrayLength());
+        Assert.Equal(2, legacyDateOnlyDaily.GetProperty("dateRows").GetArrayLength());
+        Assert.Equal(10, timestampDaily.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(supplier.GetProperty("totals").GetProperty("ukupnaKolicina").GetInt32(),
+            timestampDaily.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
+        Assert.Equal(supplier.GetProperty("totals").GetProperty("ukupanPromet").GetDecimal(),
+            timestampDaily.GetProperty("topSuppliers").EnumerateArray().Sum(item => item.GetProperty("totalRevenue").GetDecimal()));
+    }
+
     [Fact(DisplayName = "Daily sales dataScope filters imported rows")]
     public async Task DailySalesStats_DataScopeFiltersRows()
     {
         await using var factory = CreateFactory();
 
-        var allRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
-        var existingRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=existing");
-        var importedRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=imported");
+        var allRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
+        var existingRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=existing");
+        var importedRoot = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=imported");
 
         Assert.Equal("all", allRoot.GetProperty("dataScope").GetString());
         Assert.Equal("existing", existingRoot.GetProperty("dataScope").GetString());
@@ -131,7 +158,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_StoreFilterReturnsAvailabilityWarning()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(1, root.GetProperty("storeId").GetInt32());
         Assert.Equal(2, root.GetProperty("dateRows").GetArrayLength());
@@ -147,7 +174,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_EmptyPeriodIsSuccessfulEmptyNotError()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-02-01&toDate=2026-02-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(0, root.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(0, root.GetProperty("topSuppliers").GetArrayLength());
@@ -171,8 +198,8 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_StoreFilterDoesNotLeakOtherStoreItems()
     {
         await using var factory = CreateFactory();
-        var store1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=10&dataScope=all");
-        var store2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=2&topN=10&dataScope=all");
+        var store1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=10&dataScope=all");
+        var store2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=2&topN=10&dataScope=all");
 
         var store1SupplierA = store1.GetProperty("topSuppliers").EnumerateArray()
             .Single(item => item.GetProperty("supplierName").GetString() == "Dobavljac A");
@@ -191,9 +218,9 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_AdjacentDayWindowsDoNotOverlap()
     {
         await using var factory = CreateFactory();
-        var jan1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
-        var jan2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-02&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
-        var both = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var jan1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02T00:00:00Z&storeId=1&topN=3&dataScope=all");
+        var jan2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-02&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
+        var both = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(10, jan1.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(12, jan2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
@@ -209,9 +236,9 @@ public sealed class DailySalesStatsIntegrationTests
     {
         await using var factory = CreateFactory();
 
-        var topN1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=1&dataScope=all");
-        var topN2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=2&dataScope=all");
-        var topN10 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=10&dataScope=all");
+        var topN1 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=1&dataScope=all");
+        var topN2 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=2&dataScope=all");
+        var topN10 = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=10&dataScope=all");
 
         Assert.Equal(1, topN1.GetProperty("topSuppliers").GetArrayLength());
         Assert.Equal(2, topN2.GetProperty("topSuppliers").GetArrayLength());
@@ -222,7 +249,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_SuppliersHaveValidRevenue()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         var suppliers = root.GetProperty("topSuppliers").EnumerateArray().ToList();
         Assert.NotEmpty(suppliers);
@@ -241,7 +268,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_SingleDayRangeReturnsSingleRow()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-02T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         Assert.Equal(1, root.GetProperty("dateRows").GetArrayLength());
         var row = root.GetProperty("dateRows").EnumerateArray().First();
@@ -252,7 +279,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_ShiftDistributionIsAccurate()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         var dateRows = root.GetProperty("dateRows").EnumerateArray().ToList();
         Assert.True(dateRows.Count > 0, "Should have at least one date row");
@@ -274,7 +301,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_WithoutStoreIdReturnsData()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&topN=3&dataScope=all");
 
         Assert.Equal(JsonValueKind.Null, root.GetProperty("storeId").ValueKind);
         Assert.True(root.GetProperty("topSuppliers").GetArrayLength() > 0);
@@ -285,7 +312,7 @@ public sealed class DailySalesStatsIntegrationTests
     public async Task DailySalesStats_MetadataProvidesDiagnostics()
     {
         await using var factory = CreateFactory();
-        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all");
+        var root = await GetJsonRootAsync(factory, "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all");
 
         var metadata = root.GetProperty("metadata");
         
@@ -302,7 +329,7 @@ public sealed class DailySalesStatsIntegrationTests
     {
         await using var factory = CreateFactory();
         var client = factory.CreateClient();
-        var url = "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03&storeId=1&topN=3&dataScope=all";
+        var url = "/api/analytics/daily-sales?fromDate=2026-01-01&toDate=2026-01-03T00:00:00Z&storeId=1&topN=3&dataScope=all";
 
         var first = await client.GetAsync(url);
         var second = await client.GetAsync(url);

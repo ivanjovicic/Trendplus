@@ -48,10 +48,7 @@ public static class DailySalesStatsEndpoints
                             StoreId = request.StoreId,
                             TopN = safeTopN,
                             DataScope = normalizedDataScope,
-                            Meta = AnalyticsResponseMetaFactory.Empty(
-                                "source_horizon_unavailable",
-                                "Nema opaženog poslovnog datuma prodaje za izabrani opseg.",
-                                "insufficient_data")
+                            Meta = CreateNoPeriodMeta()
                         });
                     }
 
@@ -61,8 +58,17 @@ public static class DailySalesStatsEndpoints
                 }
                 // Keep the established fromDate/toDate names authoritative while also
                 // accepting the shorter aliases used by direct API links.
-                var toUtc = NormalizeUtcDate(requestedTo) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+                var hasExplicitTimestampTo = requestedTo.HasValue
+                    && HasTimestampBound(httpContext.Request, request.ToDate.HasValue ? "toDate" : "to");
+                var usesHalfOpenTo = hasExplicitTimestampTo || defaultPeriodBasis is not null || !requestedTo.HasValue;
+                var normalizedToUtc = hasExplicitTimestampTo
+                    ? NormalizeUtcInstant(requestedTo)
+                    : NormalizeUtcDate(requestedTo);
+                var toUtc = usesHalfOpenTo
+                    ? normalizedToUtc ?? DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc)
+                    : DateTime.SpecifyKind(normalizedToUtc!.Value.AddDays(1), DateTimeKind.Utc);
                 var fromUtc = NormalizeUtcDate(requestedFrom) ?? toUtc.AddDays(-DefaultWindowDays);
+                var lastIncludedDateUtc = DateTime.SpecifyKind(toUtc.AddTicks(-1).Date, DateTimeKind.Utc);
 
                 if (fromUtc >= toUtc)
                 {
@@ -74,7 +80,7 @@ public static class DailySalesStatsEndpoints
                     });
                 }
 
-                var totalDays = (int)(toUtc.Date - fromUtc.Date).TotalDays;
+                var totalDays = (int)(lastIncludedDateUtc.Date - fromUtc.Date).TotalDays + 1;
                 if (totalDays > MaxRangeDays)
                 {
                     return Results.BadRequest(new
@@ -101,7 +107,8 @@ public static class DailySalesStatsEndpoints
                         storeId: request.StoreId,
                         topN: safeTopN,
                         dataScope: normalizedDataScope,
-                        ct),
+                        ct,
+                        requestedToIsExclusive: true),
                     CacheExpiration.Long,
                     ct);
 
@@ -110,7 +117,7 @@ public static class DailySalesStatsEndpoints
                     integrityRegistry,
                     OperationsAnalyticsIntegrityFamilies.SalesDashboard,
                     fromUtc.Date,
-                    toUtc.Date,
+                    toUtc,
                     normalizedDataScope,
                     request.StoreId);
                 if (result.Meta.DecisionReadiness is null)
@@ -130,6 +137,7 @@ public static class DailySalesStatsEndpoints
                     "signal",
                     ct,
                     defaultPeriodBasis);
+                result.Meta.DateBoundaryConvention = usesHalfOpenTo ? "half_open_utc" : "inclusive_utc_day";
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -233,6 +241,36 @@ public static class DailySalesStatsEndpoints
             ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
             : date.ToUniversalTime();
         return DateTime.SpecifyKind(utc.Date, DateTimeKind.Utc);
+    }
+
+    private static AnalyticsResponseMetaDto CreateNoPeriodMeta()
+    {
+        var meta = AnalyticsResponseMetaFactory.Empty(
+            "source_horizon_unavailable",
+            "Nema opaženog poslovnog datuma prodaje za izabrani opseg.",
+            "insufficient_data");
+        meta.DateBoundaryConvention = "half_open_utc";
+        return meta;
+    }
+
+    private static DateTime? NormalizeUtcInstant(DateTime? rawDate)
+    {
+        if (!rawDate.HasValue)
+        {
+            return null;
+        }
+
+        var date = rawDate.Value;
+        var utc = date.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(date, DateTimeKind.Utc)
+            : date.ToUniversalTime();
+        return DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+    }
+
+    private static bool HasTimestampBound(HttpRequest request, string queryName)
+    {
+        var rawValue = request.Query[queryName].FirstOrDefault();
+        return rawValue is not null && (rawValue.Contains('T') || rawValue.Contains(' '));
     }
 
     private static string NormalizeDataScope(string? rawScope)

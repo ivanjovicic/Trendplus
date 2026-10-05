@@ -18,7 +18,8 @@ public interface IDailySalesStatsService
         int? storeId,
         int topN,
         string? dataScope,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        bool requestedToIsExclusive = false);
 }
 
 public sealed class DailySalesStatsService : IDailySalesStatsService
@@ -49,14 +50,17 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         int? storeId,
         int topN,
         string? dataScope,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        bool requestedToIsExclusive = false)
     {
         var normalizedScope = NormalizeDataScope(dataScope);
         var importedOnly = string.Equals(normalizedScope, "imported", StringComparison.Ordinal);
         var existingOnly = string.Equals(normalizedScope, "existing", StringComparison.Ordinal);
 
         var fromDateUtc = DateTime.SpecifyKind(requestedFromUtc.Date, DateTimeKind.Utc);
-        var toDateExclusiveUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
+        var toDateExclusiveUtc = requestedToIsExclusive
+            ? DateTime.SpecifyKind(requestedToUtc, DateTimeKind.Utc)
+            : DateTime.SpecifyKind(requestedToUtc.Date.AddDays(1), DateTimeKind.Utc);
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
         // The table population is line/article scoped. Reuse its receipt identity for
         // every receipt diagnostic so existing/imported views cannot inherit evidence
@@ -630,7 +634,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var rows = new List<DailySalesRowDto>();
         var requestedDateKeys = Enumerable
-            .Range(0, (toDateExclusiveUtc.Date - fromDateUtc.Date).Days)
+            .Range(0, (DateTime.SpecifyKind(toDateExclusiveUtc.AddTicks(-1).Date, DateTimeKind.Utc) - fromDateUtc.Date).Days + 1)
             .Select(offset => DateTime.SpecifyKind(fromDateUtc.Date.AddDays(offset), DateTimeKind.Utc));
         var rowDateKeys = requestedDateKeys
             .Concat(dayAccumulators.Keys)
