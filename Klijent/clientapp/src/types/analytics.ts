@@ -1366,6 +1366,10 @@ export interface InventoryBalance {
   lowStockCount: number;
   outOfStockCount: number;
   estimatedInventoryValue?: number | null;
+  valueCoveragePct?: number | null;
+  valuationBasis?: string | null;
+  unknownValueUnits?: number | null;
+  valuationIsEstimated?: boolean;
   meta?: AnalyticsResponseMeta | null;
 }
 

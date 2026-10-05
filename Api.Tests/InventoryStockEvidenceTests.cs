@@ -40,4 +40,13 @@ public class InventoryStockEvidenceTests
         Assert.Equal(0m, InventoryStockEvidence.ComputeEstimatedValue(0, null));
         Assert.Equal(500m, InventoryStockEvidence.ComputeEstimatedValue(5, 100m));
     }
+
+    [Fact(DisplayName = "Shared low-stock surface uses minimum or default threshold")]
+    public void LowStockSurface_UsesMinimumOrDefaultThreshold()
+    {
+        Assert.True(InventoryStockEvidence.IsMeasuredLowStockForSurface(2, minimum: 5));
+        Assert.True(InventoryStockEvidence.IsMeasuredLowStockForSurface(2, minimum: null));
+        Assert.False(InventoryStockEvidence.IsMeasuredLowStockForSurface(5, minimum: null));
+        Assert.False(InventoryStockEvidence.IsMeasuredLowStockForSurface(0, minimum: 2));
+    }
 }

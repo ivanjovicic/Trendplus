@@ -1891,7 +1891,16 @@ export default function InventoryPage() {
         <p className="text-sm text-muted">KPI, poređenje prodavnica i lista artikala za dublji pregled prioriteta.</p>
       </div>
 
-      <InventoryKPICards totalSku={balance?.totalSku} totalOnHand={balance?.totalOnHand} lowStockCount={balance?.lowStockCount} lowStockShare={lowStockShare} avgUnitsPerSku={avgUnitsPerSku} totalValue={totalValue} />
+      <InventoryKPICards
+        totalSku={balance?.totalSku}
+        totalOnHand={balance?.totalOnHand}
+        lowStockCount={balance?.lowStockCount}
+        lowStockShare={lowStockShare}
+        avgUnitsPerSku={avgUnitsPerSku}
+        totalValue={totalValue}
+        valuationIsEstimated={balance?.valuationIsEstimated === true || balance?.valuationBasis === "estimated_from_sale_cost"}
+        valueCoveragePct={balance?.valueCoveragePct}
+      />
       <InventoryInsightPanels insights={insights} insightsLoading={insightsLoading} insightsError={insightsError} stores={stores} suppliers={suppliers} rows={rows} onOpenDetail={openDetail} />
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 

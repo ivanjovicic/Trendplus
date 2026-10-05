@@ -1,5 +1,6 @@
 using Api.Services;
 using System.Globalization;
+using Application.Analytics;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Application.Documents.Interfaces;
@@ -28,6 +29,7 @@ public static class InventoryEndpoints
 
         group.MapGet("/balance", async (
             ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
             HttpContext httpContext,
             ILoggerFactory loggerFactory,
             int? storeId,
@@ -40,37 +42,16 @@ public static class InventoryEndpoints
 
             try
             {
-                var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null, dataScope: dataScope);
-
-                var totalSku = await query.CountAsync(ct);
-                var totalOnHand = await query.SumAsync(
-                    a => a.Kolicina > 0 ? a.Kolicina : (int?)0,
-                    ct) ?? 0;
-                var lowStock = await query.CountAsync(
-                    a => a.Kolicina != null
-                         && a.Kolicina > 0
-                         && a.MinimalnaKolicina != null
-                         && a.Kolicina <= a.MinimalnaKolicina,
+                var balance = await BuildInventoryBalanceAsync(
+                    db,
+                    analyticsDb,
+                    storeId,
+                    supplierId,
+                    dataScope,
+                    correlationId,
                     ct);
-                var outOfStock = await query.CountAsync(a => a.Kolicina == 0, ct);
-                var estimatedValue = await query.SumAsync(
-                    a => a.Kolicina != null && a.Kolicina > 0 && a.NabavnaCena != null
-                        ? a.NabavnaCena * a.Kolicina
-                        : (decimal?)0m,
-                    ct) ?? 0m;
 
-                var meta = totalSku == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
-                    : AnalyticsResponseMetaFactory.Success();
-                meta.CorrelationId = correlationId;
-
-                return Results.Ok(new InventoryBalanceDto(
-                    TotalSku: totalSku,
-                    TotalOnHand: totalOnHand,
-                    LowStockCount: lowStock,
-                    OutOfStockCount: outOfStock,
-                    EstimatedInventoryValue: Math.Round(estimatedValue, 2),
-                    Meta: meta));
+                return Results.Ok(balance);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -138,6 +119,12 @@ public static class InventoryEndpoints
                 .ToListAsync(ct);
 
             var articleIds = rawItems.Select(item => item.Id).ToArray();
+            var valuationsByArticle = await InventoryValuationSupport.LoadArticleValuationsAsync(
+                db,
+                analyticsDb,
+                articleIds,
+                storeId,
+                ct);
             var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
             var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct);
 
@@ -145,9 +132,12 @@ public static class InventoryEndpoints
             foreach (var item in rawItems)
             {
                 var quantity = item.Kolicina;
-                var estimatedValue = Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(
+                var valuation = valuationsByArticle.GetValueOrDefault(
+                    item.Id,
+                    new InventoryArticleValuation(null, InventoryValuationBases.Unknown, false));
+                var estimatedValue = InventoryStockEvidence.ComputeEstimatedValue(
                     item.Kolicina,
-                    item.NabavnaCena);
+                    valuation.UnitCost);
                 var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
                 var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
                     ? stats
@@ -347,11 +337,27 @@ public static class InventoryEndpoints
                 ? history.Max(x => DateTime.SpecifyKind(x.Datum, DateTimeKind.Utc))
                 : null;
 
-            var daysSinceMovement = ResolveDaysSinceMovement(lastMovementAt, article.UpdatedAt);
-            var (agingBucket, agingLabel) = ResolveAging(daysSinceMovement);
-            var estimatedValue = Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(
+            var valuations = await InventoryValuationSupport.LoadArticleValuationsAsync(
+                db,
+                analyticsDb,
+                new[] { article.Id },
+                storeId ?? article.StoreId,
+                ct);
+            var valuation = valuations.GetValueOrDefault(
+                article.Id,
+                new InventoryArticleValuation(null, InventoryValuationBases.Unknown, false));
+            var lastReceiptDates = await InventoryValuationSupport.LoadLastRealReceiptDatesAsync(
+                analyticsDb,
+                db,
+                new[] { article.Id },
+                storeId ?? article.StoreId,
+                ct);
+            lastReceiptDates.TryGetValue(article.Id, out var lastReceiptAt);
+            var aging = InventoryValuationAndAgingPolicy.ResolveAgingFromReceipt(lastReceiptAt);
+            var daysSinceMovement = aging.DaysSinceMovement ?? 0;
+            var estimatedValue = InventoryStockEvidence.ComputeEstimatedValue(
                 article.Quantity,
-                article.UnitCost);
+                valuation.UnitCost);
 
             var singleton = ApplyAbcClassification(new List<InventoryDatasetItem>
             {
@@ -361,9 +367,9 @@ public static class InventoryEndpoints
                     article.Naziv,
                     article.Quantity ?? 0,
                     article.Minimum ?? 0,
-                    article.UnitCost ?? 0m,
+                    valuation.UnitCost ?? 0m,
                     estimatedValue ?? 0m,
-                    article.UnitCost is null or <= 0m,
+                    valuation.ValuationBasis == InventoryValuationBases.Unknown,
                     article.StoreId,
                     ResolveLookup(storeNameMap, article.StoreId),
                     article.SupplierId,
@@ -375,9 +381,11 @@ public static class InventoryEndpoints
                     lastMovementAt,
                     movementCount,
                     daysSinceMovement,
-                    agingBucket,
-                    agingLabel,
-                    "C")
+                    aging.Bucket,
+                    aging.Label,
+                    "C",
+                    valuation.ValuationBasis,
+                    aging.AgeBasis)
             })
             .Single();
 
@@ -955,14 +963,31 @@ public static class InventoryEndpoints
         var supplierNameMap = await LoadSupplierNamesAsync(analyticsDb, db, baseItems.Select(x => x.SupplierId), ct);
         var cutoff30d = DateTime.UtcNow.AddDays(-30);
         var movementStats = await LoadMovementStatsAsync(analyticsDb, itemIds, cutoff30d, ct);
+        var valuationsByArticle = await InventoryValuationSupport.LoadArticleValuationsAsync(
+            db,
+            analyticsDb,
+            itemIds,
+            storeId,
+            ct);
+        var lastReceiptDates = await InventoryValuationSupport.LoadLastRealReceiptDatesAsync(
+            analyticsDb,
+            db,
+            itemIds,
+            storeId,
+            ct);
 
         var items = baseItems
             .Select(item =>
             {
                 movementStats.TryGetValue(item.Id, out var movement);
                 DateTime? lastMovementAt = movement is null ? null : EnsureUtc(movement.LastMovementAt);
-                var daysSinceMovement = ResolveDaysSinceMovement(lastMovementAt, item.UpdatedAt);
-                var (agingBucket, agingLabel) = ResolveAging(daysSinceMovement);
+                var valuation = valuationsByArticle.GetValueOrDefault(
+                    item.Id,
+                    new InventoryArticleValuation(null, InventoryValuationBases.Unknown, false));
+                var estimatedValue = InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, valuation.UnitCost) ?? 0m;
+                var costMissing = valuation.ValuationBasis == InventoryValuationBases.Unknown;
+                lastReceiptDates.TryGetValue(item.Id, out var lastReceiptAt);
+                var aging = InventoryValuationAndAgingPolicy.ResolveAgingFromReceipt(lastReceiptAt);
 
                 return new InventoryDatasetItem(
                     item.Id,
@@ -970,9 +995,9 @@ public static class InventoryEndpoints
                     item.Naziv,
                     item.Quantity ?? 0,
                     item.Minimum ?? 0,
-                    item.UnitCost ?? 0m,
-                    Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, item.UnitCost) ?? 0m,
-                    item.UnitCost is null or <= 0m,
+                    valuation.UnitCost ?? 0m,
+                    estimatedValue,
+                    costMissing,
                     item.StoreId,
                     ResolveLookup(storeNameMap, item.StoreId),
                     item.SupplierId,
@@ -983,10 +1008,12 @@ public static class InventoryEndpoints
                     EnsureUtc(item.UpdatedAt),
                     lastMovementAt,
                     movement?.MovementCount30d ?? 0,
-                    daysSinceMovement,
-                    agingBucket,
-                    agingLabel,
-                    "C");
+                    aging.DaysSinceMovement ?? 0,
+                    aging.Bucket,
+                    aging.Label,
+                    "C",
+                    valuation.ValuationBasis,
+                    aging.AgeBasis);
             })
             .ToList();
 
@@ -1191,7 +1218,7 @@ public static class InventoryEndpoints
             aging,
             abc,
             items
-                .OrderByDescending(x => x.DaysSinceMovement)
+                .OrderByDescending(x => x.AgeBasis == InventoryAgeBases.Unknown ? -1 : x.DaysSinceMovement)
                 .ThenByDescending(x => x.EstimatedValue)
                 .Take(5)
                 .Select(item => ToInsightItem(item, soldUnitsByArticle, movementWindowStatsByArticle))
@@ -1228,7 +1255,7 @@ public static class InventoryEndpoints
             reorderGap,
             item.CostMissing && item.Quantity > 0 ? null : item.EstimatedValue,
             item.CostMissing ? null : item.UnitCost,
-            item.CostMissing ? "missing" : "article_master",
+            ResolveInventoryCostSource(item.ValuationBasis),
             item.CostMissing,
             item.DaysSinceMovement,
             item.AgingBucket,
@@ -1897,8 +1924,65 @@ public static class InventoryEndpoints
             "0-30" => 0,
             "31-60" => 1,
             "61-90" => 2,
+            "unknown" => 4,
             _ => 3
         };
+    }
+
+    private static string ResolveInventoryCostSource(string valuationBasis)
+        => valuationBasis switch
+        {
+            InventoryValuationBases.InboundReceiptUnitCost => InventoryValuationBases.InboundReceiptUnitCost,
+            InventoryValuationBases.EstimatedFromSaleCost => InventoryValuationBases.EstimatedFromSaleCost,
+            _ => "missing"
+        };
+
+    internal static async Task<InventoryBalanceDto> BuildInventoryBalanceAsync(
+        ITrendplusDbContext db,
+        IAnalyticsDbContext analyticsDb,
+        int? storeId,
+        int? supplierId,
+        string? dataScope,
+        string correlationId,
+        CancellationToken ct)
+    {
+        var query = ApplyInventoryFilters(db.Artikli.AsNoTracking(), storeId, supplierId, null, dataScope: dataScope);
+        var lowStockPredicate = InventoryStockEvidence.MatchesLowStockSurface();
+
+        var totalSku = await query.CountAsync(ct);
+        var totalOnHand = await query.SumAsync(
+            a => a.Kolicina > 0 ? a.Kolicina : (int?)0,
+            ct) ?? 0;
+        var lowStock = await query.CountAsync(lowStockPredicate, ct);
+        var outOfStock = await query.CountAsync(a => a.Kolicina == 0, ct);
+
+        var stockRows = await query
+            .Where(a => a.Kolicina > 0)
+            .Select(a => new { a.Id, Quantity = a.Kolicina })
+            .ToListAsync(ct);
+        var valuationAggregate = await InventoryValuationSupport.BuildValuationAggregateAsync(
+            db,
+            analyticsDb,
+            stockRows.Select(row => (row.Id, row.Quantity)).ToList(),
+            storeId,
+            ct);
+
+        var meta = totalSku == 0
+            ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
+            : AnalyticsResponseMetaFactory.Success();
+        meta.CorrelationId = correlationId;
+
+        return new InventoryBalanceDto(
+            TotalSku: totalSku,
+            TotalOnHand: totalOnHand,
+            LowStockCount: lowStock,
+            OutOfStockCount: outOfStock,
+            EstimatedInventoryValue: valuationAggregate.TotalValue,
+            Meta: meta,
+            ValueCoveragePct: valuationAggregate.ValueCoveragePct,
+            ValuationBasis: valuationAggregate.ValuationBasisSummary,
+            UnknownValueUnits: valuationAggregate.UnknownValueUnits,
+            ValuationIsEstimated: valuationAggregate.ValuationBasisSummary == InventoryValuationBases.EstimatedFromSaleCost);
     }
 
     private static DateTime EnsureUtc(DateTime value)
@@ -2177,5 +2261,7 @@ public static class InventoryEndpoints
         int DaysSinceMovement,
         string AgingBucket,
         string AgingLabel,
-        string AbcClass);
+        string AbcClass,
+        string ValuationBasis = InventoryValuationBases.Unknown,
+        string AgeBasis = InventoryAgeBases.Unknown);
 }

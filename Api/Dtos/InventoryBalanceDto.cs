@@ -5,6 +5,10 @@ public sealed record InventoryBalanceDto(
     int TotalOnHand,
     int LowStockCount,
     int OutOfStockCount,
-    decimal EstimatedInventoryValue,
-    AnalyticsResponseMetaDto? Meta = null
+    decimal? EstimatedInventoryValue,
+    AnalyticsResponseMetaDto? Meta = null,
+    decimal? ValueCoveragePct = null,
+    string? ValuationBasis = null,
+    int? UnknownValueUnits = null,
+    bool ValuationIsEstimated = false
 );

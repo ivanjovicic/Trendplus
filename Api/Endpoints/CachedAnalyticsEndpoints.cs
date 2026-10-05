@@ -611,7 +611,12 @@ public static class CachedAnalyticsEndpoints
                                     TotalSku = g.Count(),
                                     TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
                                     OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
-                                    LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
+                                    LowStock = g.Count(x =>
+                                        x.Kolicina != null
+                                        && x.Kolicina > 0
+                                        && (
+                                            (x.MinimalnaKolicina != null && x.MinimalnaKolicina > 0 && x.Kolicina <= x.MinimalnaKolicina)
+                                            || ((x.MinimalnaKolicina == null || x.MinimalnaKolicina <= 0) && x.Kolicina <= lowStockThreshold)))
                                 })
                                 .SingleOrDefaultAsync(ct);
 
@@ -662,6 +667,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/inventory/balance", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
             HttpContext httpContext,
             ILoggerFactory loggerFactory,
             int? storeId = null,
@@ -677,31 +683,14 @@ public static class CachedAnalyticsEndpoints
             {
                 var result = await cache.GetOrSetAsync(
                     cacheKey,
-                    async () =>
-                    {
-                        var query = db.Artikli.AsNoTracking().AsQueryable();
-
-                        if (storeId.HasValue)
-                            query = query.Where(a => a.IDObjekat == storeId.Value);
-                        if (supplierId.HasValue)
-                            query = query.Where(a => a.IDDobavljac == supplierId.Value);
-                        if (normalizedDataScope == "imported")
-                            query = query.Where(a => a.DataOrigin == "access");
-                        else if (normalizedDataScope == "existing")
-                            query = query.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
-
-                        var totalSku = await query.CountAsync(ct);
-                        var totalOnHand = await query.SumAsync(a => (int?)((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0), ct) ?? 0;
-                        var lowStock = await query.CountAsync(a => (a.Kolicina ?? 0) > 0 && (a.Kolicina ?? 0) <= (a.MinimalnaKolicina ?? 0), ct);
-                        var outOfStock = await query.CountAsync(a => (a.Kolicina ?? 0) <= 0, ct);
-                        var estimatedValue = await query.SumAsync(a => (decimal?)((a.NabavnaCena ?? 0m) * ((a.Kolicina ?? 0) > 0 ? (a.Kolicina ?? 0) : 0)), ct) ?? 0m;
-                        var meta = totalSku == 0
-                            ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
-                            : AnalyticsResponseMetaFactory.Success();
-                        meta.CorrelationId = correlationId;
-
-                        return new InventoryBalanceDto((int)totalSku, (int)totalOnHand, (int)lowStock, (int)outOfStock, Math.Round(estimatedValue, 2), meta);
-                    },
+                    async () => await InventoryEndpoints.BuildInventoryBalanceAsync(
+                        db,
+                        analyticsDb,
+                        storeId,
+                        supplierId,
+                        normalizedDataScope,
+                        correlationId,
+                        ct),
                     AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
@@ -751,6 +740,7 @@ public static class CachedAnalyticsEndpoints
         group.MapGet("/inventory/list", async (
             IAnalyticsCacheService cache,
             ITrendplusDbContext db,
+            IAnalyticsDbContext analyticsDb,
             OperationsAnalyticsIntegrityRegistry integrityRegistry,
             IServiceProvider serviceProvider,
             HttpContext httpContext,
@@ -858,11 +848,26 @@ public static class CachedAnalyticsEndpoints
                             salesWindowEndUtc,
                             normalizedDataScope,
                             ct);
+                        var valuationsByArticle = await Application.Analytics.InventoryValuationSupport.LoadArticleValuationsAsync(
+                            db,
+                            analyticsDb,
+                            articleIds,
+                            storeId,
+                            ct);
 
                         var items = new List<InventoryListItemDto>(rawItems.Count);
                         foreach (var item in rawItems)
                         {
                             var quantity = item.Kolicina ?? 0;
+                            var valuation = valuationsByArticle.GetValueOrDefault(
+                                item.Id,
+                                new Application.Analytics.InventoryArticleValuation(
+                                    null,
+                                    Application.Analytics.InventoryValuationBases.Unknown,
+                                    false));
+                            var estimatedValue = Application.Analytics.InventoryStockEvidence.ComputeEstimatedValue(
+                                item.Kolicina,
+                                valuation.UnitCost);
                             var soldUnits30d = soldUnitsByArticle.TryGetValue(item.Id, out var units) ? units : 0;
                             var movementWindowStats = movementWindowStatsByArticle.TryGetValue(item.Id, out var stats)
                                 ? stats
@@ -918,8 +923,8 @@ public static class CachedAnalyticsEndpoints
                                 item.Naziv,
                                 item.Kolicina,
                                 item.MinimalnaKolicina,
-                                item.NabavnaCena,
-                                (item.NabavnaCena ?? 0m) * (quantity > 0 ? quantity : 0),
+                                valuation.UnitCost ?? item.NabavnaCena,
+                                estimatedValue,
                                 item.IDObjekat,
                                 item.IDDobavljac,
                                 signal.StockCoverDays,
@@ -1751,7 +1756,7 @@ public static class CachedAnalyticsEndpoints
                         .FirstOrDefaultAsync(ct);
 
                     var lowStockQuery = db.Artikli.AsNoTracking()
-                        .Where(a => a.Kolicina <= a.MinimalnaKolicina || a.Kolicina == 0);
+                        .Where(Application.Analytics.InventoryStockEvidence.MatchesLowStockSurface());
 
                     if (storeId.HasValue)
                         lowStockQuery = lowStockQuery.Where(a => a.IDObjekat == storeId.Value);

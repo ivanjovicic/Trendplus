@@ -7,6 +7,8 @@ type InventoryKPICardsProps = {
   lowStockShare: number | null;
   avgUnitsPerSku: number | null;
   totalValue: number | null;
+  valuationIsEstimated?: boolean;
+  valueCoveragePct?: number | null;
 };
 
 type KpiTone = "cyan" | "green" | "amber" | "blue" | "value";
@@ -18,13 +20,18 @@ export function InventoryKPICards({
   lowStockShare,
   avgUnitsPerSku,
   totalValue,
+  valuationIsEstimated = false,
+  valueCoveragePct,
 }: InventoryKPICardsProps) {
+  const valueNote = valuationIsEstimated
+    ? `Procena zasnovana na poslednjoj prodajnoj nabavnoj ceni; pokrivenost ${formatPercent(valueCoveragePct)}. Tekst pretraga ne utiče.`
+    : "Vrednost pozitivne zalihe iz pouzdanog ulaza ili procene; tekst pretraga ne utiče.";
   const cards: Array<{ label: string; value: string; note: string; tone: KpiTone }> = [
     { label: "Ukupno SKU", value: totalSku != null ? formatNumber(totalSku) : "-", note: "Broj jedinstvenih artikala za izabranu prodavnicu, dobavljača i opseg podataka; tekst pretraga ne utiče.", tone: "cyan" },
     { label: "Ukupno na stanju", value: totalOnHand != null ? formatNumber(totalOnHand) : "-", note: "Pozitivna raspoloživa količina za izabranu prodavnicu, dobavljača i opseg podataka; tekst pretraga ne utiče.", tone: "green" },
     { label: "Niska zaliha", value: lowStockCount != null ? formatNumber(lowStockCount) : "-", note: `${formatPercent(lowStockShare)} izabranog fonda je blizu minimuma; tekst pretraga ne utiče.`, tone: "amber" },
     { label: "Prosečno po SKU", value: avgUnitsPerSku != null ? formatNumber(avgUnitsPerSku, 1) : "Nije dostupno", note: "Srednja količina po artiklu za izabranu prodavnicu, dobavljača i opseg podataka; tekst pretraga ne utiče.", tone: "blue" },
-    { label: "Procena vrednosti", value: formatCurrency(totalValue), note: "Nabavna vrednost pozitivne zalihe za izabranu prodavnicu, dobavljača i opseg podataka; tekst pretraga ne utiče.", tone: "value" },
+    { label: valuationIsEstimated ? "Procena vrednosti (procena)" : "Procena vrednosti", value: formatCurrency(totalValue), note: valueNote, tone: "value" },
   ];
 
   const toneClasses: Record<KpiTone, string> = {
