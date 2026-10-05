@@ -987,6 +987,13 @@ public static class DataQualityEndpoints
             _ => "Nepoznato"
         };
 
+    private static string FormatPilotIntakePercent(double? ratio)
+    {
+        return ratio is { } value
+            ? (value * 100d).ToString("0.##'%'", CultureInfo.InvariantCulture)
+            : "nije dostupno";
+    }
+
     private static string FormatBelgradeDateTime(DateTime? utc)
     {
         if (!utc.HasValue)
@@ -1020,7 +1027,7 @@ public static class DataQualityEndpoints
             new("Problemi", "Bez dobavljača", report.Issues.MissingSupplierCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Bez nabavne cene", report.Issues.MissingCostCount.ToString(CultureInfo.InvariantCulture)),
             new("Problemi", "Prodaja bez artikla", report.Issues.SaleWithoutArticleCount.ToString(CultureInfo.InvariantCulture)),
-            new("Uticaj", "Prihod bez cene", report.Impact.RevenueWithoutCostPercent?.ToString("0.####", CultureInfo.InvariantCulture) ?? "nije dostupno"),
+            new("Uticaj", "Prihod bez cene", FormatPilotIntakePercent(report.Impact.RevenueWithoutCostPercent)),
             new("Uticaj", "Blokirani artikli (jedinstveni)", report.Impact.RecommendationsBlockedCount.ToString(CultureInfo.InvariantCulture)),
             new("Metodologija", "Opis", methodology),
             new("Uticaj", "Pokrivenost poslovnim signalom", signalCoverage is null ? "nije dostupno" : signalCoverage.Value.ToString("P2", CultureInfo.InvariantCulture), "artikli sa prodajom u periodu / svi artikli"),

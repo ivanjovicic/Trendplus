@@ -914,6 +914,26 @@ public sealed class AnalyticsReportsContractTests
         Assert.Equal("insufficient_data", report.DataQualityStatus);
     }
 
+    [Theory]
+    [InlineData(0.1234d, "12.34%")]
+    [InlineData(0d, "0%")]
+    [InlineData(null, "nije dostupno")]
+    public void PilotIntakeReportBuilder_FormatsRevenueWithoutCostAsPercent(double? ratio, string expected)
+    {
+        var intake = CreatePilotIntakeReport(85, AnalyticsResponseMetaFactory.Success("good")) with
+        {
+            Impact = new DataQualityEndpoints.PilotDataQualityIntakeImpactDto(ratio, 0.01d, 12, 5, 18)
+        };
+        var period = (new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var report = DataQualityEndpoints.BuildPilotIntakeReportResponse(intake, period, null, null, "all");
+
+        var row = Assert.Single(report.Rows, row => row.Section == "Uticaj" && row.Item == "Prihod bez cene");
+        Assert.Equal(expected, row.Value);
+        var payloadRow = Assert.Single(report.Payload.Rows, row => row.Section == "Uticaj" && row.Item == "Prihod bez cene");
+        Assert.Equal(row.Value, payloadRow.Value);
+    }
+
     [Fact]
     public void PilotIntakeReportBuilder_ProducesRichSuccessReportForReadyDataset()
     {

@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ79 - Pilot intake durable percent unit mismatch
+Current READY prompt: none pending post-close recovery after RQ79 DONE
 Main queue primary READY prompt: RQ79; RQ74 is DONE in this addendum
 
 Use with:
@@ -26,7 +26,7 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | RQ76 | DONE | data-quality-trend-no-baseline | Show neutral/no-trend for one-point trend |
 | RQ77 | DONE | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
 | RQ78 | DONE | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
-| RQ79 | IN_PROGRESS | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
+| RQ79 | DONE | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
 | RQ80 | WAITING | data-quality-missing-cost-workflow | Add/clarify missing-cost issue workflow |
 | RQ91 | DONE | data-quality-topoffender-dataorigin-sql | Fix TopOffenders SQL/schema so `DataOrigin` exists for scoped queries |
 | RQ92 | DONE | data-quality-issues-empty-list | Restore seeded Data Quality issues list/pagination results |
@@ -389,7 +389,7 @@ Use the canonical dataScope matrix from RQ05/Q81. If sale header origin is the s
 
 ## RQ79 - Pilot intake durable percent unit mismatch
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ40 or explicit unblocking
 Priority: P1
 Type: backend-report/tests
@@ -401,6 +401,8 @@ Commit suggestion: `fix(reports): format pilot intake percent rows`
 
 Owner promotion 2026-10-05 after RQ47: RQ40 is DONE, RQ466/RQ462 are DONE, and the durable formatter still writes ratio text as if it were a percent. No active Data Quality report lock/branch/PR was found; RQ79 is READY as a disjoint backend-report lane. RQ80 shares `DataQualityEndpoints.cs`/`DataQualityPage.tsx` and is sequenced after RQ79 releases those paths.
 Owner claim 2026-10-05 after RQ74: recovery base `0ecf8b39950f4f2be7e0607c85bd0545a07aa8f0` confirms RQ40/RQ466/RQ462 DONE and RQ74 has released the Executive/Data Quality report path. No active RQ79 lock, branch or PR was found. Claimed as the highest-priority collision-safe RQ lane; local lock `.ai/task-locks/RQ79-codex.lock.md`.
+
+Owner completion 2026-10-05: durable `RevenueWithoutCostPercent` now renders as a percent string (`0.1234` -> `12.34%`); valid zero renders `0%`, and missing evidence stays `nije dostupno`. The same formatted row flows into the durable report payload/export. Focused builder coverage passes 5/5, including null/zero/ratio cases and legacy/payload row parity. Run log: `.ai/runs/2026-10-05-RQ79-evidence.md`; evidence state: pending post-close recovery.
 
 ### Why
 
