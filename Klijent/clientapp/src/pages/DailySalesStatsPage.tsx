@@ -42,6 +42,7 @@ import UltraSpinner from "../components/ui/UltraSpinner";
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
+import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsDataFreshnessStatus } from "../utils/analyticsResponseMeta";
 import {
@@ -694,6 +695,13 @@ export function calculateAnomalyDeviation(currentValue: DailySalesNumeric, basel
   };
 }
 
+function toUtcRange(fromDate: string, toDate: string): { fromDate: string; toDate: string } {
+  return {
+    fromDate: `${fromDate}T00:00:00Z`,
+    toDate: toUtcDateOnlyExclusive(toDate),
+  };
+}
+
 function truncateLabel(value: string, maxLength = 18): string {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
@@ -966,6 +974,8 @@ export default function DailySalesStatsPage() {
       : null;
     const requestFilters = { ...filters, storeId: scopedStoreId };
     const previousRange = getPreviousPeriodRange(requestFilters);
+    const currentApiRange = toUtcRange(filters.fromDate, filters.toDate);
+    const previousApiRange = toUtcRange(previousRange.fromDate, previousRange.toDate);
     setLoading(true);
     setError(null);
     setPreviousPeriodWarning(null);
@@ -974,16 +984,14 @@ export default function DailySalesStatsPage() {
     try {
       const [currentResult, previousResult] = await Promise.allSettled([
         getDailySalesStats({
-          fromDate: filters.fromDate,
-          toDate: filters.toDate,
+          ...currentApiRange,
           storeId: requestFilters.storeId,
           topN: filters.topN,
           dataScope: memoizedQueryDataScope,
           signal,
         }),
         getDailySalesStats({
-          fromDate: previousRange.fromDate,
-          toDate: previousRange.toDate,
+          ...previousApiRange,
           storeId: requestFilters.storeId,
           topN: filters.topN,
           dataScope: memoizedQueryDataScope,
@@ -1183,7 +1191,7 @@ export default function DailySalesStatsPage() {
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "requestedFrom", label: "Zahtevan od", value: fmtDateISO(data?.requestedFrom) ?? "" },
-    { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(data?.requestedTo) ?? "" },
+    { key: "requestedTo", label: "Zahtevan do", value: fmtDateISO(toInclusiveCalendarDate(data?.requestedTo)) ?? "" },
     { key: "totalDays", label: "Broj dana", value: finiteOrNull(data?.metadata.totalDays) },
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
@@ -1938,7 +1946,7 @@ export default function DailySalesStatsPage() {
         title="Prodaja po smeni"
         description="Dnevni pregled po smenama: količine, prihodi i top dobavljači."
         periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
-        periodTo={data?.requestedTo ?? activeFilters.toDate}
+        periodTo={toInclusiveCalendarDate(data?.requestedTo) ?? activeFilters.toDate}
         observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
         observedPeriodTo={responseMeta?.observedPeriodToUtc}
         lastRefreshAt={trustLastRefreshAt}
