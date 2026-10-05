@@ -136,7 +136,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal("mixed", daily.GetProperty("metadata").GetProperty("shiftTimestampBasis").GetString());
         var dailyBoundary = await GetJsonAsync(
             client,
-            "/api/analytics/daily-sales?fromDate=2026-09-01&toDate=2026-09-01&dataScope=all&topN=25");
+            "/api/analytics/daily-sales?fromDate=2026-09-01&toDate=2026-09-02&dataScope=all&topN=25");
         Assert.Equal(6, dailyBoundary.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(590m, dailyBoundary.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal(9, dailyBoundary.GetProperty("metadata").GetProperty("nonStandardReceiptCount").GetInt32());
@@ -144,17 +144,17 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         Assert.Equal("all", dailyBoundary.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
         var dailyImportedStore2 = await GetJsonAsync(
             client,
-            "/api/analytics/daily-sales?fromDate=2026-09-01&toDate=2026-09-01&dataScope=imported&storeId=2&topN=25");
+            "/api/analytics/daily-sales?fromDate=2026-09-01&toDate=2026-09-02&dataScope=imported&storeId=2&topN=25");
         Assert.Equal(2, dailyImportedStore2.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(240m, dailyImportedStore2.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal(2, dailyImportedStore2.GetProperty("storeId").GetInt32());
         Assert.Equal("imported", dailyImportedStore2.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
         var dailyHeaderImported = await GetJsonAsync(
             client,
-            "/api/analytics/daily-sales?fromDate=2026-09-10&toDate=2026-09-10&dataScope=imported&topN=25");
+            "/api/analytics/daily-sales?fromDate=2026-09-10&toDate=2026-09-11&dataScope=imported&topN=25");
         var dailyHeaderExisting = await GetJsonAsync(
             client,
-            "/api/analytics/daily-sales?fromDate=2026-09-10&toDate=2026-09-10&dataScope=existing&topN=25");
+            "/api/analytics/daily-sales?fromDate=2026-09-10&toDate=2026-09-11&dataScope=existing&topN=25");
         Assert.Equal(2, dailyHeaderImported.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
         Assert.Equal(200m, dailyHeaderImported.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
         Assert.Equal(3, dailyHeaderExisting.GetProperty("metadata").GetProperty("totalItemsInRange").GetInt32());
