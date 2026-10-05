@@ -216,7 +216,7 @@ describe("InventoryPage signal window refresh", () => {
     });
     const initialCallCount = getInventoryListMock.mock.calls.length;
 
-    fireEvent.click(screen.getByRole("button", { name: "Osveži" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Osveži" }, { timeout: 5000 }));
 
     await waitFor(() => {
       expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(initialCallCount);

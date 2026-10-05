@@ -140,3 +140,5 @@ Exact-main Analytics Quality Gates run `37358374846` failed the frontend job: 3 
 The dashboard tests clicked `Prikaži detaljnu analizu` while `loading` still disabled the button. `load()` then sets `showDetailedAnalysis` back to false, so the gainers section and the receipt-grain note never stayed open. Those tests now wait until the button is enabled. The inventory empty-state reset now waits for the store options to settle before clicking `Poništi filtere`, matching the sibling test that already passed on that run.
 
 Local `npm run test:analytics` after the change: 144 files, 1067 passed.
+
+Exact-main run `37359753968` on `f5d2269b` then failed one more inventory spec: `Osveži` was queried while the first load still showed `Učitavanje bilansa zaliha...`. The refresh click now waits until that button is mounted. Vercel on the same SHA is `Deployment rate limited — retry in 24 hours`, not a build failure.
