@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: RQ570 is the global primary; RQ552 is READY as the next Nivelacija query-cost/cache-invalidation lane after RQ564 and RQ569, and precedes RQ453. RQ553 remains additional parallel-safe READY (copy/a11y). RQ555-RQ559 remain product/value lanes with explicit owner/source gates; RQ545 remains PARTIAL only for deployed acceptance.
+Current READY routing: RQ453 is the next Nivelacija certification gate after RQ552 DONE; RQ553 copy/a11y is DONE on `e20fdb50`. RQ555-RQ559 remain product/value lanes with explicit owner/source gates; RQ545 remains PARTIAL only for deployed acceptance.
 Owner recovery 2026-10-05 after RQ569: RQ569 is DONE on current `origin/main` (`8a784df0f298bc9837e106faf7604113e9d066a3`). RQ552's RQ564/RQ569 dependencies are complete; no matching lock, branch or open PR was found. Promoted RQ552 from WAITING to READY; RQ453 still waits for RQ552.
 Owner completion/promotion 2026-10-04: RQ544/NV-F8 is DONE on implementation SHA `b890f88ec30084f3d1e640562ed63386162bd0b1`, freshly verified in `origin/main`. The startup migration now uses explicit event aliases, preserves storno/re-nivelacija/supplier-return values with bounded unmapped audit notices, and guards leading-zero/oversized receipt references with bigint-safe matching. Focused disposable PostgreSQL proof passed, including idempotency and the 12-digit view case; governance validators and `git diff --check` passed. Promoted RQ551/NV-I1 to primary READY after confirming RQ542/RQ534 dependencies DONE and no active RQ551 lock, branch or open PR. Actions run 37201544462 (Analytics Tests & Data Integrity) is in progress on the implementation SHA. Run log: `.ai/runs/2026-10-04-RQ544-evidence.md`; evidence state synchronized.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
@@ -45,7 +45,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-P4 | RQ550 | DONE |
 | NV-I1 | RQ551 | DONE |
 | NV-I2 | RQ552 | READY |
-| NV-I3 | RQ553 | READY |
+| NV-I3 | RQ553 | DONE |
 | NV-I4 | RQ554 | DONE |
 | NV-I5 | RQ555 | WAITING |
 | NV-E1 | RQ556 | WAITING |
@@ -1131,7 +1131,7 @@ RQ487 and RQ474 are DONE. Start after RQ564 and RQ569 so mutation invalidation a
 
 ## RQ553 - NV-I3 - Nivelacija copy, labels, i18n and accessibility
 
-Status: READY
+Status: DONE
 Priority: P3
 Type: frontend/backend-copy/tests
 Feature family: nivelacija-copy-a11y
@@ -1158,6 +1158,17 @@ Navigation, route and title labels match, and the user-facing copy has no Englis
 #### Dependencies
 
 RQ529 is DONE. Reuse shared components/labels where applicable; no remaining start gate.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Delivery: `origin/main` at `e20fdb50` (fast-forward merge from `cursor/rq553-nivelacija-copy-e050`).
+- Scope: canonical nivelacija screen labels, Serbian Pre-Nivelacija recommendation/alert/queue copy, `/nivelacije` URL filter state + a11y, `/nivelacija` load retry + alert semantics, copy guardrail tests.
+- Validation: `dotnet test --filter PreNivelacijaLocalizedCopyTests` pass; focused Vitest `NivelacijePage`, `analyticsRouteDefinitions.nivelacija`, `PreNivelacijaScoringServiceTests` pass.
+- Run log: `.ai/runs/2026-10-05-RQ553-evidence.md`
+- Evidence state: synchronized
+- Follow-up: RQ453 and parallel READY lanes per main queue post-close cascade.
 
 ---
 
