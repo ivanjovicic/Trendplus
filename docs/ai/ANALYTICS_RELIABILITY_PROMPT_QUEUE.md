@@ -29202,13 +29202,15 @@ Claim 2026-10-05: refreshed `origin/main` at `e76f8777064296e786ce0d69c521567148
 
 ## RQ581 - Fix the mojibake "NeodreÄ‘eno" literal in Insight Studio endpoints
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/tests
 Feature family: insight-studio-encoding
 Parallel-safe: yes (only string literals in `InsightStudioEndpoints.cs`/`InsightStudioV2Endpoints.cs`; RQ13-RQ24 are WAITING)
 Owner: Analytics Reliability / Copy
 Commit suggestion: `fix(analytics): repair double-encoded Serbian literal in Insight Studio`
+
+Claim 2026-10-05: refreshed `origin/main` at `46d23356246f170a1804ce879de22dc0b7b90bc2`; no matching RQ581 lock, branch or open PR existed. RQ581 is claimed for the bounded Insight Studio encoding correction. Local lock: `.ai/task-locks/RQ581-codex.lock.md`.
 
 ### Problem
 
