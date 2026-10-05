@@ -3,11 +3,11 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Main queue primary READY prompt: `RQ582` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-Purpose: add follow-up reliability prompts for Advanced/V2 analytics and action-outcome metrics without disturbing the main active queue. These prompts should remain WAITING until `RQ01` is done or the owner explicitly reprioritizes Advanced/V2 reliability.
+Purpose: preserve the original Advanced/V2 acceptance records. The records stay WAITING under their original gates; active certification ownership is consolidated into `RQ589` and `RQ591` in the main queue.
 
 ## Status summary
 
@@ -25,6 +25,12 @@ Purpose: add follow-up reliability prompts for Advanced/V2 analytics and action-
 | RQ22 | WAITING | outcome-realization-denominator | Define realization ratio denominator and subset warnings |
 | RQ23 | WAITING | supplier-score-v2-empty-meta | Add no-data meta to supplier scoring V2 empty results |
 | RQ24 | WAITING | advanced-v2-meta-contract | Standardize Advanced/V2 reliability meta/warnings |
+
+## Advanced/V2 consolidation map (2026-10-05)
+
+- `RQ589` is the named Advanced/V2 backend certification owner for `RQ13`, `RQ16`, `RQ17`, and `RQ19`-`RQ24`; each original acceptance remains traceable in this addendum. `RQ14` and `RQ15` remain OBSOLETE only because `RQ577` explicitly suppresses the unsupported receipt-grain measures.
+- `RQ591` is the named frontend trust/derived-metric certification owner for `RQ18` (V2 metadata types); its frontend scope is grouped with legacy type/derived-metric work in the main queue.
+- These mappings do not change legacy status. Do not mark a mapped prompt OBSOLETE until its replacement acceptance is met or its surface is explicitly retired. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
 
 ---
 

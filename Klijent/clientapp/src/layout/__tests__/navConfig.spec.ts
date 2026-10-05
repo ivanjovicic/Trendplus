@@ -18,8 +18,9 @@ describe("navConfig", () => {
     const reportsGroup = findGroup("analytics-reports-legacy");
     const adminGroup = findGroup("admin");
 
-    expect(reportsGroup?.items.find((item) => item.to === "/analytics-details")?.badge?.label).toBe("Legacy");
     expect(reportsGroup?.items.find((item) => item.to === "/analytics/supplier/report")?.badge?.label).toBe("Izveštaj");
+    expect(reportsGroup?.items.some((item) => item.to === "/analytics/insight-studio")).toBe(false);
+    expect(reportsGroup?.items.some((item) => item.to === "/analytics-details")).toBe(false);
     expect(adminGroup?.items.find((item) => item.to === "/admin/common-products")?.badge?.label).toBe("Support");
   });
 

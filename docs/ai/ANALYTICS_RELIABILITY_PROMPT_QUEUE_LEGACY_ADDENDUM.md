@@ -3,11 +3,11 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue READY prompt: `RQ01` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+Main queue primary READY prompt: `RQ582` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-Purpose: add reliability prompts for legacy `/api/analytics/advanced/*` and frontend derived analytics. These prompts must stay WAITING until the owner explicitly advances this addendum or reprioritizes after RQ01.
+Purpose: preserve the original legacy Advanced and frontend-derived acceptance records. They stay WAITING under their original gates; active certification ownership is consolidated into `RQ590` and `RQ591` in the main queue.
 
 ## Status summary
 
@@ -27,6 +27,12 @@ Purpose: add reliability prompts for legacy `/api/analytics/advanced/*` and fron
 | RQ36 | WAITING | derived-margin-fake-zero | Stop defaulting missing derived margin to zero |
 | RQ37 | WAITING | derived-stock-value-cost | Stop valuing stock with net selling price when cost is missing |
 | RQ38 | WAITING | derived-smart-reorder-cost | Prevent derived smart reorder missing-cost profit inflation |
+
+## Legacy Advanced consolidation map (2026-10-05)
+
+- `RQ590` is the named legacy Advanced backend certification owner for `RQ25`-`RQ33`; each original acceptance remains traceable in this addendum.
+- `RQ591` is the named frontend trust/derived-metric certification owner for `RQ34`-`RQ38`, grouped with V2 metadata types in the main queue.
+- These mappings do not change legacy status. Do not mark a mapped prompt OBSOLETE until its replacement acceptance is met or its surface is explicitly retired. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
 
 ---
 

@@ -29743,3 +29743,158 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 ### Dependencies
 
 - None.
+
+## RQ589 - Certify Advanced/V2 analytics backend contracts
+
+Status: WAITING
+Ready after: RQ582 DONE; certify one Insight Studio owner lane at a time
+Priority: P2
+Type: backend/tests/certification
+Feature family: insight-studio-quarantine
+Parallel-safe: no (exclusive Insight Studio certification family)
+Owner: Analytics Reliability
+Owned paths: `Api/Endpoints/InsightStudioV2Endpoints.cs`, focused Advanced/V2 endpoint tests, `Klijent/clientapp/src/services/insightStudioV2Api.ts` only for compatible response-contract fields
+Avoid paths: legacy Advanced endpoints (`RQ590`), frontend-derived analytics (`RQ591`), formula changes without source evidence, route/navigation exposure
+
+### Problem
+
+Advanced/V2 analytics have unresolved date-boundary, missing-cost, baseline, empty-result, outcome-coverage and response-meta contracts recorded as RQ13 and RQ16-RQ24 in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`. The route remains quarantined until those original requirements are proved.
+
+### Evidence
+
+- The linked RQ13/RQ16-RQ24 entries contain the original issue evidence and acceptance criteria; RQ14/RQ15 are already explicitly replaced by RQ577.
+- RQ582 found stale/unknown intelligence snapshots and missing inventory relations; certification must preserve unavailable/stale semantics rather than manufacture valid zero values.
+
+### Scope
+
+- Reconcile and execute the original backend/contract acceptance for RQ13, RQ16, RQ17 and RQ19-RQ24. RQ18's frontend type work belongs to RQ591.
+- Keep each decision on backend response contracts and prove empty, missing-cost, zero-baseline, not-measured and partial-data cases with focused fixtures.
+- Keep Insight Studio hidden behind its experimental flag; this prompt does not authorize re-exposure.
+
+### Read first
+
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md` RQ13-RQ24 and its consolidation map
+- `RQ577`, `RQ582`, current endpoint tests and `AnalyticsResponseMetaFactory`
+
+### Do
+
+1. Reconcile current code against every mapped original acceptance and record already-satisfied items with proof.
+2. Implement only remaining Advanced/V2 backend contract gaps, with focused counterexample tests.
+3. Preserve route quarantine and record any live-provider proof as residual evidence rather than claiming certification without it.
+
+### Tests
+
+- Focused Advanced/V2 endpoint tests for changed contracts; backend build; queue validators and `git diff --check`.
+
+### Acceptance
+
+- Every mapped backend requirement is either proved satisfied or fixed with a focused regression test.
+- Missing, stale, empty, unknown and unmeasured values remain distinguishable from valid zero values.
+- The route remains quarantined; no widget is certified without horizon/freshness, oracle/golden and identity/provenance proof.
+
+### Dependencies
+
+- RQ582 DONE. RQ14/RQ15 remain covered by RQ577 and are not reopened.
+
+## RQ590 - Certify legacy Advanced backend contracts
+
+Status: WAITING
+Ready after: RQ582 DONE and RQ589 releases the exclusive Insight Studio certification family
+Priority: P2
+Type: backend/tests/certification
+Feature family: insight-studio-quarantine
+Parallel-safe: no (exclusive Insight Studio certification family)
+Owner: Analytics Reliability
+Owned paths: `Api/Endpoints/InsightStudioEndpoints.cs`, focused legacy Advanced endpoint tests
+Avoid paths: Advanced/V2 endpoints (`RQ589`), frontend-derived analytics (`RQ591`), formula changes without source evidence, route/navigation exposure
+
+### Problem
+
+Legacy Advanced endpoints have unresolved period boundaries, margin fallback, empty-result, never-sold, daily baseline/target, category denominator and reorder-value contracts recorded as RQ25-RQ33 in `ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`.
+
+### Evidence
+
+- The linked RQ25-RQ33 entries contain the original endpoint-specific evidence and acceptance criteria.
+- RQ582 found daily analysis can present a missing target as a normal zero-sales day and other legacy results can be stale or unknown.
+
+### Scope
+
+- Reconcile and execute the original backend acceptance for RQ25-RQ33, retaining separate meanings for missing evidence, valid zero, approximate value and unavailable margin.
+- Keep all legacy surfaces out of main analytics navigation. This prompt does not authorize re-exposure.
+
+### Read first
+
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md` RQ25-RQ33 and its consolidation map
+- `RQ582`, current endpoint tests and the analytics response-meta contract
+
+### Do
+
+1. Reconcile current code against each mapped acceptance and record already-satisfied requirements with proof.
+2. Fix only remaining legacy backend contract gaps and add focused counterexample tests.
+3. Preserve the navigation quarantine and record any provider-only proof as residual evidence.
+
+### Tests
+
+- Focused legacy Advanced endpoint tests for changed contracts; backend build; queue validators and `git diff --check`.
+
+### Acceptance
+
+- Every mapped backend requirement is proved or fixed with a focused regression test.
+- Missing data/cost and unsupported evidence cannot appear as a valid zero or trustworthy recommendation.
+- The surfaces remain quarantined pending full certification.
+
+### Dependencies
+
+- RQ582 DONE and RQ589 complete/release of the exclusive feature-family owner.
+
+## RQ591 - Certify Insight Studio frontend trust and derived metrics
+
+Status: WAITING
+Ready after: RQ582 DONE and RQ589/RQ590 release the exclusive Insight Studio certification family
+Priority: P2
+Type: frontend-contract/tests/certification
+Feature family: insight-studio-quarantine
+Parallel-safe: no (exclusive Insight Studio certification family)
+Owner: Analytics Reliability / Frontend
+Owned paths: `Klijent/clientapp/src/services/insightStudioV2Api.ts`, legacy Advanced client types, `Klijent/clientapp/src/pages/InsightStudioPage.tsx`, current shared derived-analytics helpers and their focused tests
+Avoid paths: Advanced/V2 backend contracts (`RQ589`), legacy backend contracts (`RQ590`), unrelated shared analytics pages and route/navigation exposure
+
+### Problem
+
+Frontend trust metadata and derived analytics have unresolved contracts recorded as RQ18 and RQ34-RQ38 across the Advanced and Legacy addenda. Missing cost or approximate inputs can otherwise appear as trustworthy profit, margin or stock values.
+
+### Evidence
+
+- The linked RQ18 and RQ34-RQ38 entries contain the original type and derived-value acceptance criteria.
+- RQ582's UX audit found uncertified values, stale/unknown identities, dense presentation and no explicit stale-data warning.
+
+### Scope
+
+- Reconcile and execute original frontend trust/type acceptance for RQ18 and RQ34-RQ38.
+- Present unavailable/estimated values with explicit metadata and language; preserve backend decision semantics and never recreate recommendation scoring in the frontend.
+- Keep the route quarantined. Responsive/a11y remediation required for future re-exposure remains under the applicable UI owner.
+
+### Read first
+
+- Advanced addendum RQ18 and Legacy addendum RQ34-RQ38
+- `RQ582`, `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, current API types and derived metric tests
+
+### Do
+
+1. Reconcile current types and page derivations against every mapped acceptance and identify already-satisfied items with proof.
+2. Fix remaining trust gaps with focused tests for missing, estimated, and valid values.
+3. Keep all experimental/legacy entry points out of main analytics navigation.
+
+### Tests
+
+- Focused Insight Studio/type/derived-metric tests; typecheck and analytics guardrails; queue validators and `git diff --check`.
+
+### Acceptance
+
+- Every mapped frontend trust requirement is proved or fixed with a focused regression test.
+- Missing values do not become zero-valued KPIs or trustworthy profit/margin estimates; estimates are labeled as estimates.
+- No experimental widget is exposed as certified without freshness/horizon, oracle/golden and identity/provenance proof.
+
+### Dependencies
+
+- RQ582 DONE, then sequential ownership after RQ589 and RQ590 to avoid same-family collisions.

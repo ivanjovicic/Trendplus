@@ -204,18 +204,6 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: ClipboardList,
         badge: { label: "Izveštaj", tone: "info", title: "Dokument za pilot intake i refresh" },
       },
-      {
-        to: "/analytics/insight-studio",
-        label: "Insight Studio",
-        icon: Microscope,
-        badge: { label: "Lab", tone: "warning", title: "Eksperimentalni istraživački pregled" },
-      },
-      {
-        to: "/analytics-details",
-        label: "Detaljne analize",
-        icon: Activity,
-        badge: { label: "Legacy", tone: "warning", title: "Stariji detaljni pregled" },
-      },
     ],
   },
   {

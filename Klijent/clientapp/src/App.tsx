@@ -53,6 +53,7 @@ const AccessImportPage = lazyWithChunkRecovery(() => import("./pages/AccessImpor
 const TransferPage = lazyWithChunkRecovery(() => import("./pages/TransferPage"));
 const ProdajaPrePostNivelacijePage = lazyWithChunkRecovery(() => import("./pages/ProdajaPrePostNivelacijePage"));
 const InsightStudioPage = lazyWithChunkRecovery(() => import("./pages/InsightStudioPage"));
+const ExperimentalInsightStudioRoute = lazyWithChunkRecovery(() => import("./pages/ExperimentalInsightStudioRoute"));
 const PreNivelacijaPriorityPage = lazyWithChunkRecovery(() => import("./pages/PreNivelacijaPriorityPage"));
 const ShoeTypeSalesStatsPage = lazyWithChunkRecovery(() => import("./pages/ShoeTypeSalesStatsPage"));
 const DailySalesStatsPage = lazyWithChunkRecovery(() => import("./pages/DailySalesStatsPage"));
@@ -116,7 +117,7 @@ function AppShell() {
                     <Route path="/analytics/supplier/report" element={<SupplierDecisionReportPage />} />
                     <Route path="/analytics/reports/pilot-intake" element={<PilotIntakeReportPage />} />
                     <Route path={CORE_ANALYTICS_LEGACY_ALIASES.pilotIntakeReport} element={<PilotIntakeReportPage />} />
-                    <Route path="/analytics/insight-studio" element={<InsightStudioPage />} />
+                    <Route path="/analytics/insight-studio" element={<ExperimentalInsightStudioRoute><InsightStudioPage /></ExperimentalInsightStudioRoute>} />
                     <Route path="/analytics/pre-nivelacija-prioriteti" element={<PreNivelacijaPriorityPage />} />
                     <Route path="/analytics/dobavljaci-tipovi-obuce" element={<SupplierFootwearAnalyticsRedirect />} />
                     <Route path="/analytics/supplier-decision-hub" element={<SupplierDecisionHubRedirect />} />
