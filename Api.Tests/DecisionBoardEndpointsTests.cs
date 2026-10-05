@@ -11,6 +11,56 @@ namespace Api.Tests;
 public sealed class DecisionBoardEndpointsTests
 {
     [Fact]
+    public void BuildDecisionBoardResponse_QuarantinesSmokeActionsAndKeepsRealIncompleteEvidenceAction()
+    {
+        var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);
+        var response = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            generatedAtUtc,
+            periodFromUtc: generatedAtUtc.AddDays(-30),
+            periodToUtc: generatedAtUtc,
+            lastRefreshAtUtc: generatedAtUtc,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: null,
+            supplierSummary: null,
+            actions:
+            [
+                new AnalyticsActionItem
+                {
+                    Id = 1,
+                    SourceType = "inventory",
+                    SourceKey = "inventory:smoke:final:20260522151551",
+                    Title = "Synthetic smoke row",
+                    Priority = "P1",
+                    Status = "new"
+                },
+                new AnalyticsActionItem
+                {
+                    Id = 2,
+                    SourceType = "inventory",
+                    SourceKey = "inventory:sku:real-no-evidence",
+                    Title = "Real action with incomplete evidence",
+                    Priority = "P2",
+                    Status = "new",
+                    DataQualityStatus = "warning"
+                }
+            ],
+            outcomeSummary: null,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null);
+
+        var actionCards = response.Sections.Single(section => section.Key == "actionsDecision").Cards;
+        var card = Assert.Single(actionCards);
+        Assert.Equal("inventory:sku:real-no-evidence", card.SourceKey);
+        Assert.Equal(1, response.ExcludedFixtureCount);
+        Assert.Contains("smoke_fixtures_quarantined", response.Warnings);
+    }
+
+    [Fact]
     public void BuildDecisionBoardResponse_InventoryProjectionUsesCanonicalSuggestionKey()
     {
         var generatedAtUtc = new DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc);

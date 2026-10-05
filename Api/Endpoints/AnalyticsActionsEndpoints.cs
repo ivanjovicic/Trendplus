@@ -47,7 +47,9 @@ public static class AnalyticsActionsEndpoints
             if (createdFrom.HasValue && createdTo.HasValue && createdFrom > createdTo)
                 return Results.BadRequest("createdFrom must be earlier than or equal to createdTo");
 
-            var (items, totalCount) = await svc.ListAsync(status, priority, sourceType, normalizedDataQualityStatus, search, createdFrom, createdTo, page, pageSize, ct);
+            var result = await svc.ListOperationalAsync(status, priority, sourceType, normalizedDataQualityStatus, search, createdFrom, createdTo, page, pageSize, ct);
+            var items = result.Items;
+            var totalCount = result.TotalCount;
             foreach (var item in items)
             {
                 AttachRecommendationLifecycle(item);
@@ -59,6 +61,7 @@ public static class AnalyticsActionsEndpoints
                 rowLimitSemantics: $"page_{page};page_size_{pageSize}",
                 requestedPeriodFromUtc: createdFrom,
                 requestedPeriodToUtc: createdTo,
+                excludedFixtureCount: result.ExcludedFixtureCount,
                 populationFilters: new Dictionary<string, string?>
                 {
                     ["createdFrom"] = createdFrom?.ToString("O"),
@@ -74,6 +77,7 @@ public static class AnalyticsActionsEndpoints
             {
                 items,
                 totalCount,
+                excludedFixtureCount = result.ExcludedFixtureCount,
                 page,
                 pageSize,
                 totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
@@ -115,12 +119,14 @@ public static class AnalyticsActionsEndpoints
                 counts.Rejected,
                 counts.Done,
                 counts.P1Open,
+                counts.ExcludedFixtureCount,
                 meta = BuildActionsMeta(
                     isEmpty: totalCount == 0,
                     dataQualityStatus: normalizedDataQualityStatus,
                     rowLimitSemantics: "all_ledger_status_counts",
                     requestedPeriodFromUtc: createdFrom,
                     requestedPeriodToUtc: createdTo,
+                    excludedFixtureCount: counts.ExcludedFixtureCount,
                     populationFilters: new Dictionary<string, string?>
                     {
                         ["createdFrom"] = createdFrom?.ToString("O"),
@@ -201,7 +207,7 @@ public static class AnalyticsActionsEndpoints
             AnalyticsActionItemService svc,
             CancellationToken ct) =>
         {
-            var item = await svc.GetByIdAsync(id, includeNotes: true, ct);
+            var item = await svc.GetOperationalActionByIdAsync(id, includeNotes: true, ct);
             if (item is null)
                 return Results.NotFound();
 
@@ -441,14 +447,28 @@ public static class AnalyticsActionsEndpoints
         string rowLimitSemantics,
         DateTime? requestedPeriodFromUtc,
         DateTime? requestedPeriodToUtc,
-        IReadOnlyDictionary<string, string?>? populationFilters)
+        IReadOnlyDictionary<string, string?>? populationFilters,
+        int excludedFixtureCount = 0)
     {
+        var fixtureWarningMessage = excludedFixtureCount > 0
+            ? $"{excludedFixtureCount} smoke fixture zapisa je izuzeto iz operativne populacije."
+            : null;
         var meta = isEmpty
             ? AnalyticsResponseMetaFactory.Empty(
                 "no_analytics_actions",
                 "Nema akcija u deklarisanoj action ledger populaciji.",
                 dataQualityStatus ?? "insufficient_data")
-            : AnalyticsResponseMetaFactory.Success(dataQualityStatus ?? "good");
+            : AnalyticsResponseMetaFactory.Success(
+                dataQualityStatus ?? "good",
+                isPartial: excludedFixtureCount > 0,
+                warningCode: excludedFixtureCount > 0 ? "smoke_fixtures_quarantined" : null,
+                warningMessage: fixtureWarningMessage);
+        if (isEmpty && excludedFixtureCount > 0)
+        {
+            meta.IsPartial = true;
+            meta.WarningCode = "smoke_fixtures_quarantined";
+            meta.WarningMessage = fixtureWarningMessage;
+        }
 
         meta.Context = AnalyticsContextFingerprintPolicy.Create(
             sourceDataset: "analytics_action_ledger",

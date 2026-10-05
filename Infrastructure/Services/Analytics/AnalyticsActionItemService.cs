@@ -65,6 +65,22 @@ public sealed class AnalyticsActionItemService
         int pageSize,
         CancellationToken ct = default)
     {
+        var result = await ListOperationalAsync(status, priority, sourceType, dataQualityStatus, search, createdFrom, createdTo, page, pageSize, ct);
+        return (result.Items, result.TotalCount);
+    }
+
+    public async Task<AnalyticsActionOperationalListResult> ListOperationalAsync(
+        string? status,
+        string? priority,
+        string? sourceType,
+        string? dataQualityStatus,
+        string? search,
+        DateTime? createdFrom,
+        DateTime? createdTo,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
         var q = _db.AnalyticsActionItems.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -110,9 +126,11 @@ public sealed class AnalyticsActionItemService
         if (createdTo.HasValue)
             q = q.Where(x => x.CreatedAtUtc <= createdTo.Value);
 
-        var totalCount = await q.CountAsync(ct);
+        var excludedFixtureCount = await q.Where(AnalyticsActionFixturePolicy.SmokeFixturePredicate).CountAsync(ct);
+        var operationalQuery = q.ExcludeKnownSmokeFixtures();
+        var totalCount = await operationalQuery.CountAsync(ct);
 
-        var items = await q
+        var items = await operationalQuery
             .OrderByDescending(x => x.Priority == AnalyticsActionConstants.Priorities.P1)
             .ThenByDescending(x => x.Priority == AnalyticsActionConstants.Priorities.P2)
             .ThenByDescending(x => x.UpdatedAtUtc)
@@ -120,7 +138,7 @@ public sealed class AnalyticsActionItemService
             .Take(pageSize)
             .ToListAsync(ct);
 
-        return (items, totalCount);
+        return new AnalyticsActionOperationalListResult(items, totalCount, excludedFixtureCount);
     }
 
     public async Task<AnalyticsActionItem?> GetByIdAsync(long id, bool includeNotes = false, CancellationToken ct = default)
@@ -133,6 +151,21 @@ public sealed class AnalyticsActionItemService
         }
 
         return await query.FirstOrDefaultAsync(x => x.Id == id, ct);
+    }
+
+    public async Task<AnalyticsActionItem?> GetOperationalActionByIdAsync(
+        long id,
+        bool includeNotes = false,
+        CancellationToken ct = default)
+    {
+        var query = _db.AnalyticsActionItems.AsNoTracking();
+        if (includeNotes)
+        {
+            query = query
+                .Include(x => x.Notes.OrderBy(n => n.CreatedAtUtc));
+        }
+
+        return await query.ExcludeKnownSmokeFixtures().FirstOrDefaultAsync(x => x.Id == id, ct);
     }
 
     // ── Counts for KPI bar ─────────────────────────────────────────────────
@@ -171,12 +204,14 @@ public sealed class AnalyticsActionItemService
                 : q.Where(x => x.DataQualityStatus == dataQualityStatus);
         }
 
-        var items = await q
+        var excludedFixtureCount = await q.Where(AnalyticsActionFixturePolicy.SmokeFixturePredicate).CountAsync(ct);
+        var operationalQuery = q.ExcludeKnownSmokeFixtures();
+        var items = await operationalQuery
             .GroupBy(x => x.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        var p1Open = await q
+        var p1Open = await operationalQuery
             .CountAsync(x =>
                 x.Priority == AnalyticsActionConstants.Priorities.P1 &&
                 (x.Status == AnalyticsActionConstants.Statuses.New ||
@@ -189,7 +224,8 @@ public sealed class AnalyticsActionItemService
             Deferred: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Deferred)?.Count ?? 0,
             Rejected: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Rejected)?.Count ?? 0,
             Done: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Done)?.Count ?? 0,
-            P1Open: p1Open
+            P1Open: p1Open,
+            ExcludedFixtureCount: excludedFixtureCount
         );
     }
 
@@ -243,9 +279,15 @@ public sealed class AnalyticsActionItemService
         if (query.MeasuredTo.HasValue)
             q = q.Where(x => x.OutcomeMeasuredAtUtc.HasValue && x.OutcomeMeasuredAtUtc.Value <= query.MeasuredTo.Value);
 
-        var items = await q.ToListAsync(ct);
+        var excludedFixtureCount = await q.Where(AnalyticsActionFixturePolicy.SmokeFixturePredicate).CountAsync(ct);
+        var operationalQuery = q.ExcludeKnownSmokeFixtures();
+        var items = await operationalQuery.ToListAsync(ct);
         var periodMode = ResolvePeriodMode(query);
-        var warningCodes = BuildSummaryWarningCodes(items, periodMode, query);
+        var warningCodes = BuildSummaryWarningCodes(items, periodMode, query).ToList();
+        if (excludedFixtureCount > 0)
+        {
+            warningCodes.Add("smoke_fixtures_quarantined");
+        }
 
         if (items.Count == 0)
         {
@@ -266,7 +308,8 @@ public sealed class AnalyticsActionItemService
                     EmptyReason: "Nema akcija za izabrane filtere.",
                     PopulationFilters: BuildSummaryPopulationFilters(query),
                     RequestedDataScope: "action_ledger",
-                    EffectiveDataScope: "action_ledger"
+                    EffectiveDataScope: "action_ledger",
+                    ExcludedFixtureCount: excludedFixtureCount
                 ),
                 Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
                     CreatedCount: 0,
@@ -323,7 +366,8 @@ public sealed class AnalyticsActionItemService
                 EmptyReason: emptyReason,
                 PopulationFilters: BuildSummaryPopulationFilters(query),
                 RequestedDataScope: "action_ledger",
-                EffectiveDataScope: "action_ledger"
+                EffectiveDataScope: "action_ledger",
+                ExcludedFixtureCount: excludedFixtureCount
             ),
             Totals: new AnalyticsActionOutcomeSummaryTotalsDto(
                 CreatedCount: items.Count,
@@ -524,6 +568,7 @@ public sealed class AnalyticsActionItemService
         var candidates = await _db.AnalyticsActionItems
             .AsNoTracking()
             .Where(x => sourceTypes.Contains(x.SourceType) && sourceKeys.Contains(x.SourceKey))
+            .ExcludeKnownSmokeFixtures()
             .Select(x => new
             {
                 x.Id,
@@ -1470,8 +1515,14 @@ public sealed record AnalyticsActionCountsDto(
     int Deferred,
     int Rejected,
     int Done,
-    int P1Open
+    int P1Open,
+    int ExcludedFixtureCount = 0
 );
+
+public sealed record AnalyticsActionOperationalListResult(
+    IReadOnlyList<AnalyticsActionItem> Items,
+    int TotalCount,
+    int ExcludedFixtureCount);
 
 public sealed record AnalyticsActionUpsertRequest(
     string SourceType,
@@ -1587,7 +1638,8 @@ public sealed record AnalyticsActionOutcomeSummaryMetaDto(
     string? EmptyReason,
     IReadOnlyDictionary<string, string?>? PopulationFilters = null,
     string? RequestedDataScope = null,
-    string? EffectiveDataScope = null
+    string? EffectiveDataScope = null,
+    int ExcludedFixtureCount = 0
 );
 
 public sealed record AnalyticsActionOutcomeSummaryTotalsDto(

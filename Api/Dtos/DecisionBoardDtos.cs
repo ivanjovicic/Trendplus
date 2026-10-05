@@ -11,7 +11,8 @@ public sealed record DecisionBoardAggregateResponseDto(
     IReadOnlyList<DecisionBoardMetricDto> Metrics,
     IReadOnlyList<DecisionBoardSourceStateDto> SourceStates,
     IReadOnlyList<DecisionBoardSectionDto> Sections,
-    AnalyticsResponseMetaDto? Meta = null);
+    AnalyticsResponseMetaDto? Meta = null,
+    int ExcludedFixtureCount = 0);
 
 public sealed record DecisionBoardMetricDto(
     string Label,

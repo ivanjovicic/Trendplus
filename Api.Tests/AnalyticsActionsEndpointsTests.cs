@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Api.Tests;
@@ -404,6 +405,128 @@ public sealed class AnalyticsActionsEndpointsTests
         Assert.Equal(1, summaryPayload.RootElement.GetProperty("totals").GetProperty("createdCount").GetInt32());
         Assert.Equal("inventory", summaryPayload.RootElement.GetProperty("meta").GetProperty("populationFilters").GetProperty("sourceType").GetString());
         Assert.Equal("action_ledger", summaryPayload.RootElement.GetProperty("meta").GetProperty("requestedDataScope").GetString());
+    }
+
+    [Fact]
+    public async Task SmokeFixtures_AreQuarantinedAcrossOperationalReadsAndRealIncompleteActionRemainsVisible()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var fixtureId = await host.SeedActionAsync(
+            sourceKey: "inventory:smoke:final:20260522151551",
+            status: AnalyticsActionConstants.Statuses.New,
+            priority: AnalyticsActionConstants.Priorities.P1,
+            dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning);
+        await host.SeedActionAsync(
+            sourceKey: "product:smoke:jsonok",
+            status: AnalyticsActionConstants.Statuses.New,
+            priority: AnalyticsActionConstants.Priorities.P1,
+            dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning);
+        await host.SeedActionAsync(
+            sourceKey: "inventory:sku:real-no-evidence",
+            status: AnalyticsActionConstants.Statuses.New,
+            priority: AnalyticsActionConstants.Priorities.P1,
+            dataQualityStatus: AnalyticsActionConstants.DataQualityStatuses.Warning);
+
+        const string filters = "sourceType=inventory&priority=P1&dataQualityStatus=warning";
+        using var listResponse = await host.Client.GetAsync($"/api/analytics/actions?{filters}");
+        listResponse.EnsureSuccessStatusCode();
+        using var listPayload = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, listPayload.RootElement.GetProperty("totalCount").GetInt32());
+        Assert.Equal(2, listPayload.RootElement.GetProperty("excludedFixtureCount").GetInt32());
+        Assert.Equal("inventory:sku:real-no-evidence", listPayload.RootElement.GetProperty("items")[0].GetProperty("sourceKey").GetString());
+        Assert.Equal("smoke_fixtures_quarantined", listPayload.RootElement.GetProperty("meta").GetProperty("warningCode").GetString());
+
+        using var countsResponse = await host.Client.GetAsync($"/api/analytics/actions/counts?{filters}");
+        countsResponse.EnsureSuccessStatusCode();
+        using var countsPayload = JsonDocument.Parse(await countsResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, countsPayload.RootElement.GetProperty("new").GetInt32());
+        Assert.Equal(1, countsPayload.RootElement.GetProperty("p1Open").GetInt32());
+        Assert.Equal(2, countsPayload.RootElement.GetProperty("excludedFixtureCount").GetInt32());
+
+        using var summaryResponse = await host.Client.GetAsync($"/api/analytics/actions/outcomes/summary?{filters}");
+        summaryResponse.EnsureSuccessStatusCode();
+        using var summaryPayload = JsonDocument.Parse(await summaryResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, summaryPayload.RootElement.GetProperty("totals").GetProperty("createdCount").GetInt32());
+        Assert.Equal(2, summaryPayload.RootElement.GetProperty("meta").GetProperty("excludedFixtureCount").GetInt32());
+        Assert.Contains("smoke_fixtures_quarantined", summaryPayload.RootElement.GetProperty("meta").GetProperty("warnings").EnumerateArray().Select(item => item.GetString()));
+
+        using var detailResponse = await host.Client.GetAsync($"/api/analytics/actions/{fixtureId}");
+        Assert.Equal(HttpStatusCode.NotFound, detailResponse.StatusCode);
+
+        using var sourceStatusResponse = await host.Client.PostAsJsonAsync("/api/analytics/actions/status", new
+        {
+            items = new[] { new { sourceType = "inventory", sourceKey = "inventory:smoke:final:20260522151551" } }
+        });
+        sourceStatusResponse.EnsureSuccessStatusCode();
+        using var sourceStatusPayload = JsonDocument.Parse(await sourceStatusResponse.Content.ReadAsStringAsync());
+        Assert.False(sourceStatusPayload.RootElement.GetProperty("items")[0].GetProperty("exists").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SmokeOnlyMeasuredRows_DoNotCreateDecisionBoardOutcomeOrSampleQualityCards()
+    {
+        await using var host = await AnalyticsActionsTestHost.CreateAsync();
+        var measuredAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        await host.SeedActionAsync(
+            outcomeStatus: AnalyticsActionConstants.OutcomeStatuses.Success,
+            measuredImpactRsd: 5_000m,
+            outcomeMeasuredAtUtc: measuredAtUtc,
+            sourceKey: "inventory:smoke:measured:one",
+            status: AnalyticsActionConstants.Statuses.Done);
+        await host.SeedActionAsync(
+            sourceKey: "product:smoke:measured:two",
+            status: AnalyticsActionConstants.Statuses.New);
+
+        using var scope = host.App.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<AnalyticsActionItemService>();
+        var actionList = await service.ListOperationalAsync(
+            status: null,
+            priority: null,
+            sourceType: null,
+            dataQualityStatus: null,
+            search: null,
+            createdFrom: null,
+            createdTo: null,
+            page: 1,
+            pageSize: 50);
+        var outcomeSummary = await service.GetOutcomeSummaryAsync(new AnalyticsActionOutcomeSummaryQuery(
+            CreatedFrom: null,
+            CreatedTo: null,
+            ResolvedFrom: null,
+            ResolvedTo: null,
+            MeasuredFrom: null,
+            MeasuredTo: null,
+            SourceType: null,
+            Priority: null,
+            DataQualityStatus: null));
+
+        var board = DecisionBoardEndpoints.BuildDecisionBoardResponse(
+            measuredAtUtc,
+            periodFromUtc: measuredAtUtc.AddDays(-30),
+            periodToUtc: measuredAtUtc,
+            lastRefreshAtUtc: null,
+            productDecisionCenter: null,
+            inventoryInsights: null,
+            inventoryWorkflow: null,
+            supplierSummary: null,
+            actions: actionList.Items,
+            outcomeSummary: outcomeSummary,
+            refreshStatus: null,
+            dataQualityHealth: null,
+            loadWarnings: [],
+            dataScope: "all",
+            storeId: null,
+            supplierId: null,
+            excludedFixtureCount: actionList.ExcludedFixtureCount);
+
+        Assert.Empty(actionList.Items);
+        Assert.Equal(2, outcomeSummary.Meta.ExcludedFixtureCount);
+        Assert.Equal(0, outcomeSummary.Meta.SampleSize);
+        Assert.Equal(0, outcomeSummary.Meta.MeasuredSampleSize);
+        Assert.Equal(2, board.ExcludedFixtureCount);
+        Assert.Empty(board.Sections.Single(section => section.Key == "actionsOutcome").Cards);
+        Assert.DoesNotContain(board.Sections.Single(section => section.Key == "blockers").Cards, card => card.SourceType == "action_outcome");
+        Assert.Equal("unknown", board.SourceStates.Single(state => state.SourceKey == "action-outcome-summary").Status);
     }
 
     [Fact]

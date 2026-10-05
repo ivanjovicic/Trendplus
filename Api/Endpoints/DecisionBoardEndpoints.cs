@@ -75,6 +75,7 @@ public static class DecisionBoardEndpoints
         InventoryActionWorkflowDto? inventoryWorkflow = null;
         SummaryResponse? supplierSummary = null;
         IReadOnlyList<AnalyticsActionItem> actions = [];
+        var excludedFixtureCount = 0;
         AnalyticsActionOutcomeSummaryDto? outcomeSummary = null;
         AnalyticsRefreshStatusDto? refreshStatus = null;
         AnalyticsDataQualityHealthSnapshot? dataQualityHealth = null;
@@ -176,7 +177,7 @@ public static class DecisionBoardEndpoints
 
         try
         {
-            var (items, _) = await actionItemService.ListAsync(
+            var actionList = await actionItemService.ListOperationalAsync(
                 status: null,
                 priority: null,
                 sourceType: null,
@@ -187,7 +188,8 @@ public static class DecisionBoardEndpoints
                 page: 1,
                 pageSize: 500,
                 ct: ct);
-            actions = items;
+            actions = actionList.Items;
+            excludedFixtureCount = actionList.ExcludedFixtureCount;
             outcomeSummary = await actionItemService.GetOutcomeSummaryAsync(
                 new AnalyticsActionOutcomeSummaryQuery(
                     CreatedFrom: periodFromUtc,
@@ -244,7 +246,8 @@ public static class DecisionBoardEndpoints
             warnings,
             normalizedDataScope,
             storeId,
-            supplierId);
+            supplierId,
+            excludedFixtureCount);
 
         var responseMeta = BuildDecisionBoardMeta(
             response,
@@ -274,16 +277,23 @@ public static class DecisionBoardEndpoints
         IReadOnlyList<string> loadWarnings,
         string dataScope,
         int? storeId,
-        int? supplierId)
+        int? supplierId,
+        int excludedFixtureCount = 0)
     {
-        var actionStateByKey = BuildActionStateMap(actions);
-        var openActions = actions.Where(item => IsOpenStatus(item.Status)).ToList();
+        var directFixtureCount = actions.Count(item => AnalyticsActionFixturePolicy.IsSmokeFixtureSourceKey(item.SourceKey));
+        var operationalActions = actions
+            .Where(item => !AnalyticsActionFixturePolicy.IsSmokeFixtureSourceKey(item.SourceKey))
+            .ToArray();
+        excludedFixtureCount = Math.Max(excludedFixtureCount, directFixtureCount);
+
+        var actionStateByKey = BuildActionStateMap(operationalActions);
+        var openActions = operationalActions.Where(item => IsOpenStatus(item.Status)).ToList();
 
         var productCards = BuildProductCards(productDecisionCenter, actionStateByKey);
         var inventoryCards = BuildInventoryCards(inventoryWorkflow, actionStateByKey);
         var supplierCards = BuildSupplierCards(supplierSummary, actionStateByKey, dataScope);
         var actionCards = BuildActionCards(openActions);
-        var outcomeCards = BuildOutcomeCards(outcomeSummary, actions);
+        var outcomeCards = BuildOutcomeCards(outcomeSummary, operationalActions);
         var blockerCards = BuildBlockerCards(refreshStatus, dataQualityHealth, supplierSummary, outcomeSummary);
 
         var urgentCards = CombineSectionCards(
@@ -336,6 +346,7 @@ public static class DecisionBoardEndpoints
             dataQualityHealth is null ? null : EvaluateDataQualityHealth(dataQualityHealth).Status,
             productDecisionCenter?.Meta?.DataQualityStatus,
             supplierSummary?.TrustMetadata?.DataCoverageStatus,
+            excludedFixtureCount > 0 ? "warning" : null,
             outcomeSummary?.Meta.Warnings.Count > 0 ? "warning" : null
         ]);
 
@@ -354,14 +365,20 @@ public static class DecisionBoardEndpoints
             inventoryInsights,
             inventoryWorkflow,
             supplierSummary,
-            actions,
+            operationalActions,
             outcomeSummary,
             refreshStatus,
             dataQualityHealth,
             loadWarnings);
 
+        var boardLoadWarnings = loadWarnings.ToList();
+        if (excludedFixtureCount > 0 && !boardLoadWarnings.Contains("smoke_fixtures_quarantined", StringComparer.Ordinal))
+        {
+            boardLoadWarnings.Add("smoke_fixtures_quarantined");
+        }
+
         var warnings = BuildWarnings(
-            loadWarnings,
+            boardLoadWarnings,
             sourceStates,
             overallDataQualityStatus,
             sections);
@@ -384,7 +401,8 @@ public static class DecisionBoardEndpoints
             sections,
             hasData
                 ? AnalyticsResponseMetaFactory.Success(overallDataQualityStatus ?? "good", lastRefreshAtUtc, warnings.Count > 0, warnings.Count > 0 ? "BOARD_PARTIAL" : null, warnings.Count > 0 ? "Deo izvora za board je trenutno nedostupan." : null)
-                : AnalyticsResponseMetaFactory.Empty("no_board_data", "Nema dovoljno signala za izvršni board.", "insufficient_data"));
+                : AnalyticsResponseMetaFactory.Empty("no_board_data", "Nema dovoljno signala za izvršni board.", "insufficient_data"),
+            excludedFixtureCount);
 
         return response;
     }
@@ -785,7 +803,7 @@ public static class DecisionBoardEndpoints
 
         var cards = new List<DecisionBoardCardDto>();
 
-        if (outcomeSummary is not null)
+        if (outcomeSummary is not null && outcomeSummary.Meta.SampleSize > 0)
         {
             var warningCodes = outcomeSummary.Meta.Warnings ?? [];
             var confidenceLevel = outcomeSummary.Meta.MeasuredSampleSize < 10
@@ -984,7 +1002,7 @@ public static class DecisionBoardEndpoints
                 ImpactScore: 0m));
         }
 
-        if (outcomeSummary is not null && outcomeSummary.Meta.MeasuredSampleSize < 10)
+        if (outcomeSummary is not null && outcomeSummary.Meta.SampleSize > 0 && outcomeSummary.Meta.MeasuredSampleSize < 10)
         {
             cards.Add(new DecisionBoardCardDto(
                 Id: "blocker-outcome-sample",
@@ -1062,7 +1080,7 @@ public static class DecisionBoardEndpoints
             new("inventory-workflow", "Inventory action workflow", inventoryWorkflow is null ? "unknown" : inventoryWorkflow.PendingCount > 0 ? "warning" : "good", inventoryWorkflow?.GeneratedAtUtc, inventoryWorkflow is null ? ["inventory_workflow_unavailable"] : [], inventoryWorkflow is null ? "Inventory workflow nije dostupan." : null, "/analytics/inventory"),
             new("supplier-decision-hub", "Supplier decision hub", supplierSummary?.TrustMetadata?.DataCoverageStatus ?? "unknown", supplierSummary?.TrustMetadata?.LastRefreshAtUtc, BuildSupplierWarningCodes(supplierSummary?.TrustMetadata), supplierSummary?.DataNote, "/analytics/supplier?tab=overview"),
             new("analytics-actions", "Analytics actions", actionsSource.Status, actionsSource.GeneratedAtUtc, actionsSource.WarningCodes, actionsSource.Message, "/analytics/actions"),
-            new("action-outcome-summary", "Action outcome summary", outcomeSummary is null ? "unknown" : outcomeSummary.Meta.MeasuredSampleSize < 10 ? "warning" : "good", outcomeSummary?.Meta.GeneratedAtUtc, outcomeSummary?.Meta.Warnings ?? [], outcomeSummary?.Meta.EmptyReason, "/analytics/actions"),
+            new("action-outcome-summary", "Action outcome summary", outcomeSummary is null || outcomeSummary.Meta.SampleSize == 0 ? "unknown" : outcomeSummary.Meta.MeasuredSampleSize < 10 ? "warning" : "good", outcomeSummary?.Meta.GeneratedAtUtc, outcomeSummary?.Meta.Warnings ?? [], outcomeSummary?.Meta.EmptyReason, "/analytics/actions"),
             new("refresh-status", "Refresh status", refreshStatus?.DataFreshnessStatus ?? "unknown", refreshStatus?.GeneratedAtUtc, BuildRefreshWarnings(refreshStatus), refreshStatus?.LastErrorMessage, "/analytics/pilot-readiness"),
             new("data-quality-health", "Data quality health", dataQualityHealth is null ? "unknown" : EvaluateDataQualityHealth(dataQualityHealth).Status, dataQualityHealth?.GeneratedAtUtc, BuildHealthWarningCodes(dataQualityHealth), dataQualityHealth is null ? null : EvaluateDataQualityHealth(dataQualityHealth).Summary, "/analytics/data-quality")
         ];
