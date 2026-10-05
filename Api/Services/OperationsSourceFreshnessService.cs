@@ -35,8 +35,12 @@ public sealed class OperationsSourceFreshnessService
         string? dataScope,
         int? storeId,
         string surfaceRole,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? defaultPeriodBasis = null,
+        string? comparisonUnavailableReasonCode = null)
     {
+        meta.DefaultPeriodBasis = defaultPeriodBasis;
+        meta.ComparisonUnavailableReasonCode = comparisonUnavailableReasonCode;
         ResetSourceFreshness(meta);
         try
         {
@@ -151,7 +155,9 @@ public sealed class OperationsSourceFreshnessService
         string? dataScope,
         int? storeId,
         string surfaceRole,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? defaultPeriodBasis = null,
+        string? comparisonUnavailableReasonCode = null)
     {
         var root = JsonNode.Parse(jsonPayload)?.AsObject()
             ?? throw new InvalidOperationException("Operations response JSON is not an object.");
@@ -160,7 +166,7 @@ public sealed class OperationsSourceFreshnessService
 
         var meta = metaNode.Deserialize<AnalyticsResponseMetaDto>(WebJsonOptions)
             ?? throw new InvalidOperationException("Operations response analytics meta could not be read.");
-        await ApplyAsync(meta, dataScope, storeId, surfaceRole, ct);
+        await ApplyAsync(meta, dataScope, storeId, surfaceRole, ct, defaultPeriodBasis, comparisonUnavailableReasonCode);
         root["meta"] = JsonSerializer.SerializeToNode(meta, WebJsonOptions);
         return root.ToJsonString(WebJsonOptions);
     }
@@ -171,7 +177,9 @@ public sealed class OperationsSourceFreshnessService
         string? dataScope,
         int? storeId,
         string surfaceRole,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? defaultPeriodBasis = null,
+        string? comparisonUnavailableReasonCode = null)
     {
         var service = services.GetService<OperationsSourceFreshnessService>();
         if (service is null)
@@ -180,7 +188,7 @@ public sealed class OperationsSourceFreshnessService
             return;
         }
 
-        await service.ApplyAsync(meta, dataScope, storeId, surfaceRole, ct);
+        await service.ApplyAsync(meta, dataScope, storeId, surfaceRole, ct, defaultPeriodBasis, comparisonUnavailableReasonCode);
     }
 
     public static async Task<string> ApplyJsonIfRegisteredAsync(
@@ -189,11 +197,13 @@ public sealed class OperationsSourceFreshnessService
         string? dataScope,
         int? storeId,
         string surfaceRole,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? defaultPeriodBasis = null,
+        string? comparisonUnavailableReasonCode = null)
     {
         var service = services.GetService<OperationsSourceFreshnessService>();
         if (service is not null)
-            return await service.ApplyJsonAsync(jsonPayload, dataScope, storeId, surfaceRole, ct);
+            return await service.ApplyJsonAsync(jsonPayload, dataScope, storeId, surfaceRole, ct, defaultPeriodBasis, comparisonUnavailableReasonCode);
 
         var root = JsonNode.Parse(jsonPayload)?.AsObject()
             ?? throw new InvalidOperationException("Operations response JSON is not an object.");
@@ -203,6 +213,8 @@ public sealed class OperationsSourceFreshnessService
         var meta = metaNode.Deserialize<AnalyticsResponseMetaDto>(WebJsonOptions)
             ?? throw new InvalidOperationException("Operations response analytics meta could not be read.");
         MarkUnavailable(meta, surfaceRole);
+        meta.DefaultPeriodBasis = defaultPeriodBasis;
+        meta.ComparisonUnavailableReasonCode = comparisonUnavailableReasonCode;
         root["meta"] = JsonSerializer.SerializeToNode(meta, WebJsonOptions);
         return root.ToJsonString(WebJsonOptions);
     }

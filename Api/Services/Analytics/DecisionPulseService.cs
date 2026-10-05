@@ -47,12 +47,35 @@ public sealed class DecisionPulseService
         string? dataScope,
         CancellationToken ct)
     {
+        string? defaultPeriodBasis = null;
+        DateTime? resolvedObservedHorizonUtc = null;
+        if (!fromUtc.HasValue && !toUtc.HasValue)
+        {
+            var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
+                _trendDb, storeId, supplierId, dataScope, ct);
+            if (defaultPeriod is null)
+            {
+                var unavailable = DecisionPulseProjector.Project(
+                    null,
+                    sourceSucceeded: false,
+                    failureCategory: "source_horizon_unavailable",
+                    failureMessage: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.");
+                return ToResponse(unavailable, null, null, null, [], [], "source_horizon_unavailable", null);
+            }
+
+            fromUtc = defaultPeriod.FromUtc;
+            toUtc = defaultPeriod.HorizonUtc;
+            resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
+            defaultPeriodBasis = "source_horizon";
+        }
+
         var periodTo = (toUtc ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
         var periodFrom = (fromUtc ?? periodTo.Date.AddDays(-29)).Date;
         var candidates = new List<DecisionPulseCandidate>();
         var sourceFailures = new List<string>();
         var sourceFailureMessages = new List<string>();
         DateTime? generatedAtUtc = null;
+        string? comparisonUnavailableReasonCode = null;
 
         try
         {
@@ -64,10 +87,12 @@ public sealed class DecisionPulseService
                 supplierId,
                 top: Math.Clamp(_options.MaxCandidates, 10, 500),
                 dataScope ?? string.Empty,
-                ct);
+                ct,
+                observedHorizonUtc: resolvedObservedHorizonUtc);
 
             candidates.AddRange((pdc.Rows ?? []).Select(MapProductCandidate));
             generatedAtUtc = MaxGeneratedAt(generatedAtUtc, pdc.GeneratedAtUtc);
+            comparisonUnavailableReasonCode = pdc.Meta?.ComparisonUnavailableReasonCode;
         }
         catch (Exception ex)
         {
@@ -147,11 +172,11 @@ public sealed class DecisionPulseService
                 sourceSucceeded: false,
                 failureCategory: sourceFailures[0],
                 failureMessage: sourceFailureMessages.FirstOrDefault() ?? "Decision Pulse izvori nisu dostupni.");
-            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages);
+            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode);
         }
 
         var successProjection = DecisionPulseProjector.Project(candidates, sourceSucceeded: true);
-        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages);
+        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode);
     }
 
     public Task<DecisionPulseEmailResultDto> SendEmailAsync(
@@ -301,7 +326,9 @@ public sealed class DecisionPulseService
         DateTime? periodTo,
         DateTime? generatedAtUtc,
         IReadOnlyList<string> sourceFailures,
-        IReadOnlyList<string> sourceFailureMessages)
+        IReadOnlyList<string> sourceFailureMessages,
+        string? defaultPeriodBasis,
+        string? comparisonUnavailableReasonCode)
     {
         var items = projection.Items.Select(item => new DecisionPulseItemDto(
             item.Id,
@@ -319,6 +346,8 @@ public sealed class DecisionPulseService
             item.TenantScope)).ToArray();
 
         var meta = BuildResponseMeta(projection, generatedAtUtc, sourceFailures, sourceFailureMessages);
+        meta.DefaultPeriodBasis = defaultPeriodBasis;
+        meta.ComparisonUnavailableReasonCode = comparisonUnavailableReasonCode;
 
         return new DecisionPulseResponseDto(
             generatedAtUtc ?? DateTime.UtcNow,

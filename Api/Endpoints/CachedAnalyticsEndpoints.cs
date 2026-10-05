@@ -1997,11 +1997,28 @@ public static class CachedAnalyticsEndpoints
             var normalizedDataScope = NormalizeDataScope(dataScope);
             var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
             top = Math.Clamp(top, 50, 2000);
+            string? defaultPeriodBasis = null;
+            DateTime? resolvedObservedHorizonUtc = null;
 
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
+                    db, storeId, supplierId, normalizedDataScope, ct);
+                if (defaultPeriod is null)
+                    return Results.Ok(new ProductDecisionCenterResponseDto
+                    {
+                        Meta = BuildErrorMeta("SOURCE_HORIZON_UNAVAILABLE", "Period analitike nije dostupan za izabrani opseg.", ResolveCorrelationId(httpContext))
+                    });
+                fromDate = defaultPeriod.FromUtc;
+                toDate = defaultPeriod.HorizonUtc;
+                resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
+                defaultPeriodBasis = "source_horizon";
+            }
 
             try
             {
@@ -2011,7 +2028,7 @@ public static class CachedAnalyticsEndpoints
                     cacheKey,
                     AnalyticsCachePolicy.ProductDecisionCenterFamily,
                     AnalyticsCachePolicy.ProductDecisionCenter,
-                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct, normalizedSearch),
+                    async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, top, normalizedDataScope, ct, normalizedSearch, resolvedObservedHorizonUtc),
                     ct,
                     loggerFactory: loggerFactory,
                     dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
@@ -2019,6 +2036,7 @@ public static class CachedAnalyticsEndpoints
                 var result = cacheResult.Value;
 
                 result.Meta ??= BuildSuccessMeta();
+                result.Meta.DefaultPeriodBasis = defaultPeriodBasis;
                 ApplyStaleCacheWarning(result.Meta, cacheResult.Metadata, AnalyticsCachePolicy.ProductDecisionCenter);
                 result.Meta.CorrelationId = ResolveCorrelationId(httpContext);
 
@@ -2305,6 +2323,8 @@ public static class CachedAnalyticsEndpoints
         {
             var normalizedDataScope = NormalizeDataScope(dataScope);
             var requestAborted = ct;
+            string? defaultPeriodBasis = null;
+            DateTime? resolvedObservedHorizonUtc = null;
 
             try
             {
@@ -2313,6 +2333,24 @@ public static class CachedAnalyticsEndpoints
 
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                     toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+
+                if (!fromDate.HasValue && !toDate.HasValue)
+                {
+                    var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
+                        db, storeId, supplierId, normalizedDataScope, ct);
+                    if (defaultPeriod is null)
+                        return Results.Ok(new AnalyticsDashboardBootstrapDto
+                        {
+                            Errors = ["Nema opaženog poslovnog datuma prodaje za izabrani opseg."],
+                            Meta = BuildErrorMeta("SOURCE_HORIZON_UNAVAILABLE", "Period analitike nije dostupan za izabrani opseg.", ResolveCorrelationId(httpContext))
+                        });
+                    fromDate = defaultPeriod.FromUtc;
+                    toDate = defaultPeriod.HorizonUtc;
+                    resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
+                    defaultPeriodBasis = "source_horizon";
+                }
+                resolvedObservedHorizonUtc ??= await ObservedSalesHorizonResolver.ResolveAsync(
+                    db, storeId, supplierId, normalizedDataScope, ct);
 
                 var profilingEnabled = configuration.GetValue<bool>("AnalyticsBootstrapSectionTiming:Enabled");
                 var profileSections = profilingEnabled
@@ -2509,7 +2547,7 @@ public static class CachedAnalyticsEndpoints
                             "P0",
                             async () => await cache.GetOrSetAsync(
                                 AnalyticsCacheKeys.ProductDecisionCenter(fromDate, toDate, storeId, supplierId, 300, normalizedDataScope),
-                                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct),
+                                async () => await BuildProductDecisionCenterAsync(db, fromDate, toDate, storeId, supplierId, 300, normalizedDataScope, ct, observedHorizonUtc: resolvedObservedHorizonUtc),
                                 DashboardFastSectionTtl,
                                 ct),
                             "Product Decision Center nije dostupan.");
@@ -2614,6 +2652,28 @@ public static class CachedAnalyticsEndpoints
                 var result = cacheResult.Value;
 
                 result.Meta ??= BuildSuccessMeta();
+                result.Meta.DefaultPeriodBasis = defaultPeriodBasis;
+                var comparisonBeyondSourceHorizon = BeyondSourceHorizonPolicy.IsBeyond(
+                    requestedPeriodToUtc.AddDays(1), resolvedObservedHorizonUtc);
+                result.Meta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                    ? BeyondSourceHorizonPolicy.ReasonCode
+                    : null;
+                if (comparisonBeyondSourceHorizon)
+                {
+                    if (result.Advanced is not null)
+                    {
+                        foreach (var card in result.Advanced.Cards)
+                            card.TrendPct = null;
+                    }
+                    if (result.TopAdvanced is not null)
+                    {
+                        foreach (var item in result.TopAdvanced.ByRevenue
+                            .Concat(result.TopAdvanced.ByUnits)
+                            .Concat(result.TopAdvanced.ByVelocity)
+                            .Concat(result.TopAdvanced.ByMarginImpact))
+                            item.TrendPct = null;
+                    }
+                }
                 ApplyStaleCacheWarning(result.Meta, cacheResult.Metadata, AnalyticsCachePolicy.DashboardBootstrap);
                 result.Meta.CorrelationId = ResolveCorrelationId(httpContext);
 
@@ -6188,7 +6248,8 @@ public static class CachedAnalyticsEndpoints
         int top,
         string dataScope,
         CancellationToken ct,
-        string? search = null)
+        string? search = null,
+        DateTime? observedHorizonUtc = null)
     {
         var normalizedDataScope = NormalizeDataScope(dataScope);
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
@@ -6206,6 +6267,10 @@ public static class CachedAnalyticsEndpoints
 
         var periodDays = Math.Max(1, (int)Math.Ceiling((periodToExclusiveUtc - periodFromUtc).TotalDays));
         var periodEndUtc = periodToExclusiveUtc.AddTicks(-1);
+        var observedSalesHorizon = observedHorizonUtc ?? await ObservedSalesHorizonResolver.ResolveAsync(
+            db, storeId, supplierId, normalizedDataScope, ct);
+        var comparisonBeyondSourceHorizon = BeyondSourceHorizonPolicy.IsBeyond(
+            periodToExclusiveUtc, observedSalesHorizon);
         var previousFromUtc = periodFromUtc.AddDays(-periodDays);
         var previousToExclusiveUtc = periodFromUtc;
 
@@ -6263,6 +6328,10 @@ public static class CachedAnalyticsEndpoints
                 normalizedDataScope,
                 normalizedSearch,
                 top);
+            emptyMeta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                ? BeyondSourceHorizonPolicy.ReasonCode
+                : null;
+            emptyMeta.ObservedPeriodToUtc = observedSalesHorizon;
 
             return new ProductDecisionCenterResponseDto
             {
@@ -6415,7 +6484,9 @@ public static class CachedAnalyticsEndpoints
             // Missing previous baseline must stay null — never synthesize +100% growth.
             // True zero previous with current sales also has no finite percent change.
             decimal? previousBaseline = hasPreviousBaseline ? previousRevenueValue : null;
-            var trendPct = ProductDecisionReasoningHelper.ComputeTrendPct(revenue, previousBaseline);
+            var trendPct = comparisonBeyondSourceHorizon
+                ? null
+                : ProductDecisionReasoningHelper.ComputeTrendPct(revenue, previousBaseline);
 
             var avgUnitPrice = unitsSold > 0 ? revenue / unitsSold : 0m;
             decimal? lostSalesEstimate = stockEvidenceComplete
@@ -6647,6 +6718,10 @@ public static class CachedAnalyticsEndpoints
             normalizedDataScope,
             normalizedSearch,
             top);
+        responseMeta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+            ? BeyondSourceHorizonPolicy.ReasonCode
+            : null;
+        responseMeta.ObservedPeriodToUtc = observedSalesHorizon;
 
         return new ProductDecisionCenterResponseDto
         {
@@ -6681,6 +6756,10 @@ public static class CachedAnalyticsEndpoints
         string normalizedSearch,
         int top)
     {
+        meta.RequestedPeriodFromUtc = periodFromUtc;
+        meta.RequestedPeriodToUtc = periodToExclusiveUtc;
+        meta.EffectivePeriodFromUtc = periodFromUtc;
+        meta.EffectivePeriodToUtc = periodToExclusiveUtc;
         meta.Context = AnalyticsContextFingerprintPolicy.Create(
             sourceDataset: "certified_sales_rows+article_master",
             sourceGeneration: "sales_header_origin_v1",

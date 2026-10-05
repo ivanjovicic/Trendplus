@@ -30,6 +30,10 @@ public class AnalyticsResponseMetaDto
     public double? AttributionCoveragePct { get; set; }
     public DateTime? ObservedPeriodFromUtc { get; set; }
     public DateTime? ObservedPeriodToUtc { get; set; }
+    /// <summary>Indicates that an omitted requested bound was resolved from scoped source sales.</summary>
+    public string? DefaultPeriodBasis { get; set; }
+    /// <summary>Why comparison/trend metrics are unavailable for this requested period.</summary>
+    public string? ComparisonUnavailableReasonCode { get; set; }
     public string? DataFreshnessStatus { get; set; }
     public string? DataFreshnessReasonCode { get; set; }
     public string? DataFreshnessEvidenceId { get; set; }

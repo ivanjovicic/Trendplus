@@ -54,6 +54,19 @@ public static class DecisionBoardEndpoints
     {
         var correlationId = ResolveCorrelationId(httpContext);
         var normalizedDataScope = NormalizeDataScope(dataScope);
+        string? defaultPeriodBasis = null;
+        DateTime? resolvedObservedHorizonUtc = null;
+        if (!fromDate.HasValue && !toDate.HasValue)
+        {
+            var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
+                (ITrendplusDbContext)trendDb, storeId, supplierId, normalizedDataScope, ct);
+            if (defaultPeriod is null)
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period analitike nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+            fromDate = defaultPeriod.FromUtc;
+            toDate = defaultPeriod.HorizonUtc;
+            resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
+            defaultPeriodBasis = "source_horizon";
+        }
         var (periodFromUtc, periodToUtc) = NormalizeDecisionWindow(fromDate, toDate);
         var warnings = new List<string>();
 
@@ -76,7 +89,8 @@ public static class DecisionBoardEndpoints
                 supplierId,
                 300,
                 normalizedDataScope,
-                ct);
+                ct,
+                observedHorizonUtc: resolvedObservedHorizonUtc);
         }
         catch (Exception ex)
         {
@@ -238,6 +252,8 @@ public static class DecisionBoardEndpoints
             normalizedDataScope,
             storeId,
             supplierId);
+        responseMeta.DefaultPeriodBasis = defaultPeriodBasis;
+        responseMeta.ComparisonUnavailableReasonCode = productDecisionCenter?.Meta?.ComparisonUnavailableReasonCode;
         return Results.Ok(response with { Meta = responseMeta });
     }
 

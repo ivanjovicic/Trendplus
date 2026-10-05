@@ -1,6 +1,7 @@
 ﻿using Api.Config;
 using Api.Services;
 using Application.Analytics;
+using Application.Artikli.Common.Interfaces;
 using Infrastructure.Configuration;
 using Infrastructure.Analytics;
 using Infrastructure.DbContexts;
@@ -54,6 +55,7 @@ public static class SupplierDecisionHubEndpoints
             HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
+            ITrendplusDbContext trendDb,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -67,6 +69,11 @@ public static class SupplierDecisionHubEndpoints
             string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var defaultPeriod = await ResolveDefaultPeriodAsync(trendDb, fromDate, toDate, storeId, supplierId, dataScope, ct);
+            if (defaultPeriod.Unavailable)
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period analitike nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+            fromDate = defaultPeriod.FromDate;
+            toDate = defaultPeriod.ToDate;
             if (!TryCreateFilters(
                     fromDate,
                     toDate,
@@ -112,6 +119,11 @@ public static class SupplierDecisionHubEndpoints
                     CacheExpiration.HeavyAnalytics,
                     ct);
 
+                if (response.Meta is not null)
+                {
+                    response.Meta.DefaultPeriodBasis = defaultPeriod.Basis;
+                    response.Meta.ComparisonUnavailableReasonCode = defaultPeriod.ComparisonUnavailableReasonCode;
+                }
                 response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
                 return Results.Ok(response);
             }
@@ -146,6 +158,7 @@ public static class SupplierDecisionHubEndpoints
             HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
+            ITrendplusDbContext trendDb,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -159,6 +172,11 @@ public static class SupplierDecisionHubEndpoints
             string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var defaultPeriod = await ResolveDefaultPeriodAsync(trendDb, fromDate, toDate, storeId, supplierId, dataScope, ct);
+            if (defaultPeriod.Unavailable)
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period analitike nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+            fromDate = defaultPeriod.FromDate;
+            toDate = defaultPeriod.ToDate;
             if (!TryCreateFilters(
                     fromDate,
                     toDate,
@@ -231,6 +249,11 @@ public static class SupplierDecisionHubEndpoints
                     CacheExpiration.HeavyAnalytics,
                     ct);
 
+                if (response.Meta is not null)
+                {
+                    response.Meta.DefaultPeriodBasis = defaultPeriod.Basis;
+                    response.Meta.ComparisonUnavailableReasonCode = defaultPeriod.ComparisonUnavailableReasonCode;
+                }
                 response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
                 return Results.Ok(response);
             }
@@ -254,6 +277,7 @@ public static class SupplierDecisionHubEndpoints
             HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
+            ITrendplusDbContext trendDb,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -271,6 +295,11 @@ public static class SupplierDecisionHubEndpoints
             string? sortDir = null,
             CancellationToken ct = default) =>
         {
+            var defaultPeriod = await ResolveDefaultPeriodAsync(trendDb, fromDate, toDate, storeId, supplierId, dataScope, ct);
+            if (defaultPeriod.Unavailable)
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period analitike nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+            fromDate = defaultPeriod.FromDate;
+            toDate = defaultPeriod.ToDate;
             if (!TryCreateFilters(
                     fromDate,
                     toDate,
@@ -374,6 +403,11 @@ public static class SupplierDecisionHubEndpoints
                     CacheExpiration.HeavyAnalytics,
                     ct);
 
+                if (response.Meta is not null)
+                {
+                    response.Meta.DefaultPeriodBasis = defaultPeriod.Basis;
+                    response.Meta.ComparisonUnavailableReasonCode = defaultPeriod.ComparisonUnavailableReasonCode;
+                }
                 response = response with { Meta = ApplyCorrelationId(response.Meta, ResolveCorrelationId(httpContext)) };
                 return Results.Ok(response);
             }
@@ -402,6 +436,7 @@ public static class SupplierDecisionHubEndpoints
             HttpContext httpContext,
             IConfiguration configuration,
             IAnalyticsCacheService cache,
+            ITrendplusDbContext trendDb,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             string? category = null,
@@ -414,6 +449,11 @@ public static class SupplierDecisionHubEndpoints
             string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var defaultPeriod = await ResolveDefaultPeriodAsync(trendDb, fromDate, toDate, storeId, supplierId, dataScope, ct);
+            if (defaultPeriod.Unavailable)
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period analitike nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+            fromDate = defaultPeriod.FromDate;
+            toDate = defaultPeriod.ToDate;
             if (!TryCreateFilters(
                     fromDate,
                     toDate,
@@ -487,6 +527,11 @@ public static class SupplierDecisionHubEndpoints
                 return Results.NotFound(new { message = $"Supplier {supplierId} not found for the selected filter set." });
             }
 
+            if (response.Response.Meta is { } detailsMeta)
+            {
+                detailsMeta.DefaultPeriodBasis = defaultPeriod.Basis;
+                detailsMeta.ComparisonUnavailableReasonCode = defaultPeriod.ComparisonUnavailableReasonCode;
+            }
             response = response with
             {
                 Response = response.Response with
@@ -953,6 +998,41 @@ public static class SupplierDecisionHubEndpoints
             : value.Value.ToUniversalTime();
 
         return normalized.Date;
+    }
+
+    private sealed record DefaultPeriodResolution(
+        DateTime? FromDate,
+        DateTime? ToDate,
+        string? Basis,
+        bool Unavailable,
+        string? ComparisonUnavailableReasonCode);
+
+    private static async Task<DefaultPeriodResolution> ResolveDefaultPeriodAsync(
+        ITrendplusDbContext db,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? storeId,
+        int? supplierId,
+        string? dataScope,
+        CancellationToken ct)
+    {
+        var window = await ObservedSalesHorizonResolver.ResolveWindowAsync(db, storeId, supplierId, dataScope, ct);
+        var basis = (fromDate.HasValue || toDate.HasValue) ? null : "source_horizon";
+        if (!fromDate.HasValue && !toDate.HasValue && !window.ToDate.HasValue)
+            return new DefaultPeriodResolution(null, null, basis, true, null);
+
+        if (!fromDate.HasValue && !toDate.HasValue)
+        {
+            var horizonDate = window.ToDate!.Value.Date;
+            fromDate = horizonDate.AddDays(-29);
+            toDate = horizonDate;
+        }
+
+        var comparisonUnavailable = BeyondSourceHorizonPolicy.IsBeyond(
+            NormalizeDate(toDate)?.AddDays(1), window.ToDate)
+            ? BeyondSourceHorizonPolicy.ReasonCode
+            : null;
+        return new DefaultPeriodResolution(fromDate, toDate, basis, false, comparisonUnavailable);
     }
 
     internal static SummaryResponse BuildSummaryResponse(

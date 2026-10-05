@@ -29,7 +29,7 @@
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1414,
+      "line": 1432,
       "reason": "Existing dashboard fallback requires a reviewed empty/error-state exception."
     },
     {

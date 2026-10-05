@@ -1142,6 +1142,11 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
+                string? defaultPeriodBasis = null;
+                var observedSalesWindow = await ObservedSalesHorizonResolver.ResolveWindowAsync(
+                    db, storeId, null, normalizedDataScope, ct);
+                DateTime? dataWindowFrom = observedSalesWindow.FromDate;
+                DateTime? dataWindowTo = observedSalesWindow.ToDate;
 
                 if (sezonaId.HasValue)
                 {
@@ -1161,10 +1166,13 @@ public static class AllEndpoints
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
-                    var todayUtc = DateTime.UtcNow.Date;
-                    fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1);
+                    if (!dataWindowTo.HasValue)
+                        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period prodaje nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+                    fromUtc = dataWindowTo.Value.Date.AddDays(-29);
+                    toUtc = dataWindowTo.Value.Date.AddDays(1);
+                    defaultPeriodBasis = "source_horizon";
                 }
+                var comparisonBeyondSourceHorizon = BeyondSourceHorizonPolicy.IsBeyond(toUtc, dataWindowTo);
 
                 if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
@@ -1237,10 +1245,6 @@ public static class AllEndpoints
                 var dbStopwatch = Stopwatch.StartNew();
                 var snapshotCostRowCount = 0;
                 Dictionary<int, decimal> snapshotCostBySaleLineId = [];
-
-                var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
-                DateTime? dataWindowFrom = dataWindow.FromDate;
-                DateTime? dataWindowTo = dataWindow.ToDate;
 
                 var supplierNames = await db.Dobavljaci.AsNoTracking()
                     .Select(d => new { d.Id, d.Naziv })
@@ -1552,10 +1556,10 @@ public static class AllEndpoints
                                     previousPeriodUnits = hasPreviousComparablePeriod
                                         ? previousTypeUnits
                                         : (int?)null,
-                                    popRevenueChangePct = hasPreviousComparablePeriod && previousTypeRevenue > 0m
+                                    popRevenueChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousTypeRevenue > 0m
                                         ? Math.Round((double)((typeRevenue - previousTypeRevenue) / previousTypeRevenue * 100m), 2)
                                         : (double?)null,
-                                    popUnitsChangePct = hasPreviousComparablePeriod && previousTypeUnits > 0
+                                    popUnitsChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousTypeUnits > 0
                                         ? Math.Round((typeQuantity - previousTypeUnits) / (double)previousTypeUnits * 100d, 2)
                                         : (double?)null,
                                     historicalCostRevenue = typeMarginSnapshot.HistoricalCostRevenue,
@@ -1620,10 +1624,10 @@ public static class AllEndpoints
                             previousPeriodUnits = hasPreviousComparablePeriod
                                 ? previousUnitsRaw
                                 : (int?)null,
-                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                            popRevenueChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousRevenueRaw > 0m
                                 ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
                                 : (double?)null,
-                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                            popUnitsChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
                             prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
@@ -1924,6 +1928,10 @@ public static class AllEndpoints
 
                 var totals = new
                 {
+                    defaultPeriodBasis,
+                    comparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                        ? BeyondSourceHorizonPolicy.ReasonCode
+                        : null,
                     ukupanPromet = totalRevenue,
                     positiveNetRevenueDenominator = positiveNetRevenueDenominator > 0m
                         ? Math.Round(positiveNetRevenueDenominator, 2)
@@ -1971,10 +1979,10 @@ public static class AllEndpoints
                     previousPeriodUnits,
                     brojDobavljaca = suppliers.Count,
                     brojDobavljacTipObuceKombinacija = suppliers.Sum(r => r.footwearTypeCount),
-                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                    popRevenueChangePct = !comparisonBeyondSourceHorizon && previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
                         ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
                         : (double?)null,
-                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                    popUnitsChangePct = !comparisonBeyondSourceHorizon && previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((suppliers.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
                     prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
@@ -2002,6 +2010,16 @@ public static class AllEndpoints
                     generatedAtUtc,
                     supplierPolicy: true);
                 supplierTrustMeta.ProvenanceBasis = OperationsRecommendationGatePolicy.SupplierTrustProvenance;
+                supplierTrustMeta.DefaultPeriodBasis = defaultPeriodBasis;
+                supplierTrustMeta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                    ? BeyondSourceHorizonPolicy.ReasonCode
+                    : null;
+                supplierTrustMeta.RequestedPeriodFromUtc = fromUtc;
+                supplierTrustMeta.RequestedPeriodToUtc = toUtc;
+                supplierTrustMeta.EffectivePeriodFromUtc = fromUtc;
+                supplierTrustMeta.EffectivePeriodToUtc = toUtc;
+                supplierTrustMeta.ObservedPeriodFromUtc = dataWindowFrom;
+                supplierTrustMeta.ObservedPeriodToUtc = dataWindowTo;
                 supplierTrustMeta.RecommendationAllowed = supplierPageRecommendationAllowed;
                 supplierTrustMeta.RequestedDataScope = normalizedDataScope;
                 supplierTrustMeta.EffectiveDataScope = normalizedDataScope;
@@ -2101,8 +2119,8 @@ public static class AllEndpoints
                     requestStopwatch.ElapsedMilliseconds,
                     dbStopwatch.ElapsedMilliseconds,
                     processingStopwatch.ElapsedMilliseconds,
-                    dataWindow.CacheHit,
-                    dataWindow.ElapsedMs,
+                    false,
+                    0d,
                     isPrewarmRequest,
                     CacheExpiration.HeavyAnalytics.TotalMinutes,
                     snapshotOptions.UseSnapshotCost,
@@ -2209,6 +2227,11 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
+                string? defaultPeriodBasis = null;
+                var observedSalesWindow = await ObservedSalesHorizonResolver.ResolveWindowAsync(
+                    db, storeId, null, normalizedDataScope, ct);
+                DateTime? dataWindowFrom = observedSalesWindow.FromDate;
+                DateTime? dataWindowTo = observedSalesWindow.ToDate;
 
                 if (sezonaId.HasValue)
                 {
@@ -2228,10 +2251,13 @@ public static class AllEndpoints
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
-                    var todayUtc = DateTime.UtcNow.Date;
-                    fromUtc = todayUtc.AddDays(-29);
-                    toUtc = todayUtc.AddDays(1);
+                    if (!dataWindowTo.HasValue)
+                        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period prodaje nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+                    fromUtc = dataWindowTo.Value.Date.AddDays(-29);
+                    toUtc = dataWindowTo.Value.Date.AddDays(1);
+                    defaultPeriodBasis = "source_horizon";
                 }
+                var comparisonBeyondSourceHorizon = BeyondSourceHorizonPolicy.IsBeyond(toUtc, dataWindowTo);
 
                 if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
@@ -2288,7 +2314,9 @@ public static class AllEndpoints
                         normalizedDataScope,
                         storeId,
                         "recommendation",
-                        ct);
+                        ct,
+                        defaultPeriodBasis,
+                        comparisonBeyondSourceHorizon ? BeyondSourceHorizonPolicy.ReasonCode : null);
                     return Results.Content(refreshedJson, "application/json");
                 }
 
@@ -2311,10 +2339,6 @@ public static class AllEndpoints
                         .Where(s => s.BatchId == activeBatchId2.Value)
                         .ToDictionaryAsync(s => s.ProdajaStavkaId, s => s.ResolvedUnitCost, ct);
                 }
-
-                var dataWindow = await GetSalesDataWindowAsync(db, cache, logger, storeId, normalizedDataScope, ct);
-                DateTime? dataWindowFrom = dataWindow.FromDate;
-                DateTime? dataWindowTo = dataWindow.ToDate;
 
                 var prvaNivelacijaPoArtiklu = await db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -2560,10 +2584,10 @@ public static class AllEndpoints
                             previousPeriodUnits = hasPreviousComparablePeriod
                                 ? previousUnitsRaw
                                 : (int?)null,
-                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                            popRevenueChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousRevenueRaw > 0m
                                 ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
                                 : (double?)null,
-                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                            popUnitsChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
                             prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
@@ -2820,10 +2844,10 @@ public static class AllEndpoints
                         ? Math.Round(previousPeriodRevenue.Value, 2)
                         : (decimal?)null,
                     previousPeriodUnits,
-                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                    popRevenueChangePct = !comparisonBeyondSourceHorizon && previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
                         ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
                         : (double?)null,
-                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                    popUnitsChangePct = !comparisonBeyondSourceHorizon && previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((shoeTypes.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
                     prePostNivelacijaRevenueImpactPct = comparablePreRevenue > 0m
@@ -2853,6 +2877,10 @@ public static class AllEndpoints
                     dataQuality.unknownTypeRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
+                shoeTrustMeta.DefaultPeriodBasis = defaultPeriodBasis;
+                shoeTrustMeta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                    ? BeyondSourceHorizonPolicy.ReasonCode
+                    : null;
                 shoeTrustMeta.AttributionBasis = shoeAttributionBasis;
                 shoeTrustMeta.AttributionCoveragePct = shoeAttributionCoveragePct;
                 shoeTrustMeta.RequestedDataScope = normalizedDataScope;
@@ -2904,7 +2932,8 @@ public static class AllEndpoints
                     evidenceReferences: shoeReadiness?.EvidenceReferences,
                     repairPath: shoeReadiness?.RepairPath);
                 await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
-                    serviceProvider, shoeTrustMeta, normalizedDataScope, storeId, "recommendation", ct);
+                    serviceProvider, shoeTrustMeta, normalizedDataScope, storeId, "recommendation", ct, defaultPeriodBasis,
+                    comparisonBeyondSourceHorizon ? BeyondSourceHorizonPolicy.ReasonCode : null);
                 shoeTrustMeta.MetricProvenance = AnalyticsMetricEvidenceCoveragePolicy.Enrich(
                     "shoe-type",
                     shoeTrustMeta,
@@ -2939,8 +2968,8 @@ public static class AllEndpoints
                     requestStopwatch.ElapsedMilliseconds,
                     dbStopwatch.ElapsedMilliseconds,
                     processingStopwatch.ElapsedMilliseconds,
-                    dataWindow.CacheHit,
-                    dataWindow.ElapsedMs,
+                    false,
+                    0d,
                     isPrewarmRequest,
                     CacheExpiration.HeavyAnalytics.TotalMinutes,
                     snapshotOptions2.UseSnapshotCost,
@@ -3019,6 +3048,11 @@ public static class AllEndpoints
                 fromUtc = OperationsDateRange.NormalizeUtc(fromDate);
                 toUtc = OperationsDateRange.NormalizeUtc(toDate);
                 var normalizedDataScope = NormalizeDataScope(dataScope);
+                string? defaultPeriodBasis = null;
+                var observedSalesWindow = await ObservedSalesHorizonResolver.ResolveWindowAsync(
+                    db, storeId, null, normalizedDataScope, ct);
+                DateTime? dataWindowFrom = observedSalesWindow.FromDate;
+                DateTime? dataWindowTo = observedSalesWindow.ToDate;
                 var operationsIntegrityRegistry = httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>();
 
                 if (sezonaId.HasValue)
@@ -3039,10 +3073,13 @@ public static class AllEndpoints
 
                 if (!fromUtc.HasValue && !toUtc.HasValue)
                 {
-                    var todayUtc = DateTime.UtcNow.Date;
-                    fromUtc = todayUtc.AddDays(-89);
-                    toUtc = todayUtc.AddDays(1);
+                    if (!dataWindowTo.HasValue)
+                        return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Period prodaje nije dostupan.", detail: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.", extensions: new Dictionary<string, object?> { ["errorCode"] = "source_horizon_unavailable" });
+                    fromUtc = dataWindowTo.Value.Date.AddDays(-29);
+                    toUtc = dataWindowTo.Value.Date.AddDays(1);
+                    defaultPeriodBasis = "source_horizon";
                 }
+                var comparisonBeyondSourceHorizon = BeyondSourceHorizonPolicy.IsBeyond(toUtc, dataWindowTo);
 
                 if (fromUtc.HasValue && toUtc.HasValue && fromUtc.Value >= toUtc.Value)
                 {
@@ -3090,29 +3127,11 @@ public static class AllEndpoints
                         normalizedDataScope,
                         storeId,
                         "signal",
-                        ct);
+                        ct,
+                        defaultPeriodBasis,
+                        comparisonBeyondSourceHorizon ? BeyondSourceHorizonPolicy.ReasonCode : null);
                     return Results.Content(refreshedJson, "application/json");
                 }
-
-                var dataWindow = await (
-                    from pz in db.ProdajaZaglavlja.Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate).Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope)).AsNoTracking()
-                    join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
-                    join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                    where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
-                    group pz by 1 into g
-                    select new
-                    {
-                        fromDate = g.Min(x => (DateTime?)x.DatumProdaje),
-                        toDate = g.Max(x => (DateTime?)x.DatumProdaje)
-                    })
-                    .FirstOrDefaultAsync(ct);
-
-                DateTime? dataWindowFrom = dataWindow?.fromDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.fromDate.Value, DateTimeKind.Utc)
-                    : null;
-                DateTime? dataWindowTo = dataWindow?.toDate.HasValue == true
-                    ? DateTime.SpecifyKind(dataWindow.toDate.Value, DateTimeKind.Utc)
-                    : null;
 
                 var nivelacijeQuery = db.DnevnikPromena.AsNoTracking()
                     .Where(d =>
@@ -3309,10 +3328,10 @@ public static class AllEndpoints
                             previousPeriodUnits = hasPreviousComparablePeriod
                                 ? previousUnitsRaw
                                 : (int?)null,
-                            popRevenueChangePct = hasPreviousComparablePeriod && previousRevenueRaw > 0m
+                            popRevenueChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousRevenueRaw > 0m
                                 ? Math.Round((double)((totalRevenue - previousRevenueRaw) / previousRevenueRaw * 100m), 2)
                                 : (double?)null,
-                            popUnitsChangePct = hasPreviousComparablePeriod && previousUnitsRaw > 0
+                            popUnitsChangePct = !comparisonBeyondSourceHorizon && hasPreviousComparablePeriod && previousUnitsRaw > 0
                                 ? Math.Round((totalQty - previousUnitsRaw) / (double)previousUnitsRaw * 100d, 2)
                                 : (double?)null,
                             prePostNivelacijaRevenueImpactPct = splitSnapshot.RevenueImpactPct,
@@ -3581,10 +3600,10 @@ public static class AllEndpoints
                         ? Math.Round(previousPeriodRevenue.Value, 2)
                         : (decimal?)null,
                     previousPeriodUnits,
-                    popRevenueChangePct = previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
+                    popRevenueChangePct = !comparisonBeyondSourceHorizon && previousPeriodRevenue.HasValue && previousPeriodRevenue.Value > 0m
                         ? Math.Round((double)((totalRevenue - previousPeriodRevenue.Value) / previousPeriodRevenue.Value * 100m), 2)
                         : (double?)null,
-                    popUnitsChangePct = previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
+                    popUnitsChangePct = !comparisonBeyondSourceHorizon && previousPeriodUnits.HasValue && previousPeriodUnits.Value > 0
                         ? Math.Round((colors.Sum(r => r.ukupnaKolicina) - previousPeriodUnits.Value) / (double)previousPeriodUnits.Value * 100d, 2)
                         : (double?)null,
                     prePostNivelacijaRevenueImpactPct = comparableSignal.RevenueImpactPct,
@@ -3629,6 +3648,10 @@ public static class AllEndpoints
                     dataQuality.unknownColorRevenueSharePct,
                     dataQuality.revenueWithNivelacijaSplitSharePct,
                     generatedAtUtc);
+                trustMeta.DefaultPeriodBasis = defaultPeriodBasis;
+                trustMeta.ComparisonUnavailableReasonCode = comparisonBeyondSourceHorizon
+                    ? BeyondSourceHorizonPolicy.ReasonCode
+                    : null;
                 trustMeta.RequestedDataScope = normalizedDataScope;
                 trustMeta.EffectiveDataScope = normalizedDataScope;
                 trustMeta.DataScopeSource = SalesDataScopePolicy.Source;
@@ -3890,7 +3913,9 @@ public static class AllEndpoints
                     normalizedDataScope,
                     storeId,
                     "signal",
-                    ct);
+                    ct,
+                    defaultPeriodBasis,
+                    comparisonBeyondSourceHorizon ? BeyondSourceHorizonPolicy.ReasonCode : null);
                 return Results.Content(responseWithSourceFreshness, "application/json");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -8129,6 +8154,8 @@ public static class AllEndpoints
             CacheCreatedAtUtc = meta.CacheCreatedAtUtc,
             RequestedPeriodFromUtc = meta.RequestedPeriodFromUtc,
             RequestedPeriodToUtc = meta.RequestedPeriodToUtc,
+            DefaultPeriodBasis = meta.DefaultPeriodBasis,
+            ComparisonUnavailableReasonCode = meta.ComparisonUnavailableReasonCode,
             EffectivePeriodFromUtc = meta.EffectivePeriodFromUtc,
             EffectivePeriodToUtc = meta.EffectivePeriodToUtc,
             RequestedDataScope = meta.RequestedDataScope,

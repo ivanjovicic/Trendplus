@@ -299,13 +299,14 @@ function readProductDecisionUrlState(fallback: { fromDate: string; toDate: strin
   const quality = params.get("quality") as DataQualityFilter | null;
   const sort = params.get("sort") as SortField | null;
   const dir = params.get("dir");
+  const hasExplicitPeriod = isDateInputValue(params.get("from")) || isDateInputValue(params.get("to"));
   const validRecommendations = RECOMMENDATION_OPTIONS.some((option) => option.value === recommendation);
   const validQuality = ["all", "good", "warning", "critical", "insufficient_data"].includes(quality ?? "");
   const validSort = ["productName", "supplierName", "revenue", "unitsSold", "velocityUnitsPerDay", "marginPct", "currentStock", "trendPct", "stockCoverDays", "sellThroughRatio", "confidencePct", "recommendationStatus", "dataQualityStatus"].includes(sort ?? "");
   return {
     periodPreset,
-    fromDate: isDateInputValue(params.get("from")) ? params.get("from")! : fallback.fromDate,
-    toDate: isDateInputValue(params.get("to")) ? params.get("to")! : fallback.toDate,
+    fromDate: isDateInputValue(params.get("from")) ? params.get("from")! : hasExplicitPeriod ? fallback.fromDate : "",
+    toDate: isDateInputValue(params.get("to")) ? params.get("to")! : hasExplicitPeriod ? fallback.toDate : "",
     storeId: parseEntityIdParam(params.get("store")),
     supplierId: parseEntityIdParam(params.get("supplier")),
     recommendationFilter: validRecommendations ? recommendation! : "all",
@@ -977,6 +978,14 @@ export default function ProductDecisionCenterPage() {
       }
       setPayload(response);
       payloadRef.current = response;
+      if (response.meta?.defaultPeriodBasis === "source_horizon") {
+        const resolvedFrom = response.periodFromUtc?.slice(0, 10);
+        const resolvedTo = response.periodToUtc?.slice(0, 10);
+        if (resolvedFrom && resolvedTo) {
+          setFromDate(resolvedFrom);
+          setToDate(resolvedTo);
+        }
+      }
     } catch (reason) {
       if (dataRequestSeqRef.current !== requestSeq) {
         return;
@@ -1456,6 +1465,7 @@ export default function ProductDecisionCenterPage() {
         description="Pregled preporuka za dopunu, pojačanje, cenu, praćenje i proveru podataka po artiklu."
         periodFrom={payload?.periodFromUtc ?? fromDate}
         periodTo={payload?.periodToUtc ?? toDate}
+        observedPeriodTo={responseMeta?.observedPeriodToUtc ?? null}
         lastRefreshAt={responseMeta?.lastRefreshAtUtc ?? null}
         dataSource="Pregled odluka o proizvodima"
         dataQualityStatus={responseMeta?.dataQualityStatus ?? null}
@@ -1469,6 +1479,12 @@ export default function ProductDecisionCenterPage() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+
+      {responseMeta?.comparisonUnavailableReasonCode === "beyond_source_horizon" ? (
+        <div className="product-decision-message product-decision-message-info" role="status">
+          Poređenje nije dostupno: izabrani period prelazi poslednji opaženi datum prodaje. Nema podataka posle prikazanog horizonta.
+        </div>
+      ) : null}
 
       {showMetaWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">

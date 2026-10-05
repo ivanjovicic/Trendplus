@@ -668,6 +668,7 @@ function MetricCard(props: {
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const initialPeriodRequestRef = useRef(true);
   const [preset, setPreset] = useState<AnalyticsPeriodPreset>("30d");
   const initialRange = getAnalyticsPeriodPresetRange("30d");
   const [fromDate, setFromDate] = useState<string>(
@@ -822,7 +823,13 @@ export default function AnalyticsDashboard() {
     setErrors([]);
 
     const [bootstrapR, refreshStatusR] = await Promise.allSettled([
-      getDashboardBootstrap(fromDate, toDate, true, storeId, supplierId),
+      getDashboardBootstrap(
+        initialPeriodRequestRef.current ? undefined : fromDate,
+        initialPeriodRequestRef.current ? undefined : toDate,
+        true,
+        storeId,
+        supplierId,
+      ),
       getAnalyticsRefreshStatus(),
     ]);
 
@@ -856,6 +863,17 @@ export default function AnalyticsDashboard() {
       );
       setExecutive(bootstrapR.value.executive ?? null);
       setDashboardMeta(bootstrapR.value.meta ?? null);
+      if (initialPeriodRequestRef.current) {
+        initialPeriodRequestRef.current = false;
+        if (bootstrapR.value.meta?.defaultPeriodBasis === "source_horizon") {
+          const resolvedFrom = bootstrapR.value.meta.effectivePeriodFromUtc?.slice(0, 10);
+          const resolvedTo = bootstrapR.value.meta.effectivePeriodToUtc?.slice(0, 10);
+          if (resolvedFrom && resolvedTo) {
+            setFromDate(`${resolvedFrom}T00:00`);
+            setToDate(`${resolvedTo}T23:59`);
+          }
+        }
+      }
       nextErrors.push(...bootstrapR.value.errors);
     } else {
       setSummary(null);
@@ -1526,6 +1544,7 @@ export default function AnalyticsDashboard() {
         description="Ključni pregled prodaje i profita: prihod, maržni doprinos, rizici i prioritetne odluke za izabrani period."
         periodFrom={dashboardPeriod.periodFrom}
         periodTo={dashboardPeriod.periodTo}
+        observedPeriodTo={dashboardMeta?.observedPeriodToUtc ?? null}
         lastRefreshAt={dashboardLastRefreshAt}
         dataFreshnessStatus={refreshStatus?.dataFreshnessStatus ?? null}
         refreshIsRunning={refreshStatus?.isRunning ?? false}
@@ -1559,6 +1578,11 @@ export default function AnalyticsDashboard() {
         refreshStatusHref="/admin/configuration?panel=workers"
         compact
       />
+      {dashboardMeta?.comparisonUnavailableReasonCode === "beyond_source_horizon" ? (
+        <div className="analytics-warning-banner" role="status">
+          Poređenje nije dostupno: izabrani period prelazi poslednji opaženi datum prodaje. Trend se ne izračunava iz nepostojećih podataka.
+        </div>
+      ) : null}
       <AnalyticsRefreshStatusBanner
         status={refreshStatus}
         loading={loading}

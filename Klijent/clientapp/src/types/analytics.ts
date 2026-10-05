@@ -114,6 +114,8 @@ export interface AnalyticsResponseMeta {
   attributionCoveragePct?: number | null;
   observedPeriodFromUtc?: string | null;
   observedPeriodToUtc?: string | null;
+  defaultPeriodBasis?: string | null;
+  comparisonUnavailableReasonCode?: string | null;
   dataFreshnessStatus?: AnalyticsFreshnessStatus | string | null;
   dataFreshnessReasonCode?: string | null;
   dataFreshnessEvidenceId?: string | null;

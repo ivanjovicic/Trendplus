@@ -2079,39 +2079,8 @@ public static class DataQualityEndpoints
         string dataScope,
         CancellationToken ct)
     {
-        var includedHeaders = trendDb.ProdajaZaglavlja
-            .AsNoTracking()
-            .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate);
-
-        includedHeaders = dataScope switch
-        {
-            "imported" => includedHeaders.Where(x => x.DataOrigin == "access"),
-            "existing" => includedHeaders.Where(x => x.DataOrigin == "existing" || x.DataOrigin == null || x.DataOrigin == ""),
-            _ => includedHeaders
-        };
-
-        var scopedBusinessDates =
-            from header in includedHeaders
-            join line in trendDb.ProdajaStavke.AsNoTracking() on header.Id equals line.IdProdaja
-            select new { header.DatumProdaje, header.IDObjekat, line.IdArtikal };
-
-        if (storeId.HasValue)
-        {
-            scopedBusinessDates = scopedBusinessDates.Where(x => x.IDObjekat == storeId.Value);
-        }
-
-        if (supplierId.HasValue)
-        {
-            scopedBusinessDates =
-                from row in scopedBusinessDates
-                join article in trendDb.Artikli.AsNoTracking() on row.IdArtikal equals article.Id
-                where article.IDDobavljac == supplierId.Value
-                select row;
-        }
-
-        var selectedBusinessDate = await scopedBusinessDates
-            .Select(x => (DateTime?)x.DatumProdaje)
-            .MaxAsync(ct);
+        var selectedBusinessDate = await ObservedSalesHorizonResolver.ResolveAsync(
+            trendDb, storeId, supplierId, dataScope, ct);
         if (selectedBusinessDate.HasValue)
         {
             return new IntakePeriodAnchor(

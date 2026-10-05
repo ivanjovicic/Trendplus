@@ -93,6 +93,8 @@ export const analyticsResponseMetaSchema = z.object({
   dataScopeSource: z.string().nullable().optional(),
   observedPeriodFromUtc: validDate.nullable().optional(),
   observedPeriodToUtc: validDate.nullable().optional(),
+  defaultPeriodBasis: z.string().nullable().optional(),
+  comparisonUnavailableReasonCode: z.string().nullable().optional(),
   dataQualityStatus: z.string().nullable().optional(),
   recommendationAllowed: z.boolean().nullable().optional(),
   operationsIntegrityStatus: z.string().nullable().optional(),

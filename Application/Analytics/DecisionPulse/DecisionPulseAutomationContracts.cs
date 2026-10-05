@@ -74,6 +74,8 @@ public sealed class DecisionPulseResponseMetaDto
     public string? ErrorMessage { get; set; }
     public string? EmptyReason { get; set; }
     public string? CorrelationId { get; set; }
+    public string? DefaultPeriodBasis { get; set; }
+    public string? ComparisonUnavailableReasonCode { get; set; }
     public string? Message { get; set; }
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastRefreshAtUtc { get; set; }

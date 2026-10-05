@@ -1,5 +1,6 @@
 using Api.Models;
 using Api.Services;
+using Application.Artikli.Common.Interfaces;
 using Application.Analytics;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
@@ -20,6 +21,7 @@ public static class DailySalesStatsEndpoints
     {
         app.MapGet("/api/analytics/daily-sales", async (
             [AsParameters] DailySalesStatsRequest request,
+            ITrendplusDbContext sourceDb,
             IDailySalesStatsService service,
             IAnalyticsCacheService cache,
             ILogger<Program> logger,
@@ -31,10 +33,36 @@ public static class DailySalesStatsEndpoints
             try
             {
                 var safeTopN = Math.Clamp(request.TopN ?? DefaultTopN, 1, 25);
+                var normalizedDataScope = NormalizeDataScope(request.DataScope);
+                var requestedFrom = request.FromDate ?? request.From;
+                var requestedTo = request.ToDate ?? request.To;
+                string? defaultPeriodBasis = null;
+                if (!requestedFrom.HasValue && !requestedTo.HasValue)
+                {
+                    var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
+                        sourceDb, request.StoreId, null, normalizedDataScope, ct);
+                    if (defaultPeriod is null)
+                    {
+                        return Results.Ok(new DailySalesTableResponse
+                        {
+                            StoreId = request.StoreId,
+                            TopN = safeTopN,
+                            DataScope = normalizedDataScope,
+                            Meta = AnalyticsResponseMetaFactory.Empty(
+                                "source_horizon_unavailable",
+                                "Nema opaženog poslovnog datuma prodaje za izabrani opseg.",
+                                "insufficient_data")
+                        });
+                    }
+
+                    requestedFrom = defaultPeriod.FromUtc;
+                    requestedTo = defaultPeriod.HorizonUtc;
+                    defaultPeriodBasis = "source_horizon";
+                }
                 // Keep the established fromDate/toDate names authoritative while also
                 // accepting the shorter aliases used by direct API links.
-                var toUtc = NormalizeUtcDate(request.ToDate ?? request.To) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-                var fromUtc = NormalizeUtcDate(request.FromDate ?? request.From) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
+                var toUtc = NormalizeUtcDate(requestedTo) ?? DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+                var fromUtc = NormalizeUtcDate(requestedFrom) ?? toUtc.AddDays(-(DefaultWindowDays - 1));
 
                 if (fromUtc > toUtc)
                 {
@@ -57,7 +85,6 @@ public static class DailySalesStatsEndpoints
                     });
                 }
 
-                var normalizedDataScope = NormalizeDataScope(request.DataScope);
                 var cacheKey = AnalyticsCacheKeys.DailySales(
                     fromUtc,
                     toUtc,
@@ -102,6 +129,7 @@ public static class DailySalesStatsEndpoints
                     request.StoreId,
                     "signal",
                     ct);
+                result.Meta.DefaultPeriodBasis = defaultPeriodBasis;
                 return Results.Ok(result);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
