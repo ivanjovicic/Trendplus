@@ -28881,7 +28881,7 @@ For aging, exclude synthetic import-time `Ulaz robe` rows. Inventory age must co
 
 ## RQ577 - Decide and label the sale-header grain before showing basket metrics
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ574` DONE (owner decision resolved 2026-10-04); serialized behind RQ573 on the shared CachedAnalyticsEndpoints/Dashboard bootstrap path (RQ573 is DONE)
 Priority: P1
 Type: contract/backend/frontend
@@ -28934,6 +28934,25 @@ Owner decision (Ivan, 2026-10-04): for analytics, treat `ProdajaZaglavlje` as a 
 ### Claim 2026-10-05
 
 - Promoted and claimed after RQ573 DONE on refreshed `origin/main` `1c028c0740ab75d27f6b3fecdb40025e9cddea85`. RQ574 is DONE; no competing RQ572/RQ575/RQ577 local lock, branch or open PR was found. RQ572/RQ575 remain serialized behind this exclusive Dashboard/bootstrap owner. Local lock: `.ai/task-locks/RQ577-codex.lock.md`; run log: `.ai/runs/2026-10-05-RQ577-evidence.md`.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: `ProdajaZaglavlje` is labelled as a sales document; receipt-grain basket/line metrics, heatmap counts and basket affinity fail closed with `receipt_grain_unavailable`; revenue and units are preserved.
+- Changed files: implementation and contract files listed in `.ai/runs/2026-10-05-RQ577-evidence.md`; RQ14/RQ15 marked OBSOLETE with replacement pointers.
+- Checks run: focused API integration tests 19/19; focused Dashboard/Insight Studio tests 8/8; analytics suite 139 files / 1,038 tests; Insight Studio focused spec 3/3; typecheck/build; analytics guardrails; encoding, queue/planning/instruction validators; `git diff --check`.
+- Checks not run: no current-main GitHub Actions run was discoverable for the implementation SHA; deployed/live proof not available in this repository task.
+- Run log: `.ai/runs/2026-10-05-RQ577-evidence.md`
+- Evidence state: pending post-close routing recovery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `610c582b54ac709a16d36ea691910bbfff83fc47`
+- Main verification: fresh `origin/main` resolved to `610c582b54ac709a16d36ea691910bbfff83fc47`; `git merge-base --is-ancestor` passed.
+- Missed: none known.
+- Follow-up: perform mandatory post-close dependency cascade, then claim the first safe successor.
+- Residual risk: source-lineage has not proven customer-receipt grain; affected metrics remain unavailable until that evidence exists.
+- Post-close routing: pending immediate recovery from the resulting current `origin/main` SHA.
+- Prompt defect / scope repair: first Dashboard regression attempt used an incomplete MSW bootstrap fixture and was moved to the established Dashboard table-system harness; expected heatmap totals were corrected to the actual seeded fixture. Acceptance was not weakened.
 
 ## RQ578 - Data Quality health: stop reporting "100 / excellent" on stale and incomplete data
 
