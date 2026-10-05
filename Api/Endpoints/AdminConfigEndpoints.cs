@@ -241,7 +241,7 @@ public static class AdminConfigEndpoints
         HttpContext context,
         IConfiguration configuration,
         IHostEnvironment environment,
-        StartupReadinessState readiness,
+        [FromServices] StartupReadinessState readiness,
         WorkerHealthService workerHealth,
         WorkerRuntimeControlService workerControl,
         TrendplusDbContext db,
