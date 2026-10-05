@@ -29133,13 +29133,15 @@ Integrity evidence currently reports success on vacuous comparisons:
 
 ## RQ580 - Supplier report/hub: do not call an explicit date range "Poslednjih N dana"
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/tests
 Feature family: supplier-report-period-label
 Parallel-safe: yes (label helpers in `SupplierDecisionHubEndpoints.cs` only; no READY prompt owns this file)
 Owner: Analytics Reliability / Supplier
 Commit suggestion: `fix(analytics): label explicit Supplier report ranges by their dates`
+
+Claim 2026-10-05: refreshed `origin/main` at `e76f8777064296e786ce0d69c5215671482243a8`; no matching RQ580 lock, branch or open PR existed. RQ580 is claimed for the bounded Supplier report period-label correction. Local lock: `.ai/task-locks/RQ580-codex.lock.md`.
 
 ### Problem
 
