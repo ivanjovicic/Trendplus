@@ -7,6 +7,7 @@ using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Trendplus2.Dtos;
 
 namespace Api.Services;
@@ -30,10 +31,12 @@ public sealed class AnalyticsRefreshStatusService
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly AnalyticsDbContext _analyticsDbContext;
+    private readonly TrendplusDbContext? _trendDb;
     private readonly WorkerHealthService _workerHealthService;
     private readonly WorkerRuntimeControlService _workerRuntimeControlService;
     private readonly AnalyticsCacheAdminService _cacheAdmin;
     private readonly ILogger<AnalyticsRefreshStatusService> _logger;
+    private readonly AnalyticsFreshnessOptions _freshnessOptions;
 
     public AnalyticsRefreshStatusService(
         IConfiguration configuration,
@@ -42,15 +45,19 @@ public sealed class AnalyticsRefreshStatusService
         WorkerHealthService workerHealthService,
         WorkerRuntimeControlService workerRuntimeControlService,
         AnalyticsCacheAdminService cacheAdmin,
-        ILogger<AnalyticsRefreshStatusService> logger)
+        ILogger<AnalyticsRefreshStatusService> logger,
+        TrendplusDbContext? trendDb = null,
+        IOptions<AnalyticsFreshnessOptions>? freshnessOptions = null)
     {
         _configuration = configuration;
         _hostEnvironment = hostEnvironment;
         _analyticsDbContext = analyticsDbContext;
+        _trendDb = trendDb;
         _workerHealthService = workerHealthService;
         _workerRuntimeControlService = workerRuntimeControlService;
         _cacheAdmin = cacheAdmin;
         _logger = logger;
+        _freshnessOptions = freshnessOptions?.Value ?? new AnalyticsFreshnessOptions();
     }
 
     public AnalyticsRefreshStatusDto GetStatus()
@@ -82,8 +89,8 @@ public sealed class AnalyticsRefreshStatusService
                 workerName: NightlyWorkerName,
                 historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["sales_facts_mv"],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -95,8 +102,8 @@ public sealed class AnalyticsRefreshStatusService
                 workerName: NightlyWorkerName,
                 historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["product_dim_mv"],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -113,8 +120,8 @@ public sealed class AnalyticsRefreshStatusService
                     "mv_supplier_decision_score_cache_180d",
                     "mv_supplier_decision_score_cache"
                 ],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -126,8 +133,8 @@ public sealed class AnalyticsRefreshStatusService
                 workerName: NightlyWorkerName,
                 historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["mv_product_decision_snapshot"],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -139,8 +146,8 @@ public sealed class AnalyticsRefreshStatusService
                 workerName: NightlyWorkerName,
                 historyFallbackJobKey: NightlyHistoryJobKey,
                 refreshedObjectNames: ["mv_inventory_recommendations"],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -152,8 +159,8 @@ public sealed class AnalyticsRefreshStatusService
                 workerName: DataQualityWorkerName,
                 historyFallbackJobKey: null,
                 refreshedObjectNames: ["analytics_data_quality_history"],
-                freshHours: 24,
-                staleHours: 72,
+                freshHours: _freshnessOptions.WarningAfterHours,
+                staleHours: _freshnessOptions.CriticalAfterHours,
                 stuckRunningThreshold,
                 processType,
                 workersEnabledInRuntime,
@@ -190,12 +197,16 @@ public sealed class AnalyticsRefreshStatusService
             .Where(value => value.HasValue)
             .Select(value => value!.Value)
             .ToList();
+        var durableImport = await LoadDurableImportEvidenceAsync(ct);
 
         var status = new AnalyticsRefreshStatusDto
         {
             ProcessMode = processMode,
             WorkersEnabled = workersEnabled,
             LastSuccessfulRefreshAtUtc = hasLastSuccess ? lastSuccess : null,
+            LastSuccessfulImportAtUtc = durableImport.LastSuccessfulImportAtUtc,
+            ObservedSalesPeriodFromUtc = durableImport.ObservedSalesPeriodFromUtc,
+            ObservedSalesPeriodToUtc = durableImport.ObservedSalesPeriodToUtc,
             LastAttemptAtUtc = hasLastAttempt ? lastAttempt : null,
             LastFailureAtUtc = hasLastFailure ? lastFailure : null,
             IsRunning = jobs.Any(j => j.IsRunning),
@@ -219,10 +230,17 @@ public sealed class AnalyticsRefreshStatusService
                 ? "critical"
                 : jobs.Any(job => string.Equals(job.StatusReason, PartialRefreshStatusReason, StringComparison.Ordinal))
                     ? "critical"
-                : ResolveOverallFreshness(
-                hasLastSuccess ? lastSuccess : null,
-                hasLastFailure ? lastFailure : null,
-                nowUtc),
+                : _trendDb is null
+                    ? AnalyticsFreshnessPolicy.Resolve(
+                        hasLastSuccess ? lastSuccess : null,
+                        hasLastFailure ? lastFailure : null,
+                        nowUtc,
+                        _freshnessOptions)
+                    : AnalyticsFreshnessPolicy.Resolve(
+                        durableImport.LastSuccessfulImportAtUtc,
+                        durableImport.LastFailureAtUtc,
+                        nowUtc,
+                        _freshnessOptions),
             CacheMode = cacheMode,
             IsDistributed = isDistributed,
             LastAnalyticsCacheClearAtUtc = cacheState.LastAnalyticsCacheClearAtUtc,
@@ -398,6 +416,71 @@ public sealed class AnalyticsRefreshStatusService
         {
             _logger.LogWarning(ex, "Unable to load durable analytics refresh history. Falling back to worker health.");
             return [];
+        }
+    }
+
+    private async Task<DurableImportEvidence> LoadDurableImportEvidenceAsync(CancellationToken ct)
+    {
+        if (_trendDb is null)
+        {
+            return DurableImportEvidence.Empty;
+        }
+
+        try
+        {
+            var accessBatches = _trendDb.DataImportBatches
+                .AsNoTracking()
+                .Where(batch => batch.SourceSystem.ToLower() == "access" && batch.IncludeAnalytics);
+
+            var lastSuccessfulImportAtUtc = await accessBatches
+                .Where(batch =>
+                    batch.Status.ToLower() == "completed" &&
+                    batch.CompletedAtUtc.HasValue &&
+                    batch.TotalErrors == 0 &&
+                    batch.RowsRejected == 0)
+                .OrderByDescending(batch => batch.CompletedAtUtc)
+                .ThenByDescending(batch => batch.Id)
+                .Select(batch => batch.CompletedAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            var lastFailureAtUtc = await accessBatches
+                .Where(batch =>
+                    batch.Status.ToLower() == "failed" ||
+                    batch.Status.ToLower() == "interrupted" ||
+                    (batch.Status.ToLower() == "completed" &&
+                        (batch.TotalErrors > 0 || batch.RowsRejected > 0)))
+                .OrderByDescending(batch => batch.CompletedAtUtc ?? batch.StartedAtUtc)
+                .ThenByDescending(batch => batch.Id)
+                .Select(batch => (DateTime?)(batch.CompletedAtUtc ?? batch.StartedAtUtc))
+                .FirstOrDefaultAsync(ct);
+
+            var accessSalesWithLines = _trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Where(header =>
+                    header.DataOrigin.ToLower() == "access" &&
+                    _trendDb.ProdajaStavke.Any(line => line.IdProdaja == header.Id));
+
+            var observedSalesPeriodFromUtc = await accessSalesWithLines
+                .Select(header => (DateTime?)header.DatumProdaje)
+                .MinAsync(ct);
+            var observedSalesPeriodToUtc = await accessSalesWithLines
+                .Select(header => (DateTime?)header.DatumProdaje)
+                .MaxAsync(ct);
+
+            return new DurableImportEvidence(
+                lastSuccessfulImportAtUtc,
+                lastFailureAtUtc,
+                observedSalesPeriodFromUtc,
+                observedSalesPeriodToUtc);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unable to load durable Access import evidence for analytics freshness.");
+            return DurableImportEvidence.Empty;
         }
     }
 
@@ -591,32 +674,6 @@ public sealed class AnalyticsRefreshStatusService
         return "critical";
     }
 
-    internal static string ResolveOverallFreshness(DateTime? lastSuccess, DateTime? lastFailure, DateTime nowUtc)
-    {
-        if (!lastSuccess.HasValue)
-        {
-            return "unknown";
-        }
-
-        if (lastFailure.HasValue && lastFailure.Value > lastSuccess.Value)
-        {
-            return "critical";
-        }
-
-        var age = nowUtc - lastSuccess.Value;
-        if (age <= TimeSpan.FromHours(24))
-        {
-            return "fresh";
-        }
-
-        if (age <= TimeSpan.FromHours(72))
-        {
-            return "stale";
-        }
-
-        return "critical";
-    }
-
     private bool HasAnyAnalyticsWorkerActive(DateTime nowUtc)
     {
         var workerNames = new[] { NightlyWorkerName, DataQualityWorkerName };
@@ -655,5 +712,14 @@ public sealed class AnalyticsRefreshStatusService
         var thresholdMinutes = _configuration.GetValue<int?>("Analytics:RefreshStatus:StuckRunningThresholdMinutes")
             ?? DefaultStuckRunningThresholdMinutes;
         return TimeSpan.FromMinutes(Math.Max(5, thresholdMinutes));
+    }
+
+    private sealed record DurableImportEvidence(
+        DateTime? LastSuccessfulImportAtUtc,
+        DateTime? LastFailureAtUtc,
+        DateTime? ObservedSalesPeriodFromUtc,
+        DateTime? ObservedSalesPeriodToUtc)
+    {
+        public static DurableImportEvidence Empty { get; } = new(null, null, null, null);
     }
 }

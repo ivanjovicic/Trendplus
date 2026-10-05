@@ -159,7 +159,7 @@ public sealed class AnalyticsRefreshStatusServiceTests
     }
 
     [Fact]
-    public async Task GetStatus_ReturnsStale_WhenLastSuccessfulRefreshIs30HoursOld()
+    public async Task GetStatus_ReturnsFresh_WhenLastSuccessfulRefreshIs30HoursOld()
     {
         await using var db = CreateAnalyticsDbContext();
         var nowUtc = DateTime.UtcNow;
@@ -181,8 +181,8 @@ public sealed class AnalyticsRefreshStatusServiceTests
         var service = CreateService(db);
         var status = await service.GetStatusAsync();
 
-        Assert.Equal("stale", status.DataFreshnessStatus);
-        Assert.Contains(status.Jobs, job => job.Key == "sales_facts_refresh" && job.DataFreshnessStatus == "stale");
+        Assert.Equal("fresh", status.DataFreshnessStatus);
+        Assert.Contains(status.Jobs, job => job.Key == "sales_facts_refresh" && job.DataFreshnessStatus == "fresh");
     }
 
     [Fact]
