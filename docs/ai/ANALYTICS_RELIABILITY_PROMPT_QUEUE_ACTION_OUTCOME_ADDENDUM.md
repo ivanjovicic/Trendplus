@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum; main queue primary is RQ557 IN_PROGRESS (P2); RQ584 and RQ88 are DONE on main
+Current READY prompt: none in this addendum; main queue primary is RQ586 IN_PROGRESS (P3); RQ588 remains an independent READY lane (P3); RQ557 is DONE; RQ584 and RQ88 are DONE on main
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:

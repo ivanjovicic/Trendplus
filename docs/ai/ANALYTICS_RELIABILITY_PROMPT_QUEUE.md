@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ557 (P2); additional independent READY lanes: RQ586 and RQ588 (P3). RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
+Current READY prompt: RQ586 (P3, IN_PROGRESS); additional independent READY lane: RQ588 (P3). RQ557 is DONE on `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`; RQ558 remains WAITING for measured non-trivial mature-event/control-dimension coverage, and RQ559 remains owner/source-policy gated. RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -28587,9 +28587,9 @@ Claim 2026-10-05: post-close recovery at `origin/main` `959a67eb02749d76d3ec70eb
 - Post-close routing: RQ557 promoted WAITING -> READY -> IN_PROGRESS after the fresh cascade in `.ai/runs/2026-10-05-RQ571-evidence.md`
 - Prompt defect / scope repair: expanded owned paths to include the endpoint/model, existing page, types/schema, tests and fixture required by acceptance; explicit cleanup projections and methodology display were added to the in-scope work. The RQ557 post-close route was mirrored here because the queue validator requires its Current READY pointer to resolve within the main queue; the canonical full prompt remains in the Nivelacija addendum.
 
-## RQ557 - Active route to the Nivelacija addendum
+## RQ557 - Descriptive markdown outcome ledger
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ553 DONE; canonical prompt and acceptance live in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`
 Priority: P2
 Type: sql/backend/frontend/tests
@@ -28598,7 +28598,7 @@ Parallel-safe: no with any active Pre/Post page owner
 Owner: Analytics Product / Pricing
 Owned paths: canonical paths are listed in the linked Nivelacija addendum.
 
-This section is a routing stub only. Keep implementation scope, decisions and acceptance synchronized with the canonical RQ557 prompt in the Nivelacija audit addendum.
+Canonical prompt and acceptance: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`. Completion: implemented on `main` at `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`; focused API tests 4/4 and Pre/Post page tests 51/51 passed. Historical stock measures remain unavailable without dated source evidence. Run log: `.ai/runs/2026-10-05-RQ557-evidence.md`. Evidence state: synchronized.
 
 ## RQ572 - Dashboard bootstrap: one resolved period for every section, truthful Pilot Readiness, executive suppliers from real revenue
 
@@ -29587,9 +29587,11 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 - Do not defer RQ585 waiting for measured outcomes. Outcome/learning may enrich a later digest, but the first digest is a bounded owner worklist from certified actionable signals. Rows with recommendationAllowed=false remain excluded and expected impact stays unavailable when not certified.
 
 
+Owner claim 2026-10-05 after RQ557: fresh post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` scanned all 15 active owner queue/addendum files. RQ558 remains sample-gated; RQ559 remains source/policy-gated. RQ586 is dependency-complete and collision-safe (no matching lock, branch or open PR); RQ588 remains an independent READY lane. RQ586 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
+
 ## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` UX-035; hotfix finding from 2026-10-01)
 Priority: P3
 Type: backend/config/tests
@@ -29597,6 +29599,7 @@ Feature family: daily-sales-timezone-config
 Parallel-safe: yes (only `Api/appsettings*.json` and one config-binding test; no READY prompt owns these files)
 Owner: Analytics Reliability / Daily Sales
 Owned paths: `Api/appsettings.json`, `Api/appsettings.Production.json`, `Api/appsettings.*.json` if they repeat the pattern, one focused test
+Claim 2026-10-05: promoted and claimed after RQ557 close; post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` found no matching lock, branch, remote branch or open PR. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
 Avoid paths: Daily Sales query/shift logic (RQ497/RQ584 owners), deployment/provider settings (RQ566/STAB16)
 Commit suggestion: `fix(config): bind DailySales TimeZoneId at the configuration root`
 

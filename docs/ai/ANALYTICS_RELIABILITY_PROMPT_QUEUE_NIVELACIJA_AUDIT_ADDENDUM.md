@@ -49,7 +49,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-I4 | RQ554 | DONE |
 | NV-I5 | RQ555 | WAITING |
 | NV-E1 | RQ556 | WAITING |
-| NV-E2 | RQ557 | WAITING |
+| NV-E2 | RQ557 | DONE |
 | NV-E3 | RQ558 | WAITING |
 | NV-E4 | RQ559 | WAITING |
 
@@ -1339,7 +1339,7 @@ NV-F1, NV-F3, NV-P2.
 
 ## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ553 DONE (semantic prerequisites RQ542/RQ543/RQ551 and the sale-cost basis are already DONE; this sequencing is only to avoid shared Pre/Post page/copy ownership)
 Priority: P2
 Type: sql/backend/frontend/tests
@@ -1394,6 +1394,8 @@ Every displayed number declares its event population, maturity, period and cost/
 - Wait only for RQ553 to release the shared Pre/Post page/copy path; after that perform a fresh branch/lock/PR collision check.
 
 Claim 2026-10-05: post-close recovery at `origin/main` `848a9db232bf245aa8c1815a4287978e5bea6e06` found RQ557 dependency-complete after RQ553 DONE with synchronized evidence. A parallel owner advanced `origin/main` to `4fe01cc309ca7c3ad0908941ff71a131b8796786` before this claim push; a fresh check confirmed RQ557 was still WAITING with no matching lock/branch/open PR or active Pre/Post owner. The claim is rebased onto that current main. Local lock: `.ai/task-locks/RQ557-codex.lock.md`.
+
+Completion 2026-10-05: descriptive mature-markdown ledger delivered on `main` at `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`. The endpoint preserves bounded event eligibility, comparable pre/post sales, sale-time cost precedence and visible cost coverage; unsupported historical stock, sell-through and days-to-clear remain null with an explicit reason. The existing Pre/Post surface and bounded export expose population, period, maturity, evidence and truncation metadata. No causal or recommendation semantics were added. Focused API contract tests passed 4/4; Pre/Post page tests passed 51/51. Existing unrelated frontend typecheck/guardrail failures and unavailable live cohort evidence are recorded in the run log. Run log: `.ai/runs/2026-10-05-RQ557-evidence.md`. Evidence state: synchronized. RQ558 remains WAITING for non-trivial mature-event/control-dimension coverage; the unit fixture is not cohort evidence. RQ559 remains owner/source-policy gated.
 
 ---
 
