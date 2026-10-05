@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ579 (non-vacuous integrity verification) and parallel lanes RQ580, RQ581, RQ583, RQ584, RQ586, RQ588, RQ479 (collision-check before claim). RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`. RQ572, RQ575, RQ576, RQ577, RQ552, RQ553 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. RQ582 follows RQ581. See Operations and Nivelacija addenda.
+Current READY prompt: RQ580 (Supplier report period labels) and parallel lanes RQ581, RQ583, RQ584, RQ586, RQ588, RQ479 (collision-check before claim). RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ572, RQ575, RQ576, RQ577, RQ552, RQ553 and RQ587 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. RQ582 follows RQ581. See Operations and Nivelacija addenda.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -29061,7 +29061,7 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-05 by Codex in `cursor/rq579-integrity-nonvacuous-e050`; local lock `.ai/task-locks/RQ579-codex.lock.md`.
 Ready after: `RQ569` DONE (shared Operations integrity/freshness metadata)
 Priority: P2
@@ -29110,6 +29110,26 @@ Integrity evidence currently reports success on vacuous comparisons:
 ### Dependencies
 
 - `RQ569` DONE.
+
+### Completion note
+
+- Date: 2026-10-05
+- Status: DONE
+- Completion: Operations integrity no longer reports `verified` for a zero-row bounded comparison; deltas expose compared population evidence and `empty_population`; Daily Sales receipt reconciliation reports `unverified` for empty or unmatched populations with `empty_population`/`no_matches`; the Daily Sales mismatch card stays unavailable unless reconciliation is verified.
+- Changed files: `Application/Analytics/OperationsAnalyticsIntegrityContracts.cs`, `Infrastructure/Services/OperationsAnalyticsBucketReconciliation.cs`, `Infrastructure/Services/OperationsAnalyticsIntegrityService.cs`, `Api/Endpoints/OperationsAnalyticsIntegrityEndpoints.cs`, `Api/Services/DailySalesStatsService.cs`, `Api/Models/DailySalesStatsDto.cs`, `Api.Tests/OperationsAnalyticsIntegrityFamilyTests.cs`, `Api.Tests/DailySalesReceiptReconciliationTests.cs`, `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/services/dailySalesStatsApi.ts`.
+- Contract/runtime behavior changed: verification requires a non-empty compared population; matched receipt coverage remains the verification gate.
+- Checks run: focused backend `25/25`; bucket reconciliation `2/2`; API Release build `0 errors`; frontend Daily Sales `27/27`; analytics guardrails, encoding check and typecheck; instruction, prompt-queue and planning validators; `git diff --check`.
+- Checks not run: full backend/frontend suites and deployed/browser proof; no PostgreSQL integration fixture was required for this bounded contract change.
+- Run log: `.ai/runs/2026-10-05-RQ579-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct fast-forward to `main`
+- Main commit SHA: `1107df2dc3594703576be5d8588e71b40c65090c`
+- Main verification: passed — `origin/main` contains `1107df2dc3594703576be5d8588e71b40c65090c`
+- Missed: full suites and deployed/live proof remain outside this repository-local acceptance.
+- Follow-up: none within RQ579 scope.
+- Residual risk: current-main GitHub Actions run `37315213408` for `1107df2dc3594703576be5d8588e71b40c65090c` is still `in_progress`.
+- Next: RQ580 is the primary collision-safe READY successor after fresh post-close recovery.
+- Prompt defect / scope repair: added the existing Daily Sales mismatch-card fail-closed presentation because the backend status change would otherwise leave an unverified `0` visually trusted.
 
 ## RQ580 - Supplier report/hub: do not call an explicit date range "Poslednjih N dana"
 
