@@ -4,7 +4,7 @@ Date: 2026-10-05
 Agent/tool: Grok Bot (executor, box worktree `/workspace/rh`)
 Delivery target: main
 Working branch / PR: local branch `review-harden-2026-10-05` from `origin/main` `848a9db (includes RQ571 same-day close)`
-Main commit SHA: pending
+Main commit SHA: `2043f9dd239b660daf76e7ead687d6cc3cba5bc8` (pushed to origin/main)
 Main verification: pending (owner PC fast-forward push via bundle)
 Evidence state: pending
 
