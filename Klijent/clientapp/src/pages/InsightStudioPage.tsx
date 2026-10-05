@@ -36,6 +36,7 @@ import {
   type GenderStat,
   type KpiSnapshot,
   type ReorderItem,
+  type ReorderPlan,
   type SupplierScore,
 } from "../services/insightStudioApi";
 import {
@@ -89,6 +90,14 @@ import {
 } from "../services/analyticsIntelligenceDerived";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
+import {
+  isEstimatedCategoryRevenue,
+  presentDailyAnalysisMetrics,
+  presentReorderV1Summary,
+  presentSignedInsightPercent,
+  presentSmartReorderProfit,
+  presentSupplierMarginBenchmark,
+} from "./insightStudioTrustPresentation";
 
 // ══════════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -798,6 +807,7 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
   if (loading) return <Skeleton rows={8} />;
   if (!data.length) return <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p>;
   const displayed = selected ?? data[0];
+  const marginPresentation = presentSupplierMarginBenchmark(displayed);
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
       <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-[var(--border-default)]">
@@ -847,8 +857,11 @@ function SupplierTabV1({ data, loading, analyticsContext }: { data: SupplierScor
         <h3 className="text-sm font-bold text-[var(--text-primary)]">{displayed.dobavljacNaziv}</h3>
         <div className="grid grid-cols-2 gap-2">
           <MiniStat label="Prihod" value={fmtRsd(displayed.totalRevenue)} />
-          <MiniStat label="Marža" value={fmtPct(displayed.marginPct)} color={PAL.green} />
+          <MiniStat label="Marža" value={marginPresentation.marginLabel} color={PAL.green} />
         </div>
+        {marginPresentation.benchmarkNote && (
+          <p className="text-[11px] text-[var(--text-primary)] opacity-80">{marginPresentation.benchmarkNote}</p>
+        )}
         <ScoreBar label="Profitabilnost" score={displayed.profitScore} />
         <ScoreBar label="Diverzifikacija" score={displayed.diversityScore} />
         <ScoreBar label="Niska zavisnost" score={displayed.dependencyScore} />
@@ -894,6 +907,9 @@ function CategoryTab({
       <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
         Primarni read model za cenovne i category signale sada dolazi iz <span className="font-semibold text-[var(--text-primary)]">analytics_intel</span>.
         Basket afinitet i raspodela po polu ostaju na legacy advanced sloju kao dopuna.
+        {byCategory.some(isEstimatedCategoryRevenue) && (
+          <span className="mt-1 block text-warning">Procenjeni prihod (velocity × cena) nije knjiženi promet.</span>
+        )}
       </div>
       <div className="flex gap-2 flex-wrap">
         {subTabs.map(t => (
@@ -953,7 +969,9 @@ function CategoryTab({
                     <td className="px-3 py-2 font-medium text-[var(--text-primary)]">{cat.kategorija}</td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(cat.revShare)}</td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{fmtPct(cat.marginPct)}</td>
-                    <td className="px-3 py-2 text-right" style={{ color: cat.profitLift >= 0 ? PAL.green : PAL.red }}>{cat.profitLift >= 0 ? "+" : ""}{fmtPct(cat.profitLift)}</td>
+                    <td className="px-3 py-2 text-right" style={{ color: cat.profitLift != null && cat.profitLift >= 0 ? PAL.green : cat.profitLift != null ? PAL.red : PAL.textSecondary }}>
+                      {presentSignedInsightPercent(cat.profitLift)}
+                    </td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{cat.velocity.toFixed(3)}</td>
                     <td className="px-3 py-2 text-right text-[var(--text-primary)]">{cat.uniqueSKU}</td>
                   </tr>
@@ -1230,6 +1248,7 @@ function DailyTab({
 }) {
   const [subView, setSubView] = useState<"analiza" | "heatmap">("analiza");
 
+  const dailyPresentation = data ? presentDailyAnalysisMetrics(data) : null;
   const zColorClass = !data ? "text-[var(--text-primary)]" : data.isExtremeOutlier ? "text-[var(--text-primary)]" : data.isOutlier ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]";
 
   return (
@@ -1251,17 +1270,26 @@ function DailyTab({
               className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-default)] focus:outline-none" />
             {loading && <span className="text-xs text-[var(--text-primary)] animate-pulse">Učitavanje…</span>}
           </div>
-          {data && (
+          {data && dailyPresentation && (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <MiniStat label="Prihod tog dana" value={fmtRsd(data.targetRevenue)} />
+                <MiniStat label="Prihod tog dana" value={dailyPresentation.targetRevenueLabel} />
                 <MiniStat label="Prosek perioda" value={fmtRsd(data.meanRevenue)} />
-                <MiniStat label="Z-Score" value={data.zScore.toFixed(2)} color={data.isExtremeOutlier ? PAL.red : data.isOutlier ? PAL.yellow : PAL.green} />
+                <MiniStat label="Z-Score" value={dailyPresentation.zScoreLabel} color={data.isExtremeOutlier ? PAL.red : data.isOutlier ? PAL.yellow : PAL.green} />
                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-primary)]">Outlier?</div>
-                  <div className={`text-sm font-bold ${zColorClass}`}>{data.isExtremeOutlier ? "⚡ Ekstremni" : data.isOutlier ? "⚠ Da" : "✓ Ne"}</div>
+                  <div className="text-[10px] uppercase text-[var(--text-primary)]">Status dana</div>
+                  <div className={`text-sm font-bold ${zColorClass}`}>
+                    {dailyPresentation.showOutlierBadge
+                      ? (data.isExtremeOutlier ? "⚡ Ekstremni" : data.isOutlier ? "⚠ Da" : "✓ Ne")
+                      : dailyPresentation.outlierSummary}
+                  </div>
                 </div>
               </div>
+              {!dailyPresentation.hasTargetEvidence && (
+                <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-[var(--text-primary)]">
+                  Ciljni dan nema dokazane prodajne zapise; prikaz nije normalan dan sa nultim prometom.
+                </div>
+              )}
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.dailyData}>
@@ -1523,7 +1551,9 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
                 <td className="px-3 py-2 text-[var(--text-primary)] max-w-[160px] truncate">{it.naziv}</td>
                 <td className="px-3 py-2 text-[var(--text-primary)]">{it.kategorija}</td>
                 <td className="px-3 py-2 text-right">{it.totalUnits}</td>
-                <td className="px-3 py-2 text-right" style={{ color: it.trendPct >= 0 ? PAL.green : PAL.red }}>{it.trendPct >= 0 ? "+" : ""}{it.trendPct.toFixed(0)}%</td>
+                <td className="px-3 py-2 text-right" style={{ color: it.trendPct == null ? PAL.textSecondary : it.trendPct >= 0 ? PAL.green : PAL.red }}>
+                  {it.trendPct == null ? "N/D" : `${it.trendPct >= 0 ? "+" : ""}${it.trendPct.toFixed(0)}%`}
+                </td>
                 <td className="px-3 py-2 text-right text-[var(--text-primary)]">{it.currentStock}</td>
                 <td className="px-3 py-2 text-center"><Badge label={STAGE_LABELS[it.stage]} color={STAGE_COLORS[it.stage]} /></td>
               </tr>
@@ -1708,7 +1738,7 @@ function ReorderTab2({
 }: {
   smartData: SmartReorderResult | null; smartLoading: boolean;
   v1Items: ReorderItem[]; v1Loading: boolean;
-  v1Summary?: { criticalCount: number; urgentCount: number; recommendedCount: number; totalReorderValue: number };
+  v1Summary?: ReorderPlan["summary"];
   analyticsContext: InsightAnalyticsContext;
 }) {
   const [urgencyFilter, setUrgencyFilter] = useState("Sve");
@@ -1723,6 +1753,8 @@ function ReorderTab2({
 
   const items = useSmart ? smartData!.items : v1Items;
   const summary = useSmart ? smartData!.summary : v1Summary;
+  const v1SummaryPresentation = !useSmart && v1Summary ? presentReorderV1Summary(v1Summary) : null;
+  const smartProfitPresentation = useSmart && smartData ? presentSmartReorderProfit(smartData.summary) : null;
 
   const urgencies = ["Sve", "KRITIČNO", "HITNO", "PREPORUČUJE SE", "OK"];
   const filtered = urgencyFilter === "Sve" ? items : items.filter(x => x.urgency === urgencyFilter);
@@ -1753,8 +1785,14 @@ function ReorderTab2({
             <div className="text-2xl font-bold text-[var(--text-primary)]">{summary.recommendedCount}</div>
           </div>
           <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
-            <div className="text-[10px] text-[var(--text-primary)] uppercase">Trošak nabavke</div>
-            <div className="text-lg font-bold text-[var(--text-primary)]">{fmtRsd("totalReorderCost" in summary ? (summary as {totalReorderCost: number}).totalReorderCost : ("totalReorderValue" in summary ? (summary as {totalReorderValue: number}).totalReorderValue : 0))}</div>
+            <div className="text-[10px] text-[var(--text-primary)] uppercase">
+              {useSmart ? "Trošak nabavke" : "Potencijalni prihod"}
+            </div>
+            <div className="text-lg font-bold text-[var(--text-primary)]">
+              {useSmart
+                ? fmtRsd(smartData!.summary.totalReorderCost)
+                : (v1SummaryPresentation?.potentialRevenueLabel ?? fmtRsd(0))}
+            </div>
           </div>
           {useSmart && (
             <>
@@ -1764,10 +1802,26 @@ function ReorderTab2({
               </div>
               <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
                 <div className="text-[10px] text-[var(--text-primary)] uppercase">Očekivani profit</div>
-                <div className="text-lg font-bold text-[var(--text-primary)]">{fmtRsd(smartData!.summary.expectedProfitFromReorder)}</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">{smartProfitPresentation?.profitLabel ?? "N/D"}</div>
               </div>
             </>
           )}
+          {!useSmart && v1SummaryPresentation && (
+            <div className="rounded-xl border border-[var(--border-default)]/30 bg-[var(--surface-elevated)]/10 p-3">
+              <div className="text-[10px] text-[var(--text-primary)] uppercase">Procena troška nabavke</div>
+              <div className="text-lg font-bold text-[var(--text-primary)]">{v1SummaryPresentation.procurementCostLabel}</div>
+            </div>
+          )}
+        </div>
+      )}
+      {v1SummaryPresentation?.basisNote && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-[var(--text-primary)]">
+          {v1SummaryPresentation.basisNote}
+        </div>
+      )}
+      {smartProfitPresentation?.profitNote && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-[var(--text-primary)]">
+          {smartProfitPresentation.profitNote}
         </div>
       )}
 
@@ -1974,7 +2028,7 @@ export default function InsightStudioPage() {
   const [agingSummary, setAgingSummary] = useState<{ totalSKU: number; critical: number; warning: number; watch: number; active: number; criticalStockValue: number } | undefined>();
   const [agingLoading, setAgingLoading] = useState(false);
   const [reorderItems, setReorderItems] = useState<ReorderItem[]>([]);
-  const [reorderSummary, setReorderSummary] = useState<{ criticalCount: number; urgentCount: number; recommendedCount: number; totalReorderValue: number } | undefined>();
+  const [reorderSummary, setReorderSummary] = useState<ReorderPlan["summary"] | undefined>();
   const [reorderLoading, setReorderLoading] = useState(false);
 
   // ── V2 State ──

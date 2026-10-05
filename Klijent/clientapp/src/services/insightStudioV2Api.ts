@@ -1,6 +1,13 @@
 import { makeUrl } from "./analyticsApi";
+import type { InsightStudioTrustMeta } from "./insightStudioApi";
 
 // ====================== TYPES ======================
+
+export type InsightStudioV2Meta = InsightStudioTrustMeta & {
+  isPartial?: boolean;
+  dataFreshnessStatus?: string | null;
+  dataFreshnessReasonCode?: string | null;
+};
 
 export interface HeatmapCell {
   day: number;
@@ -24,6 +31,7 @@ export interface WeeklyHeatmap {
   cells: HeatmapCell[];
   byDay: DayAggregate[];
   transactionMetricReasonCode: string;
+  meta?: InsightStudioV2Meta;
 }
 
 export interface BasketPair {
@@ -72,8 +80,7 @@ export interface LifecycleItem {
   totalRevenue: number;
   firstHalfUnits: number;
   secondHalfUnits: number;
-  // Advanced V2 is quarantined; RQ591 owns nullable metric typing/presentation.
-  trendPct: number;
+  trendPct: number | null;
   baselineStatus: "available" | "no_baseline";
   stage: "LAUNCH" | "GROWTH" | "MATURE" | "DECLINE";
   currentStock: number;
@@ -87,6 +94,7 @@ export interface LifecycleResult {
     mature: number;
     decline: number;
   };
+  meta?: InsightStudioV2Meta;
 }
 
 export interface DepletionForecast {
@@ -190,10 +198,12 @@ export interface SmartReorderItem {
   needsReorder: boolean;
   recommendedQty: number;
   urgency: "KRITIČNO" | "HITNO" | "PREPORUČUJE SE" | "OK";
-  marginPct: number;
-  reorderCost: number;
-  expectedRevenue: number;
-  expectedProfit: number;
+  marginPct: number | null;
+  marginDataCoveragePct?: number | null;
+  revenueWithCost?: number | null;
+  reorderCost: number | null;
+  expectedRevenue: number | null;
+  expectedProfit: number | null;
   profitReliable: boolean;
   reorderProbability: number;
   prodajnaCena: number | null;
@@ -225,10 +235,11 @@ export interface SmartReorderResult {
     criticalCount: number;
     urgentCount: number;
     recommendedCount: number;
-    totalReorderCost: number;
-    expectedRevenueFromReorder: number;
-    expectedProfitFromReorder: number;
+    totalReorderCost: number | null;
+    expectedRevenueFromReorder: number | null;
+    expectedProfitFromReorder: number | null;
   };
+  meta?: InsightStudioV2Meta;
 }
 
 export interface PriceBand {

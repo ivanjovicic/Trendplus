@@ -2,6 +2,14 @@ import { makeUrl } from "./analyticsApi";
 
 // ====================== TYPES ======================
 
+export interface InsightStudioTrustMeta {
+  success: boolean;
+  emptyReason?: string | null;
+  dataQualityStatus?: string | null;
+  warningCode?: string | null;
+  warningMessage?: string | null;
+}
+
 export interface KpiSnapshot {
   revenue: number;
   revenueChange: number;
@@ -22,6 +30,10 @@ export interface SupplierScore {
   totalRevenue: number;
   totalUnits: number;
   marginPct: number;
+  marginDataCoveragePct?: number | null;
+  revenueWithCost?: number | null;
+  systemBenchmarkAvailable?: boolean;
+  systemMarginPct?: number | null;
   uniqueProducts: number;
   uniqueCategories: number;
   dependencyRatio: number;
@@ -54,6 +66,7 @@ export interface AbcResult {
     revenueB: number;
     revenueC: number;
   };
+  meta?: InsightStudioTrustMeta;
 }
 
 export interface AgingItem {
@@ -63,8 +76,11 @@ export interface AgingItem {
   pol: string;
   kolicina: number;
   stockValue: number | null;
+  marginDataAvailable?: boolean;
   dobavljacNaziv: string;
-  lastSaleDate: string;
+  neverSold?: boolean;
+  agingEvidenceStatus?: "never_sold" | "last_sale" | string;
+  lastSaleDate: string | null;
   daysWithoutSale: number;
   agingCategory: "Aktivno" | "Pazi" | "Upozorenje" | "Kritično";
 }
@@ -83,12 +99,16 @@ export interface AgingResult {
 
 export interface DailyAnalysis {
   analysisDate: string;
-  targetRevenue: number;
-  targetUnits: number;
+  targetDataStatus?: "present" | "missing";
+  targetRevenue: number | null;
+  targetUnits: number | null;
   meanRevenue: number;
-  zScore: number;
+  baselineSampleSize?: number;
+  baselineWarning?: string | null;
+  zScore: number | null;
   isOutlier: boolean;
   isExtremeOutlier: boolean;
+  outlierLabel?: string;
   dailyData: { date: string; revenue: number; units: number; isTarget: boolean }[];
   top5Articles: {
     artikalId: number;
@@ -99,15 +119,22 @@ export interface DailyAnalysis {
   }[];
 }
 
+export type CategoryRevenueBasis = "booked_sales" | "estimated_velocity_price";
+
 export interface CategoryStat {
   kategorija: string;
   totalRevenue: number;
   totalUnits: number;
   marginPct: number;
-  profitLift: number;
+  marginDataCoveragePct?: number | null;
+  revenueWithCost?: number | null;
+  profitLift: number | null;
   /** Revenue share in percent units (25 = 25%). Not a 0–1 ratio. */
   revShare: number | null;
   velocity: number;
+  velocityDenominatorBasis?: string;
+  revenueBasis?: CategoryRevenueBasis;
+  estimated?: boolean;
   uniqueSKU: number;
 }
 
@@ -122,6 +149,9 @@ export interface GenderStat {
 export interface CategoryIntelligence {
   byCategory: CategoryStat[];
   byGender: GenderStat[];
+  velocityDenominatorBasis?: string;
+  systemBenchmarkAvailable?: boolean;
+  systemMarginPct?: number | null;
 }
 
 export interface ReorderItem {
@@ -139,6 +169,9 @@ export interface ReorderItem {
   recommendedQty: number;
   urgency: "KRITIČNO" | "HITNO" | "PREPORUČUJE SE" | "OK";
   prodajnaCena: number | null;
+  potentialRevenueRsd?: number;
+  estimatedProcurementCostRsd?: number | null;
+  costCoveragePct?: number;
 }
 
 export interface ReorderPlan {
@@ -147,6 +180,10 @@ export interface ReorderPlan {
     criticalCount: number;
     urgentCount: number;
     recommendedCount: number;
+    potentialRevenueRsd?: number;
+    estimatedProcurementCostRsd?: number | null;
+    costCoveragePct?: number;
+    reorderValueBasis?: string;
     totalReorderValue: number;
   };
 }

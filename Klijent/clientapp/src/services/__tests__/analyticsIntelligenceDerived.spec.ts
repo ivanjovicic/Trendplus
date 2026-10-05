@@ -80,6 +80,8 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     // Must not look like a ratio formatted as percent (0.25% / 0.75%).
     expect(fmtPct(a?.revShare)).not.toBe(fmtPct(0.25));
     expect(a?.revShare).toBeGreaterThan(1);
+    expect(a?.estimated).toBe(true);
+    expect(a?.revenueBasis).toBe("estimated_velocity_price");
   });
 
   it("matches legacy percent-shaped CategoryStat for the same shares", () => {

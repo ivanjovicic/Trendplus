@@ -212,36 +212,44 @@ export function buildCategoryIntelligenceFromSignals(
 
   const totalRevenue = Array.from(buckets.values()).reduce((sum, bucket) => sum + bucket.approxRevenue, 0);
 
-  const byCategory: CategoryStat[] = Array.from(buckets.values())
-    .map((bucket) => {
-      const denominator = bucket.skuIds.size;
-      const totalRevenueValue = round(bucket.approxRevenue, 2);
-      const totalUnits = Math.round(bucket.units);
-      const marginPct = round(bucket.marginSum / denominator, 1);
-      const profitLift = round(bucket.profitLiftSum / denominator, 1);
-      const revShare = totalRevenue > 0 && Number.isFinite(totalRevenue)
-        ? round((bucket.approxRevenue / totalRevenue) * 100, 2)
-        : null;
-      const velocity = round(bucket.velocitySum / denominator, 3);
-      if (totalRevenueValue == null || !Number.isFinite(totalUnits) || marginPct == null
-        || profitLift == null || velocity == null || (totalRevenue > 0 && revShare == null)) return null;
+  const byCategory: CategoryStat[] = [];
+  for (const bucket of buckets.values()) {
+    const denominator = bucket.skuIds.size;
+    const totalRevenueValue = round(bucket.approxRevenue, 2);
+    const totalUnits = Math.round(bucket.units);
+    const marginPct = round(bucket.marginSum / denominator, 1);
+    const profitLift = round(bucket.profitLiftSum / denominator, 1);
+    const revShare = totalRevenue > 0 && Number.isFinite(totalRevenue)
+      ? round((bucket.approxRevenue / totalRevenue) * 100, 2)
+      : null;
+    const velocity = round(bucket.velocitySum / denominator, 3);
+    if (totalRevenueValue == null || !Number.isFinite(totalUnits) || marginPct == null
+      || profitLift == null || velocity == null || (totalRevenue > 0 && revShare == null)) {
+      continue;
+    }
 
-      return {
-        kategorija: bucket.category,
-        totalRevenue: totalRevenueValue,
-        totalUnits,
-        marginPct,
-        profitLift,
-        // CategoryStat.revShare contract: percent units (25 = 25%), matching legacy InsightStudioEndpoints.
-        revShare,
-        velocity,
-        uniqueSKU: denominator,
-      };
-    })
-    .filter((row): row is CategoryStat => row != null)
-    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+    byCategory.push({
+      kategorija: bucket.category,
+      totalRevenue: totalRevenueValue,
+      totalUnits,
+      marginPct,
+      profitLift,
+      // CategoryStat.revShare contract: percent units (25 = 25%), matching legacy InsightStudioEndpoints.
+      revShare,
+      velocity,
+      uniqueSKU: denominator,
+      revenueBasis: "estimated_velocity_price",
+      estimated: true,
+      velocityDenominatorBasis: "signal_velocity_times_price_proxy",
+    });
+  }
+  byCategory.sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-  return { byCategory, byGender };
+  return {
+    byCategory,
+    byGender,
+    velocityDenominatorBasis: "signal_velocity_times_price_proxy",
+  };
 }
 
 export function buildPriceSensitivityFromSignals(
@@ -528,7 +536,7 @@ export function buildLegacyReorderFallbackFromSignals(
       criticalCount: smart.summary.criticalCount,
       urgentCount: smart.summary.urgentCount,
       recommendedCount: smart.summary.recommendedCount,
-      totalReorderValue: smart.summary.totalReorderCost,
+      totalReorderValue: smart.summary.totalReorderCost ?? 0,
     },
   };
 }
