@@ -469,11 +469,11 @@ jobs:
         working-directory: Klijent/clientapp
         run: |
           npm ci
-          mkdir -p ../TestResults/rq453-trust-state
+          mkdir -p ../../TestResults/rq453-trust-state
           npm run test:run -- \
             --reporter=default \
             --reporter=json \
-            --outputFile=../TestResults/rq453-trust-state/vitest.json \
+            --outputFile=../../TestResults/rq453-trust-state/vitest.json \
             src/pages/__tests__/analyticsTrustStateProof.spec.tsx \
             src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx \
             src/utils/__tests__/analyticsDecisionReadiness.spec.ts

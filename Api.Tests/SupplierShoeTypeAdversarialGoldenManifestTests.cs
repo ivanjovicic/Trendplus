@@ -97,6 +97,9 @@ public sealed class SupplierShoeTypeAdversarialGoldenManifestTests
         Assert.Contains("'ADV-MUTATION'", fixture, StringComparison.Ordinal);
         Assert.Contains("supplier_id_at_sale", fixture, StringComparison.Ordinal);
         Assert.Contains("shoe_type_id_at_sale", fixture, StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS \"StoresDim\"", fixture, StringComparison.Ordinal);
+        Assert.Contains("Trend PLUS 1", fixture, StringComparison.Ordinal);
+        Assert.Contains("Trend PLUS 2", fixture, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

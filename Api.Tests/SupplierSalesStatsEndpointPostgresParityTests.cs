@@ -42,15 +42,13 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
 
         var cache = new RecordingAnalyticsCacheService();
         var registry = new OperationsAnalyticsIntegrityRegistry();
-        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+        SetBoundSupplierEvidence(
+            registry,
             OperationsAnalyticsIntegrityStates.Verified,
             "rq487-endpoint-verified-evidence",
-            DateTime.UtcNow,
-            DateTime.UtcNow,
-            "rq487_fixture_verified",
-            "Fixture integrity evidence is verified.",
-            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: false));
+            blocksDecisionSignals: false,
+            trigger: "rq487_fixture_verified",
+            summary: "Fixture integrity evidence is verified.");
         await using var factory = new SupplierEndpointFactory(connectionString!, cache, registry);
         using var client = factory.CreateClient();
 
@@ -73,15 +71,13 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         Assert.Equal(1, firstKeyMetrics.Misses);
 
         const string changedEvidenceId = "rq487-endpoint-drift-evidence";
-        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+        SetBoundSupplierEvidence(
+            registry,
             OperationsAnalyticsIntegrityStates.DriftDetected,
             changedEvidenceId,
-            DateTime.UtcNow,
-            null,
-            "rq487_fixture_drift",
-            "Fixture integrity gate changed during the test.",
-            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
-            BlocksDecisionSignals: true));
+            blocksDecisionSignals: true,
+            trigger: "rq487_fixture_drift",
+            summary: "Fixture integrity gate changed during the test.");
 
         var changedGateBody = await GetSuccessfulBodyAsync(client);
         using var changedGateDocument = JsonDocument.Parse(changedGateBody);
@@ -286,6 +282,40 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         Assert.Equal(cohort, GetPropertyIgnoreCase(basis, "cohort").GetString());
         Assert.Equal(effectMetric, GetPropertyIgnoreCase(basis, "effectMetric").GetString());
         Assert.Equal(eventSelection, GetPropertyIgnoreCase(basis, "eventSelection").GetString());
+    }
+
+    private static void SetBoundSupplierEvidence(
+        OperationsAnalyticsIntegrityRegistry registry,
+        string status,
+        string evidenceId,
+        bool blocksDecisionSignals,
+        string trigger,
+        string summary)
+    {
+        const string family = OperationsAnalyticsIntegrityFamilies.SupplierShoeType;
+        var fromUtc = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc);
+        var generation = registry.GetGeneration(family);
+        registry.Set(new OperationsAnalyticsIntegritySnapshot(
+            status,
+            evidenceId,
+            DateTime.UtcNow,
+            status == OperationsAnalyticsIntegrityStates.Verified ? DateTime.UtcNow : null,
+            trigger,
+            summary,
+            Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
+            blocksDecisionSignals)
+        {
+            Family = family,
+            SourceGeneration = generation,
+            ContextFingerprint = OperationsAnalyticsIntegrityContextPolicy.CreateFingerprint(
+                family,
+                generation,
+                fromUtc,
+                toUtc,
+                "all",
+                null)
+        });
     }
 
     private static async Task CreateFixtureAsync(string connectionString)

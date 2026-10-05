@@ -13,6 +13,18 @@ TRUNCATE TABLE
 
 -- Retail markdown candidates require the named store catalog. EF store lookup also
 -- selects DataOrigin, which the initializer adds outside the EF migration chain.
+-- Hosts that EnsureCreated the operational database and then run this shared seed
+-- do not migrate StoresDim, so the table has to be created here before the insert.
+CREATE TABLE IF NOT EXISTS "StoresDim" (
+    "StoreKey" integer PRIMARY KEY,
+    "City" character varying(200),
+    "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing',
+    "Menedzer" character varying(200),
+    "Region" character varying(100),
+    "StoreId" integer NOT NULL UNIQUE,
+    "StoreName" character varying(300) NOT NULL,
+    "Telefon" character varying(50)
+);
 ALTER TABLE "StoresDim" ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
 INSERT INTO "StoresDim" ("StoreKey", "StoreId", "StoreName", "DataOrigin")
 VALUES (1, 1, 'Trend PLUS 1', 'existing'), (2, 2, 'Trend PLUS 2', 'existing')

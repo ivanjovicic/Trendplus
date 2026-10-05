@@ -212,7 +212,7 @@ public sealed class PreNivelacijaScoringServiceTests
     }
 
     [Fact]
-    public void SimulateScenarios_WithReliableEqualCost_KeepsGenuineZeroMargin()
+    public void SimulateScenarios_WithReliableEqualCost_KeepsHighlightAtZeroAndMarkdownBelowCost()
     {
         var service = new PreNivelacijaScoringService();
 
@@ -227,7 +227,7 @@ public sealed class PreNivelacijaScoringServiceTests
             hasReliableCost: true);
 
         Assert.Equal(0m, highlight.ExpectedMargin30d);
-        Assert.Equal(0m, markdown.ExpectedMargin30d);
+        Assert.Equal(-832m, markdown.ExpectedMargin30d);
         Assert.Contains(confidence, new[] { "Low", "Medium", "High" });
     }
 }

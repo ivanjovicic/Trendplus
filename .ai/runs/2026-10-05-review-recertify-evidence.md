@@ -6,10 +6,10 @@ Date: 2026-10-05
 Agent/tool: Cursor Cloud
 Delivery target: main
 Working branch / PR: `cursor/review-recertify-daily-e050`, direct delivery to main
-Main commit SHA: 4bdb4400135a6c2a6029a54d2bb26713a97b8503
-Implementation SHA: 17268206d28f635d724d90f48c8e5bbdad270add
-RQ561 assertion SHA: 4bdb4400135a6c2a6029a54d2bb26713a97b8503
-Main verification: fetch after the RQ561 assertion push showed HEAD == origin/main == 4bdb4400135a6c2a6029a54d2bb26713a97b8503. Ancestor `7aed4aad` (null margin/trend and missing best-day) landed on main during delivery and is included. Earlier delivery `ef66f156` is also an ancestor.
+Main commit SHA: close-out commit on top of `90a47a5427bb37de7e7e58af99489e2497c8b70f`; exact tip is verified after push
+Implementation SHA: `ee33c490b9865279d04b25146f6e38d00a891763` for the half-open contract and retail-store seed; CI close-out follows in the next commit
+RQ561 assertion SHA: `ee33c490b9865279d04b25146f6e38d00a891763` (six-screen 1/1 on run `37353827984`)
+Main verification: `ee33c490` was `origin/main` before the presentation pass advanced main to `90a47a54`. This close-out is rebased onto that SHA. Tip equality is checked after push.
 Evidence state: synchronized
 
 ## What was done
@@ -78,20 +78,36 @@ Evidence state: synchronized
 
 ## What was missed
 
-- Date-only HTTP `toDate=2026-01-02` still includes that calendar day by expanding to the next exclusive instant. Timestamp `toDate=2026-01-02T00:00:00Z` stays exclusive. The stored convention for both is now `half_open_utc`. UI calendar `Do` stays inclusive and the client sends the next exclusive instant.
+- Date-only and timestamp Daily Sales ends are the same exclusive midnight. UI calendar `Do` stays inclusive; the client sends the next exclusive instant.
+- Vercel deployment rate limit is an external provider throttle, not a repository test result.
 
 ## Risks
 
 - Any unpublished caller that passed an inclusive last day without adding one day will now drop that day. In-repo callers were updated.
+- Hosts that already migrated a richer `StoresDim` are unchanged: `CREATE TABLE IF NOT EXISTS` is a no-op and the column add still fills `DataOrigin` when the migration chain omitted it.
+
+## CI close-out after `ee33c490`
+
+Exact-main run `37353827984` on `ee33c490b9865279d04b25146f6e38d00a891763`:
+
+- RQ561 six-screen proof passed 1/1.
+- RQ453 failed only while publishing the manifest. Vitest passed 39/39 and wrote `Klijent/TestResults/rq453-trust-state/vitest.json` because the step cwd is `Klijent/clientapp` and the output path was `../TestResults`. The publisher reads repository-root `TestResults/rq453-trust-state/vitest.json`. The workflow now writes `../../TestResults/...`. A local publisher replay fails on the old path and passes on the repository-root path (39/39, verdict PASS).
+- Complete backend suite: 1842 passed, 4 failed, 40 skipped, total 1886.
+  - `NivelacijaEndpoints_ExposeTheSameFlatRateEffect...` and `NivelacijaEndpoints_KeepTheSameNonZeroEffect...` failed with `relation "StoresDim" does not exist` at the shared seed. The seed now creates the table before altering it. Local supplier parity after that change: those two tests passed.
+  - `SupplierEndpoint_PostgresParity_CacheHitAndIntegrityChangePreserveValuesAndRefreshGate` then returned to `operationsIntegrityEvidenceId` null. The fixture snapshot had no context fingerprint, so `ApplyFamilyEvidence` withheld the id. The fixture now binds `SupplierShoeType` to `[2026-07-01, 2026-07-07)` / `all` / no store. Local result: 3/3 passed. Analytics totals and the drift-evidence assertion were not relaxed.
+  - `SimulateScenarios_WithReliableEqualCost_KeepsGenuineZeroMargin` expected markdown margin 0 and got -832. Commit `ffd2f52d` (2026-10-03) stopped clamping that margin at zero; the 8% markdown-scenario floor on an equal price is a real negative margin. Highlight margin stays 0. The test now expects markdown margin `-832` and was renamed. The scorer was not changed.
+
+Earlier proof that the drift-evidence and zero-margin failures predate this close-out: run `37348409907` on `4ed7012d` and run `37350895055` on `4bdb4400`.
 
 ## Post-close routing recovery
 
-- Recovery base before this delivery: `4ed7012d`. Post-push `origin/main` containing the implementation is `ef66f15665aa2071f945088ec7b0c94ebb7a4bc8`.
-- Active queue headers scanned: main RQ queue, Operations, UI/table, Advanced, Legacy, Action Outcome, Executive/DQ, Nivelacija, Inventory signals, Test hardening, Supplier audit, Cross-surface, SQL, UI premium, Stabilization, Backend CI, Data source connector, Multitenancy, and `MASTER_ROADMAP.md`.
-- No newly dependency-complete RQ prompt was promoted. RQ588 stays IN_PROGRESS under its existing claim.
-- Historical audit snapshots (`docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md`, UX audit) still list RQ586/RQ587/RQ588 as READY at audit time. Those files are not the live router.
+- Recovery base before the CI close-out: `90a47a5427bb37de7e7e58af99489e2497c8b70f` (presentation pass-2, already on main).
+- Active queue headers scanned: main RQ queue, Operations, UI/table, Advanced, Legacy, Action Outcome, Executive/DQ, Nivelacija, Inventory signals, Test hardening, Supplier audit, Cross-surface, SQL, UI premium, Stabilization, Backend CI, Platform evolution, Multitenancy, and `MASTER_ROADMAP.md`.
+- Live section statuses that say READY are historical promotion notes inside DONE tasks (`RQ134`/`RQ135` notes, `RQ542`/`RQ544` notes). They are not current summary rows.
+- No newly dependency-complete RQ prompt was promoted. Canonical pointer remains RQ588 IN_PROGRESS. Supplemental UI READY remains P-UI-39, with P-UI-40, P-UI-41, P-UI-47, P-UI-49 and P-UI-52.
+- RQ48, RQ49, RQ88, RQ584, RQ590 and RQ591 stay DONE. RQ49 acceptance remains the RQ591 field split plus the null-revenue presentation proof.
 
 ## Next
 
 - Leave RQ588 to its existing claim.
-- Actions state for `ef66f156` is recorded in the closure note after the follow-up fetch.
+- Inspect Actions on the close-out SHA after it is on `origin/main`. Cancelled runs caused by a newer push are not failures. Vercel rate limit is not a code defect.
