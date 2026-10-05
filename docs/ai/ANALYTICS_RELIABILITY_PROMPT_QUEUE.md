@@ -29330,7 +29330,7 @@ Owner decision (Ivan, 2026-10-04): **hide Insight Studio/legacy Advanced from th
 
 ## RQ583 - Data freshness SLA, visible stale-data banner and import alert
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: `RQ569` and `RQ570` DONE (serialize the shared trust/freshness period surface; STAB16 worker deployment is not required for the banner/alert logic)
 Priority: P2
 Type: backend/frontend/ops
@@ -29338,6 +29338,8 @@ Feature family: analytics-freshness-sla-alert
 Parallel-safe: no
 Owner: Analytics Reliability / Data Freshness
 Commit suggestion: `feat(analytics): enforce data freshness SLA with banner and alert`
+
+Claim 2026-10-05: refreshed `origin/main` at `fd713653639413812d526fbbae4a0721f3e00984`; RQ569 and RQ570 are DONE, and no matching RQ583 lock, branch or open PR existed. RQ583 is claimed for the bounded freshness SLA, refresh metadata and global banner implementation. Local lock: `.ai/task-locks/RQ583-codex.lock.md`.
 
 ### Problem
 
