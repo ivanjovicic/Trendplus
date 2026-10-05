@@ -1339,7 +1339,7 @@ NV-F1, NV-F3, NV-P2.
 
 ## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ553 DONE (semantic prerequisites RQ542/RQ543/RQ551 and the sale-cost basis are already DONE; this sequencing is only to avoid shared Pre/Post page/copy ownership)
 Priority: P2
 Type: sql/backend/frontend/tests
@@ -1392,6 +1392,8 @@ Every displayed number declares its event population, maturity, period and cost/
 - Existing sale-time cost owners remain authoritative.
 - RQ547 is **not** a historical-stock dependency.
 - Wait only for RQ553 to release the shared Pre/Post page/copy path; after that perform a fresh branch/lock/PR collision check.
+
+Claim 2026-10-05: post-close recovery at `origin/main` `848a9db232bf245aa8c1815a4287978e5bea6e06` found RQ557 dependency-complete after RQ553 DONE with synchronized evidence. A parallel owner advanced `origin/main` to `4fe01cc309ca7c3ad0908941ff71a131b8796786` before this claim push; a fresh check confirmed RQ557 was still WAITING with no matching lock/branch/open PR or active Pre/Post owner. The claim is rebased onto that current main. Local lock: `.ai/task-locks/RQ557-codex.lock.md`.
 
 ---
 
