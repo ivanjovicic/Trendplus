@@ -47,7 +47,7 @@ Use with:
 | P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
-| P-UI-39 | IN_PROGRESS | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
+| P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | READY | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
@@ -2486,7 +2486,7 @@ Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/2026-10-
 
 ## P-UI-39 - Make the shared AnalyticsControlBar overflow-safe by default (phone layout-viewport inflation and 1024px overflow)
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none
 Priority: P1
 Type: frontend/css/tests
@@ -2551,6 +2551,27 @@ Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout
 - RQ588 is DONE and fresh post-close recovery at `origin/main` `4762916deaf9701d21ae46c5d4f81ffa5debe094` found no dependency-complete RQ successor. Q69's stale PARTIAL status was reconciled to its already evidenced DONE state; Q70-Q83 are DONE.
 - BCI has no READY or IN_PROGRESS prompt; STAB16 remains provider/deployed-proof gated; QDB/MT/GAI have no READY execution lane. P-UI-39 is the primary collision-safe P1 candidate. No matching lock, branch or open PR exists. Its owned `AnalyticsControlBar` files/specs are separate from the just-completed `AnalyticsEmptyState.css` fix.
 - Local lock: `.ai/task-locks/P-UI-39-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Shared filter fields shrink within their grid tracks by default; long store labels no longer inflate the viewport or create document-level horizontal overflow.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css`; `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx`; `Klijent/clientapp/scripts/responsive_baseline.mjs`; queue and roadmap evidence.
+- Checks run: focused Vitest 3/3; responsive fixture matrix 56/56 across four routes, two themes and seven widths (0 root overflow observations, 0 page errors); `npm run typecheck`; `npm run build`; analytics guardrails; governance validators; `git diff --check`.
+- Checks not run: full analytics test suite; not required by the focused acceptance.
+- Run log: `.ai/runs/2026-10-06-P-UI-39-evidence.md`
+- Evidence state: pending post-close routing recovery
+- Delivery mode: direct-main
+- Main commit SHA: `49548a92985cc72d4aee8e5cd392a8c35dbb54d4`
+- Main verification: pushed to `origin/main`; fresh fetch confirmed `HEAD == origin/main == 49548a92985cc72d4aee8e5cd392a8c35dbb54d4`.
+- Missed: none known.
+- Follow-up: determine the next collision-safe READY task during mandatory post-close routing recovery.
+- Residual risk: analytics guardrails report 39 pre-existing baseline violations and 0 removed; build reports the existing large-chunk warning.
+- Post-close routing: pending recovery scan from the post-close `origin/main` SHA.
+- Prompt defect / scope repair: none.
+- Run log: `.ai/runs/2026-10-06-P-UI-39-evidence.md`
+- Evidence state: pending
 
 ## P-UI-40 - Small-laptop shell (1024–1279px): single-row header and space-saving sidebar
 
