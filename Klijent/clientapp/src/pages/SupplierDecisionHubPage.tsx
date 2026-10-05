@@ -21,7 +21,8 @@ import InfoTip from "../components/ui/InfoTip";
 import SupplierExplainabilitySnapshot from "../components/supplierDecisionHub/SupplierExplainabilitySnapshot";
 import SupplierDetailDrawer from "../components/supplierDecisionHub/SupplierDetailDrawer";
 import { getSezone } from "../services/sezoneApi";
-import { getAnalyticsActions, getAnalyticsRefreshStatus, upsertAnalyticsAction } from "../services/analyticsApi";
+import { getAnalyticsRefreshStatus, upsertAnalyticsAction } from "../services/analyticsApi";
+import { loadOpenSupplierActionSourceKeys } from "../services/supplierOpenActionKeys";
 import type { AnalyticsActionDataQualityStatus, AnalyticsActionStatus, AnalyticsRefreshStatus } from "../types/analytics";
 import { buildSupplierDecisionReportPayload } from "../services/supplierDecisionReport";
 import {
@@ -522,22 +523,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
     void (async () => {
       try {
-        const responses = await Promise.all(
-          OPEN_ACTION_STATUSES.map((status) => getAnalyticsActions({
-            sourceType: "supplier",
-            status,
-            page: 1,
-            pageSize: 200,
-          })),
-        );
+        const keys = await loadOpenSupplierActionSourceKeys(OPEN_ACTION_STATUSES);
 
         if (cancelled) return;
-        const keys = new Set<string>();
-        for (const response of responses) {
-          for (const item of response.items) {
-            if (item.sourceKey) keys.add(item.sourceKey);
-          }
-        }
         setQueuedActionKeys(keys);
       } catch {
         if (!cancelled) setQueuedActionKeys(new Set());
