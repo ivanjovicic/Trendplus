@@ -313,7 +313,7 @@ describe("ExecutiveDecisionBoardPage", () => {
   it("renders the executive decision board with metrics, sections, cards and action links", async () => {
     renderPage();
 
-    expect(screen.getByTestId("refresh-banner")).toHaveTextContent("loading");
+    expect(screen.queryByTestId("refresh-banner")).not.toBeInTheDocument();
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
     expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ dataScope: "all" });

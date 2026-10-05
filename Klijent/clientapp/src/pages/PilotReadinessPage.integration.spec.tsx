@@ -375,7 +375,7 @@ describe("PilotReadinessPage", () => {
   it("renders the eight decision signals without the duplicate bootstrap card", async () => {
     renderPage();
 
-    expect(screen.getByTestId("refresh-banner")).toHaveTextContent("loading");
+    expect(screen.queryByTestId("refresh-banner")).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Spremno za demo" })).toBeInTheDocument();
 
     expect(getDashboardBootstrap).toHaveBeenCalledWith(undefined, undefined, true);
