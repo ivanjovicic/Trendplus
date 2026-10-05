@@ -1,3 +1,4 @@
+import { ANALYTICS_UNAVAILABLE_LABEL } from "./analyticsConstants";
 import {
   getAnalyticsPeriodPresetRange,
   type AnalyticsComparablePeriodPreset,
@@ -5,7 +6,7 @@ import {
 
 type DateLikeValue = string | Date | null | undefined;
 
-export function fmtNumber(value: number | null | undefined, digits = 0, fallback = "N/A"): string {
+export function fmtNumber(value: number | null | undefined, digits = 0, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   return value.toLocaleString("sr-RS", {
     minimumFractionDigits: digits,
@@ -13,7 +14,7 @@ export function fmtNumber(value: number | null | undefined, digits = 0, fallback
   });
 }
 
-export function fmtRsd(value: number | null | undefined, digits = 0, fallback = "N/A"): string {
+export function fmtRsd(value: number | null | undefined, digits = 0, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   const formatted = fmtNumber(value, digits, fallback);
   return formatted === fallback ? fallback : `${formatted} RSD`;
 }
@@ -22,7 +23,7 @@ export function fmtRsdShort(value: number | null | undefined): string {
   return fmtRsd(value, 0);
 }
 
-export function fmtRsdCompact(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+export function fmtRsdCompact(value: number | null | undefined, digits = 1, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
 
   const absolute = Math.abs(value);
@@ -37,35 +38,35 @@ export function fmtRsdCompact(value: number | null | undefined, digits = 1, fall
   return fmtRsd(value, 0, fallback);
 }
 
-export function fmtPct(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+export function fmtPct(value: number | null | undefined, digits = 1, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   return `${fmtNumber(value, digits)}%`;
 }
 
-export function fmtPctFromRatio(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+export function fmtPctFromRatio(value: number | null | undefined, digits = 1, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   return fmtPct(value * 100, digits, fallback);
 }
 
 export function fmtSignedPct(value: number | null | undefined, digits = 1): string {
-  if (value == null || !Number.isFinite(value)) return "N/A";
+  if (value == null || !Number.isFinite(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   const sign = value > 0 ? "+" : "";
   return `${sign}${fmtPct(value, digits)}`;
 }
 
 /** Percentage-point deltas (1 = one percentage point, not 1% relative growth). */
-export function fmtSignedPctPoints(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+export function fmtSignedPctPoints(value: number | null | undefined, digits = 1, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   const sign = value > 0 ? "+" : "";
   return `${sign}${fmtNumber(value, digits)} pp`;
 }
 
-export function fmtPctPoints(value: number | null | undefined, digits = 1, fallback = "N/A"): string {
+export function fmtPctPoints(value: number | null | undefined, digits = 1, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   return `${fmtNumber(value, digits)} pp`;
 }
 
-export function fmtQty(value: number | null | undefined, digits = 0, fallback = "N/A"): string {
+export function fmtQty(value: number | null | undefined, digits = 0, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   const formatted = fmtNumber(value, digits, fallback);
   return formatted === fallback ? fallback : `${formatted} kom`;
 }

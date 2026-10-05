@@ -30,6 +30,7 @@ import {
   productDecisionActionStatusLookupSignature,
 } from "../utils/productDecisionActionStatus";
 import { ANALYTICS_VELOCITY_LABEL } from "../utils/analyticsVelocitySemantics";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { getAnalyticsActionWriteErrorMessage } from "../utils/analyticsActionWriteErrors";
 import { downloadDecisionTimelineExportCsv } from "../utils/decisionTimelineExport";
 import {
@@ -571,7 +572,7 @@ function confidenceScoreText(level: ConfidenceLevel, score: number | null): stri
     return confidenceLevelLabel(level);
   }
 
-  return `${confidenceLevelLabel(level)} · ${fmtNumber(score, 0, "N/A")}%`;
+  return `${confidenceLevelLabel(level)} · ${fmtNumber(score, 0, ANALYTICS_UNAVAILABLE_LABEL)}%`;
 }
 
 function inputFreshnessLabel(value: string | null | undefined): string {
@@ -1223,7 +1224,7 @@ export default function ProductDecisionCenterPage() {
   ], [dataQualityFilter, fromDate, recommendationFilter, search, storeId, supplierId, toDate]);
 
   const tableMetadata = useMemo<AnalyticsNamedValue[]>(() => [
-    { key: "generatedAtUtc", label: "Generisano", value: payload?.generatedAtUtc ?? "N/A" },
+    { key: "generatedAtUtc", label: "Generisano", value: payload?.generatedAtUtc ?? ANALYTICS_UNAVAILABLE_LABEL },
     { key: "returnedRows", label: "Vraćeno redova", value: payload?.totalRows ?? null },
     { key: "analyzedRows", label: "Analizirano redova", value: payload?.analyzedRows ?? null },
     { key: "hiddenRows", label: "Skriveno zbog limita", value: payload?.ignoredRowsCount ?? null },
@@ -1588,12 +1589,12 @@ export default function ProductDecisionCenterPage() {
         </article>
         <article className="kpi-card">
           <span>Procena izgubljene prodaje</span>
-          <strong>{fmtRsd(kpis.lostSalesEstimate, 0, "N/A")}</strong>
+          <strong>{fmtRsd(kpis.lostSalesEstimate, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
           <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
         </article>
         <article className="kpi-card">
           <span>Kapital u sporoj zalihi</span>
-          <strong>{fmtRsd(kpis.slowStockCapital, 0, "N/A")}</strong>
+          <strong>{fmtRsd(kpis.slowStockCapital, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
         <article className="kpi-card">
@@ -1900,14 +1901,14 @@ export default function ProductDecisionCenterPage() {
                       <tr className="data-row" onClick={() => toggleExpandedRow(row.productId)} title="Klik za detalje preporuke.">
                         <td>
                           <strong>{row.productName}</strong>
-                          <small>{row.sku || "N/A"} | {row.category ?? row.tipObuce ?? "N/A"}</small>
+                          <small>{row.sku || ANALYTICS_UNAVAILABLE_LABEL} | {row.category ?? row.tipObuce ?? ANALYTICS_UNAVAILABLE_LABEL}</small>
                         </td>
-                        <td>{row.supplierName ?? "N/A"}</td>
+                        <td>{row.supplierName ?? ANALYTICS_UNAVAILABLE_LABEL}</td>
                         <td>
-                          <span>{fmtRsd(row.revenue, 0, "N/A")}</span>
+                          <span>{fmtRsd(row.revenue, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
                           <small>{fmtNumber(row.unitsSold, 0, "0")} kom</small>
                         </td>
-                        <td>{fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}</td>
+                        <td>{fmtNumber(row.velocityUnitsPerDay, 2, ANALYTICS_UNAVAILABLE_LABEL)}</td>
                         <td>
                           <span>{fmtPct(row.marginPct, 1)}</span>
                           <small>{row.marginQualityLabel ?? "Nedovoljno podataka"} | pokriće: {fmtPct(row.marginCoveragePct, 1, "Nije dostupno")}</small>
@@ -1930,7 +1931,7 @@ export default function ProductDecisionCenterPage() {
                             {decisionBlocked ? "Blokirano — nedovoljno dokaza" : confidenceScoreText(confidenceLevel, confidenceScore)}
                           </span>
                           <small title="Pouzdanost signala meri stabilnost i pokrivenost ulaza; ne znači da je preporuka spremna za akciju.">
-                            Pouzdanost signala: {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}
+                            Pouzdanost signala: {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, ANALYTICS_UNAVAILABLE_LABEL)}%` : ANALYTICS_UNAVAILABLE_LABEL}
                           </small>
                         </td>
                         <td>
@@ -1967,7 +1968,7 @@ export default function ProductDecisionCenterPage() {
                         <td>
                           <span>{row.recommendedAction}</span>
                           <small>{expectedImpactRsd != null
-                            ? `Procena uticaja: ${fmtRsd(expectedImpactRsd, 0, "N/A")}`
+                            ? `Procena uticaja: ${fmtRsd(expectedImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}`
                             : decisionBlocked
                               ? "Uticaj se ne procenjuje dok je preporuka blokirana."
                               : "Procena uticaja nije dostupna."}</small>
@@ -2087,7 +2088,7 @@ export default function ProductDecisionCenterPage() {
                                       void exportDecisionTimeline(row, timelineFamilyFilter);
                                     }}
                                   >
-                                    {timelineExportingProductId === row.productId ? "Export…" : "Preuzmi CSV"}
+                                    {timelineExportingProductId === row.productId ? "Izvoz…" : "Preuzmi CSV"}
                                   </button>
                                 </div>
                                 {timelineLoadingProductId === row.productId ? (
@@ -2290,7 +2291,7 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-block">
-                                <strong>Očekivani uticaj:</strong> {expectedImpactRsd != null ? fmtRsd(expectedImpactRsd, 0, "N/A") : "Nije dostupan"}
+                                <strong>Očekivani uticaj:</strong> {expectedImpactRsd != null ? fmtRsd(expectedImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL) : ANALYTICS_UNAVAILABLE_LABEL}
                                 {whyPanel.impactWindowDays != null ? <span> u prozoru od {fmtNumber(whyPanel.impactWindowDays, 0, "0")} dana</span> : null}
                                 {expectedImpactRsd == null ? (
                                   <div className="reason-warning-inline">Nema pouzdane procene uticaja jer nedostaje ulazni signal.</div>
@@ -2319,7 +2320,7 @@ export default function ProductDecisionCenterPage() {
 
                               <div className="reason-metric-grid">
                                 <div>
-                                  <strong>Prihod:</strong> {fmtRsd(row.revenue, 0, "N/A")}
+                                  <strong>Prihod:</strong> {fmtRsd(row.revenue, 0, ANALYTICS_UNAVAILABLE_LABEL)}
                                   <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat prihod" />
                                 </div>
                                 <div>
@@ -2327,23 +2328,23 @@ export default function ProductDecisionCenterPage() {
                                   <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat broj prodatih jedinica" />
                                 </div>
                                 <div>
-                                  <strong>{ANALYTICS_VELOCITY_LABEL}:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, "N/A")}
+                                  <strong>{ANALYTICS_VELOCITY_LABEL}:</strong> {fmtNumber(row.velocityUnitsPerDay, 2, ANALYTICS_UNAVAILABLE_LABEL)}
                                   <KpiExplainButton metricKey="velocity" ariaLabel="Kako je izračunata brzina prodaje" />
                                 </div>
                                 <div><strong>Marža:</strong> {fmtPct(row.marginPct, 1)}</div>
                                 <div>
-                                  <strong>Maržni doprinos:</strong> {fmtRsd(row.marginContribution, 0, "N/A")}
+                                  <strong>Maržni doprinos:</strong> {fmtRsd(row.marginContribution, 0, ANALYTICS_UNAVAILABLE_LABEL)}
                                   <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
                                 </div>
                                 <div><strong>Trenutna zaliha:</strong> {fmtNumber(row.currentStock, 0, "Nije dostupna")}</div>
-                                <div><strong>Dani od poslednje prodaje:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : "N/A"}</div>
+                                <div><strong>Dani od poslednje prodaje:</strong> {row.daysSinceLastSale != null ? `${fmtNumber(row.daysSinceLastSale, 0, "0")} dana` : ANALYTICS_UNAVAILABLE_LABEL}</div>
                                 <div><strong>Trend:</strong> {fmtPct(row.trendPct, 1)}</div>
                                 <div>
-                                  <strong>Procena izgubljene prodaje:</strong> {fmtRsd(row.lostSalesEstimate, 0, "N/A")}
+                                  <strong>Procena izgubljene prodaje:</strong> {fmtRsd(row.lostSalesEstimate, 0, ANALYTICS_UNAVAILABLE_LABEL)}
                                   <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
                                 </div>
                                 <div>
-                                  <strong>Kapital u sporoj zalihi:</strong> {fmtRsd(row.slowStockCapital, 0, "N/A")}
+                                  <strong>Kapital u sporoj zalihi:</strong> {fmtRsd(row.slowStockCapital, 0, ANALYTICS_UNAVAILABLE_LABEL)}
                                   <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
                                 </div>
                                 <div>
@@ -2356,7 +2357,7 @@ export default function ProductDecisionCenterPage() {
                                 </div>
                                 <div><strong>Pokrivenost nabavnom cenom:</strong> {fmtPct(row.marginCoveragePct, 1, "Nije dostupno")}</div>
                                 <div>
-                                  <strong>Pouzdanost:</strong> {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, "N/A")}%` : "N/A"}
+                                  <strong>Pouzdanost:</strong> {whyPanel.reliabilityPct != null ? `${fmtNumber(whyPanel.reliabilityPct, 0, ANALYTICS_UNAVAILABLE_LABEL)}%` : ANALYTICS_UNAVAILABLE_LABEL}
                                   <KpiExplainButton metricKey="reliabilityPct" ariaLabel="Kako je izračunata pouzdanost signala" />
                                 </div>
                                 <div>

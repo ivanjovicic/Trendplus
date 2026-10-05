@@ -89,7 +89,7 @@ describe("analyticsTableState", () => {
       expect.objectContaining({ key: "supplier", label: "Dobavljač", value: "Dobavljač A", highlight: false }),
       expect.objectContaining({ key: "revenue", label: "Prihod", value: "120.000 RSD", highlight: true }),
       expect.objectContaining({ key: "active", label: "Aktivan", value: "Da", highlight: false }),
-      expect.objectContaining({ key: "optional", label: "Napomena", value: "N/A", highlight: false }),
+      expect.objectContaining({ key: "optional", label: "Napomena", value: "Nije dostupno", highlight: false }),
     ]);
     expect(snapshot.metadata).toEqual([
       expect.objectContaining({ key: "period", label: "Period", value: "30d", highlight: false }),
@@ -326,15 +326,15 @@ describe("analyticsTableState", () => {
     });
 
     expect(detail.fields.map((field) => field.value)).toEqual([
-      "N/A",
+      "Nije dostupno",
       "12,50",
       "0",
       "-3",
-      "N/A",
-      "N/A",
-      "N/A",
-      "N/A",
-      "N/A",
+      "Nije dostupno",
+      "Nije dostupno",
+      "Nije dostupno",
+      "Nije dostupno",
+      "Nije dostupno",
     ]);
     expect(detail.fields.map((field) => field.value).join(" ")).not.toMatch(/NaN|Infinity/);
   });

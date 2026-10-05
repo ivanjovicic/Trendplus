@@ -53,6 +53,7 @@ import {
 import { getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
 import "./SupplierFootwearAnalyticsPage.css";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
@@ -120,7 +121,7 @@ function buildPreviousRange(fromDate: string, toDate: string) {
   return { from: previousFrom.toISOString(), to: previousTo.toISOString() };
 }
 function fmtElasticity(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "N/A";
+  if (value == null || Number.isNaN(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   return value.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function sortMarker(field: SortField, activeField: SortField, dir: SortDir): string { if (field !== activeField) return ""; return dir === "asc" ? " ^" : " v"; }
@@ -553,7 +554,7 @@ export default function SupplierFootwearAnalyticsPage({
       const recommendationAllowed = recommendation.recommendationAllowed === true;
 
       const typeInsightsAvailable = data?.typeInsightsAuthoritative === true && item.typeInsightsAuthoritative === true;
-      const topFootwearType = typeInsightsAvailable ? item.primaryFootwearType ?? "N/A" : "N/A";
+      const topFootwearType = typeInsightsAvailable ? item.primaryFootwearType ?? ANALYTICS_UNAVAILABLE_LABEL : ANALYTICS_UNAVAILABLE_LABEL;
       const topFootwearTypeSharePct = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeSharePercent) : null;
       const avgElasticity = typeInsightsAvailable ? normalizeMetricNumber(item.primaryFootwearTypeAvgElasticity) : null;
 
@@ -623,7 +624,7 @@ export default function SupplierFootwearAnalyticsPage({
   );
   const dominantTypeSummary = useMemo(() => {
     const topType = typeInsights.globalTypeShare[0];
-    if (!topType) return "N/A";
+    if (!topType) return ANALYTICS_UNAVAILABLE_LABEL;
     return `${topType.name} (${fmtPct(topType.sharePct, 1)})`;
   }, [typeInsights.globalTypeShare]);
   const vendorCounts = useMemo(() => ({
@@ -644,10 +645,10 @@ export default function SupplierFootwearAnalyticsPage({
   }, [typeInsights.globalTypeShare]);
   const comparableCoveragePct = normalizeMetricNumber(data?.dataQuality?.comparableSharePercent);
   const activeArticlesSummary = useMemo(() => {
-    if (!data?.totals) return "N/A";
+    if (!data?.totals) return ANALYTICS_UNAVAILABLE_LABEL;
     const active = data.totals.activeArticlesCount;
     const total = data.totals.articlesCount;
-    if (active == null || total == null) return "N/A";
+    if (active == null || total == null) return ANALYTICS_UNAVAILABLE_LABEL;
     return `${active} / ${total}`;
   }, [data?.totals]);
   const weightedTypeElasticity = useMemo(() => {
@@ -677,7 +678,7 @@ export default function SupplierFootwearAnalyticsPage({
   const dataQualityStatus = useMemo(() => getDataQualityStatus(data), [data]);
   const recommendationAllowed = data?.recommendationAllowed === true;
   const typeInsightWarning = hasTruncatedDetail
-    ? `Detalj prikazuje ${dataQualityProjection.returnedRows ?? "N/A"} od ${dataQualityProjection.analyzedRows ?? "N/A"} analiziranih redova. Tipovi obuće i elastičnost računaju se iz pune uporedive kohorte.`
+    ? `Detalj prikazuje ${dataQualityProjection.returnedRows ?? ANALYTICS_UNAVAILABLE_LABEL} od ${dataQualityProjection.analyzedRows ?? ANALYTICS_UNAVAILABLE_LABEL} analiziranih redova. Tipovi obuće i elastičnost računaju se iz pune uporedive kohorte.`
     : data?.typeInsightsAuthoritative !== true && (dataQualityProjection.analyzedRows ?? 0) > 0
       ? "Tipovi obuće i elastičnost nisu potvrđeni punom uporedivom kohortom i prikazani su kao nedostupni."
       : null;
@@ -787,14 +788,14 @@ export default function SupplierFootwearAnalyticsPage({
 
   const toolbarMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "generatedAt", label: "Generisano", value: data?.generatedAt ?? "" },
-    { key: "vendorsCount", label: "Dobavljača", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.vendorsCount), kind: "number", fallback: "N/A" }) },
-    { key: "articlesCount", label: "Artikala", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.articlesCount), kind: "number", fallback: "N/A" }) },
-    { key: "windowDays", label: "Prozor (dani)", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.windowDays), kind: "number", fallback: "N/A" }) },
-    { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : "N/A" },
+    { key: "vendorsCount", label: "Dobavljača", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.vendorsCount), kind: "number", fallback: ANALYTICS_UNAVAILABLE_LABEL }) },
+    { key: "articlesCount", label: "Artikala", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.totals.articlesCount), kind: "number", fallback: ANALYTICS_UNAVAILABLE_LABEL }) },
+    { key: "windowDays", label: "Prozor (dani)", value: formatMetricDisplayValue({ value: normalizeMetricNumber(data?.windowDays), kind: "number", fallback: ANALYTICS_UNAVAILABLE_LABEL }) },
+    { key: "detailDenominator", label: "Detalj / analiza", value: data?.dataQuality?.returnedRows != null && data?.dataQuality?.analyzedRows != null ? `${data.dataQuality.returnedRows} / ${data.dataQuality.analyzedRows}` : ANALYTICS_UNAVAILABLE_LABEL },
     { key: "typeInsightSource", label: "Izvor tipova", value: data?.typeInsightsSource ?? "Nije dostupno" },
     { key: "typeInsightDenominator", label: "Imenilac tipova", value: data?.typeInsightsDenominator ?? "Nije dostupno" },
-    { key: "typeInsightElasticityWeighting", label: "Tezina elasticnosti", value: data?.typeInsightsElasticityWeighting ?? "Nije dostupno" },
-    { key: "typeInsightExcludedShare", label: "Udeo van prikaza", value: formatMetricDisplayValue({ value: typeInsightChartProjection.excludedSharePct, kind: "percent", fallback: "N/A" }) },
+    { key: "typeInsightElasticityWeighting", label: "Težina elastičnosti", value: data?.typeInsightsElasticityWeighting ?? "Nije dostupno" },
+    { key: "typeInsightExcludedShare", label: "Udeo van prikaza", value: formatMetricDisplayValue({ value: typeInsightChartProjection.excludedSharePct, kind: "percent", fallback: ANALYTICS_UNAVAILABLE_LABEL }) },
     { key: "requestedDataScope", label: "Traženi opseg", value: effectiveDataScope },
     { key: "effectiveDataScope", label: "Efektivni opseg", value: data?.dataScope ?? effectiveDataScope },
   ], [data?.dataQuality?.analyzedRows, data?.dataQuality?.returnedRows, data?.dataScope, data?.generatedAt, data?.totals.articlesCount, data?.totals.vendorsCount, data?.typeInsightsDenominator, data?.typeInsightsElasticityWeighting, data?.typeInsightsSource, data?.windowDays, effectiveDataScope, typeInsightChartProjection.excludedSharePct]);

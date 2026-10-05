@@ -171,9 +171,9 @@ describe("SupplierFootwearAnalyticsPage", () => {
     );
 
     const toolbar = await screen.findByTestId("analytics-table-toolbar");
-    expect(toolbar).toHaveTextContent("Dobavljača: N/A");
-    expect(toolbar).toHaveTextContent("Artikala: N/A");
-    expect(toolbar).toHaveTextContent("Prozor (dani): N/A");
+    expect(toolbar).toHaveTextContent("Dobavljača: Nije dostupno");
+    expect(toolbar).toHaveTextContent("Artikala: Nije dostupno");
+    expect(toolbar).toHaveTextContent("Prozor (dani): Nije dostupno");
     expect(toolbar).not.toHaveTextContent("Dobavljača: 0");
     expect(toolbar).not.toHaveTextContent("Artikala: 0");
     expect(toolbar).not.toHaveTextContent("Prozor (dani): 0");
@@ -272,7 +272,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(await screen.findByText(/Detalj prikazuje 1 od 2 analiziranih redova/)).toBeInTheDocument();
     expect(screen.getByText("Nema podataka za grafikon tipova obuće.")).toBeInTheDocument();
     const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
-    expect(within(tableSurface).getAllByText("N/A").length).toBeGreaterThan(0);
+    expect(within(tableSurface).getAllByText("Nije dostupno").length).toBeGreaterThan(0);
   });
 
   it("uses backend full-cohort type insights in row, detail and export metadata", async () => {
@@ -714,7 +714,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
     const vendorRow = within(tableSurface).getByText("Dobavljač 1").closest("tr");
     expect(vendorRow).not.toBeNull();
-    expect(within(vendorRow!).getByText("Nije dostupno")).toBeInTheDocument();
+    expect(within(vendorRow!).getAllByText("Nije dostupno").length).toBeGreaterThan(0);
     expect(within(vendorRow!).getByLabelText(/Udeo Nije dostupno/i)).toBeInTheDocument();
 
     within(vendorRow!).getByRole("button", { name: "Detalji" }).click();
@@ -776,8 +776,8 @@ describe("SupplierFootwearAnalyticsPage", () => {
 
     expect(payload.rows[0].postRevenue).toBeNull();
     expect(payload.rows[0].confidencePct).toBeNull();
-    expect(snapshot.fields.find((field) => field.key === "postRevenue")?.value).toBe("N/A");
-    expect(snapshot.fields.find((field) => field.key === "confidencePct")?.value).toBe("N/A");
+    expect(snapshot.fields.find((field) => field.key === "postRevenue")?.value).toBe("Nije dostupno");
+    expect(snapshot.fields.find((field) => field.key === "confidencePct")?.value).toBe("Nije dostupno");
   });
 
   it("keeps null-ID vendors with duplicate names distinct in table, detail, and snapshot IDs", async () => {
@@ -990,7 +990,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     const tableSurface = await screen.findByTestId("supplier-footwear-analytics-data-table");
     const unknownRows = within(tableSurface).getAllByText("Nepoznat dobavljač");
     expect(unknownRows).toHaveLength(2);
-    expect(within(tableSurface).getAllByText("N/A").length).toBeGreaterThanOrEqual(2);
+    expect(within(tableSurface).getAllByText("Nije dostupno").length).toBeGreaterThanOrEqual(2);
 
     within(unknownRows[0].closest("tr")!).getByRole("button", { name: "Detalji" }).click();
     expect(await screen.findByText("Detalj odluke: Nepoznat dobavljač")).toBeInTheDocument();
@@ -1031,7 +1031,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     const vendorRow = within(tableSurface).getByText("Dobavljač 1").closest("tr");
     expect(vendorRow).not.toBeNull();
     const trendCell = within(vendorRow!).getAllByRole("cell")[4];
-    expect(trendCell).toHaveTextContent("N/A");
+    expect(trendCell).toHaveTextContent("Nije dostupno");
     expect(trendCell.textContent).not.toMatch(/0[,.]00\s*%/);
   });
 

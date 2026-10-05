@@ -94,7 +94,7 @@ describe("analytics indicator regression guards", () => {
   });
 
   it("keeps malformed trend payload fields from crashing render helpers", () => {
-    expect(formatTrendNumber(null, 2)).toBe("N/A");
+    expect(formatTrendNumber(null, 2)).toBe("Nije dostupno");
     expect(formatTrendNumber("12.5", 1)).toBe("12.5");
     expect(asStringList(["red", null, 42, "blue"])).toEqual(["red", "blue"]);
     expect(topRows({ byRevenue: null, byUnits: [], byVelocity: [], byMarginImpact: [] } as never, "revenue")).toEqual([]);

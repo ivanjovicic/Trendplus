@@ -107,13 +107,13 @@ export function registerAnalyticsReliabilityContractSuite<TResponse>(
       expect(formatMetricDisplayValue({
         value: normalizeMetricNumber(adapter.selectMetric(zeroResponse) as number | string | null | undefined),
         kind: "number",
-        fallback: "N/A",
+        fallback: "Nije dostupno",
       })).toBe("0");
       expect(formatMetricDisplayValue({
         value: normalizeMetricNumber(adapter.selectMetric(unknownResponse) as number | string | null | undefined),
         kind: "number",
-        fallback: "N/A",
-      })).toBe("N/A");
+        fallback: "Nije dostupno",
+      })).toBe("Nije dostupno");
     });
 
     it("keeps successful empty distinct from error", () => {

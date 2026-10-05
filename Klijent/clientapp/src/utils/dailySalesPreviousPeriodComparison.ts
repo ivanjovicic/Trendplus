@@ -1,3 +1,4 @@
+import { ANALYTICS_UNAVAILABLE_LABEL } from "./analyticsConstants";
 import type { DailySalesRow, DailySalesTableResponse } from "../services/dailySalesStatsApi";
 import { fmtSignedPct } from "./analyticsFormatters";
 import type { PreviousPeriodComparisonState } from "./supplierPreviousPeriodComparison";
@@ -69,7 +70,7 @@ export function formatDailySalesComparisonDelta(
     if (finiteOrNull(previousValue) === 0 && (finiteOrNull(currentValue) ?? 0) > 0) {
       return "Nova baza";
     }
-    return "N/A";
+    return ANALYTICS_UNAVAILABLE_LABEL;
   }
 
   return fmtSignedPct(deltaPct, 1);

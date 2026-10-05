@@ -31,10 +31,10 @@ describe("analyticsMetricValue", () => {
   });
 
   it("does not format NaN or Infinity as analytics values", () => {
-    expect(fmtNumber(Number.NaN)).toBe("N/A");
-    expect(fmtNumber(Number.POSITIVE_INFINITY)).toBe("N/A");
-    expect(fmtRsd(Number.NEGATIVE_INFINITY)).toBe("N/A");
-    expect(fmtPct(Number.POSITIVE_INFINITY)).toBe("N/A");
-    expect(fmtSignedPct(Number.NaN)).toBe("N/A");
+    expect(fmtNumber(Number.NaN)).toBe("Nije dostupno");
+    expect(fmtNumber(Number.POSITIVE_INFINITY)).toBe("Nije dostupno");
+    expect(fmtRsd(Number.NEGATIVE_INFINITY)).toBe("Nije dostupno");
+    expect(fmtPct(Number.POSITIVE_INFINITY)).toBe("Nije dostupno");
+    expect(fmtSignedPct(Number.NaN)).toBe("Nije dostupno");
   });
 });

@@ -14,13 +14,13 @@ describe("analyticsformatters", () => {
     expect(fmtSignedPct(-1.2)).not.toContain("+");
   });
 
-  it("returns N/A for null/undefined values", () => {
-    expect(fmtPct(null)).toBe("N/A");
-    expect(fmtPct(undefined)).toBe("N/A");
-    expect(fmtSignedPct(null)).toBe("N/A");
-    expect(fmtRsd(undefined)).toBe("N/A");
-    expect(fmtNumber(undefined)).toBe("N/A");
-    expect(fmtQty(null)).toBe("N/A");
+  it("returns Nije dostupno for null/undefined values", () => {
+    expect(fmtPct(null)).toBe("Nije dostupno");
+    expect(fmtPct(undefined)).toBe("Nije dostupno");
+    expect(fmtSignedPct(null)).toBe("Nije dostupno");
+    expect(fmtRsd(undefined)).toBe("Nije dostupno");
+    expect(fmtNumber(undefined)).toBe("Nije dostupno");
+    expect(fmtQty(null)).toBe("Nije dostupno");
   });
 
   it("fmtPctFromRatio keeps missing ratios as fallback and formats real ratios", () => {

@@ -1,3 +1,4 @@
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import type {
   AnalyticsDetailField,
   AnalyticsDetailResponse,
@@ -44,7 +45,7 @@ function normalizeAnalyticsScalar(value: AnalyticsScalar, dataType?: AnalyticsDa
   return value;
 }
 
-function stringifyValue(value: AnalyticsScalar, fallback = "N/A"): string {
+function stringifyValue(value: AnalyticsScalar, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null) return fallback;
   if (typeof value === "boolean") return value ? "Da" : "Ne";
   if (typeof value === "number" && !Number.isFinite(value)) return fallback;
@@ -82,7 +83,7 @@ export function formatDetailFieldValue(
 export function formatAnalyticsCellValue(
   value: AnalyticsScalar,
   dataType?: AnalyticsDataType | string,
-  fallback = "N/A",
+  fallback = ANALYTICS_UNAVAILABLE_LABEL,
 ): string {
   const normalized = normalizeAnalyticsScalar(value, dataType);
   if (normalized == null) return fallback;

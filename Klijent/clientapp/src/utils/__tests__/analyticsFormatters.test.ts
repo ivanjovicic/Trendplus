@@ -3,7 +3,7 @@ import { fmtRsd, fmtPct, fmtNumber, formatDate } from "../analyticsFormatters";
 
 describe("analyticsFormatters", () => {
   it("fmtRsd returns fallback for null", () => {
-    expect(fmtRsd(null)).toBe("N/A");
+    expect(fmtRsd(null)).toBe("Nije dostupno");
   });
 
   it("fmtRsd formats 1234 in sr-RS style and appends RSD", () => {
@@ -11,17 +11,17 @@ describe("analyticsFormatters", () => {
   });
 
   it("fmtNumber returns fallback for null", () => {
-    expect(fmtNumber(null)).toBe("N/A");
+    expect(fmtNumber(null)).toBe("Nije dostupno");
   });
 
   it("fmtPct returns fallback for null", () => {
-    expect(fmtPct(null)).toBe("N/A");
+    expect(fmtPct(null)).toBe("Nije dostupno");
   });
 
   it("fmtPct appends percent sign for numeric values", () => {
     const out = fmtPct(12.34);
     expect(out).toContain("%");
-    expect(out).not.toBe("N/A");
+    expect(out).not.toBe("Nije dostupno");
   });
 
   it("formats ISO dates as stable Serbian calendar dates in UTC", () => {

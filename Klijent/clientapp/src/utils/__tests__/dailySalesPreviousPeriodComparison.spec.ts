@@ -87,6 +87,6 @@ describe("dailySalesPreviousPeriodComparison", () => {
   it("does not label failed comparison deltas as Nova baza or N/A", () => {
     expect(formatDailySalesComparisonDelta(null, 1200, null, "failed")).toBe("Nedostupno");
     expect(formatDailySalesComparisonDelta(null, 1200, 0, "available")).toBe("Nova baza");
-    expect(formatDailySalesComparisonDelta(null, 1200, null, "empty")).toBe("N/A");
+    expect(formatDailySalesComparisonDelta(null, 1200, null, "empty")).toBe("Nije dostupno");
   });
 });

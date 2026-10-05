@@ -9,7 +9,7 @@ export function assertHonestDecisionTimelineExportCsv(csv: string): string {
 
 export function downloadDecisionTimelineExportCsv(filename: string, csv: string): void {
   const honestCsv = assertHonestDecisionTimelineExportCsv(csv);
-  const blob = new Blob([honestCsv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([`\uFEFF${honestCsv}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

@@ -9,6 +9,7 @@ import {
   updateAnalyticsActionStatus,
 } from "../services/analyticsApi";
 import { fmtNumber, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { getAnalyticsActionWriteErrorMessage, isAnalyticsActionWriteForbidden } from "../utils/analyticsActionWriteErrors";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -317,7 +318,7 @@ function getOutcomeSummaryEmptyState(summary: AnalyticsActionOutcomeSummaryRespo
 }
 
 function renderBucketRateLabel(rate: number | null | undefined): string {
-  return fmtPctFromRatio(rate, 0, "N/A");
+  return fmtPctFromRatio(rate, 0, ANALYTICS_UNAVAILABLE_LABEL);
 }
 
 type OutcomeRateContract = {
@@ -1026,22 +1027,22 @@ export default function AnalyticsActionsPage() {
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Pokrivenost zatvorenih</span>
-                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getClosedOutcomeCoverageRate(outcomeSummary.totals), 0, "N/A")}</strong>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getClosedOutcomeCoverageRate(outcomeSummary.totals), 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
                 <span className="aaq-summary-card-note">Na osnovu zatvorenih akcija</span>
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Pozitivan od izmerenih</span>
-                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getMeasuredPositiveOutcomeRate(outcomeSummary.totals), 0, "N/A")}</strong>
-                <span className="aaq-summary-card-note">Negativan od izmerenih: {fmtPctFromRatio(getMeasuredNegativeOutcomeRate(outcomeSummary.totals), 0, "N/A")}</span>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(getMeasuredPositiveOutcomeRate(outcomeSummary.totals), 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
+                <span className="aaq-summary-card-note">Negativan od izmerenih: {fmtPctFromRatio(getMeasuredNegativeOutcomeRate(outcomeSummary.totals), 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Izmereni uticaj</span>
-                <strong className="aaq-summary-card-value">{fmtRsd(outcomeSummary.impact.measuredImpactRsd, 0, "N/A")}</strong>
-                <span className="aaq-summary-card-note">Očekivano: {fmtRsd(outcomeSummary.impact.expectedImpactRsd, 0, "N/A")}</span>
+                <strong className="aaq-summary-card-value">{fmtRsd(outcomeSummary.impact.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
+                <span className="aaq-summary-card-note">Očekivano: {fmtRsd(outcomeSummary.impact.expectedImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
               </div>
               <div className="aaq-summary-card">
                 <span className="aaq-summary-card-label">Realizacija plana</span>
-                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.impact.realizationRatio, 0, "N/A")}</strong>
+                <strong className="aaq-summary-card-value">{fmtPctFromRatio(outcomeSummary.impact.realizationRatio, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
                 <span className="aaq-summary-card-note">Uzorak uticaja: {fmtNumber(outcomeSummary.impact.measuredImpactSampleCount, 0, "0")} od {fmtNumber(getMeasuredOutcomeCount(outcomeSummary.totals), 0, "0")} izmerenih ishoda</span>{outcomeSummary.impact.measuredImpactSampleCount < getMeasuredOutcomeCount(outcomeSummary.totals) ? (
                   <span className="aaq-summary-card-note">Realizacija pokriva samo poduzorak sa izmerenim uticajem.</span>
                 ) : null}
@@ -1072,7 +1073,7 @@ export default function AnalyticsActionsPage() {
                       </div>
                       <div className="aaq-breakdown-values">
                         <span>Pozitivan {renderBucketRateLabel(getMeasuredPositiveOutcomeRate(bucket))}</span>
-                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
                       </div>
                     </button>
                   ))}
@@ -1097,7 +1098,7 @@ export default function AnalyticsActionsPage() {
                       </div>
                       <div className="aaq-breakdown-values">
                         <span>Merljivo {fmtNumber(getMeasuredOutcomeCount(bucket), 0, "0")}</span>
-                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                        <span>{fmtRsd(bucket.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
                       </div>
                     </button>
                   ))}
@@ -1123,7 +1124,7 @@ export default function AnalyticsActionsPage() {
                         </div>
                         <div className="aaq-breakdown-values">
                           <span>Pokrivenost {renderBucketRateLabel(getClosedOutcomeCoverageRate(bucket))}</span>
-                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
                         </div>
                       </button>
                     ))}
@@ -1145,7 +1146,7 @@ export default function AnalyticsActionsPage() {
                         </div>
                         <div className="aaq-breakdown-values">
                           <span>Negativan {renderBucketRateLabel(getMeasuredNegativeOutcomeRate(bucket))}</span>
-                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, "N/A")}</span>
+                          <span>{fmtRsd(bucket.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</span>
                         </div>
                       </div>
                     ))}
@@ -1520,10 +1521,10 @@ export default function AnalyticsActionsPage() {
                                   <div><strong>Opseg signala:</strong> {impactLedger.snapshot.impactWindowDays != null ? `${impactLedger.snapshot.impactWindowDays} dana` : "-"}</div>
                                   <div><strong>Status ishoda:</strong> {normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus) ? OUTCOME_LABELS[normalizeOutcomeStatus(impactLedger.resolution.outcomeStatus)!] : impactLedger.resolution.outcomeStatus}</div>
                                   <div><strong>Izmeren uticaj:</strong> {hasConfirmedOutcomeEvidence(detailsItem) === true && Number.isFinite(impactLedger.resolution.measuredImpactRsd)
-                                    ? fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, "N/A")
+                                    ? fmtRsd(impactLedger.resolution.measuredImpactRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)
                                     : "Nije dostupno"}</div>
-                                  <div><strong>Razlika uticaja:</strong> {fmtRsd(impactLedger.derived.impactDeltaRsd, 0, "N/A")}</div>
-                                  <div><strong>Realizacija:</strong> {fmtPctFromRatio(impactLedger.derived.realizationRatio, 0, "N/A")}</div>
+                                  <div><strong>Razlika uticaja:</strong> {fmtRsd(impactLedger.derived.impactDeltaRsd, 0, ANALYTICS_UNAVAILABLE_LABEL)}</div>
+                                  <div><strong>Realizacija:</strong> {fmtPctFromRatio(impactLedger.derived.realizationRatio, 0, ANALYTICS_UNAVAILABLE_LABEL)}</div>
                                   <div><strong>Korekcioni bucket:</strong> {impactLedger.derived.calibrationBucket}</div>
                                   <div><strong>Dokaz:</strong> {impactLedger.derived.hasEvidence ? "Da" : "Ne"}</div>
                                   <div><strong>Metod merenja:</strong> {impactLedger.resolution.measurementMethod ?? "-"}</div>

@@ -67,3 +67,36 @@ describe("decisionTimelineLabels Slice-5 parity", () => {
     expect(timelineEmptyReasonLabel("no_measurement")).not.toMatch(/0%/);
   });
 });
+
+
+describe("downloadDecisionTimelineExportCsv encoding", () => {
+  it("writes a UTF-8 BOM so Excel keeps Serbian characters", async () => {
+    const parts: BlobPart[][] = [];
+    const OriginalBlob = globalThis.Blob;
+    globalThis.Blob = class MockBlob extends OriginalBlob {
+      constructor(blobParts?: BlobPart[], options?: BlobPropertyBag) {
+        super(blobParts ?? [], options);
+        parts.push(blobParts ?? []);
+      }
+    } as typeof Blob;
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const originalClick = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = () => "blob:mock";
+    URL.revokeObjectURL = () => undefined;
+    HTMLAnchorElement.prototype.click = () => undefined;
+    try {
+      const { downloadDecisionTimelineExportCsv } = await import("../decisionTimelineExport");
+      downloadDecisionTimelineExportCsv("t.csv", "# success=true\nsku,name\n1,Čizma\n");
+      expect(parts.length).toBe(1);
+      const first = String(parts[0][0] ?? "");
+      expect(first.startsWith("\uFEFF")).toBe(true);
+      expect(first).toContain("Čizma");
+    } finally {
+      globalThis.Blob = OriginalBlob;
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+      HTMLAnchorElement.prototype.click = originalClick;
+    }
+  });
+});

@@ -186,10 +186,10 @@ type InsightAnalyticsContext = {
 };
 
 const supplierV2Columns: AnalyticsTableColumn<SupplierScoreV2>[] = [
-  { key: "dobavljacId", header: "Dobavljac ID", dataType: "number" },
-  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "dobavljacId", header: "Dobavljač ID", dataType: "number" },
+  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
   { key: "totalRevenue", header: "Prihod", dataType: "currency" },
-  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "velocity", header: "Velocity", dataType: "number" },
   { key: "unsoldStock", header: "Neprodato", dataType: "number" },
   { key: "tier", header: "Tier", dataType: "text" },
@@ -197,10 +197,10 @@ const supplierV2Columns: AnalyticsTableColumn<SupplierScoreV2>[] = [
 ];
 
 const supplierV1Columns: AnalyticsTableColumn<SupplierScore>[] = [
-  { key: "dobavljacId", header: "Dobavljac ID", dataType: "number" },
-  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "dobavljacId", header: "Dobavljač ID", dataType: "number" },
+  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
   { key: "totalRevenue", header: "Prihod", dataType: "currency" },
-  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "riskLevel", header: "Risk", dataType: "text" },
   { key: "compositeScore", header: "Score", dataType: "number" },
 ];
@@ -209,7 +209,7 @@ const categoryColumns: AnalyticsTableColumn<CategoryStat>[] = [
   { key: "kategorija", header: "Kategorija", dataType: "text" },
   { key: "totalRevenue", header: "Prihod", dataType: "currency" },
   { key: "revShare", header: "Udeo %", dataType: "percent" },
-  { key: "marginPct", header: "Marza %", dataType: "percent" },
+  { key: "marginPct", header: "Marža %", dataType: "percent" },
   { key: "profitLift", header: "Lift", dataType: "percent" },
   { key: "velocity", header: "Velocity", dataType: "number" },
   { key: "uniqueSKU", header: "SKU", dataType: "number" },
@@ -273,7 +273,7 @@ const depletionColumns: AnalyticsTableColumn<DepletionResult["forecasts"][number
   { key: "avgDailySales", header: "Avg/dan", dataType: "number" },
   { key: "daysUntilOOS", header: "Dana do OOS", dataType: "number" },
   { key: "depletionDate", header: "Datum OOS", dataType: "date" },
-  { key: "atRiskRevenue", header: "At-risk", dataType: "currency" },
+  { key: "atRiskRevenue", header: "Prihod u riziku", dataType: "currency" },
   { key: "severity", header: "Sev.", dataType: "text" },
 ];
 
@@ -281,7 +281,7 @@ const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"][numbe
   { key: "artikalId", header: "Artikal ID", dataType: "number" },
   { key: "naziv", header: "Artikal", dataType: "text" },
   { key: "kategorija", header: "Kategorija", dataType: "text" },
-  { key: "dobavljacNaziv", header: "Dobavljac", dataType: "text" },
+  { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "avgDailySales", header: "V/dan", dataType: "number" },
   { key: "doh", header: "DOH", dataType: "number" },
@@ -294,16 +294,16 @@ const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategor
   { key: "totalItems", header: "Artikala", dataType: "number" },
   { key: "criticalCount", header: "Kriticno", dataType: "number" },
   { key: "urgentCount", header: "Hitno", dataType: "number" },
-  { key: "totalReorderCost", header: "Trosak nabavke", dataType: "currency" },
-  { key: "expectedRevenue", header: "Ocekivani prihod", dataType: "currency" },
+  { key: "totalReorderCost", header: "Trošak nabavke", dataType: "currency" },
+  { key: "expectedRevenue", header: "Očekivani prihod", dataType: "currency" },
   { key: "avgMargin", header: "Avg marza", dataType: "percent" },
 ];
 
 const reorderSupplierColumns: AnalyticsTableColumn<SmartReorderResult["bySupplierPlan"][number]>[] = [
-  { key: "dobavljac", header: "Dobavljac", dataType: "text" },
+  { key: "dobavljac", header: "Dobavljač", dataType: "text" },
   { key: "totalItems", header: "Artikala", dataType: "number" },
   { key: "criticalCount", header: "Kriticno", dataType: "number" },
-  { key: "totalReorderCost", header: "Trosak nabavke", dataType: "currency" },
+  { key: "totalReorderCost", header: "Trošak nabavke", dataType: "currency" },
   { key: "avgReorderProbability", header: "Avg prob. reordering", dataType: "percent" },
 ];
 
@@ -317,7 +317,7 @@ const fmtNum = (v: number) => v.toLocaleString("sr-RS");
 
 export function changeBadge(change: number | null | undefined, suffix = "%") {
   if (change == null || Number.isNaN(change)) {
-    return <span className="ml-1 text-[11px] font-semibold text-warning">N/A</span>;
+    return <span className="ml-1 text-[11px] font-semibold text-warning">N/D</span>;
   }
 
   if (change > 0) {
@@ -578,7 +578,7 @@ function OverviewTab({
           <div className="flex items-center gap-2 mb-3">
             <span className="text-base">⚠️</span>
             <h3 className="text-sm font-bold text-error">
-              Margin Pressure — {marginAlerts.summary.negativeMarginCount + marginAlerts.summary.lowMarginCount} artikala ugroženo
+              Pritisak na maržu — {marginAlerts.summary.negativeMarginCount + marginAlerts.summary.lowMarginCount} artikala ugroženo
             </h3>
           </div>
           <div className="grid grid-cols-3 gap-3 mb-3">
@@ -602,7 +602,7 @@ function OverviewTab({
       {/* KPI Overview Grid */}
       {kpi && (
         <div>
-          <SectionHeader title="KPI Snapshot" subtitle="Ključni pokazatelji za izabrani period" />
+          <SectionHeader title="Pregled KPI" subtitle="Ključni pokazatelji za izabrani period" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <KpiCard label="Ukupan prihod" value={fmtRsd(kpi.revenue)} sub="vs. preth. period" change={kpi.revenueChange} accent={PAL.blue} sparkline={kpi.sparkline} icon="💰" tooltip="Ukupna prodaja za izabrani period" />
             <KpiCard label="Bruto marža" value={fmtPct(kpi.marginPct)} sub={marginCoverageCopy?.subtext ?? "Procenjena profitabilnost"} accent={marginCoverageCopy?.isEstimated ? PAL.orange : PAL.green} icon="📈" tooltip={marginCoverageCopy?.tooltip ?? "(Prodajna - Nabavna) / Prodajna × 100"} />
@@ -690,7 +690,7 @@ function SupplierTab({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Dobavljači 2.0 — Rangiranje i Scorecard" subtitle="Kompozitni skor: Profitabilnost × Velocity × Diverzifikacija × Pouzdanost" />
+      <SectionHeader title="Dobavljači 2.0 — Rangiranje i skor-kartica" subtitle="Kompozitni skor: Profitabilnost × Velocity × Diverzifikacija × Pouzdanost" />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         {/* Leaderboard */}
@@ -1146,7 +1146,7 @@ function MatrixTab({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Velocity × Margin Matrica" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
+      <SectionHeader title="Matrica brzine i marže (Velocity × Margin)" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>
@@ -1260,7 +1260,7 @@ function DailyTab({
       </div>
       <div className="flex gap-2">
         <button onClick={() => setSubView("analiza")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "analiza" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>📊 Dnevna Analiza</button>
-        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>🔥 Heatmap</button>
+        <button onClick={() => setSubView("heatmap")} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${subView === "heatmap" ? "bg-[var(--surface-elevated)] text-[var(--text-primary)] ring-1 ring-[var(--theme-color-32579e, #32579e)]" : "text-[var(--text-primary)]"}`}>🔥 Toplotna mapa</button>
       </div>
 
       {subView === "analiza" && (
@@ -1677,10 +1677,10 @@ function StockTab({
             <div className="grid grid-cols-3 gap-3">
               <MiniStat label="Kritičan OOS" value={depletion.criticalCount} color={PAL.red} />
               <MiniStat label="Ukupno forecastova" value={depletion.forecasts.length} />
-              <MiniStat label="At-Risk prihod" value={fmtRsd(depletion.totalAtRiskRevenue)} color={PAL.orange} />
+              <MiniStat label="Prihod u riziku" value={fmtRsd(depletion.totalAtRiskRevenue)} color={PAL.orange} />
             </div>
             {depletion.criticalCount > 0 && (
-              <AlertBanner severity="danger">⚡ {depletion.criticalCount} artikala ce biti OOS u narednih 7 dana! At-risk prihod: {fmtRsd(depletion.totalAtRiskRevenue)}</AlertBanner>
+              <AlertBanner severity="danger">⚡ {depletion.criticalCount} artikala će biti OOS u narednih 7 dana! Prihod u riziku: {fmtRsd(depletion.totalAtRiskRevenue)}</AlertBanner>
             )}
             <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
               <div className="mb-3 p-3">
@@ -1764,7 +1764,7 @@ function ReorderTab2({
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Nabavka 2.0 — Smart Reorder Engine" subtitle="Prioritizacija nabavke sa ROI projekcijom, verovatnoćom reordera i margin forecast-om" />
+      <SectionHeader title="Nabavka 2.0 — motor pametne nabavke" subtitle="Prioritizacija nabavke sa ROI projekcijom, verovatnoćom reordera i margin forecast-om" />
 
       <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-4 py-3 text-xs text-[var(--text-primary)]">
         Reorder prioriteti sada se prvenstveno izvode iz demand, inventory, price i trend intelligence signala, a legacy plan ostaje rezervni fallback.
@@ -2061,8 +2061,8 @@ export default function InsightStudioPage() {
 
   const analyticsMetadata = useMemo<AnalyticsNamedValue[]>(() => [
     { key: "dailyDate", label: "Dnevna analiza", value: dailyDate },
-    { key: "supplierCountV2", label: "Dobavljaci v2", value: supplierV2.length },
-    { key: "supplierCountV1", label: "Dobavljaci v1", value: suppliers.length },
+    { key: "supplierCountV2", label: "Dobavljači v2", value: supplierV2.length },
+    { key: "supplierCountV1", label: "Dobavljači v1", value: suppliers.length },
     { key: "abcCount", label: "ABC artikli", value: abcData.length },
     { key: "agingCount", label: "Aging artikli", value: agingItems.length },
   ], [abcData.length, agingItems.length, dailyDate, supplierV2.length, suppliers.length]);
