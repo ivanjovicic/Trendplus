@@ -72,4 +72,38 @@ describe("analytics presentation pass 2 residuals", () => {
     expect(src).not.toMatch(/Avg marza/);
     expect(src).not.toMatch(/>Avg marža</);
   });
+
+  it("keeps Color PoP tip on canonical unavailable wording", () => {
+    const src = readSrc("pages/ColorSalesStatsPage.tsx");
+    expect(src).toContain("Nije dostupno ako prethodni period nije dostupan");
+    expect(src).not.toMatch(/N\/A ako prethodni period/);
+    expect(src).toContain("Brojilac neto udela");
+    expect(src).toContain("Imenilac neto udela");
+    expect(src).not.toMatch(/Neto udeo numerator/);
+    expect(src).not.toMatch(/Neto udeo denominator/);
+    expect(src).not.toMatch(/denominator nije pozitivan/);
+  });
+
+  it("keeps Amazon/eBay/Google Shopping trend unavailable and empty copy Serbian", () => {
+    for (const rel of [
+      "pages/EbayShoesTrendsPage.tsx",
+      "pages/GoogleShoppingTrendsPage.tsx",
+      "pages/AmazonShoesTrendsPage.tsx",
+    ] as const) {
+      const src = readSrc(rel);
+      expect(src).not.toMatch(/Price N\/A/);
+      expect(src).not.toContain("Loading…");
+      expect(src).not.toContain("Run Sync");
+      expect(src).not.toContain("No results for");
+      expect(src).not.toMatch(/Cijena/);
+      expect(src).toContain("Učitavanje…");
+      expect(src).toContain("Pokreni sinhronizaciju");
+      expect(src).toContain("Nema rezultata za");
+    }
+    const ebay = readSrc("pages/EbayShoesTrendsPage.tsx");
+    const google = readSrc("pages/GoogleShoppingTrendsPage.tsx");
+    expect(ebay).toContain("Nije dostupno");
+    expect(google).toContain("Nije dostupno");
+  });
+
 });

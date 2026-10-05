@@ -46,8 +46,8 @@ const SORT_OPTIONS = [
     { value: "rating",     label: "⭐ Rating" },
     { value: "popular",    label: "💬 Reviews" },
     { value: "position",   label: "🏆 Rank" },
-    { value: "price_asc",  label: "💰 Cijena ↑" },
-    { value: "price_desc", label: "💰 Cijena ↓" },
+    { value: "price_asc",  label: "💰 Cena ↑" },
+    { value: "price_desc", label: "💰 Cena ↓" },
     { value: "newest",     label: "🕐 Najnovije" },
 ];
 
@@ -113,7 +113,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function PriceLabel({ price, currency }: { price: number | null; currency: string | null }) {
-    if (price == null) return <span style={{ color: "var(--c-d1d5db, var(--theme-color-d1d5db, #d1d5db))" }}>Price N/A</span>;
+    if (price == null) return <span style={{ color: "var(--c-d1d5db, var(--theme-color-d1d5db, #d1d5db))" }}>Nije dostupno</span>;
     const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency === "GBP" ? "£" : currency ?? "";
     return (
         <span style={{ fontWeight: 800, fontSize: 15, color: G_BLUE }}>
@@ -404,7 +404,7 @@ export default function GoogleShoppingTrendsPage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, #6b7280))", marginBottom: 4 }}>Min price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, #6b7280))", marginBottom: 4 }}>Min cena (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 20"
                             value={syncMinPrice}
@@ -414,7 +414,7 @@ export default function GoogleShoppingTrendsPage() {
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, #6b7280))", marginBottom: 4 }}>Max price (€)</label>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--c-6b7280, var(--theme-color-6b7280, #6b7280))", marginBottom: 4 }}>Max cena (€)</label>
                         <input
                             type="number" min={0} placeholder="e.g. 150"
                             value={syncMaxPrice}
@@ -435,7 +435,7 @@ export default function GoogleShoppingTrendsPage() {
                             transition: "all .15s",
                         }}
                     >
-                        {syncing ? "⏳ Syncing…" : "▶ Run Sync"}
+                        {syncing ? "⏳ Sinhronizacija…" : "▶ Pokreni sinhronizaciju"}
                     </button>
                 </div>
 
@@ -499,7 +499,7 @@ export default function GoogleShoppingTrendsPage() {
                                     >
                                         {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
-                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--c-9ca3af, var(--theme-color-9ca3af, #9ca3af))" }}>⏳ Loading…</span>}
+                                    {loadingItems && <span style={{ fontSize: 12, color: "var(--c-9ca3af, var(--theme-color-9ca3af, #9ca3af))" }}>⏳ Učitavanje…</span>}
                                 </div>
                             </div>
                             {/* Gender filter tabs */}
@@ -548,7 +548,7 @@ export default function GoogleShoppingTrendsPage() {
                                         <div style={{ fontSize: 32 }}>💭</div>
                                         {brandFilter !== "all"
                                             ? <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za brend "{brandFilter}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Probaj drugi brend ili učitaj više stranica.</div></>
-                                            : <><div style={{ marginTop: 8, fontWeight: 600 }}>No results for "{selectedType}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Click "Run Sync" to fetch from Google Shopping.</div></>
+                                            : <><div style={{ marginTop: 8, fontWeight: 600 }}>Nema rezultata za "{selectedType}"</div><div style={{ fontSize: 13, marginTop: 4 }}>Kliknite „Pokreni sinhronizaciju“ da preuzmete podatke.</div></>
                                         }
                                     </div>
                                 )}

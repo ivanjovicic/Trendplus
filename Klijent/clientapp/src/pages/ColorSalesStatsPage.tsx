@@ -156,13 +156,13 @@ const decisionColumns: AnalyticsTableColumn<DecisionColor>[] = [
   },
   { key: "prePostComparableArticleCount", header: "Artikli u uporedivoj kohorti", dataType: "number" },
   { key: "sharePctBasis", header: "Osnova neto udela", dataType: "text" },
-  { key: "sharePctNumerator", header: "Neto udeo numerator", dataType: "currency" },
-  { key: "sharePctDenominator", header: "Neto udeo denominator", dataType: "currency" },
+  { key: "sharePctNumerator", header: "Brojilac neto udela", dataType: "currency" },
+  { key: "sharePctDenominator", header: "Imenilac neto udela", dataType: "currency" },
   {
     key: "sharePctUnavailableReason",
     header: "Stanje neto udela",
     dataType: "text",
-    getValue: (row) => row.sharePctUnavailableReason ?? (row.sharePctBasis === "net_sales_signed" ? "available" : null),
+    getValue: (row) => row.sharePctUnavailableReason ?? (row.sharePctBasis === "net_sales_signed" ? "dostupno" : null),
   },
   { key: "status", header: "Status signala", dataType: "text", getValue: (row) => recommendationStatusLabel(row.status) },
   { key: "decisionScore", header: "Skor odluke (detalj/transparencija)", dataType: "number" },
@@ -1269,7 +1269,7 @@ export default function ColorSalesStatsPage() {
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("popRevenueChangePct", sortField) ? " is-sorted" : ""}`}>
                         <button type="button" onClick={() => handleSort("popRevenueChangePct")}>
-                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. N/A ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
+                          PoP trend{sortMarker("popRevenueChangePct", sortField, sortDir)} <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period. Nije dostupno ako prethodni period nije dostupan; Novo ako je prethodni promet bio 0." />
                         </button>
                       </th>
                       <th className={`analytics-data-table__numeric${isSortActive("prePostNivelacijaRevenueImpactPct", sortField) ? " is-sorted" : ""}`}>
@@ -1352,12 +1352,12 @@ export default function ColorSalesStatsPage() {
                   <strong>{fmtPct(selectedRow.sharePct, 2)}</strong>
                 </article>
                 <article>
-                  <span>Osnova/numerator/denominator neto udela</span>
+                  <span>Osnova / brojilac / imenilac neto udela</span>
                   <strong>
                     {selectedRow.sharePctBasis === "net_sales_signed"
                       ? `net_sales_signed · ${fmtRsd(selectedRow.sharePctNumerator)} / ${fmtRsd(selectedRow.sharePctDenominator)}`
                       : selectedRow.sharePctUnavailableReason === "non_positive_net_sales_denominator"
-                        ? "Nije dostupno: denominator nije pozitivan"
+                        ? "Nije dostupno: imenilac nije pozitivan"
                         : "Nije dostupno"}
                   </strong>
                 </article>
