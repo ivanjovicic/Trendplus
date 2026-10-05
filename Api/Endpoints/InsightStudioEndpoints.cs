@@ -291,7 +291,7 @@ public static class InsightStudioEndpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
+                        pol = g.Key.Pol ?? "Neodređeno",
                         totalRevenue = g.Sum(x => x.Kolicina * x.Cena),
                         totalUnits = g.Sum(x => x.Kolicina)
                     }
@@ -395,7 +395,7 @@ public static class InsightStudioEndpoints
                     {
                         a.Id, a.Naziv,
                         kategorija = a.Kategorija ?? "Ostalo",
-                        pol = a.Pol ?? "NeodreÄ‘eno",
+                        pol = a.Pol ?? "Neodređeno",
                         kolicina = a.Kolicina ?? 0,
                         stockValue = stockVal,
                         marginDataAvailable = resolvedUnitCost.HasValue,
@@ -553,7 +553,7 @@ public static class InsightStudioEndpoints
                     select new
                     {
                         Kategorija = a.Kategorija ?? "Ostalo",
-                        Pol = a.Pol ?? "NeodreÄ‘eno",
+                        Pol = a.Pol ?? "Neodređeno",
                         Revenue = ps.Kolicina * ps.Cena,
                         Units = ps.Kolicina,
                         SaleLineCost = ps.NabavnaCena,
@@ -692,7 +692,7 @@ public static class InsightStudioEndpoints
                         artikalId = g.Key.Id,
                         naziv = g.Key.Naziv,
                         kategorija = g.Key.Kategorija ?? "Ostalo",
-                        pol = g.Key.Pol ?? "NeodreÄ‘eno",
+                        pol = g.Key.Pol ?? "Neodređeno",
                         dobavljacId = g.Key.IDDobavljac,
                         prodajnaCena = g.Key.ProdajnaCena,
                         minKolicina = g.Key.MinimalnaKolicina ?? 5,

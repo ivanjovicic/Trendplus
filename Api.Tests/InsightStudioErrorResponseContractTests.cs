@@ -20,6 +20,18 @@ public sealed class InsightStudioErrorResponseContractTests
         Assert.Contains("Greška reorder plan", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void InsightStudioEndpointFamiliesUseCorrectUnknownGenderLiteral()
+    {
+        var v1 = ReadRepoFile("Api/Endpoints/InsightStudioEndpoints.cs");
+        var v2 = ReadRepoFile("Api/Endpoints/InsightStudioV2Endpoints.cs");
+
+        Assert.DoesNotContain("NeodreÄ‘eno", v1, StringComparison.Ordinal);
+        Assert.DoesNotContain("NeodreÄ‘eno", v2, StringComparison.Ordinal);
+        Assert.Equal(4, CountOccurrences(v1, "Neodređeno"));
+        Assert.Equal(3, CountOccurrences(v2, "Neodređeno"));
+    }
+
     private static int CountOccurrences(string text, string value)
         => text.Split(value, StringSplitOptions.None).Length - 1;
 
