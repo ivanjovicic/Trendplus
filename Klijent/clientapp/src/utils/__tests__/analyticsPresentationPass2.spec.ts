@@ -56,4 +56,20 @@ describe("analytics presentation pass 2 residuals", () => {
     expect(src).not.toContain("Signals Snapshot");
     expect(src).not.toContain("No demand signal");
   });
+
+  it("keeps AnalyticsActions outcome hint on canonical unavailable wording", () => {
+    const src = readSrc("pages/AnalyticsActionsPage.tsx");
+    expect(src).toContain("Nije dostupno");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).not.toMatch(/„N\/A“/);
+    expect(src).not.toMatch(/"N\/A"/);
+  });
+
+  it("keeps Insight Studio average-margin headers Serbian with diacritics", () => {
+    const src = readSrc("pages/InsightStudioPage.tsx");
+    expect(src).toContain("Prosečna marža %");
+    expect(src).toContain("Prosečna marža");
+    expect(src).not.toMatch(/Avg marza/);
+    expect(src).not.toMatch(/>Avg marža</);
+  });
 });

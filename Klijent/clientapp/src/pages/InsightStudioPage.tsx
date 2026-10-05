@@ -229,7 +229,7 @@ const priceSensitivityColumns: AnalyticsTableColumn<PriceSensitivity["bands"][nu
   { key: "totalUnits", header: "Prodato", dataType: "number" },
   { key: "avgVelocityPerSku", header: "Vel/SKU", dataType: "number" },
   { key: "avgPrice", header: "Avg cena", dataType: "currency" },
-  { key: "avgMarginPct", header: "Avg marza %", dataType: "percent" },
+  { key: "avgMarginPct", header: "Prosečna marža %", dataType: "percent" },
   { key: "totalStock", header: "Zaliha", dataType: "number" },
   { key: "markdownCount", header: "Niv.", dataType: "number" },
   { key: "elasticity", header: "Elasticnost", dataType: "text" },
@@ -297,7 +297,7 @@ const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategor
   { key: "urgentCount", header: "Hitno", dataType: "number" },
   { key: "totalReorderCost", header: "Trošak nabavke", dataType: "currency" },
   { key: "expectedRevenue", header: "Očekivani prihod", dataType: "currency" },
-  { key: "avgMargin", header: "Avg marza", dataType: "percent" },
+  { key: "avgMargin", header: "Prosečna marža", dataType: "percent" },
 ];
 
 const reorderSupplierColumns: AnalyticsTableColumn<SmartReorderResult["bySupplierPlan"][number]>[] = [
@@ -1927,7 +1927,7 @@ function ReorderTab2({
               <th className="px-3 py-2 text-right">Hitno</th>
               <th className="px-3 py-2 text-right">Trošak nabavke</th>
               <th className="px-3 py-2 text-right">Oč. prihod</th>
-              <th className="px-3 py-2 text-right">Avg marža</th>
+              <th className="px-3 py-2 text-right">Prosečna marža</th>
             </tr></thead>
             <tbody>
               {smartData!.byCategoryPlan.map((c, i) => (

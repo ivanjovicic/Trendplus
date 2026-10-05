@@ -976,7 +976,7 @@ export default function AnalyticsActionsPage() {
               status i tekstualna pretraga važe samo za listu akcija.
             </p>
             <p className="aaq-summary-hint">
-              Klik na red primenjuje filter na listu akcija. Ponovni klik uklanja isti filter. „N/A“ znači da nema validnog dokaza za računanje.
+              Klik na red primenjuje filter na listu akcija. Ponovni klik uklanja isti filter. „Nije dostupno“ znači da nema validnog dokaza za računanje.
             </p>
           </div>
         </div>

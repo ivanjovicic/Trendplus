@@ -50,7 +50,7 @@ Proveri da li se nova polja mapiraju u odgovarajuće tipove. Ako koristiš `as V
     - Elasticnost (📉/📈): `priceElasticity`
     - metricReason (tooltip ili badge ako je null)
 - Prikaži summary polja iz response-a (npr. prosečan momentum, OOS rate, DiD, ...)
-- Ako je polje null, prikaži "N/A" ili tooltip sa `metricReason`.
+- Ako je polje null, prikaži "Nije dostupno" (`ANALYTICS_UNAVAILABLE_LABEL`) ili tooltip sa `metricReason`.
 
 ---
 
