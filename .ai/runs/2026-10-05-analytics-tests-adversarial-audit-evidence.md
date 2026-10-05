@@ -31,6 +31,11 @@ git diff --check
 4. Oracle manifest half-open + header-origin truth
 5. Guardrail baseline line drift IntelligenceSnapshotPanel 273→274
 
+## Tip
+
+- Local tip SHA: `4bff101d7efda5a763d17a1f1c2a1fdd9e6f47ae`
+- Bundle: `/workspace/out/analytics-tests-adversarial-2026-10-05.bundle`
+
 ## Bundle
 
 See `/workspace/out/analytics-tests-adversarial-2026-10-05.bundle` after commit.
