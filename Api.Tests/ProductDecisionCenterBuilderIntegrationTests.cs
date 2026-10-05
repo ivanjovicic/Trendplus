@@ -12,8 +12,10 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class ProductDecisionCenterBuilderIntegrationTests
 {
-    [Fact]
-    public async Task MissingCategoryWithFootwearTypeAndUnconfiguredMinStock_KeepsReplenishmentAndUnknownLostSales()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    public async Task MissingCategoryWithFootwearTypeAndUnconfiguredMinStock_KeepsReplenishmentAndUnknownLostSales(int? minStock)
     {
         var databaseName = $"product-decision-missing-category-{Guid.NewGuid():N}";
         await using var db = CreateDbContext(databaseName);
@@ -24,7 +26,7 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         var article = db.Artikli.Local.Single(item => item.Id == 101);
         article.Kategorija = null;
         article.IDTipObuce = 1;
-        article.MinimalnaKolicina = null;
+        article.MinimalnaKolicina = minStock;
         await db.SaveChangesAsync();
 
         var response = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
