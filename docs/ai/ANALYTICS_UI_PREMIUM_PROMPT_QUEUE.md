@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49`. `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
+Current READY prompt: P-UI-39 (primary; responsive re-audit 2026-10-04). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49` and `P-UI-52` (promoted after RQ582 released `navConfig.ts`; supplemental while higher-priority RQ work is ready). `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -60,7 +60,7 @@ Use with:
 | P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | WAITING | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
-| P-UI-52 | WAITING | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553) |
+| P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts |
 
 ---
@@ -3275,8 +3275,8 @@ The Executive Board has no period, store or data-scope control and no URL state;
 
 ## P-UI-52 - Analytics navigation IA and user-facing glossary sweep
 
-Status: WAITING
-Ready after: RQ553 is DONE (it edits `navConfig.ts` labels); Insight Studio's nav entry stays with RQ582
+Status: READY
+Ready after: RQ553 is DONE and RQ582 has released its exclusive navigation entry/visibility work; RQ589 is backend-only and does not own `navConfig.ts`
 Priority: P2
 Type: frontend/copy/tests
 Feature family: analytics-nav-ia-copy
@@ -3327,7 +3327,7 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 
 ### Dependencies
 
-- RQ553 (same file); RQ582 owns the Insight Studio entry.
+- RQ553 (same file) and RQ582 (exclusive Insight Studio navigation entry) are DONE. RQ589 owns only Advanced/V2 backend certification. P-UI remains supplemental and must not displace READY/IN_PROGRESS RQ work.
 
 
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
