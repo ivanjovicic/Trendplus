@@ -173,6 +173,11 @@ export interface SezonaOption {
   datumDo: string;
 }
 
+export interface ColorDimensionCoverage {
+  knownCoveragePct?: number | null;
+  dimensionCoverageState?: string | null;
+}
+
 export interface ColorSalesStatsResponse {
   generatedAt: string;
   meta: AnalyticsResponseMeta;
@@ -187,6 +192,7 @@ export interface ColorSalesStatsResponse {
   colors: ColorSalesStat[];
   totals: ColorSalesTotals;
   dataQuality: ColorSalesDataQuality;
+  dimensionCoverage?: ColorDimensionCoverage | null;
   sezone: SezonaOption[];
 }
 

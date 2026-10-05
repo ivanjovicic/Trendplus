@@ -29,13 +29,13 @@
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1432,
+      "line": 1437,
       "reason": "Existing dashboard fallback requires a reviewed empty/error-state exception."
     },
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "page_reduce_kpi",
-      "line": 157,
+      "line": 158,
       "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
     },
     {

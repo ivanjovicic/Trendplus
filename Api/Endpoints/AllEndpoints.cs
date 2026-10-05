@@ -3836,6 +3836,17 @@ public static class AllEndpoints
                     reasonCodes: ["color_is_supporting_signal"],
                     evidenceReferences: ["color.net_sales_signed", "color.data_quality", "color.recommendation"]);
 
+                var dimensionCoverage = CategoricalDimensionCoveragePolicy.ResolveFromRevenueBuckets(
+                    colors.Select(row => (row.ukupanPromet, CategoricalDimensionCoveragePolicy.IsUnknownColor(row.boja))));
+                if (dimensionCoverage.DimensionCoverageState == CategoricalDimensionCoverageStates.NotPopulatedInSource)
+                {
+                    trustMeta.RecommendationAllowed = false;
+                    trustMeta.DataQualityStatus = "insufficient_data";
+                    trustMeta.Message = "Boja nije popunjena u izvoru podataka (0% prometa sa poznatom bojom).";
+                    trustMeta.WarningCode = "source_dimension_not_populated";
+                    trustMeta.WarningMessage = trustMeta.Message;
+                }
+
                 var response = new
                 {
                     generatedAt = generatedAtUtc,
@@ -3872,6 +3883,7 @@ public static class AllEndpoints
                     colors = colorsWithRecommendation,
                     totals,
                     dataQuality,
+                    dimensionCoverage,
                     meta = trustMeta,
                     sezone
                 };

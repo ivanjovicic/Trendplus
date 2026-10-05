@@ -29,6 +29,7 @@ import type {
   AnalyticsActionSourceType,
   AnalyticsActionUpsertInput,
   CategoryData,
+  CategoricalDimensionCoverage,
   DailySale,
   DashboardAdvancedSnapshot,
   DashboardDecisionAction,
@@ -692,6 +693,9 @@ export default function AnalyticsDashboard() {
   const [weekdayData, setWeekdayData] = useState<WeekdayData[]>([]);
   const [hourData, setHourData] = useState<HourData[]>([]);
   const [paymentData, setPaymentData] = useState<PaymentData[]>([]);
+  const [dimensionCoverage, setDimensionCoverage] = useState<
+    Record<string, CategoricalDimensionCoverage>
+  >({});
   const [quickInsights, setQuickInsights] = useState<QuickInsights | null>(
     null,
   );
@@ -862,6 +866,7 @@ export default function AnalyticsDashboard() {
           : buildFallbackDecisionActionsFromAdvanced(bootstrapR.value.advanced),
       );
       setExecutive(bootstrapR.value.executive ?? null);
+      setDimensionCoverage(bootstrapR.value.dimensionCoverage ?? {});
       setDashboardMeta(bootstrapR.value.meta ?? null);
       if (initialPeriodRequestRef.current) {
         initialPeriodRequestRef.current = false;
@@ -2678,6 +2683,7 @@ export default function AnalyticsDashboard() {
                 weekdayChartData={weekdayChartData}
                 hourChartData={hourChartData}
                 paymentChartData={paymentChartData}
+                dimensionCoverage={dimensionCoverage}
                 formatCurrency={(value: number) => fmtRsd(value)}
                 formatNumber={(value: number, digits = 0) =>
                   fmtNumber(value, digits)

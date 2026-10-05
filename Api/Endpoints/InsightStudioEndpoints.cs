@@ -635,7 +635,18 @@ public static class InsightStudioEndpoints
                     .OrderByDescending(x => x.totalRevenue)
                     .ToList();
 
-                return Results.Ok(new { byCategory, byGender });
+                var categoryDimensionCoverage = CategoricalDimensionCoveragePolicy.ResolveFromRevenueBuckets(
+                    byCategory.Select(row => ((decimal)row.totalRevenue, CategoricalDimensionCoveragePolicy.IsUnknownCategory(row.kategorija))));
+
+                return Results.Ok(new
+                {
+                    byCategory,
+                    byGender,
+                    dimensionCoverage = new
+                    {
+                        category = categoryDimensionCoverage
+                    }
+                });
             }
             catch (Exception ex)
             {

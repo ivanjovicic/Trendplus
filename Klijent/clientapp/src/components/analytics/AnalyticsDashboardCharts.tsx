@@ -15,9 +15,13 @@
   XAxis,
   YAxis,
 } from "recharts";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import InfoTip from "../ui/InfoTip";
-import type { DailySale } from "../../types/analytics";
+import type { CategoricalDimensionCoverage, DailySale } from "../../types/analytics";
+import {
+  dimensionNotPopulatedMessage,
+  isDimensionNotPopulatedInSource,
+} from "../../utils/categoricalDimensionCoverage";
 
 type NamedValue = {
   name: string;
@@ -47,6 +51,7 @@ type Props = {
   weekdayChartData: WeekdayChartPoint[];
   hourChartData: HourChartPoint[];
   paymentChartData: NamedRevenue[];
+  dimensionCoverage?: Record<string, CategoricalDimensionCoverage>;
   formatCurrency: (value: number) => string;
   formatNumber: (value: number, digits?: number) => string;
 };
@@ -70,6 +75,29 @@ function formatChartValue(
   return numeric == null || !Number.isFinite(numeric) ? "Nije dostupno" : formatter(numeric);
 }
 
+function renderDimensionUnavailable(
+  dimensionKey: string,
+  dimensionLabel: string,
+  dimensionCoverage: Record<string, CategoricalDimensionCoverage> | undefined,
+  fallbackEmpty: boolean,
+  fallbackMessage: string,
+  chart: ReactNode,
+) {
+  if (isDimensionNotPopulatedInSource(dimensionCoverage?.[dimensionKey])) {
+    return (
+      <div className="analytics-empty" role="status">
+        {dimensionNotPopulatedMessage(dimensionLabel)}
+      </div>
+    );
+  }
+
+  if (fallbackEmpty) {
+    return <div className="analytics-empty">{fallbackMessage}</div>;
+  }
+
+  return chart;
+}
+
 export default function AnalyticsDashboardCharts(props: Props) {
   const {
     dailySales,
@@ -79,6 +107,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
     weekdayChartData,
     hourChartData,
     paymentChartData,
+    dimensionCoverage,
     formatCurrency,
     formatNumber,
   } = props;
@@ -115,7 +144,12 @@ export default function AnalyticsDashboardCharts(props: Props) {
         <section className="analytics-panel">
           <h3>Prodaja po kategorijama</h3>
           <p className="section-note">Raspodela prihoda po kategorijama artikala.</p>
-          {categoryPieData.length === 0 ? <div className="analytics-empty">Nema podataka za kategorije.</div> : (
+          {renderDimensionUnavailable(
+            "category",
+            "Kategorija",
+            dimensionCoverage,
+            categoryPieData.length === 0,
+            "Nema podataka za kategorije.",
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -129,14 +163,19 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            </div>,
           )}
         </section>
 
         <section className="analytics-panel">
           <h3>Prodaja po polu</h3>
           <p className="section-note">Donut prikaz pokazuje kome je prodaja najviše usmerena.</p>
-          {genderPieData.length === 0 ? <div className="analytics-empty">Nema podataka za pol.</div> : (
+          {renderDimensionUnavailable(
+            "gender",
+            "Pol",
+            dimensionCoverage,
+            genderPieData.length === 0,
+            "Nema podataka za pol.",
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -150,7 +189,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            </div>,
           )}
         </section>
 
@@ -199,7 +238,12 @@ export default function AnalyticsDashboardCharts(props: Props) {
         <section className="analytics-panel">
           <h3>Prodaja po satima</h3>
           <p className="section-note">Prodajni ritam tokom dana od 00 do 23h.</p>
-          {hourChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po satima.</div> : (
+          {renderDimensionUnavailable(
+            "hour",
+            "Sat prodaje",
+            dimensionCoverage,
+            hourChartData.every((item) => item.totalRevenue === 0),
+            "Nema podataka po satima.",
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={hourChartData}>
@@ -219,14 +263,19 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <Area type="monotone" dataKey="totalRevenue" stroke="var(--accent-info)" fill="url(#hourGradient)" strokeWidth={2.2} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
+            </div>,
           )}
         </section>
 
         <section className="analytics-panel">
           <h3>Prodaja po nacinu placanja</h3>
           <p className="section-note">Brz pregled gotovine, kartice i ostalih nacina placanja.</p>
-          {paymentChartData.length === 0 ? <div className="analytics-empty">Nema podataka po nacinu placanja.</div> : (
+          {renderDimensionUnavailable(
+            "payment",
+            "Način plaćanja",
+            dimensionCoverage,
+            paymentChartData.length === 0,
+            "Nema podataka po nacinu placanja.",
             <div className="chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={paymentChartData}>
@@ -240,7 +289,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   <Bar dataKey="totalRevenue" fill="var(--warning)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </div>,
           )}
         </section>
       </div>

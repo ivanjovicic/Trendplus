@@ -2657,6 +2657,8 @@ public static class CachedAnalyticsEndpoints
                                 ct),
                             "Lost-sales validacija nije dostupna.");
 
+                        ApplyDashboardDimensionCoverage(response);
+
                         response.Meta = BuildDashboardBootstrapMeta(
                             response,
                             requestedPeriodFromUtc,
@@ -8450,6 +8452,21 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
+    internal static void ApplyDashboardDimensionCoverage(AnalyticsDashboardBootstrapDto response)
+    {
+        response.DimensionCoverage = new Dictionary<string, CategoricalDimensionCoverageDto>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["category"] = CategoricalDimensionCoveragePolicy.ResolveFromRevenueBuckets(
+                response.CategoryData.Select(row => (row.TotalRevenue, CategoricalDimensionCoveragePolicy.IsUnknownCategory(row.Kategorija)))),
+            ["gender"] = CategoricalDimensionCoveragePolicy.ResolveFromRevenueBuckets(
+                response.GenderData.Select(row => (row.TotalRevenue, CategoricalDimensionCoveragePolicy.IsUnknownGender(row.Pol)))),
+            ["payment"] = CategoricalDimensionCoveragePolicy.ResolveFromRevenueBuckets(
+                response.PaymentData.Select(row => (row.TotalRevenue, CategoricalDimensionCoveragePolicy.IsUnknownPayment(row.NacinPlacanja)))),
+            ["hour"] = CategoricalDimensionCoveragePolicy.ResolveHourDistribution(
+                response.HourData.Select(row => (row.Hour, row.TotalRevenue, row.TransactionCount))),
+        };
+    }
+
     internal static AnalyticsResponseMetaDto BuildDashboardBootstrapMeta(
         AnalyticsDashboardBootstrapDto response,
         DateTime requestedPeriodFromUtc,
@@ -9655,6 +9672,8 @@ public class AnalyticsDashboardBootstrapDto
     public List<DashboardDecisionActionDto> DecisionActions { get; set; } = [];
     public ExecutiveDashboardSnapshotDto? Executive { get; set; }
     public List<string> Errors { get; set; } = [];
+    public Dictionary<string, CategoricalDimensionCoverageDto> DimensionCoverage { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
     public AnalyticsResponseMetaDto Meta { get; set; } = new()
     {
         Success = true,

@@ -968,6 +968,11 @@ export interface ExecutiveDashboardSnapshot {
   dataQualitySummary: ExecutiveDataQualitySummary;
 }
 
+export interface CategoricalDimensionCoverage {
+  knownCoveragePct?: number | null;
+  dimensionCoverageState?: string | null;
+}
+
 export interface AnalyticsDashboardBootstrap {
   summary: SalesSummary | null;
   inventory: InventoryStatus | null;
@@ -989,6 +994,7 @@ export interface AnalyticsDashboardBootstrap {
   decisionActions: DashboardDecisionAction[];
   executive?: ExecutiveDashboardSnapshot | null;
   errors: string[];
+  dimensionCoverage?: Record<string, CategoricalDimensionCoverage>;
   meta?: AnalyticsResponseMeta | null;
 }
 

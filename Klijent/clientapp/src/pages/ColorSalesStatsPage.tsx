@@ -23,6 +23,10 @@ import AnalyticsControlBar, {
 } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import {
+  dimensionNotPopulatedMessage,
+  isDimensionNotPopulatedInSource,
+} from "../utils/categoricalDimensionCoverage";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -841,11 +845,15 @@ export default function ColorSalesStatsPage() {
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
 
+  const colorDimensionNotPopulated = isDimensionNotPopulatedInSource(data?.dimensionCoverage);
+
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
-    if (!data || loading || sortedRows.length > 0) return null;
+    if (!data || loading) return null;
+    if (colorDimensionNotPopulated) return "insufficient_data";
+    if (sortedRows.length > 0) return null;
     if (data.meta?.emptyReason === "filtered_out") return "filtered_out";
     return "no_data";
-  }, [data, loading, sortedRows.length]);
+  }, [colorDimensionNotPopulated, data, loading, sortedRows.length]);
 
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
@@ -1144,7 +1152,11 @@ export default function ColorSalesStatsPage() {
       {!loading && !showBlockingError && emptyStateVariant ? (
         <AnalyticsEmptyState
           variant={emptyStateVariant ?? undefined}
-          message={emptyStateHint ?? undefined}
+          message={
+            colorDimensionNotPopulated
+              ? dimensionNotPopulatedMessage("Boja")
+              : emptyStateHint ?? undefined
+          }
           emptyReason={responseMeta?.emptyReason ?? null}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"
@@ -1157,7 +1169,7 @@ export default function ColorSalesStatsPage() {
         </div>
       ) : null}
 
-      {!loading && data ? (
+      {!loading && data && !colorDimensionNotPopulated ? (
         <>
           {!emptyStateHint ? (
             <section className="color-decision-kpis">
