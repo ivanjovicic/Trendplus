@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-48 (IN_PROGRESS; claimed 2026-10-06 after P-UI-40 completion made its explicit dependency runnable). Other READY lanes remain `P-UI-41`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`; they are not claimed and do not own the shared shell files. `P-UI-45` remains sequenced after the P1 shell/safety owners because it shares `AppLayout.tsx`.
+Current primary prompt: P-UI-41 (IN_PROGRESS; claimed after P-UI-48 closed and the earlier RQ576 Inventory-path collision was verified clear). Collision-safe READY lanes: `P-UI-45`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -2658,13 +2658,13 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none
 Priority: P1
 Type: frontend/css/tests
 Feature family: report-inventory-intrinsic-overflow
 Parallel-safe: yes
-Owner: unassigned
+Owner: Codex
 Commit suggestion: `fix(ui): contain wide report tables and inventory panels on phones`
 
 ### Problem
@@ -2712,7 +2712,9 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 
 ### Dependencies
 
-- None. RQ576 (inventory valuation/aging, WAITING) may later change panel content. It must keep the min-width contract.
+- None. RQ576 (inventory valuation/aging) is DONE on `main` at `e5e2dc83bf73eee8b34f0b7e3565afa272625535`; the RQ576-owned page/KPI paths were verified separate from `InventoryInsightPanels.tsx`.
+
+Owner promotion/claim 2026-10-06: refreshed `origin/main` at implementation base `575af2ab3f48eb9668477b9b95b90928b4a61aec`; confirmed RQ576 is DONE and its former P-UI-41 Inventory-path collision is released. No matching P-UI-41 lock, branch or open PR exists. P-UI-41 moved READY -> IN_PROGRESS for the scoped Pilot intake/Inventory overflow fix; local lock `.ai/task-locks/P-UI-41-codex.lock.md`.
 
 ### Addendum 2026-10-04 (UX/UI audit live evidence; no scope change)
 
@@ -2896,7 +2898,7 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-40 DONE AND P-UI-48 DONE (`AppLayout.tsx` is shared ownership; P1 shell/safety changes land first)
 Priority: P2
 Type: frontend/a11y/tests
@@ -3071,7 +3073,7 @@ Theme colours come from three competing sources: `ThemeContext.tsx` inline varia
 
 ## P-UI-48 - Remove one-click ops toggles from the business header and require confirmation
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-40 is DONE (same `HeaderStatus.tsx`/`AppLayout.tsx` files; registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P1
 Type: frontend/tests
@@ -3139,6 +3141,25 @@ The UX defect is therefore global placement, misleading action naming and missin
 ### Dependencies
 
 - P-UI-40 DONE first (same `HeaderStatus.tsx`/`AppLayout.tsx` ownership). Backend authorization remains STAB/SEC-owned; this prompt consumes the existing boundary and must not weaken it.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: The business header now exposes passive worker/Redis status only and links to admin operations. Worker/Redis writes are available on Configuration only through consequence confirmation and an `X-Admin-Key` input; API polling is clearly browser-local. A keyboard skip link and full breadcrumb/control labels improve shell access.
+- Changed files: `Klijent/clientapp/src/components/AdminActionConfirmModal.tsx`; `ApiPingFlag.tsx`; `RedisToggleFlag.tsx`; `WorkerControlFlag.tsx`; `components/__tests__/OperationalFlags.spec.tsx`; `layout/AppLayout.tsx`/`.spec.tsx`; `layout/components/HeaderStatus.tsx` and `__tests__/HeaderStatus.spec.tsx`; `pages/ConfigurationPage.tsx`; `services/workersApi.ts` and `services/__tests__/workersApi.spec.ts`; UI queue, master router, RQ supplemental pointers, P-UI-40 evidence and P-UI-48 run log.
+- Checks run: 17 focused tests; analytics guardrails and typecheck; production build; responsive app-shell 20/20 (two themes × ten widths, zero overflow/page errors); all governance validators/self-tests; `git diff --check`.
+- Checks not run: full local analytics suite; live production admin-key acceptance.
+- Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: `575af2ab3f48eb9668477b9b95b90928b4a61aec`
+- Main verification: pushed to origin/main and fresh fetch confirmed `HEAD == origin/main == 575af2ab3f48eb9668477b9b95b90928b4a61aec`.
+- Missed: none known.
+- Follow-up: sync the mandatory post-close routing recovery.
+- Residual risk: production admin-key availability is not established locally; server-side `AdminAccessControl` remains unchanged and authoritative. GitHub Analytics Quality Gates run `37386823059` was in progress at close preparation.
+- Post-close routing: recovery scan from the terminal closure SHA will be recorded in the run log before final evidence synchronization.
+- Prompt defect / scope repair: added a shared confirmation modal and listed its explicit frontend/test/service files in Owned paths; reused the existing `X-Admin-Key` contract without changing server authorization.
 
 ---
 
