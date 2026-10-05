@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import { buildRowFromInsightItem, stockCoverStatusLabel } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
@@ -1434,12 +1433,6 @@ export default function ExecutiveDecisionBoardPage() {
         recommendationNote={model.recommendationNote}
         emptyStateReason={model.emptyReason}
         compact
-      />
-
-      <AnalyticsRefreshStatusBanner
-        status={null}
-        loading={loading}
-        error={loadError?.message ?? null}
       />
 
       {globalError ? (

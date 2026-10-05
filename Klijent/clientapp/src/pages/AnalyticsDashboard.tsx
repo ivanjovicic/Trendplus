@@ -22,7 +22,6 @@ import AnalyticsControlBar, {
 } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import type {
   AnalyticsResponseMeta,
   AnalyticsRefreshStatus,
@@ -1742,11 +1741,6 @@ export default function AnalyticsDashboard() {
                       }
                       readinessLabel={executiveReadinessLabel}
                       dataQualityScopeLabel={executive?.dataQualitySummary?.scopeLabel}
-                    />
-                    <AnalyticsRefreshStatusBanner
-                      status={refreshStatus}
-                      loading={loading}
-                      error={refreshStatusError}
                     />
                   </section>
                 </div>

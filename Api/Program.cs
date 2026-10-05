@@ -169,6 +169,22 @@ try
     builder.Services.Configure<GoogleShoppingOptions>(builder.Configuration.GetSection(GoogleShoppingOptions.Section));
     builder.Services.Configure<RuntimeScoringOptions>(builder.Configuration.GetSection(RuntimeScoringOptions.Section));
     builder.Services.Configure<AccessImportOptions>(builder.Configuration.GetSection(AccessImportOptions.Section));
+    builder.Services
+        .AddOptions<AnalyticsFreshnessOptions>()
+        .Bind(builder.Configuration.GetSection(AnalyticsFreshnessOptions.Section))
+        .Validate(options =>
+        {
+            try
+            {
+                options.Validate();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }, "Analytics freshness thresholds are invalid.")
+        .ValidateOnStart();
     builder.Services.Configure<DataSourceConnectorOptions>(builder.Configuration.GetSection(DataSourceConnectorOptions.SectionName));
     builder.Services.Configure<DataSourceOptions>(builder.Configuration.GetSection(DataSourceOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.AnalyticsDataQualityHealthOptions>(

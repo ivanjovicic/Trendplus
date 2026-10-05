@@ -1,10 +1,12 @@
 using System.Globalization;
+using Api.Config;
 using Application.Analytics;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Trendplus2.Dtos;
@@ -21,13 +23,16 @@ public sealed class OperationsSourceFreshnessService
     private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly TrendplusDbContext _db;
     private readonly ILogger<OperationsSourceFreshnessService> _logger;
+    private readonly AnalyticsFreshnessOptions _freshnessOptions;
 
     public OperationsSourceFreshnessService(
         TrendplusDbContext db,
-        ILogger<OperationsSourceFreshnessService> logger)
+        ILogger<OperationsSourceFreshnessService> logger,
+        IOptions<AnalyticsFreshnessOptions>? freshnessOptions = null)
     {
         _db = db;
         _logger = logger;
+        _freshnessOptions = freshnessOptions?.Value ?? new AnalyticsFreshnessOptions();
     }
 
     public async Task ApplyAsync(
@@ -94,10 +99,11 @@ public sealed class OperationsSourceFreshnessService
                 return;
             }
 
-            var freshness = AnalyticsRefreshStatusService.ResolveOverallFreshness(
+            var freshness = AnalyticsFreshnessPolicy.Resolve(
                 lastSuccess.CompletedAtUtc,
                 lastFailure,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                _freshnessOptions);
             meta.DataFreshnessStatus = freshness;
             meta.DataFreshnessEvidenceId = $"access-import-batch:{lastSuccess.Id.ToString(CultureInfo.InvariantCulture)}";
             meta.DataFreshnessEvidenceAtUtc = lastSuccess.CompletedAtUtc;

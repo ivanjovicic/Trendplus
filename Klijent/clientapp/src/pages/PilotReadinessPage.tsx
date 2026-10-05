@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import {
   getAnalyticsActionCounts,
@@ -796,12 +795,6 @@ export default function PilotReadinessPage() {
         methodologyLabel="Kako čitati readiness"
         emptyStateReason={summaryMessage}
         compact
-      />
-
-      <AnalyticsRefreshStatusBanner
-        status={payload.refreshStatus}
-        loading={loading && !payload.refreshStatus}
-        error={refreshErrors[0]?.message ?? null}
       />
 
       <section className={`pilot-readiness-overview pilot-readiness-overview-${overallStatus}`}>

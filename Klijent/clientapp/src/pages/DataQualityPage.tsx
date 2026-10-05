@@ -4,7 +4,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
@@ -788,12 +787,6 @@ export default function DataQualityPage() {
           </div>
         </div>
       </header>
-
-      <AnalyticsRefreshStatusBanner
-        status={refreshStatus}
-        loading={loading}
-        error={refreshStatusError}
-      />
 
       {viewMode === "issues" && !loading && (intakeReport || durableIntakeReport) ? (
         <PilotImportReadinessCard report={intakeReport} refreshStatus={refreshStatus} />

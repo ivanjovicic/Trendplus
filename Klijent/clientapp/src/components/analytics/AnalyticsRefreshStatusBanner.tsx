@@ -141,9 +141,17 @@ export default function AnalyticsRefreshStatusBanner({
     <section className={`analytics-refresh-banner analytics-refresh-banner-${displayedFreshness}`} aria-live="polite">
       <div className="arb-main">
         <div className="arb-row">
-          <strong>Poslednji uspešan refresh:</strong>
-          <span>{status.lastSuccessfulRefreshAtUtc ? formatDateTime(status.lastSuccessfulRefreshAtUtc) : "Nije zabeležen"}</span>
+          <strong>Poslednji uspešan import:</strong>
+          <span>{status.lastSuccessfulImportAtUtc ? formatDateTime(status.lastSuccessfulImportAtUtc) : "Nije zabeležen"}</span>
           <span className={`arb-badge arb-badge-${displayedFreshness}`}>{freshnessLabel(displayedFreshness)}</span>
+        </div>
+        <div className="arb-row">
+          <strong>Posmatrani promet:</strong>
+          <span>
+            {status.observedSalesPeriodFromUtc && status.observedSalesPeriodToUtc
+              ? `${formatDateTime(status.observedSalesPeriodFromUtc)} – ${formatDateTime(status.observedSalesPeriodToUtc)}`
+              : "Nije potvrđen"}
+          </span>
         </div>
         {showCriticalCopy ? (
           <div className="arb-row arb-error">

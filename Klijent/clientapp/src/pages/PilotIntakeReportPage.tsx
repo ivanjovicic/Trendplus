@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
-import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import PilotDataQualityIntakeReport from "../components/analytics/PilotDataQualityIntakeReport";
 import {
@@ -381,8 +380,6 @@ export default function PilotIntakeReportPage() {
         isPartial={resolvedReport.meta?.isPartial ?? false}
         emptyStateReason={resolvedReport.meta?.message ?? null}
       />
-
-      <AnalyticsRefreshStatusBanner status={refreshStatus} error={refreshStatusError} />
 
       {isBrowserPreview ? (
         <div className="pirp-warning-banner no-print" role="status">

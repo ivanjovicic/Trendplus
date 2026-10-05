@@ -1,5 +1,6 @@
 using Api.Config;
 using Api.Services;
+using Xunit;
 
 namespace Api.Tests;
 

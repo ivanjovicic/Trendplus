@@ -15,6 +15,9 @@ function renderBanner(status: AnalyticsRefreshStatus | null) {
 function buildStatus(overrides: Partial<AnalyticsRefreshStatus>): AnalyticsRefreshStatus {
   return {
     lastSuccessfulRefreshAtUtc: "2026-05-22T07:30:00Z",
+    lastSuccessfulImportAtUtc: "2026-05-22T07:15:00Z",
+    observedSalesPeriodFromUtc: "2026-05-01T00:00:00Z",
+    observedSalesPeriodToUtc: "2026-05-21T00:00:00Z",
     lastAttemptAtUtc: "2026-05-22T08:00:00Z",
     lastFailureAtUtc: null,
     isRunning: false,
@@ -64,10 +67,11 @@ describe("AnalyticsRefreshStatusBanner", () => {
     expect(screen.getByText("Otvori worker panel")).toBeInTheDocument();
   });
 
-  it("shows fresh badge and last successful refresh", () => {
+  it("shows fresh badge, last successful import, and observed sales horizon", () => {
     renderBanner(buildStatus({ dataFreshnessStatus: "fresh" }));
     expect(screen.getByText("Sveže")).toBeInTheDocument();
-    expect(screen.getByText(/Poslednji uspešan refresh:/)).toBeInTheDocument();
+    expect(screen.getByText(/Poslednji uspešan import:/)).toBeInTheDocument();
+    expect(screen.getByText(/Posmatrani promet:/)).toBeInTheDocument();
   });
 
   it("shows stale badge", () => {

@@ -3,6 +3,9 @@ namespace Trendplus2.Dtos;
 public class AnalyticsRefreshStatusDto
 {
     public DateTime? LastSuccessfulRefreshAtUtc { get; set; }
+    public DateTime? LastSuccessfulImportAtUtc { get; set; }
+    public DateTime? ObservedSalesPeriodFromUtc { get; set; }
+    public DateTime? ObservedSalesPeriodToUtc { get; set; }
     public DateTime? LastAttemptAtUtc { get; set; }
     public DateTime? LastFailureAtUtc { get; set; }
     public bool IsRunning { get; set; }

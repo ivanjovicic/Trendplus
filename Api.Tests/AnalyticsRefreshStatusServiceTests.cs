@@ -1,5 +1,8 @@
+using Api.Config;
 using Api.Services;
+using Domain.Model;
 using Domain.Model.Analytics;
+using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
@@ -9,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Xunit;
 
@@ -46,6 +50,59 @@ public sealed class AnalyticsRefreshStatusServiceTests
         Assert.Equal("unknown", status.DataFreshnessStatus);
         Assert.Null(status.DurationSeconds);
         Assert.All(status.Jobs, job => Assert.Equal("unknown", job.DataFreshnessStatus));
+    }
+
+    [Fact]
+    public async Task GetStatus_UsesDurableAccessImportAndObservedSalesHorizon()
+    {
+        await using var analyticsDb = CreateAnalyticsDbContext();
+        await using var trendDb = CreateTrendplusDbContext();
+        var importedAtUtc = DateTime.UtcNow.AddHours(-2);
+        trendDb.DataImportBatches.Add(new DataImportBatch
+        {
+            Id = 41,
+            SourceSystem = "access",
+            IncludeAnalytics = true,
+            Status = "completed",
+            CompletedAtUtc = importedAtUtc,
+            TotalErrors = 0,
+            RowsRejected = 0
+        });
+        trendDb.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 101,
+                DataOrigin = "access",
+                DatumProdaje = new DateTime(2026, 9, 1)
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 102,
+                DataOrigin = "existing",
+                DatumProdaje = new DateTime(2026, 9, 2)
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 103,
+                DataOrigin = "access",
+                DatumProdaje = new DateTime(2026, 9, 3)
+            });
+        trendDb.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 201, IdProdaja = 101, IdArtikal = 1 },
+            new ProdajaStavka { Id = 202, IdProdaja = 103, IdArtikal = 1 });
+        await trendDb.SaveChangesAsync();
+
+        var service = CreateService(
+            analyticsDb,
+            trendDb: trendDb,
+            freshnessOptions: new AnalyticsFreshnessOptions());
+
+        var status = await service.GetStatusAsync();
+
+        Assert.Equal("fresh", status.DataFreshnessStatus);
+        Assert.Equal(importedAtUtc, status.LastSuccessfulImportAtUtc);
+        Assert.Equal(new DateTime(2026, 9, 1), status.ObservedSalesPeriodFromUtc);
+        Assert.Equal(new DateTime(2026, 9, 3), status.ObservedSalesPeriodToUtc);
     }
 
     [Fact]
@@ -391,10 +448,20 @@ public sealed class AnalyticsRefreshStatusServiceTests
         return new AnalyticsDbContext(options);
     }
 
+    private static TrendplusDbContext CreateTrendplusDbContext()
+    {
+        var options = new DbContextOptionsBuilder<TrendplusDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        return new TrendplusDbContext(options);
+    }
+
     private static AnalyticsRefreshStatusService CreateService(
         AnalyticsDbContext analyticsDbContext,
         Dictionary<string, string?>? overrides = null,
-        IAnalyticsCacheService? cacheService = null)
+        IAnalyticsCacheService? cacheService = null,
+        TrendplusDbContext? trendDb = null,
+        AnalyticsFreshnessOptions? freshnessOptions = null)
     {
         var values = new Dictionary<string, string?>
             {
@@ -428,7 +495,9 @@ public sealed class AnalyticsRefreshStatusServiceTests
                 effectiveCacheService,
                 distributedCache: null,
                 NullLogger<AnalyticsCacheAdminService>.Instance),
-            NullLogger<AnalyticsRefreshStatusService>.Instance);
+            NullLogger<AnalyticsRefreshStatusService>.Instance,
+            trendDb,
+            freshnessOptions is null ? null : Options.Create(freshnessOptions));
     }
 
     private sealed class TestHostEnvironment : IHostEnvironment

@@ -212,6 +212,9 @@ export interface AnalyticsRefreshRun {
 
 export interface AnalyticsRefreshStatus {
   lastSuccessfulRefreshAtUtc?: string | null;
+  lastSuccessfulImportAtUtc?: string | null;
+  observedSalesPeriodFromUtc?: string | null;
+  observedSalesPeriodToUtc?: string | null;
   lastAttemptAtUtc?: string | null;
   lastFailureAtUtc?: string | null;
   isRunning: boolean;
