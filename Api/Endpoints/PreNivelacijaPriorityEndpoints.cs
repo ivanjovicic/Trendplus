@@ -1767,7 +1767,7 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 Type = "NoSaleStockPressure",
                 Severity = "critical",
-                Message = $"{sku.Sku} ({sku.SupplierName}) nema prodaju {sku.DaysSinceLastSale.ToString(SerbianNumberCulture)} dana uz zalihu {sku.StockUnits.ToString(SerbianNumberCulture)}.",
+                Message = $"{sku.Sku} ({sku.SupplierName}) nema prodaju {sku.DaysSinceLastSale.GetValueOrDefault().ToString(SerbianNumberCulture)} dana uz zalihu {sku.StockUnits.ToString(SerbianNumberCulture)}.",
                 SupplierName = sku.SupplierName,
                 ArtikalId = sku.ArtikalId
             });
@@ -1795,7 +1795,7 @@ public static class PreNivelacijaPriorityEndpoints
             {
                 Type = "SupplierRiskClusterWoW",
                 Severity = "warning",
-                Message = $"{sup.SupplierName} ima rast rizika {sup.WeekOverWeekRiskDeltaPct.ToString("0.##", SerbianNumberCulture)}% nedeljna promena uz {sup.HighPrioritySkuCount.ToString(SerbianNumberCulture)} SKU visokog prioriteta.",
+                Message = $"{sup.SupplierName} ima rast rizika {sup.WeekOverWeekRiskDeltaPct.GetValueOrDefault().ToString("0.##", SerbianNumberCulture)}% nedeljna promena uz {sup.HighPrioritySkuCount.ToString(SerbianNumberCulture)} SKU visokog prioriteta.",
                 SupplierName = sup.SupplierName
             });
         }

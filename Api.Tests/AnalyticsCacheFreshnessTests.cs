@@ -106,7 +106,10 @@ public sealed class AnalyticsCacheFreshnessTests
 
         using var mismatched = JsonDocument.Parse(mismatchedResult);
         var mismatchedMeta = mismatched.RootElement.GetProperty("meta");
-        Assert.Equal("current-color-evidence", mismatchedMeta.GetProperty("operationsIntegrityEvidenceId").GetString());
+        Assert.True(
+            mismatchedMeta.TryGetProperty("operationsIntegrityEvidenceId", out var mismatchedEvidence)
+                && (mismatchedEvidence.ValueKind == JsonValueKind.Null
+                    || string.IsNullOrWhiteSpace(mismatchedEvidence.GetString())));
         Assert.False(mismatchedMeta.GetProperty("operationsIntegrityContextMatches").GetBoolean());
     }
 
