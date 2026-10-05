@@ -15,6 +15,7 @@ const ROUTES = [
   { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
   { id: "supplier", path: "/analytics/supplier" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
+  { id: "pilot_intake", path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all", readySelector: ".pilot-intake-durable-table-wrap", printSmoke: true },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]', pui39Overflow: true },
   { id: "shoe_type", path: "/analytics/shoe-type-sales-stats", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
   { id: "pre_nivelacija", path: "/analytics/pre-nivelacija-prioriteti", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
@@ -179,6 +180,112 @@ async function fixtureResponse(request, options) {
   const url = new URL(request.url());
   if (url.pathname === "/health" || url.pathname === "/ready") {
     return { status: 200, body: JSON.stringify({ status: "fixture" }) };
+  }
+
+  if (url.pathname === "/api/analytics/refresh-status") {
+    return { status: 200, body: JSON.stringify({
+      isRunning: false,
+      refreshedObjects: [],
+      failedObjects: [],
+      dataFreshnessStatus: "fresh",
+      processMode: "worker",
+      processType: "worker",
+      workersEnabled: true,
+      generatedAtUtc: "2026-10-02T00:00:00Z",
+      jobs: [],
+    }) };
+  }
+
+  if (url.pathname === "/api/analytics/reports/pilot-intake") {
+    const fromDate = url.searchParams.get("fromDate") ?? "2026-06-01";
+    const toDate = url.searchParams.get("toDate") ?? "2026-06-30";
+    return { status: 200, body: JSON.stringify({
+      reportId: "responsive-pilot-intake-fixture",
+      stableQueryUrl: `/analytics/reports/pilot-intake?fromDate=${fromDate}&toDate=${toDate}&dataScope=all`,
+      reportTitle: "Sintetički pilot izveštaj",
+      reportType: "pilot-intake",
+      generatedAtUtc: "2026-10-02T00:00:00Z",
+      periodFrom: fromDate,
+      periodTo: toDate,
+      period: { fromUtc: fromDate, toUtc: toDate, label: "Sintetički period", scope: "all" },
+      lastRefreshAtUtc: "2026-10-02T00:00:00Z",
+      dataFreshnessStatus: "fresh",
+      dataQualityStatus: "good",
+      recommendationAllowed: true,
+      usedFallback: false,
+      warnings: [],
+      kpis: [{ key: "intakeRows", label: "Učitani redovi", value: 24, unit: "redova", tone: "positive" }],
+      recommendedActions: [],
+      methodology: { summary: "Sintetički dokaz za responsive merenje.", notes: [] },
+      rows: [{ section: "Učitano", item: "Sintetički dobavljač", value: "24" }],
+      sections: [{
+        key: "responsive-width",
+        title: "Sintetička tabela prijema",
+        description: "Podaci su sintetički i služe samo proveri prikaza.",
+        rowCount: 1,
+        columns: [
+          { key: "supplier", label: "Dobavljač" },
+          { key: "articles", label: "Artikli", dataType: "number" },
+          { key: "receipts", label: "Prijemi", dataType: "number" },
+          { key: "revenue", label: "Promet", dataType: "currency" },
+          { key: "coverage", label: "Pokrivenost", dataType: "percent" },
+          { key: "note", label: "Napomena" },
+        ],
+        rows: [{
+          supplier: "Sintetički dobavljač sa dugim nazivom",
+          articles: 1200,
+          receipts: 48,
+          revenue: 1456000,
+          coverage: 82.5,
+          note: "Sintetički sadržaj za proveru da široka tabela ostaje dostupna u svom scroll regionu.",
+        }],
+      }],
+      payload: { tableKey: "responsive-pilot-intake-fixture", columns: [], rows: [], metadata: [] },
+      meta: { success: true, dataQualityStatus: "good" },
+    }) };
+  }
+
+  if (url.pathname === "/api/analytics/cached/inventory/insights" || url.pathname === "/api/analytics/inventory/insights") {
+    const insightItem = {
+      id: 330,
+      plu: "RESP-330",
+      naziv: "Sintetički model sa izuzetno dugim nazivom koji mora ostati dostupan kroz naslov kartice",
+      supplierName: "Sintetički dobavljač sa dugim nazivom za responsive proveru",
+      storeName: "Sintetička prodavnica sa dugim nazivom",
+      supplierId: 21,
+      storeId: 31,
+      quantity: 4,
+      minimum: 12,
+      reorderGap: 8,
+      estimatedValue: 18400,
+      unitCost: 4600,
+      costSource: "fixture",
+      costMissing: false,
+      daysSinceMovement: 104,
+      agingBucket: "90+",
+      agingLabel: "90+ dana",
+      abcClass: "A",
+      stockState: "critical",
+      stockCoverDays: 3,
+      stockCoverStatus: "low_cover",
+      stockCoverStatusLabel: "Niska pokrivenost",
+      sellThroughRatio: 82,
+      sellThroughStatus: "good",
+      sellThroughStatusLabel: "Dobra prodajnost",
+      signalConfidencePct: 88,
+      recommendationAllowed: true,
+      dataQualityStatus: "good",
+      reasonCodes: ["fixture"],
+    };
+    return { status: 200, body: JSON.stringify({
+      totalItems: 1,
+      totalEstimatedValue: 18400,
+      aging: [{ bucketKey: "90+", label: "90+ dana", itemCount: 1, totalUnits: 4, estimatedValue: 18400 }],
+      abc: [{ bucketKey: "A", label: "A", itemCount: 1, estimatedValue: 18400, valueSharePct: 100 }],
+      topAgedItems: [insightItem],
+      topCapitalLockedItems: [insightItem],
+      meta: { success: true, dataQualityStatus: "good" },
+    }) };
   }
 
   if (url.pathname === "/api/artikli/lookup") {
@@ -636,7 +743,7 @@ async function collectGeometry(page, viewportWidth) {
       });
 
     const regions = [...document.querySelectorAll(
-      "[data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], [class*='chart-grid'], [class*='chart-wrap'], [class*='card-grid'], [class*='daily-sales-kpis'], [class*='command-center__hero'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
+      ".pilot-intake-durable-table-wrap, .pilot-intake-durable-sections, .pilot-intake-durable-section, .pilot-intake-card, .analytics-trust-header, [data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], [class*='chart-grid'], [class*='chart-wrap'], [class*='card-grid'], [class*='daily-sales-kpis'], [class*='command-center__hero'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
     )]
       .filter(isVisible)
       .slice(0, 40)
@@ -948,6 +1055,24 @@ async function run(options) {
 
           const geometry = await collectGeometry(page, viewportWidth);
           if (route.pui40Shell) assertPui40Shell(geometry);
+          const printSmoke = route.printSmoke ? await (async () => {
+            await page.emulateMediaType("print");
+            return page.evaluate(() => {
+              const wrapper = document.querySelector(".pilot-intake-durable-table-wrap");
+              const table = wrapper?.querySelector("table");
+              const methodology = document.querySelector(".pilot-methodology");
+              const result = {
+                overflowX: wrapper ? getComputedStyle(wrapper).overflowX : null,
+                tableMinWidth: table ? getComputedStyle(table).minWidth : null,
+                methodologyDisplay: methodology ? getComputedStyle(methodology).display : null,
+              };
+              return {
+                ...result,
+                status: wrapper && table && result.overflowX === "visible" && result.tableMinWidth === "0px"
+                  && (!methodology || result.methodologyDisplay === "none") ? "PASS" : "FAIL",
+              };
+            });
+          })() : null;
           const performance = route.id === "products" ? await page.evaluate(async (requestedFixtureRows) => {
             const table = document.querySelector(".product-decision-table");
             const wrapper = document.querySelector(".product-decision-table-wrap");
@@ -999,6 +1124,7 @@ async function run(options) {
             interactionStep,
             interaction,
             performance,
+            printSmoke,
           });
           await page.close();
         }
@@ -1026,6 +1152,7 @@ async function run(options) {
   if (options.strict) {
     const failing = results.filter((result) => result.geometry.rootOverflow
       || result.navigationError
+      || (result.printSmoke && result.printSmoke.status !== "PASS")
       || result.pageErrors.length > 0
       || result.requestFailures.some((failure) => failure.error !== "net::ERR_ABORTED"));
     if (failing.length > 0) {

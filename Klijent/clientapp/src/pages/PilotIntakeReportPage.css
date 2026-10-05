@@ -1,5 +1,6 @@
 .pilot-intake-report-page {
   display: grid;
+  min-width: 0;
   gap: 12px;
   padding: 18px 0;
 }

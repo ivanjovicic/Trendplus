@@ -6,7 +6,7 @@ Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: `1460987fb726cf7f70687050c3cb518b05d5c8fd`
 Main verification: pushed to origin/main; fresh fetch confirmed `HEAD == origin/main == 1460987fb726cf7f70687050c3cb518b05d5c8fd`
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 - Removed worker/Redis write buttons and the browser-local API-ping control from the business header. The header retains read-only worker/Redis status and links to the admin/operations surface.
@@ -65,11 +65,12 @@ Evidence state: pending
 - The production build retains its existing chunk-size warning; analytics guardrails retain 39 baseline findings. Exact-main CI for the test-only correction remains pending.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: `9663b4b8be7624be47dd4585ffd40dbb34a40cd6` (fresh fetch after P-UI-48 closure metadata).
+- Recovery base `origin/main` SHA: `858ade29e8c5a95315ce94c3d870ba71f4746d06` (fresh fetch after P-UI-48 follow-up closure).
 - Active owner queue/addendum set scanned: 12 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files, `SQL_ANALYTICS_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`, and `MASTER_ROADMAP.md` (16 files).
-- Completed/changed dependency IDs searched: P-UI-48 and RQ576; P-UI-48 is implemented on main at `575af2ab3f48eb9668477b9b95b90928b4a61aec`; RQ576 is DONE on main at `e5e2dc83bf73eee8b34f0b7e3565afa272625535`.
-- Re-evaluated dependent/candidate UI prompts: P-UI-41 was dependency-complete and collision-safe once RQ576's distinct Inventory-page work landed; P-UI-45 became READY after P-UI-48; P-UI-42 remains WAITING for P-UI-47; P-UI-31/P-UI-35/P-UI-36 remain WAITING for P-UI-47; P-UI-43/P-UI-44 remain gated by RQ569; P-UI-53 remains gated by P-UI-47 plus P-UI-31/35/36; P-UI-38 remains the final responsive/theme/a11y gate. Independent READY lanes include P-UI-47/P-UI-49/P-UI-51/P-UI-52. No zero-READY claim applies.
-- CI recovery after that closure found an in-scope P-UI-48 test assertion defect; P-UI-48 resumed and P-UI-41 returned to READY before implementation. This does not invalidate the dependency scan or require a zero-READY proof.
+- Completed/changed dependency IDs searched across the full set: P-UI-48 and RQ576; P-UI-48 follow-up is on main at `1460987fb726cf7f70687050c3cb518b05d5c8fd`, closed in queue metadata; RQ576 is DONE on main at `e5e2dc83bf73eee8b34f0b7e3565afa272625535`.
+- RQ/SQL re-evaluation: canonical RQ READY pointer remains `none` after RQ588; no newly runnable RQ/SQL dependency resulted from P-UI-48 or RQ576. Existing WAITING candidates remain gated by named work, source/owner decisions or production freshness; RQ576 itself is DONE.
+- UI candidate matrix: P-UI-41 (P1) was dependency-complete and collision-safe after RQ576; no matching lock, branch or open PR existed, so it was promoted READY -> IN_PROGRESS and claimed. P-UI-45 remains READY after P-UI-48; independent READY lanes P-UI-47/P-UI-49/P-UI-51/P-UI-52 remain collision-safe. P-UI-42 remains WAITING for P-UI-47; P-UI-31/P-UI-35/P-UI-36 remain WAITING for P-UI-47; P-UI-43/P-UI-44 remain gated by RQ569; P-UI-53 remains gated by P-UI-47 plus P-UI-31/35/36; P-UI-38 remains the final responsive/theme/a11y gate. No zero-READY claim applies.
+- Correction-SHA CI at review: Planning Governance `37387704648` green; Analytics Quality Gates `37387704537` in progress. Queue execution does not wait on pending CI.
 
 ## Next
-- Deliver the focused ConfigurationPage regression-test correction to `main`, inspect the resulting current-main CI once, then close and refresh routing.
+- P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones.

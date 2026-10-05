@@ -1,6 +1,14 @@
 .pilot-intake-report {
   display: grid;
+  min-width: 0;
   gap: 12px;
+}
+
+.pilot-intake-card,
+.pilot-intake-durable-sections,
+.pilot-intake-durable-section {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pilot-intake-head {
@@ -38,6 +46,66 @@
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
+}
+
+.pilot-intake-durable-table-hint {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pilot-intake-durable-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  scrollbar-color: var(--info) var(--surface-darker);
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pilot-intake-durable-table-wrap:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
+}
+
+.pilot-intake-durable-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.pilot-intake-durable-table th,
+.pilot-intake-durable-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 82%, transparent);
+  text-align: left;
+  vertical-align: top;
+  font-size: 12px;
+}
+
+.pilot-intake-durable-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-darker);
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pilot-intake-durable-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.pilot-intake-durable-table__numeric {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pilot-intake-muted {
@@ -350,5 +418,24 @@
   .no-print,
   .pilot-methodology {
     display: none !important;
+  }
+
+  .pilot-intake-durable-table-wrap {
+    max-width: none;
+    overflow: visible;
+    border-color: #999;
+    box-shadow: none;
+  }
+
+  .pilot-intake-durable-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .pilot-intake-durable-table th,
+  .pilot-intake-durable-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }

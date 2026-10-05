@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-41 (READY; RQ576 Inventory-path collision is clear). Other collision-safe READY lanes: `P-UI-45`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-47 (READY; pending fresh post-close collision/dependency review after P-UI-41). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -49,7 +49,7 @@ Use with:
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
-| P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
+| P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
@@ -2658,13 +2658,13 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none
 Priority: P1
 Type: frontend/css/tests
 Feature family: report-inventory-intrinsic-overflow
 Parallel-safe: yes
-Owner: unassigned
+Owner: Codex
 Commit suggestion: `fix(ui): contain wide report tables and inventory panels on phones`
 
 ### Problem
@@ -2683,7 +2683,9 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 ### Scope
 
 - `components/analytics/PilotDataQualityIntakeReport.tsx` and `.css`
+- `pages/PilotIntakeReportPage.css` for the report page's own min-content grid track; do not edit `AnalyticsTrustHeader.*`
 - `components/inventory/InventoryInsightPanels.tsx` (and `InventoryPriorityPanels.tsx` only if the same pattern is proven there)
+- the responsive baseline route/fixture in `Klijent/clientapp/scripts/responsive_baseline.mjs` because the existing runner had no Pilot intake route for this prompt's named viewport acceptance
 - nearest tests
 - Not `InventoryPage.tsx` and not `AnalyticsTrustHeader.*` (RQ569 owns the trust-header/page trust props)
 
@@ -2717,6 +2719,12 @@ Two screens widen the phone layout viewport for reasons unrelated to the control
 Owner promotion/claim 2026-10-06: refreshed `origin/main` at implementation base `575af2ab3f48eb9668477b9b95b90928b4a61aec`; confirmed RQ576 is DONE and its former P-UI-41 Inventory-path collision is released. No matching P-UI-41 lock, branch or open PR exists. P-UI-41 moved READY -> IN_PROGRESS for the scoped Pilot intake/Inventory overflow fix; local lock `.ai/task-locks/P-UI-41-codex.lock.md`.
 
 Owner release 2026-10-06: P-UI-41 was returned to READY before implementation while the same workspace resumed P-UI-48 for its in-scope CI test correction. The P-UI-41 local lock was removed; RQ576's path collision remains clear.
+
+Owner promotion/claim 2026-10-06: post-close recovery refreshed `origin/main` to `858ade29e8c5a95315ce94c3d870ba71f4746d06`, verified RQ576 DONE on `e5e2dc83bf73eee8b34f0b7e3565afa272625535`, and found no matching P-UI-41 lock, branch or open PR. P-UI-41 moved READY -> IN_PROGRESS for the Pilot intake/Inventory phone-overflow scope; local lock `.ai/task-locks/P-UI-41-codex.lock.md`.
+
+Prompt repair 2026-10-06: the shared responsive baseline route set had no Pilot intake entry, so its own acceptance could not measure the named route in fixture mode. Added a bounded Pilot intake route/response fixture and print-media smoke assertion to the existing runner; this creates synthetic presentation evidence only and does not change report semantics. A 360px fixture measurement then proved `.pilot-intake-report-page` was allowing an intrinsic-width child to expand its grid track; added `min-width: 0` to that report-owned wrapper and durable sections, without changing the RQ569-owned trust header.
+
+Owner completion 2026-10-06: P-UI-41 is DONE. Durable Pilot intake tables now use labeled keyboard-focusable horizontal scrolling with readable numeric alignment and print behavior; Inventory insight panels/cards can shrink without hiding values, with full labels available by title. The report wrapper's min-width repair and responsive runner's synthetic Pilot fixture were required by observed viewport evidence and are documented above. Focused Vitest passed 15/15; analytics guardrails, typecheck, production build, governance validators and `git diff --check` passed. Strict responsive fixture passed 40/40 route/viewport/theme cases with zero page overflow/errors; Pilot print smoke passed 20/20. Implementation SHA and fresh `origin/main` verification will be added after delivery. Run log: `.ai/runs/2026-10-06-P-UI-41-evidence.md`. Evidence state: pending post-close routing recovery.
 
 Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be47dd4585ffd40dbb34a40cd6`, Analytics Quality Gates run `37386823059` failed the broad ConfigurationPage refresh-button count against the two independent settings refresh controls. P-UI-48 resumed IN_PROGRESS to correct the assertion to the worker control's accessible name. P-UI-41 returned to READY before implementation so this workspace has one active claim; its RQ576 collision remains clear.
 
@@ -3155,7 +3163,7 @@ The UX defect is therefore global placement, misleading action naming and missin
 - Checks run: 17 focused tests; analytics guardrails and typecheck; production build; responsive app-shell 20/20 (two themes × ten widths, zero overflow/page errors); all governance validators/self-tests; `git diff --check`.
 - Checks not run: full local analytics suite; live production admin-key acceptance.
 - Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `575af2ab3f48eb9668477b9b95b90928b4a61aec`
 - Main verification: pushed to origin/main and fresh fetch confirmed `HEAD == origin/main == 575af2ab3f48eb9668477b9b95b90928b4a61aec`.
@@ -3167,7 +3175,7 @@ The UX defect is therefore global placement, misleading action naming and missin
 ### Post-delivery regression follow-up
 
 - Date: 2026-10-06
-- Current status: IN_PROGRESS
+- Current status: DONE after local regression proof and main delivery
 - Trigger: GitHub Analytics Quality Gates run `37386823059` on implementation SHA `575af2ab3f48eb9668477b9b95b90928b4a61aec` failed `ConfigurationPage.spec.tsx` because the test counted both the worker refresh and the separate Configuration refresh by a shared text regex. The worker-specific accessible control remains unique.
 - Follow-up: assertion now names `Osveži status workera`; focused ConfigurationPage spec passes 5/5 locally. The same CI run's `PreNivelacijaPriorityPage` period-fixture failure (`unknown|unknown`) passes in a local isolated rerun (1/1; 55 skipped) and is recorded as a remote-run discrepancy.
 - Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
@@ -3180,14 +3188,14 @@ The UX defect is therefore global placement, misleading action naming and missin
 - Completion: changed the ConfigurationPage regression assertion from a broad refresh-text count to the unique worker refresh accessible name, preserving the separate Configuration refresh control.
 - Changed files: `Klijent/clientapp/src/pages/__tests__/ConfigurationPage.spec.tsx`; this queue, `MASTER_ROADMAP.md`, five RQ supplemental pointers and `.ai/runs/2026-10-06-P-UI-48-evidence.md`.
 - Checks run: focused ConfigurationPage tests 5/5; isolated prior CI PreNivelacija failure 1/1; queue, agent-instruction and planning validators; `git diff --check`.
-- Checks not run: full analytics suite; correction-SHA remote checks have not completed (Analytics Quality Gates `37387704537` queued; Planning Governance `37387704648` in progress).
+- Checks not run: full analytics suite; Analytics Quality Gates `37387704537` remains in progress on the correction SHA.
 - Run log: `.ai/runs/2026-10-06-P-UI-48-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `1460987fb726cf7f70687050c3cb518b05d5c8fd`
 - Main verification: pushed to origin/main; fresh fetch confirmed `HEAD == origin/main == 1460987fb726cf7f70687050c3cb518b05d5c8fd`.
-- Post-close routing: run the mandatory full queue cascade from the terminal closure SHA before synchronizing evidence.
-- Residual: correction-SHA CI is still queued/in progress; the earlier remote-only PreNivelacija test discrepancy passed locally in isolation.
+- Post-close routing: refreshed `origin/main` at `858ade29e8c5a95315ce94c3d870ba71f4746d06`; full 16-file cascade promoted and claimed P-UI-41. See the run log.
+- Residual: correction-SHA Analytics Quality Gates run `37387704537` was in progress at the post-close scan; Planning Governance run `37387704648` is green. The earlier remote-only PreNivelacija test discrepancy passed locally in isolation.
 - Prompt defect / scope repair: added a shared confirmation modal and listed its explicit frontend/test/service files in Owned paths; reused the existing `X-Admin-Key` contract without changing server authorization.
 
 ---

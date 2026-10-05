@@ -96,6 +96,31 @@ function buildInsights(): InventoryInsights {
 }
 
 describe("InventoryInsightPanels", () => {
+  it("keeps insight panels, grids and cards shrinkable inside their page grid", () => {
+    render(
+      <InventoryInsightPanels
+        insights={buildInsights()}
+        insightsLoading={false}
+        stores={[]}
+        suppliers={[]}
+        rows={[baseRow]}
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    const panels = screen.getByTestId("inventory-insight-panels");
+    const panelCards = panels.querySelectorAll(".inventory-insight-panel");
+    const insightGrids = panels.querySelectorAll(".inventory-insight-grid");
+    const dataCards = panels.querySelectorAll("article");
+
+    expect(panels).toHaveClass("min-w-0");
+    expect(panelCards).toHaveLength(2);
+    expect(insightGrids).toHaveLength(2);
+    panelCards.forEach((panel) => expect(panel).toHaveClass("min-w-0"));
+    insightGrids.forEach((grid) => expect(grid).toHaveClass("min-w-0"));
+    dataCards.forEach((card) => expect(card).toHaveClass("min-w-0"));
+  });
+
   it("shows unavailable aging badge copy on insights error instead of fake zero", () => {
     render(
       <InventoryInsightPanels

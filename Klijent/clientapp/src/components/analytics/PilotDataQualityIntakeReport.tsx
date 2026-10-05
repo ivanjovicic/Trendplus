@@ -217,18 +217,37 @@ function DurableReportContent({ report, exportBusy, exportStatus, onTextExport, 
               <h3>{section.title ?? section.key}</h3>
               {section.description ? <p>{section.description}</p> : null}
               {rows.length > 0 && columns.length > 0 ? (
-                <div className="pilot-intake-durable-table-wrap">
+                <>
+                  <p className="pilot-intake-durable-table-hint" role="note">
+                    Tabela se pomera vodoravno — skrolujte za ostale kolone.
+                  </p>
+                  <div
+                    className="pilot-intake-durable-table-wrap"
+                    role="region"
+                    tabIndex={0}
+                    aria-label={`${section.title ?? section.key}: tabela sa vodoravnim pomeranjem`}
+                  >
                   <table className="pilot-intake-durable-table">
                     <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
                     <tbody>
                       {rows.map((row, rowIndex) => (
                         <tr key={`${section.key}-${rowIndex}`}>
-                          {columns.map((column) => <td key={column.key}>{formatDurableCell(row[column.key], column.dataType)}</td>)}
+                          {columns.map((column) => (
+                            <td
+                              key={column.key}
+                              className={["number", "currency", "percent", "ratio"].includes(column.dataType ?? "")
+                                ? "pilot-intake-durable-table__numeric"
+                                : undefined}
+                            >
+                              {formatDurableCell(row[column.key], column.dataType)}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               ) : <p className="pilot-card-note">{section.emptyMessage ?? "Nema stavki za ovaj opseg."}</p>}
             </article>
           );

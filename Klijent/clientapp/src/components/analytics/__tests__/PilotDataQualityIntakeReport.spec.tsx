@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { PilotDataQualityIntakeReport, PilotIntakeDurableReport } from "../../../types/analytics";
@@ -132,6 +132,15 @@ describe("PilotDataQualityIntakeReport", () => {
     expect(screen.getByText("82/100")).toBeInTheDocument();
     expect(screen.getByText("Učitano")).toBeInTheDocument();
     expect(screen.getAllByText("1.234").length).toBeGreaterThan(0);
+    const tableRegion = screen.getByRole("region", {
+      name: "Učitano: tabela sa vodoravnim pomeranjem",
+    });
+    expect(tableRegion).toHaveAttribute("tabindex", "0");
+    expect(within(tableRegion).getByRole("table")).toBeInTheDocument();
+    expect(within(tableRegion).getByRole("cell", { name: "1.234" })).toHaveClass(
+      "pilot-intake-durable-table__numeric",
+    );
+    expect(screen.getByRole("note")).toHaveTextContent("skrolujte za ostale kolone");
     expect(screen.getByRole("link", { name: "Dopuni nabavne cene" })).toHaveAttribute("href", "/analytics/data-quality");
     expect(screen.queryByText(/redova/)).not.toBeInTheDocument();
   });
