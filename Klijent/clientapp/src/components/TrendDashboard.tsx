@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchDashboard, type DashboardItem, type DashboardRun } from "../services/scoringApi";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -311,13 +312,13 @@ function DashboardRow({
                             <span style={{ fontSize: 10, color: PAL.textMuted, marginLeft: 2 }}>€</span>
                         </span>
                     ) : (
-                        <span style={{ color: PAL.textMuted }}>—</span>
+                        <span style={{ color: PAL.textMuted }}>{ANALYTICS_UNAVAILABLE_LABEL}</span>
                     )}
                 </td>
 
                 {/* ── Expand toggle ── */}
                 <td style={{ padding: "8px 10px", textAlign: "center", color: PAL.textMuted, fontSize: 12, background: rowBg, borderBottom: `1px solid ${PAL.borderLight}` }}>
-                    {expanded ? "â–²" : "â–¼"}
+                    {expanded ? "▲" : "▼"}
                 </td>
             </tr>
 
@@ -522,11 +523,11 @@ export function TrendDashboard() {
             {/* ══ KPI cards ══════════════════════════════════════════════════ */}
             {allItems.length > 0 && (
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <StatCard label="Total items" value={allItems.length} sub={run ? `Run #${run.runId}` : undefined} color={PAL.blue} />
-                    <StatCard label="Rising" value={kpi.rising} sub={`${((kpi.rising / allItems.length) * 100).toFixed(0)}% of items`} color={PAL.green} />
-                    <StatCard label="Dropping" value={kpi.dropping} sub={`${((kpi.dropping / allItems.length) * 100).toFixed(0)}% of items`} color={PAL.red} />
-                    <StatCard label="New entries" value={kpi.isNew} sub="no prior run" color={PAL.textSecondary} />
-                    <StatCard label="Avg score" value={kpi.avgScore.toFixed(3)} sub={`top ${kpi.topScore.toFixed(3)}`} color={PAL.yellow} />
+                    <StatCard label="Ukupno artikala" value={allItems.length} sub={run ? `Run #${run.runId}` : undefined} color={PAL.blue} />
+                    <StatCard label="U porastu" value={kpi.rising} sub={`${((kpi.rising / allItems.length) * 100).toFixed(0)}% artikala`} color={PAL.green} />
+                    <StatCard label="U padu" value={kpi.dropping} sub={`${((kpi.dropping / allItems.length) * 100).toFixed(0)}% artikala`} color={PAL.red} />
+                    <StatCard label="Novi unosi" value={kpi.isNew} sub="bez prethodnog runa" color={PAL.textSecondary} />
+                    <StatCard label="Prosečan skor" value={kpi.avgScore.toFixed(3)} sub={`najbolji ${kpi.topScore.toFixed(3)}`} color={PAL.yellow} />
                 </div>
             )}
 
@@ -550,21 +551,21 @@ export function TrendDashboard() {
                 }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: PAL.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
-                            📊 Trend Leaderboard
+                            📊 Rang lista trendova
                             {loading && (
                                 <span style={{ fontSize: 11, background: "var(--surface-default)", color: PAL.blue, borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
-                                    Loading…
+                                    Učitavanje…
                                 </span>
                             )}
                         </h2>
                         <div style={{ fontSize: 12, color: PAL.textSecondary, marginTop: 3 }}>
                             {run
-                                ? <>Run <strong style={{ color: PAL.textPrimary }}>#{run.runId}</strong> · {new Date(run.startedAt).toLocaleString("sr-Latn")} · <strong style={{ color: PAL.textPrimary }}>{run.totalItems}</strong> items</>
+                                ? <>Run <strong style={{ color: PAL.textPrimary }}>#{run.runId}</strong> · {new Date(run.startedAt).toLocaleString("sr-Latn")} · <strong style={{ color: PAL.textPrimary }}>{run.totalItems}</strong> artikala</>
                                 : "Poslednji scoring run iz baze"
                             }
                             {lastRefreshed && (
                                 <span style={{ marginLeft: 10, color: PAL.textMuted }}>
-                                    · refreshed {lastRefreshed.toLocaleTimeString("sr-Latn")}
+                                    · osveženo {lastRefreshed.toLocaleTimeString("sr-Latn")}
                                 </span>
                             )}
                         </div>
@@ -605,7 +606,7 @@ export function TrendDashboard() {
                                 transition: "all .15s",
                             }}
                         >
-                            {loading ? "⏳ Loading…" : "🔄 Refresh"}
+                            {loading ? "⏳ Učitavanje…" : "🔄 Osveži"}
                         </button>
                     </div>
                 </div>

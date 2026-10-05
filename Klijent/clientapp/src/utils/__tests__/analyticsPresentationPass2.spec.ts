@@ -106,4 +106,30 @@ describe("analytics presentation pass 2 residuals", () => {
     expect(google).toContain("Nije dostupno");
   });
 
+
+  it("keeps Amazon null price on canonical unavailable label", () => {
+    const src = readSrc("pages/AmazonShoesTrendsPage.tsx");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).not.toMatch(/price == null\) return <span className="text-muted">—<\/span>/);
+    expect(src).not.toContain("results —");
+    expect(src).toContain("rezultata —");
+  });
+
+  it("keeps TrendDashboard loading/refresh and null price Serbian", () => {
+    const src = readSrc("components/TrendDashboard.tsx");
+    expect(src).toContain("ANALYTICS_UNAVAILABLE_LABEL");
+    expect(src).toContain("Učitavanje…");
+    expect(src).toContain("Osveži");
+    expect(src).toContain("osveženo");
+    expect(src).toContain("Rang lista trendova");
+    expect(src).toContain("Ukupno artikala");
+    expect(src).not.toContain("Loading…");
+    expect(src).not.toMatch(/"🔄 Refresh"/);
+    expect(src).not.toContain("refreshed ");
+    expect(src).not.toMatch(/â–²|â–¼/);
+    expect(src).toContain("▲");
+    expect(src).toContain("▼");
+  });
+
+
 });

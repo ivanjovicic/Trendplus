@@ -16,10 +16,10 @@ export default function TrendDashboardPage() {
         }}>
             <div style={{ marginBottom: 24 }}>
                     <h1 className="text-2xl font-extrabold text-contrast m-0 flex items-center gap-2">
-                    📊 Trend Dashboard
+                    📊 Dashboard trendova
                 </h1>
                 <p style={{ color: PAL.textSecondary, marginTop: 5, marginBottom: 0, fontSize: 14 }}>
-                    Momentum, score breakdown i historija rangova iz baze — po poslednjem scoring runu.
+                    Momentum, score breakdown i istorija rangova iz baze — po poslednjem scoring runu.
                 </p>
             </div>
             <TrendDashboard />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import {
     syncAmazonShoes,
     getAmazonShoesByType,
@@ -85,7 +86,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function PriceLabel({ price, original, currency }: { price: number | null; original: number | null; currency: string | null }) {
-    if (price == null) return <span className="text-muted">—</span>;
+    if (price == null) return <span className="text-muted">{ANALYTICS_UNAVAILABLE_LABEL}</span>;
     const fmt = (v: number) => `${v.toFixed(2)} ${currency ?? ""}`.trim();
     return (
         <span>
@@ -278,7 +279,7 @@ export default function AmazonShoesTrendsPage() {
                 syncMinPrice ? Number(syncMinPrice) : null,
                 syncMaxPrice ? Number(syncMaxPrice) : null,
             );
-            setSyncMsg({ ok: true, text: `✅ ${r.total} results — ${r.inserted} inserted, ${r.updated} updated` });
+            setSyncMsg({ ok: true, text: `✅ ${r.total} rezultata — ${r.inserted} uneto, ${r.updated} ažurirano` });
             reloadCategories();
             setSelectedType(syncType.trim());
             setBrowseGender("all");

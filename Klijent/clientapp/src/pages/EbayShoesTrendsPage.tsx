@@ -282,7 +282,7 @@ export default function EbayShoesTrendsPage() {
                 syncMinPrice ? Number(syncMinPrice) : null,
                 syncMaxPrice ? Number(syncMaxPrice) : null,
             );
-            setSyncMsg({ ok: true, text: `✅ ${r.total} results — ${r.inserted} inserted, ${r.updated} updated` });
+            setSyncMsg({ ok: true, text: `✅ ${r.total} rezultata — ${r.inserted} uneto, ${r.updated} ažurirano` });
             reloadCategories();
             setSelectedType(syncType.trim());
             setBrowseGender("all");
