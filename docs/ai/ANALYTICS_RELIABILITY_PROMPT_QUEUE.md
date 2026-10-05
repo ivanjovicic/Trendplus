@@ -29779,8 +29779,16 @@ Four `Migration` subclasses in the main context have neither `[Migration]` nor `
 ### Evidence
 
 - `20260327120000_CreateTransfersTables` and `20260327153000_AddTransferLifecycleFields`: the schema is provisioned instead by the idempotent bootstrap (`DatabaseInitializer.cs:2112-2166`); `20260327120000_CreateTransfersTables` is inserted into `__EFMigrationsHistory` by hand (`:1432`).
-- `20260404183000_AddArtikliIdTipObuceIndex` and `20260407153000_AddDailySalesStatsIndexes` contain index DDL that is partly redundant with earlier index coverage. This audit did **not** benchmark the cost of their non-discovery, so no `no measurable impact` claim is justified; the absence is P3 because no current measured incident is attributable to these exact orphan migrations.
-- The Daily Sales runbook still lists the two never-applied index names.
+- `20260404183000_AddArtikliIdTipObuceIndex` and `20260407153000_AddDailySalesStatsIndexes` have no corresponding indexes in the current model snapshot or inspected bootstrap/SQL migration sources. Production catalog state and performance impact were not measured; do not claim either redundancy or absence.
+- The Daily Sales runbook lists two index names from the undiscovered migration without evidence they exist in deployed databases.
+
+### Post-claim classification (2026-10-05)
+
+- EF `IMigrationsAssembly.Migrations` discovery is the runtime oracle; the guard's failing-first run found exactly the four prompt-named main-context classes undiscovered.
+- `CreateTransfersTables` and `AddTransferLifecycleFields` are superseded by idempotent bootstrap DDL, and the current model snapshot contains their transfer entities/fields. Only `20260327120000_CreateTransfersTables` is manually inserted into migration history; the lifecycle migration is not.
+- The two index migrations are absent from the snapshot and inspected alternate schema sources. The only manual history entry among them is none, and the Daily Sales runbook now says its two names are unverified.
+- Repository reference scan found no external consumer of `IX_Artikli_IDTipObuce`; the Daily Sales names are referenced only by their undiscovered migration and runbook.
+- Kept all four classes without attributes in the explicit test allowlist rather than deleting or making them executable. Each entry has its migration ID, reason, history treatment, follow-up owner and 2026-12-31 sunset. No migration snapshot, database schema, or initializer was changed.
 
 ### Scope
 

@@ -87,7 +87,7 @@ Swagger UI location:
 
 ## Indexing & Performance Notes
 
-Daily-sales path relies on existing analytics indexes plus two additional indexes:
+The following two index names appear in `Infrastructure/Migrations/20260407153000_AddDailySalesStatsIndexes.cs`, but that legacy class is not discoverable by EF Core and is not applied by the runtime migration flow. Treat these indexes as **unverified** until the target database catalog is checked; this runbook does not claim they are present:
 
 - `IX_prodaja_zaglavlje_id_objekat_datum_prodaje`
 - `IX_prodaja_stavke_id_prodaja_id_artikal_cover_qty_price`
