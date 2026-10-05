@@ -6,9 +6,10 @@ Date: 2026-10-05
 Agent/tool: Cursor Cloud
 Delivery target: main
 Working branch / PR: `cursor/review-recertify-daily-e050`, direct delivery to main
-Main commit SHA: ef66f15665aa2071f945088ec7b0c94ebb7a4bc8
+Main commit SHA: 4bdb4400135a6c2a6029a54d2bb26713a97b8503
 Implementation SHA: 17268206d28f635d724d90f48c8e5bbdad270add
-Main verification: fetch after push showed HEAD == origin/main == ef66f15665aa2071f945088ec7b0c94ebb7a4bc8. This note is the follow-up SHA sync.
+RQ561 assertion SHA: 4bdb4400135a6c2a6029a54d2bb26713a97b8503
+Main verification: fetch after the RQ561 assertion push showed HEAD == origin/main == 4bdb4400135a6c2a6029a54d2bb26713a97b8503. Ancestor `7aed4aad` (null margin/trend and missing best-day) landed on main during delivery and is included. Earlier delivery `ef66f156` is also an ancestor.
 Evidence state: synchronized
 
 ## What was done
