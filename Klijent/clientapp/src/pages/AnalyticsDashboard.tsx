@@ -1583,11 +1583,6 @@ export default function AnalyticsDashboard() {
           Poređenje nije dostupno: izabrani period prelazi poslednji opaženi datum prodaje. Trend se ne izračunava iz nepostojećih podataka.
         </div>
       ) : null}
-      <AnalyticsRefreshStatusBanner
-        status={refreshStatus}
-        loading={loading}
-        error={refreshStatusError}
-      />
       <AnalyticsControlBar
         title="Opseg i filteri"
         description="Menjajte period, prodavnicu ili dobavljača ovde; ključni pregled ispod ostaje fokusiran na odluku, ne na operativni šum."
@@ -1742,6 +1737,11 @@ export default function AnalyticsDashboard() {
                       }
                       readinessLabel={executiveReadinessLabel}
                       dataQualityScopeLabel={executive?.dataQualitySummary?.scopeLabel}
+                    />
+                    <AnalyticsRefreshStatusBanner
+                      status={refreshStatus}
+                      loading={loading}
+                      error={refreshStatusError}
                     />
                   </section>
                 </div>
@@ -2175,7 +2175,7 @@ export default function AnalyticsDashboard() {
                                     {fmtRsd(item.revenue)}
                                   </td>
                                   <td className="num">
-                                    {fmtRsd(item.marginContribution)}
+                                    {fmtRsd(item.marginContribution, 0, "Nije dostupno")}
                                   </td>
                                 </tr>
                               ))}

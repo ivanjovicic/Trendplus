@@ -405,7 +405,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
     title: "Pregled dobavljača dostupan",
     status: hasWarnings ? "warning" : "ready",
     reason: topSupplier
-      ? `Top dobavljač je ${topSupplier.supplierName} sa ${fmtRsd(topSupplier.revenue, 0, "-")} i maržnim doprinosom ${fmtRsd(topSupplier.marginContribution, 0, "-")}.`
+      ? `Top dobavljač je ${topSupplier.supplierName} sa ${fmtRsd(topSupplier.revenue, 0, "-")} i maržnim doprinosom ${fmtRsd(topSupplier.marginContribution, 0, "Nije dostupno")}.`
       : `Bootstrap ima ${formatLoadCount(supplierRows)} dobavljačkih redova i ${formatLoadCount(topSuppliers)} top signala.`,
     actionLabel: "Otvori Pregled dobavljača",
     href: "/analytics/supplier",
@@ -585,38 +585,38 @@ export function buildPilotReadinessCards(payload: ReadinessPayload): ReadinessCa
 
 export function resolveReadinessHeaderContext(payload: ReadinessPayload) {
   const requestedFromUtc =
+    payload.bootstrap?.meta?.requestedPeriodFromUtc ??
     payload.intakeReport?.periodFromUtc ??
     payload.pilotReport?.period.requestedFromUtc ??
-    payload.bootstrap?.meta?.requestedPeriodFromUtc ??
     payload.productDecisionCenter?.periodFromUtc ??
     null;
   const requestedToUtc =
+    payload.bootstrap?.meta?.requestedPeriodToUtc ??
     payload.intakeReport?.periodToUtc ??
     payload.pilotReport?.period.requestedToUtc ??
-    payload.bootstrap?.meta?.requestedPeriodToUtc ??
     payload.productDecisionCenter?.periodToUtc ??
     null;
   const effectiveFromUtc =
+    payload.bootstrap?.meta?.effectivePeriodFromUtc ??
     payload.pilotReport?.period.effectiveFromUtc ??
     payload.intakeReport?.periodFromUtc ??
-    payload.bootstrap?.meta?.effectivePeriodFromUtc ??
     payload.productDecisionCenter?.periodFromUtc ??
     null;
   const effectiveToUtc =
+    payload.bootstrap?.meta?.effectivePeriodToUtc ??
     payload.pilotReport?.period.effectiveToUtc ??
     payload.intakeReport?.periodToUtc ??
-    payload.bootstrap?.meta?.effectivePeriodToUtc ??
     payload.productDecisionCenter?.periodToUtc ??
     null;
   const observedFromUtc =
+    payload.bootstrap?.meta?.observedPeriodFromUtc ??
     payload.pilotReport?.period.observedFromUtc ??
     payload.intakeReport?.loadedData.firstSaleDate ??
-    payload.bootstrap?.meta?.observedPeriodFromUtc ??
     null;
   const observedToUtc =
+    payload.bootstrap?.meta?.observedPeriodToUtc ??
     payload.pilotReport?.period.observedToUtc ??
     payload.intakeReport?.loadedData.lastSaleDate ??
-    payload.bootstrap?.meta?.observedPeriodToUtc ??
     null;
   const period = resolveLineagePeriod(
     requestedFromUtc,

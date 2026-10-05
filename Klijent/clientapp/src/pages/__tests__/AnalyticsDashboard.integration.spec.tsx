@@ -96,4 +96,33 @@ describe("AnalyticsDashboard (integration)", () => {
     const detailedHeader = screen.getByText("Detaljna analiza");
     expect(detailedHeader).toBeInTheDocument();
   });
+
+  it("keeps the worker refresh banner below the executive KPI strip", async () => {
+    server.use(
+      rest.get("/api/analytics/cached/dashboard/bootstrap", (_req, res, ctx) =>
+        res(
+          ctx.status(200),
+          ctx.json({
+            ...bootstrapResponse,
+            meta: { success: true, dataQualityStatus: "good" },
+            summary: { ...bootstrapResponse.summary, totalTransactions: 5, totalUnits: 10 },
+          })
+        )
+      )
+    );
+    const { container } = render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector(".analytics-refresh-banner")).toBeInTheDocument()
+    );
+    const kpis = container.querySelector(".analytics-executive-kpis");
+    const refreshBanner = container.querySelector(".analytics-refresh-banner");
+    expect(kpis).not.toBeNull();
+    expect(refreshBanner).not.toBeNull();
+    expect(kpis!.compareDocumentPosition(refreshBanner!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

@@ -348,6 +348,96 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task DashboardBootstrap_UndatedSectionsShareTheObservedThirtyDaySalesWindow()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 90,
+                DatumProdaje = new DateTime(2025, 11, 1, 9, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka
+            {
+                Id = 90,
+                IdProdaja = 90,
+                IdArtikal = 101,
+                Kolicina = 2,
+                Cena = 500m
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/dashboard/bootstrap?storeId=1&dataScope=all");
+        var meta = root.GetProperty("meta");
+        Assert.Equal("source_horizon", meta.GetProperty("defaultPeriodBasis").GetString());
+        Assert.Equal("2025-12-08T00:00:00Z", meta.GetProperty("requestedPeriodFromUtc").GetDateTime().ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        Assert.Equal("2026-01-06T00:00:00Z", meta.GetProperty("requestedPeriodToUtc").GetDateTime().ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        Assert.Equal(meta.GetProperty("requestedPeriodFromUtc").GetDateTime(), meta.GetProperty("effectivePeriodFromUtc").GetDateTime());
+        Assert.Equal(meta.GetProperty("requestedPeriodToUtc").GetDateTime(), meta.GetProperty("effectivePeriodToUtc").GetDateTime());
+
+        const decimal expectedPeriodRevenue = 1_100m;
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("summary").GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("dailySales").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("categoryData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("genderData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("supplierData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("weekdayData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("hourData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(expectedPeriodRevenue, root.GetProperty("paymentData").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.DoesNotContain(root.GetProperty("dailySales").EnumerateArray(), row => row.GetProperty("date").GetString() == "2025-11-01");
+    }
+
+    [Fact]
+    public async Task DashboardBootstrap_ExecutiveSuppliersUseRevenuePopulationNotDecisionSample()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Dobavljaci.Add(new Dobavljac { Id = 3, Naziv = "Bez prodaje", DataOrigin = "existing" });
+            db.Artikli.Add(new Artikli
+            {
+                Id = 104,
+                Naziv = "Nema prodaju",
+                IDDobavljac = 3,
+                IDObjekat = 1,
+                Kolicina = 0,
+                MinimalnaKolicina = 0,
+                NabavnaCena = null,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow
+            });
+            db.ProdajaZaglavlja.AddRange(
+                new ProdajaZaglavlje { Id = 20, DatumProdaje = new DateTime(2026, 7, 7, 9, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" },
+                new ProdajaZaglavlje { Id = 21, DatumProdaje = new DateTime(2026, 7, 8, 9, 0, 0, DateTimeKind.Utc), IDObjekat = 1, DataOrigin = "existing" });
+            db.ProdajaStavke.AddRange(
+                new ProdajaStavka { Id = 20, IdProdaja = 20, IdArtikal = 101, Kolicina = 2, Cena = 100m },
+                new ProdajaStavka { Id = 21, IdProdaja = 21, IdArtikal = 102, Kolicina = 1, Cena = 500m });
+            await db.SaveChangesAsync();
+        }
+
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/dashboard/bootstrap?fromDate=2026-07-07&toDate=2026-08-06&storeId=1&dataScope=all");
+        var supplierRows = root.GetProperty("supplierData").EnumerateArray().ToArray();
+        var executiveSuppliers = root.GetProperty("executive").GetProperty("topSuppliers").EnumerateArray().ToArray();
+
+        var revenueSupplierRows = supplierRows.Where(row => row.GetProperty("totalRevenue").GetDecimal() != 0m).ToArray();
+        Assert.Equal(new[] { 2, 1 }, revenueSupplierRows.Select(row => row.GetProperty("dobavljacId").GetInt32()).ToArray());
+        Assert.Equal(revenueSupplierRows.Select(row => row.GetProperty("dobavljacId").GetInt32()), executiveSuppliers.Select(row => row.GetProperty("supplierId").GetInt32()));
+        Assert.Equal(revenueSupplierRows.Select(row => row.GetProperty("totalRevenue").GetDecimal()), executiveSuppliers.Select(row => row.GetProperty("revenue").GetDecimal()));
+        Assert.DoesNotContain(executiveSuppliers, row => row.GetProperty("revenue").GetDecimal() == 0m);
+        Assert.All(executiveSuppliers, row => Assert.Equal(JsonValueKind.Null, row.GetProperty("marginContribution").ValueKind));
+    }
+
+    [Fact]
     public async Task QuickInsights_ReturnsBestDayTopProductAndScopedLowStockCount()
     {
         await using var factory = CreateFactory();

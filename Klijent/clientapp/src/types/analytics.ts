@@ -912,7 +912,7 @@ export interface ExecutiveTopSupplier {
   supplierId?: number | null;
   supplierName: string;
   revenue: number;
-  marginContribution: number;
+  marginContribution: number | null;
   link: string;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPilotReadinessCards, resolveReadinessHeaderContext, type ReadinessPayload } from "../PilotReadinessPage";
 import type {
   AnalyticsActionCounts,
+  AnalyticsDashboardBootstrap,
   AnalyticsDataQualityHealth,
   AnalyticsRefreshStatus,
   PilotDataQualityIntakeReport,
@@ -358,5 +359,33 @@ describe("Pilot readiness edge-state mapping", () => {
     expect(context.periodTo).toBe("2026-06-30T00:00:00Z");
     expect(context.effectivePeriodLabel).toContain("Posmatrani podaci");
     expect(context.effectivePeriodLabel).toContain("Efektivni");
+  });
+
+  it("uses the echoed bootstrap period as the Pilot Readiness sales period", () => {
+    const context = resolveReadinessHeaderContext(payload({
+      bootstrap: {
+        meta: {
+          success: true,
+          requestedPeriodFromUtc: "2025-12-08T00:00:00Z",
+          requestedPeriodToUtc: "2026-01-06T00:00:00Z",
+          effectivePeriodFromUtc: "2025-12-08T00:00:00Z",
+          effectivePeriodToUtc: "2026-01-06T00:00:00Z",
+          observedPeriodFromUtc: "2026-01-05T00:00:00Z",
+          observedPeriodToUtc: "2026-01-06T00:00:00Z",
+        },
+      } as AnalyticsDashboardBootstrap,
+      intakeReport: intake({
+        periodFromUtc: "2026-06-01T00:00:00Z",
+        periodToUtc: "2026-06-30T00:00:00Z",
+      }),
+      pilotReport: pilotReport({
+        period: { fromUtc: "2026-07-01T00:00:00Z", toUtc: "2026-08-01T00:00:00Z", label: "Jul" },
+      }),
+    }));
+
+    expect(context.periodFrom).toBe("2025-12-08T00:00:00Z");
+    expect(context.periodTo).toBe("2026-01-06T00:00:00Z");
+    expect(context.effectivePeriodLabel).toContain("8. 12. 2025.");
+    expect(context.effectivePeriodLabel).toContain("6. 1. 2026.");
   });
 });

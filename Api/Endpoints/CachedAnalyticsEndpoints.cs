@@ -2025,7 +2025,7 @@ public static class CachedAnalyticsEndpoints
                         Meta = BuildErrorMeta("SOURCE_HORIZON_UNAVAILABLE", "Period analitike nije dostupan za izabrani opseg.", ResolveCorrelationId(httpContext))
                     });
                 fromDate = defaultPeriod.FromUtc;
-                toDate = defaultPeriod.HorizonUtc;
+                toDate = defaultPeriod.ToUtc.AddTicks(-1);
                 resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
                 defaultPeriodBasis = "source_horizon";
             }
@@ -2366,7 +2366,7 @@ public static class CachedAnalyticsEndpoints
                             Meta = BuildErrorMeta("SOURCE_HORIZON_UNAVAILABLE", "Period analitike nije dostupan za izabrani opseg.", ResolveCorrelationId(httpContext))
                         });
                     fromDate = defaultPeriod.FromUtc;
-                    toDate = defaultPeriod.HorizonUtc;
+                    toDate = defaultPeriod.ToUtc.AddTicks(-1);
                     resolvedObservedHorizonUtc = defaultPeriod.HorizonUtc;
                     defaultPeriodBasis = "source_horizon";
                 }
@@ -2597,6 +2597,7 @@ public static class CachedAnalyticsEndpoints
                         var executiveStopwatch = profileSections ? Stopwatch.StartNew() : null;
                         response.Executive = BuildExecutiveDashboardSnapshot(
                             productDecisionSnapshot,
+                            response.SupplierData,
                             response.Summary,
                             response.ValidationFreshness,
                             fromDate,
@@ -4671,6 +4672,7 @@ public static class CachedAnalyticsEndpoints
 
     private static ExecutiveDashboardSnapshotDto BuildExecutiveDashboardSnapshot(
         ProductDecisionCenterResponseDto? productDecisionSnapshot,
+        List<SupplierDataDto>? supplierData,
         SalesSummaryDto? salesSummary,
         DashboardValidationEndpointDto? validationFreshness,
         DateTime? fromDate,
@@ -4679,6 +4681,22 @@ public static class CachedAnalyticsEndpoints
         int? supplierId)
     {
         var snapshot = new ExecutiveDashboardSnapshotDto();
+
+        snapshot.TopSuppliers = (supplierData ?? [])
+            .Where(row => row.TotalRevenue != 0m)
+            .OrderByDescending(row => row.TotalRevenue)
+            .Take(5)
+            .Select(row => new ExecutiveTopSupplierDto
+            {
+                SupplierId = row.DobavljacId,
+                SupplierName = string.IsNullOrWhiteSpace(row.DobavljacNaziv) ? "Nepoznat dobavljač" : row.DobavljacNaziv,
+                Revenue = row.TotalRevenue,
+                MarginContribution = null,
+                Link = row.DobavljacId.HasValue
+                    ? BuildDashboardActionLink("/analytics/supplier", fromDate, toDate, storeId, row.DobavljacId.Value)
+                    : BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId)
+            })
+            .ToList();
 
         var rows = productDecisionSnapshot?.Rows ?? [];
         if (rows.Count == 0)
@@ -4714,31 +4732,6 @@ public static class CachedAnalyticsEndpoints
             FreshnessStatus = validationFreshness?.Status ?? "unknown",
             ScopeLabel = "Artikli u skupu odluka"
         };
-
-        snapshot.TopSuppliers = rows
-            .GroupBy(x => new { x.SupplierId, SupplierName = (x.SupplierName ?? string.Empty).Trim() })
-            .Select(group =>
-            {
-                var supplierIdValue = group.Key.SupplierId;
-                var supplierNameValue = string.IsNullOrWhiteSpace(group.Key.SupplierName) ? "Nepoznat dobavljač" : group.Key.SupplierName;
-                var linkSupplierId = supplierIdValue;
-
-                var link = linkSupplierId.HasValue
-                    ? BuildDashboardActionLink("/analytics/supplier", fromDate, toDate, storeId, linkSupplierId.Value)
-                    : BuildDashboardActionLink("/analytics/data-quality", fromDate, toDate, storeId, supplierId);
-
-                return new ExecutiveTopSupplierDto
-                {
-                    SupplierId = supplierIdValue,
-                    SupplierName = supplierNameValue,
-                    Revenue = group.Sum(x => x.Revenue),
-                    MarginContribution = group.Sum(x => x.MarginContribution),
-                    Link = link
-                };
-            })
-            .OrderByDescending(x => x.MarginContribution)
-            .Take(5)
-            .ToList();
 
         snapshot.TopMarginProducts = rows
             .OrderByDescending(x => x.MarginContribution)
@@ -9523,7 +9516,7 @@ public class ExecutiveTopSupplierDto
     public int? SupplierId { get; set; }
     public string SupplierName { get; set; } = string.Empty;
     public decimal Revenue { get; set; }
-    public decimal MarginContribution { get; set; }
+    public decimal? MarginContribution { get; set; }
     public string Link { get; set; } = "/analytics/supplier";
 }
 
