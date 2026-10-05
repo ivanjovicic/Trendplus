@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none pending post-close recovery after RQ80 DONE
+Current READY prompt: none in this addendum after RQ80 DONE
 Main queue primary READY prompt: RQ590; RQ74/RQ79/RQ80 are DONE in this addendum
 
 Use with:
@@ -449,7 +449,7 @@ Local lock: `.ai/task-locks/RQ80-codex.lock.md`
 Commit suggestion: `feat(analytics): add missing cost issue workflow`
 
 Owner promotion/claim 2026-10-05 after RQ79: post-close recovery base `2bcaff02d7f704e48ecf926e3ab0b844a4f6275b` confirms RQ75/RQ78 DONE and RQ79 DONE on main, releasing the shared Data Quality paths. Full active-queue scan found no RQ80 lock, branch, open PR or competing Data Quality owner. Promoted WAITING -> READY -> IN_PROGRESS as the next P1 owner; local lock `.ai/task-locks/RQ80-codex.lock.md`.
-Owner completion 2026-10-05: Data Quality now has a dedicated missing-cost tab that calls the strict `missingCost` top-offender endpoint and shows affected item rows; it skips the legacy issue-list endpoint, so the supplier fallback cannot mislabel them. Search/page controls are hidden because the existing top-offender API returns a bounded top list. UI 11/11, PostgreSQL top-offender integration 1/1, top-offender contract 10/10, analytics guardrails/typecheck and queue governance passed. Run log: `.ai/runs/2026-10-05-RQ80-evidence.md`; evidence state: pending post-close recovery.
+Owner completion 2026-10-05: Data Quality now has a dedicated missing-cost tab that calls the strict `missingCost` top-offender endpoint and shows affected item rows; it skips the legacy issue-list endpoint, so the supplier fallback cannot mislabel them. Search/page controls are hidden because the existing top-offender API returns a bounded top list. UI 11/11, PostgreSQL top-offender integration 1/1, top-offender contract 10/10, analytics guardrails/typecheck and queue governance passed. Run log: `.ai/runs/2026-10-05-RQ80-evidence.md`; evidence state: synchronized.
 
 ### Why
 
