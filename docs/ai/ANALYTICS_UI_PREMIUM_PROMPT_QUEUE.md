@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-39 (IN_PROGRESS; claimed 2026-10-06 after RQ588 closed and the full cross-program post-close scan found no higher-priority READY execution lane). Additional collision-safe READY lanes in distinct feature families: `P-UI-40`, `P-UI-41`, `P-UI-47`, `P-UI-49` and `P-UI-52` (promoted after RQ582 released `navConfig.ts`; supplemental when higher-priority program work is ready). `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
+Current primary prompt: P-UI-40 (IN_PROGRESS; claimed 2026-10-06 after P-UI-39 closed and the post-close scan found no higher-priority READY execution lane). Collision-safe READY lanes: `P-UI-41`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`. `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -48,7 +48,7 @@ Use with:
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
-| P-UI-40 | READY | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
+| P-UI-40 | IN_PROGRESS | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
@@ -59,7 +59,7 @@ Use with:
 | P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
-| P-UI-51 | WAITING | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
+| P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts |
 
@@ -2575,7 +2575,7 @@ Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout
 
 ## P-UI-40 - Small-laptop shell (1024–1279px): single-row header and space-saving sidebar
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none
 Priority: P1
 Type: frontend/layout/tests
@@ -2628,6 +2628,12 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 ### Dependencies
 
 - None. RQ583 (owner-approved global warning/critical stale-data banner on every analytics route, WAITING) will add a banner to the shell. The banner is outside the one-row header budget but must stay a single line (≤ 48px) at ≥1024, and whichever lands second rebases and re-measures.
+
+### Claim note 2026-10-06
+
+- P-UI-39 is DONE on main; post-close recovery at `origin/main` `ae9a7e5f25830776a7b70216483a2bbac11d7d57` found no higher-priority READY RQ/SQL lane. The active RQ partials remain evidence/provider gated; SQL queue has no READY prompt.
+- P-UI-40 is the next collision-safe P1 lane. No matching local lock, branch or open PR exists. Its HeaderStatus/Sidebar/AppLayout paths are separate from READY P-UI-41 analytics page paths and P-UI-47/49 theme/state paths.
+- Local lock: `.ai/task-locks/P-UI-40-codex.lock.md`.
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
@@ -3246,7 +3252,7 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 
 ## P-UI-51 - Decision-surface controls: Executive Board period/scope/URL state and date clarity
 
-Status: WAITING
+Status: READY
 Ready after: RQ570 and P-UI-39 are DONE (horizon-anchored default periods; P-UI-39 owns `AnalyticsControlBar.css` overflow); must not run while RQ319/RQ320 are IN_PROGRESS (shared `AnalyticsControlBar`)
 Priority: P2
 Type: frontend/tests
@@ -3297,6 +3303,10 @@ The Executive Board has no period, store or data-scope control and no URL state;
 ### Dependencies
 
 - RQ570 (default period). Coordinate with RQ319/RQ320 (shared control bar).
+
+### Promotion note 2026-10-06
+
+- Promoted WAITING -> READY after RQ570 and P-UI-39 were verified DONE on main. RQ319/RQ320 remain WAITING, so their explicit IN_PROGRESS serialization gate is clear. P-UI-40 owns only shell layout paths and does not collide with this prompt's shared control-bar/page paths.
 
 ---
 
