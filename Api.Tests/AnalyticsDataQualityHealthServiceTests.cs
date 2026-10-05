@@ -287,7 +287,7 @@ public sealed class AnalyticsDataQualityHealthServiceTests
 
         Assert.Equal(100m, snapshot.TotalRevenue);
         Assert.True(snapshot.WindowFromUtc < snapshot.WindowToUtc);
-        Assert.True(snapshot.WindowToUtc < DateTime.UtcNow.Date.AddDays(1));
+        Assert.Equal(DateTime.UtcNow.Date.AddDays(1), snapshot.WindowToUtc);
     }
 
     [Fact]
