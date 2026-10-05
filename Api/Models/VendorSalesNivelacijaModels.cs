@@ -262,6 +262,13 @@ public sealed class VendorSalesNivelacijaDriverMetricSummaryDto
     public string MeanWeighting { get; set; } = "unweighted";
 }
 
+public sealed class VendorSalesNivelacijaPrePostPairResponseDto
+{
+    public VendorSalesNivelacijaResponseDto Current { get; set; } = new();
+    public VendorSalesNivelacijaResponseDto? Previous { get; set; }
+    public string? PreviousError { get; set; }
+}
+
 public sealed class VendorSalesNivelacijaOptionDto
 {
     public DateTime EventDate { get; set; }

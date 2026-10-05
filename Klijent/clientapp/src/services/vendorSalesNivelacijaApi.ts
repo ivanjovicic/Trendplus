@@ -262,6 +262,17 @@ export interface VendorSalesNivelacijaOption {
     label: string;
 }
 
+export interface VendorSalesNivelacijaPrePostPairResponse {
+    current: VendorSalesNivelacijaResponse;
+    previous?: VendorSalesNivelacijaResponse | null;
+    previousError?: string | null;
+}
+
+export interface VendorSalesNivelacijaPrePostPairQuery extends VendorSalesNivelacijaQuery {
+    previousFrom: string;
+    previousTo: string;
+}
+
 export interface VendorSalesNivelacijaOptionsQuery {
     vendorId?: number | null;
     category?: string | null;
@@ -305,6 +316,43 @@ export async function getVendorSalesNivelacija(
     if (result.scopeApplied !== true
         || result.storeId !== expectedStoreId
         || result.dataScope !== expectedDataScope) {
+        throw new Error("Pre/post nivelacija nije potvrdila traženi objekat i opseg podataka.");
+    }
+
+    return result;
+}
+
+export async function getVendorSalesNivelacijaPrePostPair(
+    query: VendorSalesNivelacijaPrePostPairQuery,
+): Promise<VendorSalesNivelacijaPrePostPairResponse> {
+    const params = new URLSearchParams();
+    if (query.vendorId != null) params.set("vendorId", String(query.vendorId));
+    if (query.eventDate) params.set("eventDate", query.eventDate);
+    if (query.from) params.set("from", query.from);
+    if (query.to) params.set("to", query.to);
+    params.set("previousFrom", query.previousFrom);
+    params.set("previousTo", query.previousTo);
+    if (query.category) params.set("category", query.category);
+    if (query.includeInactive != null) params.set("includeInactive", String(query.includeInactive));
+    if (query.maxRows != null) params.set("maxRows", String(query.maxRows));
+    if (query.storeId != null) params.set("storeId", String(query.storeId));
+    if (query.dataScope) params.set("dataScope", query.dataScope);
+
+    const result = await fetchAnalyticsJson<VendorSalesNivelacijaPrePostPairResponse>(
+        "/api/analytics/vendor-sales-nivelacija/pre-post-pair",
+        params,
+        "Pre/post nivelacija podaci trenutno nisu dostupni.",
+        {
+            signal: query.signal,
+            timeoutMs: REQUEST_TIMEOUT_MS,
+        },
+    );
+
+    const expectedStoreId = query.storeId ?? null;
+    const expectedDataScope = normalizeDataScope(query.dataScope);
+    if (result.current.scopeApplied !== true
+        || result.current.storeId !== expectedStoreId
+        || result.current.dataScope !== expectedDataScope) {
         throw new Error("Pre/post nivelacija nije potvrdila traženi objekat i opseg podataka.");
     }
 

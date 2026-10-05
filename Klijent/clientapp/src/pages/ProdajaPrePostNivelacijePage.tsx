@@ -27,6 +27,7 @@ import { getStores } from "../services/analyticsApi";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import {
   getVendorSalesNivelacija,
+  getVendorSalesNivelacijaPrePostPair,
   type VendorSalesNivelacijaDriverMetricSummary,
   type VendorSalesNivelacijaDriverSummary,
   type VendorSalesNivelacijaRecommendation,
@@ -789,39 +790,24 @@ export default function ProdajaPrePostNivelacijePage() {
     const scopedStoreId = loadedStoreScope === dataScope && !storesAreStale && storeLoadError == null
       ? activeFilters.storeId
       : null;
-    const [currentResult, previousResult] = await Promise.allSettled([
-      getVendorSalesNivelacija({
-        ...currentRange,
-        vendorId: activeFilters.vendorId,
-        category: activeFilters.category || null,
-        includeInactive: false,
-        maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-        storeId: scopedStoreId,
-        dataScope,
-        signal,
-      }),
-      getVendorSalesNivelacija({
-        ...previousRange,
-        vendorId: activeFilters.vendorId,
-        category: activeFilters.category || null,
-        includeInactive: false,
-        maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
-        storeId: scopedStoreId,
-        dataScope,
-        signal,
-      }),
-    ]);
-
-    if (currentResult.status === "rejected") {
-      throw currentResult.reason;
-    }
+    const pair = await getVendorSalesNivelacijaPrePostPair({
+      ...currentRange,
+      previousFrom: previousRange.from,
+      previousTo: previousRange.to,
+      vendorId: activeFilters.vendorId,
+      category: activeFilters.category || null,
+      includeInactive: false,
+      maxRows: VENDOR_NIVELACIJA_MAX_ROWS,
+      storeId: scopedStoreId,
+      dataScope,
+      signal,
+    });
 
     return {
-      current: currentResult.value,
-      previous: previousResult.status === "fulfilled" ? previousResult.value : null,
-      previousError: previousResult.status === "rejected"
-        ? getSafePrePostInlineErrorMessage(previousResult.reason)
-        : null,
+      current: pair.current,
+      previous: pair.previous ?? null,
+      previousError: pair.previousError
+        ?? (pair.previous == null ? "Prethodni period nije učitan." : null),
     };
   }, [activeFilters, dataScope, storeValidationNonce]);
   const {

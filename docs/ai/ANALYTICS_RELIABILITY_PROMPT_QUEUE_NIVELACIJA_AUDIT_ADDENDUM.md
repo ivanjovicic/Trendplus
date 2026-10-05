@@ -1076,7 +1076,7 @@ NV-F6 for the aggregated drivers; RQ534 (spec statuses) is DONE.
 
 ## RQ552 - NV-I2 - Nivelacija query cost, error status and cache invalidation
 
-Status: READY
+Status: DONE
 Ready after: RQ564 and RQ569 are DONE; claim this lane after RQ569.
 Scope reconciliation 2026-10-04: RQ487 is DONE. RQ540 already owns transient-failure/cancellation cache truth; RQ542 owns event-bounded DiD semantics; RQ474 owns safe error classification. RQ564 delivered the Nivelacija integrity family and initial mutation invalidation; RQ552 now owns measurement plus any remaining request-shape/cache gaps.
 Priority: P2
@@ -1117,6 +1117,13 @@ A current-main before/after baseline is recorded; query/request count is reduced
 #### Dependencies
 
 RQ487 and RQ474 are DONE. Start after RQ564 and RQ569 so mutation invalidation and integrity generation use one owner/contract and the source-horizon/freshness contract is settled.
+
+### Completion note 2026-10-05
+
+- Pre/Post page now uses one `/vendor-sales-nivelacija/pre-post-pair` request; previous period loads with `includeEnrichment=false`.
+- Category DISTINCT query skipped when category filter is set; cache key v8 includes enrichment dimension.
+- Nivelacija mutation invalidation also clears `pre-post` cache family.
+- Baseline: `.ai/runs/2026-10-05-RQ552-baseline.md`; run log: `.ai/runs/2026-10-05-RQ552-evidence.md`.
 
 ---
 

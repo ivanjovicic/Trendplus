@@ -4002,6 +4002,7 @@ public static class AllEndpoints
             int maxRows = 5000,
             int? storeId = null,
             string? dataScope = null,
+            bool includeEnrichment = true,
             CancellationToken ct = default) =>
         {
             var correlationId = ResolveAnalyticsCorrelationId(httpContext);
@@ -4048,7 +4049,8 @@ public static class AllEndpoints
                     includeInactive,
                     maxRows,
                     storeId,
-                    normalizedDataScope);
+                    normalizedDataScope,
+                    includeEnrichment);
 
                 var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
                 if (cachedResponse is not null)
@@ -4187,6 +4189,11 @@ public static class AllEndpoints
                 }
 
                 var categories = new List<string>();
+                if (!string.IsNullOrWhiteSpace(categoryTrimmed))
+                {
+                    categories.Add(categoryTrimmed);
+                }
+
                 var categoriesSql = useScopedFactQuery
                     ? $"""
                     {BuildVendorSalesNivelacijaScopedSourceSql()}
@@ -4208,40 +4215,43 @@ public static class AllEndpoints
                     ORDER BY COALESCE(NULLIF(category, ''), 'Nepoznato');
                     """;
 
-                await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
+                if (string.IsNullOrWhiteSpace(categoryTrimmed))
                 {
-                    cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
-                    cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                    await using (var cmd = new NpgsqlCommand(categoriesSql, connection))
                     {
-                        Value = (object?)vendorId ?? DBNull.Value
-                    });
+                        cmd.CommandTimeout = VendorSalesNivelacijaCommandTimeoutSeconds;
+                        cmd.Parameters.Add(new NpgsqlParameter("vendorId", NpgsqlTypes.NpgsqlDbType.Integer)
+                        {
+                            Value = (object?)vendorId ?? DBNull.Value
+                        });
 
-                    cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlTypes.NpgsqlDbType.Date)
-                    {
-                        Value = (object?)eventDateOnly ?? DBNull.Value
-                    });
+                        cmd.Parameters.Add(new NpgsqlParameter("eventDate", NpgsqlTypes.NpgsqlDbType.Date)
+                        {
+                            Value = (object?)eventDateOnly ?? DBNull.Value
+                        });
 
-                    cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.Date)
-                    {
-                        Value = (object?)fromDateOnly ?? DBNull.Value
-                    });
+                        cmd.Parameters.Add(new NpgsqlParameter("fromDate", NpgsqlTypes.NpgsqlDbType.Date)
+                        {
+                            Value = (object?)fromDateOnly ?? DBNull.Value
+                        });
 
-                    cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.Date)
-                    {
-                        Value = (object?)toDateOnly ?? DBNull.Value
-                    });
+                        cmd.Parameters.Add(new NpgsqlParameter("toDate", NpgsqlTypes.NpgsqlDbType.Date)
+                        {
+                            Value = (object?)toDateOnly ?? DBNull.Value
+                        });
 
-                    if (useScopedFactQuery)
-                    {
-                        AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
-                    }
+                        if (useScopedFactQuery)
+                        {
+                            AddVendorSalesNivelacijaScopeParameters(cmd, storeId, normalizedDataScope);
+                        }
 
-                    await using var reader = await cmd.ExecuteReaderAsync(ct);
-                    while (await reader.ReadAsync(ct))
-                    {
-                        var value = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
-                        if (!string.IsNullOrWhiteSpace(value))
-                            categories.Add(value);
+                        await using var reader = await cmd.ExecuteReaderAsync(ct);
+                        while (await reader.ReadAsync(ct))
+                        {
+                            var value = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                            if (!string.IsNullOrWhiteSpace(value))
+                                categories.Add(value);
+                        }
                     }
                 }
 
@@ -5016,64 +5026,124 @@ public static class AllEndpoints
                         : Math.Round((vendor.PostRevenue / totalPostRevenue) * 100m, 2);
                 }
 
-                // Category stats are full-cohort type insights. They must not be
-                // rebuilt from articleStats, which is intentionally capped by maxRows.
-                var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(matureComparableRows);
-                var typeInsightsAuthoritative = typeInsightAggregates.Count > 0
-                    && totalPostRevenue > 0m;
-                var categoryStats = typeInsightAggregates
-                    .Select(aggregate => new VendorSalesNivelacijaCategoryStatDto
-                    {
-                        Category = aggregate.Category,
-                        ArticlesCount = aggregate.ArticlesCount,
-                        VendorsCount = aggregate.VendorsCount,
-                        PreQty = aggregate.PreQty,
-                        PreRevenue = aggregate.PreRevenue,
-                        PostQty = aggregate.PostQty,
-                        PostRevenue = aggregate.PostRevenue,
-                        ChangeQty = aggregate.ChangeQty,
-                        ChangeRevenue = aggregate.ChangeRevenue,
-                        ChangePercent = aggregate.ChangePercent,
-                        HasComparableSalesWindow = true,
-                        ComparableArticleCount = aggregate.ComparableArticleCount,
-                        PostRevenueSharePercent = aggregate.PostRevenueSharePercent,
-                        AvgElasticity = aggregate.AvgElasticity
-                    })
-                    .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
-                    .ToList();
+                List<VendorSalesNivelacijaCategoryStatDto> categoryStats;
+                List<VendorSalesNivelacijaPriceDirectionStatDto> priceDirectionStats;
+                bool typeInsightsAuthoritative;
+                string? typeInsightsSource;
+                string? typeInsightsDenominator;
+                string? typeInsightsElasticityWeighting;
+                decimal? avgMomentumRevenue;
+                decimal? avgElasticity;
+                decimal? avgDidRevenue;
+                decimal? avgLostSalesOos;
+                decimal? avgOosRate;
+                VendorSalesNivelacijaDriverSummaryDto? driverMetrics;
 
-                // Price direction stats
-                string SegmentFor(VendorSalesNivelacijaArticleStatDto x)
+                if (includeEnrichment)
                 {
-                    if (!x.PriceChangePercent.HasValue) return "Cena nije dostupna";
-                    if (x.PriceChangePercent.Value > 0m) return "Cena ↑";
-                    if (x.PriceChangePercent.Value < 0m) return "Cena ↓";
-                    return "Cena =";
-                }
-
-                var priceDirectionStats = analyzed
-                    .GroupBy(SegmentFor)
-                    .Select(g =>
-                    {
-                        var comparable = g.Where(x => x.HasComparableSalesWindow && x.IsPostWindowMature).ToList();
-                        var preRev = comparable.Sum(x => x.PreRevenue);
-                        var postRev = comparable.Sum(x => x.PostRevenue);
-                        var avgPct = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent(
-                            comparable.Select(x => x.PriceChangePercent));
-                        return new VendorSalesNivelacijaPriceDirectionStatDto
+                    // Category stats are full-cohort type insights. They must not be
+                    // rebuilt from articleStats, which is intentionally capped by maxRows.
+                    var typeInsightAggregates = VendorSalesNivelacijaTypeInsightPolicy.Build(matureComparableRows);
+                    typeInsightsAuthoritative = typeInsightAggregates.Count > 0
+                        && totalPostRevenue > 0m;
+                    categoryStats = typeInsightAggregates
+                        .Select(aggregate => new VendorSalesNivelacijaCategoryStatDto
                         {
-                            Segment = g.Key,
-                            ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
-                            VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
-                            AvgPriceChangePercent = avgPct,
-                            ChangeRevenue = postRev - preRev,
-                            ChangePercent = SemanticChangePercent(preRev, postRev),
-                            HasComparableSalesWindow = comparable.Count > 0,
-                            ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
-                        };
-                    })
-                    .OrderByDescending(x => x.ArticlesCount)
-                    .ToList();
+                            Category = aggregate.Category,
+                            ArticlesCount = aggregate.ArticlesCount,
+                            VendorsCount = aggregate.VendorsCount,
+                            PreQty = aggregate.PreQty,
+                            PreRevenue = aggregate.PreRevenue,
+                            PostQty = aggregate.PostQty,
+                            PostRevenue = aggregate.PostRevenue,
+                            ChangeQty = aggregate.ChangeQty,
+                            ChangeRevenue = aggregate.ChangeRevenue,
+                            ChangePercent = aggregate.ChangePercent,
+                            HasComparableSalesWindow = true,
+                            ComparableArticleCount = aggregate.ComparableArticleCount,
+                            PostRevenueSharePercent = aggregate.PostRevenueSharePercent,
+                            AvgElasticity = aggregate.AvgElasticity
+                        })
+                        .OrderByDescending(x => Math.Abs(x.ChangeRevenue))
+                        .ToList();
+
+                    string SegmentFor(VendorSalesNivelacijaArticleStatDto x)
+                    {
+                        if (!x.PriceChangePercent.HasValue) return "Cena nije dostupna";
+                        if (x.PriceChangePercent.Value > 0m) return "Cena ↑";
+                        if (x.PriceChangePercent.Value < 0m) return "Cena ↓";
+                        return "Cena =";
+                    }
+
+                    priceDirectionStats = analyzed
+                        .GroupBy(SegmentFor)
+                        .Select(g =>
+                        {
+                            var comparable = g.Where(x => x.HasComparableSalesWindow && x.IsPostWindowMature).ToList();
+                            var preRev = comparable.Sum(x => x.PreRevenue);
+                            var postRev = comparable.Sum(x => x.PostRevenue);
+                            var avgPct = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeAveragePriceChangePercent(
+                                comparable.Select(x => x.PriceChangePercent));
+                            return new VendorSalesNivelacijaPriceDirectionStatDto
+                            {
+                                Segment = g.Key,
+                                ArticlesCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count(),
+                                VendorsCount = comparable.Select(x => x.VendorId).Distinct().Count(),
+                                AvgPriceChangePercent = avgPct,
+                                ChangeRevenue = postRev - preRev,
+                                ChangePercent = SemanticChangePercent(preRev, postRev),
+                                HasComparableSalesWindow = comparable.Count > 0,
+                                ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
+                            };
+                        })
+                        .OrderByDescending(x => x.ArticlesCount)
+                        .ToList();
+
+                    static decimal? AverageOrNull(IEnumerable<decimal?> values)
+                    {
+                        decimal sum = 0m;
+                        var count = 0;
+                        foreach (var value in values)
+                        {
+                            if (!value.HasValue) continue;
+                            sum += value.Value;
+                            count++;
+                        }
+
+                        return count == 0 ? null : sum / count;
+                    }
+
+                    avgMomentumRevenue = AverageOrNull(comparableRows.Select(x => x.MomentumRevenue));
+                    avgElasticity = VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(matureComparableRows);
+                    avgDidRevenue = AverageOrNull(comparableRows.Select(x => x.DidRevenue));
+                    avgLostSalesOos = AverageOrNull(comparableRows.Select(x => x.LostSalesOOS));
+                    avgOosRate = AverageOrNull(comparableRows.Select(x => x.OOSRate));
+                    driverMetrics = VendorSalesNivelacijaDriverSummaryPolicy.Build(comparableRows, matureComparableRows);
+                    typeInsightsSource = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Source
+                        : null;
+                    typeInsightsDenominator = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.Denominator
+                        : null;
+                    typeInsightsElasticityWeighting = typeInsightsAuthoritative
+                        ? VendorSalesNivelacijaTypeInsightPolicy.ElasticityWeighting
+                        : null;
+                }
+                else
+                {
+                    categoryStats = [];
+                    priceDirectionStats = [];
+                    typeInsightsAuthoritative = false;
+                    typeInsightsSource = null;
+                    typeInsightsDenominator = null;
+                    typeInsightsElasticityWeighting = null;
+                    avgMomentumRevenue = null;
+                    avgElasticity = null;
+                    avgDidRevenue = null;
+                    avgLostSalesOos = null;
+                    avgOosRate = null;
+                    driverMetrics = null;
+                }
 
                 // Insights (minimal, stable)
                 var insights = new List<VendorSalesNivelacijaInsightDto>();
@@ -5115,26 +5185,6 @@ public static class AllEndpoints
                         });
                     }
                 }
-
-                static decimal? AverageOrNull(IEnumerable<decimal?> values)
-                {
-                    decimal sum = 0m;
-                    var count = 0;
-                    foreach (var value in values)
-                    {
-                        if (!value.HasValue) continue;
-                        sum += value.Value;
-                        count++;
-                    }
-
-                    return count == 0 ? null : sum / count;
-                }
-
-                var avgMomentumRevenue = AverageOrNull(comparableRows.Select(x => x.MomentumRevenue));
-                var avgElasticity = VendorSalesNivelacijaTypeInsightPolicy.WeightedMeanElasticity(matureComparableRows);
-                var avgDidRevenue = AverageOrNull(comparableRows.Select(x => x.DidRevenue));
-                var avgLostSalesOos = AverageOrNull(comparableRows.Select(x => x.LostSalesOOS));
-                var avgOosRate = AverageOrNull(comparableRows.Select(x => x.OOSRate));
 
                 var response = new VendorSalesNivelacijaResponseDto
                 {
@@ -5184,15 +5234,9 @@ public static class AllEndpoints
                     },
                     CategoryStats = categoryStats,
                     TypeInsightsAuthoritative = typeInsightsAuthoritative,
-                    TypeInsightsSource = typeInsightsAuthoritative
-                        ? VendorSalesNivelacijaTypeInsightPolicy.Source
-                        : null,
-                    TypeInsightsDenominator = typeInsightsAuthoritative
-                        ? VendorSalesNivelacijaTypeInsightPolicy.Denominator
-                        : null,
-                    TypeInsightsElasticityWeighting = typeInsightsAuthoritative
-                        ? VendorSalesNivelacijaTypeInsightPolicy.ElasticityWeighting
-                        : null,
+                    TypeInsightsSource = typeInsightsSource,
+                    TypeInsightsDenominator = typeInsightsDenominator,
+                    TypeInsightsElasticityWeighting = typeInsightsElasticityWeighting,
                     PriceDirectionStats = priceDirectionStats,
                     Insights = insights,
                     AvgMomentumRevenue = avgMomentumRevenue,
@@ -5200,7 +5244,7 @@ public static class AllEndpoints
                     AvgDidRevenue = avgDidRevenue,
                     AvgLostSalesOOS = avgLostSalesOos,
                     OOSRate = avgOosRate,
-                    DriverMetrics = VendorSalesNivelacijaDriverSummaryPolicy.Build(comparableRows, matureComparableRows),
+                    DriverMetrics = driverMetrics,
                     MetricsStatus = globalWarnings.Count == 0 ? null : string.Join("; ", globalWarnings.Distinct(StringComparer.Ordinal)),
                     RecommendationAllowed = false,
                     DataCoverageStatus = VendorSalesNivelacijaActivityEvidencePolicy.DataCoverageStatus,
@@ -5293,6 +5337,129 @@ public static class AllEndpoints
             }
         })
         .WithName("GetVendorSalesNivelacija")
+        .WithTags("Analytics")
+        .RequireRateLimiting("analytics");
+
+        app.MapGet("/api/analytics/vendor-sales-nivelacija/pre-post-pair", async (
+            TrendplusDbContext trendplusDb,
+            ILogger<Program> logger,
+            IHttpClientFactory httpClientFactory,
+            HttpContext httpContext,
+            int? vendorId = null,
+            DateTime? eventDate = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            DateTime? previousFrom = null,
+            DateTime? previousTo = null,
+            string? category = null,
+            bool includeInactive = false,
+            int maxRows = 5000,
+            int? storeId = null,
+            string? dataScope = null,
+            CancellationToken ct = default) =>
+        {
+            var correlationId = ResolveAnalyticsCorrelationId(httpContext);
+            if (!previousFrom.HasValue || !previousTo.HasValue)
+            {
+                return CreateVendorSalesNivelacijaProblem(
+                    "Neispravan period.",
+                    "previousFrom i previousTo su obavezni za uporedni pre/post zahtev.",
+                    400,
+                    "vendor_sales_nivelacija_invalid_period",
+                    correlationId);
+            }
+
+            if (string.IsNullOrWhiteSpace(trendplusDb.Database.GetConnectionString()))
+            {
+                return CreateVendorSalesNivelacijaProblem(
+                    "Pre/post nivelacija nije dostupna.",
+                    "Povezivanje sa bazom trenutno nije dostupno.",
+                    503,
+                    "vendor_sales_nivelacija_unavailable",
+                    correlationId);
+            }
+
+            var normalizedDataScope = NormalizeVendorSalesNivelacijaDataScope(dataScope);
+            var categoryTrimmed = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+            maxRows = Math.Clamp(maxRows, 100, 50_000);
+            var pairStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                var currentQuery = VendorSalesNivelacijaInternalHttpLoader.BuildQueryString(
+                    vendorId,
+                    eventDate,
+                    from,
+                    to,
+                    categoryTrimmed,
+                    includeInactive,
+                    maxRows,
+                    storeId,
+                    normalizedDataScope,
+                    includeEnrichment: true);
+                var previousQuery = VendorSalesNivelacijaInternalHttpLoader.BuildQueryString(
+                    vendorId,
+                    eventDate,
+                    previousFrom,
+                    previousTo,
+                    categoryTrimmed,
+                    includeInactive,
+                    maxRows,
+                    storeId,
+                    normalizedDataScope,
+                    includeEnrichment: false);
+
+                var currentTask = VendorSalesNivelacijaInternalHttpLoader.GetAsync(
+                    httpContext,
+                    httpClientFactory,
+                    "/api/analytics/vendor-sales-nivelacija" + currentQuery,
+                    ct);
+                var previousTask = VendorSalesNivelacijaInternalHttpLoader.GetAsync(
+                    httpContext,
+                    httpClientFactory,
+                    "/api/analytics/vendor-sales-nivelacija" + previousQuery,
+                    ct);
+
+                var current = await currentTask;
+                VendorSalesNivelacijaResponseDto? previous = null;
+                string? previousError = null;
+                try
+                {
+                    previous = await previousTask;
+                }
+                catch (Exception ex)
+                {
+                    previousError = ex.Message;
+                    logger.LogWarning(ex, "Previous-period nivelacija pair leg failed.");
+                }
+
+                logger.LogInformation(
+                    "Vendor sales nivelacija pre-post pair served. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, PreviousLoaded={PreviousLoaded}, ElapsedMs={ElapsedMs}",
+                    vendorId,
+                    storeId,
+                    normalizedDataScope,
+                    previous is not null,
+                    pairStopwatch.ElapsedMilliseconds);
+
+                return Results.Ok(new VendorSalesNivelacijaPrePostPairResponseDto
+                {
+                    Current = current,
+                    Previous = previous,
+                    PreviousError = previousError
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Vendor sales nivelacija pre-post pair failed.");
+                return CreateVendorSalesNivelacijaProblem(
+                    "Pre/post nivelacija nije dostupna.",
+                    $"Par uporednih perioda trenutno nije dostupan. Referentni ID: {correlationId}.",
+                    503,
+                    "vendor_sales_nivelacija_error",
+                    correlationId);
+            }
+        })
+        .WithName("GetVendorSalesNivelacijaPrePostPair")
         .WithTags("Analytics")
         .RequireRateLimiting("analytics");
 
@@ -7834,6 +8001,7 @@ public static class AllEndpoints
         CancellationToken ct)
     {
         await cacheAdmin.ClearAsync(AnalyticsCachePolicy.NivelacijaFamily, ct);
+        await cacheAdmin.ClearAsync(AnalyticsCachePolicy.PrePostFamily, ct);
         await cacheAdmin.ClearAsync(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, ct);
     }
 
