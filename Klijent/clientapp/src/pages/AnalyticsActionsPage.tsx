@@ -945,8 +945,12 @@ export default function AnalyticsActionsPage() {
             <span className="kpi-label">Odloženo</span>
           </div>
           <div className="aaq-kpi-card kpi-done">
-            <span className="kpi-value">{counts.done + counts.rejected}</span>
-            <span className="kpi-label">Zatvoreno</span>
+            <span className="kpi-value">{counts.done}</span>
+            <span className="kpi-label">Završeno</span>
+          </div>
+          <div className="aaq-kpi-card kpi-rejected">
+            <span className="kpi-value">{counts.rejected}</span>
+            <span className="kpi-label">Odbijeno</span>
           </div>
           <div className="aaq-kpi-card kpi-p1">
             <span className="kpi-value kpi-p1-val">{counts.p1Open}</span>

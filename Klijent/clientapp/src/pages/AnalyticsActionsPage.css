@@ -85,6 +85,7 @@
 .kpi-accepted .kpi-value { color: var(--success, #198754); }
 .kpi-deferred .kpi-value { color: var(--warning, #fd7e14); }
 .kpi-done .kpi-value { color: var(--text-secondary, #6c757d); }
+.kpi-rejected .kpi-value { color: var(--error, #dc3545); }
 .kpi-p1 { border-color: var(--theme-color-rgba-239-68-68-0p42, rgba(239,68,68,0.42)); }
 .kpi-p1-val { color: var(--error, #dc3545); }
 

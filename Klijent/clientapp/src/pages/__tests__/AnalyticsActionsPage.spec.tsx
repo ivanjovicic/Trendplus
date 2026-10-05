@@ -1183,6 +1183,32 @@ describe("AnalyticsActionsPage", () => {
     });
   });
 
+  it("shows separate done and rejected KPI counts (RQ88)", async () => {
+    getAnalyticsActionCountsMock.mockResolvedValue({
+      new: 2,
+      accepted: 1,
+      deferred: 0,
+      rejected: 3,
+      done: 5,
+      p1Open: 1,
+    });
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    let kpiBar: Element | null = null;
+    await waitFor(() => {
+      kpiBar = document.querySelector(".aaq-kpi-bar");
+      expect(kpiBar).not.toBeNull();
+    });
+    const bar = within(kpiBar as HTMLElement);
+    expect(bar.getByText("Završeno")).toBeInTheDocument();
+    expect(bar.getByText("Odbijeno")).toBeInTheDocument();
+    expect(bar.queryByText("Zatvoreno")).not.toBeInTheDocument();
+    expect(bar.getByText("5")).toBeInTheDocument();
+    expect(bar.getByText("3")).toBeInTheDocument();
+  });
+
   it("removes one active summary filter from the helper links", async () => {
     render(<AnalyticsActionsPage />);
 
