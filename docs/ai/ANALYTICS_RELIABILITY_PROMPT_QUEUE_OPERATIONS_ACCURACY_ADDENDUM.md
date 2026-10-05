@@ -4444,7 +4444,8 @@ Cover the six current Operations screens:
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `8a784df0f298bc9837e106faf7604113e9d066a3`
-- Main verification: fresh fetch resolved `origin/main` to `b94136ad0f5410f02c0cd21c3786a01807389394`; ancestry checks confirmed the implementation SHA and closure SHA are on main.
+- Follow-up commit SHA: `420e6a35371518b2904c3658948999f4b8035aac` (freshness fixture alignment and fail-closed missing-service behavior).
+- Main verification: fresh fetch resolved `origin/main` to `420e6a35371518b2904c3658948999f4b8035aac`; ancestry checks confirmed the implementation, closure and follow-up SHAs are on main.
 - Missed/residual: full-suite CI has unrelated or not-yet-baseline-attributed failures; RQ569-focused checks pass. Live deployment/browser evidence remains outside this prompt's repository-local delivery gate.
 - Follow-up: RQ570 is the primary next candidate; RQ552/NV-I2, RQ576 and RQ579 are also dependency-complete READY lanes. RQ453 follows RQ552. RQ553 and the existing independent READY lanes remain routed separately.
 - Residual risk: global `DataImportBatch` evidence cannot certify store-specific imports; those views intentionally remain `unknown` until store-scoped source evidence exists. Current production deployment has not been verified.
