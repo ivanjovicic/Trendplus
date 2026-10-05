@@ -3,6 +3,7 @@ using Application.Analytics;
 using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -35,13 +36,13 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var toUtc = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
 
                 var salesData = await (
                     from pz in db.ProdajaZaglavlja
                     join ps in db.ProdajaStavke on pz.Id equals ps.IdProdaja
-                    where pz.DatumProdaje >= fromUtc && pz.DatumProdaje <= toUtc
+                    where pz.DatumProdaje >= fromUtc && pz.DatumProdaje < toUtc
                     select new { pz.DatumProdaje, ps.Kolicina, ps.Cena }
                 ).ToListAsync(ct);
 
@@ -85,7 +86,8 @@ public static class InsightStudioV2Endpoints
                 {
                     cells = byDayAndWeek,
                     byDay,
-                    transactionMetricReasonCode = "receipt_grain_unavailable"
+                    transactionMetricReasonCode = "receipt_grain_unavailable",
+                    meta = BuildMeta(byDayAndWeek.Count > 0, "no_sales_in_period")
                 });
             }
             catch (Exception ex)
@@ -106,7 +108,8 @@ public static class InsightStudioV2Endpoints
                 {
                     pairs = Array.Empty<object>(),
                     totalMultiItemTransactions = (int?)null,
-                    reasonCode = "receipt_grain_unavailable"
+                    reasonCode = "receipt_grain_unavailable",
+                    meta = BuildMeta(false, "receipt_grain_unavailable")
                 });
             }
             catch (Exception ex)
@@ -130,15 +133,15 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
                 var days = Math.Max(1, (to - fromUtc).TotalDays);
 
                 var salesRows = await (
                     from ps in db.ProdajaStavke
                     join p in db.ProdajaZaglavlja on ps.IdProdaja equals p.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where p.DatumProdaje >= fromUtc && p.DatumProdaje <= to
+                    where p.DatumProdaje >= fromUtc && p.DatumProdaje < to
                     select new
                     {
                         artikalId = a.Id,
@@ -234,7 +237,8 @@ public static class InsightStudioV2Endpoints
                         nicheGems = items.Count(x => x.quadrant == "NICHE_GEM"),
                         volumeTraps = items.Count(x => x.quadrant == "VOLUME_TRAP"),
                         deadWeight = items.Count(x => x.quadrant == "DEAD_WEIGHT")
-                    }
+                    },
+                    meta = BuildMeta(items.Count > 0, "no_sales_in_period")
                 });
             }
             catch (Exception ex)
@@ -258,14 +262,14 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
 
                 // Split period into halves to detect trend
                 var mid = from.AddDays((to - from).TotalDays / 2);
 
                 var allIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < to)
                     .Select(p => new { p.Id, p.DatumProdaje })
                     .ToListAsync(ct);
 
@@ -293,16 +297,17 @@ public static class InsightStudioV2Endpoints
                         var totalRevenue = g.Sum(x => x.Kolicina * x.Cena);
 
                         // Determine lifecycle stage
-                        var trendPct = firstHalfUnits > 0
+                        double? trendPct = firstHalfUnits > 0
                             ? (secondHalfUnits - firstHalfUnits) / (double)firstHalfUnits * 100
-                            : (secondHalfUnits > 0 ? 100 : 0);
+                            : null;
+                        var baselineStatus = firstHalfUnits > 0 ? "available" : "no_baseline";
 
                         string stage;
                         if (firstHalfUnits == 0 && secondHalfUnits > 0)
                             stage = "LAUNCH";
-                        else if (trendPct > 20)
+                        else if (trendPct.HasValue && trendPct.Value > 20)
                             stage = "GROWTH";
-                        else if (trendPct >= -20)
+                        else if (!trendPct.HasValue || trendPct.Value >= -20)
                             stage = "MATURE";
                         else
                             stage = "DECLINE";
@@ -318,6 +323,7 @@ public static class InsightStudioV2Endpoints
                             firstHalfUnits,
                             secondHalfUnits,
                             trendPct,
+                            baselineStatus,
                             stage,
                             currentStock = art?.Kolicina ?? 0
                         };
@@ -333,7 +339,7 @@ public static class InsightStudioV2Endpoints
                     decline = productGroups.Count(x => x.stage == "DECLINE")
                 };
 
-                return Results.Ok(new { items = productGroups.Take(100), summary });
+                return Results.Ok(new { items = productGroups.Take(100), summary, meta = BuildMeta(productGroups.Count > 0, "no_sales_in_period") });
             }
             catch (Exception ex)
             {
@@ -356,12 +362,12 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-30);
                 var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
                 var days = Math.Max(1, (to - from).TotalDays);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < to)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var salesByProduct = await (
@@ -420,7 +426,7 @@ public static class InsightStudioV2Endpoints
                 var totalAtRisk = forecasts.Sum(x => x.atRiskRevenue);
                 var criticalCount = forecasts.Count(x => x.severity == "CRITICAL");
 
-                return Results.Ok(new { forecasts, totalAtRiskRevenue = totalAtRisk, criticalCount });
+                return Results.Ok(new { forecasts, totalAtRiskRevenue = totalAtRisk, criticalCount, meta = BuildMeta(forecasts.Count > 0, "no_forecasts") });
             }
             catch (Exception ex)
             {
@@ -443,11 +449,11 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-90);
                 var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < to)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var salesRows = await (
@@ -553,7 +559,8 @@ public static class InsightStudioV2Endpoints
                         lowMarginCount = alerts.Count(x => x.alertType == "LOW_MARGIN"),
                         heavyMarkdownCount = alerts.Count(x => x.alertType == "HEAVY_MARKDOWN"),
                         totalLostMargin = alerts.Sum(x => x.lostMargin)
-                    }
+                    },
+                    meta = BuildMeta(alerts.Count > 0, "no_margin_alerts")
                 });
             }
             catch (Exception ex)
@@ -596,10 +603,10 @@ public static class InsightStudioV2Endpoints
                     await db.ProdajaStavke.Where(ps => lastWeekIds.Contains(ps.IdProdaja))
                         .SumAsync(ps => ps.Kolicina, ct);
 
-                var revChange = lastWeekRev > 0
-                    ? (double)((thisWeekRev - lastWeekRev) / lastWeekRev * 100) : 0;
-                var unitChange = lastWeekUnits > 0
-                    ? (thisWeekUnits - lastWeekUnits) / (double)lastWeekUnits * 100 : 0;
+                double? revChange = lastWeekRev > 0
+                    ? (double)((thisWeekRev - lastWeekRev) / lastWeekRev * 100) : null;
+                double? unitChange = lastWeekUnits > 0
+                    ? (thisWeekUnits - lastWeekUnits) / (double)lastWeekUnits * 100 : null;
 
                 // Top gainers/losers by category this week vs last
                 var thisWeekByCat = await (
@@ -623,14 +630,14 @@ public static class InsightStudioV2Endpoints
                 {
                     var tw = thisWeekByCat.GetValueOrDefault(cat, 0);
                     var lw = lastWeekByCat.GetValueOrDefault(cat, 0);
-                    var change = lw > 0 ? (double)((tw - lw) / lw * 100) : (tw > 0 ? 100 : 0);
-                    return new { kategorija = cat, thisWeekRevenue = tw, lastWeekRevenue = lw, changePct = change };
+                    double? change = lw > 0 ? (double)((tw - lw) / lw * 100) : null;
+                    return new { kategorija = cat, thisWeekRevenue = tw, lastWeekRevenue = lw, changePct = change, baselineStatus = lw > 0 ? "available" : "no_baseline" };
                 })
-                .OrderByDescending(x => Math.Abs(x.changePct))
+                .OrderByDescending(x => x.changePct.HasValue ? Math.Abs(x.changePct.Value) : -1)
                 .ToList();
 
-                // New OOS this week
-                var newOosCount = await db.Artikli.Where(a => a.Kolicina == 0).CountAsync(ct);
+                // Historical stock transitions are unavailable; report current state only.
+                var currentOosCount = await db.Artikli.Where(a => a.Kolicina == 0).CountAsync(ct);
 
                 // DnevnikPromena (price changes) count this week
                 var priceChangesCount = await db.DnevnikPromena
@@ -648,8 +655,12 @@ public static class InsightStudioV2Endpoints
                     thisWeekTransactions = thisWeekIds.Count,
                     lastWeekTransactions = lastWeekIds.Count,
                     categoryChanges,
-                    oosCount = newOosCount,
-                    priceChangesThisWeek = priceChangesCount
+                    oosCount = currentOosCount,
+                    currentOosCount,
+                    oosCountScope = "current_snapshot_transition_history_unavailable",
+                    priceChangesThisWeek = priceChangesCount,
+                    meta = BuildMeta(thisWeekIds.Count + lastWeekIds.Count > 0, "no_sales_in_comparison_period",
+                        lastWeekRev == 0 || lastWeekUnits == 0 ? "comparison_baseline_unavailable" : null)
                 });
             }
             catch (Exception ex)
@@ -674,12 +685,12 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : now.AddDays(-90);
                 var toUtc = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : now;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : now.AddTicks(1);
                 var days = Math.Max(1, (toUtc - fromUtc).TotalDays);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= fromUtc && p.DatumProdaje <= toUtc)
+                    .Where(p => p.DatumProdaje >= fromUtc && p.DatumProdaje < toUtc)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var stavke = await (
@@ -705,14 +716,14 @@ public static class InsightStudioV2Endpoints
 
                 var totalRevenue = stavke.Sum(x => x.Revenue);
                 if (totalRevenue == 0)
-                    return Results.Ok(new List<object>());
+                    return Results.Ok(new { items = new List<object>(), meta = BuildMeta(false, "no_sales_in_period") });
 
                 // Return rate by supplier
                 var povracajData = await (
                     from ps in db.PovracajStavke
                     join pz in db.PovracajZaglavlja on ps.IdPovracaj equals pz.Id
                     join a in db.Artikli on ps.IdArtikal equals a.Id
-                    where pz.DatumPovracaja >= fromUtc && pz.DatumPovracaja <= toUtc
+                    where pz.DatumPovracaja >= fromUtc && pz.DatumPovracaja < toUtc
                     group ps by a.IDDobavljac into g
                     select new { dobId = g.Key, returnUnits = g.Sum(x => x.Kolicina) }
                 )
@@ -791,7 +802,7 @@ public static class InsightStudioV2Endpoints
                     .OrderByDescending(x => x.compositeScore)
                     .ToList();
 
-                return Results.Ok(result);
+                return Results.Ok(new { items = result, meta = BuildMeta(result.Count > 0, "no_supplier_sales_in_period") });
             }
             catch (Exception ex)
             {
@@ -814,13 +825,13 @@ public static class InsightStudioV2Endpoints
                     ? InsightStudioPeriod.ToUtc(fromDate.Value)
                     : DateTime.UtcNow.AddDays(-60);
                 var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                    ? InsightStudioPeriod.ToUtcExclusiveEnd(toDate.Value)
+                    : DateTime.UtcNow.AddTicks(1);
                 var days = Math.Max(1, (to - from).TotalDays);
                 const int leadTimeDays = 14;
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < to)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var dobavljaciDict = await db.Dobavljaci
@@ -871,9 +882,9 @@ public static class InsightStudioV2Endpoints
                     var margin = p.prodajnaCena.HasValue && resolvedUnitCost.HasValue && p.prodajnaCena.Value > 0
                         ? (double)((p.prodajnaCena.Value - resolvedUnitCost.Value) / p.prodajnaCena.Value * 100m)
                         : 0d;
-                    var reorderCost = resolvedUnitCost.HasValue ? recQty * resolvedUnitCost.Value : 0m;
-                    var expectedRevenue = p.prodajnaCena.HasValue ? recQty * p.prodajnaCena.Value : 0;
-                    var expectedProfit = expectedRevenue - reorderCost;
+                    decimal? reorderCost = recQty == 0 ? 0m : resolvedUnitCost.HasValue ? recQty * resolvedUnitCost.Value : null;
+                    decimal? expectedRevenue = recQty == 0 ? 0m : p.prodajnaCena.HasValue ? recQty * p.prodajnaCena.Value : null;
+                    decimal? expectedProfit = recQty == 0 ? 0m : reorderCost.HasValue && expectedRevenue.HasValue ? expectedRevenue.Value - reorderCost.Value : null;
 
                     // Reorder probability index: combines velocity + stock urgency + margin
                     var velScore = Math.Min(50, avgDaily * 20);
@@ -898,6 +909,7 @@ public static class InsightStudioV2Endpoints
                         reorderCost,
                         expectedRevenue,
                         expectedProfit,
+                        profitReliable = expectedProfit.HasValue,
                         reorderProbability,
                         p.prodajnaCena
                     };
@@ -914,8 +926,8 @@ public static class InsightStudioV2Endpoints
                         totalItems = g.Count(),
                         criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
                         urgentCount = g.Count(x => x.urgency == "HITNO"),
-                        totalReorderCost = g.Sum(x => x.reorderCost),
-                        expectedRevenue = g.Sum(x => x.expectedRevenue),
+                        totalReorderCost = SumKnownOrNull(g.Select(x => x.reorderCost)),
+                        expectedRevenue = SumKnownOrNull(g.Select(x => x.expectedRevenue)),
                         avgMargin = g.Where(x => x.marginDataAvailable).Select(x => x.marginPct).DefaultIfEmpty().Average()
                     })
                     .OrderByDescending(x => x.criticalCount)
@@ -929,7 +941,7 @@ public static class InsightStudioV2Endpoints
                         dobavljac = g.Key,
                         totalItems = g.Count(),
                         criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
-                        totalReorderCost = g.Sum(x => x.reorderCost),
+                        totalReorderCost = SumKnownOrNull(g.Select(x => x.reorderCost)),
                         avgReorderProbability = g.Average(x => x.reorderProbability)
                     })
                     .OrderByDescending(x => x.criticalCount)
@@ -940,12 +952,12 @@ public static class InsightStudioV2Endpoints
                     criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
                     recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
-                    totalReorderCost = items.Sum(x => x.reorderCost),
-                    expectedRevenueFromReorder = items.Sum(x => x.expectedRevenue),
-                    expectedProfitFromReorder = items.Sum(x => x.expectedProfit)
+                    totalReorderCost = SumKnownOrNull(items.Select(x => x.reorderCost)),
+                    expectedRevenueFromReorder = SumKnownOrNull(items.Select(x => x.expectedRevenue)),
+                    expectedProfitFromReorder = SumKnownOrNull(items.Select(x => x.expectedProfit))
                 };
 
-                return Results.Ok(new { items, byCategoryPlan, bySupplierPlan, summary });
+                return Results.Ok(new { items, byCategoryPlan, bySupplierPlan, summary, meta = BuildMeta(items.Count > 0, "no_sales_in_period", items.Any(x => !x.profitReliable) ? "reorder_profit_incomplete_cost_or_price" : null) });
             }
             catch (Exception ex)
             {
@@ -1041,7 +1053,7 @@ public static class InsightStudioV2Endpoints
                     .OrderBy(x => x.avgPrice)
                     .ToList();
 
-                return Results.Ok(new { bands });
+                return Results.Ok(new { bands, meta = BuildMeta(bands.Count > 0, "no_price_data") });
             }
             catch (Exception ex)
             {
@@ -1049,5 +1061,31 @@ public static class InsightStudioV2Endpoints
                 return Results.Problem(detail: ex.Message, statusCode: 500);
             }
         }).RequireRateLimiting("db-heavy");
+    }
+
+    private static AnalyticsResponseMetaDto BuildMeta(bool hasData, string emptyReason, string? warningCode = null)
+    {
+        var meta = !hasData
+            ? AnalyticsResponseMetaFactory.Empty(emptyReason, "Nema dovoljno podataka za traženi period.")
+            : warningCode is not null
+                ? AnalyticsResponseMetaFactory.Warning(warningCode, "Rezultat sadrži ograničene ili nepotpune dokaze.", "warning")
+                : AnalyticsResponseMetaFactory.Success("available");
+
+        if (warningCode is not null)
+        {
+            meta.WarningCode = warningCode;
+            meta.WarningMessage = "Rezultat sadrži ograničene ili nepotpune dokaze.";
+            meta.IsPartial = true;
+        }
+
+        meta.DataFreshnessStatus = "unknown";
+        meta.DataFreshnessReasonCode = "source_refresh_unverified";
+        return meta;
+    }
+
+    private static decimal? SumKnownOrNull(IEnumerable<decimal?> values)
+    {
+        var materialized = values.ToList();
+        return materialized.Any(x => !x.HasValue) ? null : materialized.Sum(x => x!.Value);
     }
 }

@@ -72,7 +72,9 @@ export interface LifecycleItem {
   totalRevenue: number;
   firstHalfUnits: number;
   secondHalfUnits: number;
+  // Advanced V2 is quarantined; RQ591 owns nullable metric typing/presentation.
   trendPct: number;
+  baselineStatus: "available" | "no_baseline";
   stage: "LAUNCH" | "GROWTH" | "MATURE" | "DECLINE";
   currentStock: number;
 }
@@ -134,20 +136,23 @@ export interface CategoryChange {
   kategorija: string;
   thisWeekRevenue: number;
   lastWeekRevenue: number;
-  changePct: number;
+  changePct: number | null;
+  baselineStatus: "available" | "no_baseline";
 }
 
 export interface WeeklyChangelog {
   thisWeekRevenue: number;
   lastWeekRevenue: number;
-  revenueChangePct: number;
+  revenueChangePct: number | null;
   thisWeekUnits: number;
   lastWeekUnits: number;
-  unitChangePct: number;
+  unitChangePct: number | null;
   thisWeekTransactions: number;
   lastWeekTransactions: number;
   categoryChanges: CategoryChange[];
   oosCount: number;
+  currentOosCount: number;
+  oosCountScope: string;
   priceChangesThisWeek: number;
 }
 
@@ -189,6 +194,7 @@ export interface SmartReorderItem {
   reorderCost: number;
   expectedRevenue: number;
   expectedProfit: number;
+  profitReliable: boolean;
   reorderProbability: number;
   prodajnaCena: number | null;
 }
@@ -295,7 +301,8 @@ export async function getWeeklyChangelog(): Promise<WeeklyChangelog> {
 export async function getSupplierScoringV2(fromDate?: string, toDate?: string): Promise<SupplierScoreV2[]> {
   const res = await fetch(makeUrl("/api/analytics/advanced/v2/supplier-scoring-v2", buildDateParams(fromDate, toDate)));
   if (!res.ok) throw new Error("Greška supplier scoring v2");
-  return res.json();
+  const payload = await res.json();
+  return Array.isArray(payload) ? payload : payload.items ?? [];
 }
 
 export async function getSmartReorder(fromDate?: string, toDate?: string): Promise<SmartReorderResult> {

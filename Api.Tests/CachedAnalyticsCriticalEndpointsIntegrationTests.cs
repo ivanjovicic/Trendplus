@@ -484,6 +484,159 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task V2DateOnlyUpperBound_IncludesTheEntireFinalCalendarDay_AndReportsUnknownFreshness()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 4,
+                DatumProdaje = new DateTime(2026, 1, 7, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka { Id = 15, IdProdaja = 4, IdArtikal = 101, Kolicina = 2, Cena = 100m });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/v2/weekly-heatmap?fromDate=2026-01-07&toDate=2026-01-07");
+        var cells = root.GetProperty("cells").EnumerateArray().ToArray();
+
+        Assert.Equal(200m, cells.Sum(cell => cell.GetProperty("revenue").GetDecimal()));
+        Assert.Equal(2, cells.Sum(cell => cell.GetProperty("units").GetInt32()));
+        Assert.True(root.GetProperty("meta").GetProperty("success").GetBoolean());
+        Assert.Equal("unknown", root.GetProperty("meta").GetProperty("dataFreshnessStatus").GetString());
+        Assert.Equal("source_refresh_unverified", root.GetProperty("meta").GetProperty("dataFreshnessReasonCode").GetString());
+    }
+
+    [Fact]
+    public async Task SmartReorder_KeepsProfitUnknownWhenRecommendedUnitsHaveNoCost()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Artikli.Add(new Artikli
+            {
+                Id = 104, Naziv = "No cost probe", IDDobavljac = 1, IDObjekat = 1,
+                Kolicina = 0, MinimalnaKolicina = 5, ProdajnaCena = 100m,
+                DataOrigin = "existing", UpdatedAt = DateTime.UtcNow
+            });
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 5, DatumProdaje = new DateTime(2026, 1, 7, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1, DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka { Id = 16, IdProdaja = 5, IdArtikal = 104, Kolicina = 5, Cena = 100m });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/v2/smart-reorder?fromDate=2026-01-07&toDate=2026-01-07");
+        var item = root.GetProperty("items").EnumerateArray().Single(x => x.GetProperty("artikalId").GetInt32() == 104);
+
+        Assert.True(item.GetProperty("recommendedQty").GetInt32() > 0);
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("reorderCost").ValueKind);
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("expectedProfit").ValueKind);
+        Assert.False(item.GetProperty("profitReliable").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("summary").GetProperty("expectedProfitFromReorder").ValueKind);
+        Assert.Equal("reorder_profit_incomplete_cost_or_price", root.GetProperty("meta").GetProperty("warningCode").GetString());
+    }
+
+    [Fact]
+    public async Task WeeklyChangelog_LeavesPercentChangesUnknownWithoutPriorWeekBaseline()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 6, DatumProdaje = DateTime.UtcNow.AddDays(-1), IDObjekat = 1, DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka { Id = 17, IdProdaja = 6, IdArtikal = 101, Kolicina = 1, Cena = 100m });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory, "/api/analytics/advanced/v2/weekly-changelog");
+
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("revenueChangePct").ValueKind);
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("unitChangePct").ValueKind);
+        Assert.All(root.GetProperty("categoryChanges").EnumerateArray(), item =>
+        {
+            Assert.Equal(JsonValueKind.Null, item.GetProperty("changePct").ValueKind);
+            Assert.Equal("no_baseline", item.GetProperty("baselineStatus").GetString());
+        });
+        Assert.Equal("comparison_baseline_unavailable", root.GetProperty("meta").GetProperty("warningCode").GetString());
+        Assert.Equal("current_snapshot_transition_history_unavailable", root.GetProperty("oosCountScope").GetString());
+    }
+
+    [Fact]
+    public async Task ProductLifecycle_ReportsNoBaselineInsteadOfZeroPercentGrowth()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Artikli.Add(new Artikli
+            {
+                Id = 104, Naziv = "Launch probe", IDDobavljac = 1, IDObjekat = 1,
+                Kolicina = 3, MinimalnaKolicina = 1, NabavnaCena = 50m,
+                DataOrigin = "existing", UpdatedAt = DateTime.UtcNow
+            });
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 7, DatumProdaje = new DateTime(2026, 1, 7, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1, DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka { Id = 18, IdProdaja = 7, IdArtikal = 104, Kolicina = 2, Cena = 100m });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/v2/product-lifecycle?fromDate=2026-01-05&toDate=2026-01-07");
+        var item = root.GetProperty("items").EnumerateArray().Single(x => x.GetProperty("artikalId").GetInt32() == 104);
+
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("trendPct").ValueKind);
+        Assert.Equal("no_baseline", item.GetProperty("baselineStatus").GetString());
+        Assert.Equal("LAUNCH", item.GetProperty("stage").GetString());
+    }
+
+    [Fact]
+    public async Task SupplierScoringV2_UsesItemsEnvelopeWithUnknownFreshnessMeta()
+    {
+        await using var factory = CreateFactory();
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/v2/supplier-scoring-v2?fromDate=2026-01-05&toDate=2026-01-07");
+
+        Assert.NotEmpty(root.GetProperty("items").EnumerateArray());
+        var meta = root.GetProperty("meta");
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal("unknown", meta.GetProperty("dataFreshnessStatus").GetString());
+        Assert.Equal("source_refresh_unverified", meta.GetProperty("dataFreshnessReasonCode").GetString());
+    }
+
+    [Fact]
+    public async Task V2EmptyResult_HasExplicitEmptyMetaInsteadOfBareZeroData()
+    {
+        await using var factory = CreateFactory();
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/v2/weekly-heatmap?fromDate=2030-01-01&toDate=2030-01-02");
+
+        Assert.Empty(root.GetProperty("cells").EnumerateArray());
+        var meta = root.GetProperty("meta");
+        Assert.True(meta.GetProperty("success").GetBoolean());
+        Assert.Equal("no_sales_in_period", meta.GetProperty("emptyReason").GetString());
+        Assert.Equal("insufficient_data", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.Equal("unknown", meta.GetProperty("dataFreshnessStatus").GetString());
+    }
+
+    [Fact]
     public async Task BasketAffinity_ReturnsUnavailableReasonInsteadOfAnEmptyBasketResult()
     {
         await using var factory = CreateFactory();

@@ -537,8 +537,8 @@ function OverviewTab({
               <div className="text-sm font-bold text-foreground">{fmtNum(changelog.thisWeekTransactions)}</div>
             </div>
             <div className="rounded-lg bg-surface-darker px-3 py-2">
-              <div className="text-[10px] text-muted uppercase">OOS / Promene cena</div>
-              <div className="text-sm font-bold" style={{ color: changelog.oosCount > 5 ? PAL.red : PAL.textPrimary }}>{changelog.oosCount} / {changelog.priceChangesThisWeek}</div>
+              <div className="text-[10px] text-muted uppercase">OOS trenutno / Promene cena</div>
+              <div className="text-sm font-bold" title="Trenutni broj artikala bez zaliha; istorija prelaska u OOS nije dostupna." style={{ color: changelog.currentOosCount > 5 ? PAL.red : PAL.textPrimary }}>{changelog.currentOosCount} / {changelog.priceChangesThisWeek}</div>
             </div>
           </div>
 
@@ -630,12 +630,12 @@ function OverviewTab({
               🟠 <strong>{marginAlerts.summary.negativeMarginCount}</strong> artikala pod negativnom maržom
             </div>
           )}
-          {changelog && changelog.revenueChangePct < -15 && (
+          {changelog?.revenueChangePct != null && changelog.revenueChangePct < -15 && (
             <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🟡 Prihod pao <strong>{Math.abs(changelog.revenueChangePct).toFixed(0)}%</strong> nedelja-na-nedelju
             </div>
           )}
-          {changelog && changelog.revenueChangePct >= 10 && (
+          {changelog?.revenueChangePct != null && changelog.revenueChangePct >= 10 && (
             <div className="rounded-lg border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 text-xs text-[var(--text-primary)]">
               🟢 Rast prihoda +{changelog.revenueChangePct.toFixed(0)}% ove nedelje! 
             </div>
