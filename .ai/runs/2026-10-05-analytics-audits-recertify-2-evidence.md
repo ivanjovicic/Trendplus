@@ -31,10 +31,11 @@
 See commit / agent report.
 
 ## Bundle / tip
-- UI fix commit: `6445a94e9dd848bac3bc297aca8e273b6fa1a625`
-- Docs commit: (follows)
+- Branch: `audit-recertify-2-2026-10-05`
+- Commits on branch: `6445a94e` (UI fix) → `4a9f341c` (docs/notes) → evidence tip commit (this file)
+- Exact pre-FF tip SHA: recorded in `/workspace/out/analytics-audits-recertify-2-PUSH_INSTRUCTIONS.md` at bundle time (avoids self-referential amend loop)
 - Requires origin/main: `1ccaf3eb`
 - Bundle: `/workspace/out/analytics-audits-recertify-2.bundle`
 - HEAD == origin/main: NO until parent FF push
-- Focused tests: 46/46 (presentation pass2, insight trust, IntelligenceSnapshot, TrustHeader, unavailable label)
-- Validators: check-prompt-queues OK; planning PASS; agent-instructions PASS; check:encoding OK; tsc -b OK; git diff --check OK
+- Focused tests: 46/46
+- Validators: check-prompt-queues OK (709); planning PASS; agent-instructions PASS; check:encoding OK; tsc -b OK; git diff --check OK
