@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum; RQ588 is DONE and the RQ queue has no READY prompt after the 2026-10-06 post-close scan. P-UI-39 is the claimed supplemental primary after higher-priority queues were checked; RQ586 and RQ557 are DONE; RQ584 and RQ88 are DONE on main.
+Current READY prompt: none in this addendum; RQ588 is DONE and the RQ queue has no READY prompt after the 2026-10-06 post-close scan. P-UI-40 is DONE; supplemental P-UI-48 is now claimed after its dependency became runnable; RQ586 and RQ557 are DONE; RQ584 and RQ88 are DONE on main.
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:

@@ -33,6 +33,7 @@ function matchesSmallLaptopQuery(): boolean {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarPreference, setSidebarPreference] = useState<boolean | null>(readSidebarPreference);
   const [isSmallLaptop, setIsSmallLaptop] = useState(matchesSmallLaptopQuery);
@@ -101,6 +102,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen surface text-contrast">
+      <a
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          mainContentRef.current?.focus();
+          mainContentRef.current?.scrollIntoView?.({ block: "start" });
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:border focus:border-muted focus:bg-[var(--surface-default)] focus:px-4 focus:py-3 focus:text-contrast focus:shadow-lg"
+      >
+        Preskoči na sadržaj
+      </a>
       <AutoReloadOnBackendOnline />
       <BackendWakeupNotice />
       <GlobalRequestSpinner />
@@ -128,7 +140,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             mobileNavButtonRef={mobileNavButtonRef}
           />
 
-          <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-5">
+          <main id="main-content" ref={mainContentRef} tabIndex={-1} className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-5">
             <div className="space-y-5">{children}</div>
           </main>
 

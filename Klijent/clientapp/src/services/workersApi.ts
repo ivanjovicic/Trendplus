@@ -64,12 +64,18 @@ export async function getWorkersControl(): Promise<WorkerControlState> {
   return res.json();
 }
 
-export async function enableWorkers(): Promise<void> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/control/enable"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
+export async function enableWorkers(adminKey: string): Promise<void> {
+  const res = await fetchWithTimeout(apiUrl("/api/workers/control/enable"), {
+    method: "POST",
+    headers: { "X-Admin-Key": adminKey.trim() },
+  }, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno ukljucivanje workera");
 }
 
-export async function disableWorkers(): Promise<void> {
-  const res = await fetchWithTimeout(apiUrl("/api/workers/control/disable"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
+export async function disableWorkers(adminKey: string): Promise<void> {
+  const res = await fetchWithTimeout(apiUrl("/api/workers/control/disable"), {
+    method: "POST",
+    headers: { "X-Admin-Key": adminKey.trim() },
+  }, API_COLD_START_TIMEOUT_MS);
   await ensureOk(res, "Neuspesno iskljucivanje workera");
 }

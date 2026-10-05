@@ -5,24 +5,25 @@ export default function ApiPingFlag() {
   const { apiPingEnabled, toggleApiPing } = usePingControl();
 
   return (
-    <div className="inline-flex shrink-0 items-center gap-1 rounded-2xl border border-muted bg-[var(--surface-light)] px-1.5 py-1">
+    <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-light)] px-3 py-2">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-bold uppercase tracking-wide transition-colors ${
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-xs font-semibold transition-colors ${
           apiPingEnabled
             ? "border-[var(--success)]/50 bg-success-soft text-[var(--success)]"
             : "border-muted bg-[var(--surface-darker)] text-muted"
         }`}
-        title="Kontrola periodičnog pingovanja API-ja iz frontenda"
+        title="Ova postavka utiče samo na periodične provere iz ovog pregledača; ne zaustavlja API servis."
       >
         <RadioTower size={12} />
-        API {apiPingEnabled ? "ON" : "OFF"}
+        Provera API-ja u ovom pregledaču: {apiPingEnabled ? "aktivna" : "pauzirana"}
       </span>
       <button
         type="button"
         onClick={toggleApiPing}
-        className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition-colors hover:border-[var(--info)] hover:bg-[var(--surface-darker)]"
+        aria-label={apiPingEnabled ? "Pauziraj proveru API-ja u ovom pregledaču" : "Nastavi proveru API-ja u ovom pregledaču"}
+        className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-sm font-semibold text-contrast transition-colors hover:border-[var(--info)] hover:bg-[var(--surface-darker)]"
       >
-        {apiPingEnabled ? "Stop" : "Start"}
+        {apiPingEnabled ? "Pauziraj proveru" : "Nastavi proveru"}
       </button>
     </div>
   );

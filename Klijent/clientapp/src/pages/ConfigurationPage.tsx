@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../components/Toast";
-import { usePingControl } from "../context/PingControlContext";
+import ApiPingFlag from "../components/ApiPingFlag";
 import { WorkersPanel } from "../components/WorkersPanel";
+import WorkerControlFlag from "../components/WorkerControlFlag";
+import RedisToggleFlag from "../components/RedisToggleFlag";
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
@@ -72,11 +74,6 @@ interface HealthCheck {
   databaseMessage: string;
 }
 
-interface RedisStatus {
-  enabled: boolean;
-  available: boolean;
-}
-
 type Panel =
   | "backend"
   | "workers"
@@ -122,7 +119,6 @@ export default function ConfigurationPage() {
   const [activePanel, setActivePanel] = useState<Panel>(() => readPanelFromLocation());
   const [batches, setBatches] = useState<PendingBatch[]>([]);
   const [health, setHealth] = useState<HealthCheck | null>(null);
-  const [redisStatus, setRedisStatus] = useState<RedisStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backendPreference, setBackendPreference] = useState<BackendRoutingPreference | null>(null);
@@ -130,7 +126,6 @@ export default function ConfigurationPage() {
   const [savingBackendPreference, setSavingBackendPreference] = useState(false);
   const [refreshHintVisible, setRefreshHintVisible] = useState(false);
   const { currentTheme, themes, setTheme } = useTheme();
-  const { apiPingEnabled, setApiPingEnabled } = usePingControl();
   const { showToast } = useToast();
 
   const changePanel = useCallback((panel: Panel) => {
@@ -168,35 +163,6 @@ export default function ConfigurationPage() {
       console.error("Failed to load health check:", e);
     }
   }, []);
-
-  const loadRedisStatus = useCallback(async () => {
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/redis/status"), undefined, API_COLD_START_TIMEOUT_MS);
-      if (res.ok) {
-        const data = (await res.json()) as RedisStatus;
-        setRedisStatus(data);
-      }
-    } catch (e) {
-      console.error("Failed to load redis status:", e);
-      setRedisStatus(null);
-    }
-  }, []);
-
-  const toggleRedis = async () => {
-    try {
-      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, API_COLD_START_TIMEOUT_MS);
-      if (!res.ok) {
-        showToast("Redis toggle nije uspeo", "error");
-        return;
-      }
-      const data = (await res.json()) as RedisStatus;
-      setRedisStatus(data);
-      showToast(`Redis ${data.enabled ? "ukljucen" : "iskljucen"}`, "success");
-    } catch (e) {
-      showToast("Greska pri promeni Redis stanja", "error");
-      console.error(e);
-    }
-  };
 
   const loadBackendPreference = useCallback(async () => {
     try {
@@ -349,9 +315,8 @@ export default function ConfigurationPage() {
 
   useEffect(() => {
     loadHealth();
-    loadRedisStatus();
     loadBackendPreference();
-  }, [loadHealth, loadRedisStatus, loadBackendPreference]);
+  }, [loadHealth, loadBackendPreference]);
 
   useEffect(() => {
     if (activePanel === "import") {
@@ -603,6 +568,11 @@ export default function ConfigurationPage() {
             <div className="config-panel">
               <h2 className="panel-title">Radnici</h2>
               <div className="panel-card">
+                <h3 className="card-title">Upravljanje runtime workerima</h3>
+                <p className="text-muted">Serverske promene zahtevaju potvrdu i važeći admin ključ.</p>
+                <WorkerControlFlag showControls />
+              </div>
+              <div className="panel-card">
                 <WorkersPanel refreshInterval={5000} />
               </div>
             </div>
@@ -717,24 +687,9 @@ export default function ConfigurationPage() {
                 </div>
                 <div className="card-content">
                   <p className="text-muted">
-                    Periodično pingovanje backend-a iz frontenda možete uključiti ili isključiti ovde.
+                    Ovo podešavanje važi samo u ovom pregledaču: pauzira ili nastavlja periodične provere API-ja iz aplikacije. Ne zaustavlja API servis.
                   </p>
-                  <div className="action-group">
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => setApiPingEnabled(true)}
-                      disabled={apiPingEnabled}
-                    >
-                      Uključi API ping
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setApiPingEnabled(false)}
-                      disabled={!apiPingEnabled}
-                    >
-                      Isključi API ping
-                    </button>
-                  </div>
+                  <ApiPingFlag />
                 </div>
               </div>
             </div>
@@ -744,32 +699,9 @@ export default function ConfigurationPage() {
             <div className="config-panel">
               <h2 className="panel-title">Cache / Redis</h2>
               <div className="panel-card">
-                <div className="card-header">
-                  <Database size={20} />
-                  <span className="card-title">Redis status</span>
-                </div>
-                <div className="card-content">
-                  <div className="health-item">
-                    <span className="health-label">Stanje Redis-a</span>
-                    <span className={`health-status ${redisStatus?.enabled ? "ok" : "off"}`}>
-                      {redisStatus
-                        ? redisStatus.enabled
-                          ? redisStatus.available
-                            ? "Uključen"
-                            : "Uključen (nedostupan)"
-                          : "Isključen"
-                        : "Nije dostupno"}
-                    </span>
-                  </div>
-                  <div className="action-group">
-                    <button className="btn btn-primary" onClick={() => void toggleRedis()}>
-                      Promeni Redis stanje
-                    </button>
-                    <button className="btn btn-ghost" onClick={() => void loadRedisStatus()}>
-                      <RefreshCw size={16} /> Osveži
-                    </button>
-                  </div>
-                </div>
+                <h3 className="card-title">Redis status i upravljanje</h3>
+                <p className="text-muted">Promena utiče na serverske cache zahteve i zahteva potvrdu i važeći admin ključ.</p>
+                <RedisToggleFlag showControls />
               </div>
             </div>
           )}

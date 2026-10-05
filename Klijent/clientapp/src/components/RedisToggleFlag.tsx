@@ -3,6 +3,7 @@ import { DatabaseZap } from "lucide-react";
 import { usePingControl } from "../context/PingControlContext";
 import { apiUrl } from "../utils/apiUrl";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
+import AdminActionConfirmModal from "./AdminActionConfirmModal";
 
 const POLL_MS = import.meta.env.DEV ? 20000 : 60000;
 
@@ -11,13 +12,15 @@ interface RedisStatus {
   available: boolean;
 }
 
-export default function RedisToggleFlag() {
+export default function RedisToggleFlag({ showControls = false }: { showControls?: boolean }) {
   const { apiPingEnabled } = usePingControl();
   const [status, setStatus] = useState<RedisStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [endpointMissing, setEndpointMissing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const closeConfirmation = useCallback(() => setConfirmOpen(false), []);
 
   const load = useCallback(async (force = false) => {
     if (!apiPingEnabled && !force) return;
@@ -52,12 +55,15 @@ export default function RedisToggleFlag() {
     return () => window.clearInterval(id);
   }, [load, apiPingEnabled]);
 
-  const onToggle = useCallback(async () => {
-    if (busy) return;
+  const onToggle = useCallback(async (adminKey: string) => {
+    if (busy || !adminKey) return;
     try {
       setBusy(true);
       setError(null);
-      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), { method: "POST" }, 60_000);
+      const res = await fetchWithTimeout(apiUrl("/api/redis/toggle"), {
+        method: "POST",
+        headers: { "X-Admin-Key": adminKey.trim() },
+      }, 60_000);
       if (res.status === 404) {
         setEndpointMissing(true);
         return;
@@ -66,6 +72,7 @@ export default function RedisToggleFlag() {
       const data = (await res.json()) as RedisStatus;
       setStatus(data);
       setEndpointMissing(false);
+      setConfirmOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Greška pri togglovanju Redis-a.");
     } finally {
@@ -111,14 +118,30 @@ export default function RedisToggleFlag() {
         <DatabaseZap size={12} />
         {label}
       </span>
-      <button
-        type="button"
-        onClick={() => void onToggle()}
-        disabled={busy || !status || endpointMissing}
-        className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition hover:border-[var(--info)] hover:bg-[var(--surface-darker)] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {busy ? "..." : buttonLabel}
-      </button>
+      {showControls ? (
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          disabled={busy || !status || endpointMissing}
+          className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition hover:border-[var(--info)] hover:bg-[var(--surface-darker)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busy ? "..." : buttonLabel === "Stop" ? "Isključi Redis" : "Uključi Redis"}
+        </button>
+      ) : null}
+      {showControls ? (
+        <AdminActionConfirmModal
+          isOpen={confirmOpen}
+          title={status?.enabled ? "Isključi Redis" : "Uključi Redis"}
+          consequence={status?.enabled
+            ? "Redis cache će biti isključen za serverske zahteve. To može promeniti opterećenje i odziv aplikacije."
+            : "Redis cache će biti uključen za serverske zahteve. Dostupnost zavisi od Redis servisa."}
+          actionLabel={status?.enabled ? "Isključi Redis" : "Uključi Redis"}
+          errorMessage={error ? "Promena nije uspela. Proverite admin ključ i pokušajte ponovo." : null}
+          busy={busy}
+          onClose={closeConfirmation}
+          onConfirm={onToggle}
+        />
+      ) : null}
     </div>
   );
 }

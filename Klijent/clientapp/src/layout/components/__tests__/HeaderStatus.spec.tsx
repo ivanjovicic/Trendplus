@@ -57,11 +57,14 @@ describe("HeaderStatus", () => {
     expect(screen.getByText("Edit")).toBeInTheDocument();
   });
 
-  it("keeps system controls in header without duplicating theme links", () => {
+  it("keeps passive operational status in the header and links to its admin surface", () => {
     renderHeader();
 
     expect(screen.getAllByText(/Workeri:/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/API/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Redis:/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: /Start|Stop|uključi Redis|isključi Redis/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^API (ON|OFF)$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Status i operacije/i })).toHaveAttribute("href", "/admin/configuration?panel=workers");
     expect(screen.getAllByRole("link", { name: /^Teme$/i })).toHaveLength(1);
   });
 
@@ -88,7 +91,7 @@ describe("HeaderStatus", () => {
 
     renderHeader();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Više$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Otvori dodatne kontrole/i }));
     const toolsDialog = screen.getByRole("dialog", { name: /Dodatne kontrole zaglavlja/i });
     fireEvent.click(within(toolsDialog).getByRole("button", { name: /^Komande$/i }));
     expect(screen.getByRole("heading", { level: 2, name: /^Komande$/i })).toBeInTheDocument();
@@ -105,7 +108,7 @@ describe("HeaderStatus", () => {
     }));
 
     renderHeader();
-    const moreButton = screen.getByRole("button", { name: /^Više$/i });
+    const moreButton = screen.getByRole("button", { name: /Otvori dodatne kontrole/i });
     moreButton.focus();
     fireEvent.click(moreButton);
 
@@ -117,6 +120,8 @@ describe("HeaderStatus", () => {
     expect(within(toolsDialog).getByRole("combobox")).toBeInTheDocument();
     expect(within(toolsDialog).getByRole("link", { name: /^Teme$/i })).toBeInTheDocument();
     expect(within(toolsDialog).getByRole("button", { name: /^Osveži$/i })).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("link", { name: /Otvori status i operacije/i })).toHaveAttribute("href", "/admin/configuration?panel=workers");
+    expect(within(toolsDialog).queryByRole("button", { name: /Start|Stop/i })).not.toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /Dodatne kontrole zaglavlja/i })).not.toBeInTheDocument();

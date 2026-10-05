@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: 3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f
-Main verification: pushed to origin/main; fresh fetch confirmed HEAD and origin/main both resolve to 3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f
-Evidence state: pending post-close routing recovery
+Main verification: fresh post-close fetch at `72f85d81fda2626f02d15a66837760a8b1997fb3` confirms origin/main contains implementation `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`.
+Evidence state: synchronized
 
 ## What was done
 - Defaulted the sidebar to the 56px rail from 1024px through 1279px. A localStorage preference now preserves an explicit collapse/expand choice and overrides the viewport default; storage and matchMedia access are guarded for SSR/jsdom/privacy-restricted environments.
@@ -37,7 +37,7 @@ Evidence state: pending post-close routing recovery
 - `node scripts/check-planning-architecture.mjs` -> pass, 80 planning tasks.
 - `git diff --check` -> pass.
 - Final responsive result JSON: `%TEMP%/trendplus-pui40-shell-acceptance/responsive-baseline.json`.
-- GitHub Analytics Quality Gates run `37384995175`, head SHA `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`, was `in_progress` when the completion note was prepared; it is recorded as residual status, not as passing proof.
+- GitHub Analytics Quality Gates run `37384995175`, head SHA `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`, completed green (frontend analytics tests/guardrails/build, POS UI dependency audit/build, SDK pin availability).
 
 ## Validation not run
 - Full local analytics Vitest suite -> not run; the focused shell contract and browser matrix cover the changed layout behavior.
@@ -53,7 +53,14 @@ Evidence state: pending post-close routing recovery
 - GitHub Analytics Quality Gates run `37384995175` was in progress at record time. The build retains its existing chunk-size warning; guardrails retain 39 baseline findings.
 
 ## Post-close routing recovery
-- Pending: refresh `origin/main` after the terminal queue transition, scan all active RQ/SQL/UI queue and addendum files, re-evaluate changed dependencies, and record the collision-safe successor or a durable Zero-READY proof.
+- Recovery base `origin/main` SHA: `72f85d81fda2626f02d15a66837760a8b1997fb3`, freshly fetched after P-UI-40 reached DONE.
+- Active queue/addendum files scanned: all 12 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files, `SQL_ANALYTICS_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`, and `MASTER_ROADMAP.md` (16 files total, including the master router).
+- Completed/changed task IDs searched: P-UI-40; dependency-linked P-UI-42/P-UI-45; RQ319/RQ320 shared-control owners; P-UI-31/P-UI-35/P-UI-36/P-UI-38/P-UI-46/P-UI-47/P-UI-48/P-UI-51 and all non-terminal UI rows/addendum rows.
+- RQ and SQL truth: current pointers are none; RQ non-terminal items retain external/source-policy gates or dependencies on other owners; Q83 is DONE. No repository-local RQ/SQL candidate became runnable from P-UI-40.
+- Cross-program priority: BCI has no READY/IN_PROGRESS task; STAB16 is externally/provider/deployment gated; QDB/MT/GAI execution prompts retain their documented release/owner gates. No higher-priority collision-safe executable task was found.
+- Newly satisfied dependency: P-UI-48 became runnable because P-UI-40 is DONE. P-UI-42 remains WAITING on P-UI-39/P-UI-40/P-UI-47/P-UI-48; P-UI-45 remains WAITING on P-UI-40/P-UI-48; P-UI-31/P-UI-35/P-UI-36 remain WAITING on P-UI-47; P-UI-43/P-UI-44 remain behind RQ569.
+- Independent READY candidates retained: P-UI-41, P-UI-47, P-UI-49, P-UI-51 and P-UI-52; none conflicts with the selected P-UI-48 paths. P-UI-48 was promoted WAITING -> READY and claimed IN_PROGRESS; its old lock was stale because P-UI-40 was already delivered, and no matching branch or open PR was present.
+- Next: P-UI-48; no Zero-READY proof was applicable because an eligible successor was promoted and claimed.
 
 ## Next
 - Pending post-close recovery.

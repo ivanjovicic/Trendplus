@@ -18,7 +18,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import ApiPingFlag from "../../components/ApiPingFlag";
 import WorkerControlFlag from "../../components/WorkerControlFlag";
 import RedisToggleFlag from "../../components/RedisToggleFlag";
 import { BackendStatusContext } from "../../context/BackendStatusContext";
@@ -81,11 +80,11 @@ function trailToNodes(trail: HeaderTrailEntry[]) {
     const isClickable = index === 1 && !!entry.to;
 
     const content = isClickable ? (
-      <Link key={`${entry.label}-${index}`} to={entry.to ?? "/"} className="truncate transition hover:text-contrast">
+      <Link key={`${entry.label}-${index}`} to={entry.to ?? "/"} aria-label={entry.label} title={entry.label} className="truncate transition hover:text-contrast">
         {entry.label}
       </Link>
     ) : (
-      <span key={`${entry.label}-${index}`} className={`truncate ${isLast ? "text-contrast" : "text-muted"}`}>
+      <span key={`${entry.label}-${index}`} aria-label={entry.label} title={entry.label} className={`truncate ${isLast ? "text-contrast" : "text-muted"}`}>
         {entry.label}
       </span>
     );
@@ -448,9 +447,11 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
           </div>
 
           <div className="hidden items-center gap-2 xl:flex">
-            <ApiPingFlag />
             <WorkerControlFlag />
             <RedisToggleFlag />
+            <Link to="/admin/configuration?panel=workers" className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2.5 py-2 text-xs font-semibold text-secondary hover:text-contrast">
+              Status i operacije
+            </Link>
           </div>
         </div>
 
@@ -544,6 +545,7 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
           className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-secondary transition hover:border-[var(--info)] hover:text-contrast min-[2400px]:hidden"
           aria-expanded={mobileToolsOpen}
           aria-haspopup="dialog"
+          aria-label="Otvori dodatne kontrole"
         >
           <LayoutGrid size={14} />
           Više
@@ -645,12 +647,18 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
             <div className="mt-5 border-t border-muted pt-4">
               <div className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                 <Activity size={12} />
-                Sistemske kontrole
+                Status sistema
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <ApiPingFlag />
                 <WorkerControlFlag />
                 <RedisToggleFlag />
+                <Link
+                  to="/admin/configuration?panel=workers"
+                  onClick={() => setMobileToolsOpen(false)}
+                  className="inline-flex items-center justify-center rounded-xl border border-muted bg-[var(--surface-elevated)] px-3 py-2.5 text-xs font-semibold text-secondary"
+                >
+                  Otvori status i operacije
+                </Link>
               </div>
             </div>
           </div>

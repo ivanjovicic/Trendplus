@@ -68,6 +68,18 @@ function buildRefreshStatus(): AnalyticsRefreshStatus {
 }
 
 describe("AppLayout", () => {
+  it("puts the skip link first in keyboard order and moves focus to main", () => {
+    const { container } = renderLayout();
+    const firstFocusable = container.querySelector<HTMLElement>("a[href], button, input, select, textarea, [tabindex]:not([tabindex='-1'])");
+    const skipLink = screen.getByRole("link", { name: "Preskoči na sadržaj" });
+    const main = container.querySelector("main#main-content");
+
+    expect(firstFocusable).toBe(skipLink);
+    skipLink.focus();
+    fireEvent.click(skipLink);
+    expect(main).toHaveFocus();
+  });
+
   it("defaults to the sidebar rail between 1024px and 1279px", () => {
     window.localStorage.removeItem("trendplus.sidebarCollapsed");
     setViewportWidth(1100);

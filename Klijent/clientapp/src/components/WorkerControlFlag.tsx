@@ -2,15 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot, RefreshCw } from "lucide-react";
 import { disableWorkers, enableWorkers, getWorkersHealth, type WorkerHealthWithControl } from "../services/workersApi";
 import { usePingControl } from "../context/PingControlContext";
+import AdminActionConfirmModal from "./AdminActionConfirmModal";
 
 const POLL_MS = import.meta.env.DEV ? 15000 : 45000;
 
-export default function WorkerControlFlag() {
+export default function WorkerControlFlag({ showControls = false }: { showControls?: boolean }) {
   const { apiPingEnabled } = usePingControl();
   const [health, setHealth] = useState<WorkerHealthWithControl | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const closeConfirmation = useCallback(() => setConfirmOpen(false), []);
 
   const load = useCallback(async (force = false) => {
     if (!apiPingEnabled && !force) {
@@ -60,18 +63,19 @@ export default function WorkerControlFlag() {
     return `Workeri: ${health.runningWorkers}/${health.totalWorkers}`;
   }, [error, health, loading]);
 
-  const onToggle = useCallback(async () => {
-    if (!health || busy) return;
+  const onToggle = useCallback(async (adminKey: string) => {
+    if (!health || busy || !adminKey) return;
     if (!health.runtimeToggleAllowed && !health.workersEnabled) return;
     try {
       setBusy(true);
       setError(null);
       if (health.workersEnabled) {
-        await disableWorkers();
+        await disableWorkers(adminKey);
       } else {
-        await enableWorkers();
+        await enableWorkers(adminKey);
       }
       await load(true);
+      setConfirmOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Neuspešna promena worker statusa.");
     } finally {
@@ -79,7 +83,7 @@ export default function WorkerControlFlag() {
     }
   }, [busy, health, load]);
 
-  const buttonLabel = health?.workersEnabled ? "Stop" : "Start";
+  const buttonLabel = health?.workersEnabled ? "Isključi radnike" : "Uključi radnike";
   const toggleDisabled = busy || loading || !!error || !health || (!health.runtimeToggleAllowed && !health.workersEnabled);
   const toggleTitle = !health
     ? "Worker control"
@@ -96,24 +100,41 @@ export default function WorkerControlFlag() {
         <Bot size={12} />
         {statusText}
       </span>
-      <button
-        type="button"
-        onClick={() => void onToggle()}
-        disabled={toggleDisabled}
-        className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition hover:border-[var(--info)] hover:bg-[var(--surface-darker)] disabled:cursor-not-allowed disabled:opacity-60"
-        title={toggleTitle}
-      >
-        {busy ? "..." : (!health?.runtimeToggleAllowed && !health?.workersEnabled ? "Locked" : buttonLabel)}
-      </button>
+      {showControls ? (
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          disabled={toggleDisabled}
+          className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-contrast transition hover:border-[var(--info)] hover:bg-[var(--surface-darker)] disabled:cursor-not-allowed disabled:opacity-60"
+          title={toggleTitle}
+        >
+          {busy ? "..." : (!health?.runtimeToggleAllowed && !health?.workersEnabled ? "Zaključano" : buttonLabel)}
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={() => void load(true)}
         disabled={busy}
+        aria-label="Osveži status workera"
         className="rounded-xl border border-muted bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-semibold text-secondary transition hover:border-[var(--info)] hover:text-contrast disabled:cursor-not-allowed disabled:opacity-60"
         title="Osveži worker status"
       >
         <RefreshCw size={12} className={busy ? "animate-spin" : ""} />
       </button>
+      {showControls ? (
+        <AdminActionConfirmModal
+          isOpen={confirmOpen}
+          title={buttonLabel}
+          consequence={health?.workersEnabled
+            ? "Isključivanje zaustavlja raspoređeno osvežavanje i pozadinske obrade."
+            : "Uključivanje dozvoljava raspoređeno osvežavanje i pozadinske obrade."}
+          actionLabel={buttonLabel}
+          errorMessage={error ? "Promena nije uspela. Proverite admin ključ i pokušajte ponovo." : null}
+          busy={busy}
+          onClose={closeConfirmation}
+          onConfirm={onToggle}
+        />
+      ) : null}
     </div>
   );
 }

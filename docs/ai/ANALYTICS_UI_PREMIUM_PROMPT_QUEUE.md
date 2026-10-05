@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-40 (IN_PROGRESS; claimed 2026-10-06 after P-UI-39 closed and the post-close scan found no higher-priority READY execution lane). Collision-safe READY lanes: `P-UI-41`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`. `P-UI-45` is intentionally sequenced after the P1 shell owners because it shares `AppLayout.tsx`.
+Current primary prompt: P-UI-48 (IN_PROGRESS; claimed 2026-10-06 after P-UI-40 completion made its explicit dependency runnable). Other READY lanes remain `P-UI-41`, `P-UI-47`, `P-UI-49`, `P-UI-51` and `P-UI-52`; they are not claimed and do not own the shared shell files. `P-UI-45` remains sequenced after the P1 shell/safety owners because it shares `AppLayout.tsx`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -2561,7 +2561,7 @@ Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout
 - Checks run: focused Vitest 3/3; responsive fixture matrix 56/56 across four routes, two themes and seven widths (0 root overflow observations, 0 page errors); `npm run typecheck`; `npm run build`; analytics guardrails; governance validators; `git diff --check`.
 - Checks not run: full analytics test suite; not required by the focused acceptance.
 - Run log: `.ai/runs/2026-10-06-P-UI-39-evidence.md`
-- Evidence state: pending post-close routing recovery
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `49548a92985cc72d4aee8e5cd392a8c35dbb54d4`
 - Main verification: pushed to `origin/main`; fresh fetch confirmed `HEAD == origin/main == 49548a92985cc72d4aee8e5cd392a8c35dbb54d4`.
@@ -2647,14 +2647,14 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 - Evidence state: pending post-close routing recovery
 - Delivery mode: direct-main
 - Main commit SHA: `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`
-- Main verification: pushed to `origin/main`; fresh fetch confirmed `HEAD == origin/main == 3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`.
+- Main verification: fresh fetch after closure confirmed `origin/main` at `72f85d81fda2626f02d15a66837760a8b1997fb3`, which contains implementation `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`.
 - Missed: none known.
-- Follow-up: determine the next collision-safe READY task during mandatory post-close routing recovery.
-- Residual risk: the 2400px breakpoint exposes the full action cluster only when it fits; the GitHub Analytics Quality Gates run for this SHA was in progress when recorded; the existing build chunk-size warning and 39 guardrail baseline findings remain.
-- Post-close routing: pending recovery scan from the post-close `origin/main` SHA.
+- Follow-up: P-UI-48 is now IN_PROGRESS after P-UI-40 satisfied its explicit dependency.
+- Residual risk: the 2400px breakpoint exposes the full action cluster only when it fits; GitHub Analytics Quality Gates run `37384995175` is green on this SHA; the existing build chunk-size warning and 39 guardrail baseline findings remain.
+- Post-close routing: post-close scan at `origin/main` `72f85d81fda2626f02d15a66837760a8b1997fb3` covered the full 16-file active RQ/SQL/UI queue/addendum set, including `MASTER_ROADMAP.md`. P-UI-48 was promoted WAITING -> READY -> IN_PROGRESS because P-UI-40 was DONE and no conflicting lock, branch or open PR remained. P-UI-41/P-UI-47/P-UI-49/P-UI-51/P-UI-52 remain independent READY lanes; P-UI-45/P-UI-42 remain WAITING on P-UI-48; P-UI-31/P-UI-35/P-UI-36 remain WAITING on P-UI-47; P-UI-43/P-UI-44 remain behind RQ569. RQ current READY and SQL current READY are none; higher-priority BCI/QDB/MT/GAI execution lanes remain none and STAB16 remains provider/deployment gated. No higher-priority runnable successor was found.
 - Prompt defect / scope repair: none.
 - Run log: `.ai/runs/2026-10-06-P-UI-40-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
@@ -3071,14 +3071,14 @@ Theme colours come from three competing sources: `ThemeContext.tsx` inline varia
 
 ## P-UI-48 - Remove one-click ops toggles from the business header and require confirmation
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-40 is DONE (same `HeaderStatus.tsx`/`AppLayout.tsx` files; registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P1
 Type: frontend/tests
 Feature family: global-header-ops-safety
-Parallel-safe: no (shared header/layout files with P-UI-40)
-Owner: unassigned (Frontend Shell)
-Owned paths: `Klijent/clientapp/src/layout/components/HeaderStatus.tsx` (+ spec), `Klijent/clientapp/src/components/WorkerControlFlag.tsx`, `RedisToggleFlag.tsx`, `ApiPingFlag.tsx`, the admin/observability page that hosts them, `Klijent/clientapp/src/layout/AppLayout.tsx` (skip link and `main` landmark only)
+Parallel-safe: no (exclusive shared header/layout ownership; P-UI-40 is DONE)
+Owner: Codex
+Owned paths: `Klijent/clientapp/src/layout/components/HeaderStatus.tsx` (+ spec), `Klijent/clientapp/src/components/WorkerControlFlag.tsx` (+ focused tests), `RedisToggleFlag.tsx` (+ focused tests), `ApiPingFlag.tsx`, new shared `AdminActionConfirmModal.tsx`, `Klijent/clientapp/src/pages/ConfigurationPage.tsx`, `Klijent/clientapp/src/services/workersApi.ts`, `Klijent/clientapp/src/layout/AppLayout.tsx` (+ focused spec; skip link and `main` landmark only)
 Avoid paths: backend authorization code (report gaps, do not change here), analytics pages
 Commit suggestion: `fix(ui): move ops toggles out of the business header`
 
