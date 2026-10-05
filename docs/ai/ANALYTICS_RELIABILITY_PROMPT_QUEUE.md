@@ -28736,15 +28736,15 @@ Owner decision (Ivan, 2026-10-04): **`TipObuce` is the authoritative assortment 
 
 ### Implementation delivery note 2026-10-05
 
-- Implementation SHA `dc7c55fb2342c919f85be3b12d4fc5758fd84df1` is freshly verified on `origin/main`; queue closure follows the mandatory post-close cascade.
+- Final implementation SHA `046120c95df1b29f6b7394d65ff4492874073bfd` is freshly verified on `origin/main`; queue closure follows the mandatory post-close cascade.
 - Missing category or footwear type is now a warning when the alternate classification dimension is valid; only both missing block assortment decisions. Incomplete variants are a warning, and category/variant gaps reduce confidence. Missing supplier/cost policy remains unchanged. Missing MinStock stays on RQ483's reduced-confidence path with `lostSalesEstimate=null`.
 - Dashboard completeness now counts valid `TipObuce` as an alternate core assortment dimension to `Kategorija`.
 - Changed files: `Application/Analytics/ProductDecisionReasoningHelper.cs`, `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api.Tests/ProductDecisionReasoningHelperTests.cs`, `Api.Tests/ProductDecisionDisplayLabelTests.cs`, `Api.Tests/ProductDecisionCenterBuilderIntegrationTests.cs`, `017_AnalyticsDashboardEnhancements.sql`, `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`.
-- Checks: focused backend reasoning/display/builder tests 42/42; API build; analytics guardrails/typecheck; focused Product Decision UI specs 32/32; `git diff --check`.
-- CI at implementation SHA: Analytics Tests & Data Integrity `37287380759` was `in_progress`; Analytics Quality Gates `37287380811` was `queued`. Not awaited. No live Dashboard SQL/deployment proof; the view definition must be applied by the existing SQL rollout/bootstrap process.
+- Checks: focused backend reasoning/display/builder tests 43/43 (including MinStock null/zero endpoint fixtures); API build; analytics guardrails/typecheck; focused Product Decision UI specs 32/32; `git diff --check`.
+- CI: Analytics Tests & Data Integrity `37287888075` on final test SHA was `in_progress`; Analytics Quality Gates `37287380811` on implementation SHA completed red on one unrelated Inventory queue-status assertion (1,034 passed/1 failed). Not awaited. No live Dashboard SQL/deployment proof; the view definition must be applied by the existing SQL rollout/bootstrap process.
 - Run log: `.ai/runs/2026-10-05-RQ574-evidence.md`
 - Evidence state: pending.
-- Main commit SHA: `dc7c55fb2342c919f85be3b12d4fc5758fd84df1`.
+- Main commit SHA: `046120c95df1b29f6b7394d65ff4492874073bfd`.
 - Next: complete post-close dependency cascade from the queue closure transition and route the next safe READY prompt.
 
 ## RQ575 - Show "dimension not populated in source" instead of a 100% single-bucket analysis
