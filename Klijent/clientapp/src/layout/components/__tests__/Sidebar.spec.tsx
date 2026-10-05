@@ -13,6 +13,7 @@ describe("Sidebar", () => {
     );
 
     expect(screen.getByRole("button", { name: /Executive/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skupi meni" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /Odluke/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Operacije/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Kvalitet podataka/i })).toBeInTheDocument();
@@ -36,6 +37,16 @@ describe("Sidebar", () => {
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
     expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
+  });
+
+  it("exposes the expanded state of the desktop sidebar rail toggle", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/products"]}>
+        <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Raširi meni" })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("exposes mobile navigation as an accessible dialog with scroll lock", () => {

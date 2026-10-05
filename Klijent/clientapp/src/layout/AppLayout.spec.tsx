@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import AppLayout from "./AppLayout";
@@ -16,8 +16,38 @@ vi.mock("../components/GlobalRequestSpinner", () => ({ default: () => null }));
 vi.mock("../components/WorkerStatusAlert", () => ({ default: () => null }));
 vi.mock("../components/trendshoes/SeasonalImageCarousel", () => ({ default: () => null }));
 vi.mock("../components/dashboard/DashboardFooter", () => ({ default: () => null }));
-vi.mock("./components/Sidebar", () => ({ default: () => null }));
+vi.mock("./components/Sidebar", () => ({
+  default: ({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) => (
+    <div data-testid="sidebar" data-collapsed={String(collapsed)}>
+      <button type="button" data-testid="sidebar-toggle" onClick={onToggleCollapse}>Toggle</button>
+    </div>
+  ),
+}));
 vi.mock("./components/HeaderStatus", () => ({ default: () => null }));
+
+function setViewportWidth(width: number) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const matches = query === "(min-width: 1024px) and (max-width: 1279px)"
+      ? width >= 1024 && width <= 1279
+      : width <= 1023;
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    };
+  });
+}
+
+function renderLayout(pathname = "/") {
+  return render(
+    <MemoryRouter initialEntries={[pathname]}>
+      <AppLayout><div>content</div></AppLayout>
+    </MemoryRouter>,
+  );
+}
 
 function buildRefreshStatus(): AnalyticsRefreshStatus {
   return {
@@ -38,6 +68,35 @@ function buildRefreshStatus(): AnalyticsRefreshStatus {
 }
 
 describe("AppLayout", () => {
+  it("defaults to the sidebar rail between 1024px and 1279px", () => {
+    window.localStorage.removeItem("trendplus.sidebarCollapsed");
+    setViewportWidth(1100);
+
+    renderLayout();
+
+    expect(screen.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "true");
+  });
+
+  it("lets a persisted sidebar choice override the small-laptop default", () => {
+    window.localStorage.setItem("trendplus.sidebarCollapsed", "expanded");
+    setViewportWidth(1100);
+
+    renderLayout();
+
+    expect(screen.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "false");
+  });
+
+  it("persists an explicit sidebar choice", () => {
+    window.localStorage.removeItem("trendplus.sidebarCollapsed");
+    setViewportWidth(1100);
+
+    renderLayout();
+    fireEvent.click(screen.getByTestId("sidebar-toggle"));
+
+    expect(screen.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "false");
+    expect(window.localStorage.getItem("trendplus.sidebarCollapsed")).toBe("expanded");
+  });
+
   it("mounts one durable freshness banner on analytics routes", async () => {
     getAnalyticsRefreshStatus.mockResolvedValue(buildRefreshStatus());
 

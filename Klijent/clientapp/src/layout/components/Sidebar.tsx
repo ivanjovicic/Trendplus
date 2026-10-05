@@ -103,6 +103,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
               className="hidden rounded-xl border border-muted bg-[var(--surface-light)] p-1.5 text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:block"
               onClick={onToggleCollapse}
               aria-label="Skupi meni"
+              aria-expanded={!collapsed}
               title="Skupi meni"
             >
               <ChevronLeft size={16} />
@@ -222,6 +223,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
             className="rounded-xl border border-muted bg-[var(--surface-light)] p-2 text-secondary transition hover:border-[var(--info)] hover:text-contrast"
             onClick={onToggleCollapse}
             aria-label="Raširi meni"
+            aria-expanded={!collapsed}
             title="Raširi meni"
           >
             <ChevronRight size={16} />

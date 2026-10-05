@@ -3,11 +3,11 @@ import path from "node:path";
 import process from "node:process";
 import puppeteer from "puppeteer";
 
-export const VIEWPORTS = [320, 360, 375, 390, 768, 1024, 1280];
+export const VIEWPORTS = [320, 360, 375, 390, 768, 1024, 1280, 1800, 2048, 2400];
 export const PUI39_LONG_STORE_OPTION = "Sintetička prodavnica sa izuzetno dugim nazivom za proveru overflow-safe kontrola u responsive rasporedu";
 
 const ROUTES = [
-  { id: "app_shell", path: "/analytics" },
+  { id: "app_shell", path: "/analytics", pui40Shell: true },
   { id: "prodaja", path: "/prodaja", readySelector: ".mobile-entry-form" },
   { id: "unos_robe", path: "/unos-robe", readySelector: ".mobile-entry-form" },
   { id: "nivelacija_cena", path: "/nivelacija", readySelector: ".form-page" },
@@ -97,6 +97,16 @@ export function assertNoRootOverflow(metrics) {
   return true;
 }
 
+export function assertPui40Shell(metrics) {
+  if ([1024, 1280, 2400].includes(metrics.viewportWidth) && (!metrics.header || metrics.header.height > 88)) {
+    throw new Error(`P-UI-40 header height exceeds 88px at ${metrics.viewportWidth}px: ${metrics.header?.height ?? "missing"}`);
+  }
+  if (metrics.viewportWidth === 1024 && (!metrics.main || metrics.main.width < 900)) {
+    throw new Error(`P-UI-40 main content is narrower than 900px at 1024px: ${metrics.main?.width ?? "missing"}`);
+  }
+  return true;
+}
+
 export function evaluateGeometry(documentMetrics, viewportWidth) {
   return {
     viewportWidth,
@@ -108,6 +118,7 @@ export function evaluateGeometry(documentMetrics, viewportWidth) {
       || documentMetrics.bodyScrollWidth > viewportWidth + 1
       || documentMetrics.windowInnerWidth !== viewportWidth,
     header: documentMetrics.header,
+    main: documentMetrics.main,
     visibleControlCount: documentMetrics.controls.length,
     minVisibleControlFontPx: documentMetrics.controls.length > 0
       ? Math.min(...documentMetrics.controls.map((control) => control.fontSizePx))
@@ -128,6 +139,7 @@ function runSelfTest() {
     scrollWidth: 321,
     bodyScrollWidth: 480,
     header: null,
+    main: null,
     controls: [],
     relevantRegions: [],
     overflowingElements: [],
@@ -146,10 +158,20 @@ function runSelfTest() {
     throw new Error("intentional overflow fixture did not fail the geometry assertion");
   }
 
+  let shellFailedAsExpected = false;
+  try {
+    assertPui40Shell({ viewportWidth: 1024, header: { height: 89 }, main: { width: 899 } });
+  } catch (error) {
+    shellFailedAsExpected = /P-UI-40 header height exceeds/.test(String(error));
+  }
+  if (!shellFailedAsExpected) {
+    throw new Error("intentional P-UI-40 shell fixture did not fail the geometry assertion");
+  }
+
   return {
     name: "intentional-overflow-fixture",
     status: "PASS",
-    detail: "geometry assertion failed as expected and was caught by the self-test",
+    detail: "overflow and P-UI-40 shell regression fixtures failed as expected and were caught by the self-test",
   };
 }
 
@@ -679,6 +701,7 @@ async function collectGeometry(page, viewportWidth) {
       header: rectValue(
         document.querySelector("[role='banner'], header")?.getBoundingClientRect(),
       ),
+      main: rectValue(document.querySelector("main")?.getBoundingClientRect()),
       controls,
       relevantRegions: regions,
       overflowingElements,
@@ -773,9 +796,12 @@ async function run(options) {
             }
           });
 
+          const viewportHeight = route.pui40Shell
+            ? viewportWidth === 1024 ? 768 : viewportWidth === 1280 ? 800 : 900
+            : 900;
           await page.setViewport({
             width: viewportWidth,
-            height: 900,
+            height: viewportHeight,
             deviceScaleFactor: 1,
             isMobile: viewportWidth < 768,
           });
@@ -921,6 +947,7 @@ async function run(options) {
           }
 
           const geometry = await collectGeometry(page, viewportWidth);
+          if (route.pui40Shell) assertPui40Shell(geometry);
           const performance = route.id === "products" ? await page.evaluate(async (requestedFixtureRows) => {
             const table = document.querySelector(".product-decision-table");
             const wrapper = document.querySelector(".product-decision-table-wrap");

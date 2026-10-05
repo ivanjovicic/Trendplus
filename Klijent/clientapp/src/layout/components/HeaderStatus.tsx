@@ -398,7 +398,7 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
 
   return (
     <header className="sticky top-0 relative z-30 border-b border-muted bg-[var(--surface-default)]/95 px-4 py-2.5 shadow-[0_18px_42px_-38px_rgba(0,0,0,0.85)] backdrop-blur-xl lg:py-3">
-      <div className="flex flex-nowrap items-center gap-2 lg:flex-wrap lg:gap-3">
+      <div className="flex flex-nowrap items-center gap-2 lg:gap-3">
         <button
           ref={mobileNavButtonRef}
           type="button"
@@ -429,14 +429,14 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
         </div>
 
         <div
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-semibold lg:hidden ${backendTone}`}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2 py-1 text-[11px] font-semibold min-[2400px]:hidden ${backendTone}`}
           title={lastCheckedAt ? `Poslednja provera: ${new Date(lastCheckedAt).toLocaleTimeString("sr-RS")}` : "Backend status"}
         >
           <span className={`h-2 w-2 rounded-full ${backendDot}`} />
           <span>{backendLabel}</span>
         </div>
 
-        <div className="hidden max-w-full flex-wrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)]/80 px-2 py-1.5 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)] lg:flex">
+        <div className="hidden shrink-0 flex-nowrap items-center gap-2 rounded-2xl border border-muted bg-[var(--surface-elevated)]/80 px-2 py-1.5 shadow-[0_14px_32px_-28px_rgba(0,0,0,0.9)] min-[2400px]:flex">
           <div
             className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${backendTone}`}
             title={lastCheckedAt ? `Poslednja provera: ${new Date(lastCheckedAt).toLocaleTimeString("sr-RS")}` : "Backend status"}
@@ -454,7 +454,7 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
           </div>
         </div>
 
-        <div className="ml-auto hidden flex-wrap items-center justify-end gap-2 lg:flex">
+        <div className="ml-auto hidden shrink-0 flex-nowrap items-center justify-end gap-2 min-[2400px]:flex">
           <button
             type="button"
             onClick={() => openPanel("commands")}
@@ -541,7 +541,7 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
         <button
           type="button"
           onClick={() => setMobileToolsOpen((open) => !open)}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-secondary transition hover:border-[var(--info)] hover:text-contrast lg:hidden"
+          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-muted bg-[var(--surface-elevated)] px-3 py-2 text-xs font-semibold text-secondary transition hover:border-[var(--info)] hover:text-contrast min-[2400px]:hidden"
           aria-expanded={mobileToolsOpen}
           aria-haspopup="dialog"
         >
@@ -551,7 +551,7 @@ export default function HeaderStatus({ onOpenMobileNav, mobileNavButtonRef }: He
       </div>
 
       {mobileToolsOpen ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-40 min-[2400px]:hidden">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"
             onClick={() => setMobileToolsOpen(false)}

@@ -11,9 +11,32 @@ import type { AnalyticsRefreshStatus } from "../types/analytics";
 import Sidebar from "./components/Sidebar";
 import HeaderStatus from "./components/HeaderStatus";
 
+const SIDEBAR_COLLAPSED_PREFERENCE_KEY = "trendplus.sidebarCollapsed";
+const SMALL_LAPTOP_QUERY = "(min-width: 1024px) and (max-width: 1279px)";
+
+function readSidebarPreference(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const preference = window.localStorage.getItem(SIDEBAR_COLLAPSED_PREFERENCE_KEY);
+    if (preference === "collapsed") return true;
+    if (preference === "expanded") return false;
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+  return null;
+}
+
+function matchesSmallLaptopQuery(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia(SMALL_LAPTOP_QUERY).matches;
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPreference, setSidebarPreference] = useState<boolean | null>(readSidebarPreference);
+  const [isSmallLaptop, setIsSmallLaptop] = useState(matchesSmallLaptopQuery);
+  const sidebarCollapsed = sidebarPreference ?? isSmallLaptop;
   const [refreshStatus, setRefreshStatus] = useState<AnalyticsRefreshStatus | null>(null);
   const [refreshStatusLoading, setRefreshStatusLoading] = useState(false);
   const [refreshStatusError, setRefreshStatusError] = useState<string | null>(null);
@@ -22,6 +45,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isAnalyticsRoute = pathname.startsWith("/analytics")
     || pathname.startsWith("/analytics-details")
     || pathname.startsWith("/analitika/");
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia(SMALL_LAPTOP_QUERY);
+    const update = () => setIsSmallLaptop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    const nextPreference = !sidebarCollapsed;
+    setSidebarPreference(nextPreference);
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_PREFERENCE_KEY, nextPreference ? "collapsed" : "expanded");
+    } catch {
+      // Keep the current-session choice when browser storage is unavailable.
+    }
+  };
 
   useEffect(() => {
     if (!isAnalyticsRoute) {
@@ -76,7 +118,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
           collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+          onToggleCollapse={toggleSidebarCollapsed}
           returnFocusRef={mobileNavButtonRef}
         />
 

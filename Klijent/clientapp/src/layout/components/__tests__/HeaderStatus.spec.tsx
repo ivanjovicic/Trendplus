@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import HeaderStatus from "../HeaderStatus";
@@ -92,6 +92,35 @@ describe("HeaderStatus", () => {
     const toolsDialog = screen.getByRole("dialog", { name: /Dodatne kontrole zaglavlja/i });
     fireEvent.click(within(toolsDialog).getByRole("button", { name: /^Komande$/i }));
     expect(screen.getByRole("heading", { level: 2, name: /^Komande$/i })).toBeInTheDocument();
+  });
+
+  it("keeps every header action reachable from the small-laptop overflow menu and restores focus after Escape", async () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("max-width: 1023px"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderHeader();
+    const moreButton = screen.getByRole("button", { name: /^Više$/i });
+    moreButton.focus();
+    fireEvent.click(moreButton);
+
+    const toolsDialog = screen.getByRole("dialog", { name: /Dodatne kontrole zaglavlja/i });
+    await waitFor(() => expect(toolsDialog).toHaveFocus());
+    expect(within(toolsDialog).getByRole("button", { name: /^Komande$/i })).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("button", { name: /^Obaveštenja$/i })).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("button", { name: /^Kontekst$/i })).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("combobox")).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("link", { name: /^Teme$/i })).toBeInTheDocument();
+    expect(within(toolsDialog).getByRole("button", { name: /^Osveži$/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: /Dodatne kontrole zaglavlja/i })).not.toBeInTheDocument();
+    expect(moreButton).toHaveFocus();
   });
 
   it("opens the notification inbox with backend and analytics signals", () => {
