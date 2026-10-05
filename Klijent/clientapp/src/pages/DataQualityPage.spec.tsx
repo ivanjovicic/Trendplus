@@ -409,21 +409,26 @@ describe("DataQualityPage", () => {
   });
 
   it("preserves context query parameters and calls APIs with dataScope", async () => {
+    vi.mocked(getDataQualityIssues).mockClear();
+    vi.mocked(getAnalyticsDataQualityHealth).mockClear();
+    vi.mocked(getDataQualityTopOffenders).mockClear();
     renderPage("/analytics/data-quality?originTable=color-sales-stats&dataScope=imported&fromDate=2026-06-01T00:00:00Z&toDate=2026-06-30T23:59:59Z&storeId=2&supplierId=7&returnTo=/analytics/color-sales-stats");
 
     await screen.findByText("Problematični artikli");
 
-    expect(getDataQualityIssues).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
-    expect(getAnalyticsDataQualityHealth).toHaveBeenCalledWith(
-      undefined,
-      "imported",
-      { fromDate: "2026-06-01T00:00:00Z", toDate: "2026-06-30T23:59:59Z" },
-    );
-    expect(getDataQualityTopOffenders).toHaveBeenCalledWith("missingSupplier", 10, "imported");
+    await waitFor(() => {
+      expect(getDataQualityIssues).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported" }));
+      expect(getAnalyticsDataQualityHealth).toHaveBeenCalledWith(
+        undefined,
+        "imported",
+        { fromDate: "2026-06-01T00:00:00Z", toDate: "2026-06-30T23:59:59Z" },
+      );
+      expect(getDataQualityTopOffenders).toHaveBeenCalledWith("missingSupplier", 10, "imported");
+    }, { timeout: 8000 });
     expect(screen.getByText(/Otvoreno iz analytics tabele:/)).toBeInTheDocument();
     expect(screen.getByText("color-sales-stats")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Nazad na izvorni kontekst" })).toHaveAttribute("href", "/analytics/color-sales-stats");
-  });
+  }, 15000);
 
   it("updates issue type and search query through URL-driven filters", async () => {
     renderPage();

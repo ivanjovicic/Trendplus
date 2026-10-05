@@ -691,11 +691,13 @@ describe("PreNivelacijaPriorityPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByTestId("analytics-trust-provenance")).toHaveTextContent(/period je usidren na poslednju prodaju 2026-08-05/);
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-provenance")).toHaveTextContent(/period je usidren na poslednju prodaju 2026-08-05/);
+    }, { timeout: 8000 });
     expect(screen.getByRole("heading", { name: "Legacy / transfer zalihe (1)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Oprema · neobućarska zaliha (1)" })).toBeInTheDocument();
     expect(screen.getByText("Bez preporuke za sniženje")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it.each([
     [0, "signal-weak"],

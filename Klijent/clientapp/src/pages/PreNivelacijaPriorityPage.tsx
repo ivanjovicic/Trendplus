@@ -1030,7 +1030,7 @@ export default function PreNivelacijaPriorityPage() {
       ? `period je usidren na poslednju prodaju ${window.anchorDateUtc ?? window.observedSourceHorizonUtc ?? ""}`
       : `period koristi trenutni datum ${window.anchorDateUtc ?? ""} jer horizont prodaje nije dostupan`;
     return `UTC prozor ${window.salesWindowFromUtc} – ${window.salesWindowToUtc}; ${anchor}; preporuke obuhvataju obuću u Trend PLUS 1/2. Ostali objekti i Oprema su izdvojeni iz markdown prioriteta; DUG/KOREKCIJA računi su isključeni, povrati ostaju u potpisanom netu, a recency koristi poslednju pozitivnu prodaju.`;
-  }, [data?.evidenceWindow]);
+  }, [data]);
 
   const handleSort = (field: SortField) => {
     const nextSortDir = sortField === field

@@ -144,3 +144,13 @@ Local `npm run test:analytics` after the change: 144 files, 1067 passed.
 Exact-main run `37359753968` on `f5d2269b` then failed one more inventory spec: `Osveži` was queried while the first load still showed `Učitavanje bilansa zaliha...`. The refresh click now waits until that button is mounted. Vercel on the same SHA is `Deployment rate limited — retry in 24 hours`, not a build failure.
 
 Exact-main run `37360327352` on `8cc5b7ac` failed `clears queued marker when inventory source keys disappear`: the empty state did not replace the loaded table within the default 1s wait. Search is deferred, so that wait is now 8s. The queued-marker oracle is unchanged.
+
+Exact-main run `37360828074` on `9daf92f615b0e15e1d08f09587eb35a4dfa3e56c` failed the frontend job 3/1067. Vercel on that SHA is still `Deployment rate limited — retry in 24 hours`.
+
+- Data Quality context scope is asserted only after `getDataQualityTopOffenders("missingSupplier", 10, "imported")` has happened. Earlier calls in the file used `null` and were cleared for this test. The imported scope oracle is unchanged.
+- Pre/Post special-character detail waits until the Novi Beograd store option is present and `Primeni` is enabled, then opens `Otvori puni detalj` from the live table. The `row:1` / `A/B & Co` snapshot oracle is unchanged.
+- Pre-nivelacija provenance waits until the mocked header text contains `period je usidren na poslednju prodaju 2026-08-05`. `evidenceBasis` now recomputes when the response object changes, including `totalCandidates`, so a reused evidence window cannot keep a null basis.
+
+Local `npm run test:analytics` after those edits: 144 files, 1067 passed.
+
+Fresh header scan of the active RQ, SQL, UI, stabilization, backend-CI and multitenancy queues: canonical pointer remains RQ588 IN_PROGRESS. Supplemental UI READY remains P-UI-39 plus P-UI-40, P-UI-41, P-UI-47, P-UI-49 and P-UI-52. RQ48, RQ49, RQ88, RQ584, RQ590 and RQ591 stay DONE.

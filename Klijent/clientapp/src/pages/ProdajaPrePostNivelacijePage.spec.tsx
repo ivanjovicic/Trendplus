@@ -887,19 +887,24 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     const saveSpy = vi.spyOn(analyticsTableState, "saveAnalyticsDetailSnapshot");
     renderPage();
-    const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: /Novi Beograd/ })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Primeni" })).toBeEnabled();
+      expect(screen.getByTestId("prodaja-pre-post-nivelacije-data-table")).toBeInTheDocument();
+    }, { timeout: 8000 });
+    const table = screen.getByTestId("prodaja-pre-post-nivelacije-data-table");
 
     const secondRow = within(table).getByText("A/B & Co").closest("tr");
     expect(secondRow).not.toBeNull();
-    fireEvent.click(within(secondRow!).getAllByRole("button", { name: "Detalji" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Otvori puni detalj" }));
+    fireEvent.click(within(secondRow!).getByRole("button", { name: "Detalji" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Otvori puni detalj" }));
 
     expect(await screen.findByText("Pre/Post detail route")).toBeInTheDocument();
     expect(saveSpy).toHaveBeenLastCalledWith(expect.objectContaining({ recordId: "row:1", title: "A/B & Co" }));
     expect(getAnalyticsDetailSnapshot("nivelacije-pre-post", "row:1")?.title).toBe("A/B & Co");
 
     saveSpy.mockRestore();
-  });
+  }, 20000);
 
   it("shows shared filtered-out empty state when focus chips hide every vendor row", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
