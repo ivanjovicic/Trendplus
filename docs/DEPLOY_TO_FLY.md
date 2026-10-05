@@ -31,7 +31,9 @@ flyctl deploy --config fly.toml --app trendplus --remote-only
 
 6) Verify
 
-- After GitHub Actions runs, check Fly dashboard and logs for successful startup and the expected `DeferredStartupTasksHostedService` warmup logs.
+- After GitHub Actions runs, check Fly dashboard and logs for startup and the expected `DeferredStartupTasksHostedService` logs. `GET /ready` includes `databaseInitialization.state` (`not_required`, `pending`, `succeeded`, `completed_with_errors` or `failed`), whether initialization was required, a bounded failure category, attempt count and timestamps. `completed_with_errors` can remain available under non-strict policy, but must report `status=degraded` and `reason=ready_degraded_schema`; `pending` and `failed` remain unavailable.
+- For the effective `Database:AutoMigrate`, `DatabaseInitialization:FailFast` and `StartupTasks:RunDatabaseInitialization` values and the detailed failing stage, use the existing Admin-authorized `/api/admin/health-check` diagnostic. Do not expose or paste connection strings, database hosts or raw exception text into public readiness reports.
+- These fields describe the startup attempt, not continuing schema certification. If an analytics relation drifts or disappears after a `succeeded` result, investigate it with the existing schema/analytics diagnostics and startup logs; do not reinterpret the historical startup state as current schema health.
 
 7) Render fallback (manual)
 

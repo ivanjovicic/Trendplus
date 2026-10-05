@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Api.Config;
 using Api.Endpoints;
 using Api.Services;
+using Api.Services.Startup;
 using Api.Services.DataSources;
 using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
@@ -107,6 +108,38 @@ public sealed class AdminConfigOperationalReadsAuthorizationTests
         var payload = await response.Content.ReadFromJsonAsync<AdminHealthCheckResponse>();
         Assert.NotNull(payload);
         Assert.True(payload!.Timestamp > DateTime.MinValue);
+        Assert.Equal("not_required", payload.DatabaseInitialization.State);
+        Assert.True(payload.DatabaseInitialization.StartupTaskRunDatabaseInitialization);
+        Assert.False(payload.DatabaseInitialization.DatabaseAutoMigrate);
+        Assert.False(string.IsNullOrWhiteSpace(payload.DatabaseInitialization.ExecutionPath));
+    }
+
+    [Fact]
+    public async Task HealthCheck_WithAdminKey_ReportsEffectiveFlagsAndDetailedInitializationStage()
+    {
+        var readiness = new StartupReadinessState();
+        readiness.RequireDatabaseInitialization();
+        readiness.BeginDatabaseInitializationAttempt();
+        readiness.RecordDatabaseInitializationFailure("schema_verification_failed", "vendor_view_verification");
+        readiness.MarkDatabaseInitializationFailed();
+        await using var host = await TestHost.CreateAsync(withAdminKey: true, readinessState: readiness);
+        host.App.Configuration["Database:AutoMigrate"] = "true";
+        host.App.Configuration["DatabaseInitialization:FailFast"] = "true";
+        host.App.Configuration["StartupTasks:RunDatabaseInitialization"] = "true";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/health-check");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<AdminHealthCheckResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("failed", payload!.DatabaseInitialization.State);
+        Assert.Equal("schema_verification_failed", payload.DatabaseInitialization.FailureCategory);
+        Assert.Equal("vendor_view_verification", payload.DatabaseInitialization.FailureStage);
+        Assert.True(payload.DatabaseInitialization.DatabaseAutoMigrate);
+        Assert.True(payload.DatabaseInitialization.DatabaseInitializationFailFast);
+        Assert.True(payload.DatabaseInitialization.StartupTaskRunDatabaseInitialization);
     }
 
     [Fact]
@@ -130,7 +163,7 @@ public sealed class AdminConfigOperationalReadsAuthorizationTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<TestHost> CreateAsync(bool withAdminKey)
+        public static async Task<TestHost> CreateAsync(bool withAdminKey, StartupReadinessState? readinessState = null)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
@@ -142,6 +175,7 @@ public sealed class AdminConfigOperationalReadsAuthorizationTests
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
                 options.UseInMemoryDatabase($"admin-ops-reads-{Guid.NewGuid():N}"));
             builder.Services.AddSingleton<WorkerHealthService>();
+            builder.Services.AddSingleton(readinessState ?? new StartupReadinessState());
             builder.Services.AddSingleton(new WorkerRuntimeControlService(
                 initialEnabled: true,
                 runtimeToggleAllowed: false,

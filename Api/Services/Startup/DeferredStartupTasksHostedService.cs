@@ -93,7 +93,10 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
         var runNeonWarmup = _configuration.GetValue<bool?>("StartupTasks:RunNeonWarmup") ?? true;
         var runStaleBatchRecovery = _configuration.GetValue<bool?>("AccessImport:RunStaleRecoveryOnStartup") ?? true;
         var maxRetries = Math.Max(1, _configuration.GetValue<int?>("StartupTasks:DatabaseInitializationMaxRetries") ?? 5);
-        var databaseInitializationSucceeded = !runDatabaseInitialization;
+        if (!runDatabaseInitialization)
+        {
+            _readiness.MarkDatabaseInitializationNotRequired();
+        }
 
         _logger.LogInformation(
             "Deferred startup tasks started. RunDatabaseInitialization: {RunDatabaseInitialization}. RunNeonWarmup: {RunNeonWarmup}. RunStaleBatchRecovery: {RunStaleBatchRecovery}. MaxRetries: {MaxRetries}.",
@@ -145,13 +148,14 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
 
                 try
                 {
+                    _readiness.BeginDatabaseInitializationAttempt();
                     await using var initScope = _serviceProvider.CreateAsyncScope();
                     var services = initScope.ServiceProvider;
                     var logger = services.GetRequiredService<ILogger<Program>>();
                     var configuration = services.GetRequiredService<IConfiguration>();
 
-                    await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
-                    databaseInitializationSucceeded = true;
+                    var outcome = await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
+                    _readiness.MarkDatabaseInitializationCompleted(outcome);
                     _logger.LogInformation("Database initialization succeeded on deferred attempt {Attempt}/{MaxRetries}.", attempt, maxRetries);
                     break;
                 }
@@ -160,8 +164,33 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     _logger.LogInformation("Deferred startup tasks cancelled during database initialization.");
                     return;
                 }
+                catch (DatabaseInitializationFailureException ex)
+                {
+                    _readiness.RecordDatabaseInitializationFailure(ex.FailureCategory, ex.FailureStage);
+                    if (ex.InnerException is StartupMigrationSequenceException
+                        or DatabaseMigrationFailureException
+                        or DatabaseInitializationLockTimeoutException)
+                    {
+                        _readiness.MarkDatabaseInitializationFailed();
+                        _logger.LogCritical(ex, "Terminal database initialization failure at {FailureStage}. Stopping the host to prevent traffic against an incomplete schema.", ex.FailureStage);
+                        _hostApplicationLifetime.StopApplication();
+                        return;
+                    }
+
+                    _logger.LogError(ex, "Database initialization failed on deferred attempt {Attempt}/{MaxRetries} at {FailureStage}.", attempt, maxRetries, ex.FailureStage);
+                    if (attempt >= maxRetries)
+                    {
+                        _readiness.MarkDatabaseInitializationFailed();
+                    }
+                    else if (!await WaitForNextAttemptAsync(attempt, ct))
+                    {
+                        return;
+                    }
+                }
                 catch (StartupMigrationSequenceException ex)
                 {
+                    _readiness.RecordDatabaseInitializationFailure("migration_sequence_failed", ex.MigrationPath);
+                    _readiness.MarkDatabaseInitializationFailed();
                     _logger.LogCritical(
                         ex,
                         "Required startup migration sequence failed at {MigrationPath}. Stopping the host to prevent traffic against an incomplete schema.",
@@ -171,6 +200,8 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                 }
                 catch (DatabaseMigrationFailureException ex)
                 {
+                    _readiness.RecordDatabaseInitializationFailure("migration_failed", $"{ex.DatabaseName.ToLowerInvariant()}_ef_migration");
+                    _readiness.MarkDatabaseInitializationFailed();
                     _logger.LogCritical(
                         ex,
                         "EF migration failed for the {DatabaseName} database. Stopping the host to prevent traffic against a drifted schema.",
@@ -180,6 +211,8 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                 }
                 catch (DatabaseInitializationLockTimeoutException ex)
                 {
+                    _readiness.RecordDatabaseInitializationFailure("startup_lock_timeout", "advisory_startup_lock");
+                    _readiness.MarkDatabaseInitializationFailed();
                     _logger.LogCritical(
                         ex,
                         "Database initialization could not acquire the startup lock. Stopping the host to prevent traffic against an uninitialized schema.");
@@ -188,26 +221,18 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                 }
                 catch (Exception ex)
                 {
+                    _readiness.RecordDatabaseInitializationFailure("initialization_failed", "database_initialization");
                     _logger.LogError(ex, "Database initialization failed on deferred attempt {Attempt}/{MaxRetries}.", attempt, maxRetries);
-                    if (attempt < maxRetries)
+                    if (attempt >= maxRetries)
                     {
-                        try
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(attempt * 5), ct);
-                        }
-                        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                        {
-                            _logger.LogInformation("Deferred startup tasks cancelled while waiting for next DB init retry.");
-                            return;
-                        }
+                        _readiness.MarkDatabaseInitializationFailed();
+                    }
+                    else if (!await WaitForNextAttemptAsync(attempt, ct))
+                    {
+                        return;
                     }
                 }
             }
-        }
-
-        if (runDatabaseInitialization && databaseInitializationSucceeded)
-        {
-            _readiness.MarkDatabaseInitializationCompleted();
         }
 
         if (runStaleBatchRecovery)
@@ -231,5 +256,19 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
         }
 
         _logger.LogInformation("Deferred startup tasks completed.");
+    }
+
+    private async Task<bool> WaitForNextAttemptAsync(int attempt, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt * 5), ct);
+            return true;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Deferred startup tasks cancelled while waiting for next DB init retry.");
+            return false;
+        }
     }
 }

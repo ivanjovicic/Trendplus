@@ -26,7 +26,7 @@ public static class DatabaseInitializer
     private const int SupplierDecisionHubCoreBatchCount = 5;
     private const int SupplierDecisionHubCacheStartBatchNumber = SupplierDecisionHubCoreBatchCount + 1;
 
-    public static async Task InitializeDatabasesAsync(
+    public static async Task<DatabaseInitializationOutcome> InitializeDatabasesAsync(
         IServiceProvider services,
         IConfiguration configuration,
         ILogger logger)
@@ -37,11 +37,24 @@ public static class DatabaseInitializer
         if (string.IsNullOrWhiteSpace(defaultConnection))
         {
             logger.LogCritical("Connection string 'DefaultConnection' is missing or empty.");
-            throw new InvalidOperationException("Connection string 'DefaultConnection' is required.");
+            throw new DatabaseInitializationFailureException(
+                "configuration_missing",
+                "default_connection",
+                new InvalidOperationException("Connection string 'DefaultConnection' is required."));
         }
 
         await using var connection = new NpgsqlConnection(defaultConnection);
-        await connection.OpenAsync();
+        try
+        {
+            await connection.OpenAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new DatabaseInitializationFailureException(
+                ClassifyDatabaseInitializationFailure(ex),
+                "default_connection",
+                ex);
+        }
 
         // Global advisory lock da samo jedna instanca radi init (ali ne blokira druge konekcije)
         var lockAcquired = await TryAcquireAdvisoryLockAsync(
@@ -63,11 +76,17 @@ public static class DatabaseInitializer
                 AdvisoryLockKey,
                 AdvisoryLockMaxWaitSeconds);
 
-            throw timeoutException;
+            throw new DatabaseInitializationFailureException(
+                "startup_lock_timeout",
+                "advisory_startup_lock",
+                timeoutException);
         }
 
         var trendplusInitialized = false;
         var analyticsInitialized = false;
+        Exception? trendplusFailure = null;
+        Exception? analyticsFailure = null;
+        var outcome = DatabaseInitializationOutcome.Succeeded;
 
         try
         {
@@ -76,16 +95,23 @@ public static class DatabaseInitializer
                 await InitializeTrendplusDbAsync(services, configuration, logger);
                 trendplusInitialized = true;
             }
-            catch (StartupMigrationSequenceException)
+            catch (StartupMigrationSequenceException ex)
             {
-                throw;
+                throw new DatabaseInitializationFailureException(
+                    "migration_sequence_failed",
+                    ex.MigrationPath,
+                    ex);
             }
-            catch (DatabaseMigrationFailureException)
+            catch (DatabaseMigrationFailureException ex)
             {
-                throw;
+                throw new DatabaseInitializationFailureException(
+                    "migration_failed",
+                    $"{ex.DatabaseName.ToLowerInvariant()}_ef_migration",
+                    ex);
             }
             catch (Exception ex)
             {
+                trendplusFailure = ex;
                 logger.LogError(ex, "Trendplus DB initialization failed.");
             }
 
@@ -94,12 +120,16 @@ public static class DatabaseInitializer
                 await InitializeAnalyticsDbAsync(services, configuration, logger);
                 analyticsInitialized = true;
             }
-            catch (DatabaseMigrationFailureException)
+            catch (DatabaseMigrationFailureException ex)
             {
-                throw;
+                throw new DatabaseInitializationFailureException(
+                    "migration_failed",
+                    $"{ex.DatabaseName.ToLowerInvariant()}_ef_migration",
+                    ex);
             }
             catch (Exception ex)
             {
+                analyticsFailure = ex;
                 logger.LogError(ex, "Analytics DB initialization failed.");
             }
 
@@ -112,12 +142,20 @@ public static class DatabaseInitializer
                         "Database initialization failed in strict mode. Trendplus={TrendplusOk}, Analytics={AnalyticsOk}",
                         trendplusInitialized, analyticsInitialized);
 
-                    throw new InvalidOperationException("Database initialization failed.");
+                    var strictFailure = trendplusFailure ?? analyticsFailure ?? new InvalidOperationException("Database initialization failed.");
+                    throw new DatabaseInitializationFailureException(
+                        ResolveFailureCategory(strictFailure),
+                        ResolveFailureStage(strictFailure, trendplusInitialized, analyticsInitialized),
+                        strictFailure);
                 }
 
                 logger.LogWarning(
                     "Database initialization completed with errors (non-strict mode). Trendplus={TrendplusOk}, Analytics={AnalyticsOk}",
                     trendplusInitialized, analyticsInitialized);
+                var failure = trendplusFailure ?? analyticsFailure ?? new InvalidOperationException();
+                outcome = DatabaseInitializationOutcome.WithErrors(
+                    ResolveFailureCategory(failure),
+                    ResolveFailureStage(failure, trendplusInitialized, analyticsInitialized));
             }
             else
             {
@@ -132,7 +170,35 @@ public static class DatabaseInitializer
             await unlockCmd.ExecuteNonQueryAsync();
             logger.LogInformation("Released advisory startup lock with key {Key}.", AdvisoryLockKey);
         }
+
+        return outcome;
     }
+
+    private static string BuildFailureStage(bool trendplusInitialized, bool analyticsInitialized)
+    {
+        if (!trendplusInitialized && !analyticsInitialized)
+            return "trendplus_database+analytics_database";
+        return trendplusInitialized ? "analytics_database" : "trendplus_database";
+    }
+
+    private static string ResolveFailureCategory(Exception exception) => exception is DatabaseInitializationFailureException initializationFailure
+        ? initializationFailure.FailureCategory
+        : ClassifyDatabaseInitializationFailure(exception);
+
+    private static string ResolveFailureStage(Exception exception, bool trendplusInitialized, bool analyticsInitialized) =>
+        exception is DatabaseInitializationFailureException initializationFailure
+            ? initializationFailure.FailureStage
+            : BuildFailureStage(trendplusInitialized, analyticsInitialized);
+
+    private static string ClassifyDatabaseInitializationFailure(Exception exception) => exception switch
+    {
+        StartupMigrationSequenceException => "migration_sequence_failed",
+        DatabaseMigrationFailureException => "migration_failed",
+        DatabaseInitializationLockTimeoutException => "startup_lock_timeout",
+        NpgsqlException => "database_unavailable",
+        TimeoutException => "database_unavailable",
+        _ => "initialization_failed"
+    };
 
     public static async Task EnsureAnalyticsSupplierDecisionSchemaAsync(
         IServiceProvider services,
@@ -815,8 +881,11 @@ public static class DatabaseInitializer
 
         if (!await AreVendorSalesNivelacijaDependenciesReadyAsync(connectionString))
         {
-            throw new InvalidOperationException(
-                $"Supplier nivelacija dependencies remain unavailable after {sqlFile} in {databaseLabel}.");
+            throw new DatabaseInitializationFailureException(
+                "schema_verification_failed",
+                "vendor_view_verification",
+                new InvalidOperationException(
+                    $"Supplier nivelacija dependencies remain unavailable after {sqlFile} in {databaseLabel}."));
         }
 
         logger.LogInformation(

@@ -94,10 +94,13 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
             .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString))
             .BuildServiceProvider();
 
-        await DatabaseInitializer.InitializeDatabasesAsync(
+        var outcome = await DatabaseInitializer.InitializeDatabasesAsync(
             services,
             configuration,
             logger);
+        Assert.False(outcome.CompletedWithErrors);
+        Assert.Null(outcome.FailureCategory);
+        Assert.Null(outcome.FailureStage);
     }
 
     private static async Task<bool> TableExistsAsync(NpgsqlConnection connection, string tableName)

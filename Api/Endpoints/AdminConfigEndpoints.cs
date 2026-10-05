@@ -1,6 +1,7 @@
 using Api.Config;
 using Api.Services;
 using Api.Services.Access;
+using Api.Services.Startup;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Database;
@@ -239,6 +240,8 @@ public static class AdminConfigEndpoints
     private static async Task<IResult> HealthCheck(
         HttpContext context,
         IConfiguration configuration,
+        IHostEnvironment environment,
+        StartupReadinessState readiness,
         WorkerHealthService workerHealth,
         WorkerRuntimeControlService workerControl,
         TrendplusDbContext db,
@@ -251,6 +254,38 @@ public static class AdminConfigEndpoints
             return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var response = new AdminHealthCheckResponse { Timestamp = DateTime.UtcNow, WorkerGlobalEnabled = workerControl.IsEnabled };
+        var initialization = readiness.DatabaseInitialization;
+        var processType = WorkerRuntimeConfig.ResolveProcessType(configuration, out _);
+        var autoMigrate = configuration.GetValue<bool>("Database:AutoMigrate");
+        var failFast = configuration.GetValue<bool>("DatabaseInitialization:FailFast");
+        var runInitialization = configuration.GetValue<bool?>("StartupTasks:RunDatabaseInitialization") ?? true;
+        var webSchedulingEnabled = (autoMigrate || environment.IsDevelopment())
+            && !WorkerRuntimeConfig.ResolveWorkersEnabled(
+                configuration.GetValue<bool?>("Workers:Enabled"),
+                processType,
+                environment.IsDevelopment());
+        var executionPath = initialization.Required
+            ? "deferred_web_startup"
+            : !runInitialization
+                ? "disabled_by_startup_task"
+                : !webSchedulingEnabled
+                    ? "not_scheduled_by_web_process"
+                    : "not_required";
+        response.DatabaseInitialization = new AdminDatabaseInitializationDiagnostic
+        {
+            State = initialization.State,
+            Required = initialization.Required,
+            FailureCategory = initialization.FailureCategory,
+            FailureStage = initialization.FailureStage,
+            Attempts = initialization.Attempts,
+            LastAttemptAtUtc = initialization.LastAttemptAtUtc,
+            CompletedAtUtc = initialization.CompletedAtUtc,
+            DatabaseAutoMigrate = autoMigrate,
+            DatabaseInitializationFailFast = failFast,
+            StartupTaskRunDatabaseInitialization = runInitialization,
+            ProcessType = processType.ToString().ToLowerInvariant(),
+            ExecutionPath = executionPath
+        };
         var schemaStatus = WorkerRuntimeSettingsSchemaGuard.GetStatus();
         response.WorkerRuntimeSettingsSchemaReady = schemaStatus.IsSchemaReady && !schemaStatus.IsSchemaMissing;
         response.WorkerRuntimeSettingsLastEnsureAttemptUtc = schemaStatus.LastEnsureAttemptUtc?.UtcDateTime;
@@ -581,6 +616,23 @@ public class AdminHealthCheckResponse
     public DateTime? WorkerRuntimeSettingsLastEnsureAttemptUtc { get; set; }
     public DateTime? WorkerRuntimeSettingsLastEnsureSuccessUtc { get; set; }
     public string? WorkerRuntimeSettingsSchemaError { get; set; }
+    public AdminDatabaseInitializationDiagnostic DatabaseInitialization { get; set; } = new();
+}
+
+public class AdminDatabaseInitializationDiagnostic
+{
+    public string State { get; set; } = "not_required";
+    public bool Required { get; set; }
+    public string? FailureCategory { get; set; }
+    public string? FailureStage { get; set; }
+    public int Attempts { get; set; }
+    public DateTimeOffset? LastAttemptAtUtc { get; set; }
+    public DateTimeOffset? CompletedAtUtc { get; set; }
+    public bool DatabaseAutoMigrate { get; set; }
+    public bool DatabaseInitializationFailFast { get; set; }
+    public bool StartupTaskRunDatabaseInitialization { get; set; }
+    public string ProcessType { get; set; } = "web";
+    public string ExecutionPath { get; set; } = "not_required";
 }
 public class DemoEnvironmentVerificationResponse
 {

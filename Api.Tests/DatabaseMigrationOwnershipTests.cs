@@ -39,8 +39,8 @@ public sealed class DatabaseMigrationOwnershipTests
         var initializer = ReadRepoFile("Infrastructure/Seed/DatabaseInitializer.cs");
         var deferredService = ReadRepoFile("Api/Services/Startup/DeferredStartupTasksHostedService.cs");
 
-        Assert.Contains("throw timeoutException;", initializer, StringComparison.Ordinal);
-        Assert.Contains("catch (DatabaseInitializationLockTimeoutException ex)", deferredService, StringComparison.Ordinal);
+        Assert.Contains("new DatabaseInitializationFailureException(\n                \"startup_lock_timeout\",", initializer, StringComparison.Ordinal);
+        Assert.Contains("or DatabaseInitializationLockTimeoutException)", deferredService, StringComparison.Ordinal);
         Assert.Contains("catch (StartupMigrationSequenceException ex)", deferredService, StringComparison.Ordinal);
         Assert.Contains("_hostApplicationLifetime.StopApplication();", deferredService, StringComparison.Ordinal);
         Assert.DoesNotContain("Skipping database initialization because advisory startup lock", initializer, StringComparison.Ordinal);
@@ -67,8 +67,8 @@ public sealed class DatabaseMigrationOwnershipTests
 
         Assert.Contains("throw new DatabaseMigrationFailureException(\"Trendplus\", ex);", initializer, StringComparison.Ordinal);
         Assert.Contains("throw new DatabaseMigrationFailureException(\"Analytics\", ex);", initializer, StringComparison.Ordinal);
-        Assert.Contains("catch (DatabaseMigrationFailureException)", initializer, StringComparison.Ordinal);
-        Assert.Contains("catch (DatabaseMigrationFailureException ex)", deferredService, StringComparison.Ordinal);
+        Assert.Contains("new DatabaseInitializationFailureException(\n                    \"migration_failed\",", initializer, StringComparison.Ordinal);
+        Assert.Contains("or DatabaseMigrationFailureException", deferredService, StringComparison.Ordinal);
         Assert.Contains("Stopping the host to prevent traffic against a drifted schema.", deferredService, StringComparison.Ordinal);
         Assert.DoesNotContain("migrations failed; continuing with core analytics table self-heal", initializer, StringComparison.Ordinal);
     }

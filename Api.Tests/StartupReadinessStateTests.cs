@@ -1,4 +1,5 @@
 using Api.Services.Startup;
+using Infrastructure.Seed;
 using Xunit;
 
 namespace Api.Tests;
@@ -68,5 +69,75 @@ public sealed class StartupReadinessStateTests
         Assert.False(state.IsReady);
         Assert.Equal("db_warmup_failed", state.Reason);
         Assert.Null(state.ReadyAtUtc);
+    }
+
+    [Fact]
+    public void DatabaseInitialization_NotRequiredIsDistinctFromSucceeded()
+    {
+        var state = new StartupReadinessState();
+
+        state.MarkDatabaseInitializationNotRequired();
+
+        Assert.Equal("not_required", state.DatabaseInitialization.State);
+        Assert.False(state.DatabaseInitialization.Required);
+        Assert.Equal(0, state.DatabaseInitialization.Attempts);
+        Assert.Null(state.DatabaseInitialization.LastAttemptAtUtc);
+        Assert.NotNull(state.DatabaseInitialization.CompletedAtUtc);
+    }
+
+    [Fact]
+    public void DatabaseInitialization_TracksPendingAttemptsAndCleanSuccess()
+    {
+        var state = new StartupReadinessState();
+        state.RequireDatabaseInitialization();
+        state.BeginDatabaseInitializationAttempt();
+
+        Assert.Equal("pending", state.DatabaseInitialization.State);
+        Assert.True(state.DatabaseInitialization.Required);
+        Assert.Equal(1, state.DatabaseInitialization.Attempts);
+        Assert.NotNull(state.DatabaseInitialization.LastAttemptAtUtc);
+        Assert.Null(state.DatabaseInitialization.CompletedAtUtc);
+
+        state.ReportProbe(new StartupReadinessState.DatabaseProbeState { Ok = true }, new StartupReadinessState.DatabaseProbeState { Ok = true });
+        state.MarkDatabaseInitializationCompleted(DatabaseInitializationOutcome.Succeeded);
+
+        Assert.Equal("succeeded", state.DatabaseInitialization.State);
+        Assert.True(state.IsReady);
+        Assert.Equal("ready", state.Reason);
+        Assert.NotNull(state.DatabaseInitialization.CompletedAtUtc);
+    }
+
+    [Fact]
+    public void DatabaseInitialization_NonStrictErrorsKeepAvailabilityButMarkDegraded()
+    {
+        var state = new StartupReadinessState();
+        state.RequireDatabaseInitialization();
+        state.BeginDatabaseInitializationAttempt();
+        state.ReportProbe(new StartupReadinessState.DatabaseProbeState { Ok = true }, new StartupReadinessState.DatabaseProbeState { Ok = true });
+
+        state.MarkDatabaseInitializationCompleted(
+            DatabaseInitializationOutcome.WithErrors("schema_verification_failed", "analytics_database"));
+
+        Assert.Equal("completed_with_errors", state.DatabaseInitialization.State);
+        Assert.Equal("schema_verification_failed", state.DatabaseInitialization.FailureCategory);
+        Assert.Equal("analytics_database", state.DatabaseInitialization.FailureStage);
+        Assert.True(state.IsReady);
+        Assert.Equal("ready_degraded_schema", state.Reason);
+    }
+
+    [Fact]
+    public void DatabaseInitialization_FailureRemainsNotReady()
+    {
+        var state = new StartupReadinessState();
+        state.RequireDatabaseInitialization();
+        state.BeginDatabaseInitializationAttempt();
+        state.RecordDatabaseInitializationFailure("database_unavailable", "default_connection");
+        state.MarkDatabaseInitializationFailed();
+
+        Assert.Equal("failed", state.DatabaseInitialization.State);
+        Assert.Equal("database_unavailable", state.DatabaseInitialization.FailureCategory);
+        Assert.Equal("default_connection", state.DatabaseInitialization.FailureStage);
+        Assert.False(state.IsReady);
+        Assert.Equal("database_initialization_failed", state.Reason);
     }
 }
