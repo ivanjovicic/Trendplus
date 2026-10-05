@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue primary READY prompt: `RQ584` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ589 is IN_PROGRESS.
+Main queue primary READY prompt: `RQ591` in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ590 backend certification for RQ25-RQ33 is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 

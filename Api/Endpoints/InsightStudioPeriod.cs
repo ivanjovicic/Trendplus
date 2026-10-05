@@ -17,6 +17,17 @@ internal static class InsightStudioPeriod
     internal static DateTime? ToUtc(DateTime? value) =>
         value.HasValue ? ToUtc(value.Value) : null;
 
+    internal static (DateTime FromUtc, DateTime ToExclusiveUtc) ResolveInclusiveUtcRange(
+        DateTime? fromDate,
+        DateTime? toDate,
+        DateTime defaultFromUtc,
+        DateTime defaultToUtc)
+    {
+        var from = fromDate.HasValue ? ToUtc(fromDate.Value) : defaultFromUtc;
+        var toExclusive = toDate.HasValue ? ToUtcExclusiveEnd(toDate.Value) : ToUtcExclusiveEnd(defaultToUtc);
+        return (from, toExclusive);
+    }
+
     // Date-only query bounds are inclusive calendar dates. Timestamp bounds
     // remain inclusive instants by converting their upper edge to an exclusive
     // tick boundary.

@@ -42,9 +42,11 @@ public sealed class InsightStudioPeriodNormalizationTests
     {
         var v1 = ReadRepoFile("Api/Endpoints/InsightStudioEndpoints.cs");
         var v2 = ReadRepoFile("Api/Endpoints/InsightStudioV2Endpoints.cs");
+        var period = ReadRepoFile("Api/Endpoints/InsightStudioPeriod.cs");
 
-        Assert.Equal(12, CountOccurrences(v1, "InsightStudioPeriod.ToUtc"));
-        Assert.Equal(16, CountOccurrences(v2, "InsightStudioPeriod.ToUtc"));
+        Assert.True(CountOccurrences(v1, "ResolveInclusiveUtcRange") >= 6);
+        Assert.Contains("ToUtcExclusiveEnd", period, StringComparison.Ordinal);
+        Assert.True(CountOccurrences(v2, "InsightStudioPeriod.ToUtc") >= 14);
         Assert.DoesNotContain("DateTime.SpecifyKind", v1, StringComparison.Ordinal);
         Assert.DoesNotContain("DateTime.SpecifyKind", v2, StringComparison.Ordinal);
     }

@@ -3,6 +3,7 @@ using Application.Analytics;
 using Api.Endpoints;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Trendplus2.Dtos;
 
 namespace Trendplus2.Endpoints;
 
@@ -29,21 +30,17 @@ public static class InsightStudioEndpoints
             try
             {
                 var now = DateTime.UtcNow;
-                var from = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : now.AddDays(-30);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : now;
-                var span = (to - from).TotalDays;
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, now.AddDays(-30), now);
+                var span = (toExclusive - from).TotalDays;
                 var prevFrom = from.AddDays(-span);
 
                 var currentIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var prevIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= prevFrom && p.DatumProdaje <= from)
+                    .Where(p => p.DatumProdaje >= prevFrom && p.DatumProdaje < from)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var currentRevenue = currentIds.Count == 0 ? 0m :
@@ -100,7 +97,7 @@ public static class InsightStudioEndpoints
                     .ToListAsync(ct);
 
                 var dailyGroups = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .GroupBy(p => p.DatumProdaje.Date)
                     .Select(g => new { Date = g.Key, Ids = g.Select(x => x.Id).ToList() })
                     .ToListAsync(ct);
@@ -150,15 +147,12 @@ public static class InsightStudioEndpoints
         {
             try
             {
-                var from = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : DateTime.UtcNow.AddDays(-90);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                var now = DateTime.UtcNow;
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, now.AddDays(-90), now);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var stavke = await (
@@ -192,9 +186,10 @@ public static class InsightStudioEndpoints
                 }
 
                 var systemMarginSnapshot = systemMargin.Build(totalRevenue);
-                var systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
+                double? systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
                     ? systemMarginSnapshot.MarginPct
-                    : 35d;
+                    : null;
+                var systemBenchmarkAvailable = systemMarginPct.HasValue;
                 var totalCategories = stavke.Select(x => x.Kategorija).Distinct().Count();
 
                 var result = stavke
@@ -219,7 +214,9 @@ public static class InsightStudioEndpoints
                         var dependency = totalRevenue > 0 ? (double)(rev / totalRevenue * 100) : 0;
 
                         var profitScore = Math.Min(100,
-                            (systemMarginPct > 0 ? (marginPct / systemMarginPct) * 50 : 0) +
+                            (systemBenchmarkAvailable && systemMarginPct > 0
+                                ? (marginPct / systemMarginPct!.Value) * 50
+                                : 0) +
                             (totalRevenue > 0 ? (double)(rev / totalRevenue) * 50 : 0));
                         var diversityScore = totalCategories > 0 ? (double)cats / totalCategories * 100 : 50;
                         var dependencyScore = Math.Max(0, 100 - dependency * 2);
@@ -242,7 +239,9 @@ public static class InsightStudioEndpoints
                             diversityScore,
                             dependencyScore,
                             compositeScore,
-                            riskLevel
+                            riskLevel,
+                            systemBenchmarkAvailable,
+                            systemMarginPct
                         };
                     })
                     .OrderByDescending(x => x.totalRevenue)
@@ -266,19 +265,25 @@ public static class InsightStudioEndpoints
         {
             try
             {
-                var from = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : DateTime.UtcNow.AddDays(-90);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
+                var now = DateTime.UtcNow;
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, now.AddDays(-90), now);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 if (prodajeIds.Count == 0)
-                    return Results.Ok(new { items = new List<object>(), summary = new { countA = 0, countB = 0, countC = 0 } });
+                {
+                    return Results.Ok(new
+                    {
+                        items = new List<object>(),
+                        summary = new { countA = 0, countB = 0, countC = 0 },
+                        meta = AnalyticsResponseMetaFactory.Empty(
+                            "no_sales_in_period",
+                            "Nema prodaje u traženom periodu za ABC klasifikaciju.")
+                    });
+                }
 
                 var productSales = await (
                     from ps in db.ProdajaStavke
@@ -299,7 +304,16 @@ public static class InsightStudioEndpoints
 
                 var total = productSales.Sum(x => x.totalRevenue);
                 if (total == 0)
-                    return Results.Ok(new { items = new List<object>(), summary = new { countA = 0, countB = 0, countC = 0 } });
+                {
+                    return Results.Ok(new
+                    {
+                        items = new List<object>(),
+                        summary = new { countA = 0, countB = 0, countC = 0 },
+                        meta = AnalyticsResponseMetaFactory.Empty(
+                            "zero_revenue_in_period",
+                            "Prodaja u periodu ima nula prihoda za ABC klasifikaciju.")
+                    });
+                }
 
                 decimal cumulative = 0;
                 var items = productSales.Select(p =>
@@ -350,7 +364,7 @@ public static class InsightStudioEndpoints
                         a.Id, a.Naziv,
                         a.Kategorija, a.Pol,
                         a.Kolicina, a.NabavnaCenaDin, a.NabavnaCena,
-                        a.UpdatedAt, a.IDDobavljac
+                        a.SourceUpdatedAtUtc, a.UpdatedAt, a.IDDobavljac
                     }
                 ).ToListAsync(ct);
 
@@ -381,8 +395,12 @@ public static class InsightStudioEndpoints
 
                 var items = artikli.Select(a =>
                 {
-                    var lastSale = lastSaleDict.TryGetValue(a.Id, out var ls) ? ls : a.UpdatedAt;
-                    var days = (today - lastSale.Date).Days;
+                    var hasSale = lastSaleDict.TryGetValue(a.Id, out var lastSale);
+                    var neverSold = !hasSale;
+                    var agingReferenceDate = hasSale
+                        ? lastSale.Date
+                        : a.SourceUpdatedAtUtc?.Date ?? a.UpdatedAt.Date;
+                    var days = (today - agingReferenceDate).Days;
                     var aging = days < 30 ? "Aktivno" :
                                 days < 60 ? "Pazi" :
                                 days < 90 ? "Upozorenje" : "KritiÄno";
@@ -400,7 +418,11 @@ public static class InsightStudioEndpoints
                         stockValue = stockVal,
                         marginDataAvailable = resolvedUnitCost.HasValue,
                         dobavljacNaziv = dobavNaziv,
-                        lastSaleDate = lastSale.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        neverSold,
+                        agingEvidenceStatus = neverSold ? "never_sold" : "last_sale",
+                        lastSaleDate = hasSale
+                            ? lastSale.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                            : null,
                         daysWithoutSale = days,
                         agingCategory = aging
                     };
@@ -437,11 +459,11 @@ public static class InsightStudioEndpoints
             try
             {
                 var targetDate = (analysisDate ?? DateTime.UtcNow.AddDays(-1)).Date;
-                var from = InsightStudioPeriod.ToUtc(fromDate ?? targetDate.AddDays(-60));
-                var to = InsightStudioPeriod.ToUtc(toDate ?? targetDate);
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, targetDate.AddDays(-60), targetDate);
 
                 var prodajeAll = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje.Date >= from && p.DatumProdaje.Date <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .ToListAsync(ct);
 
                 var allIds = prodajeAll.Select(p => p.Id).ToList();
@@ -466,13 +488,20 @@ public static class InsightStudioEndpoints
                     .ToList();
 
                 var targetDay = dailyData.FirstOrDefault(d => d.date == targetDate);
-                var revenues = dailyData.Select(x => (double)x.revenue).ToArray();
+                var hasTargetDayEvidence = prodajeAll.Any(p => p.DatumProdaje.Date == targetDate);
+                var baselineDays = dailyData.Where(d => d.date != targetDate).ToList();
+                var revenues = baselineDays.Select(x => (double)x.revenue).ToArray();
                 var mean = revenues.Length > 0 ? revenues.Average() : 0;
                 var stdDev = revenues.Length > 1
                     ? Math.Sqrt(revenues.Sum(r => Math.Pow(r - mean, 2)) / (revenues.Length - 1))
                     : 0;
-                var zScore = stdDev > 0 && targetDay != null
-                    ? ((double)targetDay.revenue - mean) / stdDev : 0;
+                var baselineSampleSize = revenues.Length;
+                var baselineWarning = baselineSampleSize < 7 ? "insufficient_baseline_sample" : null;
+                double? zScore = null;
+                if (hasTargetDayEvidence && targetDay != null && stdDev > 0)
+                    zScore = ((double)targetDay.revenue - mean) / stdDev;
+                else if (hasTargetDayEvidence && targetDay != null)
+                    zScore = 0;
 
                 // Top 5 articles for target date
                 var targetIds = prodajeAll.Where(p => p.DatumProdaje.Date == targetDate).Select(p => p.Id).ToList();
@@ -496,18 +525,28 @@ public static class InsightStudioEndpoints
                     ).Take(5).ToListAsync(ct);
                 }
 
+                var targetDataStatus = hasTargetDayEvidence ? "present" : "missing";
+                var outlierLabel = !hasTargetDayEvidence
+                    ? "Nema podataka za ciljni dan"
+                    : zScore is null
+                        ? "Nedovoljna osnova za outlier"
+                        : Math.Abs(zScore.Value) > 3 ? "Ekstremni outlier"
+                        : Math.Abs(zScore.Value) > 2 ? "Outlier"
+                        : "Normalan dan";
+
                 return Results.Ok(new
                 {
                     analysisDate = targetDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    targetRevenue = targetDay?.revenue ?? 0,
-                    targetUnits = targetDay?.units ?? 0,
+                    targetDataStatus,
+                    targetRevenue = hasTargetDayEvidence ? targetDay?.revenue ?? 0 : (decimal?)null,
+                    targetUnits = hasTargetDayEvidence ? targetDay?.units ?? 0 : (int?)null,
                     meanRevenue = (decimal)mean,
+                    baselineSampleSize,
+                    baselineWarning,
                     zScore,
-                    isOutlier = Math.Abs(zScore) > 2,
-                    isExtremeOutlier = Math.Abs(zScore) > 3,
-                    outlierLabel = Math.Abs(zScore) > 3 ? "Ekstremni outlier"
-                                 : Math.Abs(zScore) > 2 ? "Outlier"
-                                 : "Normalan dan",
+                    isOutlier = zScore.HasValue && Math.Abs(zScore.Value) > 2,
+                    isExtremeOutlier = zScore.HasValue && Math.Abs(zScore.Value) > 3,
+                    outlierLabel,
                     dailyData = dailyData.Select(d => new
                     {
                         date = d.date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
@@ -534,16 +573,13 @@ public static class InsightStudioEndpoints
         {
             try
             {
-                var from = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : DateTime.UtcNow.AddDays(-90);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
-                var days = Math.Max(1, (to - from).TotalDays);
+                var now = DateTime.UtcNow;
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, now.AddDays(-90), now);
+                var days = Math.Max(1, (toExclusive - from).TotalDays);
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var stavke = await (
@@ -574,9 +610,10 @@ public static class InsightStudioEndpoints
                 }
 
                 var systemMarginSnapshot = systemMargin.Build(totalRevenue);
-                var systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
+                double? systemMarginPct = systemMarginSnapshot.RevenueWithCost > 0m
                     ? systemMarginSnapshot.MarginPct
-                    : 35d;
+                    : null;
+                var systemBenchmarkAvailable = systemMarginPct.HasValue;
 
                 var avgStockByKat = await db.Artikli
                     .GroupBy(a => a.Kategorija ?? "Ostalo")
@@ -600,8 +637,9 @@ public static class InsightStudioEndpoints
 
                         var marginSnapshot = margin.Build(rev);
                         var marginPct = marginSnapshot.MarginPct;
-                        var profitLift = systemMarginPct > 0
-                            ? (marginPct - systemMarginPct) / systemMarginPct * 100 : 0;
+                        double? profitLift = systemBenchmarkAvailable && systemMarginPct > 0
+                            ? (marginPct - systemMarginPct!.Value) / systemMarginPct.Value * 100
+                            : null;
                         var revShare = totalRevenue > 0 ? (double)(rev / totalRevenue * 100) : 0;
                         var avgStk = avgStockByKat.TryGetValue(g.Key, out var s) ? s : 1;
                         var velocity = avgStk > 0 ? units / days / Math.Max(avgStk, 0.1) : 0;
@@ -617,6 +655,7 @@ public static class InsightStudioEndpoints
                             profitLift,
                             revShare,
                             velocity,
+                            velocityDenominatorBasis = "period_sales_over_current_catalog_average_stock",
                             uniqueSKU = g.Select(x => x.ArtikalId).Distinct().Count()
                         };
                     })
@@ -642,6 +681,9 @@ public static class InsightStudioEndpoints
                 {
                     byCategory,
                     byGender,
+                    velocityDenominatorBasis = "period_sales_over_current_catalog_average_stock",
+                    systemBenchmarkAvailable,
+                    systemMarginPct,
                     dimensionCoverage = new
                     {
                         category = categoryDimensionCoverage
@@ -664,17 +706,14 @@ public static class InsightStudioEndpoints
         {
             try
             {
-                var from = fromDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(fromDate.Value)
-                    : DateTime.UtcNow.AddDays(-30);
-                var to = toDate.HasValue
-                    ? InsightStudioPeriod.ToUtc(toDate.Value)
-                    : DateTime.UtcNow;
-                var days = Math.Max(1, (to - from).TotalDays);
+                var now = DateTime.UtcNow;
+                var (from, toExclusive) = InsightStudioPeriod.ResolveInclusiveUtcRange(
+                    fromDate, toDate, now.AddDays(-30), now);
+                var days = Math.Max(1, (toExclusive - from).TotalDays);
                 const int leadTimeDays = 14;
 
                 var prodajeIds = await db.ProdajaZaglavlja
-                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje <= to)
+                    .Where(p => p.DatumProdaje >= from && p.DatumProdaje < toExclusive)
                     .Select(p => p.Id).ToListAsync(ct);
 
                 var salesByProduct = await (
@@ -684,7 +723,8 @@ public static class InsightStudioEndpoints
                     group ps by new
                     {
                         a.Id, a.Naziv, a.Kategorija, a.Pol,
-                        a.IDDobavljac, a.ProdajnaCena, a.MinimalnaKolicina, a.Kolicina
+                        a.IDDobavljac, a.ProdajnaCena, a.MinimalnaKolicina, a.Kolicina,
+                        a.NabavnaCenaDin, a.NabavnaCena
                     }
                     into g
                     select new
@@ -697,6 +737,8 @@ public static class InsightStudioEndpoints
                         prodajnaCena = g.Key.ProdajnaCena,
                         minKolicina = g.Key.MinimalnaKolicina ?? 5,
                         currentStock = g.Key.Kolicina ?? 0,
+                        nabavnaCenaDin = g.Key.NabavnaCenaDin,
+                        nabavnaCena = g.Key.NabavnaCena,
                         totalSold = g.Sum(x => x.Kolicina),
                         totalRevenue = g.Sum(x => x.Kolicina * x.Cena)
                     }
@@ -720,6 +762,12 @@ public static class InsightStudioEndpoints
                                 : "OK";
                     var dobavNaziv = p.dobavljacId.HasValue && dobavljaciDict.TryGetValue(p.dobavljacId.Value, out var dn2)
                         ? dn2 : "Nepoznato";
+                    var unitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(p.nabavnaCenaDin, p.nabavnaCena);
+                    var sellingPrice = p.prodajnaCena ?? 0m;
+                    var potentialRevenueRsd = needsReorder ? recQty * sellingPrice : 0m;
+                    var estimatedProcurementCostRsd = needsReorder && unitCost.HasValue
+                        ? recQty * unitCost.Value
+                        : (decimal?)null;
 
                     return new
                     {
@@ -733,20 +781,33 @@ public static class InsightStudioEndpoints
                         needsReorder,
                         recommendedQty = recQty,
                         urgency,
-                        p.prodajnaCena
+                        p.prodajnaCena,
+                        potentialRevenueRsd,
+                        estimatedProcurementCostRsd,
+                        costCoveragePct = unitCost.HasValue ? 100m : 0m
                     };
                 })
                 .OrderBy(x => x.doh)
                 .ToList();
 
+                var reorderCandidates = items.Where(x => x.needsReorder).ToList();
+                var potentialRevenueRsd = reorderCandidates.Sum(x => x.potentialRevenueRsd);
+                var estimatedProcurementCostRsd = reorderCandidates
+                    .Where(x => x.estimatedProcurementCostRsd.HasValue)
+                    .Sum(x => x.estimatedProcurementCostRsd!.Value);
+                var costCoveredCount = reorderCandidates.Count(x => x.estimatedProcurementCostRsd.HasValue);
                 var summary = new
                 {
                     criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
                     recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
-                    totalReorderValue = items
-                        .Where(x => x.needsReorder)
-                        .Sum(x => x.recommendedQty * (x.prodajnaCena ?? 0))
+                    potentialRevenueRsd,
+                    estimatedProcurementCostRsd = costCoveredCount > 0 ? estimatedProcurementCostRsd : (decimal?)null,
+                    costCoveragePct = reorderCandidates.Count == 0
+                        ? 0m
+                        : Math.Round((decimal)costCoveredCount / reorderCandidates.Count * 100m, 2),
+                    reorderValueBasis = "potential_revenue_at_selling_price",
+                    totalReorderValue = potentialRevenueRsd
                 };
 
                 return Results.Ok(new { items, summary });
