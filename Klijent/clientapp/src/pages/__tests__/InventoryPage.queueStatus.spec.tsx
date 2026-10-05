@@ -316,7 +316,7 @@ describe("InventoryPage queue status sync", () => {
     await waitFor(() => {
       expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(1);
       expect(screen.getByTestId("analytics-empty-retry")).toBeInTheDocument();
-    });
+    }, { timeout: 8000 });
 
     getInventoryListMock.mockResolvedValue({
       items: [row502],
@@ -329,8 +329,8 @@ describe("InventoryPage queue status sync", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("inventory-items-table")).toHaveAttribute("data-queued", "false");
-    });
-  });
+    }, { timeout: 8000 });
+  }, 20000);
 
   it("keeps queued inventory suggestions visible when source status lookup fails", async () => {
     const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

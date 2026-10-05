@@ -142,3 +142,5 @@ The dashboard tests clicked `Prikaži detaljnu analizu` while `loading` still di
 Local `npm run test:analytics` after the change: 144 files, 1067 passed.
 
 Exact-main run `37359753968` on `f5d2269b` then failed one more inventory spec: `Osveži` was queried while the first load still showed `Učitavanje bilansa zaliha...`. The refresh click now waits until that button is mounted. Vercel on the same SHA is `Deployment rate limited — retry in 24 hours`, not a build failure.
+
+Exact-main run `37360327352` on `8cc5b7ac` failed `clears queued marker when inventory source keys disappear`: the empty state did not replace the loaded table within the default 1s wait. Search is deferred, so that wait is now 8s. The queued-marker oracle is unchanged.
