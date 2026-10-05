@@ -11,6 +11,13 @@ TRUNCATE TABLE
   "Sezone"
   RESTART IDENTITY CASCADE;
 
+-- Retail markdown candidates require the named store catalog. EF store lookup also
+-- selects DataOrigin, which the initializer adds outside the EF migration chain.
+ALTER TABLE "StoresDim" ADD COLUMN IF NOT EXISTS "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing';
+INSERT INTO "StoresDim" ("StoreKey", "StoreId", "StoreName", "DataOrigin")
+VALUES (1, 1, 'Trend PLUS 1', 'existing'), (2, 2, 'Trend PLUS 2', 'existing')
+ON CONFLICT ("StoreKey") DO NOTHING;
+
 INSERT INTO "Dobavljaci" ("Naziv", "DataOrigin") VALUES
   ('Dobavljac A', 'existing'),
   ('Dobavljac C', 'access'),
