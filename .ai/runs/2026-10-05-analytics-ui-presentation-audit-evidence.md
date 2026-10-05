@@ -4,7 +4,7 @@ Date: 2026-10-05
 Agent/tool: Grok Bot (executor, `/workspace/ui-rebase/repo`)
 Delivery target: main
 Base SHA (pass 2): `63486fb11536388f2a21255f0cf6ee3905708b0e`
-Main commit SHA: see bundle tip / PUSH_INSTRUCTIONS (FF to main); do not trust stale embedded SHA)
+Main commit SHA after FF: `90a47a54` (presentation pass-2 tip). Superseded by later UX/docs tips on main.
 
 ## What was done (pass 2)
 - Rebased box clone onto latest `origin/main` (`63486fb1`, includes Daily Sales exclusive-end fix after pass-1 UI commit `8d0f1589`).
@@ -32,3 +32,7 @@ Main commit SHA: see bundle tip / PUSH_INSTRUCTIONS (FF to main); do not trust s
 
 ## Next
 - Push via PC bundle FF; confirm HEAD == origin/main
+
+
+## Recertify note
+Main commit SHA after FF: `90a47a54` (presentation pass-2 tip). Superseded by later UX/docs tips on main.

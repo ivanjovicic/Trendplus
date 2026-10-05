@@ -4,9 +4,9 @@ Date: 2026-10-05
 Agent/tool: Grok Bot (executor, box worktree `/workspace/docs-audit`)
 Delivery target: main
 Working branch / PR: docs-audit-2026-10-05 (bundle for FF onto main)
-Main commit SHA: pending exact-main after FF (local tip `25ee4d90b7b6346cb5245c0218e9c15037acdec3`, base `ef266796f49a108b5235fa6f46be0013696e751d`)
-Main verification: HEAD != origin/main until parent FF
-Evidence state: pending
+Main commit SHA after FF: `e44eb1b7` (docs audit tip). Later main may include flaky-test commits beyond this SHA.
+Main verification: landed on origin/main after FF
+Evidence state: synchronized
 
 ## What was done
 
@@ -73,3 +73,7 @@ Canonical business vocabulary is now discoverable for new agents. Historical aud
 - Parent: FF bundle to `main`, verify HEAD == origin/main, refresh this evidence SHA.
 - Optional PO: choose single display label Prihod vs Promet.
 - Code owners: P-UI-39+ / RQ588 as already queued.
+
+
+## Recertify note
+Main commit SHA after FF: `e44eb1b7` (docs audit tip). Later main may include flaky-test commits beyond this SHA.

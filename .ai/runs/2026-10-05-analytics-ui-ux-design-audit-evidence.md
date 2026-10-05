@@ -31,3 +31,7 @@
 ## After parent FF
 
 Record final `origin/main` SHA and CI status; HEAD must equal origin/main.
+
+
+## Recertify note
+Main commit SHA after FF: `7265745a` (UI/UX audit tip).

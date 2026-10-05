@@ -31,7 +31,7 @@ When docs conflict, prefer: (1) current code + focused tests, (2) this glossary 
 
 | Term | Meaning | Why it matters |
 |---|---|---|
-| **Prodato / prodate jedinice** (`unitsSold`) | `SUM(količina)` u retail sales populaciji. | Obim po komadu, nezavisno od cene. |
+| **Prodato / prodate jedinice** (`unitsSold`) | `SUM(količina)` u retail sales populaciji. Registry label: **Prodate jedinice**. | Obim po komadu, nezavisno od cene. **Nije** sinonim za Promet/Prihod (`revenue`). |
 | **Povrat (signed retail return)** | Potpisana količina/vrednost maloprodajnog povrata **unutar** retail sales populacije. | Ne sme se brisati iz net prodaje; utiče na net promet. |
 | **DUG / KOREKCIJA** | Broj računa (trim, case-insensitive) = ne-standardni dug/korekcija dokument. **Isključen** iz sertifikovane retail sales populacije (Daily/Supplier/Shoe/Color + oracles; RQ456). | Sprečava lažno naduvavanje prometa. Ostaje auditable van retail turnover. |
 | **Nepoznat dobavljač / vrsta / boja** | Missing display identity for a known grain. | Prefer specific Serbian label over bare `Unknown` / `-`. |
@@ -124,3 +124,5 @@ When docs conflict, prefer: (1) current code + focused tests, (2) this glossary 
 - Residual product choice: unify **Prihod** vs **Promet** display labels across all screens (PO).
 
 Evidence for introduction: `.ai/runs/2026-10-05-analytics-business-docs-audit-evidence.md`, `docs/qa/ANALYTICS_BUSINESS_DOCS_PROMPT_AUDIT_2026-10-05.md`.
+
+Recertify 2026-10-05: clarified that `unitsSold` is quantity (not Promet/Prihod); Insight Studio trust helper uses `ANALYTICS_UNAVAILABLE_LABEL` (not `N/D`). See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_2026-10-05.md`.

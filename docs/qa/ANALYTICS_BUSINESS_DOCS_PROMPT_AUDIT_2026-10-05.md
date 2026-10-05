@@ -62,7 +62,7 @@ Validators: `check-prompt-queues` (709 tasks OK before edits; re-run after).
 3. **STAB16 / RQ565 / RQ566 / RQ585** need provider/production freshness access.
 4. **P-UI-39+** responsive/theme/nav implementation (code), not docs.
 5. Insight Studio experimental quarantine (**RQ582**) — do not invent rename.
-6. Code residual noted in docs audit: Insight Studio trust presentation tests may still expect `N/D` in one helper path — verify under UI/presentation owners, not glossary.
+6. ~~Insight Studio `N/D` helper residual~~ — closed in recertify 2026-10-05 (`insightStudioTrustPresentation` → `ANALYTICS_UNAVAILABLE_LABEL`).
 
 ## Definition of done
 
@@ -71,4 +71,14 @@ Validators: `check-prompt-queues` (709 tasks OK before edits; re-run after).
 - [x] Stale prompt/doc pointers repaired safely
 - [x] Queue statuses rescanned (no false “no READY”)
 - [x] Validators + `git diff --check`
-- [ ] Push / HEAD == origin/main (parent FF if box cannot push)
+- [x] Push / HEAD == origin/main (landed as `e44eb1b7`; later tip may advance)
+
+
+## Recertify 2026-10-05 (quality review)
+
+Falsified against `origin/main` tip after docs audit:
+- Trust collapse, sticky table pilot, reset/DQ Serbian labels, glossary links: still true.
+- **Incomplete prior presentation claim:** `insightStudioTrustPresentation.ts` still returned `N/D` (RQ591-era) despite pass-2 saying N/D cleared — fixed in this recertify.
+- **Missed adjacent surface:** `IntelligenceSnapshotPanel` (Insight Studio) still used `n/a` + English card titles — fixed.
+- Evidence SHA fields that said "pending" after FF: updated in evidence run file.
+- RQ588 remains IN_PROGRESS elsewhere (not claimed). Queue lock file may be absent — residual for owning agent, not this task.

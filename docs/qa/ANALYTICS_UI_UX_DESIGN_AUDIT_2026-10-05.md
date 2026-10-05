@@ -78,3 +78,8 @@ Focused: TrustHeader 26, DataTable, ExecutiveKpi, Methodology, ControlBar, Footw
 ## Docs follow-up (2026-10-05)
 
 Business terminology drift (Prihod vs Promet) and unavailable-label rules are locked in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md` without inventing an owner rename.
+
+
+## Recertify 2026-10-05
+
+Re-checked claimed P0/P1 UX fixes against current tip: TrustHeader still defaults collapsed (`useState(false)`); `responsivePilot` default true; reset/DQ Serbian labels present. Ratings unchanged (Insight Studio remains **NEEDS FOLLOW-UP** / RQ582). Adjacent presentation gap in Insight signals panel addressed under presentation recertify, not as a new polish upgrade.

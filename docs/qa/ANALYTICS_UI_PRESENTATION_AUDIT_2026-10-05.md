@@ -55,3 +55,13 @@ Canonical business terms (Prihod/Promet, Nije dostupno, horizon, DUG/KOREKCIJA):
 - `check:encoding` OK
 - `tsc -b` OK (empty diagnostics)
 - Vitest focused suites: **136 passed** (presentation pass2, AD period, Insight, Inventory null/forecast, indicator regression, Footwear, Daily/Shoe/Color premium, unavailable label, prePost toolbar)
+
+
+## Recertify 2026-10-05
+
+Quality review found **incomplete** pass-2 claim #6 (Insight `N/D`):
+- `InsightStudioPage.tsx` used `ANALYTICS_UNAVAILABLE_LABEL` in several places, but `pages/insightStudioTrustPresentation.ts` still returned literal `N/D` (tests still expected `N/D`).
+- Dashboard/Insight `IntelligenceSnapshotPanel` still showed `n/a` and English section titles (`Signals Snapshot`, `Demand Pulse`, …).
+
+Both closed in the same recertify pass with guardrail extensions in `analyticsPresentationPass2.spec.ts`.
+Do **not** treat pass-2 residual list as fully closed without this recertify.
