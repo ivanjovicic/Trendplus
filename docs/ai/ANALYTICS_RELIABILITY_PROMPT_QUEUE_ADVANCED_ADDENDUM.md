@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main queue primary prompt: `RQ586` IN_PROGRESS (P3); `RQ588` remains an independent READY lane (P3); `RQ557` is DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
+Main queue primary prompt: `RQ588` IN_PROGRESS (P3); `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
