@@ -44,7 +44,7 @@ import {
 import "./DataQualityPage.css";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
-  { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" },
+  { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" }, { key: "missingCost", label: "Nedostaje nabavna cena", tone: "warning" },
   { key: "missingShoeType", label: "Nedostajući tip obuće", tone: "warning" },
 ];
 
@@ -70,7 +70,7 @@ const analyticsColumns: AnalyticsTableColumn<DataQualityIssueItem>[] = [
 ];
 
 function normalizeIssueType(value: string | null): DataQualityIssueType {
-  if (value === "missingShoeType" || value === "invalidName") return value;
+  if (value === "missingShoeType" || value === "missingCost" || value === "invalidName") return value;
   return "missingSupplier";
 }
 
@@ -94,7 +94,7 @@ function issueLabel(issueType: DataQualityIssueType): string {
 
 function rowTone(issueType: DataQualityIssueType): string {
   if (issueType === "missingSupplier") return "badge-danger";
-  if (issueType === "missingShoeType") return "badge-warning";
+  if (issueType === "missingShoeType" || issueType === "missingCost") return "badge-warning";
   return "badge-neutral";
 }
 
@@ -482,7 +482,7 @@ export default function DataQualityPage() {
     setIntakeReportError(null);
     try {
       const [issuesResult, healthResult, refreshResult, intakeResult, durableIntakeResult] = await Promise.allSettled([
-        getDataQualityIssues({
+        issueType === "missingCost" ? Promise.resolve(null) : getDataQualityIssues({
           type: issueType,
           page,
           pageSize,
@@ -640,7 +640,7 @@ export default function DataQualityPage() {
   const issuesMeta = data?.meta ?? null;
   const issuesMetaMessage = getAnalyticsMetaMessage(issuesMeta);
   const showIssuesMetaWarning = viewMode === "issues" && !loading && !error && isAnalyticsMetaWarning(issuesMeta);
-  const showEmptyState = !loading && !error && (data?.items.length ?? 0) === 0;
+  const showEmptyState = !loading && !error && issueType !== "missingCost" && (data?.items.length ?? 0) === 0;
   const emptyStateVariant = useMemo<"no_data" | "insufficient_data" | "filtered_out" | null>(() => {
     if (!showEmptyState) return null;
     if (issuesMeta?.dataQualityStatus === "insufficient_data") return "insufficient_data";
@@ -934,7 +934,7 @@ export default function DataQualityPage() {
         </div>
       </details> : null}
 
-      {viewMode === "issues" ? <section className="data-quality-controls">
+      {viewMode === "issues" && issueType !== "missingCost" ? <section className="data-quality-controls">
         <form className="data-quality-search" onSubmit={submitSearch}>
           <input
             type="search"
@@ -1047,7 +1047,7 @@ export default function DataQualityPage() {
       ) : null}
       {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam data quality probleme...</div> : null}
 
-      {viewMode === "issues" && !loading && data ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
+      {viewMode === "issues" && !loading && (data || issueType === "missingCost") ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 
       {viewMode === "issues" && !loading && data && !showEmptyState ? (
         <section className="data-quality-card">

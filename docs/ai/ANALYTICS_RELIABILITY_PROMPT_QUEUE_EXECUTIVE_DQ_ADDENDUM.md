@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ80 - Missing-cost issue workflow
-Main queue primary READY prompt: RQ80; RQ74/RQ79 are DONE in this addendum
+Current READY prompt: none in this addendum after RQ80 DONE
+Main queue primary READY prompt: RQ590; RQ74/RQ79/RQ80 are DONE in this addendum
 
 Use with:
 
@@ -27,7 +27,7 @@ Purpose: queue follow-up fixes for Executive Decision Board and Data Quality sur
 | RQ77 | DONE | data-quality-topoffender-count | Distinguish returned vs total top-offender count |
 | RQ78 | DONE | data-quality-topoffender-datascope | Align top-offender revenue impact with dataScope |
 | RQ79 | DONE | pilot-intake-durable-percent-unit | Format durable pilot intake percent rows as percent units |
-| RQ80 | IN_PROGRESS | data-quality-missing-cost-workflow | Add/clarify missing-cost issue workflow |
+| RQ80 | DONE | data-quality-missing-cost-workflow | Add/clarify missing-cost issue workflow |
 | RQ91 | DONE | data-quality-topoffender-dataorigin-sql | Fix TopOffenders SQL/schema so `DataOrigin` exists for scoped queries |
 | RQ92 | DONE | data-quality-issues-empty-list | Restore seeded Data Quality issues list/pagination results |
 | RQ94 | DONE | data-quality-topoffender-dataorigin-contract | Align data-scope contract test with `prodaja_zaglavlje.data_origin` |
@@ -438,7 +438,7 @@ Pilot intake durable rows store `RevenueWithoutCostPercent` ratio as string `0.#
 
 ## RQ80 - Missing-cost issue workflow
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ75/RQ78 DONE and RQ79 releases shared Data Quality reporting paths
 Priority: P1
 Type: backend/frontend-contract/tests
@@ -449,6 +449,7 @@ Local lock: `.ai/task-locks/RQ80-codex.lock.md`
 Commit suggestion: `feat(analytics): add missing cost issue workflow`
 
 Owner promotion/claim 2026-10-05 after RQ79: post-close recovery base `2bcaff02d7f704e48ecf926e3ab0b844a4f6275b` confirms RQ75/RQ78 DONE and RQ79 DONE on main, releasing the shared Data Quality paths. Full active-queue scan found no RQ80 lock, branch, open PR or competing Data Quality owner. Promoted WAITING -> READY -> IN_PROGRESS as the next P1 owner; local lock `.ai/task-locks/RQ80-codex.lock.md`.
+Owner completion 2026-10-05: Data Quality now has a dedicated missing-cost tab that calls the strict `missingCost` top-offender endpoint and shows affected item rows; it skips the legacy issue-list endpoint, so the supplier fallback cannot mislabel them. Search/page controls are hidden because the existing top-offender API returns a bounded top list. UI 11/11, PostgreSQL top-offender integration 1/1, top-offender contract 10/10, analytics guardrails/typecheck and queue governance passed. Run log: `.ai/runs/2026-10-05-RQ80-evidence.md`; evidence state: synchronized.
 
 ### Why
 
