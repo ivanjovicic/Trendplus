@@ -739,7 +739,7 @@ export default function DataQualityPage() {
         mode="report"
         emptyStateReason={
           viewMode === "issues"
-            ? (!loading && !error && data?.items.length === 0 ? (issuesMetaMessage ?? "Nema otvorenih data quality problema za izabrani filter.") : null)
+            ? (!loading && !error && data?.items.length === 0 ? (issuesMetaMessage ?? "Nema otvorenih problema kvaliteta podataka za izabrani filter.") : null)
             : durableIntakeReport?.meta?.message ?? intakeReport?.meta?.message ?? null
         }
         methodologyHref="/analytics/data-quality"
@@ -1045,7 +1045,7 @@ export default function DataQualityPage() {
           detail={healthError}
         />
       ) : null}
-      {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam data quality probleme...</div> : null}
+      {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam probleme kvaliteta podataka...</div> : null}
 
       {viewMode === "issues" && !loading && (data || issueType === "missingCost") ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 

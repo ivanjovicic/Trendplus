@@ -270,3 +270,13 @@ div[style*="relative"]:hover .carousel-nav-btn {
         padding: 8px 40px;
     }
 }
+
+/* Coarse pointers: keep carousel nav at least 44x44 even on small screens */
+@media (pointer: coarse) {
+    .carousel-nav-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

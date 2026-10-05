@@ -622,14 +622,25 @@ textarea.input-big {
 
 @media (max-width: 640px) {
     .global-request-spinner {
-        right: 0.7rem;
-        bottom: 0.7rem;
+        top: 0;
+        right: 0;
+        bottom: auto;
+        left: 0;
+        width: 100%;
+        padding-top: env(safe-area-inset-top, 0px);
     }
 
     .global-request-spinner__card {
-        min-width: 190px;
-        max-width: 250px;
-        padding: 0.65rem 0.72rem;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+        gap: 0.55rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        border-top: 0;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
     }
 
     .backend-wakeup-overlay__panel {

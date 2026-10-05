@@ -2,6 +2,7 @@ import { Activity, Boxes, TrendingUp } from "lucide-react";
 import DashboardCards from "../components/dashboard/DashboardCards";
 import TrendModelList from "../components/dashboard/TrendModelList";
 import { useBackendStatus } from "../context/useBackendStatus";
+import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
 
 function MetricTile({
   label,
@@ -100,6 +101,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="w-full" data-testid="home-seasonal-carousel">
+        <SeasonalImageCarousel />
       </section>
     </div>
   );

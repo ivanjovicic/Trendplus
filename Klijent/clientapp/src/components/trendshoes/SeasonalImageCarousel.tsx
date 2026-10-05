@@ -17,6 +17,11 @@ type ImageItem = {
 
 const SEASONAL_IMAGES_TIMEOUT_MS = 7_000;
 
+function prefersReducedMotion(): boolean {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function isExpectedImageLoadFailure(error: unknown): boolean {
     if (error instanceof DOMException && error.name === "AbortError") return true;
 
@@ -73,6 +78,7 @@ export default function SeasonalImageCarousel() {
 
     const startAutoScroll = () => {
         stopAutoScroll();
+        if (prefersReducedMotion()) return;
         autoScrollRef.current = window.setInterval(() => {
             scrollBy(200);
         }, 4000);
@@ -88,12 +94,12 @@ export default function SeasonalImageCarousel() {
     const scrollBy = (offset: number) => {
         containerRef.current?.scrollBy({
             left: offset,
-            behavior: "smooth"
+            behavior: prefersReducedMotion() ? "auto" : "smooth"
         });
     };
 
     useEffect(() => {
-        if (images.length > 0) {
+        if (images.length > 0 && !prefersReducedMotion()) {
             startAutoScroll();
         }
         return stopAutoScroll;
@@ -106,7 +112,7 @@ export default function SeasonalImageCarousel() {
 
     const closeModal = () => {
         setSelectedImage(null);
-        startAutoScroll();
+        if (!prefersReducedMotion()) startAutoScroll();
     };
 
     if (!images.length) return null;
@@ -115,6 +121,8 @@ export default function SeasonalImageCarousel() {
         <>
             <div style={{ position: "relative", marginTop: 24 }}>
                 <button
+                    type="button"
+                    aria-label="Prethodna slika"
                     onClick={() => {
                         stopAutoScroll();
                         scrollBy(-300);
@@ -129,8 +137,12 @@ export default function SeasonalImageCarousel() {
                 <div
                     ref={containerRef}
                     className="carousel-strip"
+                    data-testid="carousel-strip"
                     onMouseEnter={stopAutoScroll}
-                    onMouseLeave={startAutoScroll}
+                    onMouseLeave={() => { if (!prefersReducedMotion()) startAutoScroll(); }}
+                    onFocusCapture={stopAutoScroll}
+                    onBlurCapture={() => { if (!prefersReducedMotion() && !selectedImage) startAutoScroll(); }}
+                    onTouchStart={stopAutoScroll}
                 >
                     {images.map(img => (
                         <div
@@ -188,6 +200,8 @@ export default function SeasonalImageCarousel() {
                 </div>
 
                 <button
+                    type="button"
+                    aria-label="Sledeća slika"
                     onClick={() => {
                         stopAutoScroll();
                         scrollBy(300);

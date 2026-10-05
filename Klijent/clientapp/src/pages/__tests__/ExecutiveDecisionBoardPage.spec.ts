@@ -73,7 +73,7 @@ function baseAggregate(overrides: Partial<DecisionBoardAggregateResponse> = {}):
     kind: "blocker",
     sectionKey: "blockers",
     sourceModule: "Kvalitet podataka",
-    title: "Data quality health traži proveru",
+    title: "Health kvaliteta podataka traži proveru",
     summary: "Nedostaju ključni signalni izvori.",
     confidenceLevel: "warning",
     confidenceScore: 54,

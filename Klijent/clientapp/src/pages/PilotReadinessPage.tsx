@@ -183,10 +183,10 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
       index: "01",
       title: "Kvalitet podataka proveren",
       status: "unknown",
-      reason: "Nije stigao pilot intake niti data quality health, pa kvalitet podataka ne možemo da potvrdimo.",
+      reason: "Nije stigao pilot intake niti health kvaliteta podataka, pa kvalitet podataka ne možemo da potvrdimo.",
       actionLabel: "Otvori Kvalitet podataka",
       href: "/analytics/data-quality",
-      meta: "Izvor: data quality intake i health",
+      meta: "Izvor: intake i health kvaliteta podataka",
     };
   }
 
@@ -219,7 +219,7 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
       ? intakeIsEmpty
         ? `Kvalitet podataka: ${summary} Skor spremnosti nije dostupan dok se ne potvrde artikli i import redovi.`
         : `Kvalitet podataka: ${summary} (skor ${formatLoadCount(score)}). Blokirano je ${formatLoadCount(blockedRecommendations)} jedinstvenih artikala; pokrivenost poslovnim signalom je ${signalCoverage == null ? "nije dostupna" : `${Math.round(signalCoverage * 100)}%`} i informativna je.`
-      : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Data quality health je učitan."}`;
+      : `Health score: ${formatLoadCount(score)}. ${health?.scoreSummary ?? "Health kvaliteta podataka je učitan."}`;
 
   return {
     key: "data-quality",
@@ -679,7 +679,7 @@ export default function PilotReadinessPage() {
     const tasks: LoadTask[] = [
       { key: "bootstrap", request: getDashboardBootstrap(undefined, undefined, true), assign: (value) => { nextPayload.bootstrap = value as AnalyticsDashboardBootstrap; }, fallback: "Dashboard bootstrap nije dostupan." },
       { key: "refreshStatus", request: getAnalyticsRefreshStatus(), assign: (value) => { nextPayload.refreshStatus = value as AnalyticsRefreshStatus; }, fallback: "Status osvežavanja nije dostupan." },
-      { key: "dataQualityHealth", request: getAnalyticsDataQualityHealth(), assign: (value) => { nextPayload.dataQualityHealth = value as AnalyticsDataQualityHealth; }, fallback: "Data quality health nije dostupan." },
+      { key: "dataQualityHealth", request: getAnalyticsDataQualityHealth(), assign: (value) => { nextPayload.dataQualityHealth = value as AnalyticsDataQualityHealth; }, fallback: "Health kvaliteta podataka nije dostupan." },
       { key: "intakeReport", request: getPilotDataQualityIntakeReport({}), assign: (value) => { nextPayload.intakeReport = value as PilotDataQualityIntakeReport; }, fallback: "Pilot intake report nije dostupan." },
       { key: "productDecisionCenter", request: getProductDecisionCenter({ top: 100 }), assign: (value) => { nextPayload.productDecisionCenter = value as ProductDecisionCenterResponse; }, fallback: "Product Decision Center nije dostupan." },
       { key: "actionCounts", request: getAnalyticsActionCounts(), assign: (value) => { nextPayload.actionCounts = value as AnalyticsActionCounts; }, fallback: "Action counts nisu dostupni." },

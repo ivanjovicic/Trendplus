@@ -5,7 +5,6 @@ import BackendWakeupNotice from "../components/BackendWakeupNotice";
 import GlobalRequestSpinner from "../components/GlobalRequestSpinner";
 import WorkerStatusAlert from "../components/WorkerStatusAlert";
 import AnalyticsRefreshStatusBanner from "../components/analytics/AnalyticsRefreshStatusBanner";
-import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
 import DashboardFooter from "../components/dashboard/DashboardFooter";
 import { getAnalyticsRefreshStatus } from "../services/analyticsApi";
 import type { AnalyticsRefreshStatus } from "../types/analytics";
@@ -91,9 +90,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="space-y-5">{children}</div>
           </main>
 
-          <section className="w-full pb-5">
-            <SeasonalImageCarousel />
-          </section>
 
           <DashboardFooter />
         </div>

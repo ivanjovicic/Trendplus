@@ -16,7 +16,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:analytics": "vitest run src/components/analytics src/components/inventory src/components/supplierDecisionHub src/services/__tests__ src/pages",
+    "test:analytics": "vitest run src/components/analytics src/components/inventory src/components/supplierDecisionHub src/components/GlobalRequestSpinner.spec.tsx src/components/trendshoes/SeasonalImageCarousel.spec.tsx src/layout/AppLayout.spec.tsx src/services/__tests__ src/pages",
     "test:watch": "vitest --watch"
   },
   "dependencies": {
