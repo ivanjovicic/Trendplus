@@ -48,7 +48,7 @@ Use with:
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
-| P-UI-40 | IN_PROGRESS | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
+| P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | READY | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
@@ -2575,7 +2575,7 @@ Only three pages opt into the overflow-safe filter grid (`responsiveFilterLayout
 
 ## P-UI-40 - Small-laptop shell (1024–1279px): single-row header and space-saving sidebar
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none
 Priority: P1
 Type: frontend/layout/tests
@@ -2634,6 +2634,27 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 - P-UI-39 is DONE on main; post-close recovery at `origin/main` `ae9a7e5f25830776a7b70216483a2bbac11d7d57` found no higher-priority READY RQ/SQL lane. The active RQ partials remain evidence/provider gated; SQL queue has no READY prompt.
 - P-UI-40 is the next collision-safe P1 lane. No matching local lock, branch or open PR exists. Its HeaderStatus/Sidebar/AppLayout paths are separate from READY P-UI-41 analytics page paths and P-UI-47/49 theme/state paths.
 - Local lock: `.ai/task-locks/P-UI-40-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: The shell defaults to the 56px sidebar rail at 1024–1279px, stores the user's explicit collapse/expand choice, and keeps the header in one row with all actions reachable from the accessible “Više” dialog when the full action group does not fit.
+- Changed files: `Klijent/clientapp/src/layout/AppLayout.tsx`; `Klijent/clientapp/src/layout/AppLayout.spec.tsx`; `Klijent/clientapp/src/layout/components/HeaderStatus.tsx`; `Klijent/clientapp/src/layout/components/Sidebar.tsx`; `Klijent/clientapp/src/layout/components/__tests__/HeaderStatus.spec.tsx`; `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`; `Klijent/clientapp/scripts/responsive_baseline.mjs`; queue and roadmap evidence.
+- Checks run: focused shell Vitest 15/15; responsive shell matrix 20/20 across two themes and ten widths (0 root overflow, 0 page errors); at 1024×768 header 67.5px/main 968px; at 1280×800 header 67.5px; at 360/768 header heights match pre-change; `npm run typecheck`; `npm run build`; analytics guardrails; governance validators; `git diff --check`.
+- Checks not run: full analytics Vitest suite locally; focused shell tests plus browser geometry cover the changed shell contract.
+- Run log: `.ai/runs/2026-10-06-P-UI-40-evidence.md`
+- Evidence state: pending post-close routing recovery
+- Delivery mode: direct-main
+- Main commit SHA: `3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`
+- Main verification: pushed to `origin/main`; fresh fetch confirmed `HEAD == origin/main == 3c7a84b3099392dc94209eb46e3bf3bafc0dfc4f`.
+- Missed: none known.
+- Follow-up: determine the next collision-safe READY task during mandatory post-close routing recovery.
+- Residual risk: the 2400px breakpoint exposes the full action cluster only when it fits; the GitHub Analytics Quality Gates run for this SHA was in progress when recorded; the existing build chunk-size warning and 39 guardrail baseline findings remain.
+- Post-close routing: pending recovery scan from the post-close `origin/main` SHA.
+- Prompt defect / scope repair: none.
+- Run log: `.ai/runs/2026-10-06-P-UI-40-evidence.md`
+- Evidence state: pending
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
