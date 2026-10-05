@@ -23,12 +23,12 @@ public static class AnalyticsFreshnessPolicy
         }
 
         var age = nowUtc - lastSuccessfulImportAtUtc.Value;
-        if (age <= TimeSpan.FromHours(options.WarningAfterHours))
+        if (age < TimeSpan.FromHours(options.WarningAfterHours))
         {
             return "fresh";
         }
 
-        if (age <= TimeSpan.FromHours(options.CriticalAfterHours))
+        if (age < TimeSpan.FromHours(options.CriticalAfterHours))
         {
             return "stale";
         }

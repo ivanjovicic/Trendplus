@@ -112,9 +112,9 @@ public sealed class OperationsSourceFreshnessService
             meta.DataFreshnessReasonCode = freshness switch
             {
                 "fresh" => lastFailure > lastSuccess.CompletedAtUtc ? "source_import_failure_after_success" : "source_import_recent_success",
-                "stale" => "source_import_older_than_24h",
+                "stale" => "source_import_older_than_48h",
                 "critical" when lastFailure > lastSuccess.CompletedAtUtc => "source_import_failure_after_success",
-                "critical" => "source_import_older_than_72h",
+                "critical" => "source_import_older_than_168h",
                 _ => "source_import_evidence_missing"
             };
 

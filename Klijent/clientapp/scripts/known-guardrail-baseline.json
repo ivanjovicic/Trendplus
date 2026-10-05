@@ -29,13 +29,13 @@
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1437,
+      "line": 1436,
       "reason": "Existing dashboard fallback requires a reviewed empty/error-state exception."
     },
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "page_reduce_kpi",
-      "line": 158,
+      "line": 157,
       "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
     },
     {
@@ -53,13 +53,13 @@
     {
       "file": "src/pages/DataQualityPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 407,
+      "line": 406,
       "reason": "Existing data-quality fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/DataQualityPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 526,
+      "line": 525,
       "reason": "Existing data-quality refetch transition predates the shared reliable-query lifecycle."
     },
     {
@@ -71,7 +71,7 @@
     {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1046,
+      "line": 1045,
       "reason": "Existing decision-board fallback requires a reviewed trust-contract exception."
     },
     {
@@ -89,7 +89,7 @@
     {
       "file": "src/pages/PilotReadinessPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 489,
+      "line": 488,
       "reason": "Existing pilot-readiness count fallback requires a reviewed unavailable-value exception."
     },
     {

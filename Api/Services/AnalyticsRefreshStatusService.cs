@@ -661,12 +661,12 @@ public sealed class AnalyticsRefreshStatusService
         }
 
         var age = nowUtc - lastSuccess.Value;
-        if (age <= TimeSpan.FromHours(Math.Max(1, freshHours)))
+        if (age < TimeSpan.FromHours(Math.Max(1, freshHours)))
         {
             return "fresh";
         }
 
-        if (age <= TimeSpan.FromHours(Math.Max(freshHours + 1, staleHours)))
+        if (age < TimeSpan.FromHours(Math.Max(freshHours + 1, staleHours)))
         {
             return "stale";
         }
