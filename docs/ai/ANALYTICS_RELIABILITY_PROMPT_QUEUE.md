@@ -29352,8 +29352,8 @@ Claim 2026-10-05: refreshed `origin/main` at `fd713653639413812d526fbbae4a0721f3
 - Run log: `.ai/runs/2026-10-05-RQ583-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: fast-forward to `main`
-- Main commit SHA: `e5ef224749d2965b2cc62fcf9c78c55faa3ab7bf`
-- Main verification: passed - `origin/main` contains `e5ef224749d2965b2cc62fcf9c78c55faa3ab7bf`
+- Main commit SHA: `e5cf224749d2965b2cc62fcf9c78c55faa3ab7bf`
+- Main verification: passed - fresh `origin/main` at `a64862c44448a9b1e49a274c2d889c071d84176d` contains `e5cf224749d2965b2cc62fcf9c78c55faa3ab7bf`
 - Missed: No live import was executed; optional owner notification provider wiring remains opt-in follow-up.
 - Follow-up: RQ585 still requires production freshness evidence within this SLA.
 - Residual risk: the current-main remote workflow state must be classified separately if a relevant run is discoverable.
