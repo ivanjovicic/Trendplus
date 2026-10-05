@@ -395,7 +395,14 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 $"Iz dnevne prodaje su isključena {excludedReceiptHeaders.Count} dokumenta tipa DUG/korekcija u ukupnom iznosu od {decimal.Round(excludedReceiptHeaders.Sum(x => x.Revenue), 2, MidpointRounding.AwayFromZero):0.##} RSD. Primeri: {sample}{suffix}.");
         }
 
-        if (receiptReconciliation.Status == "unavailable")
+        if (receiptReconciliation.Status == "unverified")
+        {
+            warnings.Add(
+                receiptReconciliation.ReasonCode == "no_matches"
+                    ? "Nijedan račun nije podudaran sa dnevnikom prodaje; usklađenost nije potvrđena."
+                    : "U izabranom periodu nema populacije računa za poređenje; usklađenost nije potvrđena.");
+        }
+        else if (receiptReconciliation.Status == "unavailable")
         {
             warnings.Add(
                 "Dijagnostika neusklađenih računa nije dostupna jer identitet računa u dnevniku nema pouzdan broj računa; rezultat nije prikazan kao 0.");
@@ -1024,6 +1031,21 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 UnmatchedDnevnikReceiptCount: unmatchedDnevnikReceiptCount,
                 MismatchCount: null,
                 MismatchAmount: null,
+                Mismatches: []);
+        }
+
+        if (matchedIdentities.Count == 0)
+        {
+            var hasComparisonPopulation = receiptTotalsByIdentity.Count > 0
+                || dnevnikTotalsByIdentity.Count > 0;
+            return new ReceiptReconciliationResult(
+                Status: "unverified",
+                ReasonCode: hasComparisonPopulation ? "no_matches" : "empty_population",
+                MatchedReceiptCount: 0,
+                UnmatchedReceiptCount: unmatchedReceiptCount,
+                UnmatchedDnevnikReceiptCount: unmatchedDnevnikReceiptCount,
+                MismatchCount: 0,
+                MismatchAmount: 0m,
                 Mismatches: []);
         }
 

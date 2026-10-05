@@ -11,6 +11,21 @@ public static class OperationsAnalyticsIntegrityStates
         => string.Equals(status, DriftDetected, StringComparison.Ordinal);
 }
 
+public static class OperationsAnalyticsIntegrityVerificationPolicy
+{
+    public static (string Status, string? ReasonCode) EnsureNonVacuous(
+        string status,
+        int? comparedRows)
+    {
+        if (!string.Equals(status, OperationsAnalyticsIntegrityStates.Verified, StringComparison.Ordinal))
+            return (status, null);
+
+        return comparedRows is > 0
+            ? (status, null)
+            : (OperationsAnalyticsIntegrityStates.Unverified, "empty_population");
+    }
+}
+
 public static class OperationsAnalyticsIntegrityFamilies
 {
     public const string SupplierShoeType = "supplier_shoe_type";
@@ -147,7 +162,8 @@ public sealed record OperationsAnalyticsIntegrityProbeResult(
     IReadOnlyList<OperationsAnalyticsIntegrityProbeDelta> Deltas,
     bool BlocksDecisionSignals,
     int? ProbeRowCount = null,
-    System.Text.Json.JsonElement? EvidenceDimensions = null)
+    System.Text.Json.JsonElement? EvidenceDimensions = null,
+    string? ReasonCode = null)
 {
     public static OperationsAnalyticsIntegrityProbeResult Verified(
         string summary,
@@ -163,14 +179,16 @@ public sealed record OperationsAnalyticsIntegrityProbeResult(
     public static OperationsAnalyticsIntegrityProbeResult Unverified(
         string summary,
         int? probeRowCount = null,
-        System.Text.Json.JsonElement? evidenceDimensions = null)
+        System.Text.Json.JsonElement? evidenceDimensions = null,
+        string? reasonCode = null)
         => new(
             OperationsAnalyticsIntegrityStates.Unverified,
             summary,
             Array.Empty<OperationsAnalyticsIntegrityProbeDelta>(),
             BlocksDecisionSignals: false,
             ProbeRowCount: probeRowCount,
-            EvidenceDimensions: evidenceDimensions);
+            EvidenceDimensions: evidenceDimensions,
+            ReasonCode: reasonCode);
 
     public static OperationsAnalyticsIntegrityProbeResult Degraded(string summary, int? probeRowCount = null)
         => new(
@@ -211,7 +229,9 @@ public sealed record OperationsAnalyticsIntegrityProbeDelta(
     decimal RevenueDelta,
     int EndpointOrLiveUnits,
     int OracleUnits,
-    int UnitsDelta);
+    int UnitsDelta,
+    int ComparedRows = 0,
+    decimal ComparedRevenue = 0m);
 
 public sealed record OperationsAnalyticsIntegritySnapshot(
     string Status,
@@ -230,6 +250,7 @@ public sealed record OperationsAnalyticsIntegritySnapshot(
     public DateTime? ProbeWindowToUtc { get; set; }
     public int? ProbeRowCount { get; set; }
     public System.Text.Json.JsonElement? EvidenceDimensions { get; set; }
+    public string? ReasonCode { get; set; }
 
     public static OperationsAnalyticsIntegritySnapshot Unverified(string evidenceId, string trigger, string summary)
         => new(

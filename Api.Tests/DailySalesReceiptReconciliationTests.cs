@@ -98,7 +98,8 @@ public sealed class DailySalesReceiptReconciliationTests
 
         var result = await RunAsync(db);
 
-        Assert.Equal("verified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("unverified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("no_matches", result.Metadata.ReceiptReconciliation.ReasonCode);
         Assert.Equal(0, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
         Assert.Equal(1, result.Metadata.ReceiptReconciliation.UnmatchedReceiptCount);
         Assert.Equal(0, result.Metadata.ReceiptReconciliation.MismatchCount);
@@ -115,12 +116,30 @@ public sealed class DailySalesReceiptReconciliationTests
 
         var result = await RunAsync(db);
 
-        Assert.Equal("verified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("unverified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("no_matches", result.Metadata.ReceiptReconciliation.ReasonCode);
         Assert.Equal(0, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
         Assert.Equal(1, result.Metadata.ReceiptReconciliation.UnmatchedReceiptCount);
         Assert.Equal(1, result.Metadata.ReceiptReconciliation.UnmatchedDnevnikReceiptCount);
         Assert.Equal(0, result.Metadata.ReceiptReconciliation.MismatchCount);
         Assert.DoesNotContain(result.Metadata.Warnings, warning => warning.Contains("neusklađen", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task EmptyReceiptPopulationRemainsUnverified()
+    {
+        await using var db = CreateDbContext();
+        SeedArticle(db);
+        await db.SaveChangesAsync();
+
+        var result = await RunAsync(db);
+
+        Assert.Equal("unverified", result.Metadata.ReceiptReconciliation.Status);
+        Assert.Equal("empty_population", result.Metadata.ReceiptReconciliation.ReasonCode);
+        Assert.Equal(0, result.Metadata.ReceiptReconciliation.MatchedReceiptCount);
+        Assert.Equal(0, result.Metadata.ReceiptReconciliation.UnmatchedReceiptCount);
+        Assert.Equal(0, result.Metadata.ReceiptReconciliation.UnmatchedDnevnikReceiptCount);
+        Assert.Contains(result.Metadata.Warnings, warning => warning.Contains("nema populacije", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

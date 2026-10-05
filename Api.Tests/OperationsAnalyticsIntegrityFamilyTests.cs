@@ -211,4 +211,38 @@ public sealed class OperationsAnalyticsIntegrityFamilyTests
         Assert.Equal(OperationsAnalyticsIntegrityStates.Degraded, degraded.Status);
         Assert.False(degraded.BlocksDecisionSignals);
     }
+
+    [Theory]
+    [InlineData(0, OperationsAnalyticsIntegrityStates.Unverified, "empty_population")]
+    [InlineData(25, OperationsAnalyticsIntegrityStates.Verified, null)]
+    public void VerifiedRequiresAComparedPopulation(
+        int comparedRows,
+        string expectedStatus,
+        string? expectedReasonCode)
+    {
+        var assessment = OperationsAnalyticsIntegrityVerificationPolicy.EnsureNonVacuous(
+            OperationsAnalyticsIntegrityStates.Verified,
+            comparedRows);
+
+        Assert.Equal(expectedStatus, assessment.Status);
+        Assert.Equal(expectedReasonCode, assessment.ReasonCode);
+    }
+
+    [Fact]
+    public void IntegrityDeltaCarriesComparedPopulationEvidence()
+    {
+        var delta = new OperationsAnalyticsIntegrityProbeDelta(
+            "supplier_shoe_live_aggregate",
+            0m,
+            0m,
+            0m,
+            0,
+            0,
+            0,
+            ComparedRows: 0,
+            ComparedRevenue: 0m);
+
+        Assert.Equal(0, delta.ComparedRows);
+        Assert.Equal(0m, delta.ComparedRevenue);
+    }
 }

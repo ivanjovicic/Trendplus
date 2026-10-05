@@ -29061,7 +29061,8 @@ Commit suggestion: `fix(analytics): make Data Quality health honest about scope,
 
 ## RQ579 - Integrity "verified" must require a non-empty, matched population
 
-Status: READY
+Status: IN_PROGRESS
+Claimed: 2026-10-05 by Codex in `cursor/rq579-integrity-nonvacuous-e050`; local lock `.ai/task-locks/RQ579-codex.lock.md`.
 Ready after: `RQ569` DONE (shared Operations integrity/freshness metadata)
 Priority: P2
 Type: backend/tests

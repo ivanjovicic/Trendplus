@@ -39,7 +39,9 @@ public static class OperationsAnalyticsBucketReconciliation
                 revenueDelta,
                 actualUnits,
                 expectedUnits,
-                unitsDelta));
+                unitsDelta,
+                ComparedRows: (expectedBucket is not null ? 1 : 0) + (actualBucket is not null ? 1 : 0),
+                ComparedRevenue: Math.Max(Math.Abs(expectedRevenue), Math.Abs(actualRevenue))));
         }
 
         return deltas;

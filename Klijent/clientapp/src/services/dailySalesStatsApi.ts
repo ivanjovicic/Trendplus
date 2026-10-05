@@ -30,7 +30,7 @@ export interface DailySalesRow {
 }
 
 export interface DailySalesReceiptReconciliation {
-  status: "verified" | "unavailable" | string;
+  status: "verified" | "unverified" | "unavailable" | string;
   reasonCode?: string | null;
   matchedReceiptCount: DailySalesNumeric;
   unmatchedReceiptCount: DailySalesNumeric;

@@ -91,7 +91,7 @@ public sealed class DailySalesMetadata
 
 public sealed class DailySalesReceiptReconciliationDto
 {
-    /// <summary>verified when receipt identity is sufficient for a signed comparison; otherwise unavailable.</summary>
+    /// <summary>verified only when at least one receipt identity matched; empty or unmatched populations remain unverified.</summary>
     public string Status { get; set; } = "unavailable";
     public string? ReasonCode { get; set; }
     public int? MatchedReceiptCount { get; set; }

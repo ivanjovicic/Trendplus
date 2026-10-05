@@ -22,6 +22,7 @@ public static class OperationsAnalyticsIntegrityEndpoints
                 lastVerifiedAtUtc = snapshot.LastVerifiedAtUtc,
                 trigger = snapshot.Trigger,
                 summary = snapshot.Summary,
+                reasonCode = snapshot.ReasonCode,
                 blocksDecisionSignals = snapshot.BlocksDecisionSignals,
                 family = snapshot.Family,
                 contextFingerprint = snapshot.ContextFingerprint,
@@ -34,7 +35,9 @@ public static class OperationsAnalyticsIntegrityEndpoints
                     revenueDelta = delta.RevenueDelta,
                     endpointOrLiveUnits = delta.EndpointOrLiveUnits,
                     oracleUnits = delta.OracleUnits,
-                    unitsDelta = delta.UnitsDelta
+                    unitsDelta = delta.UnitsDelta,
+                    comparedRows = delta.ComparedRows,
+                    comparedRevenue = delta.ComparedRevenue
                 }),
                 families = registry.CurrentByFamily.Select(familySnapshot => new
                 {
@@ -72,6 +75,7 @@ public static class OperationsAnalyticsIntegrityEndpoints
                 lastVerifiedAtUtc = record.LastVerifiedAtUtc,
                 trigger = record.Trigger,
                 summary = record.Summary,
+                reasonCode = record.FailureClassification,
                 failureClassification = record.FailureClassification,
                 tenantScope = record.TenantScope,
                 storeId = record.StoreId,

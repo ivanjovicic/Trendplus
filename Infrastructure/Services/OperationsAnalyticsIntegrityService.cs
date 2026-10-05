@@ -201,9 +201,12 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             result = await RunFamilyProbeAsync(definition, generation, filters, probeTrigger, timeoutCts.Token);
         }
 
+        var assessment = OperationsAnalyticsIntegrityVerificationPolicy.EnsureNonVacuous(
+            result.Status,
+            result.ProbeRowCount);
         var snapshot = CreateSnapshot(
             family,
-            result.Status,
+            assessment.Status,
             BuildEvidenceId($"{probeTrigger}:{family}:{fingerprint}"),
             probeTrigger,
             result.Summary,
@@ -213,9 +216,10 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             generation,
             result.Deltas,
             result.BlocksDecisionSignals,
-            result.Status == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
+            assessment.Status == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
             result.ProbeRowCount,
-            result.EvidenceDimensions);
+            result.EvidenceDimensions,
+            assessment.ReasonCode ?? result.ReasonCode);
         return await StoreAsync(snapshot, filters, ct);
     }
 
@@ -270,10 +274,23 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             var liveTotals = await ReadLiveAggregatedTotalsAsync(filters, probeCt);
             var deltas = new List<OperationsAnalyticsIntegrityProbeDelta>
             {
-                BuildDelta("supplier_shoe_live_aggregate", liveTotals.Revenue, oracleTotals.TotalRevenue, liveTotals.Units, oracleTotals.TotalUnits)
+                BuildDelta(
+                    "supplier_shoe_live_aggregate",
+                    liveTotals.Revenue,
+                    oracleTotals.TotalRevenue,
+                    liveTotals.Units,
+                    oracleTotals.TotalUnits,
+                    oracleTotals.SaleLineCount,
+                    oracleTotals.TotalRevenue)
             };
 
-            var supplierCacheComparison = await TryCompareCachedSupplierAsync(connection, filters, liveTotals, probeCt);
+            var supplierCacheComparison = await TryCompareCachedSupplierAsync(
+                connection,
+                filters,
+                liveTotals,
+                oracleTotals.SaleLineCount,
+                oracleTotals.TotalRevenue,
+                probeCt);
             if (supplierCacheComparison.AggregateDelta is not null)
                 deltas.Add(supplierCacheComparison.AggregateDelta);
             deltas.AddRange(supplierCacheComparison.BucketDeltas);
@@ -301,9 +318,17 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 && (
                 Math.Abs(delta.RevenueDelta) > _options.RevenueToleranceRsd
                 || delta.UnitsDelta != 0));
+            var emptyPopulation = oracleTotals.SaleLineCount == 0;
             var dashboardDeltas = new[]
                 {
-                    BuildDelta("dashboard_sales_totals", liveTotals.Revenue, oracleTotals.TotalRevenue, liveTotals.Units, oracleTotals.TotalUnits)
+                    BuildDelta(
+                        "dashboard_sales_totals",
+                        liveTotals.Revenue,
+                        oracleTotals.TotalRevenue,
+                        liveTotals.Units,
+                        oracleTotals.TotalUnits,
+                        oracleTotals.SaleLineCount,
+                        oracleTotals.TotalRevenue)
                 }
                 .Concat(deltas.Where(delta => delta.Dimension.StartsWith("daily_", StringComparison.Ordinal)))
                 .ToArray();
@@ -313,11 +338,16 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
 
             var supplierFamily = OperationsAnalyticsIntegrityFamilies.SupplierShoeType;
             var supplierGeneration = _registry.GetGeneration(supplierFamily);
-            var supplierStatus = supplierDrift
-                ? OperationsAnalyticsIntegrityStates.DriftDetected
-                : allBucketDimensionsCompared
-                    ? OperationsAnalyticsIntegrityStates.Verified
-                    : OperationsAnalyticsIntegrityStates.Unverified;
+            var supplierAssessment = OperationsAnalyticsIntegrityVerificationPolicy.EnsureNonVacuous(
+                supplierDrift
+                    ? OperationsAnalyticsIntegrityStates.DriftDetected
+                    : allBucketDimensionsCompared
+                        ? OperationsAnalyticsIntegrityStates.Verified
+                        : OperationsAnalyticsIntegrityStates.Unverified,
+                oracleTotals.SaleLineCount);
+            var supplierStatus = supplierAssessment.Status;
+            var supplierReasonCode = supplierAssessment.ReasonCode
+                ?? (emptyPopulation ? "empty_population" : null);
             var supplierSnapshot = CreateSnapshot(
                 supplierFamily,
                 supplierStatus,
@@ -325,6 +355,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 probeTrigger,
                 probeSummary ?? (supplierDrift
                     ? "Bounded Supplier/Shoe Type probe detected unexplained aggregate or supplier-bucket drift."
+                    : emptyPopulation
+                        ? "The bounded Supplier/Shoe Type comparison had no sale-line population; an empty window does not prove integrity."
                     : allBucketDimensionsCompared
                         ? "Bounded Operations probe reconciled supplier, shoe-type, color and daily day/shift/store buckets to the raw-fact oracle."
                         : "Aggregate totals reconciled, but one or more supplier, shoe-type, color or daily bucket caches were unavailable; bucket integrity remains unverified."),
@@ -335,20 +367,27 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 deltas,
                 supplierDrift,
                 supplierStatus == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
-                oracleTotals.SaleLineCount);
+                oracleTotals.SaleLineCount,
+                reasonCode: supplierReasonCode);
             await StoreAsync(supplierSnapshot, filters, ct);
 
             var salesFamily = OperationsAnalyticsIntegrityFamilies.SalesDashboard;
             var salesGeneration = _registry.GetGeneration(salesFamily);
-            var salesSnapshot = CreateSnapshot(
-                salesFamily,
+            var salesAssessment = OperationsAnalyticsIntegrityVerificationPolicy.EnsureNonVacuous(
                 dashboardDrift
                     ? OperationsAnalyticsIntegrityStates.DriftDetected
                     : OperationsAnalyticsIntegrityStates.Verified,
+                oracleTotals.SaleLineCount);
+            var salesStatus = salesAssessment.Status;
+            var salesSnapshot = CreateSnapshot(
+                salesFamily,
+                salesStatus,
                 BuildEvidenceId($"{probeTrigger}:{salesFamily}"),
                 probeTrigger,
                 probeSummary ?? (dashboardDrift
                     ? "Dashboard sales totals have a non-zero bounded reconciliation delta."
+                    : emptyPopulation
+                        ? "The bounded Dashboard comparison had no sale-line population; an empty window does not prove integrity."
                     : "Dashboard sales totals reconciled to the independent raw-fact oracle."),
                 filters,
                 checkedAt,
@@ -356,8 +395,9 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 salesGeneration,
                 dashboardDeltas,
                 dashboardDrift,
-                dashboardDrift ? null : checkedAt,
-                oracleTotals.SaleLineCount);
+                salesStatus == OperationsAnalyticsIntegrityStates.Verified ? checkedAt : null,
+                oracleTotals.SaleLineCount,
+                reasonCode: salesAssessment.ReasonCode);
             await StoreAsync(salesSnapshot, filters, ct);
 
             foreach (var definition in OperationsAnalyticsIntegrityFamilies.Enrolled.Where(
@@ -514,7 +554,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         bool blocksDecisionSignals,
         DateTime? lastVerifiedAtUtc = null,
         int? probeRowCount = null,
-        System.Text.Json.JsonElement? evidenceDimensions = null)
+        System.Text.Json.JsonElement? evidenceDimensions = null,
+        string? reasonCode = null)
     {
         var snapshot = new OperationsAnalyticsIntegritySnapshot(
             status,
@@ -532,7 +573,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             ProbeWindowFromUtc = filters.FromUtc,
             ProbeWindowToUtc = filters.ToUtc,
             ProbeRowCount = probeRowCount,
-            EvidenceDimensions = evidenceDimensions
+            EvidenceDimensions = evidenceDimensions,
+            ReasonCode = reasonCode
         };
         return snapshot;
     }
@@ -589,7 +631,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 LastVerifiedAtUtc = snapshot.LastVerifiedAtUtc,
                 Trigger = snapshot.Trigger,
                 Summary = snapshot.Summary,
-                FailureClassification = snapshot.Status == OperationsAnalyticsIntegrityStates.Verified ? null : snapshot.Trigger,
+                FailureClassification = snapshot.ReasonCode
+                    ?? (snapshot.Status == OperationsAnalyticsIntegrityStates.Verified ? null : snapshot.Trigger),
                 TenantScope = Environment.GetEnvironmentVariable("TRENDPLUS_TENANT_SCOPE") ?? "dedicated",
                 StoreId = filters.StoreId,
                 DataScope = filters.DataScope,
@@ -620,6 +663,7 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                     probeWindowFromUtc = snapshot.ProbeWindowFromUtc,
                     probeWindowToUtc = snapshot.ProbeWindowToUtc,
                     probeRowCount = snapshot.ProbeRowCount,
+                    reasonCode = snapshot.ReasonCode,
                     eventEvidence = snapshot.EvidenceDimensions,
                     unknownAttribution = "not_collected_by_bounded_probe",
                     attributionCoverage = "not_collected_by_bounded_probe",
@@ -665,6 +709,8 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         NpgsqlConnection connection,
         OperationsAnalyticsRawFactOracle.Filters filters,
         (decimal Revenue, int Units) liveTotals,
+        int comparedRows,
+        decimal comparedRevenue,
         CancellationToken ct)
     {
         var cacheKey = AnalyticsCacheKeys.SupplierSalesStats(
@@ -689,7 +735,9 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
                 totals.GetProperty("ukupanPromet").GetDecimal(),
                 liveTotals.Revenue,
                 totals.GetProperty("ukupnaKolicina").GetInt32(),
-                liveTotals.Units);
+                liveTotals.Units,
+                comparedRows,
+                comparedRevenue);
             if (!root.TryGetProperty("suppliers", out var supplierRows)
                 || supplierRows.ValueKind != JsonValueKind.Array)
             {
@@ -1172,7 +1220,9 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
         decimal leftRevenue,
         decimal rightRevenue,
         int leftUnits,
-        int rightUnits)
+        int rightUnits,
+        int comparedRows = 0,
+        decimal comparedRevenue = 0m)
     {
         return new OperationsAnalyticsIntegrityProbeDelta(
             dimension,
@@ -1181,7 +1231,9 @@ public sealed class OperationsAnalyticsIntegrityService : IOperationsAnalyticsIn
             leftRevenue - rightRevenue,
             leftUnits,
             rightUnits,
-            leftUnits - rightUnits);
+            leftUnits - rightUnits,
+            comparedRows,
+            comparedRevenue);
     }
 
     private (DateTime FromUtc, DateTime ToUtc) ResolveProbeWindow(DateTime checkedAtUtc)
