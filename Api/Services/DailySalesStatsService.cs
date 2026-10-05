@@ -56,8 +56,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var existingOnly = string.Equals(normalizedScope, "existing", StringComparison.Ordinal);
 
         var fromDateUtc = DateTime.SpecifyKind(requestedFromUtc.Date, DateTimeKind.Utc);
-        var toDateUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
-        var toDateExclusiveUtc = toDateUtc.AddDays(1);
+        var toDateExclusiveUtc = DateTime.SpecifyKind(requestedToUtc.Date, DateTimeKind.Utc);
         var saleTypeCandidates = TipPromeneConstants.ProdajaTypes.ToArray();
         // The table population is line/article scoped. Reuse its receipt identity for
         // every receipt diagnostic so existing/imported views cannot inherit evidence
@@ -631,7 +630,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var rows = new List<DailySalesRowDto>();
         var requestedDateKeys = Enumerable
-            .Range(0, (toDateUtc.Date - fromDateUtc.Date).Days + 1)
+            .Range(0, (toDateExclusiveUtc.Date - fromDateUtc.Date).Days)
             .Select(offset => DateTime.SpecifyKind(fromDateUtc.Date.AddDays(offset), DateTimeKind.Utc));
         var rowDateKeys = requestedDateKeys
             .Concat(dayAccumulators.Keys)
@@ -744,6 +743,10 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
 
         var generatedAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         var responseMeta = BuildDailySalesMeta(hasSalesEvidence, warnings, generatedAtUtc);
+        responseMeta.RequestedPeriodFromUtc = fromDateUtc;
+        responseMeta.RequestedPeriodToUtc = toDateExclusiveUtc;
+        responseMeta.EffectivePeriodFromUtc = fromDateUtc;
+        responseMeta.EffectivePeriodToUtc = toDateExclusiveUtc;
         responseMeta.RequestedDataScope = normalizedScope;
         responseMeta.EffectiveDataScope = normalizedScope;
         responseMeta.DataScopeSource = SalesDataScopePolicy.Source;
@@ -753,7 +756,7 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
         var response = new DailySalesTableResponse
         {
             RequestedFrom = fromDateUtc,
-            RequestedTo = toDateUtc,
+            RequestedTo = toDateExclusiveUtc,
             StoreId = storeId,
             TopN = topN,
             DataScope = normalizedScope,
