@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ88 (supplemental independent lane); main queue primary READY is RQ590
+Current READY prompt: none in this addendum; main queue primary READY is RQ584; RQ88 is DONE on main
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:
@@ -26,7 +26,7 @@ Purpose: queue follow-up fixes for action/outcome semantics, measurement evidenc
 | RQ85 | DONE | action-outcome-default-window | Decide default created/resolved/measured window semantics |
 | RQ86 | DONE | action-outcome-evidence-requirements | Prevent success/neutral/negative without evidence looking authoritative |
 | RQ87 | DONE | action-outcome-resolution-ledger | Make outcome resolution snapshot self-contained |
-| RQ88 | READY | action-count-closed-kpi-split | Split or relabel done/rejected closed KPI |
+| RQ88 | DONE | action-count-closed-kpi-split | Split or relabel done/rejected closed KPI |
 | RQ90 | DONE | analytics-actions-list-contract | Preserve canonical filters, search and priority ordering in action lists |
 | RQ93 | DONE | action-outcome-not-measured-snapshot-clear | Clear measured fields inside resolution snapshot for `not_measured` |
 | RQ95 | DONE | action-outcome-resolution-note-encoding | Fix mojibake expected resolution note in outcome ledger tests |
@@ -414,7 +414,7 @@ Resolution snapshot should include enough immutable fields to reconstruct the ou
 
 ## RQ88 - Closed KPI done/rejected split
 
-Status: READY
+Status: DONE
 Ready after: RQ82 or explicit unblocking
 Priority: P2
 Type: frontend-ux/tests
@@ -437,6 +437,8 @@ KPI bar shows `Zatvoreno = done + rejected`. This is not wrong mathematically, b
 ### Acceptance
 
 - Rejected actions cannot be mistaken for completed actions in the top KPI bar.
+
+Owner completion 2026-10-05: RQ88 moved `READY -> DONE` after the actions KPI bar split `Završeno` (done) and `Odbijeno` (rejected) replaced the combined `Zatvoreno` card. Focused proof: `AnalyticsActionsPage.spec.tsx` RQ88 regression plus typecheck pass. Delivered on `main`; run log `.ai/runs/2026-10-05-RQ88-evidence.md`. Evidence state: synchronized.
 
 ---
 
