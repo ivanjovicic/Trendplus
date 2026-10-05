@@ -41,3 +41,8 @@ See commit / agent report.
 - Bundle: `/workspace/out/analytics-audits-recertify-3.bundle`
 - HEAD == origin/main: NO until parent FF push
 - Focused tests: pass2 10/10; trust/Insight/Snapshot 37/37; encoding OK; tsc -b OK; queue 709 OK; planning PASS; agent-instructions PASS; git diff --check OK
+
+## Post-FF truth (recertify-4)
+- Landed on origin/main after parent FF: **`ded8e15e`**
+- HEAD == origin/main after FF: YES (`ded8e15e`)
+- Note: earlier lines that said `HEAD == origin/main: NO until parent FF` were pre-push placeholders; corrected here after tip landed (same SHA-drift class as recertify-1/2).

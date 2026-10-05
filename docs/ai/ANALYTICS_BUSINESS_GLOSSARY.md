@@ -129,3 +129,4 @@ Recertify 2026-10-05: clarified that `unitsSold` is quantity (not Promet/Prihod)
 
 Recertify-2 2026-10-05: Actions outcome hint and nivelacija FE manual aligned to **Nije dostupno**; Insight average-margin headers use **Prosečna marža** (no `Avg marza`). Evidence SHA drift on prior audit run files corrected. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_2_2026-10-05.md`.
 Recertify-3 2026-10-05: Color PoP tip and Global Trends price/empty/loading copy aligned to **Nije dostupno** / Serbian actions; Color share export uses Brojilac/Imenilac. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_3_2026-10-05.md`.
+Recertify-4 2026-10-05: TrendDashboard Loading/Refresh/null-price and Amazon PriceLabel aligned to **Nije dostupno**; sync toasts Serbianized. See `docs/qa/ANALYTICS_AUDITS_RECERTIFY_4_2026-10-05.md`.
