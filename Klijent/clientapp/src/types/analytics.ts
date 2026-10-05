@@ -344,7 +344,7 @@ export interface HourData {
 
 export interface QuickInsights {
   bestDay?: string | null;
-  bestDayRevenue: number;
+  bestDayRevenue: number | null;
   topProduct?: string | null;
   lowStockAlert: number;
 }

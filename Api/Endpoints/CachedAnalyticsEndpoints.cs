@@ -1769,7 +1769,7 @@ public static class CachedAnalyticsEndpoints
                     return new QuickInsightsDto
                     {
                         BestDay = bestDay is null ? null : SerbianDayNames[bestDay.DayOfWeek],
-                        BestDayRevenue = bestDay?.TotalRevenue ?? 0,
+                        BestDayRevenue = bestDay?.TotalRevenue,
                         TopProduct = topProduct?.ProductName,
                         LowStockAlert = lowStockCount
                     };
@@ -5693,7 +5693,7 @@ public static class CachedAnalyticsEndpoints
         return new QuickInsightsDto
         {
             BestDay = bestDay is null ? null : SerbianDayNames[bestDay.DayOfWeek],
-            BestDayRevenue = bestDay?.TotalRevenue ?? 0,
+            BestDayRevenue = bestDay?.TotalRevenue,
             TopProduct = topProduct?.ProductName,
             LowStockAlert = lowStockCount
         };
@@ -7773,13 +7773,13 @@ public static class CachedAnalyticsEndpoints
         return score - lowConfidencePenalty / 3;
     }
 
-    private static int ResolveMarkdownAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    internal static int ResolveMarkdownAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
     {
         var score = 18;
         if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) score += 24;
         if (row.VelocityUnitsPerDay < 0.25m) score += 22;
-        if ((row.TrendPct ?? 0m) < -5m) score += 16;
-        if ((row.MarginPct ?? 0m) < 12m) score += 10;
+        if (row.TrendPct is < -5m) score += 16;
+        if (row.MarginPct is < 12m) score += 10;
         if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value) score += 10;
         if (row.SlowStockCapital is > 0m) score += 10;
         if (dataQuality == "warning") score += 2;
@@ -7787,12 +7787,12 @@ public static class CachedAnalyticsEndpoints
         return score - lowConfidencePenalty / 4;
     }
 
-    private static int ResolveDoNotOrderAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
+    internal static int ResolveDoNotOrderAlternativeScore(ProductDecisionCenterRowDto row, string dataQuality, int lowConfidencePenalty)
     {
         var score = 14;
         if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value * 3) score += 28;
         if (row.VelocityUnitsPerDay < 0.25m) score += 18;
-        if ((row.TrendPct ?? 0m) < 0m) score += 10;
+        if (row.TrendPct is < 0m) score += 10;
         if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) score += 10;
         if (dataQuality == "warning") score += 2;
         if (dataQuality == "critical" || dataQuality == "insufficient_data") score -= 12;
@@ -7883,7 +7883,7 @@ public static class CachedAnalyticsEndpoints
         };
     }
 
-    private static List<string> BuildProductDecisionAlternativeReasonCodes(
+    internal static List<string> BuildProductDecisionAlternativeReasonCodes(
         string recommendationStatus,
         ProductDecisionCenterRowDto row,
         IReadOnlyCollection<string> warningCodes)
@@ -7933,12 +7933,12 @@ public static class CachedAnalyticsEndpoints
             case "MARKDOWN":
                 if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
                 if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value) Add("high_stock_risk");
-                if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
+                if (row.MarginPct is < 10m) Add("poor_margin");
                 break;
             case "DO_NOT_ORDER":
                 if (row.CurrentStock.HasValue && row.MinStock.HasValue && row.CurrentStock.Value > row.MinStock.Value * 3) Add("high_stock_risk");
                 if (row.DaysSinceLastSale.HasValue && row.DaysSinceLastSale.Value >= 45) Add("stale_stock");
-                if ((row.MarginPct ?? 0m) < 10m) Add("poor_margin");
+                if (row.MarginPct is < 10m) Add("poor_margin");
                 break;
             case "WATCH":
                 if (warningCodes.Contains("insufficient_data", StringComparer.OrdinalIgnoreCase)) Add("insufficient_history");
@@ -9115,7 +9115,7 @@ public class HourDataDto
 public class QuickInsightsDto
 {
     public string? BestDay { get; set; }
-    public decimal BestDayRevenue { get; set; }
+    public decimal? BestDayRevenue { get; set; }
     public string? TopProduct { get; set; }
     public int LowStockAlert { get; set; }
 }
