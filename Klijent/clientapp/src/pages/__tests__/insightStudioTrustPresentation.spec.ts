@@ -58,6 +58,23 @@ describe("insightStudioTrustPresentation (RQ591)", () => {
     expect(view.basisNote).toContain("potencijalni prihod");
   });
 
+  it("keeps unavailable legacy reorder revenue out of fake zero", () => {
+    const view = presentReorderV1Summary({
+      criticalCount: 0,
+      urgentCount: 0,
+      recommendedCount: 0,
+      potentialRevenueRsd: null,
+      estimatedProcurementCostRsd: null,
+      costCoveragePct: null,
+      reorderValueBasis: "unavailable",
+      totalReorderValue: null,
+    } as any);
+
+    expect(view.potentialRevenueLabel).toBe("N/D");
+    expect(view.procurementCostLabel).toBe("N/D");
+    expect(view.basisNote).toBeNull();
+  });
+
   it("keeps nullable profit lift out of fake zero percent", () => {
     expect(presentSignedInsightPercent(null)).toBe("N/D");
     expect(presentSignedInsightPercent(12.5)).toBe("+12,5%");

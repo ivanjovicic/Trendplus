@@ -29311,6 +29311,12 @@ Seven production endpoints return `pol: "NeodreÄ‘eno"` instead of `"Neodređe
 
 - None.
 
+### Addendum 2026-10-05 (acceptance review residual; status stays DONE)
+
+- Follow-up review found leftover mojibake in urgency/aging labels (`KRITIÄŒNO`, `PREPORUÄŒUJE SE`, `KritiÄno`) after the original `Neodređeno` fix. Frontend filters match the correct Serbian forms, so critical/urgency filters returned empty sets.
+- Residual closed in the same-day review-harden commit: literals corrected in `InsightStudioEndpoints.cs` / `InsightStudioV2Endpoints.cs`, and `InsightStudioErrorResponseContractTests` now guards those strings.
+
+
 ## RQ582 - Decide the future of Insight Studio and the legacy Advanced surfaces (stale snapshots, unknown identities)
 
 Status: DONE
@@ -29917,6 +29923,12 @@ Legacy Advanced endpoints have unresolved period boundaries, margin fallback, em
 
 Owner completion 2026-10-05: RQ590 moved `READY -> DONE` after legacy Advanced endpoints (`InsightStudioEndpoints.cs`) gained inclusive date-only bounds, non-overlapping KPI periods, nullable margin benchmarks (no 35% fallback), ABC empty meta, never-sold aging evidence, daily target-missing and z-score baseline exclusions, category velocity denominator disclosure and reorder potential-revenue vs procurement-cost semantics. Focused proof: `InsightStudioLegacyEndpointsContractTests` 9/9 plus period normalizer tests 4/4; API build, prompt-queue (708 tasks), agent-instruction validation and `git diff --check` pass. Delivered on `main`; run log `.ai/runs/2026-10-05-RQ590-evidence.md`. RQ591 is the promoted frontend certification successor; Insight Studio navigation remains quarantined.
 
+### Addendum 2026-10-05 (acceptance review residual; status stays DONE)
+
+- Legacy V1 `reorder-plan` still coerced a missing `ProdajnaCena` to `0` potential revenue while claiming `reorderValueBasis=potential_revenue_at_selling_price`. V2 already kept revenue nullable.
+- Residual closed in the same-day review-harden commit: V1 now returns null revenue/basis `unavailable` when price is missing; FE types and presentation show `N/D` instead of `fmtRsd(0)`.
+
+
 ## RQ591 - Certify Insight Studio frontend trust and derived metrics
 
 Status: DONE
@@ -29970,3 +29982,8 @@ Frontend trust metadata and derived analytics have unresolved contracts recorded
 - RQ582 DONE, then sequential ownership after RQ589 and RQ590 to avoid same-family collisions.
 
 Owner completion 2026-10-05: RQ591 moved `READY -> DONE` after Insight Studio API types gained nullable trust fields (`InsightStudioTrustMeta`, lifecycle `trendPct`, smart-reorder cost/profit nullability), derived category intelligence exposes `estimated`/`revenueBasis`, and `InsightStudioPage` presents N/D labels for missing targets, unavailable margin benchmarks, estimated category revenue, and unreliable reorder profit while separating v1 potential revenue from procurement cost. Focused proof: `insightStudioTrustPresentation.spec.ts`, `analyticsIntelligenceDerived.spec.ts`, and `InsightStudioPage.spec.tsx` 21/21; `npm run typecheck` and `npm run check:analytics-guardrails` pass. Route/navigation quarantine unchanged. Delivered on `main`; run log `.ai/runs/2026-10-05-RQ591-evidence.md`. Evidence state: synchronized. Primary READY advances to `RQ48`; parallel lanes RQ88, RQ584, RQ586 and RQ588 remain collision-safe.
+
+### Addendum 2026-10-05 (acceptance review residual; status stays DONE)
+
+- Frontend still fell back to `fmtRsd(0)` when the V1 reorder summary presentation was absent, and category/supplier plan cost fields were typed non-null while the backend can return null.
+- Residual closed in the review-harden commit: unavailable labels use `N/D`; V2 plan cost/revenue types are `number | null`.

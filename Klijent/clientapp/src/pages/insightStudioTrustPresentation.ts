@@ -42,7 +42,9 @@ export function presentSignedInsightPercent(value: number | null | undefined) {
 export function presentReorderV1Summary(summary: ReorderPlan["summary"]) {
   const potentialRevenue = summary.potentialRevenueRsd ?? summary.totalReorderValue;
   return {
-    potentialRevenueLabel: fmtRsd(potentialRevenue),
+    potentialRevenueLabel: potentialRevenue == null || !Number.isFinite(potentialRevenue)
+      ? "N/D"
+      : fmtRsd(potentialRevenue),
     procurementCostLabel: summary.estimatedProcurementCostRsd != null
       ? fmtRsd(summary.estimatedProcurementCostRsd)
       : "N/D",

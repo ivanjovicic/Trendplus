@@ -32,6 +32,29 @@ public sealed class InsightStudioErrorResponseContractTests
         Assert.Equal(3, CountOccurrences(v2, "Neodređeno"));
     }
 
+    [Fact]
+    public void InsightStudioEndpointFamiliesUseCorrectUrgencyAndAgingLiterals()
+    {
+        var v1 = ReadRepoFile("Api/Endpoints/InsightStudioEndpoints.cs");
+        var v2 = ReadRepoFile("Api/Endpoints/InsightStudioV2Endpoints.cs");
+
+        // Residual RQ581 gap: urgency/aging labels were left as mojibake after the gender-literal fix,
+        // which broke frontend filters that match the correct Serbian forms.
+        Assert.DoesNotContain("KRITIÄŒNO", v1, StringComparison.Ordinal);
+        Assert.DoesNotContain("KRITIÄŒNO", v2, StringComparison.Ordinal);
+        Assert.DoesNotContain("PREPORUÄŒUJE SE", v1, StringComparison.Ordinal);
+        Assert.DoesNotContain("PREPORUÄŒUJE SE", v2, StringComparison.Ordinal);
+        Assert.DoesNotContain("KritiÄno", v1, StringComparison.Ordinal);
+
+        Assert.Contains("KRITIČNO", v1, StringComparison.Ordinal);
+        Assert.Contains("KRITIČNO", v2, StringComparison.Ordinal);
+        Assert.Contains("PREPORUČUJE SE", v1, StringComparison.Ordinal);
+        Assert.Contains("PREPORUČUJE SE", v2, StringComparison.Ordinal);
+        Assert.Contains("Kritično", v1, StringComparison.Ordinal);
+        Assert.True(CountOccurrences(v1, "KRITIČNO") >= 2);
+        Assert.True(CountOccurrences(v2, "KRITIČNO") >= 3);
+    }
+
     private static int CountOccurrences(string text, string value)
         => text.Split(value, StringSplitOptions.None).Length - 1;
 

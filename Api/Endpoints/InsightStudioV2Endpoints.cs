@@ -874,9 +874,9 @@ public static class InsightStudioV2Endpoints
                     var recQty = needsReorder
                         ? Math.Max((int)Math.Ceiling(avgDaily * 30) - p.currentStock, 0)
                         : 0;
-                    var urgency = doh < 7 ? "KRITIÄŒNO"
+                    var urgency = doh < 7 ? "KRITIČNO"
                                 : doh < 14 ? "HITNO"
-                                : doh < 30 ? "PREPORUÄŒUJE SE"
+                                : doh < 30 ? "PREPORUČUJE SE"
                                 : "OK";
                     var resolvedUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(p.productCostRsd, p.productCostLegacy);
                     var margin = p.prodajnaCena.HasValue && resolvedUnitCost.HasValue && p.prodajnaCena.Value > 0
@@ -924,7 +924,7 @@ public static class InsightStudioV2Endpoints
                     {
                         kategorija = g.Key,
                         totalItems = g.Count(),
-                        criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
+                        criticalCount = g.Count(x => x.urgency == "KRITIČNO"),
                         urgentCount = g.Count(x => x.urgency == "HITNO"),
                         totalReorderCost = SumKnownOrNull(g.Select(x => x.reorderCost)),
                         expectedRevenue = SumKnownOrNull(g.Select(x => x.expectedRevenue)),
@@ -940,7 +940,7 @@ public static class InsightStudioV2Endpoints
                     {
                         dobavljac = g.Key,
                         totalItems = g.Count(),
-                        criticalCount = g.Count(x => x.urgency == "KRITIÄŒNO"),
+                        criticalCount = g.Count(x => x.urgency == "KRITIČNO"),
                         totalReorderCost = SumKnownOrNull(g.Select(x => x.reorderCost)),
                         avgReorderProbability = g.Average(x => x.reorderProbability)
                     })
@@ -949,9 +949,9 @@ public static class InsightStudioV2Endpoints
 
                 var summary = new
                 {
-                    criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
+                    criticalCount = items.Count(x => x.urgency == "KRITIČNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
-                    recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
+                    recommendedCount = items.Count(x => x.urgency == "PREPORUČUJE SE"),
                     totalReorderCost = SumKnownOrNull(items.Select(x => x.reorderCost)),
                     expectedRevenueFromReorder = SumKnownOrNull(items.Select(x => x.expectedRevenue)),
                     expectedProfitFromReorder = SumKnownOrNull(items.Select(x => x.expectedProfit))

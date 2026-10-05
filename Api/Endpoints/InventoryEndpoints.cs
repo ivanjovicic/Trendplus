@@ -1892,23 +1892,6 @@ public static class InventoryEndpoints
         return names;
     }
 
-    private static int ResolveDaysSinceMovement(DateTime? lastMovementAtUtc, DateTime updatedAt)
-    {
-        var referenceDate = (lastMovementAtUtc ?? EnsureUtc(updatedAt)).Date;
-        var days = (DateTime.UtcNow.Date - referenceDate).Days;
-        return Math.Max(days, 0);
-    }
-
-    private static (string Bucket, string Label) ResolveAging(int daysSinceMovement)
-    {
-        return daysSinceMovement switch
-        {
-            <= 30 => ("0-30", "0-30 dana"),
-            <= 60 => ("31-60", "31-60 dana"),
-            <= 90 => ("61-90", "61-90 dana"),
-            _ => ("90+", "90+ dana")
-        };
-    }
 
     private static string ResolveStockState(int quantity, int minimum)
     {

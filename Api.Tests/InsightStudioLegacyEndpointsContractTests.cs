@@ -261,6 +261,50 @@ public sealed class InsightStudioLegacyEndpointsContractTests
         Assert.Equal(summary.GetProperty("potentialRevenueRsd").GetDecimal(), summary.GetProperty("totalReorderValue").GetDecimal());
     }
 
+    [Fact]
+    public async Task ReorderPlan_MissingSellingPriceKeepsPotentialRevenueUnavailable()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Artikli.Add(new Artikli
+            {
+                Id = 204,
+                Naziv = "Reorder missing price probe",
+                IDDobavljac = 1,
+                IDObjekat = 1,
+                Kolicina = 0,
+                MinimalnaKolicina = 5,
+                ProdajnaCena = null,
+                NabavnaCena = 40m,
+                DataOrigin = "existing",
+                UpdatedAt = DateTime.UtcNow
+            });
+            db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+            {
+                Id = 27,
+                DatumProdaje = new DateTime(2026, 1, 7, 10, 0, 0, DateTimeKind.Utc),
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            });
+            db.ProdajaStavke.Add(new ProdajaStavka { Id = 127, IdProdaja = 27, IdArtikal = 204, Kolicina = 10, Cena = 100m });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(factory,
+            "/api/analytics/advanced/reorder-plan?fromDate=2026-01-07&toDate=2026-01-07");
+        var item = root.GetProperty("items").EnumerateArray()
+            .Single(x => x.GetProperty("artikalId").GetInt32() == 204);
+        var summary = root.GetProperty("summary");
+
+        Assert.True(item.GetProperty("needsReorder").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("potentialRevenueRsd").ValueKind);
+        Assert.Equal(JsonValueKind.Null, summary.GetProperty("potentialRevenueRsd").ValueKind);
+        Assert.Equal(JsonValueKind.Null, summary.GetProperty("totalReorderValue").ValueKind);
+        Assert.Equal("unavailable", summary.GetProperty("reorderValueBasis").GetString());
+    }
+
     private static async Task<JsonElement> GetJsonAsync(WebApplicationFactory<global::Program> factory, string url)
     {
         using var client = factory.CreateClient();

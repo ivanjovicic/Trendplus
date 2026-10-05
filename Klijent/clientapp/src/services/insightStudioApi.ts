@@ -169,7 +169,7 @@ export interface ReorderItem {
   recommendedQty: number;
   urgency: "KRITIČNO" | "HITNO" | "PREPORUČUJE SE" | "OK";
   prodajnaCena: number | null;
-  potentialRevenueRsd?: number;
+  potentialRevenueRsd?: number | null;
   estimatedProcurementCostRsd?: number | null;
   costCoveragePct?: number;
 }

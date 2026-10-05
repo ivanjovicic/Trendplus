@@ -214,8 +214,8 @@ export interface CategoryPlan {
   totalItems: number;
   criticalCount: number;
   urgentCount: number;
-  totalReorderCost: number;
-  expectedRevenue: number;
+  totalReorderCost: number | null;
+  expectedRevenue: number | null;
   avgMargin: number;
 }
 
@@ -223,7 +223,7 @@ export interface SupplierPlan {
   dobavljac: string;
   totalItems: number;
   criticalCount: number;
-  totalReorderCost: number;
+  totalReorderCost: number | null;
   avgReorderProbability: number;
 }
 

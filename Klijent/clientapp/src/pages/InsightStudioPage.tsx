@@ -1791,7 +1791,7 @@ function ReorderTab2({
             <div className="text-lg font-bold text-[var(--text-primary)]">
               {useSmart
                 ? fmtRsd(smartData!.summary.totalReorderCost)
-                : (v1SummaryPresentation?.potentialRevenueLabel ?? fmtRsd(0))}
+                : (v1SummaryPresentation?.potentialRevenueLabel ?? "N/D")}
             </div>
           </div>
           {useSmart && (

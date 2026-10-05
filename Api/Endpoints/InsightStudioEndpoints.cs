@@ -403,7 +403,7 @@ public static class InsightStudioEndpoints
                     var days = (today - agingReferenceDate).Days;
                     var aging = days < 30 ? "Aktivno" :
                                 days < 60 ? "Pazi" :
-                                days < 90 ? "Upozorenje" : "KritiÄno";
+                                days < 90 ? "Upozorenje" : "Kritično";
                     var resolvedUnitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(a.NabavnaCenaDin, a.NabavnaCena);
                     var stockVal = resolvedUnitCost.HasValue ? a.Kolicina * resolvedUnitCost.Value : (decimal?)null;
                     var dobavNaziv = a.IDDobavljac.HasValue && dobavljaciDict.TryGetValue(a.IDDobavljac.Value, out var dn1)
@@ -431,11 +431,11 @@ public static class InsightStudioEndpoints
                 var summary = new
                 {
                     totalSKU = items.Count,
-                    critical = items.Count(x => x.agingCategory == "KritiÄno"),
+                    critical = items.Count(x => x.agingCategory == "Kritično"),
                     warning = items.Count(x => x.agingCategory == "Upozorenje"),
                     watch = items.Count(x => x.agingCategory == "Pazi"),
                     active = items.Count(x => x.agingCategory == "Aktivno"),
-                    criticalStockValue = items.Where(x => x.agingCategory == "KritiÄno")
+                    criticalStockValue = items.Where(x => x.agingCategory == "Kritično")
                         .Sum(x => x.stockValue ?? 0)
                 };
 
@@ -756,15 +756,19 @@ public static class InsightStudioEndpoints
                     var recQty = needsReorder
                         ? Math.Max((int)Math.Ceiling(avgDaily * 30) - p.currentStock, 0)
                         : 0;
-                    var urgency = doh < 7 ? "KRITIÄŒNO"
+                    var urgency = doh < 7 ? "KRITIČNO"
                                 : doh < 14 ? "HITNO"
-                                : doh < 30 ? "PREPORUÄŒUJE SE"
+                                : doh < 30 ? "PREPORUČUJE SE"
                                 : "OK";
                     var dobavNaziv = p.dobavljacId.HasValue && dobavljaciDict.TryGetValue(p.dobavljacId.Value, out var dn2)
                         ? dn2 : "Nepoznato";
                     var unitCost = AnalyticsMarginPolicy.ResolveProductUnitCost(p.nabavnaCenaDin, p.nabavnaCena);
-                    var sellingPrice = p.prodajnaCena ?? 0m;
-                    var potentialRevenueRsd = needsReorder ? recQty * sellingPrice : 0m;
+                    // Keep missing selling price unavailable (do not coerce to 0 revenue).
+                    decimal? potentialRevenueRsd = !needsReorder
+                        ? 0m
+                        : p.prodajnaCena.HasValue
+                            ? recQty * p.prodajnaCena.Value
+                            : null;
                     var estimatedProcurementCostRsd = needsReorder && unitCost.HasValue
                         ? recQty * unitCost.Value
                         : (decimal?)null;
@@ -791,22 +795,29 @@ public static class InsightStudioEndpoints
                 .ToList();
 
                 var reorderCandidates = items.Where(x => x.needsReorder).ToList();
-                var potentialRevenueRsd = reorderCandidates.Sum(x => x.potentialRevenueRsd);
+                var revenueValues = reorderCandidates.Select(x => x.potentialRevenueRsd).ToList();
+                var potentialRevenueRsd = revenueValues.Count == 0
+                    ? 0m
+                    : revenueValues.Any(x => !x.HasValue)
+                        ? (decimal?)null
+                        : revenueValues.Sum(x => x!.Value);
                 var estimatedProcurementCostRsd = reorderCandidates
                     .Where(x => x.estimatedProcurementCostRsd.HasValue)
                     .Sum(x => x.estimatedProcurementCostRsd!.Value);
                 var costCoveredCount = reorderCandidates.Count(x => x.estimatedProcurementCostRsd.HasValue);
                 var summary = new
                 {
-                    criticalCount = items.Count(x => x.urgency == "KRITIÄŒNO"),
+                    criticalCount = items.Count(x => x.urgency == "KRITIČNO"),
                     urgentCount = items.Count(x => x.urgency == "HITNO"),
-                    recommendedCount = items.Count(x => x.urgency == "PREPORUÄŒUJE SE"),
+                    recommendedCount = items.Count(x => x.urgency == "PREPORUČUJE SE"),
                     potentialRevenueRsd,
                     estimatedProcurementCostRsd = costCoveredCount > 0 ? estimatedProcurementCostRsd : (decimal?)null,
                     costCoveragePct = reorderCandidates.Count == 0
                         ? 0m
                         : Math.Round((decimal)costCoveredCount / reorderCandidates.Count * 100m, 2),
-                    reorderValueBasis = "potential_revenue_at_selling_price",
+                    reorderValueBasis = potentialRevenueRsd is null
+                        ? "unavailable"
+                        : "potential_revenue_at_selling_price",
                     totalReorderValue = potentialRevenueRsd
                 };
 
