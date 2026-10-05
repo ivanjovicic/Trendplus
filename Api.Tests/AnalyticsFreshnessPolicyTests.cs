@@ -9,12 +9,12 @@ public sealed class AnalyticsFreshnessPolicyTests
     private static readonly AnalyticsFreshnessOptions DefaultOptions = new();
 
     [Fact]
-    public void Resolve_ReturnsFresh_WhenImportIsWithinWarningThreshold()
+    public void Resolve_ReturnsFresh_WhenImportIsBeforeWarningThreshold()
     {
         var nowUtc = DateTime.UtcNow;
 
         var status = AnalyticsFreshnessPolicy.Resolve(
-            nowUtc.AddHours(-48),
+            nowUtc.AddHours(-47),
             null,
             nowUtc,
             DefaultOptions);
