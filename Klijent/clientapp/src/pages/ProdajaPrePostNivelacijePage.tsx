@@ -43,6 +43,7 @@ import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyti
 import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
 import { fmtNumber, fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
+import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { getSupplierOptionLabels, resolveNivelacijaErrorDetails } from "../utils/nivelacijaErrorPresentation";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
@@ -1661,7 +1662,7 @@ export default function ProdajaPrePostNivelacijePage() {
           </p>
         </div>
         <div className="ppn-decision-generated">
-          Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : "-"}
+          Generisano: {data?.generatedAt ? new Date(data.generatedAt).toLocaleString("sr-RS") : ANALYTICS_UNAVAILABLE_LABEL}
         </div>
       </header>
 

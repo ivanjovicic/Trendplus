@@ -208,6 +208,20 @@ public static class DatabaseInitializer
         logger.LogInformation("Starting analytics supplier decision schema repair.");
 
         await using var scope = services.CreateAsyncScope();
+        var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+
+        // /api/analytics/vendor-sales-nivelacija reads vw_vendor_sales_nivelacija through
+        // TrendplusDbContext (DefaultConnection), not AnalyticsConnection. When the web
+        // process does not run full database initialization (Render web: state
+        // "not_required"), nothing else reconciles a stale or stub view there, and the
+        // Pre/Posle nivelacije page stays on vendor_sales_nivelacija_contract_missing.
+        // Runs first so an analytics-side problem cannot skip it; it never throws.
+        var trendplusConnectionString = ResolveTrendplusRepairConnectionString(scope.ServiceProvider, defaultConnectionString);
+        var trendplusNivelacijaStatus = await EnsureTrendplusVendorSalesNivelacijaContractAsync(trendplusConnectionString, logger);
+        logger.LogInformation(
+            "Trendplus vendor sales nivelacija contract check finished with status {Status}.",
+            trendplusNivelacijaStatus);
+
         var analyticsDb = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
         var connectionString = analyticsDb.Database.GetConnectionString()
             ?? analyticsDb.Database.GetDbConnection().ConnectionString;
@@ -218,7 +232,6 @@ public static class DatabaseInitializer
             return;
         }
 
-        var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
         var unifiedDb = !string.IsNullOrWhiteSpace(defaultConnectionString)
             && AreSameDatabase(defaultConnectionString, connectionString);
 
@@ -824,6 +837,310 @@ public static class DatabaseInitializer
         logger.LogInformation(
             "[{Mode}] Supplier decision windowed views verified after startup SQL repair: 90d and 180d materialized views are present, complete and populated.",
             mode);
+    }
+
+    internal static class TrendplusNivelacijaContractRepairStatus
+    {
+        public const string NoConnection = "no_connection";
+        public const string Ready = "ready";
+        public const string RelationMissing = "relation_missing";
+        public const string PrivilegeMissing = "privilege_missing";
+        public const string LockBusy = "lock_busy";
+        public const string DependentsBlocked = "dependents_blocked";
+        public const string Repaired = "repaired";
+        public const string Failed = "failed";
+    }
+
+    private static string? ResolveTrendplusRepairConnectionString(
+        IServiceProvider scopedServices,
+        string? defaultConnectionString)
+    {
+        try
+        {
+            var trendplusDb = scopedServices.GetService<TrendplusDbContext>();
+            var fromContext = trendplusDb?.Database.GetConnectionString();
+            if (!string.IsNullOrWhiteSpace(fromContext))
+            {
+                return fromContext;
+            }
+        }
+        catch (Exception)
+        {
+            // Fall back to configuration when the context cannot be resolved in this host.
+        }
+
+        return string.IsNullOrWhiteSpace(defaultConnectionString) ? null : defaultConnectionString;
+    }
+
+    /// <summary>
+    /// Reconciles the vw_vendor_sales_nivelacija contract in the Trendplus (DefaultConnection)
+    /// database that the Pre/Posle nivelacije endpoint reads. Only an existing but stale/stub
+    /// view (for example the 018 compatibility stub without semantic columns) is rebuilt; a
+    /// missing relation stays a full-initialization concern and privileges are never altered.
+    /// The repair is serialized with database initialization through the startup advisory lock
+    /// and never throws, so it cannot block the analytics-side repair.
+    /// </summary>
+    internal static async Task<string> EnsureTrendplusVendorSalesNivelacijaContractAsync(
+        string? connectionString,
+        ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return TrendplusNivelacijaContractRepairStatus.NoConnection;
+        }
+
+        try
+        {
+            await using (var inspectConnection = new NpgsqlConnection(connectionString))
+            {
+                await inspectConnection.OpenAsync();
+                var inspection = await PostgresRelationInspector.InspectAsync(
+                    inspectConnection,
+                    "vw_vendor_sales_nivelacija");
+
+                if (!inspection.IsResolved)
+                {
+                    logger.LogWarning(
+                        "Trendplus vw_vendor_sales_nivelacija does not exist; leaving creation to full database initialization.");
+                    return TrendplusNivelacijaContractRepairStatus.RelationMissing;
+                }
+
+                if (!inspection.HasSelectPrivilege)
+                {
+                    logger.LogWarning(
+                        "Trendplus vw_vendor_sales_nivelacija exists but the API role has no SELECT privilege; schema repair cannot fix privileges.");
+                    return TrendplusNivelacijaContractRepairStatus.PrivilegeMissing;
+                }
+
+                if (await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
+                {
+                    return TrendplusNivelacijaContractRepairStatus.Ready;
+                }
+            }
+
+            await using var lockConnection = new NpgsqlConnection(connectionString);
+            await lockConnection.OpenAsync();
+            if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AdvisoryLockKey))
+            {
+                logger.LogWarning(
+                    "Trendplus vw_vendor_sales_nivelacija is stale, but database initialization holds advisory lock {Key}; skipping contract repair.",
+                    AdvisoryLockKey);
+                return TrendplusNivelacijaContractRepairStatus.LockBusy;
+            }
+
+            IReadOnlyList<string> dependentsBefore;
+            try
+            {
+                if (await AreVendorSalesNivelacijaViewReadyAsync(connectionString))
+                {
+                    return TrendplusNivelacijaContractRepairStatus.Ready;
+                }
+
+                // 014 rebuilds the stack with DROP VIEW ... CASCADE. Only proceed when every
+                // dependent is a repo-owned derived object; never silently drop unknown
+                // (for example hand-made reporting) views in production.
+                dependentsBefore = await ListNivelacijaViewDependentsAsync(lockConnection);
+                var unknownDependents = dependentsBefore
+                    .Where(name => !TrendplusNivelacijaRebuildableDependents.Contains(name)
+                        && !TrendplusNivelacijaMaintenanceDependents.Contains(name))
+                    .ToArray();
+                if (unknownDependents.Length > 0)
+                {
+                    logger.LogError(
+                        "Trendplus vw_vendor_sales_nivelacija is stale, but contract repair was skipped because unknown dependent objects would be dropped by the view rebuild: {Dependents}. Review them and run full database initialization or a manual 014/016 rebuild.",
+                        string.Join(", ", unknownDependents));
+                    return TrendplusNivelacijaContractRepairStatus.DependentsBlocked;
+                }
+
+                logger.LogWarning(
+                    "Trendplus vw_vendor_sales_nivelacija is missing required columns. Rebuilding the nivelacija view stack (014, 016) in the Trendplus database. Dependent derived objects that will be rebuilt: {Dependents}.",
+                    dependentsBefore.Count == 0 ? "-" : string.Join(", ", dependentsBefore));
+                await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql");
+                await DeleteAppliedStartupSqlHistoryAsync(connectionString, "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql");
+                // 014 runs in a single transaction: a failure rolls back to the previous view.
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+                    logger,
+                    failClosed: true);
+                await EnsureVendorSalesNivelacijaDependenciesAsync(connectionString, logger, "trendplus");
+            }
+            finally
+            {
+                await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AdvisoryLockKey);
+            }
+
+            // 014 drops the nivelacija views with CASCADE; restore the supplier decision hub
+            // objects that Trendplus initialization owns (018 core views and caches; it is a
+            // no-op when they are ready, and heavy cache refresh stays with the nightly worker).
+            await BuildSupplierDecisionHubObjectsAsync(
+                connectionString,
+                logger,
+                "trendplus",
+                "nivelacija-contract-repair",
+                allowHeavyRefresh: false);
+
+            if (dependentsBefore.Any(name => TrendplusNivelacijaWindowedDependents.Contains(name)))
+            {
+                try
+                {
+                    await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "nivelacija-contract-repair");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Trendplus supplier decision windowed views could not be restored after the nivelacija contract repair.");
+                }
+            }
+
+            await using (var verifyConnection = new NpgsqlConnection(connectionString))
+            {
+                await verifyConnection.OpenAsync();
+                var stillMissing = await ListMissingRelationsAsync(verifyConnection, dependentsBefore);
+                if (stillMissing.Count > 0)
+                {
+                    logger.LogWarning(
+                        "Trendplus nivelacija contract repair finished, but these previously existing derived objects are not restored yet: {Missing}. Supplier ML objects (015) need an explicit maintenance run; supplier decision caches are rebuilt by the next initializer/nightly run.",
+                        string.Join(", ", stillMissing));
+                }
+            }
+
+            var repaired = await AreVendorSalesNivelacijaViewReadyAsync(connectionString);
+            if (repaired)
+            {
+                logger.LogInformation("Trendplus vw_vendor_sales_nivelacija contract repaired; Pre/Posle nivelacije can read change_percent_revenue_semantic.");
+            }
+            else
+            {
+                logger.LogError("Trendplus vw_vendor_sales_nivelacija is still missing required columns after the contract repair.");
+            }
+
+            return repaired
+                ? TrendplusNivelacijaContractRepairStatus.Repaired
+                : TrendplusNivelacijaContractRepairStatus.Failed;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Trendplus vw_vendor_sales_nivelacija contract repair failed.");
+            return TrendplusNivelacijaContractRepairStatus.Failed;
+        }
+    }
+
+    private static readonly HashSet<string> TrendplusNivelacijaSupplierHubDependents = new(StringComparer.Ordinal)
+    {
+        "vw_supplier_fullprice_signals",
+        "vw_supplier_markdown_dependency",
+        "vw_supplier_decision_score",
+        "vw_supplier_recommendations",
+        "mv_supplier_markdown_dependency_cache",
+        "mv_supplier_decision_score_cache",
+        "mv_supplier_recommendations_cache",
+    };
+
+    private static readonly HashSet<string> TrendplusNivelacijaWindowedDependents = new(StringComparer.Ordinal)
+    {
+        "vw_supplier_fullprice_signals_90d",
+        "vw_supplier_fullprice_signals_180d",
+        "vw_supplier_markdown_dependency_90d",
+        "vw_supplier_markdown_dependency_180d",
+        "mv_supplier_decision_score_cache_90d",
+        "mv_supplier_decision_score_cache_180d",
+    };
+
+    // Objects the repair (014, 016, 018 core/cache batches, 029) recreates itself.
+    private static readonly HashSet<string> TrendplusNivelacijaRebuildableDependents = new(
+        new[]
+        {
+            "vw_sales_pre_nivelacija",
+            "vw_sales_post_nivelacija",
+            "vw_vendor_sales_nivelacija",
+            "vw_nivelacija_kontrolna_grupa",
+            "vw_nivelacija_did",
+        }
+        .Concat(TrendplusNivelacijaSupplierHubDependents)
+        .Concat(TrendplusNivelacijaWindowedDependents),
+        StringComparer.Ordinal);
+
+    // Repo-owned derived ML objects (Database/Analytics/015) that startup intentionally does
+    // not execute; they are reported for an explicit maintenance run after the repair.
+    private static readonly HashSet<string> TrendplusNivelacijaMaintenanceDependents = new(StringComparer.Ordinal)
+    {
+        "supplier_training_dataset_v1",
+        "vw_supplier_ranking_inference_v1",
+        "vw_supplier_ml_latest_predictions",
+    };
+
+    private static async Task<IReadOnlyList<string>> ListNivelacijaViewDependentsAsync(NpgsqlConnection connection)
+    {
+        // Transitive view/materialized-view dependents of the 014 base views that a
+        // DROP VIEW ... CASCADE would remove.
+        const string sql = """
+            WITH RECURSIVE roots AS (
+                SELECT c.oid
+                FROM pg_class c
+                WHERE c.oid IN (
+                    to_regclass('vw_sales_pre_nivelacija'),
+                    to_regclass('vw_sales_post_nivelacija'),
+                    to_regclass('vw_vendor_sales_nivelacija'))
+            ),
+            deps AS (
+                SELECT oid FROM roots
+                UNION
+                SELECT dependent.oid
+                FROM deps d
+                JOIN pg_depend dep
+                  ON dep.refobjid = d.oid
+                 AND dep.classid = 'pg_rewrite'::regclass
+                 AND dep.refclassid = 'pg_class'::regclass
+                JOIN pg_rewrite r ON r.oid = dep.objid
+                JOIN pg_class dependent ON dependent.oid = r.ev_class
+                WHERE dependent.oid <> d.oid
+            )
+            SELECT DISTINCT c.relname::text
+            FROM deps
+            JOIN pg_class c ON c.oid = deps.oid
+            WHERE deps.oid NOT IN (SELECT oid FROM roots)
+            ORDER BY 1;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds * 3;
+        var names = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            names.Add(reader.GetString(0));
+        }
+
+        return names;
+    }
+
+    private static async Task<IReadOnlyList<string>> ListMissingRelationsAsync(
+        NpgsqlConnection connection,
+        IReadOnlyList<string> relationNames)
+    {
+        if (relationNames.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        const string sql = """
+            SELECT name
+            FROM unnest(@names) AS name
+            WHERE to_regclass(name) IS NULL
+            ORDER BY name;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("names", relationNames.ToArray());
+        var missing = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            missing.Add(reader.GetString(0));
+        }
+
+        return missing;
     }
 
     private static async Task<bool> AreVendorSalesNivelacijaViewReadyAsync(string connectionString)

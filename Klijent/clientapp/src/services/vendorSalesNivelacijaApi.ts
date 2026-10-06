@@ -1,5 +1,6 @@
 import { fetchAnalyticsJson } from "./analyticsHttp";
 import type { AnalyticsResponseMeta } from "../types/analytics";
+import { assertAnalyticsMetaSuccess, isAnalyticsMetaError } from "../utils/analyticsResponseMeta";
 import {
     vendorSalesNivelacijaOptionsSchema,
     vendorSalesNivelacijaResponseSchema,
@@ -406,12 +407,35 @@ export async function getVendorSalesNivelacijaPrePostPair(
         },
     );
 
+    // The pair wraps the single-period payload, so its meta lives on `current`. A backend
+    // readiness failure (schema contract, query error) arrives as a 200 fallback with
+    // scopeApplied=false; surface it as that failure instead of a misleading scope mismatch.
+    assertAnalyticsMetaSuccess(
+        result,
+        (pair) => pair.current?.meta ?? null,
+        "Pre/post nivelacija podaci trenutno nisu dostupni.",
+    );
+
     const expectedStoreId = query.storeId ?? null;
     const expectedDataScope = normalizeDataScope(query.dataScope);
     if (result.current.scopeApplied !== true
         || result.current.storeId !== expectedStoreId
         || result.current.dataScope !== expectedDataScope) {
         throw new Error("Pre/post nivelacija nije potvrdila traženi objekat i opseg podataka.");
+    }
+
+    // The previous leg can fail on its own (for example a query timeout) and still arrive as
+    // a 200 fallback with zero totals; never present that as a measured previous period.
+    if (result.previous && isAnalyticsMetaError(result.previous.meta)) {
+        const correlationId = result.previous.meta?.correlationId;
+        return {
+            ...result,
+            previous: null,
+            previousError: result.previousError
+                ?? (correlationId
+                    ? `zahtev nije uspeo; referentni ID: ${correlationId}`
+                    : "zahtev nije uspeo"),
+        };
     }
 
     return result;

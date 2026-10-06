@@ -4,6 +4,7 @@ export const NIVELACIJA_ERROR_FALLBACK = "Podaci trenutno nisu dostupni. Proveri
 
 const knownNivelacijaErrorMessages: Record<string, string> = {
   vendor_sales_nivelacija_contract_missing: "Pre/post analiza čeka ispravku šeme baze. Sačuvajte kod i ID za podršku.",
+  vendor_sales_nivelacija_privilege_missing: "Pre/post analiza čeka dozvolu za čitanje izveštaja u bazi. Sačuvajte kod i ID za podršku.",
   pre_nivelacija_sales_unavailable: "Prodaja za skor trenutno nije dostupna.",
 };
 

@@ -10,7 +10,7 @@ import {
   AnalyticsResponseValidationError,
   validateAnalyticsResponse,
 } from "../validation/analyticsResponseValidation";
-import { assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
+import { AnalyticsMetaError, assertAnalyticsMetaSuccess } from "../utils/analyticsResponseMeta";
 import {
   ANALYTICS_ERROR_FALLBACK_MESSAGE,
   getSafeAnalyticsErrorMessage,
@@ -223,6 +223,22 @@ export async function fetchAnalyticsJson<T>(
 
       if (error instanceof AnalyticsResponseValidationError) {
         throw error;
+      }
+
+      if (error instanceof AnalyticsMetaError) {
+        // Keep the backend errorCode/correlationId so pages can map known readiness
+        // failures (e.g. vendor_sales_nivelacija_contract_missing) instead of a generic error.
+        const safeMessage = getSafeAnalyticsErrorMessage(
+          error.message,
+          null,
+          fallbackMessage ?? ANALYTICS_ERROR_FALLBACK_MESSAGE,
+        );
+        throw new AnalyticsMetaError(safeMessage, {
+          errorCode: error.errorCode,
+          correlationId: error.correlationId,
+          context: error.context,
+          meta: error.meta,
+        });
       }
 
       if (error instanceof Error) {

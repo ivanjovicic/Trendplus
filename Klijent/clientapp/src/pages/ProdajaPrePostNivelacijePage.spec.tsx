@@ -1269,6 +1269,49 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.queryByText("Post-window promet posle nivelacije")).not.toBeInTheDocument();
   });
 
+  it("shows the mapped schema-readiness message with code and correlation ID for the contract-missing fallback", async () => {
+    // Production 2026-10-05: the backend answers HTTP 200 with an empty fallback,
+    // meta.success=false, errorCode vendor_sales_nivelacija_contract_missing and scopeApplied=false.
+    const fallback = response({
+      generatedAt: "2026-10-05T08:00:00Z",
+      scopeApplied: false,
+      vendorStats: [],
+      meta: {
+        success: false,
+        errorCode: "vendor_sales_nivelacija_contract_missing",
+        errorMessage: "Pre/post nivelacija nije dostupna: nedostaje kolona change_percent_revenue_semantic u relaciji public.vw_vendor_sales_nivelacija.",
+        correlationId: "corr-page-contract",
+      } as VendorSalesNivelacijaResponse["meta"],
+    });
+    const actual = await vi.importActual<typeof import("../services/vendorSalesNivelacijaApi")>("../services/vendorSalesNivelacijaApi");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      current: fallback,
+      previous: fallback,
+      previousError: null,
+      outcomeLedger: null,
+      outcomeLedgerError: "Ishod sniženja trenutno nije dostupan.",
+    }), { status: 200 })));
+    vi.mocked(getVendorSalesNivelacijaPrePostPair).mockImplementation(actual.getVendorSalesNivelacijaPrePostPair);
+
+    try {
+      renderPage();
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Podaci trenutno nisu dostupni");
+      expect(alert).toHaveTextContent("Pre/post analiza čeka ispravku šeme baze. Sačuvajte kod i ID za podršku.");
+      expect(alert).toHaveTextContent("vendor_sales_nivelacija_contract_missing");
+      expect(alert).toHaveTextContent("corr-page-contract");
+      expect(alert).not.toHaveTextContent("nije potvrdila traženi objekat");
+      expect(alert).not.toHaveTextContent("change_percent_revenue_semantic");
+      expect(alert).not.toHaveTextContent("Greška pri učitavanju pre/post analitike.");
+      expect(screen.getByText(/Generisano:/)).toHaveTextContent("Generisano: Nije dostupno");
+      expect(screen.queryByText("Generisano: -")).not.toBeInTheDocument();
+      expect(document.querySelector(".ppn-decision-kpis")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("shows unavailable driver revenue instead of fake zero RSD for non-finite change metrics", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(
       response({

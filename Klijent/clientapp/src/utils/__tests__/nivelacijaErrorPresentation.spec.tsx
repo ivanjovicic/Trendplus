@@ -31,6 +31,18 @@ describe("Nivelacija failure presentation", () => {
     expect(alert).not.toHaveTextContent("Npgsql");
   });
 
+  it("maps a missing SELECT privilege to business copy instead of the generic fallback", () => {
+    const details = resolveNivelacijaErrorDetails({
+      message: "Pre/post nivelacija nije dostupna: API uloga nema SELECT privilegiju nad relacijom public.vw_vendor_sales_nivelacija.",
+      errorCode: "vendor_sales_nivelacija_privilege_missing",
+      correlationId: "corr-privilege-1",
+    });
+
+    expect(details.message).toBe("Pre/post analiza čeka dozvolu za čitanje izveštaja u bazi. Sačuvajte kod i ID za podršku.");
+    expect(details.errorCode).toBe("vendor_sales_nivelacija_privilege_missing");
+    expect(details.correlationId).toBe("corr-privilege-1");
+  });
+
   it("adds supplier IDs only when Serbian-normalized names collide and sorts by Serbian collation", () => {
     const labels = getSupplierOptionLabels([
       { id: 8, naziv: "čarda" },

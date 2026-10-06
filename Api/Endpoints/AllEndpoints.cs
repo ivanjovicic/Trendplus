@@ -5428,10 +5428,11 @@ public static class AllEndpoints
                 {
                     previous = await previousTask;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
-                    previousError = ex.Message;
-                    logger.LogWarning(ex, "Previous-period nivelacija pair leg failed.");
+                    // Raw exception text (for example HttpClient status messages) is not UI copy.
+                    previousError = $"zahtev nije uspeo; referentni ID: {correlationId}";
+                    logger.LogWarning(ex, "Previous-period nivelacija pair leg failed. CorrelationId={CorrelationId}", correlationId);
                 }
 
                 VendorSalesNivelacijaOutcomeLedgerDto? outcomeLedger = null;

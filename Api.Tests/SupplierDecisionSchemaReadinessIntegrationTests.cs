@@ -76,6 +76,9 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_fullprice_signals"));
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_markdown_dependency"));
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_decision_score"));
+        Assert.True(await RelationExistsAsync(connection, "vw_supplier_markdown_dependency_90d"));
+        Assert.False(await ColumnExistsAsync(connection, "vw_supplier_markdown_dependency_90d", "change_percent_revenue"));
+        Assert.True(await RelationExistsAsync(connection, "mv_supplier_decision_score_cache_90d"));
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_recommendations"));
 
         foreach (var column in new[]
@@ -130,6 +133,188 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
             "mv_supplier_decision_score_cache_180d"));
         Assert.Equal(7, await GetColumnOrdinalAsync(connection, "prodaja_stavke", "data_origin"));
         Assert.Equal(8, await GetColumnOrdinalAsync(connection, "prodaja_stavke", "supplier_id_at_sale"));
+    }
+
+    [Fact]
+    public async Task TrendplusNivelacijaContractRepair_WithoutConnection_IsNoOp()
+    {
+        var status = await DatabaseInitializer.EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            null,
+            NullLogger.Instance);
+
+        Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.NoConnection, status);
+    }
+
+    [Fact]
+    public async Task TrendplusNivelacijaContractRepair_MissingRelation_DoesNotCreateObjects()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_trendplus_nivelacija_missing_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        var status = await DatabaseInitializer.EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            connectionString,
+            NullLogger.Instance);
+
+        Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.RelationMissing, status);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        Assert.False(await RelationExistsAsync(connection, "vw_vendor_sales_nivelacija"));
+    }
+
+    // Regression (2026-10-05 production): the Trendplus DB that /api/analytics/vendor-sales-nivelacija
+    // reads still had the 018 compatibility stub of vw_vendor_sales_nivelacija (no
+    // change_percent_revenue_semantic), the web process reported database initialization
+    // "not_required", and the Pre/Posle nivelacije page stayed on contract_missing.
+    [Fact]
+    public async Task TrendplusNivelacijaContractRepair_RebuildsStubView_AndPrePostContractBecomesReady()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_trendplus_nivelacija_stub_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        await SeedSupplierSchemaPrerequisitesAsync(connectionString);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = _fixture.AdminConnectionString,
+                ["ConnectionStrings:AnalyticsConnection"] = connectionString
+            })
+            .Build();
+        using (var services = new ServiceCollection()
+            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString))
+            .BuildServiceProvider())
+        {
+            await DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync(
+                services,
+                configuration,
+                NullLogger.Instance);
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        // Same shape as the 018 compatibility stub: relation exists, semantic columns do not.
+        await ExecuteAsync(
+            connection,
+            """
+            DROP VIEW IF EXISTS vw_vendor_sales_nivelacija CASCADE;
+            CREATE VIEW vw_vendor_sales_nivelacija AS
+            SELECT
+                NULL::bigint AS price_event_id,
+                NULL::date AS event_date,
+                NULL::bigint AS vendor_id,
+                NULL::text AS vendor_name,
+                NULL::bigint AS article_id,
+                NULL::text AS sku,
+                NULL::text AS article_name,
+                NULL::text AS category,
+                NULL::numeric AS old_price,
+                NULL::numeric AS new_price,
+                0::numeric AS pre_qty,
+                0::numeric AS post_qty,
+                0::numeric AS pre_revenue,
+                0::numeric AS post_revenue,
+                0::numeric AS coverage_pre30,
+                0::numeric AS coverage_post30,
+                0::numeric AS change_qty,
+                0::numeric AS change_revenue,
+                0::numeric AS change_percent_qty,
+                0::numeric AS change_percent_revenue,
+                FALSE AS is_low_signal
+            WHERE FALSE;
+            -- In production supplier hub objects were built on top of the stub; a known
+            -- windowed dependent must be rebuilt (029), not left dropped by the CASCADE.
+            CREATE VIEW vw_supplier_markdown_dependency_90d AS
+            SELECT vendor_id, change_percent_revenue FROM vw_vendor_sales_nivelacija;
+            """);
+
+        var before = await Infrastructure.Database.PostgresRelationInspector.InspectAsync(
+            connection,
+            Api.Services.VendorSalesNivelacijaContractInspector.RelationName);
+        Assert.Equal(
+            "vendor_sales_nivelacija_contract_missing",
+            Api.Services.VendorSalesNivelacijaContractInspector.FindIssue(before)?.ErrorCode);
+
+        var status = await DatabaseInitializer.EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            connectionString,
+            NullLogger.Instance);
+        Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.Repaired, status);
+
+        var after = await Infrastructure.Database.PostgresRelationInspector.InspectAsync(
+            connection,
+            Api.Services.VendorSalesNivelacijaContractInspector.RelationName);
+        Assert.Null(Api.Services.VendorSalesNivelacijaContractInspector.FindIssue(after));
+        Assert.True(await ColumnExistsAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic"));
+        Assert.True(await RelationExistsAsync(connection, "vw_nivelacija_did"));
+        // 014 drops the nivelacija stack with CASCADE; supplier decision dependents must be restored.
+        Assert.True(await RelationExistsAsync(connection, "vw_supplier_decision_score"));
+        Assert.True(await RelationExistsAsync(connection, "vw_supplier_markdown_dependency_90d"));
+        Assert.False(await ColumnExistsAsync(connection, "vw_supplier_markdown_dependency_90d", "change_percent_revenue"));
+        Assert.True(await RelationExistsAsync(connection, "mv_supplier_decision_score_cache_90d"));
+
+        var second = await DatabaseInitializer.EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            connectionString,
+            NullLogger.Instance);
+        Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.Ready, second);
+    }
+
+    [Fact]
+    public async Task TrendplusNivelacijaContractRepair_UnknownDependentView_IsNotDroppedAndRepairIsSkipped()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
+            $"tp_trendplus_nivelacija_dependent_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await ExecuteAsync(
+            connection,
+            """
+            CREATE VIEW vw_vendor_sales_nivelacija AS
+            SELECT
+                NULL::bigint AS price_event_id,
+                NULL::numeric AS old_price,
+                NULL::numeric AS new_price,
+                0::numeric AS coverage_pre30,
+                0::numeric AS coverage_post30,
+                0::numeric AS change_percent_revenue
+            WHERE FALSE;
+            CREATE VIEW vw_custom_owner_report AS
+            SELECT price_event_id, change_percent_revenue FROM vw_vendor_sales_nivelacija;
+            """);
+
+        var status = await DatabaseInitializer.EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            connectionString,
+            NullLogger.Instance);
+
+        Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.DependentsBlocked, status);
+        Assert.True(await RelationExistsAsync(connection, "vw_custom_owner_report"));
+        Assert.False(await ColumnExistsAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic"));
     }
 
     [Fact]

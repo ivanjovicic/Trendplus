@@ -53,9 +53,9 @@ internal static class VendorSalesNivelacijaInternalHttpLoader
     {
         var query = new List<string>();
         if (vendorId.HasValue) query.Add($"vendorId={vendorId.Value}");
-        if (eventDate.HasValue) query.Add($"eventDate={eventDate.Value:O}");
-        if (from.HasValue) query.Add($"from={from.Value:O}");
-        if (to.HasValue) query.Add($"to={to.Value:O}");
+        if (eventDate.HasValue) query.Add($"eventDate={FormatDate(eventDate.Value)}");
+        if (from.HasValue) query.Add($"from={FormatDate(from.Value)}");
+        if (to.HasValue) query.Add($"to={FormatDate(to.Value)}");
         if (!string.IsNullOrWhiteSpace(category)) query.Add($"category={Uri.EscapeDataString(category)}");
         query.Add($"includeInactive={includeInactive.ToString().ToLowerInvariant()}");
         query.Add($"maxRows={maxRows}");
@@ -64,4 +64,9 @@ internal static class VendorSalesNivelacijaInternalHttpLoader
         query.Add($"includeEnrichment={includeEnrichment.ToString().ToLowerInvariant()}");
         return "?" + string.Join("&", query);
     }
+
+    // Round-trip ("O") values can carry a "+hh:mm" offset; an unescaped "+" is decoded as a
+    // space by the loopback request's query binder, which fails the internal pair leg with 400.
+    private static string FormatDate(DateTime value) =>
+        Uri.EscapeDataString(value.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
 }
