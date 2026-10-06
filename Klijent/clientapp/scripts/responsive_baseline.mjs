@@ -959,9 +959,10 @@ async function run(options) {
               await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
             }
             if (route.pui39Overflow) {
+              const expectedPrefix = PUI39_LONG_STORE_OPTION.slice(0, 36);
               await page.waitForFunction((expectedLabel) => [...document.querySelectorAll(".analytics-control-bar select")]
-                .some((select) => [...select.options].some((option) => option.textContent?.trim() === expectedLabel)),
-              { timeout: options.timeoutMs }, PUI39_LONG_STORE_OPTION);
+                .some((select) => [...select.options].some((option) => option.textContent?.trim().startsWith(expectedLabel))),
+              { timeout: options.timeoutMs }, expectedPrefix);
             }
             if (route.expandSelector) {
               await page.waitForFunction((selector) => {

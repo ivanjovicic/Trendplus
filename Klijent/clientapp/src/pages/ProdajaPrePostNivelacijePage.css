@@ -599,14 +599,6 @@
   color: var(--dashboard-text);
 }
 
-.ppn-decision-table-wrap {
-  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 22%, transparent);
-  border-radius: 12px;
-  max-height: 620px;
-  overflow-x: auto;
-  overflow-y: visible;
-}
-
 .ppn-decision-table {
   border-collapse: separate;
   border-spacing: 0;
@@ -689,39 +681,39 @@
 }
 
 .ppn-decision-status.status-boost {
-  background: var(--success-soft);
-  border: 1px solid var(--success-border);
-  color: var(--dashboard-accent);
+  background: var(--status-success-fill);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .ppn-decision-status.status-keep {
-  background: var(--warning-soft);
-  border: 1px solid var(--warning-border);
-  color: var(--warning);
+  background: var(--status-warning-fill);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .ppn-decision-status.status-review {
-  background: var(--info-soft, rgba(96, 165, 250, 0.14));
-  border: 1px solid var(--info-border, rgba(96, 165, 250, 0.4));
-  color: var(--info, var(--theme-color-93c5fd, #93c5fd));
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .ppn-decision-status.status-reduce {
-  background: var(--error-soft);
-  border: 1px solid var(--error-border);
-  color: var(--dashboard-danger);
+  background: var(--status-error-fill);
+  border: 1px solid var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .trend-up {
-  color: var(--dashboard-accent);
+  color: var(--status-success-text);
 }
 
 .trend-down {
-  color: var(--dashboard-danger);
+  color: var(--status-error-text);
 }
 
 .trend-neutral {
-  color: var(--dashboard-secondary);
+  color: var(--status-info-text);
 }
 
 .ppn-decision-detail-btn {
@@ -944,6 +936,11 @@
 
   .ppn-decision-actions button {
     flex: 1;
+  }
+
+  .ppn-focus-chip {
+    min-height: 44px;
+    padding: 8px 12px;
   }
 }
 

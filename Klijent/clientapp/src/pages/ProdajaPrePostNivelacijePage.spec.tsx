@@ -270,6 +270,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(await screen.findByText(/Patika test/)).toBeInTheDocument();
     expect(screen.getByText(/nivelacije-ishod-snizenja: 1 rows/)).toBeInTheDocument();
     expect(screen.getByText(/Nije dostupno \(historical_stock_unavailable\)/)).toBeInTheDocument();
+    expect(screen.getByTestId("ppn-outcome-ledger-data-table").querySelector(".analytics-data-table__scroll > table.ppn-decision-table")).toBeInTheDocument();
   });
 
   it("round-trips Pre/Post table sort through the URL", async () => {
@@ -289,6 +290,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     renderPage(["/analytics/nivelacije-pre-post?sort=changeRevenue&dir=asc&focus=review"]);
 
     const table = await screen.findByTestId("prodaja-pre-post-nivelacije-data-table");
+    expect(table.querySelector(".analytics-data-table__scroll > table.ppn-decision-table")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Prozor u toku/i })).toHaveClass("active");
     const revenueButton = within(table).getByRole("button", { name: /Promena/ });
     expect(revenueButton).toHaveTextContent("^");

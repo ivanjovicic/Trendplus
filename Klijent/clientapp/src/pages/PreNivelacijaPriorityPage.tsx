@@ -243,7 +243,7 @@ function CustomSupplierTooltip({ active, payload }: CustomSupplierTooltipProps) 
         Udeo u akciji: {fmtPct(data.sharePct, 2)}
       </p>
       {wowPct != null ? (
-        <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "var(--error, var(--theme-color-ef4444, #ef4444))" : "var(--success, var(--theme-color-16a34a, #16a34a))" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: wowPct >= 0 ? "var(--status-error-text)" : "var(--status-success-text)" }}>
           Sedm. promena rizika: {wowPct >= 0 ? "+" : ""}{fmtPct(wowPct, 1)}
         </p>
       ) : null}

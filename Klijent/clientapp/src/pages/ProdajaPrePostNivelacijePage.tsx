@@ -1777,7 +1777,10 @@ export default function ProdajaPrePostNivelacijePage() {
             {outcomeLedger && outcomeLedger.events.length > 0 ? (
               <>
                 <p className="ppn-chart-hint">Događaji: {outcomeLedger.eventCount}; zreli i uporedivi: {outcomeLedger.matureComparableCount}{outcomeLedger.isTruncated ? ` (prikazan limit od ${outcomeLedger.eventLimit})` : ""}. Zaliha na dan događaja, sell-through i dani do rasprodaje nisu dostupni jer nema potvrđenog istorijskog izvora zaliha.</p>
-                <div className="ppn-decision-table-wrap">
+                <AnalyticsDataTable
+                  testId="ppn-outcome-ledger-data-table"
+                  rowCount={outcomeLedger.events.slice(0, 100).length}
+                >
                   <table className="ppn-decision-table">
                     <thead><tr><th>Datum / artikal</th><th>Dobavljač / tip</th><th>Dubina</th><th>Jedinice pre / posle</th><th>Promet pre / posle</th><th>Marža pre / posle</th><th>Pokrivenost troška pre / posle</th><th>Istorijska zaliha</th></tr></thead>
                     <tbody>{outcomeLedger.events.slice(0, 100).map((event) => (
@@ -1793,7 +1796,7 @@ export default function ProdajaPrePostNivelacijePage() {
                       </tr>
                     ))}</tbody>
                   </table>
-                </div>
+                </AnalyticsDataTable>
                 {outcomeLedger.aggregates.length > 0 ? (
                   <div className="ppn-chip-wrap" aria-label="Deskriptivni zbirni ishodi">
                     {outcomeLedger.aggregates.slice(0, 8).map((aggregate) => (
@@ -2009,8 +2012,7 @@ export default function ProdajaPrePostNivelacijePage() {
                 </p>
               ) : null}
 
-              <div className="ppn-decision-table-wrap">
-                <table className="ppn-decision-table">
+              <table className="ppn-decision-table">
                   <thead>
                     <tr>
                       <th>
@@ -2112,8 +2114,7 @@ export default function ProdajaPrePostNivelacijePage() {
                       })
                     )}
                   </tbody>
-                </table>
-              </div>
+              </table>
               </AnalyticsDataTable>
             </article>
           </section>
