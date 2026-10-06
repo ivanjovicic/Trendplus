@@ -55,7 +55,7 @@ Use with:
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
-| P-UI-47 | IN_PROGRESS | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
+| P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
@@ -3016,7 +3016,7 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 
 ## P-UI-47 - Make one theme-token source of truth and repair light-theme status contrast
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P1
 Type: frontend/css/tests
@@ -3080,6 +3080,23 @@ Theme colours come from three competing sources: `ThemeContext.tsx` inline varia
 ### Dependencies
 
 - None blocking. P-UI-38 later turns the contrast and token rules into a ratchet. P-UI-31/35/36 migrate page-local `--dashboard-*` palettes to the new tokens.
+
+### Completion note
+
+- Date: 2026-10-06; Agent: Codex.
+- Status: DONE
+- Completion: `ThemeContext.tsx` is the runtime token source and `themes.css` is the no-JS parity fallback; duplicate Tailwind color definitions and undefined `--c-*` aliases were removed. Six themes now have contrast-tested status/chart tokens and action tiers. Light-theme insufficient-data/status backgrounds follow the selected theme, while existing dark soft-status surfaces are preserved.
+- Changed files: `Klijent/clientapp/src/context/ThemeContext.tsx`; `Klijent/clientapp/src/context/__tests__/ThemeContext.tokens.spec.ts`; `Klijent/clientapp/src/styles/themes.css`; `Klijent/clientapp/src/styles/themeTokens.ts`; `Klijent/clientapp/src/styles/analytics-system.css`; `Klijent/clientapp/src/tailwind.css`; `Klijent/clientapp/scripts/responsive_baseline.mjs`; queue/master/run-log evidence.
+- Checks run: focused theme/empty-state tests 11/11; analytics guardrails/typecheck; production build; responsive fixture 60/60 across Dashboard/Inventory, light/soft-gray/dark and ten viewports (zero root overflow/page errors); responsive runner self-test; agent-instruction, prompt-queue and planning-architecture governance validators/self-tests; `git diff --check`; Planning Governance run `37392543043` and Analytics Quality Gates run `37392543144` passed on implementation SHA.
+- Checks not run: full frontend test suite; manual production-browser visual comparison.
+- Run log: `.ai/runs/2026-10-06-P-UI-47-evidence.md`
+- Evidence state: pending post-close routing recovery
+- Delivery mode: direct-main
+- Main commit SHA: `61dbcd7f1354dea30afa7210e4fbbe7ee83be839`
+- Main verification: fresh fetch confirmed `origin/main` exactly at `61dbcd7f1354dea30afa7210e4fbbe7ee83be839`.
+- Missed: none known.
+- Follow-up: post-close dependency cascade and successor routing from fresh `origin/main`.
+- Residual risk: the existing Recharts chunk-size warning remains; responsive evidence uses local fixtures and does not establish deployed runtime behavior.
 
 ---
 
