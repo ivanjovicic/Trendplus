@@ -23,9 +23,9 @@ import type {
 } from "../types/analytics";
 
 vi.mock("../components/analytics/AnalyticsTrustHeader", () => ({
-  default: ({ title, dataQualityStatus }: { title: string; dataQualityStatus?: string | null }) => (
+  default: ({ title, dataQualityStatus, isPartial }: { title: string; dataQualityStatus?: string | null; isPartial?: boolean }) => (
     <div data-testid="analytics-trust-header">
-      {title} | status: {dataQualityStatus ?? "n/a"}
+      {title} | status: {dataQualityStatus ?? "n/a"} | partial: {String(Boolean(isPartial))}
     </div>
   ),
 }));
@@ -314,6 +314,35 @@ describe("DataQualityPage", () => {
     expect(await screen.findByTestId("data-quality-top-offenders-table")).toBeInTheDocument();
     expect(screen.getByText(/Ukupno u rezultatu: 1/)).toBeInTheDocument();
     expect(screen.getByText(/Top lista: 1/)).toBeInTheDocument();
+  });
+
+  it("keeps failed health and readiness sources unavailable instead of reporting good quality", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockRejectedValue(new Error("health unavailable"));
+    vi.mocked(getPilotDataQualityIntakeReport).mockRejectedValue(new Error("intake unavailable"));
+    vi.mocked(getPilotIntakeDurableReport).mockRejectedValue(new Error("durable intake unavailable"));
+    vi.mocked(getAnalyticsRefreshStatus).mockRejectedValue(new Error("refresh status unavailable"));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: n/a | partial: true"));
+    expect(screen.getByTestId("analytics-trust-header")).not.toHaveTextContent("status: good");
+    expect(screen.getByText("Health pregled trenutno nije dostupan.")).toBeInTheDocument();
+  });
+
+  it("keeps backend quality good but marks the trust summary partial when intake sources fail", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
+      scoreStatus: "good",
+      scoreSummary: "Pokazatelji kvaliteta su u zelenoj zoni.",
+      missingCostRevenueSharePct: 0,
+      unknownSupplierRevenueSharePct: 0,
+      orphanArticleCount: 0,
+    }));
+    vi.mocked(getPilotDataQualityIntakeReport).mockRejectedValue(new Error("intake unavailable"));
+    vi.mocked(getPilotIntakeDurableReport).mockRejectedValue(new Error("durable intake unavailable"));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: good | partial: true"));
   });
 
   it("does not report healthy trust when every data-quality trust source fails", async () => {

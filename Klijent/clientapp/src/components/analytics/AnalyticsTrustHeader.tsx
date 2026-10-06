@@ -273,7 +273,6 @@ export default function AnalyticsTrustHeader({
     : null;
   const showFallbackBanner = Boolean(usedFallback);
   const showGatedBanner = !trustPending && mode === "recommendation" && recommendationAllowed !== true && !showFallbackBanner;
-  const showPartialBanner = Boolean(isPartial) || freshness === "stale" || freshness === "critical";
   const resolvedDataQualityHref = dataQualityHref || "/analytics/data-quality";
   const resolvedRefreshStatusHref = refreshStatusHref || "/admin/configuration?panel=workers";
   const readiness = trustPending
@@ -334,6 +333,13 @@ export default function AnalyticsTrustHeader({
     : showOperationsTrust
       ? resolvedReadinessState === "blocked" ? "critical" : resolvedReadinessState === "decision_ready" ? "good" : resolvedReadinessState === "signal_only" ? "warning" : "neutral"
       : tone;
+  const summaryAvailabilityLabel = isPartial
+    ? "Prikaz delimičan"
+    : freshness === "critical"
+      ? "Svežina kritična"
+      : freshness === "stale"
+        ? "Podaci zastareli"
+        : null;
   const detailsId = useId();
 
   return (
@@ -351,6 +357,7 @@ export default function AnalyticsTrustHeader({
           <span className="ath-summary-fact"><span>Podaci do</span><strong>{formatDate(safeObservedTo)}</strong></span>
         ) : null}
         <span className={`ath-freshness-badge ath-freshness-${freshness}`}>{FRESHNESS_LABELS[freshness]}</span>
+        {summaryAvailabilityLabel ? <span className="ath-summary-warning" role="status" data-testid="analytics-trust-summary-availability">{summaryAvailabilityLabel}</span> : null}
         <button
           type="button"
           className="ath-details-toggle"
@@ -405,12 +412,6 @@ export default function AnalyticsTrustHeader({
       {showGatedBanner ? (
         <div className="ath-banner ath-banner-neutral" role="status">
           <strong>Preporuka nije dostupna.</strong> Sistem ne prikazuje konačnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
-        </div>
-      ) : null}
-
-      {showPartialBanner ? (
-        <div className="ath-banner ath-banner-warning" role="status">
-          <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
         </div>
       ) : null}
 

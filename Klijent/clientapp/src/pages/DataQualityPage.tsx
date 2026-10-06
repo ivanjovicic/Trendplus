@@ -734,6 +734,7 @@ export default function DataQualityPage() {
         refreshCurrentStep={refreshStatus?.currentStep ?? null}
         dataSource="Provere kvaliteta podataka"
         dataQualityStatus={trustDataQualityStatus}
+        isPartial={Boolean(error || healthError || intakeReportError || refreshStatusError)}
         dataQualitySummary={trustSummary}
         mode="report"
         emptyStateReason={

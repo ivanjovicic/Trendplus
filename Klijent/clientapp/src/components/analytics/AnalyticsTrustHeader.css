@@ -533,6 +533,16 @@
 .ath-summary-readiness-good { color: var(--success, #0f8a55); border-color: var(--success, #0f8a55); }
 .ath-summary-readiness-warning { color: var(--warning, #b77900); border-color: var(--warning, #b77900); }
 .ath-summary-readiness-critical { color: var(--error, #b42318); border-color: var(--error, #b42318); }
+.ath-summary-warning {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--warning-surface, color-mix(in srgb, var(--warning, #b77900) 12%, var(--surface-light, #fff)));
+  color: var(--warning-text, var(--warning, #8a5c00));
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
 
 .ath-summary-fact {
   display: flex;
@@ -558,6 +568,7 @@
   .analytics-trust-header { padding: 0 0.65rem; margin-bottom: 0; }
   .ath-summary-bar { min-height: 1.5rem; }
   .ath-summary-readiness { min-height: 1.4rem; padding: 0.05rem 0.45rem; font-size: 0.72rem; }
+  .ath-summary-warning { padding: 0.1rem 0.4rem; font-size: 0.68rem; }
   .ath-summary-bar .ath-details-toggle { min-height: 1.4rem; padding: 0.05rem 0.45rem; font-size: 0.72rem; }
 }
 

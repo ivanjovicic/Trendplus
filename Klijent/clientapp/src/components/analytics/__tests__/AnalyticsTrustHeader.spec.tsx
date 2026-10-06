@@ -81,12 +81,20 @@ describe("AnalyticsTrustHeader", () => {
     expect(periodFact).not.toHaveTextContent("01.06.2026");
   });
 
+  it("keeps backend quality good while making partial availability visible in the collapsed summary", () => {
+    renderHeader({ dataQualityStatus: "good", isPartial: true, showOperationsTrust: false });
+
+    expect(screen.getByTestId("analytics-trust-summary-readiness")).toHaveTextContent("Podaci deluju pouzdano");
+    expect(screen.getByTestId("analytics-trust-summary")).toHaveTextContent("Prikaz delimičan");
+    expect(screen.getByTestId("analytics-trust-summary-availability")).toHaveTextContent("Prikaz delimičan");
+  });
+
   it("formats refresh timestamps for Belgrade and uses status semantics for warnings", () => {
     renderHeader({ dataFreshnessStatus: "stale", isPartial: true });
     expandTrustDetails();
 
     expect(screen.getByText("01.07.2026. 10:15")).toBeInTheDocument();
-    expect(screen.getAllByRole("status").some((banner) => banner.textContent?.includes("Prikaz može biti delimičan ili zastareo"))).toBe(true);
+    expect(screen.getByTestId("analytics-trust-summary-availability")).toHaveTextContent("Prikaz delimičan");
   });
 
   it("allows a page with its own h1 to suppress the trust-header title", () => {
@@ -302,7 +310,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByText(/Nema dovoljno zapisa u traženom periodu/i)).toBeInTheDocument();
     expect(screen.queryByText(/NO_WINDOW_ROWS/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Preporuka nije dostupna/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
+    expect(screen.getByText("Podaci zastareli")).toBeInTheDocument();
   });
 
   it("renders gated and missing-summary states without inventing quality counts", () => {
@@ -422,7 +430,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByTestId("analytics-trust-details-panel")).not.toBeVisible();
     expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Zastarelo");
-    expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
+    expect(screen.getByText("Prikaz delimičan")).toBeInTheDocument();
     expect(screen.getByText(/Preporuka nije dostupna/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Kvalitet podataka" })).not.toBeInTheDocument();
 
