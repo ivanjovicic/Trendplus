@@ -65,6 +65,27 @@ describe("buildShoeTypeRecommendationProjection", () => {
     expect(projection.statusReason).toBe("Backend nije potvrdio da je preporuka izvrsna: Signal zahteva proveru izvora.");
   });
 
+  it("shows the concrete comparable-signal note and a useful next step", () => {
+    const projection = buildShoeTypeRecommendationProjection(
+      {
+        status: "insufficient_data",
+        label: "Nedovoljno podataka",
+        summary: "Nedostaje uporediv signal pre i posle nivelacije.",
+        confidencePct: null,
+        reliabilityPct: null,
+        dataQualityStatus: "insufficient_data",
+        recommendationAllowed: false,
+        reasonCodes: ["missing_comparable_signal"],
+      },
+      null,
+      { comparableSignalNote: "Poslednja nivelacija je pre izabranog perioda; nema uporedive pre-baze u ovom periodu." },
+    );
+
+    expect(projection.statusReason).toBe(
+      "Poslednja nivelacija je pre izabranog perioda; nema uporedive pre-baze u ovom periodu. Sledeće: Proverite da li su datumi nivelacije i prodaje evidentirani i po potrebi proširite izabrani period.",
+    );
+  });
+
   it("fails closed for unknown status without exposing raw backend codes", () => {
     const projection = buildShoeTypeRecommendationProjection({
       status: "backend_future_status" as "review",

@@ -614,6 +614,7 @@ export default function ShoeTypeSalesStatsPage() {
       const recommendationProjection = buildShoeTypeRecommendationProjection(
         item.recommendation,
         item.reliabilityPct,
+        { comparableSignalNote: item.prePostSignalNote },
       );
 
       return {

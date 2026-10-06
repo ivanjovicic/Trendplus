@@ -11,6 +11,9 @@ export const MISSING_SHOE_TYPE_RECOMMENDATION_REASON =
 export const UNKNOWN_SHOE_TYPE_RECOMMENDATION_STATUS_REASON =
   "Status preporuke nije prepoznat; red ostaje informativan bez automatske preporuke.";
 
+export const MISSING_COMPARABLE_SIGNAL_NEXT_STEP =
+  "Proverite da li su datumi nivelacije i prodaje evidentirani i po potrebi proširite izabrani period.";
+
 export type ShoeTypeRecommendationProjection = {
   status: CanonicalRecommendationStatus;
   recommendationAllowed: boolean;
@@ -28,15 +31,21 @@ export function mapShoeTypeBackendStatus(status?: string | null): CanonicalRecom
 export function buildShoeTypeRecommendationProjection(
   recommendation?: AnalyticsRecommendation | null,
   rowReliabilityPct?: number | null,
+  options?: { comparableSignalNote?: string | null },
 ): ShoeTypeRecommendationProjection {
   const mappedBackendStatus = mapShoeTypeBackendStatus(recommendation?.status);
   const hasSupportedBackendStatus = mappedBackendStatus != null;
   const status = mappedBackendStatus ?? "insufficient_data";
   const recommendationAllowed = hasSupportedBackendStatus && recommendation?.recommendationAllowed === true;
-  const statusReason = hasSupportedBackendStatus
+  const backendSummary = hasSupportedBackendStatus
     ? recommendation?.summary ?? MISSING_SHOE_TYPE_RECOMMENDATION_REASON
     : UNKNOWN_SHOE_TYPE_RECOMMENDATION_STATUS_REASON;
-  const actionabilityReason = recommendationAllowed
+  const hasMissingComparableSignal = recommendation?.reasonCodes?.includes("missing_comparable_signal") === true;
+  const comparableSignalNote = options?.comparableSignalNote?.trim();
+  const statusReason = hasMissingComparableSignal
+    ? `${comparableSignalNote || backendSummary} Sledeće: ${MISSING_COMPARABLE_SIGNAL_NEXT_STEP}`
+    : backendSummary;
+  const actionabilityReason = recommendationAllowed || hasMissingComparableSignal
     ? statusReason
     : hasSupportedBackendStatus
       ? recommendation?.recommendationAllowed === false
