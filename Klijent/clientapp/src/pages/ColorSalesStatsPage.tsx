@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import { getStores } from "../services/analyticsApi";
 import {
   getColorSalesStats,
@@ -1201,15 +1202,16 @@ export default function ColorSalesStatsPage() {
               <p>Rangirano po potpisanom neto prometu; povrati mogu dati negativan udeo ili udeo veći od 100%.</p>
               {concentrationData.length > 0 ? (
                 <div className="color-decision-chart-wrap">
+                  <AnalyticsChartAccessibility title="Koncentracija neto prometa po boji" summary={describeChartProjection(concentrationData, "po bojama", ['udeo prometa'])} tableTargetId="color-sales-chart-data">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
                       <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={CHART_TOOLTIP_LABEL_STYLE} formatter={(value: number | string | undefined) => value == null ? "Nije dostupno" : fmtPct(Number(value), 2)} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="color-decision-empty">Nema podataka za grafikon koncentracije.</div>
@@ -1244,7 +1246,7 @@ export default function ColorSalesStatsPage() {
                   />
                 )}
               >
-                <table className="color-decision-table">
+                <table id="color-sales-chart-data" className="color-decision-table">
                   <thead>
                     <tr>
                       <th>

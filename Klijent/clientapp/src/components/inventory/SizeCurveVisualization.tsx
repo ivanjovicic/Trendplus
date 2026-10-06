@@ -1,4 +1,5 @@
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../analytics/AnalyticsChartAccessibility";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { SizeCurvePointDto } from "../../types/analytics";
 import { ANALYTICS_UNAVAILABLE_LABEL } from "../../utils/analyticsConstants";
@@ -47,8 +48,9 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
       </div>
 
       <div className="h-[240px]">
+        <AnalyticsChartAccessibility title="Kriva veličina: stvarni i idealni udeo" summary={describeChartProjection(chartData, "po veličinama", ['Stvarno', 'Idealno'])}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
-          <ComposedChart data={chartData}>
+          <ComposedChart data={chartData} accessibilityLayer>
               <CartesianGrid strokeDasharray="3 3" stroke={"var(--border-default, var(--theme-color-233042, #233042))"} />
               <XAxis dataKey="name" tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, #92a4bf))", fontSize: 12 }} />
               <YAxis tick={{ fill: "var(--text-muted, var(--theme-color-92a4bf, #92a4bf))", fontSize: 12 }} unit="%" />
@@ -73,7 +75,7 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
               <Line type="monotone" dataKey="ideal" stroke={"var(--warning, var(--theme-color-ffd590, #ffd590))"} strokeWidth={2} dot={false} name="Idealno" />
               <ReferenceLine y={0} stroke={"var(--border-hover, var(--theme-color-334055, #334055))"} />
           </ComposedChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></AnalyticsChartAccessibility>
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">

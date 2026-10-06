@@ -582,6 +582,9 @@ describe("ColorSalesStatsPage premium controls", () => {
     const chartData = JSON.parse(
       (await screen.findByTestId("bar-chart")).getAttribute("data-chart-data") ?? "[]",
     ) as Array<{ name: string; sharePct: number }>;
+    expect(screen.getByRole("figure", { name: "Koncentracija neto prometa po boji" })).toHaveAccessibleDescription(
+      /Tačke na grafikonu: \d+\..*Grupisanje: po bojama.*udeo prometa/,
+    );
     expect(chartData.some((entry) => entry.name === "Ostale" && entry.sharePct === 110)).toBe(true);
   });
 

@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import AnalyticsControlBar, {
   type AnalyticsControlBarChip,
   type AnalyticsControlBarField,
@@ -2468,8 +2469,9 @@ export default function DailySalesStatsPage() {
             </div>
 
             <div className="daily-sales-chart-wrap">
+              <AnalyticsChartAccessibility title="Trend prodaje po danima" summary={describeChartProjection(trendData, "po danima", ['Prihod', 'Prihod MA7', 'Komadi', 'Komadi MA7'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
+                <LineChart data={trendData} margin={{ top: 8, right: 18, left: 4, bottom: 8 }} accessibilityLayer>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis dataKey="label" tick={CHART_AXIS_TICK} interval={chartTickInterval} />
                   <YAxis yAxisId="revenue" tick={CHART_AXIS_TICK} tickFormatter={(value: number) => fmtCompactNumber(value)} />
@@ -2493,7 +2495,7 @@ export default function DailySalesStatsPage() {
                   <Line yAxisId="items" type="monotone" dataKey="totalItemsSold" name="Komadi" stroke={CHART_METRIC_COLORS.items} strokeWidth={2.5} dot={false} />
                   <Line yAxisId="items" type="monotone" dataKey="ma7Items" name="Komadi MA7" stroke={CHART_METRIC_COLORS.itemsAverage} strokeWidth={2} dot={false} strokeDasharray="4 4" />
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>
           </section>
 
@@ -2510,8 +2512,9 @@ export default function DailySalesStatsPage() {
               </div>
 
               <div className="daily-sales-chart-wrap">
+                <AnalyticsChartAccessibility title="Raspodela prodatih komada po smenama" summary={describeChartProjection(shiftMixData, "po danima i smenama", ['Prva smena', 'Druga smena'])}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={shiftMixData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <BarChart data={shiftMixData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }} accessibilityLayer>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="label" tick={CHART_AXIS_TICK} interval={chartTickInterval} />
                     <YAxis tick={CHART_AXIS_TICK} tickFormatter={(value: number) => fmtCompactNumber(value)} />
@@ -2534,7 +2537,7 @@ export default function DailySalesStatsPage() {
                     <Bar dataKey="firstShiftTotalItems" name="Prva smena" stackId="shift" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="secondShiftTotalItems" name="Druga smena" stackId="shift" fill="var(--accent-success)" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer></AnalyticsChartAccessibility>
               </div>
 
               <div className="daily-sales-mini-stats">
@@ -2574,8 +2577,9 @@ export default function DailySalesStatsPage() {
               ) : null}
 
               <div className="daily-sales-chart-wrap">
+                <AnalyticsChartAccessibility title="Koncentracija komada po dobavljaču" summary={describeChartProjection(supplierConcentration.displayChartData, "po dobavljačima", ['Udeo komada'])}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={supplierConcentration.displayChartData} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }}>
+                  <BarChart data={supplierConcentration.displayChartData} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }} accessibilityLayer>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis type="number" tick={CHART_AXIS_TICK} tickFormatter={(value: number) => `${Math.round(value)}%`} />
                     <YAxis type="category" dataKey="displayName" width={120} tick={CHART_AXIS_TICK} />
@@ -2593,7 +2597,7 @@ export default function DailySalesStatsPage() {
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                     <Bar dataKey="qtySharePct" name="Udeo komada" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer></AnalyticsChartAccessibility>
               </div>
 
               <div className="daily-sales-mini-stats">
@@ -2627,8 +2631,9 @@ export default function DailySalesStatsPage() {
               </div>
 
               <div className="daily-sales-chart-wrap">
+                <AnalyticsChartAccessibility title="Prodaja po danima u nedelji" summary={describeChartProjection(weekdayData, "po danima u nedelji", ['Avg prihod', 'Avg komadi'])}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={weekdayData} margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
+                  <ComposedChart data={weekdayData} margin={{ top: 8, right: 18, left: 0, bottom: 8 }} accessibilityLayer>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                     <XAxis dataKey="dayName" tick={CHART_AXIS_TICK} />
                     <YAxis yAxisId="revenue" tick={CHART_AXIS_TICK} tickFormatter={(value: number) => fmtCompactNumber(value)} />
@@ -2647,7 +2652,7 @@ export default function DailySalesStatsPage() {
                     <Bar yAxisId="revenue" dataKey="avgRevenue" name="Avg prihod" fill={CHART_METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
                     <Line yAxisId="items" type="monotone" dataKey="avgItems" name="Avg komadi" stroke={CHART_METRIC_COLORS.items} strokeWidth={2.5} dot={{ r: 3 }} />
                   </ComposedChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer></AnalyticsChartAccessibility>
               </div>
 
               <div className="daily-sales-mini-stats">

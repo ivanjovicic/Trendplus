@@ -15,6 +15,7 @@
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "./AnalyticsChartAccessibility";
 import type { ReactNode } from "react";
 import InfoTip from "../ui/InfoTip";
 import {
@@ -120,8 +121,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <h3 className="with-tip"><span>Dnevni trend prodaje</span><InfoTip text="Linijski grafikon pokazuje kretanje prometa i broja prodajnih dokumenata po danima." /></h3>
           <p className="section-note">Koristite ovaj grafikon da brzo uocite dane pada, rasta i nestabilnosti.</p>
           <div className="chart-wrap">
+            <AnalyticsChartAccessibility title="Dnevni trend prodaje" summary={describeChartProjection(dailySales, "po danima", ['Promet', 'prodajni dokumenti'])}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailySales}>
+              <LineChart data={dailySales} accessibilityLayer>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis dataKey="date" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                 <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -136,7 +138,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                 <Line type="monotone" dataKey="totalRevenue" stroke={CHART_METRIC_COLORS.revenue} strokeWidth={2.5} dot={false} name="Promet" />
                 <Line type="monotone" dataKey="transactionCount" stroke={CHART_METRIC_COLORS.documents} strokeWidth={2} dot={false} name="Prodajni dokumenti" />
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></AnalyticsChartAccessibility>
           </div>
         </section>
       )}
@@ -152,8 +154,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
             categoryPieData.length === 0,
             "Nema podataka za kategorije.",
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Prodaja po kategorijama" summary={describeChartProjection(categoryPieData, "po kategorijama", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart accessibilityLayer>
                   <Pie data={categoryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={105} innerRadius={48} stroke="transparent">
                     {categoryPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                   </Pie>
@@ -163,7 +166,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 </PieChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>,
           )}
         </section>
@@ -178,8 +181,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
             genderPieData.length === 0,
             "Nema podataka za pol.",
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Prodaja po polu" summary={describeChartProjection(genderPieData, "po polu", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart accessibilityLayer>
                   <Pie data={genderPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={102} innerRadius={58} stroke="transparent">
                     {genderPieData.map((entry, index) => <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
                   </Pie>
@@ -189,7 +193,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 </PieChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>,
           )}
         </section>
@@ -199,8 +203,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Horizontalni pregled top 10 dobavljača po prihodu.</p>
           {supplierBarData.length === 0 ? <div className="analytics-empty">Nema podataka za dobavljače.</div> : (
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Top dobavljači po prometu" summary={describeChartProjection(supplierBarData, "po dobavljačima", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }}>
+                <BarChart data={supplierBarData} layout="vertical" margin={{ left: 12, right: 12 }} accessibilityLayer>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <YAxis type="category" dataKey="name" width={150} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -210,7 +215,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill={CHART_METRIC_COLORS.revenue} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>
           )}
         </section>
@@ -220,8 +225,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
           <p className="section-note">Koji dan u nedelji pravi najviše prihoda.</p>
           {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Prodaja po danima u nedelji" summary={describeChartProjection(weekdayChartData, "po danima u nedelji", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }}>
+                <BarChart data={weekdayChartData} layout="vertical" margin={{ left: 12, right: 12 }} accessibilityLayer>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis type="number" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <YAxis type="category" dataKey="dayName" width={110} tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -231,7 +237,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill={CHART_METRIC_COLORS.revenue} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>
           )}
         </section>
@@ -246,8 +252,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
             hourChartData.every((item) => item.totalRevenue === 0),
             "Nema podataka po satima.",
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Prodaja po satima" summary={describeChartProjection(hourChartData, "po satima", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={hourChartData}>
+                <AreaChart data={hourChartData} accessibilityLayer>
                   <defs>
                     <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={CHART_METRIC_COLORS.revenue} stopOpacity={0.85} />
@@ -263,7 +270,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Area type="monotone" dataKey="totalRevenue" stroke={CHART_METRIC_COLORS.revenue} fill="url(#hourGradient)" strokeWidth={2.2} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>,
           )}
         </section>
@@ -278,8 +285,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
             paymentChartData.length === 0,
             "Nema podataka po nacinu placanja.",
             <div className="chart-wrap">
+              <AnalyticsChartAccessibility title="Prodaja po načinu plaćanja" summary={describeChartProjection(paymentChartData, "po načinu plaćanja", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={paymentChartData}>
+                <BarChart data={paymentChartData} accessibilityLayer>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis dataKey="name" tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
                   <YAxis tick={{ fill: CHART_TEXT_COLOR, fontSize: 12 }} />
@@ -289,7 +297,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                   />
                   <Bar dataKey="totalRevenue" fill={CHART_METRIC_COLORS.revenue} radius={[8, 8, 0, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></AnalyticsChartAccessibility>
             </div>,
           )}
         </section>

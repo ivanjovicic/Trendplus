@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import { getInventoryBalance, getInventoryInsights, getStores } from "../services/analyticsApi";
 import {
   getSupplierSalesStats,
@@ -2131,7 +2132,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   />
                 )}
               >
-                <table>
+                <table id="supplier-sales-chart-data">
                   <thead>
                     <tr>
                       <th aria-sort={sortAriaValue("dobavljacNaziv", sortField, sortDir)} className={isSortActive("dobavljacNaziv", sortField) ? "is-sorted" : undefined}>
@@ -2698,8 +2699,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <p>Top udeo pozitivnog neto prometa za brzu procenu gde je biznis koncentrisan.</p>
               {concentrationData.length > 0 ? (
                 <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
-                  {concentrationChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                  {concentrationChart.ready ? <AnalyticsChartAccessibility title="Koncentracija prometa po dobavljaču" summary={describeChartProjection(concentrationData, "po dobavljačima", ['udeo pozitivnog neto prometa'])} tableTargetId="supplier-sales-chart-data">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <defs>
                         <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
                           <stop offset="0%" stopColor="var(--chart-series-1)" />
@@ -2718,7 +2720,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo pozitivnog prometa %" />
                     </BarChart>
-                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
+                  </ResponsiveContainer></AnalyticsChartAccessibility> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
               ) : (
                 <div className="supplier-decision-empty">Nema podataka za grafikon koncentracije.</div>
@@ -2730,8 +2732,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
               {comparisonData.length > 0 ? (
                 <div ref={comparisonChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!comparisonChart.ready}>
-                  {comparisonChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
-                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                  {comparisonChart.ready ? <AnalyticsChartAccessibility title="Poređenje prihoda i maržnog doprinosa" summary={describeChartProjection(comparisonData, "po dobavljačima", ['udeo u prometu', 'udeo u maržnom doprinosu'])} tableTargetId="supplier-sales-chart-data">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
+                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
@@ -2750,7 +2753,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                       <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
                       <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-2)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
                     </BarChart>
-                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
+                  </ResponsiveContainer></AnalyticsChartAccessibility> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
               ) : (
                 <div className="supplier-decision-empty">Nema podataka za poređenje.</div>

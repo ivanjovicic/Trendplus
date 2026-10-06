@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import AnalyticsControlBar, {
   type AnalyticsControlBarChip,
   type AnalyticsControlBarField,
@@ -1964,8 +1965,9 @@ export default function ProdajaPrePostNivelacijePage() {
               ) : null}
               {concentrationData.length > 0 ? (
                 <div className="ppn-decision-chart-wrap">
+                  <AnalyticsChartAccessibility title="Koncentracija promena po dobavljačima" summary={describeChartProjection(concentrationData, "po dobavljačima", ['udeo apsolutne promene prometa'])} tableTargetId="pre-post-chart-data">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} onClick={handleChartClick}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} onClick={handleChartClick} accessibilityLayer>
                       <CartesianGrid strokeDasharray="2 6" stroke={CHART_GRID_STROKE} />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} label={{ value: null }} />
@@ -1981,7 +1983,7 @@ export default function ProdajaPrePostNivelacijePage() {
                         ))}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="ppn-decision-empty">Nedovoljno promena u izabranom periodu za pouzdanu koncentraciju.</div>
@@ -2031,7 +2033,7 @@ export default function ProdajaPrePostNivelacijePage() {
                 </p>
               ) : null}
 
-              <table className="ppn-decision-table">
+              <table id="pre-post-chart-data" className="ppn-decision-table">
                   <thead>
                     <tr>
                       <th>

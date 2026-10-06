@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
@@ -1449,15 +1450,16 @@ export default function PreNivelacijaPriorityPage() {
               <p>{supplierActionShareProjection?.denominatorLabel ?? "Udeo u akciji u odnosu na ukupan action score svih dobavljača u leaderboard-u."}</p>
               {supplierActionShare.length > 0 ? (
                 <div className="pnp-decision-chart-wrap">
+                  <AnalyticsChartAccessibility title="Koncentracija akcije po dobavljačima" summary={describeChartProjection(supplierActionShare, "po dobavljačima", ['udeo u akciji'])}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={supplierActionShare} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={supplierActionShare} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
                       <Tooltip content={<CustomSupplierTooltip />} />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="pnp-decision-empty">Nema podataka za grafikon koncentracije.</div>

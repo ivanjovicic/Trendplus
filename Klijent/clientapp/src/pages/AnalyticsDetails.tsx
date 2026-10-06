@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import {
   checkAnalyticsHealth,
   getDailySales,
@@ -434,8 +435,9 @@ export default function AnalyticsDetails() {
               <h3>Trend performansi</h3>
               {trend.length > 0 ? (
                 <div className="ad-chart">
+                  <AnalyticsChartAccessibility title="Trend performansi" summary={describeChartProjection(trend, "po danima", ['Promet', 'MA7', 'MA30'])}>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={trend}>
+                    <LineChart data={trend} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                       <XAxis dataKey="date" tick={CHART_AXIS_TICK} />
                       <YAxis tick={CHART_AXIS_TICK} />
@@ -448,7 +450,7 @@ export default function AnalyticsDetails() {
                       <Line type="monotone" dataKey="ma7" stroke={CHART_METRIC_COLORS.revenueAverage} strokeWidth={2} dot={false} name="MA7" />
                       <Line type="monotone" dataKey="ma30" stroke={CHART_METRIC_COLORS.longAverage} strokeWidth={2} dot={false} name="MA30" />
                     </LineChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="ad-empty">Nema podataka za trend grafikon.</div>

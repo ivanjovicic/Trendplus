@@ -480,12 +480,18 @@ describe("DailySalesStatsPage premium controls", () => {
       "data-order",
       "2026-04-01,2026-04-02",
     );
+    expect(screen.getByRole("figure", { name: "Trend prodaje po danima" })).toHaveAccessibleDescription(
+      /Tačke na grafikonu: 2\..*Prihod, Prihod MA7, Komadi, Komadi MA7/,
+    );
 
     const shiftMixPanel = screen.getByRole("heading", { name: /Smenski miks po danima/ }).closest("article");
     expect(shiftMixPanel).not.toBeNull();
     expect(within(shiftMixPanel as HTMLElement).getByTestId("bar-chart")).toHaveAttribute(
       "data-order",
       "2026-04-01,2026-04-02",
+    );
+    expect(within(shiftMixPanel as HTMLElement).getByRole("figure", { name: "Raspodela prodatih komada po smenama" })).toHaveAccessibleDescription(
+      /Grupisanje: po danima i smenama/,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Prihod dana/ }));

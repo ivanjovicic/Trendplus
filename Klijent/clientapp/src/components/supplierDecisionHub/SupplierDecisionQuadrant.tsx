@@ -8,6 +8,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../analytics/AnalyticsChartAccessibility";
 import type { QuadrantItem } from "../../services/supplierDecisionHubApi";
 import { dataQualityStatusLabel, formatReliability } from "../../utils/analyticsQuality";
 import {
@@ -109,8 +110,9 @@ export default function SupplierDecisionQuadrant({
         <div className="supplier-decision-empty">Nema dobavljača za izabrane filtere.</div>
       ) : (
         <div className="supplier-decision-chart-shell">
+          <AnalyticsChartAccessibility title="Kvadrant dobavljača" summary={describeChartProjection(data, "po dobavljačima", ['zavisnost od sniženja', 'sell-through bez sniženja', 'prihod'])} tableTargetId="supplier-decision-quadrant-table">
           <ResponsiveContainer width="100%" height={360}>
-            <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 8 }}>
+            <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 8 }} accessibilityLayer>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-color-rgba-148-163-184-0p16, var(--theme-color-rgba-148-163-184-0p16, var(--theme-color-rgba-148-163-184-0p16, rgba(148, 163, 184, 0.16))))" />
               <XAxis
                 type="number"
@@ -169,7 +171,48 @@ export default function SupplierDecisionQuadrant({
                 }}
               />
             </ScatterChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer></AnalyticsChartAccessibility>
+          <details className="mt-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3 text-[var(--text-primary)]">
+            <summary className="cursor-pointer font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Tabelarni prikaz dobavljača u kvadrantu</summary>
+            <div className="mt-3 overflow-x-auto">
+              <table id="supplier-decision-quadrant-table" className="min-w-full border-collapse text-sm">
+                <caption className="sr-only">Vrednosti istih dobavljača prikazanih u kvadrantu odluka</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="px-3 py-2 text-left">Dobavljač</th>
+                    <th scope="col" className="px-3 py-2 text-left">Prihod</th>
+                    <th scope="col" className="px-3 py-2 text-left">Zavisnost od sniženja</th>
+                    <th scope="col" className="px-3 py-2 text-left">Sell-through bez sniženja</th>
+                    <th scope="col" className="px-3 py-2 text-left">Preporuka</th>
+                    <th scope="col" className="px-3 py-2 text-left">Pouzdanost</th>
+                    <th scope="col" className="px-3 py-2 text-left">Kvalitet podataka</th>
+                    <th scope="col" className="px-3 py-2 text-left">Razlog</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((point) => {
+                    const recommendation = getRecommendationMeta(point.recommendationCode);
+                    return (
+                      <tr key={point.supplierId}>
+                        <th scope="row" className="px-3 py-2 text-left">
+                          <button type="button" className="underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2" onClick={() => onSelectSupplier(point.supplierId)}>
+                            Otvori detalj za {point.supplierName || "nepoznatog dobavljača"}
+                          </button>
+                        </th>
+                        <td className="px-3 py-2">{formatCurrency(point.revenue)}</td>
+                        <td className="px-3 py-2">{formatPercentValue(point.markdownDependency, 1)}</td>
+                        <td className="px-3 py-2">{formatRatioPercent(point.fullPriceSellthrough, 1)}</td>
+                        <td className="px-3 py-2">{recommendation.label} · {confidenceLabel(point.confidenceScore)}</td>
+                        <td className="px-3 py-2">{formatReliability(point.reliabilityPct, 0)}</td>
+                        <td className="px-3 py-2">{dataQualityStatusLabel(point.dataQualityStatus)}</td>
+                        <td className="px-3 py-2">{point.statusReason || "Nema dodatnog obrazloženja."}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </details>
           <div className="supplier-decision-chart-note">
             Klik na krug otvara detalje dobavljača.
           </div>

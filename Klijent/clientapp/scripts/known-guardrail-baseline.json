@@ -5,19 +5,19 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 720,
+      "line": 721,
       "reason": "Backend decisionScore is only normalized for display and is exposed only when backend recommendationAllowed === true; gating and non-finite handling are covered by PreNivelacijaPriorityPage.spec."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "confidencePct_assign",
-      "line": 1309,
+      "line": 1310,
       "reason": "Existing backend confidence projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "reliabilityPct_assign",
-      "line": 1310,
+      "line": 1311,
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
@@ -35,7 +35,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 984,
+      "line": 985,
       "reason": "Store-filter discovery failure must clear stale store-scoped rows before falling back to the all-stores scope."
     },
     {
@@ -89,55 +89,55 @@
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 673,
+      "line": 674,
       "reason": "Existing supplier decision fallback requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 153,
+      "line": 154,
       "reason": "Existing supplier-share projection requires a reviewed backend-authority exception."
     },
     {
       "file": "src/pages/SupplierDecisionHubPage.tsx",
       "rule": "sorted_rows_kpi_reduce",
-      "line": 673,
+      "line": 674,
       "reason": "Existing sorted supplier aggregation requires a reviewed KPI ownership exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 363,
+      "line": 364,
       "reason": "Supplier Footwear must clear stale scope-bound rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_percentage_formula",
-      "line": 552,
+      "line": 553,
       "reason": "Existing supplier-footwear percentage projection requires a reviewed authority exception."
     },
     {
       "file": "src/pages/SupplierFootwearAnalyticsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 543,
+      "line": 544,
       "reason": "Existing supplier-footwear aggregation predates the backend KPI ownership contract."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1983,
+      "line": 1984,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 951,
+      "line": 952,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 639,
+      "line": 640,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
@@ -167,7 +167,7 @@
     {
       "file": "src/components/inventory/InventoryPriorityPanels.tsx",
       "rule": "fake_zero_fallback",
-      "line": 80,
+      "line": 82,
       "reason": "Existing inventory priority fallback requires a reviewed unavailable-value exception."
     },
     {

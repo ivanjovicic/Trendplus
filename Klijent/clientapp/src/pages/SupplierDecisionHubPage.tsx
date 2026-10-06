@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
@@ -1610,8 +1611,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
               <h2>Udeo dobavljača u skorkarti</h2><p>Prikazuje udeo prihoda u kohorti skorkarte, ne generičan promet iz taba Pregled.</p>
               {concentrationData.length > 0 ? (
                 <div className="sdh-decision-chart-wrap">
+                  <AnalyticsChartAccessibility title="Udeo prihoda po dobavljaču" summary={describeChartProjection(concentrationData, "po dobavljačima", ['udeo prihoda'])} tableTargetId="supplier-decision-hub-chart-data">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
                       <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={{ fill: "var(--text-primary)", fontSize: 12 }} />
@@ -1624,7 +1626,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                       />
                       <Bar dataKey="sharePct" fill="var(--accent-primary)" radius={[0, 8, 8, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : <div className="sdh-decision-empty">Nema podataka za grafikon koncentracije.</div>}
             </article>
@@ -1660,7 +1662,7 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
                   />
                 )}
               >
-                <table className="min-w-full text-sm">
+                <table id="supplier-decision-hub-chart-data" className="min-w-full text-sm">
                   <thead>
                     <tr>
                       <th aria-sort={sortAriaValue("supplierName", sortField, sortDir)}>

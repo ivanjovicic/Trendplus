@@ -266,6 +266,9 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     renderPage();
 
+    expect(await screen.findByRole("figure", { name: "Koncentracija promena po dobavljačima" })).toHaveAccessibleDescription(
+      /Grupisanje: po dobavljačima/,
+    );
     expect(await screen.findByRole("heading", { name: "Ishod sniženja" })).toBeInTheDocument();
     expect(await screen.findByText(/Patika test/)).toBeInTheDocument();
     expect(screen.getByText(/nivelacije-ishod-snizenja: 1 rows/)).toBeInTheDocument();

@@ -673,6 +673,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
 
     const chart = await screen.findByTestId("shoe-type-margin-value-chart");
     expect(screen.getByRole("heading", { name: /Maržni doprinos po tipu obuće/ })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: "Maržni doprinos po tipu obuće" })).toHaveAccessibleDescription(
+      /Grupisanje: po tipovima obuće.*Maržni doprinos \(RSD\)/,
+    );
     expect(chart).toHaveTextContent("Ukupan maržni doprinos je");
     const chartData = within(chart).getByTestId("bar-chart");
     if (excludedChartName) {

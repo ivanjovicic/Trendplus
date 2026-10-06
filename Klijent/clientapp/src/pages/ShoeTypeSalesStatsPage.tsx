@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import { getStores } from "../services/analyticsApi";
 import {
   getShoeTypeSalesStats,
@@ -1301,8 +1302,9 @@ export default function ShoeTypeSalesStatsPage() {
               <p>Rangirano po potpisanom neto prometu; povrati mogu dati negativan udeo ili udeo veći od 100%.</p>
               {concentrationData.length > 0 ? (
                 <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-concentration-chart">
+                    <AnalyticsChartAccessibility title="Koncentracija neto prometa po tipu obuće" summary={describeChartProjection(concentrationData, "po tipovima obuće", ['Neto udeo u prometu'])} tableTargetId="shoe-type-chart-data">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <defs>
                         <linearGradient id="shoeShareGradient" x1="0" y1="0" x2="1" y2="0">
                           <stop offset="0%" stopColor="var(--chart-series-1)" />
@@ -1316,7 +1318,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                       <Bar dataKey="sharePct" fill="url(#shoeShareGradient)" radius={[0, 10, 10, 0]} name="Neto udeo u prometu %" />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="shoetype-decision-empty">Nema podataka za grafikon koncentracije.</div>
@@ -1340,8 +1342,9 @@ export default function ShoeTypeSalesStatsPage() {
                     Ukupan maržni doprinos je {fmtRsd(totalMarginContribution)}. Udeo u maržnom doprinosu nije smislen procenat kada je ukupan doprinos nula ili negativan, zato grafikon prikazuje stvarne RSD vrednosti po tipu obuće.
                   </p>
                   <div className="shoetype-decision-chart-wrap">
+                      <AnalyticsChartAccessibility title="Maržni doprinos po tipu obuće" summary={describeChartProjection(marginComparison.data, "po tipovima obuće", ['Maržni doprinos (RSD)'])} tableTargetId="shoe-type-chart-data">
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                      <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                         <CartesianGrid strokeDasharray="2 6" stroke="var(--chart-grid)" />
                         <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                         <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
@@ -1354,13 +1357,14 @@ export default function ShoeTypeSalesStatsPage() {
                         <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
                         <Bar dataKey="marginContributionRsd" fill="var(--chart-negative)" radius={[0, 6, 6, 0]} name="Maržni doprinos (RSD)" />
                       </BarChart>
-                    </ResponsiveContainer>
+                    </ResponsiveContainer></AnalyticsChartAccessibility>
                   </div>
                 </div>
               ) : marginComparison.mode === "share" ? (
                 <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-margin-share-chart">
+                    <AnalyticsChartAccessibility title="Promet i maržni doprinos po tipu obuće" summary={describeChartProjection(marginComparison.data, "po tipovima obuće", ['Udeo u prometu', 'Udeo u maržnom doprinosu'])} tableTargetId="shoe-type-chart-data">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
-                    <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                    <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--chart-grid)" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
@@ -1379,7 +1383,7 @@ export default function ShoeTypeSalesStatsPage() {
                       <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
                       <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-3)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer></AnalyticsChartAccessibility>
                 </div>
               ) : (
                 <div className="shoetype-decision-empty">Nema podataka za poređenja.</div>
@@ -1420,7 +1424,7 @@ export default function ShoeTypeSalesStatsPage() {
                   />
                 )}
               >
-                <table className="shoetype-decision-table">
+                <table id="shoe-type-chart-data" className="shoetype-decision-table">
                   <thead>
                     <tr>
                       <th className={isSortActive("tipObuceNaziv", sortField) ? "is-sorted" : undefined}>

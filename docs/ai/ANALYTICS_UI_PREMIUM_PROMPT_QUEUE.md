@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51`, `P-UI-52` and `P-UI-53`.
+Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -61,7 +61,7 @@ Use with:
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
-| P-UI-53 | READY | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
+| P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
 
@@ -2509,6 +2509,7 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 - responsive runner self-test/negative fixtures
 - relevant Vitest suites
 - typecheck/build/analytics guardrails
+- `npm run check:analytics-chart-accessibility` and `node scripts/check-analytics-chart-accessibility.mjs --self-test`
 - any new Node guard self-test
 - governance validators
 - `git diff --check`
@@ -2516,6 +2517,7 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 ### Acceptance
 
 - A seeded root-overflow/input-font/dialog regression fails deterministically.
+- Every active production chart call site has a named, described chart frame and Recharts keyboard navigation; discoverable equivalent tables are linked, while quarantined exceptions have a reason and adjacent text proof.
 - The gate is reproducible locally and in CI without real customer data.
 - No new dependency/tool is added without a documented gap and rationale.
 - Breakpoint/static checks prevent known regressions without banning valid content-driven layouts.
@@ -3583,15 +3585,38 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
 
-Status: READY
+Status: DONE
 Ready after: P-UI-47 DONE AND P-UI-31/P-UI-35/P-UI-36 DONE or explicitly deferred AND P-UI-44 DONE or explicitly deferred; an owner may only split a demonstrably disjoint chart-only slice earlier after a fresh path/owner/lock/PR collision check
 Priority: P2
 Type: frontend/a11y/tests
 Feature family: analytics-chart-accessibility
 Parallel-safe: no while a page-family owner is editing the same chart files
-Owner: unassigned (Analytics Frontend / Accessibility)
+Owner: Codex (Analytics Frontend / Accessibility)
+Local lock: `.ai/task-locks/P-UI-53-codex.lock.md` (removed after DONE)
 Historical routing note 2026-10-06 (before P-UI-44 completion): P-UI-47/P-UI-31/P-UI-35/P-UI-36 were DONE, but P-UI-53 remained WAITING while READY P-UI-44 owned overlapping Daily Sales/Inventory page/table paths. The serialization dependency is now complete.
 Post-close promotion 2026-10-06: `P-UI-44` is DONE on `origin/main` `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`. The fresh 16-file cascade verified P-UI-47/P-UI-31/P-UI-35/P-UI-36/P-UI-44 dependencies DONE. Reconciled the stale P-UI-35 detail status from IN_PROGRESS to DONE using synchronized completion evidence and current `origin/main` `e7f9bc47325348d5f7ad202e9850926c91df95a5`. No P-UI-53 lock, matching local/remote branch or open PR exists. Active owners are path-disjoint: P-UI-43 owns `AnalyticsTrustHeader`; P-UI-45 owns global chrome; P-UI-49 owns empty/error taxonomy; P-UI-51 owns Executive Board controls/shared control bar; P-UI-52's copy sweep must hand off active page-family paths. Promoted WAITING -> READY, unclaimed.
+Owner claim 2026-10-06: refreshed `origin/main` at `2a5f4f072db2ea020dd5d29248ee82f219012824`; verified P-UI-44 and all named responsive/theme dependencies DONE. No P-UI-53 branch or open PR exists. The active P-UI-43 lock owns only `AnalyticsTrustHeader` and focused tests; P-UI-53 owns chart wrappers/page chart regions. P-UI-45 global chrome, P-UI-49 empty/error taxonomy, P-UI-51 controls and P-UI-52 navigation/copy have separate ownership. P-UI-53 moved READY -> IN_PROGRESS on `codex/p-ui-53-chart-accessibility`. Local lock: `.ai/task-locks/P-UI-53-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Added a shared name/summary/table alternative contract and keyboard navigation to all 25 in-scope production analytics charts; added static coverage/self-test and updated the downstream P-UI-38 invariant.
+- Changed files: See `.ai/runs/2026-10-06-P-UI-53-evidence.md` (27 implementation, test and owner-evidence paths).
+- Contract/runtime behavior changed: Accessibility semantics only; existing business values and recommendation logic are unchanged.
+- Checks run: focused suites 139/139; chart coverage (25) and negative self-test; typecheck; encoding/analytics guardrails; build; governance validators; diff check. Exact commands are in the run log.
+- Checks not run: full frontend suite and visual screen-reader session; see run log.
+- Run log: `.ai/runs/2026-10-06-P-UI-53-evidence.md`
+- Evidence state: pending post-close recovery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: eight Insight Studio sparklines remain quarantined under their upstream prompt and have a documented label/value static check.
+- Follow-up: P-UI-38 consumes the chart accessibility checker after remaining UI migrations are complete.
+- Residual risk: existing Vite Recharts chunk-size warning (>500 kB); no visual screen-reader session was available.
+- Next: pending full post-close routing recovery.
+- Prompt defect / scope repair: clarified P-UI-38 acceptance to consume the stable chart accessibility invariant generated by this prompt; guardrail baseline line offsets were refreshed after import insertions without adding exemptions.
+
 Commit suggestion: `feat(ui): add accessible analytics chart contract`
 
 ### Problem
