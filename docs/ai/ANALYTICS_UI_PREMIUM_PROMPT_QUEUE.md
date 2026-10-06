@@ -61,7 +61,7 @@ Use with:
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
-| P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts |
+| P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
 
@@ -2543,6 +2543,24 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 - P-UI-53 supplies the chart semantics; this gate adds a deterministic check that chart regions have an accessible name plus either a textual summary or a discoverable table alternative, and that seeded missing-a11y fixtures fail.
 - If the responsive migrations remain blocked, the owner may split this ratchet into its own prompt with a fresh collision check; do not duplicate it elsewhere.
 
+### Addendum 2026-10-06 (post-theme-audit residual hardening; no status change)
+
+Independent review of the theme delivery `cc57cace76e6c737e10dc0cb50d5ea5e296885c4` and follow-up `2d675b60fd9ac5d6943413b06b0d3b9a11b4f549` closed immediate Tailwind-v4 mapping/light-theme regressions, but also identified residual debt that belongs here rather than in a new overlapping prompt:
+
+- Treat `var(--theme-color-*, #fallback)` / `var(--theme-color-rgba-*, rgba(...))` as **pseudo-token debt**, not as a target for a blind repository-wide rewrite. Classify each audited occurrence as semantic theme value, chart/business semantic value, justified fixed decorative value, or dead/legacy pseudo-token. Prioritize shared components, analytics, Inventory, forms and other critical surfaces; ratchet counts down per file rather than requiring zero literals globally.
+- `inventory-dark` must either meet the same supported-theme contrast contract as the other selectable themes or be explicitly treated as a compatibility/legacy alias with a safe preference migration. Do not remove or silently remap a persisted theme value. In particular re-check links/accent text, `text-on-primary`, status fill/text pairs, selected tabs, controls and focus states against their **actual** backgrounds.
+- Tailwind v4 semantic-colour correctness is a gate: every semantic colour utility actually used by production TSX, including opacity variants such as `bg-muted/20`, `border-muted/30`, `ring-*`, `divide-*`, `fill-*`, `stroke-*`, `from/via/to-*`, must either resolve through `@theme inline` to an active runtime token or be replaced with a documented canonical helper. The current build does not get colour mappings merely from `tailwind.config.js`; verify any future claim that it does before relying on that file.
+- Add a bounded guard against new fixed `text-white`, `bg-white`, `text-black`, `bg-black`, `border-white` or `border-black` on **theme-aware** shared/critical surfaces. Keep explicit exceptions for print, photo overlays and other truly fixed backgrounds. Do not create a global ban that rejects valid fixed-colour UI.
+- Clean duplicate token declarations, self/nested fallback chains and aliases that resolve only to an undefined variable plus literal fallback where the completed migrations prove them redundant. Preserve computed values; this is hygiene, not a palette redesign.
+- Consume the existing `ThemeContext.tokens.spec.ts` and `themeTokenUsage.spec.ts` protections, including the `muted` opacity mapping and theme-aware fixed-white regression checks added after the audit. Promote these to stable CI ratchets instead of re-implementing parallel tests.
+- Do not reopen `P-UI-43`, `P-UI-52` or `P-UI-53` scope here. P-UI-38 only consumes their finished contracts and adds deterministic regression gates after those tasks are DONE or explicitly deferred.
+
+Additional acceptance for this residual scope:
+1. No known unsafe theme-dependent literal/pseudo-token remains on the audited shared and critical surfaces; justified fixed colours are documented rather than hidden behind fake tokens.
+2. `inventory-dark` has a documented supported/legacy decision and no known serious contrast regression on its audited surfaces.
+3. A seeded missing semantic Tailwind mapping and a seeded fixed-white-on-theme-surface regression fail deterministically.
+4. The result is a bounded, reviewable diff; a mass formatting/search-replace sweep of ~thousands of fallbacks is explicitly out of scope.
+
 ## Responsive re-audit registration 2026-10-04
 
 Source: `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md`; evidence: `.ai/runs/2026-10-04-responsive-reaudit-evidence.md`. Base `origin/main` `6a2a23b3`. Live proof: headless Chrome (Playwright-core, Chromium emulation, `isMobile`/`hasTouch` for phone and tablet profiles) against `https://trendplus.vercel.app` on 2026-10-04 21:10–21:40 (Europe/Belgrade), viewports 360x780, 390x844, 768x1024, 1024x768, 1280x800, plus dated URLs `fromDate=2026-07-07&toDate=2026-08-05` so tables/charts render with real rows. The deployed Vercel build SHA was not readable from the UI, so every live finding is also tied to the current-main source line that produces it. Real iOS/iPadOS Safari is still unproven (Chromium emulation only). De-duplicated against P-UI-01..P-UI-38, PERF18, `docs/ai/RESPONSIVE_UI_AUDIT_PROMPTS_2026-10-01.md` and the RQ queues. Work already owned by P-UI-31/P-UI-35/P-UI-36/P-UI-38 is recorded as dated addenda on those prompts, not as new prompts.
@@ -3483,7 +3501,7 @@ Type: frontend/copy/tests
 Feature family: analytics-nav-ia-copy
 Parallel-safe: no (`navConfig.ts`)
 Owner: unassigned (Frontend Shell / Analytics UX)
-Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`
+Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`, plus copy-only edits in otherwise unowned frontend files found by the bounded user-facing-text sweep after a fresh collision check
 Avoid paths: `GlobalRequestSpinner.tsx` and the carousel (P-UI-45), header/breadcrumb (P-UI-40/P-UI-48), routes and redirects themselves (RQ507 legacy contract), Insight Studio entry (RQ582), RQ555 Actions logic
 Commit suggestion: `fix(ui): consistent analytics navigation labels and glossary`
 
@@ -3501,7 +3519,7 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 - Remove static status-like badges; keep only descriptive, non-status markers where the owner asks for them.
 - Point nav items to canonical routes; keep redirects working.
 - Replace "N/A" in the owned files with "Nije dostupno".
-- Restore Serbian diacritics in shell/global strings seen live ("Prosiri", "Pokusaj ponovo", "Osvezi", "Greska pri ucitavanju", "jos nije dostupan", "Pojacaj"; audit UX-048). If the string lives in a page owned by an active prompt, hand it to that owner and list it in the run log.
+- Restore Serbian diacritics in shell/global strings seen live ("Prosiri", "Pokusaj ponovo", "Osvezi", "Greska pri ucitavanju", "jos nije dostupan", "Pojacaj"; audit UX-048). Extend this only to a bounded user-facing sweep for obvious display strings such as `nacin`, `najvise`, `velicina`, `potraznja`, `kriticno` and equivalent ASCII-only Serbian copy. Do **not** change API/error codes, enum values, route segments, JSON keys, telemetry identifiers, DB values or fixture contract values. If the string lives in a page owned by an active prompt, hand it to that owner and list it in the run log.
 
 ### Read first
 
@@ -3514,17 +3532,20 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 2. Update `navConfig.ts` items, group labels and badges.
 3. Replace redirect-alias links with canonical routes.
 4. Sweep "N/A" in the owned files.
+5. Run the bounded user-facing Serbian copy/diacritics sweep across disjoint frontend files; update only obvious display copy and preserve all machine-readable identifiers/contracts.
+6. Record every skipped active-owner path as a hand-off instead of editing through another task.
 
 ### Tests
 
 - Nav spec: every nav `to` is a canonical (non-redirect) route; labels equal route-definition labels.
 - Existing redirect/smoke route tests still pass.
-- `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest; governance validators; `git diff --check`.
+- `npm run check:encoding`, `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest; governance validators; `git diff --check`.
 
 ### Acceptance
 
 - No nav badge implies a status the backend does not report.
 - One name per screen across nav, route definitions and page titles.
+- No known ASCII-only Serbian typo/diacritic defect remains in the audited owned/disjoint user-facing copy; machine-readable contracts are unchanged.
 
 ### Dependencies
 
@@ -3534,12 +3555,13 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
 
 Status: WAITING
-Ready after: P-UI-47 DONE AND P-UI-31/P-UI-35/P-UI-36 are DONE or explicitly deferred (avoid repainting chart-heavy pages twice)
+Ready after: P-UI-47 DONE AND P-UI-31/P-UI-35/P-UI-36 DONE or explicitly deferred AND P-UI-44 DONE or explicitly deferred; an owner may only split a demonstrably disjoint chart-only slice earlier after a fresh path/owner/lock/PR collision check
 Priority: P2
 Type: frontend/a11y/tests
 Feature family: analytics-chart-accessibility
 Parallel-safe: no while a page-family owner is editing the same chart files
 Owner: unassigned (Analytics Frontend / Accessibility)
+Routing note 2026-10-06: P-UI-47/P-UI-31/P-UI-35/P-UI-36 are now DONE, but P-UI-53 intentionally remains WAITING because READY P-UI-44 owns overlapping Daily Sales/Inventory page/table paths. Fresh review found no P-UI-53 owner/branch/open PR; serialization is the blocker, not a stale dependency. Re-evaluate immediately when P-UI-44 is DONE/explicitly deferred, or split only a proven disjoint chart-only slice.
 Commit suggestion: `feat(ui): add accessible analytics chart contract`
 
 ### Problem
@@ -3555,7 +3577,7 @@ The design system already says every chart needs a textual summary or table alte
 ### Scope
 
 - Add one shared chart accessibility helper/frame under `components/analytics` plus focused tests.
-- Migrate the named chart families after their responsive/theme page owners are finished or explicitly deferred.
+- Migrate the named chart families after their responsive/theme page owners and the overlapping P-UI-44 Daily/Inventory table owner are finished or explicitly deferred.
 - No chart data, aggregation, ranking, recommendation, threshold or backend contract changes.
 - Insight Studio is excluded while RQ582 keeps it experimental/hidden; accessibility becomes a re-exposure prerequisite.
 
@@ -3564,6 +3586,7 @@ The design system already says every chart needs a textual summary or table alte
 - `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §4 and §9.
 - P-UI-47 chart/status tokens.
 - P-UI-31/P-UI-35/P-UI-36 completion evidence.
+- P-UI-44 completion/deferral evidence before touching Daily Sales or Inventory page/table paths.
 - Existing chart/table parity contracts; a textual alternative must use the same already-rendered dataset.
 
 ### Do
@@ -3593,6 +3616,7 @@ The design system already says every chart needs a textual summary or table alte
 
 - P-UI-47 first for canonical chart/status tokens.
 - P-UI-31/P-UI-35/P-UI-36 first, or explicit owner deferral, to avoid broad same-page collisions.
+- P-UI-44 first, or explicit deferral, before P-UI-53 edits overlapping Daily Sales/Inventory page/table paths; a disjoint split requires a fresh collision proof.
 - P-UI-38 consumes this prompt and remains the final gate.
 
 Owner claim 2026-10-06: after P-UI-41 DONE was freshly verified on origin/main cf9ba0428387d9c1e962e3dad77de13cb37eb5eb, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no newly runnable RQ dependency and no P-UI dependent on P-UI-41. Current primary RQ READY is none; BCI/STAB/QDB/MT/GAI have no higher-priority repository-local READY execution lane. P-UI-47 is dependency-complete and explicitly parallel-safe with current READY paths; no active lock, matching branch or open PR was found. P-UI-47 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/P-UI-47-codex.lock.md. P-UI-41 run log: .ai/runs/2026-10-06-P-UI-41-evidence.md; evidence synchronized.
