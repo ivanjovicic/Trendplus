@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`. P-UI-44 is independently claimed IN_PROGRESS after collision review.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -52,7 +52,7 @@ Use with:
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | IN_PROGRESS | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
-| P-UI-44 | READY | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
+| P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
@@ -2943,7 +2943,7 @@ The UX/UI audit (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, UX-003/UX-004/UX
 
 ## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
 
-Status: READY
+Status: DONE
 Ready after: RQ569 DONE (touches `DailySalesStatsPage.tsx` / `InventoryPage.tsx` trust wiring)
 Priority: P2
 Type: frontend/tests
@@ -2992,6 +2992,34 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 ### Dependencies
 
 - RQ569 (same page files).
+
+### Claim note 2026-10-06
+
+- RQ569 is DONE on current `origin/main` `1f8356eaa799514e281b78e2fe59f45725d620ef`.
+- The P-UI-43 trust-header owner is active but uses separate trust-header paths. No P-UI-44 lock, matching branch, or open PR was found. User's existing dirty edits in the other checkout do not touch the P-UI-44 scope.
+- P-UI-44 moved READY -> IN_PROGRESS on `codex/p-ui-44-operations-wide-table-responsive`. Local lock: `.ai/task-locks/P-UI-44-codex.lock.md`.
+- Scope repair: the prompt's requested ResizeObserver overflow class requires the shared measuring hook in `AnalyticsDataTable.tsx`; `setupTests.ts` also needed its ResizeObserver polyfill to be configurable so the required observer mock can be installed. Both remain inside the same table owner.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Daily Sales opts into the existing accessible table pilot. Daily Sales and Inventory measure actual horizontal overflow with `ResizeObserver`; under 1280px, their key column stays pinned only while the table overflows. Inventory now has a keyboard-focusable, labelled scroll region and a visible scroll hint.
+- Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.css`; `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx`; `Klijent/clientapp/src/components/inventory/InventoryItemsTable.tsx`; `Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx`; `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`; `Klijent/clientapp/src/setupTests.ts`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-06-P-UI-44-evidence.md`
+- Contract/runtime behavior changed: no API, analytics value, sorting, or export contract changed; the UI measures scroll-width overflow and keeps the first table column visible in the affected responsive layout.
+- Checks run: focused Vitest 3 files / 36 tests passed; `npm run check:analytics-guardrails` (encoding, guardrail scan and typecheck) passed; `npm run build` passed; synthetic Chromium checks at 360/768/1024 for Daily Sales and Inventory passed the overflow, sticky-style and post-scroll header/cell visibility assertions; all six queue/planning validators and `git diff --check` passed.
+- Checks not run: full frontend suite and physical iOS/iPad verification. Current-main Actions run `37513716654` for `7fc26c93` was queued at inspection.
+- Run log: `.ai/runs/2026-10-06-P-UI-44-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`
+- Main verification: fresh `git fetch origin main`; `origin/main` equals `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`; implementation SHA is present on `origin/main`.
+- Missed: none within P-UI-44 acceptance.
+- Follow-up: fresh post-close routing recovery must reassess P-UI-53 now that its P-UI-44 serialization dependency is complete. P-UI-43 remains the primary in-progress pointer.
+- Post-close routing: pending fresh post-delivery cascade.
+- Residual risk: the 360px Inventory synthetic fixture has one page-level horizontal-overflow observation outside the table region; the table itself stayed clipped to its scroll region and its key cells remained visible. Physical touch-device behavior is not verified.
+- Next: post-close dependency cascade from the resulting `origin/main` SHA.
+- Prompt defect / scope repair: added the shared ResizeObserver hook to `AnalyticsDataTable.tsx` and made the test polyfill configurable in `setupTests.ts`; both changes were required by the prompt's mocked observer and conditional overflow acceptance.
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
 
