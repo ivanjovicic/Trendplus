@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-31 (IN_PROGRESS; claimed after P-UI-47 post-close recovery from `88e388c3718b7ea006d79df949b2eaf20b207c72`). Other READY lanes: `P-UI-35`, `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-35 (READY; P-UI-31 implementation delivered, post-close recovery pending). Other READY lanes: `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -39,7 +39,7 @@ Use with:
 | P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | DONE | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
-| P-UI-31 | IN_PROGRESS | supplier-overview-responsive | Supplier overview responsive migration |
+| P-UI-31 | DONE | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
@@ -1876,14 +1876,13 @@ Owner promotion/claim 2026-10-02: after P-UI-34, idle recovery reconciled stale 
 
 ## P-UI-31 - Migrate Supplier overview to the responsive primitives
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE; adopt the canonical theme/action tokens in the same page pass)
 Priority: P1
 Type: frontend/page/tests
 Feature family: supplier-overview-responsive
 Parallel-safe: no
 Owner: Codex
-Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`
 Commit suggestion: `feat(ui): make supplier overview responsive`
 
 ### Problem
@@ -1934,6 +1933,25 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 
 - P-UI-28 and P-UI-29 DONE.
 - Must avoid active Supplier RQ path/semantic ownership.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Responsive Supplier overview delivered on `main`; phone filters collapse behind a contextual disclosure, controls meet 44px, desktop sticky behavior remains, and supplier tables use the shared scroll pattern.
+- Changed files: SupplierConsolidated page/CSS/spec, SupplierSalesStats page/CSS, SupplierDecisionHub CSS, SupplierFootwearAnalytics CSS, `scripts/responsive_baseline.mjs`, and the P-UI-31 run log.
+- Checks run: focused Supplier suites 91/91; typecheck; responsive fixture 30/30 across three themes and ten widths, zero root overflow/page errors, all scorecard filters reachable, phone targets >=44px and desktop sticky preserved; analytics guardrails; production build; responsive runner syntax; diff check.
+- Checks not run: physical-device iOS/iPadOS Safari.
+- Run log: `.ai/runs/2026-10-06-P-UI-31-evidence.md`
+- Evidence state: pending post-close recovery synchronization.
+- Delivery mode: direct-main
+- Main commit SHA: `2170fae56c1439c17bea50467d51241714637df2`
+- Main verification: fresh `origin/main` matched implementation SHA `2170fae56c1439c17bea50467d51241714637df2`.
+- Missed: physical-device verification.
+- Follow-up: P-UI-35 is the current READY candidate; confirm through the mandatory post-close scan.
+- Residual risk: responsive fixtures use synthetic filters and do not prove live Supplier API or Safari behavior; Analytics Quality Gates run `37394820689` is in progress on the implementation SHA.
+- Post-close routing: pending fresh `origin/main` dependency cascade.
+- Prompt defect / scope repair: initial supplier browser baseline captured the global loading screen and did not wait for Supplier controls; the route now waits for and captures the filter panel and exercises scorecard filters using synthetic filter responses.
 
 ---
 
