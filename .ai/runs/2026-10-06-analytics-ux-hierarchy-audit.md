@@ -4,7 +4,7 @@
 - Scope: `Klijent/clientapp` presentation only (TSX markup order, CSS, UI copy). No formulas, SQL, API, aggregations,
   periods, supplier semantics, DUG/KOREKCIJA rules, margin calculations or signal definitions changed.
 - Not touched: `AnalyticsTrustHeader` (P-UI-43 IN_PROGRESS), queue entries, theme architecture, rounding.
-- Final SHA: `<FINAL_SHA>` · CI: `<CI_RESULT>`
+- Final SHA: `033129888eba6e4fa89b7d734d000eaa02a48867` (rebased onto other agents' commits 2d675b60 and 8637d93d without conflicts; re-validated: vitest 1823/1823, guardrails, typecheck, check:encoding, build, git diff --check) · CI: Analytics Quality Gates run #820 — success (JavaScript SDK pin availability: success; POS UI dependency audit and build: success; Frontend analytics tests, guardrails and build: success). No failures to classify.
 
 ## 5-second test (Prodaja po dobavljačima, 1280×900 fixture)
 
