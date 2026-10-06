@@ -4,8 +4,8 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
+Main commit SHA: `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`
+Main verification: passed - fresh `origin/main` equals the implementation SHA
 Evidence state: pending
 
 ## What was done
@@ -36,7 +36,7 @@ Evidence state: pending
 
 ## Validation not run
 - Real iOS/iPadOS Safari device proof -> not run; Chromium fixture only.
-- Remote CI -> pending post-delivery inspection.
+- Remote CI -> current-main Analytics Quality Gates run `37396627516` is `in_progress`; Vercel status is `pending`.
 - The responsive fixture does not stub all Pre/Post data endpoints; its empty/error path logs expected API 503 console messages. Page errors are 0, and populated-data behavior is covered by the focused page suites.
 
 ## Documentation impact

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-35 (IN_PROGRESS; claimed after P-UI-31 post-close recovery at `19f9d94e07aab4cc754d46d5db49d38687820a49`). Other READY lanes: `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: post-close selector recovery is pending after P-UI-35 DONE on `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`; existing READY candidates need a fresh path/collision scan.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -43,7 +43,7 @@ Use with:
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
-| P-UI-35 | IN_PROGRESS | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
+| P-UI-35 | DONE | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | READY | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
@@ -2267,6 +2267,26 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 ### Addendum 2026-10-04 (UX/UI audit; no status change)
 
 - When migrating Pre/Post and Pre-Nivelacija, replace page-local status-as-brand aliases in `ProdajaPrePostNivelacijePage.css` and the hardcoded status colours in `PreNivelacijaPriorityPage.tsx:246` with P-UI-47 tokens (audit UX-013). Trust-header density belongs to P-UI-43, not this prompt.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Pre/Post and Pre-Nivelacija now use the shared responsive table behavior for wide evidence tables, phone focus controls meet the 44px target, and status colors follow the P-UI-47 semantic tokens. Analytics scoring, event, trust and recommendation behavior did not change.
+- Changed files: both page components/styles and Pre/Post spec; `scripts/responsive_baseline.mjs`; P-UI-35 run log.
+- Contract/runtime behavior changed: presentation only; no API, analytics or export contract changes.
+- Checks run: focused suites 114/114; 60-case three-theme viewport matrix with 0 root overflow and 0 page errors; analytics guardrails/typecheck; production build; responsive runner syntax; diff check.
+- Checks not run: real iOS/iPadOS Safari.
+- Run log: `.ai/runs/2026-10-06-P-UI-35-evidence.md`
+- Evidence state: pending post-close cascade synchronization.
+- Delivery mode: direct-main
+- Main commit SHA: `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`
+- Main verification: fresh `origin/main` equals the implementation SHA.
+- Missed: physical-device Safari proof; populated PPN API responses are not part of the responsive fixture.
+- Follow-up: mandatory full active-queue post-close cascade.
+- Residual risk: the Pre/Post fixture uses its empty/error state because the runner does not stub all PPN data endpoints; populated behavior is covered by page tests. GitHub Analytics Quality Gates run `37396627516` is `in_progress`; Vercel is `pending`.
+- Next: pending fresh post-close queue recovery.
+- Prompt defect / scope repair: the PPN select shortens the visible long-store label, so the responsive runner now checks its unique 36-character prefix rather than requiring an exact full-label match.
 
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
