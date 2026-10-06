@@ -1243,20 +1243,13 @@ export default function ShoeTypeSalesStatsPage() {
             </div>
           ) : null}
           {!emptyStateHint ? (
-            <section className="shoetype-decision-kpis">
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet svih tipova obuće u izabranom periodu.">
+            <>
+            <section className="shoetype-decision-kpis analytics-kpi-tier analytics-kpi-tier--primary" aria-label="Glavni pokazatelji tipova obuće" data-testid="shoetype-kpis-primary">
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-info" data-note="Promet svih tipova obuće u izabranom periodu.">
                 <span>Ukupan promet <InfoTip text="Zbir prodajnih vrednosti svih tipova obuće u izabranom periodu. Formula: Σ prodajna vrednost stavki po tipu u periodu (RSD)." /></span>
                 <strong>{fmtRsd(totalRevenue)}</strong>
               </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan broj prodatih komada kroz sve tipove.">
-                <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće u izabranom periodu." /></span>
-                <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
-              </article>
-      <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe sa dostupnim ili procenjenim ulazom.">
-                <span>Ukupna nabavna vrednost <InfoTip text={`Zbir troška robe za deo prometa sa dostupnim troškom. ${SHOE_TYPE_COST_SOURCE_TOOLTIP} Operativni troškovi nisu uključeni.`} /></span>
-                <strong>{fmtRsd(data.totals.ukupanTrosak)}</strong>
-              </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto maržni doprinos po tipovima obuće.">
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-value" data-note="Bruto maržni doprinos po tipovima obuće.">
                 <span>Ukupan maržni doprinos <InfoTip text="Zbir razlike između prodajne i nabavne vrednosti za sve stavke sa dostupnim troškom, grupisano po tipu obuće. Operativni troškovi, plate, zakup i ostali indirektni troškovi nisu uključeni." /></span>
                 <strong>{fmtRsd(totalMarginContribution)}</strong>
                 <small
@@ -1274,15 +1267,26 @@ export default function ShoeTypeSalesStatsPage() {
                   </small>
                 ) : null}
               </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Autoritativni backend agregat prosečne marže; bez merljivog denominatora prikazuje se kao nedostupno.">
-                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz maržnog doprinosa i prometa sa pouzdano rešenim troškom poznatih tipova obuće; red „Nepoznato“ nije uključen, pa se može razlikovati od odnosa ukupnog maržnog doprinosa i prometa sa troškom. Frontend je ne izvodi iz redova." /></span>
-                <strong>{fmtPct(avgMarginPct, 1)}</strong>
-              </article>
-              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Promena prometa prema prethodnom uporedivom periodu.">
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-neutral" data-note="Promena prometa prema prethodnom uporedivom periodu.">
                 <span>PoP trend prometa <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Nije dostupno ako prethodni period nije dostupan." /></span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
               </article>
             </section>
+            <section className="shoetype-decision-kpis analytics-kpi-tier analytics-kpi-tier--secondary" aria-label="Dodatni pokazatelji tipova obuće" data-testid="shoetype-kpis-secondary">
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Ukupan broj prodatih komada kroz sve tipove.">
+                <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih tipova obuće u izabranom periodu." /></span>
+                <strong>{fmtQty(data.totals.ukupnaKolicina)}</strong>
+              </article>
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Autoritativni backend agregat prosečne marže; bez merljivog denominatora prikazuje se kao nedostupno.">
+                <span>Prosečna marža <InfoTip text="Ponderisana prosečna marža koju vraća backend. Računa se iz maržnog doprinosa i prometa sa pouzdano rešenim troškom poznatih tipova obuće; red „Nepoznato“ nije uključen, pa se može razlikovati od odnosa ukupnog maržnog doprinosa i prometa sa troškom. Frontend je ne izvodi iz redova." /></span>
+                <strong>{fmtPct(avgMarginPct, 1)}</strong>
+              </article>
+              <article className="shoetype-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Trošak robe sa dostupnim ili procenjenim ulazom.">
+                <span>Ukupna nabavna vrednost <InfoTip text={`Zbir troška robe za deo prometa sa dostupnim troškom. ${SHOE_TYPE_COST_SOURCE_TOOLTIP} Operativni troškovi nisu uključeni.`} /></span>
+                <strong>{fmtRsd(data.totals.ukupanTrosak)}</strong>
+              </article>
+            </section>
+            </>
           ) : null}
 
           {qualityNotes.length > 0 ? (

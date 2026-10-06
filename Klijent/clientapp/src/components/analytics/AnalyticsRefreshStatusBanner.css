@@ -99,6 +99,33 @@
   color: var(--text-muted, #64748b);
 }
 
+/* Quiet (healthy) state: one compact metadata line instead of a 4-row block. */
+.analytics-refresh-banner--quiet {
+  align-items: center;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+}
+
+.analytics-refresh-banner--quiet .arb-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.analytics-refresh-banner--quiet .arb-row {
+  align-items: center;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.analytics-refresh-banner--quiet .arb-row strong {
+  font-weight: 600;
+}
+
+.analytics-refresh-banner--quiet .arb-badge {
+  padding: 0 7px;
+}
+
 @media (max-width: 900px) {
   .analytics-refresh-banner {
     flex-direction: column;

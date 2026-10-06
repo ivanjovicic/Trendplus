@@ -1134,4 +1134,40 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Ukupan promet")).not.toBeInTheDocument();
     expect(screen.queryByText("Ukupan maržni doprinos")).not.toBeInTheDocument();
   });
+
+  it("puts business results in a primary KPI tier and demotes supporting metrics", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const primary = await screen.findByTestId("supplier-kpis-primary");
+    const secondary = screen.getByTestId("supplier-kpis-secondary");
+    const primaryCards = primary.querySelectorAll("article");
+    expect(primaryCards).toHaveLength(3);
+    expect(primaryCards[0]).toHaveClass("analytics-kpi-card--primary");
+    expect(primaryCards[0]).toHaveTextContent(/Ukupan promet/);
+    expect(primaryCards[1]).toHaveTextContent(/Maržni doprinos/);
+    expect(primaryCards[2]).toHaveTextContent(/Ukupan PoP trend/);
+    const secondaryCards = secondary.querySelectorAll("article");
+    expect(secondaryCards).toHaveLength(4);
+    secondaryCards.forEach((card) => expect(card).toHaveClass("analytics-kpi-card--secondary"));
+    // A single known supplier has nothing to compare, so the highlight strip stays hidden.
+    expect(screen.queryByTestId("supplier-overview-highlights")).not.toBeInTheDocument();
+  });
+
+  it("orders the decision list before explanatory charts and the inventory context", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const priorityHeading = await screen.findByText("Prioritetna lista dobavljača");
+    const chartHeading = screen.getByRole("heading", { name: /Koncentracija prometa/ });
+    const buyingPanel = await screen.findByTestId("supplier-buying-value-panel");
+    expect(priorityHeading.compareDocumentPosition(chartHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chartHeading.compareDocumentPosition(buyingPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

@@ -136,9 +136,25 @@ export default function AnalyticsRefreshStatusBanner({
   const showCriticalCopy = displayedFreshness === "critical";
   const durationSeconds = normalizeDurationSeconds(status.durationSeconds);
   const hasRecordedAttempt = Boolean(status.lastAttemptAtUtc || status.lastSuccessfulRefreshAtUtc || recentRuns.length);
+  const showWebWorkerWarning = !workerWarning && processModeKey === "web" && Boolean(status.workersEnabled);
+  // Healthy refresh metadata is informational: it is laid out on one quiet line so it never
+  // outranks the business result. Any stale/critical/unknown state, running refresh, failure,
+  // warning or error keeps the full stacked banner.
+  const isQuiet = displayedFreshness === "fresh"
+    && !status.isRunning
+    && !status.lastErrorMessage
+    && !error
+    && !workerWarning
+    && !showWebWorkerWarning
+    && failedObjects.length === 0
+    && failedJobs.length === 0;
 
   return (
-    <section className={`analytics-refresh-banner analytics-refresh-banner-${displayedFreshness}`} aria-live="polite">
+    <section
+      className={`analytics-refresh-banner analytics-refresh-banner-${displayedFreshness}${isQuiet ? " analytics-refresh-banner--quiet" : ""}`}
+      aria-live="polite"
+      data-quiet={isQuiet ? "true" : undefined}
+    >
       <div className="arb-main">
         <div className="arb-row">
           <strong>Poslednji uspešan import:</strong>
@@ -215,7 +231,7 @@ export default function AnalyticsRefreshStatusBanner({
             <span>{workerWarning}</span>
           </div>
         ) : null}
-        {!workerWarning && processModeKey === "web" && status.workersEnabled ? (
+        {showWebWorkerWarning ? (
           <div className="arb-row arb-warning">
             <strong>Upozorenje:</strong>
             <span>Automatsko osvežavanje nije aktivno u web procesu. Potrebna je deployacija radnika (worker).</span>

@@ -60,15 +60,6 @@
   margin-bottom: 14px;
 }
 
-.ppn-decision-title {
-  color: var(--dashboard-text);
-  font-size: 28px;
-  font-weight: 750;
-  letter-spacing: 0.01em;
-  line-height: 1.15;
-  margin: 0 0 6px;
-}
-
 .ppn-decision-subtitle {
   color: var(--dashboard-text-muted);
   font-size: 13px;
@@ -640,6 +631,12 @@
   color: var(--dashboard-text);
   font-size: 13px;
   padding: 10px 12px;
+}
+
+/* Amounts stay on one line ("1.010.000 RSD"), the table already scrolls horizontally. */
+.ppn-decision-table td.align-right {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .ppn-vendor-cell {

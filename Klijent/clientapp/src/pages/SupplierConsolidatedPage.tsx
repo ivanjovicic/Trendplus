@@ -331,8 +331,8 @@ export default function SupplierConsolidatedPage() {
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">
           <div>
-            <div className="supplier-consolidated-overline">Centralna analitika dobavljača</div>
-            <h2>Dobavljači</h2>
+            {/* The visible page title lives in the trust header (h1); this h2 keeps the outline for screen readers without repeating a second 28px "Dobavljači". */}
+            <h2 className="sr-only">Dobavljači</h2>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>
           <Link className="supplier-consolidated-cross-link" to={dailySalesHref}>
@@ -545,6 +545,43 @@ export default function SupplierConsolidatedPage() {
         {SUPPLIER_TAB_ROLE_CUE[currentTab]}
       </p>
 
+      <div className="supplier-consolidated-content">
+        {currentTab === "overview" && (
+          <div
+            className="supplier-embedded-container supplier-embedded-overview"
+            role="tabpanel"
+            id="supplier-tabpanel-overview"
+            aria-labelledby="supplier-tab-overview"
+            tabIndex={0}
+          >
+            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
+          </div>
+        )}
+        {currentTab === "scorecard" && (
+          <div
+            className="supplier-embedded-container supplier-embedded-scorecard"
+            role="tabpanel"
+            id="supplier-tabpanel-scorecard"
+            aria-labelledby="supplier-tab-scorecard"
+            tabIndex={0}
+          >
+            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
+          </div>
+        )}
+        {currentTab === "assortment" && (
+          <div
+            className="supplier-embedded-container supplier-embedded-assortment"
+            role="tabpanel"
+            id="supplier-tabpanel-assortment"
+            aria-labelledby="supplier-tab-assortment"
+            tabIndex={0}
+          >
+            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
+          </div>
+        )}
+      </div>
+
+      {/* Reading guide and counting basis are tertiary: they explain the result, so they follow it. */}
       <section className="supplier-consolidated-context" aria-label="Kako čitati ekran dobavljača">
         <article className="supplier-consolidated-context-card supplier-consolidated-context-card--primary">
           <span className="supplier-context-kicker">Aktivni prikaz</span>
@@ -583,42 +620,6 @@ export default function SupplierConsolidatedPage() {
           Tabovi namerno broje različito; ista oznaka u dva taba ne mora dati isti iznos.
         </p>
       </details>
-
-      <div className="supplier-consolidated-content">
-        {currentTab === "overview" && (
-          <div
-            className="supplier-embedded-container supplier-embedded-overview"
-            role="tabpanel"
-            id="supplier-tabpanel-overview"
-            aria-labelledby="supplier-tab-overview"
-            tabIndex={0}
-          >
-            <SupplierSalesStatsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
-          </div>
-        )}
-        {currentTab === "scorecard" && (
-          <div
-            className="supplier-embedded-container supplier-embedded-scorecard"
-            role="tabpanel"
-            id="supplier-tabpanel-scorecard"
-            aria-labelledby="supplier-tab-scorecard"
-            tabIndex={0}
-          >
-            <SupplierDecisionHubPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
-          </div>
-        )}
-        {currentTab === "assortment" && (
-          <div
-            className="supplier-embedded-container supplier-embedded-assortment"
-            role="tabpanel"
-            id="supplier-tabpanel-assortment"
-            aria-labelledby="supplier-tab-assortment"
-            tabIndex={0}
-          >
-            <SupplierFootwearAnalyticsPage embedded sharedFilters={canonicalFilters} trustRequestKey={trustRequestKey} onTrustMetadataChange={handleTrustMetadataChange} />
-          </div>
-        )}
-      </div>
     </div>
   );
 }

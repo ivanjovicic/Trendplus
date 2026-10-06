@@ -117,12 +117,6 @@
   background: linear-gradient(180deg, var(--error-soft, rgba(var(--error-rgb, 239, 68, 68), 0.12)) 0%, var(--surface-default) 100%);
 }
 
-.data-quality-title {
-  margin: 0;
-  font-size: 1.9rem;
-  color: var(--text-primary);
-}
-
 .data-quality-subtitle,
 .data-quality-meta,
 .data-quality-table-meta {
@@ -724,5 +718,22 @@
 
   .data-quality-search {
     flex-direction: column;
+  }
+}
+
+/* Filter note + link: stacked so the link never runs into the sentence. */
+.data-quality-meta.data-quality-meta--filter {
+  display: grid;
+  font-size: 0.8125rem;
+  gap: 0.25rem;
+  justify-items: end;
+  line-height: 1.45;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .data-quality-meta.data-quality-meta--filter {
+    justify-items: start;
+    text-align: left;
   }
 }

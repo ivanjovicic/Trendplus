@@ -1328,12 +1328,12 @@ export default function PreNivelacijaPriorityPage() {
       />
       <header className="pnp-decision-header">
         <div>
-          <h2 className="pnp-decision-title">Prioriteti nivelacije</h2>
+          <h2 className="sr-only">Prioriteti nivelacije</h2>
           <p className="pnp-decision-subtitle">
             Operativna podrška za odluke po SKU pre faze sniženja: gde treba pojačati izlaganje,
             šta zadržati pod nadzorom i šta spustiti iz fokusa.
           </p>
-          <p data-testid="pnp-fixed-sales-window">Model koristi poslednjih {PRE_NIVELACIJA_SALES_WINDOW_DAYS} dana (UTC); prag dana bez prodaje je zaseban filter kandidata.</p>
+          <p className="pnp-decision-meta" data-testid="pnp-fixed-sales-window">Model koristi poslednjih {PRE_NIVELACIJA_SALES_WINDOW_DAYS} dana (UTC); prag dana bez prodaje je zaseban filter kandidata.</p>
         </div>
         <div className="pnp-decision-generated">
           Generisano: {data?.generatedAtUtc ? new Date(data.generatedAtUtc).toLocaleString("sr-RS") : "-"}
@@ -1410,28 +1410,35 @@ export default function PreNivelacijaPriorityPage() {
             </section>
           ) : null}
 
-          <section className="pnp-decision-kpis">
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="SKU koji zadovoljavaju filtere i prag skora; nisu svi spremni za akciju.">
-              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i prag pre-nivelacionog skora. Ovo je skorirana populacija kandidata; status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
-              <strong>{formatNonNegativeNumber(data.summary.candidatesCount)}</strong>
-            </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
+          <section className="pnp-decision-kpis analytics-kpi-tier analytics-kpi-tier--primary" aria-label="Stanje kandidata" data-testid="pnp-kpis-signal">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-warning" data-note="Kandidati sa najjačim signalom za brzu intervenciju.">
               <span>Visok prioritet <InfoTip text="Globalni broj SKU u visokoj prioritetnoj bandi u celoj filtriranoj populaciji. Status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
               <strong>{formatNonNegativeNumber(data.summary.highPriorityCount)}</strong>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU u visokoj prioritetnoj bandi.">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-warning" data-note="Ukupna zaliha kod SKU u visokoj prioritetnoj bandi.">
               <span>Zaliha pod rizikom <InfoTip text="Ukupna zaliha u komadima kandidata u visokoj prioritetnoj bandi (u skladu sa filterima). Iskazano u komadima, ne u RSD vrednosti. Veća zaliha bez prodaje = veći operativni rizik. Ako nema visokoprioritetnih kandidata, vrednost nije dostupna." /></span>
               <strong>{data.summary.totalStockAtRisk == null ? "Nije dostupno" : formatNonNegativeNumber(data.summary.totalStockAtRisk)}</strong>
               <em>{formatKpiCoverage(data.summary.totalStockAtRiskCoverageEligible, data.summary.totalStockAtRiskCoverageTotal)}</em>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Procena prihoda ako se dozvoljeni Pojačaj kandidati istaknu umesto da se sniže.">
-              <span><span>Procena povećanja prihoda</span> <small>(heuristička, nekalibrisana)</small> <InfoTip text="Heuristička, nekalibrisana procena: scenario isticanja minus scenario sniženja samo za dozvoljene 'Pojačaj' kandidate. Blokirane preporuke i drugi statusi nisu uključeni; rezultat nije kauzalno dokazan niti garantovani prihod." /></span>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-neutral" data-note="SKU koji zadovoljavaju filtere i prag skora; nisu svi spremni za akciju.">
+              <span>Kandidati <InfoTip text="Ukupan broj SKU koji zadovoljavaju filtere i prag pre-nivelacionog skora. Ovo je skorirana populacija kandidata; status preporuke i kvalitet podataka odvojeno određuju da li je akcija dozvoljena." /></span>
+              <strong>{formatNonNegativeNumber(data.summary.candidatesCount)}</strong>
+            </article>
+          </section>
+
+          {/* Procene su vizuelno odvojene od izmerenog stanja: nisu rezultat niti garantovan efekat. */}
+          <p className="analytics-kpi-tier-heading" id="pnp-estimate-kpis-heading">
+            Procene modela <span>heurističke, nekalibrisane · nisu potvrđen rezultat</span>
+          </p>
+          <section className="pnp-decision-kpis analytics-kpi-tier analytics-kpi-tier--secondary" aria-labelledby="pnp-estimate-kpis-heading" data-testid="pnp-kpis-estimates">
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--estimate analytics-kpi-card--tone-neutral" data-note="Procena prihoda ako se dozvoljeni Pojačaj kandidati istaknu umesto da se sniže.">
+              <span>Procena povećanja prihoda <InfoTip text="Heuristička, nekalibrisana procena: scenario isticanja minus scenario sniženja samo za dozvoljene 'Pojačaj' kandidate. Blokirane preporuke i drugi statusi nisu uključeni; rezultat nije kauzalno dokazan niti garantovani prihod." /></span>
               <strong>{formatNullableKpiRsd(data.summary.expectedHighlightRevenueUplift)}</strong>
               <em>{formatKpiCoverage(data.summary.expectedHighlightRevenueUpliftCoverageEligible, data.summary.expectedHighlightRevenueUpliftCoverageTotal)}</em>
             </article>
-            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Procena izbegljivog gubitka marže koji može da se izbegne pre nivelacije.">
-              <span><span>Procena izbegljivog gubitka marže</span> <small>(heuristička, nekalibrisana)</small> <InfoTip text="Heuristička, nekalibrisana procena gubitka marže (ne prihoda) koji se može izbeći pravovremenom intervencijom. Uključuje samo kandidate sa kompletnim dokazom o trošku i pozitivnom delta marže; nije kauzalno dokazana procena." /></span>
-              <strong className={data.summary.estimatedAvoidableMarkdownLoss == null ? "" : "trend-down"}>{formatNullableKpiRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
+            <article className="pnp-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--estimate analytics-kpi-card--tone-neutral" data-note="Procena gubitka marže koji može da se izbegne pre nivelacije.">
+              <span>Procena izbegljivog gubitka marže <InfoTip text="Heuristička, nekalibrisana procena gubitka marže (ne prihoda) koji se može izbeći pravovremenom intervencijom. Uključuje samo kandidate sa kompletnim dokazom o trošku i pozitivnom delta marže; nije kauzalno dokazana procena." /></span>
+              <strong>{formatNullableKpiRsd(data.summary.estimatedAvoidableMarkdownLoss)}</strong>
               <em>{formatKpiCoverage(data.summary.estimatedAvoidableMarkdownLossCoverageEligible, data.summary.estimatedAvoidableMarkdownLossCoverageTotal)}</em>
             </article>
           </section>
@@ -1532,7 +1539,7 @@ export default function PreNivelacijaPriorityPage() {
                         <InfoTip text="Broj kalendarskih dana od poslednje evidentirane prodaje ovog SKU. Veći broj = jači signal stagnacije zalihe. Vrednosti > 30 dana zaslužuju prioritetnu pažnju." />
                       </th>
                       <th className="align-right" aria-sort={sortAriaValue("revenueDelta", sortField, sortDir)}>
-                        <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje {sortMarker("revenueDelta", sortField, sortDir)}</button>
+                        <button type="button" onClick={() => handleSort("revenueDelta")}>Isticanje vs sniženje <span className="pnp-th-estimate">(procena)</span> {sortMarker("revenueDelta", sortField, sortDir)}</button>
                         <InfoTip text="Heuristička, nekalibrisana razlika procenjenog prihoda u 30-dnevnom prozoru: scenario isticanja minus scenario sniženja. Pozitivna vrednost je signal, ne kauzalno dokazan ni garantovani ishod." />
                       </th>
                       <th className="align-center">

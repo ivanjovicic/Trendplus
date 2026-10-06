@@ -15,11 +15,20 @@
   margin-bottom: 14px;
 }
 
-.pnp-decision-title {
-  color: var(--text-primary, var(--theme-color-f9fafb, #f9fafb));
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 4px;
+.pnp-decision-generated {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+/* Model window is context, not a headline: keep it at meta size under the subtitle. */
+.pnp-decision-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 4px 0 0;
 }
 
 .pnp-decision-subtitle {
@@ -727,9 +736,11 @@
 }
 
 .pnp-focus-tab.active {
-  background: var(--accent-primary, #2563eb);
-  border-color: var(--accent-primary, #2563eb);
-  color: #fff;
+  /* Status tokens keep the active tab readable in every theme (white on bright accents was 1.7:1). */
+  background: var(--status-info-fill);
+  border-color: var(--status-info-border);
+  box-shadow: inset 0 -2px 0 var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .pnp-focus-tab.tab-boost.active {
@@ -773,8 +784,8 @@
 }
 
 .pnp-signal-pill.signal-weak {
-  background: rgba(220, 38, 38, 0.12);
-  color: #dc2626;
+  background: var(--status-error-fill);
+  color: var(--status-error-text);
 }
 
 .pnp-signal-pill.signal-na {
@@ -899,15 +910,15 @@
 }
 
 .pnp-queue-panel--boost h3 {
-  color: #16a34a;
+  color: var(--status-success-text);
 }
 
 .pnp-queue-panel--keep h3 {
-  color: #d97706;
+  color: var(--status-warning-text);
 }
 
 .pnp-queue-panel--reduce h3 {
-  color: #dc2626;
+  color: var(--status-error-text);
 }
 
 .pnp-queue-item {
@@ -940,4 +951,11 @@
   color: var(--text-secondary, #9ca3af);
   font-size: 12px;
   font-style: italic;
+}
+
+/* Marks an estimated (heuristic) column so it is not read as a measured result. */
+.pnp-th-estimate {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
 }

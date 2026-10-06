@@ -2070,16 +2070,6 @@ export default function DailySalesStatsPage() {
         mobileFilterSummary="Period, objekat i top N"
       />
 
-      <div className="daily-sales-cross-navigation" data-testid="daily-sales-cross-navigation">
-        <div>
-          <strong>Treba ti pregled dobavljača?</strong>
-          <span>Dobavljačka prodaja je objedinjena na canonical Supplier ekranu.</span>
-        </div>
-        <Link className="daily-sales-cross-navigation__link" to={supplierOverviewHref}>
-          Otvori prodaju po dobavljačima
-        </Link>
-      </div>
-
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
       ) : null}
@@ -2729,6 +2719,17 @@ export default function DailySalesStatsPage() {
 
         </>
       ) : null}
+
+      {/* Navigacija ka drugom ekranu je sledeći korak, ne rezultat: ide posle smenskih pokazatelja. */}
+      <div className="daily-sales-cross-navigation" data-testid="daily-sales-cross-navigation">
+        <div>
+          <strong>Treba ti pregled dobavljača?</strong>
+          <span>Prodaja po dobavljačima ima svoj glavni ekran sa preporukama.</span>
+        </div>
+        <Link className="daily-sales-cross-navigation__link" to={supplierOverviewHref}>
+          Otvori prodaju po dobavljačima
+        </Link>
+      </div>
     </div>
   );
 }

@@ -150,8 +150,6 @@
 .supplier-decision-header h1,
 .shoetype-decision-title,
 .sf-decision-title,
-.pnp-decision-title,
-.ppn-decision-title,
 .observability-title,
 .analytics-section > h2,
 .supplier-decision-card h2,
@@ -389,13 +387,14 @@
 .ppn-decision-kpi.analytics-kpi-card > span,
 .analytics-kpi-card__label {
   align-items: center;
-  color: var(--analytics-text-muted);
+  /* Label names the metric; it must stay readable but quieter than the value. */
+  color: var(--text-secondary);
   display: flex;
   flex-wrap: wrap;
   font-size: var(--font-size-label);
-  font-weight: var(--font-weight-heavy);
+  font-weight: 600;
   gap: var(--space-1);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.06em;
   line-height: var(--line-height-title);
   text-transform: uppercase;
 }
@@ -440,9 +439,9 @@
 .sf-decision-kpi.analytics-kpi-card > em,
 .pnp-decision-kpi.analytics-kpi-card > em,
 .ppn-decision-kpi.analytics-kpi-card > em {
-  color: var(--analytics-text-muted);
+  color: var(--text-secondary);
   display: block;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   margin-top: var(--space-2);
 }
 
@@ -468,6 +467,95 @@
 
 .analytics-kpi-card--tone-value {
   --analytics-kpi-accent: color-mix(in srgb, var(--success) 70%, var(--analytics-accent-2) 30%);
+}
+
+/* KPI tiers: the 3 decision metrics read first; context metrics stay visible but quieter.
+   Markup: one grid per tier (`--primary` / `--secondary`) so the order follows business importance. */
+/* Keep the info tip next to the label text instead of letting it drop onto its own row. */
+.analytics-kpi-tier .analytics-kpi-card > span {
+  flex-wrap: nowrap;
+}
+
+.analytics-kpi-tier .analytics-kpi-card > span > .info-tip {
+  flex-shrink: 0;
+}
+
+/* Group label for a KPI tier that must not be read as a measured result (e.g. model estimates). */
+.analytics-kpi-tier-heading {
+  align-items: baseline;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-4) 0 0;
+}
+
+.analytics-kpi-tier-heading > span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.analytics-kpi-tier-heading + .analytics-kpi-tier.analytics-kpi-tier--secondary {
+  margin-top: var(--space-2);
+}
+
+/* Estimate cards: dashed edge and no accent glow so a heuristic number never looks like a booked result. */
+.analytics-kpi-card.analytics-kpi-card--estimate {
+  background: var(--surface-card, var(--analytics-panel-bg));
+  border-style: dashed;
+}
+
+.analytics-kpi-tier.analytics-kpi-tier--primary {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  margin-bottom: 0;
+}
+
+.analytics-kpi-tier.analytics-kpi-tier--secondary {
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  margin-top: var(--space-3);
+}
+
+.analytics-kpi-card.analytics-kpi-card--primary > strong,
+.analytics-kpi-card--primary .analytics-kpi-card__value {
+  font-size: clamp(1.55rem, 2.1vw, 2.05rem);
+}
+
+.analytics-kpi-card.analytics-kpi-card--secondary {
+  box-shadow: var(--analytics-shadow-soft);
+  min-height: 0;
+  padding: var(--space-4);
+}
+
+.analytics-kpi-card.analytics-kpi-card--secondary:hover {
+  box-shadow: var(--analytics-shadow-soft);
+  transform: none;
+}
+
+.analytics-kpi-card.analytics-kpi-card--secondary > strong,
+.analytics-kpi-card--secondary .analytics-kpi-card__value {
+  font-size: clamp(1.15rem, 1.6vw, 1.4rem);
+  margin-top: var(--space-2);
+  text-shadow: none;
+}
+
+.analytics-kpi-card.analytics-kpi-card--secondary[data-note]::after {
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-2);
+}
+
+/* Estimate caveat: a weak-signal result must not read as a certain fact. */
+.analytics-kpi-card .analytics-kpi-card__caveat {
+  border-left: 3px solid var(--status-warning-border);
+  color: var(--status-warning-text);
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-2);
 }
 
 .analytics-surface-panel,

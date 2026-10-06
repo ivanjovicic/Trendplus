@@ -9,7 +9,6 @@ import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import PilotDataQualityIntakeReportPanel from "../components/analytics/PilotDataQualityIntakeReport";
 import PilotImportReadinessCard from "../components/analytics/PilotImportReadinessCard";
-import InfoTip from "../components/ui/InfoTip";
 import {
   AnalyticsMetaError,
   getAnalyticsRefreshStatus,
@@ -545,7 +544,7 @@ export default function DataQualityPage() {
         setHealthError(
           healthResult.reason instanceof Error
             ? healthResult.reason.message
-            : "Health snapshot nije dostupan."
+            : "Pregled zdravlja podataka nije dostupan."
         );
       }
 
@@ -749,7 +748,7 @@ export default function DataQualityPage() {
       />
       <header className="data-quality-header">
         <div>
-          <h1 className="data-quality-title">Provera kvaliteta podataka <InfoTip text="Problemi koji utiču na analytics." /></h1>
+          <h2 className="sr-only">Provera kvaliteta podataka</h2>
           <p className="data-quality-subtitle">
             Fokus na kritične greške: dobavljač, kategorija, naziv artikla.
           </p>
@@ -781,8 +780,8 @@ export default function DataQualityPage() {
               </span>
             </section>
           ) : null}
-          <div className="data-quality-meta">
-            <span>Signal filter: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
+          <div className="data-quality-meta data-quality-meta--filter">
+            <span>Filter signala: samo artikli sa više od 1.000 RSD prometa u 30 dana</span>
             <Link to={pilotIntakeReportHref}>Otvori pilot intake izveštaj</Link>
           </div>
         </div>
@@ -917,7 +916,7 @@ export default function DataQualityPage() {
       </div> : null}
 
       {viewMode === "issues" ? <details className="data-quality-low-priority" open={issueType === "invalidName"}>
-        <summary>Low priority issues</summary>
+        <summary>Problemi niskog prioriteta</summary>
         <div className="data-quality-tabs" role="tablist" aria-label="Kartice problema nižeg prioriteta">
           {LOW_PRIORITY_TABS.map((tab) => (
             <button
@@ -959,8 +958,8 @@ export default function DataQualityPage() {
           <label>
             <span>Smer</span>
             <select value={sortDir} onChange={(event) => updateParams({ sortDir: event.target.value, page: 1 })}>
-              <option value="desc">DESC</option>
-              <option value="asc">ASC</option>
+              <option value="desc">Opadajuće</option>
+              <option value="asc">Rastuće</option>
             </select>
           </label>
 
@@ -1040,7 +1039,7 @@ export default function DataQualityPage() {
       ) : null}
       {viewMode === "issues" && healthError ? (
         <DataQualityPanelState
-          title="Health snapshot"
+          title="Pregled zdravlja podataka"
           message="Health pregled trenutno nije dostupan."
           detail={healthError}
         />

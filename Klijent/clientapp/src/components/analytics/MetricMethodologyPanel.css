@@ -2,7 +2,7 @@
   align-self: flex-start;
   background: none;
   border: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text, var(--accent-primary));
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;

@@ -1468,4 +1468,32 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       expect(screen.queryByTestId("vendor-load-warning")).not.toBeInTheDocument();
     });
   });
+
+  it("leads with the signed revenue change and shows no estimate caveat for a strong signal", async () => {
+    // Backend sends null metricsStatus when there are no warnings; with 95% analyzed rows that is a strong signal.
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({ metricsStatus: null as never }));
+    renderPage();
+
+    const kpis = await screen.findByTestId("ppn-result-kpis");
+    const cards = kpis.querySelectorAll("article");
+    expect(cards[0]).toHaveTextContent(/Ukupna promena prometa/);
+    // Sign is explicit text, not only a colour.
+    expect(cards[0].querySelector("strong")?.textContent).toMatch(/^\+/);
+    expect(screen.queryByTestId("ppn-result-caveat")).not.toBeInTheDocument();
+  });
+
+  it("keeps the estimate caveat when an unexpected processing warning lowers confidence", async () => {
+    renderPage();
+
+    expect(await screen.findByTestId("ppn-result-caveat")).toHaveTextContent(/kvalitet signala: srednje poverenje/);
+  });
+
+  it("marks the revenue change as an estimate when signal quality is not confirmed", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({ dataQuality: undefined as never }));
+    renderPage();
+
+    const caveat = await screen.findByTestId("ppn-result-caveat");
+    expect(caveat).toHaveTextContent(/Procena, ne potvrđen efekat/);
+    expect(within(screen.getByTestId("ppn-result-kpis")).getByText(/Ukupna promena prometa/)).toBeInTheDocument();
+  });
 });

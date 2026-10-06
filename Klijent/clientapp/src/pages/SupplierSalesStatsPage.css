@@ -266,9 +266,9 @@
 
 .supplier-decision-message.loading,
 .supplier-decision-message.info {
-  background: var(--dashboard-surface-info);
-  border: 1px solid color-mix(in srgb, var(--dashboard-secondary) 36%, transparent);
-  color: var(--dashboard-secondary);
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .supplier-decision-message.error {
@@ -346,19 +346,27 @@
 /* icon handled globally via tailwind.css [class*="badge"]::before */
 
 .supplier-decision-kpi-badge.quality-confirmed {
-  color: var(--dashboard-accent);
+  background: var(--status-success-fill);
+  border-color: var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .supplier-decision-kpi-badge.quality-partial {
-  color: var(--dashboard-secondary);
+  background: var(--status-info-fill);
+  border-color: var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .supplier-decision-kpi-badge.quality-estimated {
-  color: var(--dashboard-warning);
+  background: var(--status-warning-fill);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .supplier-decision-kpi-badge.quality-nodata {
-  color: var(--dashboard-danger);
+  background: var(--status-error-fill);
+  border-color: var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .supplier-decision-kpi-badge.quality-snapshot {
@@ -373,8 +381,19 @@
   min-width: 0;
 }
 
+.supplier-decision-panels--charts {
+  margin-top: 14px;
+}
+
+@media (min-width: 1440px) {
+  /* Explanatory charts sit side by side on wide screens so they don't push context far down. */
+  .supplier-decision-panels.supplier-decision-panels--charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .supplier-buying-value-panel {
-  margin: 0 0 14px;
+  margin: 14px 0;
   padding: 14px;
 }
 
@@ -564,19 +583,22 @@
   border-radius: 999px;
   color: var(--dashboard-text);
   display: inline-flex;
-  font-size: 11px;
-  font-weight: 760;
+  font-size: 12px;
+  font-weight: 600;
   gap: 6px;
   letter-spacing: 0.01em;
   padding: 4px 10px;
   text-transform: uppercase;
 }
 
+/* Count must stay readable in every theme (was ~1.7:1 on the light-theme gradient). */
 .priority-chip strong {
-  color: var(--dashboard-on-accent);
-  background: linear-gradient(120deg, var(--dashboard-accent), var(--dashboard-gradient-margin-end));
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   padding: 3px 7px;
 }
@@ -777,27 +799,27 @@
 }
 
 .metric-chip-neutral {
-  background: rgba(30, 200, 255, 0.12);
-  border: 1px solid rgba(30, 200, 255, 0.35);
-  color: var(--dashboard-secondary);
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .trend-pill.trend-up {
-  background: rgba(102, 255, 126, 0.14);
-  border: 1px solid rgba(102, 255, 126, 0.44);
-  color: var(--dashboard-accent);
+  background: var(--status-success-fill);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .trend-pill.trend-down {
-  background: rgba(251, 113, 133, 0.13);
-  border: 1px solid rgba(251, 113, 133, 0.4);
-  color: var(--dashboard-danger);
+  background: var(--status-error-fill);
+  border: 1px solid var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .trend-pill.trend-neutral {
-  background: rgba(30, 200, 255, 0.12);
-  border: 1px solid rgba(30, 200, 255, 0.34);
-  color: var(--dashboard-secondary);
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .quality-pill {
@@ -852,27 +874,27 @@
 }
 
 .supplier-decision-status.status-boost {
-  background: rgba(102, 255, 126, 0.14);
-  border: 1px solid rgba(102, 255, 126, 0.45);
-  color: var(--dashboard-accent);
+  background: var(--status-success-fill);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .supplier-decision-status.status-keep {
-  background: rgba(30, 200, 255, 0.14);
-  border: 1px solid rgba(30, 200, 255, 0.44);
-  color: var(--dashboard-secondary);
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .supplier-decision-status.status-reduce {
-  background: rgba(251, 113, 133, 0.14);
-  border: 1px solid rgba(251, 113, 133, 0.42);
-  color: var(--dashboard-danger);
+  background: var(--status-error-fill);
+  border: 1px solid var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .supplier-decision-status.status-na {
-  background: rgba(148, 163, 184, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.45);
-  color: var(--dashboard-text-muted);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
 }
 
 .supplier-status-reason-chip {
@@ -1391,4 +1413,76 @@
   .supplier-detail-hero-right {
     flex-wrap: wrap;
   }
+}
+
+/* "Istaknuto u periodu": named answers (who leads, who grows, who falls, what to check)
+   directly under the KPIs, so the user does not have to scroll to the priority table. */
+.supplier-overview-highlights {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+}
+
+.supplier-overview-highlights dl {
+  display: grid;
+  gap: 12px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  margin: 0;
+}
+
+.supplier-overview-highlight {
+  min-width: 0;
+}
+
+.supplier-overview-highlight dt {
+  color: var(--text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.supplier-overview-highlight dd {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0 0;
+  min-width: 0;
+}
+
+.supplier-overview-highlight dd > strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.supplier-overview-highlight dd > span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.supplier-overview-highlight .supplier-overview-highlight-context {
+  color: var(--text-secondary);
+}
+
+.supplier-overview-highlight-link {
+  background: none;
+  border: 0;
+  color: var(--accent-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.supplier-overview-highlight-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }

@@ -1878,4 +1878,28 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(scoreHeader.textContent).toContain("▼");
     expect(scoreHeader.textContent).not.toMatch(/\s\^|\sv/);
   });
+
+  it("separates measured candidate state from heuristic estimates", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse());
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const signal = await screen.findByTestId("pnp-kpis-signal");
+    const estimates = screen.getByTestId("pnp-kpis-estimates");
+    expect(signal).toHaveTextContent(/Visok prioritet/);
+    expect(signal).toHaveTextContent(/Zaliha pod rizikom/);
+    expect(signal).not.toHaveTextContent(/Procena/);
+    expect(estimates).toHaveAccessibleName(/Procene modela.*nisu potvrđen rezultat/);
+    const estimateCards = estimates.querySelectorAll("article");
+    expect(estimateCards).toHaveLength(2);
+    estimateCards.forEach((card) => {
+      expect(card).toHaveClass("analytics-kpi-card--estimate");
+      expect(card.querySelector("strong")).not.toHaveClass("trend-down");
+    });
+    expect(screen.getByRole("button", { name: /Isticanje vs sniženje \(procena\)/ })).toBeInTheDocument();
+  });
 });

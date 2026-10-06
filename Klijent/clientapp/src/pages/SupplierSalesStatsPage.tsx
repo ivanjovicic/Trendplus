@@ -61,6 +61,7 @@ import {
 } from "../utils/canonicalRecommendationSemantics";
 import { qualityTierIcon, qualityTierClass, tierNeedsWarning, buildCoverageTooltip, buildRecommendationCaveat, buildMarginDetailNote, buildSnapshotBadgeLabel, buildSnapshotTooltip } from "../utils/marginQuality";
 import type { SupplierEmbeddedPageProps } from "./supplierSharedState";
+import { buildSupplierOverviewHighlights } from "../utils/supplierOverviewHighlights";
 import "./SupplierSalesStatsPage.css";
 
 type SupplierSalesStatsError = {
@@ -1280,6 +1281,12 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return { increaseFocus, maintain, review, doNotTrust, insufficientData };
   }, [knownSuppliers]);
 
+  const overviewHighlights = useMemo(
+    () => buildSupplierOverviewHighlights(knownSuppliers),
+    [knownSuppliers]
+  );
+  const priorityListRef = useRef<HTMLElement>(null);
+
   const unknownSuppliers = useMemo(
     () => sortedSuppliers.filter((row) => row.isUnknown),
     [sortedSuppliers]
@@ -1956,23 +1963,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             </div>
           ) : null}
           {!emptyStateHint ? (
-            <section className="supplier-decision-kpis">
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
+            <>
+            <section className="supplier-decision-kpis analytics-kpi-tier analytics-kpi-tier--primary" aria-label="Glavni pokazatelji dobavljača" data-testid="supplier-kpis-primary">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-info" data-note="Vrednost prodaje kroz aktivne dobavljače u periodu.">
                 <span>{SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL} <InfoTip text="Ukupna vrednost sertifikovane maloprodajne prodaje svih dobavljača u izabranom periodu (bez DUG/KOREKCIJA). Nije isto što i prihod skorkarte ili post-prozor asortimana." /></span>
                 <strong>{formatMetricDisplayValue({ value: totalRevenue, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="revenue" ariaLabel="Kako je izračunat ukupan promet" />
               </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Ukupan obim prodaje izražen u komadima.">
-                <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
-                <strong>{fmtQty(totalUnits)}</strong>
-                <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat ukupan broj prodatih jedinica" />
-              </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
-                <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
-                <strong>{formatMetricDisplayValue({ value: totalCost, kind: "currency" })}</strong>
-                <KpiExplainButton metricKey="totalCost" ariaLabel="Kako je izračunata ukupna nabavna vrednost" />
-              </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Bruto doprinos marže pre operativnih troškova.">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-value" data-note="Bruto doprinos marže pre operativnih troškova.">
                 <span>{canonicalTerms.marginContribution.label} <InfoTip text={canonicalTerms.marginContribution.desc} /></span>
                 <strong>{formatMetricDisplayValue({ value: totalMarginContribution, kind: "currency" })}</strong>
                 <KpiExplainButton metricKey="marginContribution" ariaLabel="Kako je izračunat maržni doprinos" />
@@ -1991,22 +1989,87 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </small>
                 ) : null}
               </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Signal kvaliteta miks marže kroz dobavljače.">
-                <span>{displayPopulationIsFiltered ? "Ponderisana marža (ceo odgovor)" : "Ponderisana marža"} <InfoTip text="Benchmark je ponderisan pokrivenim prometom poznatih dobavljača: maržni doprinos / promet sa dostupnim troškom. Engine preporuka koristi istu vrednost; nije rebaziran na filtrirani prikaz." /></span>
-                <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
-                <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
-              </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-warning" data-note="Koncentracija pozitivnog neto prometa na najjačim partnerima.">
-                <span>Udeo top 5 dobavljača <InfoTip text={`${SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE} Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom.`} /></span>
-                <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
-                <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
-              </article>
-              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--tone-success" data-note="Momentum prema prethodnom uporedivom periodu.">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-neutral" data-note="Momentum prema prethodnom uporedivom periodu.">
                 <span>Ukupan PoP trend <InfoTip text="Promena ukupnog prometa u odnosu na prethodni uporedivi period iste dužine. Formula: (trenutni promet – prethodni promet) / prethodni promet × 100. Prethodni promet obuhvata i dobavljače koji u tekućem periodu nemaju prodaju. Nije dostupno ako prethodni period nije dostupan ili ako su prikazani samo poznati dobavljači, jer za taj skup ne postoji potpun prethodni zbir." /></span>
                 <strong className={trendClass(periodGrowthPct)}>{fmtSignedPct(periodGrowthPct)}</strong>
                 <KpiExplainButton metricKey="popRevenueChangePct" ariaLabel="Kako je izračunat Ukupan PoP trend" />
               </article>
             </section>
+            <section className="supplier-decision-kpis analytics-kpi-tier analytics-kpi-tier--secondary" aria-label="Dodatni pokazatelji dobavljača" data-testid="supplier-kpis-secondary">
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Ukupan obim prodaje izražen u komadima.">
+                <span>Ukupno prodato <InfoTip text="Ukupan broj prodatih komada svih dobavljača u izabranom periodu." /></span>
+                <strong>{fmtQty(totalUnits)}</strong>
+                <KpiExplainButton metricKey="unitsSold" ariaLabel="Kako je izračunat ukupan broj prodatih jedinica" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Signal kvaliteta miks marže kroz dobavljače.">
+                <span>{displayPopulationIsFiltered ? "Ponderisana marža (ceo odgovor)" : "Ponderisana marža"} <InfoTip text="Benchmark je ponderisan pokrivenim prometom poznatih dobavljača: maržni doprinos / promet sa dostupnim troškom. Engine preporuka koristi istu vrednost; nije rebaziran na filtrirani prikaz." /></span>
+                <strong>{fmtPct(data.totals.prosecnaMarza ?? null, 1)}</strong>
+                <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Koncentracija pozitivnog neto prometa na najjačim partnerima.">
+                <span>Udeo top 5 dobavljača <InfoTip text={`${SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE} Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom.`} /></span>
+                <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
+                <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
+              </article>
+              <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Trošak robe pokriven istorijskim ili procenjenim ulazom.">
+                <span>Ukupna nabavna vrednost <InfoTip text="Zbir troška robe za deo prometa sa dostupnim troškom. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." /></span>
+                <strong>{formatMetricDisplayValue({ value: totalCost, kind: "currency" })}</strong>
+                <KpiExplainButton metricKey="totalCost" ariaLabel="Kako je izračunata ukupna nabavna vrednost" />
+              </article>
+            </section>
+            {knownSuppliers.length > 1 ? (
+              <section className="supplier-overview-highlights" aria-label="Istaknuto u periodu" data-testid="supplier-overview-highlights">
+                <dl>
+                  {overviewHighlights.leader ? (
+                    <div className="supplier-overview-highlight">
+                      <dt>Najveći dobavljač</dt>
+                      <dd>
+                        <strong>{overviewHighlights.leader.dobavljacNaziv}</strong>
+                        <span>{fmtRsd(overviewHighlights.leader.ukupanPromet)}{overviewHighlights.leader.sharePct != null ? ` · udeo ${fmtPct(overviewHighlights.leader.sharePct, 1)}` : ""}</span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {overviewHighlights.topGrowth ? (
+                    <div className="supplier-overview-highlight">
+                      <dt>Najveći rast (PoP)</dt>
+                      <dd>
+                        <strong>{overviewHighlights.topGrowth.dobavljacNaziv}</strong>
+                        <span className={describePopMetric(overviewHighlights.topGrowth).className}>
+                          <span aria-hidden="true">▲ </span>{describePopMetric(overviewHighlights.topGrowth).label}
+                          {overviewHighlights.topGrowth.sharePct != null ? <span className="supplier-overview-highlight-context"> · udeo {fmtPct(overviewHighlights.topGrowth.sharePct, 1)}</span> : null}
+                        </span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {overviewHighlights.topDecline ? (
+                    <div className="supplier-overview-highlight">
+                      <dt>Najveći pad (PoP)</dt>
+                      <dd>
+                        <strong>{overviewHighlights.topDecline.dobavljacNaziv}</strong>
+                        <span className={describePopMetric(overviewHighlights.topDecline).className}>
+                          <span aria-hidden="true">▼ </span>{describePopMetric(overviewHighlights.topDecline).label}
+                          {overviewHighlights.topDecline.sharePct != null ? <span className="supplier-overview-highlight-context"> · udeo {fmtPct(overviewHighlights.topDecline.sharePct, 1)}</span> : null}
+                        </span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className="supplier-overview-highlight supplier-overview-highlight--action">
+                    <dt>Za proveru</dt>
+                    <dd>
+                      <strong>{`Oprez: ${supplierCounts.review} · Smanji / Ne veruj: ${supplierCounts.doNotTrust}`}</strong>
+                      <button
+                        type="button"
+                        className="supplier-overview-highlight-link"
+                        onClick={() => priorityListRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
+                      >
+                        Otvori prioritetnu listu
+                      </button>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            ) : null}
+            </>
           ) : null}
 
           {qualityNotes.length > 0 ? (
@@ -2025,141 +2088,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
             </div>
           ) : null}
 
-          <section className="supplier-buying-value-panel analytics-surface-panel" data-testid="supplier-buying-value-panel">
-            <div className="supplier-buying-value-header">
-              <div>
-                <h2>Buying signal: zaliha i kapital</h2>
-                <p>
-                  Trenutni presek zaliha po dobavljaču/objektu. Ne predstavlja prodaju u periodu niti menja konačnu preporuku iz ovog pregleda.
-                </p>
-              </div>
-              <InfoTip text="Izvor: Inventory balance i Inventory insights. Vrednost zalihe koristi dostupnu nabavnu cenu; artikli bez cene nisu uključeni u procenjeni kapital." />
-            </div>
-            {buyingEvidence.loading ? (
-              <div className="supplier-decision-message loading" role="status">Učitavam buying signal zaliha...</div>
-            ) : (
-              <>
-                {buyingEvidence.error ? (
-                  <div className="supplier-decision-message warning" role="status">
-                    {buyingEvidence.error} Probajte ponovo ili otvorite Inventory za detalj.
-                  </div>
-                ) : null}
-                <div className="supplier-buying-value-grid">
-                  <article className="supplier-buying-value-card">
-                    <span>Zaliha na stanju <InfoTip text="Ukupan broj trenutno evidentiranih jedinica u izabranom opsegu." /></span>
-                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })}</strong>
-                  </article>
-                  <article className="supplier-buying-value-card">
-                    <span>Procenjena vrednost zalihe <InfoTip text="Količina na stanju × dostupna nabavna cena. Nedostajuće cene se ne predstavljaju kao nula." /></span>
-                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? buyingEvidence.insights?.totalEstimatedValue ?? null, kind: "currency" })}</strong>
-                  </article>
-                  <article className="supplier-buying-value-card">
-                    <span>Artikli sa zalihom</span>
-                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.insights?.totalItems ?? buyingEvidence.balance?.totalSku ?? null, kind: "number" })}</strong>
-                  </article>
-                  <article className="supplier-buying-value-card">
-                    <span>Artikli 90+ dana bez kretanja <InfoTip text="Broj artikala iz Inventory aging bucket-a 90+ dana; trenutni presek, ne period prodaje." /></span>
-                    <strong>{formatMetricDisplayValue({
-                      value: buyingEvidence.insights?.aging
-                        .filter((bucket) => /90|stari|aged/i.test(`${bucket.bucketKey} ${bucket.label}`))
-                        .reduce((sum, bucket) => sum + bucket.itemCount, 0) ?? null,
-                      kind: "number",
-                    })}</strong>
-                  </article>
-                </div>
-                {buyingEvidence.insights?.topAgedItems.length ? (
-                  <div className="supplier-buying-value-aged">
-                    <h3>Najstariji artikli za proveru</h3>
-                    <ul>
-                      {buyingEvidence.insights.topAgedItems.slice(0, 5).map((item) => (
-                        <li key={item.id}>
-                          <span>{item.naziv}</span>
-                          <small>{item.agingLabel} · {fmtQty(item.quantity)} · {fmtRsd(item.estimatedValue)}</small>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                <details className="supplier-buying-value-limitations" data-testid="supplier-buying-value-limitations">
-                  <summary>Metričke koje nisu potvrđene u ovom izvoru</summary>
-                  <ul>
-                    {SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                </details>
-              </>
-            )}
-          </section>
-
           <section className="supplier-decision-panels">
-            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo pozitivnog neto prometa prikazane populacije nose najveći dobavljači. Uključuje Nepoznato kada je prikazano; negativni redovi nisu deo pozitivne koncentracije." /></h2>
-              <p>Top udeo pozitivnog neto prometa za brzu procenu gde je biznis koncentrisan.</p>
-              {concentrationData.length > 0 ? (
-                <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
-                  {concentrationChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
-                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <defs>
-                        <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--chart-series-1)" />
-                          <stop offset="100%" stopColor="var(--chart-series-2)" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
-                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
-                      <Tooltip
-                        contentStyle={COMMAND_TOOLTIP_STYLE}
-                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
-                        cursor={CHART_CURSOR_STYLE}
-                        formatter={(value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 })}
-                      />
-                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                      <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo pozitivnog prometa %" />
-                    </BarChart>
-                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
-                </div>
-              ) : (
-                <div className="supplier-decision-empty">Nema podataka za grafikon koncentracije.</div>
-              )}
-            </article>
-
-            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
-              <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
-              {comparisonData.length > 0 ? (
-                <div ref={comparisonChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!comparisonChart.ready}>
-                  {comparisonChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
-                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
-                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
-                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
-                      <Tooltip
-                        contentStyle={COMMAND_TOOLTIP_STYLE}
-                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
-                        cursor={CHART_CURSOR_STYLE}
-                        formatter={((value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 1 })) as any}
-                      />
-                      <Legend
-                        wrapperStyle={CHART_LEGEND_STYLE}
-                        iconType="circle"
-                        iconSize={8}
-                        itemSorter={(item) => (item.dataKey === "udeoPrometa" ? 0 : 1)}
-                      />
-                      <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-2)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
-                    </BarChart>
-                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
-                </div>
-              ) : (
-                <div className="supplier-decision-empty">Nema podataka za poređenje.</div>
-              )}
-            </article>
-          </section>
-
-          <section className="supplier-decision-panels">
-            <article className="supplier-decision-card analytics-surface-panel">
+            <article className="supplier-decision-card analytics-surface-panel" ref={priorityListRef} id="supplier-priority-list">
               <div className="supplier-decision-table-head">
                 <div>
                   <h2>Prioritetna lista dobavljača</h2>
@@ -2760,6 +2690,141 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               })()}
             </section>
           ) : null}
+
+          {/* Grafikoni objašnjavaju raspodelu; odluka (prioritetna lista) i detalj idu pre njih. */}
+          <section className="supplier-decision-panels supplier-decision-panels--charts">
+            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
+              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo pozitivnog neto prometa prikazane populacije nose najveći dobavljači. Uključuje Nepoznato kada je prikazano; negativni redovi nisu deo pozitivne koncentracije." /></h2>
+              <p>Top udeo pozitivnog neto prometa za brzu procenu gde je biznis koncentrisan.</p>
+              {concentrationData.length > 0 ? (
+                <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
+                  {concentrationChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
+                    <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <defs>
+                        <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="var(--chart-series-1)" />
+                          <stop offset="100%" stopColor="var(--chart-series-2)" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={COMMAND_TOOLTIP_STYLE}
+                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                        cursor={CHART_CURSOR_STYLE}
+                        formatter={(value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 2 })}
+                      />
+                      <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
+                      <Bar dataKey="sharePct" fill="url(#supplierShareGradient)" radius={[0, 10, 10, 0]} name="Udeo pozitivnog prometa %" />
+                    </BarChart>
+                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
+                </div>
+              ) : (
+                <div className="supplier-decision-empty">Nema podataka za grafikon koncentracije.</div>
+              )}
+            </article>
+
+            <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
+              <h2>{canonicalTerms.revenue.label} vs {canonicalTerms.marginContribution.label} <InfoTip text="Grafikon poredi udeo u prometu i udeo u maržnom doprinosu. Maržni doprinos nije neto profit i ne uključuje operativne troškove. Ako je deo troška procenjen iz raspoloživih podataka, i ovaj signal treba čitati oprezno." /></h2>
+              <p className="supplier-decision-chart-desc">Poređenje udela u prometu i udela u {canonicalTerms.marginContribution.label.toLowerCase()} - dobavljači s visokim prometom ne moraju imati i visok maržni doprinos.</p>
+              {comparisonData.length > 0 ? (
+                <div ref={comparisonChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!comparisonChart.ready}>
+                  {comparisonChart.ready ? <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={260}>
+                    <BarChart data={comparisonData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
+                      <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={COMMAND_TOOLTIP_STYLE}
+                        labelStyle={COMMAND_TOOLTIP_LABEL_STYLE}
+                        cursor={CHART_CURSOR_STYLE}
+                        formatter={((value: number | string | undefined) => formatMetricDisplayValue({ value: typeof value === "number" ? value : Number(value), kind: "percent", digits: 1 })) as any}
+                      />
+                      <Legend
+                        wrapperStyle={CHART_LEGEND_STYLE}
+                        iconType="circle"
+                        iconSize={8}
+                        itemSorter={(item) => (item.dataKey === "udeoPrometa" ? 0 : 1)}
+                      />
+                      <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-2)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
+                    </BarChart>
+                  </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
+                </div>
+              ) : (
+                <div className="supplier-decision-empty">Nema podataka za poređenje.</div>
+              )}
+            </article>
+          </section>
+
+          {/* Inventarski presek je kontekst, ne rezultat perioda: prikazuje se posle odluke i detalja. */}
+          <section className="supplier-buying-value-panel analytics-surface-panel" data-testid="supplier-buying-value-panel">
+            <div className="supplier-buying-value-header">
+              <div>
+                <h2>Buying signal: zaliha i kapital</h2>
+                <p>
+                  Trenutni presek zaliha po dobavljaču/objektu. Ne predstavlja prodaju u periodu niti menja konačnu preporuku iz ovog pregleda.
+                </p>
+              </div>
+              <InfoTip text="Izvor: Inventory balance i Inventory insights. Vrednost zalihe koristi dostupnu nabavnu cenu; artikli bez cene nisu uključeni u procenjeni kapital." />
+            </div>
+            {buyingEvidence.loading ? (
+              <div className="supplier-decision-message loading" role="status">Učitavam buying signal zaliha...</div>
+            ) : (
+              <>
+                {buyingEvidence.error ? (
+                  <div className="supplier-decision-message warning" role="status">
+                    {buyingEvidence.error} Probajte ponovo ili otvorite Inventory za detalj.
+                  </div>
+                ) : null}
+                <div className="supplier-buying-value-grid">
+                  <article className="supplier-buying-value-card">
+                    <span>Zaliha na stanju <InfoTip text="Ukupan broj trenutno evidentiranih jedinica u izabranom opsegu." /></span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Procenjena vrednost zalihe <InfoTip text="Količina na stanju × dostupna nabavna cena. Nedostajuće cene se ne predstavljaju kao nula." /></span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? buyingEvidence.insights?.totalEstimatedValue ?? null, kind: "currency" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Artikli sa zalihom</span>
+                    <strong>{formatMetricDisplayValue({ value: buyingEvidence.insights?.totalItems ?? buyingEvidence.balance?.totalSku ?? null, kind: "number" })}</strong>
+                  </article>
+                  <article className="supplier-buying-value-card">
+                    <span>Artikli 90+ dana bez kretanja <InfoTip text="Broj artikala iz Inventory aging bucket-a 90+ dana; trenutni presek, ne period prodaje." /></span>
+                    <strong>{formatMetricDisplayValue({
+                      value: buyingEvidence.insights?.aging
+                        .filter((bucket) => /90|stari|aged/i.test(`${bucket.bucketKey} ${bucket.label}`))
+                        .reduce((sum, bucket) => sum + bucket.itemCount, 0) ?? null,
+                      kind: "number",
+                    })}</strong>
+                  </article>
+                </div>
+                {buyingEvidence.insights?.topAgedItems.length ? (
+                  <div className="supplier-buying-value-aged">
+                    <h3>Najstariji artikli za proveru</h3>
+                    <ul>
+                      {buyingEvidence.insights.topAgedItems.slice(0, 5).map((item) => (
+                        <li key={item.id}>
+                          <span>{item.naziv}</span>
+                          <small>{item.agingLabel} · {fmtQty(item.quantity)} · {fmtRsd(item.estimatedValue)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <details className="supplier-buying-value-limitations" data-testid="supplier-buying-value-limitations">
+                  <summary>Metričke koje nisu potvrđene u ovom izvoru</summary>
+                  <ul>
+                    {SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              </>
+            )}
+          </section>
         </div>
       ) : null}
     </div>

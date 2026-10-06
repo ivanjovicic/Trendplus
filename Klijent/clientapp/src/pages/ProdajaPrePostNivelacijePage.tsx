@@ -117,6 +117,12 @@ const FOCUS_FILTER_VALUES: readonly FocusFilter[] = [
   "volatile",
 ];
 
+
+/** Promena prometa sa eksplicitnim znakom: smer ne sme da zavisi samo od boje. Nepoznato ostaje „Nije dostupno“. */
+function fmtSignedChangeRsd(value: number | null | undefined): string {
+  return value != null && Number.isFinite(value) && value > 0 ? `+${fmtRsd(value)}` : fmtRsd(value);
+}
+
 function parseFocusFilter(value: string | null): FocusFilter {
   return value && FOCUS_FILTER_VALUES.includes(value as FocusFilter)
     ? value as FocusFilter
@@ -1655,7 +1661,8 @@ export default function ProdajaPrePostNivelacijePage() {
       />
       <header className="ppn-decision-header">
         <div>
-          <h2 className="ppn-decision-title">Pre/Posle nivelacije</h2>
+          {/* Visible title is the trust header h1; keep the h2 for the document outline only. */}
+          <h2 className="sr-only">Pre/Posle nivelacije</h2>
           <p className="ppn-decision-subtitle">
             Analiza prozora događaja poredi 30 dana pre i 30 dana posle svake nivelacije, pa sabira signal po dobavljaču.
             Nije izolovani profit, već poslovni signal za prioritet nabavke i nadzor cene.
@@ -1746,6 +1753,26 @@ export default function ProdajaPrePostNivelacijePage() {
               {formatPrePostAnalysisWindowHint(data.windowDays)}
             </span>
           </div>
+
+          {/* Result first: the pre/post outcome sits directly under the signal-quality badge, before
+              ledgers and secondary signals. A non-strong signal is labelled as an estimate on the card. */}
+          <section className="ppn-decision-kpis analytics-kpi-tier analytics-kpi-tier--primary" aria-label="Rezultat nivelacije" data-testid="ppn-result-kpis">
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-value" data-note="Apsolutna promena prometa pre i posle nivelacije.">
+              <span>Ukupna promena prometa</span>
+              <strong className={trendClass(totalChangeRevenue)}>
+                {fmtSignedChangeRsd(totalChangeRevenue)}
+              </strong>
+              {dataTrustSummary.tone !== "strong" ? (
+                <p className="analytics-kpi-card__caveat" data-testid="ppn-result-caveat">
+                  {`Procena, ne potvrđen efekat — kvalitet signala: ${dataTrustSummary.label.toLowerCase()}.`}
+                </p>
+              ) : null}
+            </article>
+            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--primary analytics-kpi-card--tone-info" data-note="Promet realizovan u post-window periodu nakon nivelacije.">
+              <span>Post-window promet posle nivelacije</span>
+              <strong>{fmtRsd(totalRevenue)}</strong>
+            </article>
+          </section>
 
           <section className="ppn-decision-card analytics-surface-panel" aria-labelledby="ppn-outcome-ledger-title">
             <div className="ppn-decision-card-heading">
@@ -1860,7 +1887,7 @@ export default function ProdajaPrePostNivelacijePage() {
               </p>
               <div className="ppn-stat-pair">
                 <strong>{leadingCategory ? fmtRsd(leadingCategory.changeRevenue) : "Nije dostupno"}</strong>
-                <span>{leadingCategory ? fmtSignedPct(leadingCategory.changePercent, 1) : "Nije dostupno"}</span>
+                {leadingCategory ? <span>{fmtSignedPct(leadingCategory.changePercent, 1)}</span> : null}
               </div>
             </article>
 
@@ -1876,9 +1903,11 @@ export default function ProdajaPrePostNivelacijePage() {
               </p>
               <div className="ppn-stat-pair">
                 <strong>{leadingPriceDirection ? fmtRsd(leadingPriceDirection.changeRevenue) : "Nije dostupno"}</strong>
-                <span>{leadingPriceDirection?.avgPriceChangePercent != null
-                  ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1)
-                  : "Nije dostupno"}</span>
+                {leadingPriceDirection ? (
+                  <span>{leadingPriceDirection.avgPriceChangePercent != null
+                    ? fmtSignedPct(leadingPriceDirection.avgPriceChangePercent, 1)
+                    : "Nije dostupno"}</span>
+                ) : null}
               </div>
             </article>
           </section>
@@ -1915,17 +1944,6 @@ export default function ProdajaPrePostNivelacijePage() {
               </div>
             </section>
           ) : null}
-
-          <section className="ppn-decision-kpis">
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-info" data-note="Promet realizovan u post-window periodu nakon nivelacije.">
-              <span>Post-window promet posle nivelacije</span>
-              <strong>{fmtRsd(totalRevenue)}</strong>
-            </article>
-            <article className="ppn-decision-kpi analytics-kpi-card analytics-kpi-card--tone-value" data-note="Apsolutna promena prometa pre i posle nivelacije.">
-              <span>Ukupna promena prometa</span>
-              <strong className={trendClass(totalChangeRevenue)}>{fmtRsd(totalChangeRevenue)}</strong>
-            </article>
-          </section>
 
           <section className="ppn-decision-panels">
             <article className="ppn-decision-card analytics-surface-panel">
@@ -2085,7 +2103,7 @@ export default function ProdajaPrePostNivelacijePage() {
                             </td>
                             <td className="align-right">{fmtRsd(trustedMetric(row.postRevenue, row))}</td>
                             <td className="align-right">{row.sharePctAvailable ? fmtPct(row.sharePct, 2) : "Nije dostupno"}</td>
-                            <td className={`align-right ${trendClass(trustedMetric(row.changeRevenue, row))}`}>{fmtRsd(trustedMetric(row.changeRevenue, row))}</td>
+                            <td className={`align-right ${trendClass(trustedMetric(row.changeRevenue, row))}`}>{fmtSignedChangeRsd(trustedMetric(row.changeRevenue, row))}</td>
                             <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
                             <td className="align-center">
                               <span className={volatilityClass(row.volatilityTone)} title={fmtSignedPct(row.volatilityPct, 1)}>

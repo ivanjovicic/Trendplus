@@ -201,7 +201,8 @@
 }
 
 .daily-sales-kpis--primary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Revenue gets a little more room so the full RSD amount stays on one line; shift shares follow. */
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
 }
 
 .daily-sales-kpis article {
@@ -226,14 +227,15 @@
 
 .daily-sales-kpis span {
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .daily-sales-kpis strong {
   font-size: 24px;
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
   margin-top: 16px;
   text-shadow: 0 0 18px var(--analytics-value-glow-color);
@@ -369,7 +371,7 @@
 
 .daily-sales-health-caret {
   font-size: 0.65rem;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 /* Mute the quality panel heading — it's a secondary/diagnostic zone */

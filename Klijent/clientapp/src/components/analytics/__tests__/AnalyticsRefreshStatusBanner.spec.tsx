@@ -196,4 +196,27 @@ describe("AnalyticsRefreshStatusBanner", () => {
 
     expect(screen.getByText("Nepoznato")).toBeInTheDocument();
   });
+
+  it("renders a quiet single-line strip only when everything is fresh and healthy", () => {
+    const { container } = renderBanner(buildStatus({ dataFreshnessStatus: "fresh" }));
+    const banner = container.querySelector("section");
+    expect(banner).toHaveAttribute("data-quiet", "true");
+    expect(banner).toHaveClass("analytics-refresh-banner--quiet");
+    // Quiet mode only changes density; the same facts stay readable.
+    expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(screen.getByText(/Poslednji uspešan import:/)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["stale data", { dataFreshnessStatus: "stale" }],
+    ["a running refresh", { isRunning: true, currentStep: "sales_facts_mv" }],
+    ["a last error", { dataFreshnessStatus: "critical", lastErrorMessage: "Refresh failed" }],
+    ["failed objects", { failedObjects: ["supplier_decision_mv"] }],
+    ["a worker warning", { workerWarning: "Worker nije aktivan" }],
+  ] as const)("keeps the full banner for %s", (_label, overrides) => {
+    const { container } = renderBanner(buildStatus(overrides as Partial<AnalyticsRefreshStatus>));
+    const banner = container.querySelector("section");
+    expect(banner).not.toHaveAttribute("data-quiet");
+    expect(banner).not.toHaveClass("analytics-refresh-banner--quiet");
+  });
 });
