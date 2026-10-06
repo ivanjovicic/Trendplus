@@ -6,7 +6,7 @@ Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: 61dbcd7f1354dea30afa7210e4fbbe7ee83be839
 Main verification: passed - fresh origin/main contains 61dbcd7f1354dea30afa7210e4fbbe7ee83be839
-Evidence state: pending
+Evidence state: synchronized
 
 ## What was done
 - Made `ThemeContext.tsx` the runtime source for shared theme tokens; `themes.css` now supplies the no-JavaScript fallback and matches the shared token values. Removed the competing color definitions from `tailwind.css` and repaired undefined aliases in `themeTokens.ts`.
@@ -59,7 +59,7 @@ The following values are the effective runtime tokens; the CSS fallback parity t
 - Manual production-browser visual comparison -> not run; automated responsive fixture evidence is local.
 
 ## Documentation impact
-- Queue state, completion evidence and master routing will be synchronized after main delivery and the mandatory post-close recovery.
+- Updated the P-UI owner queue and master routing through the post-close recovery. P-UI-31 was promoted/claimed; P-UI-35/36/43/44 were promoted to READY. P-UI-42's stale start condition was repaired to wait on the shared P-UI-43/P-UI-51 owners.
 
 ## What was missed
 - None known.
@@ -68,8 +68,12 @@ The following values are the effective runtime tokens; the CSS fallback parity t
 - The production build retains the existing large Recharts chunk warning. Responsive fixture evidence is local and does not assert a deployed runtime.
 
 ## Post-close routing recovery
-- P-UI-47 is still IN_PROGRESS in this implementation commit; final P-UI-47 closure cascade will be recorded after its terminal queue transition reaches main.
-- After the P-UI-41 DONE synchronization reached main, refreshed to `origin/main` `61dbcd7f1354dea30afa7210e4fbbe7ee83be839` and scanned all 16 active RQ/SQL/P-UI/MASTER files. Searched P-UI-41 and RQ576 throughout the set. RQ576 is DONE; its remaining RQ585 dependent still requires production freshness within the RQ583 SLA, so no RQ/SQL dependent became runnable. No live prompt depends directly on P-UI-41. P-UI-45's P-UI-40/P-UI-48 dependencies are satisfied and its status was synchronized to READY; P-UI-49/P-UI-51/P-UI-52 remain READY. P-UI-47 remains the current IN_PROGRESS claim.
+- Recovery base: fresh `origin/main` SHA `88e388c3718b7ea006d79df949b2eaf20b207c72` after P-UI-47 was DONE.
+- Active owner files scanned (all 16): `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; and `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`.
+- Searched P-UI-47 and its changed dependency state across the full set. No active RQ/SQL prompt depends on P-UI-47, and the RQ READY pointer remains `none`; no higher-priority BCI/STAB/QDB/MT/GAI repository-local task is READY. Current active queue sections contained no other `IN_PROGRESS` owner. P-UI-31 (P1) is now dependency-complete. P-UI-35 and P-UI-36 are dependency-complete; their Nivelacija/supplier page owners were clear. P-UI-43 and P-UI-44 were WAITING only on RQ569, which is DONE, so they were promoted to READY.
+- P-UI-42's P-UI-39/40/47/48 start gates are met, but its shared control-bar and trust-header paths collide with READY P-UI-51 and P-UI-43. Repaired its `Ready after` clause to serialize behind P-UI-51 and P-UI-43. P-UI-53 still requires P-UI-31/35/36 DONE or deferred; P-UI-50 still requires P-UI-49 DONE; P-UI-46 still requires P-UI-42; P-UI-38 remains the final gate.
+- No matching P-UI-31 branch, active lock, or open PR existed. Its Supplier overview paths are disjoint from the active RQ/SQL set and other READY path owners. Promoted P-UI-31 WAITING -> READY -> IN_PROGRESS as the highest-priority safe successor. Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`.
+- Queue-only closure commit `88e388c3718b7ea006d79df949b2eaf20b207c72`: Planning Governance run `37393024911` passed; no Analytics Quality Gates run was discoverable on this docs-only SHA. Implementation SHA `61dbcd7f1354dea30afa7210e4fbbe7ee83be839` passed both main workflows.
 
 ## Next
-- Pending post-close recovery from fresh `origin/main`.
+- P-UI-31 - Migrate Supplier overview to responsive primitives; claimed IN_PROGRESS after this full post-close recovery.

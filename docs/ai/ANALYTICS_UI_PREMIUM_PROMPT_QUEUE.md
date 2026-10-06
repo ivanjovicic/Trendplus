@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-47 (IN_PROGRESS; claimed after post-close recovery from P-UI-41). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-31 (IN_PROGRESS; claimed after P-UI-47 post-close recovery from `88e388c3718b7ea006d79df949b2eaf20b207c72`). Other READY lanes: `P-UI-35`, `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -39,20 +39,20 @@ Use with:
 | P-UI-28 | DONE | responsive-filter-bar | Responsive Inventory filter pilot with semantics frozen |
 | P-UI-29 | DONE | responsive-analytics-table | Responsive AnalyticsDataTable pilot with column priority |
 | P-UI-30 | DONE | mobile-data-entry | Mobile sales/goods/nivelacija data-entry workflow |
-| P-UI-31 | WAITING | supplier-overview-responsive | Supplier overview responsive migration |
+| P-UI-31 | IN_PROGRESS | supplier-overview-responsive | Supplier overview responsive migration |
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
-| P-UI-35 | WAITING | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
-| P-UI-36 | WAITING | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
+| P-UI-35 | READY | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
+| P-UI-36 | READY | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
-| P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
-| P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
+| P-UI-43 | READY | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
+| P-UI-44 | READY | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
@@ -1876,13 +1876,14 @@ Owner promotion/claim 2026-10-02: after P-UI-34, idle recovery reconciled stale 
 
 ## P-UI-31 - Migrate Supplier overview to the responsive primitives
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE; adopt the canonical theme/action tokens in the same page pass)
 Priority: P1
 Type: frontend/page/tests
 Feature family: supplier-overview-responsive
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`
 Commit suggestion: `feat(ui): make supplier overview responsive`
 
 ### Problem
@@ -2181,7 +2182,7 @@ Completion 2026-10-02: Implemented in `c2874c9a6ce70a7a1fc38ec6477021c721852847`
 
 ## P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-27/P-UI-28/P-UI-29 are already DONE); then re-check active Nivelacija owners
 Priority: P2
 Type: frontend/pages/tests
@@ -2250,7 +2251,7 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE); then perform a fresh active-owner/path collision check
 Priority: P2
 Type: frontend/pages/tests
@@ -2735,7 +2736,7 @@ Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be
 ## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets and hybrid touch devices
 
 Status: WAITING
-Ready after: P-UI-39 DONE, P-UI-40 DONE, P-UI-47 DONE and P-UI-48 DONE (shared control-bar/theme/header ownership)
+Ready after: P-UI-39 DONE, P-UI-40 DONE, P-UI-47 DONE, P-UI-48 DONE, P-UI-43 DONE and P-UI-51 DONE (shared trust-header/control-bar/theme/header ownership)
 Priority: P2
 Type: frontend/css/tests
 Feature family: responsive-coarse-pointer-tablet
@@ -2784,7 +2785,7 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 
-Status: WAITING
+Status: READY
 Ready after: RQ569 DONE (RQ569 changes `AnalyticsTrustHeader` to show the observed source horizon)
 Priority: P2
 Type: frontend/ux/tests
@@ -2858,7 +2859,7 @@ The UX/UI audit (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, UX-003/UX-004/UX
 
 ## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
 
-Status: WAITING
+Status: READY
 Ready after: RQ569 DONE (touches `DailySalesStatsPage.tsx` / `InventoryPage.tsx` trust wiring)
 Priority: P2
 Type: frontend/tests
@@ -3090,12 +3091,12 @@ Theme colours come from three competing sources: `ThemeContext.tsx` inline varia
 - Checks run: focused theme/empty-state tests 11/11; analytics guardrails/typecheck; production build; responsive fixture 60/60 across Dashboard/Inventory, light/soft-gray/dark and ten viewports (zero root overflow/page errors); responsive runner self-test; agent-instruction, prompt-queue and planning-architecture governance validators/self-tests; `git diff --check`; Planning Governance run `37392543043` and Analytics Quality Gates run `37392543144` passed on implementation SHA.
 - Checks not run: full frontend test suite; manual production-browser visual comparison.
 - Run log: `.ai/runs/2026-10-06-P-UI-47-evidence.md`
-- Evidence state: pending post-close routing recovery
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `61dbcd7f1354dea30afa7210e4fbbe7ee83be839`
 - Main verification: fresh fetch confirmed `origin/main` exactly at `61dbcd7f1354dea30afa7210e4fbbe7ee83be839`.
 - Missed: none known.
-- Follow-up: post-close dependency cascade and successor routing from fresh `origin/main`.
+- Follow-up: P-UI-31 is claimed IN_PROGRESS after the post-close dependency/path scan; P-UI-35/36/43/44 are READY.
 - Residual risk: the existing Recharts chunk-size warning remains; responsive evidence uses local fixtures and does not establish deployed runtime behavior.
 
 ---
@@ -3530,3 +3531,5 @@ The design system already says every chart needs a textual summary or table alte
 - P-UI-38 consumes this prompt and remains the final gate.
 
 Owner claim 2026-10-06: after P-UI-41 DONE was freshly verified on origin/main cf9ba0428387d9c1e962e3dad77de13cb37eb5eb, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no newly runnable RQ dependency and no P-UI dependent on P-UI-41. Current primary RQ READY is none; BCI/STAB/QDB/MT/GAI have no higher-priority repository-local READY execution lane. P-UI-47 is dependency-complete and explicitly parallel-safe with current READY paths; no active lock, matching branch or open PR was found. P-UI-47 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/P-UI-47-codex.lock.md. P-UI-41 run log: .ai/runs/2026-10-06-P-UI-41-evidence.md; evidence synchronized.
+
+Owner claim 2026-10-06: after P-UI-47 DONE was verified on `origin/main` `88e388c3718b7ea006d79df949b2eaf20b207c72`, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no RQ/SQL dependent and no higher-priority global queue lane. P-UI-31's P-UI-47 dependency was satisfied; no active owner, lock, matching branch or open PR conflicted with Supplier overview paths. P-UI-31 moved WAITING -> READY -> IN_PROGRESS as the highest-priority safe P1 successor. P-UI-35/P-UI-36/P-UI-43/P-UI-44 were promoted to READY. P-UI-42 remains WAITING behind P-UI-43 and P-UI-51 shared paths. Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`. P-UI-47 run log: `.ai/runs/2026-10-06-P-UI-47-evidence.md`; evidence synchronized.
