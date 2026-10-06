@@ -41,11 +41,13 @@ Evidence state: synchronized
 - `npm run build` -> pass.
 - Existing responsive audit, fixture mode, Daily + Supplier, light theme, widths 320/360/375/390/768/1024/1280/1800/2048/2400, strict -> pass (20 observations, 0 root overflow, 0 page errors; expected aborted in-flight API requests only).
 - Visual spot check of generated Daily screenshots at 320px and 1280px -> pass; no root horizontal overflow or clipped primary shell observed.
+- GitHub `Analytics Quality Gates` run `37444058297` for the implementation SHA -> red at the pre-existing `npm audit --audit-level=high` steps (`Audit clientapp dependencies` and `Audit POS UI dependencies`); the same two steps were red on prior run `37435564656`, while this change's local guardrails/build/tests pass.
 
 ## Validation not run
 
 - Live Vercel production smoke check -> not run - this task requested repository UX correction and no deployment credential/action was supplied.
 - Full frontend analytics suite -> not run - focused Daily/Supplier/Sidebar coverage, guardrails and production build provide the narrow proof for this change.
+- GitHub failed-job logs -> not available anonymously (GitHub API returned 403); job/step names and conclusions were inspected through the public Actions API.
 
 ## Documentation impact
 
@@ -61,6 +63,7 @@ Evidence state: synchronized
 
 - The existing Daily/Supplier APIs and live deployment may still expose unrelated backend/data-quality issues; this change preserves their established trust/error semantics and does not mask them.
 - Responsive fixture checks use synthetic data; production data density should receive a normal post-deploy smoke check.
+- Current-main CI has a pre-existing high-severity dependency-audit failure in both frontend workspaces; it is outside this UX patch and blocks a green quality-gates result until dependency remediation is handled.
 
 ## Post-close routing recovery
 
