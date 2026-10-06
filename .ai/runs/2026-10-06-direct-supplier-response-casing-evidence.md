@@ -26,24 +26,26 @@ Evidence state: synchronized
 - `git diff --check`: pass.
 - `dotnet build Api.Tests/Api.Tests.csproj --no-restore --tl:off --nologo`: pass; 0 errors, existing warnings only.
 - `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~AnalyticsScreenCacheKeyContractTests" --no-build --no-restore --logger "console;verbosity=minimal"`: pass; 21/21.
+- Post-delivery direct Render API smoke: pass for reachability, but live response still exposes `meta.Success`; this is deployment evidence, not a code-test failure.
 
 ## Validation not run
 - Live `AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ReturnsValidJsonWithAllFields`: skipped because `TRENDPLUS_RUN_INTEGRATION_TESTS=true` and an integration database are not configured in this workspace.
 - Browser visual smoke test: not run because no browser session was available; API contract and frontend schema were inspected directly.
-- Remote deployment/CI check: not inspected before delivery; deployment is outside the local repository test proof.
+- Render redeploy: not triggered; the repository has a manual fallback workflow and no explicit authorization was given to start a production deployment.
 
 ## Documentation impact
 - No owner documentation required; this is a focused backend response-contract and cache invalidation fix.
 
 ## What was missed
-- None known in the scoped response-contract fix. Production source data is currently observed through 2026-08-05, so a current-period request can still legitimately render an insufficient-data/empty state after the format error is fixed.
+- The code is on `main`, but the live Render service has not yet picked up the revision. Production source data is currently observed through 2026-08-05, so a current-period request can still legitimately render an insufficient-data/empty state after the format error is fixed.
 
 ## Risks
 - The live integration regression remains unexecuted without the external test database.
 - Existing production cache entries are intentionally bypassed by the `v8` key; new entries use web JSON casing.
+- Until Render redeploys, the public endpoint remains on the old serialization behavior.
 
 ## Post-close routing recovery
 - not applicable for direct-user-request
 
 ## Next
-- Deploy the delivered `main` revision through the configured API hosting pipeline and verify `/analytics/supplier` renders its established empty/insufficient-data state when the observed data horizon does not cover the requested period.
+- Trigger the configured Render deployment for `main`, then verify the public API exposes `meta.success` and `/analytics/supplier` renders its established empty/insufficient-data state when the observed data horizon does not cover the requested period.
