@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum; RQ588 is DONE and the RQ queue has no READY prompt after the 2026-10-06 post-close scan. P-UI-48 is DONE after its focused CI regression-test correction; supplemental P-UI-41 is claimed after RQ576 released its Inventory path, and P-UI-45 is READY; RQ586 and RQ557 are DONE; RQ584 and RQ88 are DONE on main.
+Current READY prompt: none in this addendum; RQ588 is DONE and the RQ queue has no READY prompt after the 2026-10-06 post-close scan. P-UI-48 is DONE after its focused CI regression-test correction; supplemental P-UI-41 is DONE after RQ576 released its Inventory path, and P-UI-45 is READY; RQ586 and RQ557 are DONE; RQ584 and RQ88 are DONE on main.
 Historical routing snapshot: `RQ01` was once the main-queue READY pointer; use `MASTER_ROADMAP.md` and the current queue headers now.
 
 Use with:

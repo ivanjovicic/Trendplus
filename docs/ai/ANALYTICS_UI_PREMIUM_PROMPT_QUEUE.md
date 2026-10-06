@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-36 (IN_PROGRESS; claimed after P-UI-35 post-close recovery at `e7f9bc47325348d5f7ad202e9850926c91df95a5`). Other READY lanes: `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -51,12 +51,12 @@ Use with:
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
-| P-UI-43 | READY | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
+| P-UI-43 | IN_PROGRESS | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | READY | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
-| P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
+| P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
@@ -2291,7 +2291,7 @@ The nivelacija analytics pages combine small fields/tabs, wide tables, large fix
 
 ## P-UI-36 - Migrate Supplier Decision Hub, Shoe Type and Color analytics to responsive primitives
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-28/P-UI-29 are already DONE); then perform a fresh active-owner/path collision check
 Priority: P2
 Type: frontend/pages/tests
@@ -2371,14 +2371,14 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 - Checks run: focused page/component suites 123/123; responsive Chromium fixture matrix 60/60 with zero overflow/errors; three-theme computed background check; analytics guardrails/typecheck; production build; `git diff --check`.
 - Checks not run: populated Supplier Hub browser rendering (local backend returned HTTP 500); real iOS/iPadOS Safari.
 - Run log: `.ai/runs/2026-10-06-P-UI-36-evidence.md`
-- Evidence state: pending post-close recovery
+- Evidence state: pending post-close verification
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `3d6c538d4b60508accea3c5942fdf8a1f2a303df`
+- Main verification: fresh `origin/main` contains `3d6c538d4b60508accea3c5942fdf8a1f2a303df`
 - Missed: populated Supplier Hub chart/table visual check remains unavailable while local backend returns HTTP 500.
 - Follow-up: determined by mandatory post-close routing recovery.
 - Residual risk: no populated live Hub browser evidence; focused Supplier Hub component tests passed.
-- Post-close routing: pending recovery.
+- Post-close routing: full 16-file recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df` selected and claimed P-UI-43; final post-reconciliation verification pending.
 - Prompt defect / scope repair: none.
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
@@ -2847,14 +2847,17 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ569 DONE (RQ569 changes `AnalyticsTrustHeader` to show the observed source horizon)
 Priority: P2
 Type: frontend/ux/tests
 Feature family: trust-header-mobile-compaction
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-43-codex.lock.md`
 Commit suggestion: `feat(ui): compact analytics trust header on phones`
+
+Owner claim 2026-10-06: P-UI-36 DONE was delivered and verified on `origin/main` `3d6c538d4b60508accea3c5942fdf8a1f2a303df`. Post-close recovery scanned the full 16-file active RQ/SQL/UI queue set; RQ569 is DONE and no active trust-header owner, lock, matching branch or open PR conflicts with `AnalyticsTrustHeader`. P-UI-43 was the primary collision-safe READY lane and moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/P-UI-43-codex.lock.md`; recovery evidence: `.ai/runs/2026-10-06-P-UI-36-evidence.md`.
 
 ### Problem
 
