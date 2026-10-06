@@ -4,9 +4,9 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/p-ui-53-chart-accessibility / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: c6c19d83e9de19c00af623df426e1b1cecaf52d7
+Main verification: pass - refreshed `origin/main` at c6c19d83e9de19c00af623df426e1b1cecaf52d7; `git merge-base --is-ancestor c6c19d83e9de19c00af623df426e1b1cecaf52d7 origin/main` passed.
+Evidence state: synchronized
 
 ## What was done
 - Added a shared accessible chart frame that gives production charts a named figure, a concise summary of their already displayed projection, Recharts keyboard navigation, and a discoverable link when an equivalent data table exists.
@@ -57,7 +57,7 @@ Evidence state: pending
 
 ## Validation not run
 - Full frontend suite and browser/visual accessibility audit -> not run; focused chart/page behavior, static coverage, typecheck and production build provide the selected proof for this prompt.
-- Remote Actions -> pending inspection after main delivery.
+- Remote Analytics Quality Gates run `37519116615` is `in_progress` on the exact delivered SHA `c6c19d83e9de19c00af623df426e1b1cecaf52d7`; no wait was required by the main-first protocol.
 
 ## Documentation impact
 - Updated the owning P-UI queue and `MASTER_ROADMAP.md`; added the P-UI-38 invariant to its acceptance; this run log records proof and delivery.
@@ -68,13 +68,14 @@ Evidence state: pending
 
 ## Risks
 - Vite continues to warn that the existing Recharts chunk exceeds 500 kB. No chunk-splitting change was in scope.
-- Remote Actions state is not yet inspected.
+- Analytics Quality Gates run `37519116615` remains `in_progress` on the delivered SHA; it is residual risk, not a completion gate.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: pending post-delivery scan.
-- Active owner queue/addendum files scanned: pending post-delivery scan of the full 16-file active RQ/SQL/P-UI/MASTER set.
-- Completed/changed task IDs searched: P-UI-53 and dependency IDs whose state changed, pending scan.
-- Newly satisfied dependencies / promoted successor: pending post-delivery scan.
+- Recovery base `origin/main` SHA: `c6c19d83e9de19c00af623df426e1b1cecaf52d7`.
+- Active owner queue/addendum files scanned (all 16): `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; the 11 active RQ addenda `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` and `ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; and `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` plus `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`.
+- Completed/changed task IDs searched: P-UI-53, including every reference across the complete active set; its declared dependencies P-UI-47/P-UI-31/P-UI-35/P-UI-36/P-UI-44 were verified DONE on current main.
+- Newly satisfied dependency: P-UI-38 now has P-UI-53 DONE, but remains WAITING because other named UI migrations are READY, IN_PROGRESS or WAITING. No dependent prompt became dependency-complete; no prompt was promoted.
+- Owning-program non-terminal scan: P-UI-38 remains WAITING on completion/deferment of all migrations; P-UI-42 waits on P-UI-43 and P-UI-51; P-UI-43 remains IN_PROGRESS; P-UI-45/P-UI-49/P-UI-51/P-UI-52 remain READY; P-UI-46 waits on P-UI-42; P-UI-50 waits on P-UI-49. Current primary remains P-UI-43. The existing independent READY lanes remain recorded for subsequent selection; this single-prompt request does not claim another task.
 
 ## Next
-- Pending full post-close cascade from fresh `origin/main`.
+- P-UI-43 remains the primary IN_PROGRESS pointer; P-UI-45/P-UI-49/P-UI-51/P-UI-52 are existing independent READY lanes.
