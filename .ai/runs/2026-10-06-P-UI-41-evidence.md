@@ -4,9 +4,9 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending delivery
-Evidence state: pending
+Main commit SHA: cf9ba0428387d9c1e962e3dad77de13cb37eb5eb
+Main verification: passed - fresh origin/main contains cf9ba0428387d9c1e962e3dad77de13cb37eb5eb
+Evidence state: synchronized
 
 ## What was done
 - Contained Pilot intake durable tables in a labeled keyboard-focusable horizontal scroll region, added a visible scroll hint and numeric alignment, and preserved/extended print behavior.
@@ -35,6 +35,7 @@ Evidence state: pending
 - `npm run responsive:baseline -- --route-ids pilot_intake,inventory --mode fixture --output-dir %TEMP%/trendplus-pui41-responsive-final --strict --viewport-only` -> pass, 40 route/viewport/theme cases, zero root overflow and zero page errors; Pilot print smoke passed in all 20 Pilot cases.
 - Initial strict responsive matrix -> fail, 14 Pilot intake observations; browser metrics traced expansion to the report page grid track. After the min-width fix, the full matrix passed. At 360px the table remains horizontally scrollable inside its 326px content region while the page viewport remains 360px wide.
 - `node scripts/check-agent-instructions.mjs --self-test`, `node scripts/check-agent-instructions.mjs`, `node scripts/check-prompt-queues.mjs --self-test`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs --self-test`, and `node scripts/check-planning-architecture.mjs` -> pass.
+- Current-main GitHub Actions on `cf9ba0428387d9c1e962e3dad77de13cb37eb5eb` -> Planning Governance run `37389415620` success; Analytics Quality Gates run `37389415426` success.
 - `git diff --check` -> pass (Git reports expected LF-to-CRLF working-copy notices).
 
 ## Validation not run
@@ -49,10 +50,13 @@ Evidence state: pending
 
 ## Risks
 - Responsive proof uses a synthetic fixture and does not establish behavior on a deployed production dataset.
-- Correction-SHA Analytics Quality Gates run `37387704537` for P-UI-48 was in progress at the last inspection; Planning Governance `37387704648` passed.
+- P-UI-48 correction-SHA Analytics Quality Gates run `37387704537` completed successfully; Planning Governance run `37387704648` passed.
 
 ## Post-close routing recovery
-- Pending terminal delivery; must use the fresh post-delivery `origin/main` SHA and scan all active RQ and P-UI queue/addendum files before synchronizing this section.
+- Recovery base: fresh `origin/main` SHA `cf9ba0428387d9c1e962e3dad77de13cb37eb5eb`.
+- Scanned all 16 active owner files: `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; and `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`.
+- Searched completed ID `P-UI-41` and changed dependency `RQ576` throughout that set. RQ576 is already DONE; no RQ/SQL WAITING/PARTIAL/BLOCKED dependent became newly runnable. No P-UI prompt depends on P-UI-41. P-UI-47 remains READY and dependency-complete; its theme-token paths are disjoint from P-UI-41. The current RQ pointer is none and BCI/STAB/QDB/MT/GAI have no higher-priority repository-local READY execution lane. P-UI-47 had no active lock, open PR or matching branch, so it was claimed as the next supplemental lane.
+- Routing sync found P-UI-45's status table had remained WAITING even though its P-UI-40/P-UI-48 dependencies are DONE and the queue header already listed it READY. With those gates verified and no current path collision, synchronized the P-UI-45 section/table to READY; P-UI-47 remains the primary P1 claim.
 
 ## Next
-- Deliver the validated implementation and terminal queue metadata on `main`, verify the exact SHA, then perform the mandatory full active-queue dependency cascade and claim the next collision-safe READY prompt if available.
+- P-UI-47 - make theme tokens authoritative and repair light-theme status contrast; claimed after this recovery in `.ai/task-locks/P-UI-47-codex.lock.md`.

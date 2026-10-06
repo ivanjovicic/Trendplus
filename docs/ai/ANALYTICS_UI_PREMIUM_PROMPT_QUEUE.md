@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-47 (READY; pending fresh post-close collision/dependency review after P-UI-41). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-47 (IN_PROGRESS; claimed after post-close recovery from P-UI-41). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -53,9 +53,9 @@ Use with:
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | WAITING | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | WAITING | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
-| P-UI-45 | WAITING | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
+| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
-| P-UI-47 | READY | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
+| P-UI-47 | IN_PROGRESS | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | WAITING | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
@@ -2658,7 +2658,7 @@ From 1024px up, the shell switches to the full desktop mode: a fixed 320px sideb
 
 ## P-UI-41 - Stop intrinsic-width overflow in the Pilot intake report and Inventory insight panels on phones
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none
 Priority: P1
 Type: frontend/css/tests
@@ -2724,7 +2724,7 @@ Owner promotion/claim 2026-10-06: post-close recovery refreshed `origin/main` to
 
 Prompt repair 2026-10-06: the shared responsive baseline route set had no Pilot intake entry, so its own acceptance could not measure the named route in fixture mode. Added a bounded Pilot intake route/response fixture and print-media smoke assertion to the existing runner; this creates synthetic presentation evidence only and does not change report semantics. A 360px fixture measurement then proved `.pilot-intake-report-page` was allowing an intrinsic-width child to expand its grid track; added `min-width: 0` to that report-owned wrapper and durable sections, without changing the RQ569-owned trust header.
 
-Owner completion 2026-10-06: P-UI-41 is DONE. Durable Pilot intake tables now use labeled keyboard-focusable horizontal scrolling with readable numeric alignment and print behavior; Inventory insight panels/cards can shrink without hiding values, with full labels available by title. The report wrapper's min-width repair and responsive runner's synthetic Pilot fixture were required by observed viewport evidence and are documented above. Focused Vitest passed 15/15; analytics guardrails, typecheck, production build, governance validators and `git diff --check` passed. Strict responsive fixture passed 40/40 route/viewport/theme cases with zero page overflow/errors; Pilot print smoke passed 20/20. Implementation SHA and fresh `origin/main` verification will be added after delivery. Run log: `.ai/runs/2026-10-06-P-UI-41-evidence.md`. Evidence state: pending post-close routing recovery.
+Owner completion 2026-10-06: P-UI-41 is DONE. Durable Pilot intake tables now use labeled keyboard-focusable horizontal scrolling with readable numeric alignment and print behavior; Inventory insight panels/cards can shrink without hiding values, with full labels available by title. The report wrapper's min-width repair and responsive runner's synthetic Pilot fixture were required by observed viewport evidence and are documented above. Focused Vitest passed 15/15; analytics guardrails, typecheck, production build, governance validators and `git diff --check` passed. Strict responsive fixture passed 40/40 route/viewport/theme cases with zero page overflow/errors; Pilot print smoke passed 20/20. Implementation SHA `cf9ba0428387d9c1e962e3dad77de13cb37eb5eb` is freshly verified on `origin/main`; Analytics Quality Gates run `37389415426` and Planning Governance run `37389415620` passed on that SHA. The full 16-file post-close cascade claimed P-UI-47; run log `.ai/runs/2026-10-06-P-UI-41-evidence.md`; Evidence state: synchronized.
 
 Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be47dd4585ffd40dbb34a40cd6`, Analytics Quality Gates run `37386823059` failed the broad ConfigurationPage refresh-button count against the two independent settings refresh controls. P-UI-48 resumed IN_PROGRESS to correct the assertion to the worker control's accessible name. P-UI-41 returned to READY before implementation so this workspace has one active claim; its RQ576 collision remains clear.
 
@@ -3016,13 +3016,13 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 
 ## P-UI-47 - Make one theme-token source of truth and repair light-theme status contrast
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P1
 Type: frontend/css/tests
 Feature family: analytics-theme-token-contract
 Parallel-safe: yes (disjoint from READY P-UI-39/P-UI-40/P-UI-41, from P-UI-49 and from all READY RQ paths)
-Owner: unassigned (Analytics Frontend / Design System)
+Owner: Codex (Analytics Frontend / Design System)
 Owned paths: `Klijent/clientapp/src/context/ThemeContext.tsx`, `Klijent/clientapp/src/styles/themes.css`, `Klijent/clientapp/src/styles/themeTokens.ts`, the token blocks in `Klijent/clientapp/src/tailwind.css` and `Klijent/clientapp/src/styles/analytics-system.css`, new token/contrast tests
 Avoid paths: `AnalyticsControlBar.css` (P-UI-39), `HeaderStatus.tsx`/`Sidebar.tsx`/`AppLayout.tsx` (P-UI-40), the `tailwind.css` `@media (max-width: 759px)` floor block (P-UI-42), `AnalyticsTrustHeader*` (RQ569), nivelacija pages/CSS (RQ553, P-UI-35), Supplier/Shoe Type/Color page CSS (P-UI-31/P-UI-36), `AnalyticsEmptyState*`/`AnalyticsErrorState*` (P-UI-49)
 Commit suggestion: `fix(ui): single theme token source and accessible status text`
@@ -3511,3 +3511,5 @@ The design system already says every chart needs a textual summary or table alte
 - P-UI-47 first for canonical chart/status tokens.
 - P-UI-31/P-UI-35/P-UI-36 first, or explicit owner deferral, to avoid broad same-page collisions.
 - P-UI-38 consumes this prompt and remains the final gate.
+
+Owner claim 2026-10-06: after P-UI-41 DONE was freshly verified on origin/main cf9ba0428387d9c1e962e3dad77de13cb37eb5eb, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no newly runnable RQ dependency and no P-UI dependent on P-UI-41. Current primary RQ READY is none; BCI/STAB/QDB/MT/GAI have no higher-priority repository-local READY execution lane. P-UI-47 is dependency-complete and explicitly parallel-safe with current READY paths; no active lock, matching branch or open PR was found. P-UI-47 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/P-UI-47-codex.lock.md. P-UI-41 run log: .ai/runs/2026-10-06-P-UI-41-evidence.md; evidence synchronized.

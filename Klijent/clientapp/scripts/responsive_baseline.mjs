@@ -25,10 +25,14 @@ const ROUTES = [
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
 ];
 
-const THEMES = ["light", "dark"];
+const THEMES = ["light", "soft-gray", "dark"];
 const DEFAULT_BASE_URL = "http://127.0.0.1:5174";
 const DEFAULT_OUTPUT_DIR = path.resolve("tmp/ui-visual/responsive-baseline");
 const DEFAULT_TIMEOUT_MS = 20_000;
+
+function themeNameForBaseline(theme) {
+  return theme === "dark" ? "neon-dark" : theme;
+}
 
 function parseArgs(argv) {
   const options = {
@@ -133,6 +137,10 @@ export function evaluateGeometry(documentMetrics, viewportWidth) {
 }
 
 function runSelfTest() {
+  if (!THEMES.includes("soft-gray") || themeNameForBaseline("dark") !== "neon-dark") {
+    throw new Error("responsive baseline theme selection did not retain the light, soft-gray and dark mappings");
+  }
+
   const intentionalOverflow = {
     viewportWidth: 320,
     windowInnerWidth: 320,
@@ -912,9 +920,10 @@ async function run(options) {
             deviceScaleFactor: 1,
             isMobile: viewportWidth < 768,
           });
+          const themeName = themeNameForBaseline(theme);
           await page.evaluateOnNewDocument((selectedTheme) => {
-            localStorage.setItem("app-theme", selectedTheme === "dark" ? "neon-dark" : "light");
-          }, theme);
+            localStorage.setItem("app-theme", selectedTheme);
+          }, themeName);
 
           if (options.mode === "fixture") {
             await page.setRequestInterception(true);
