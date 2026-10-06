@@ -72,3 +72,12 @@ Evidence state: synchronized
 ## Next
 
 - Live Vercel smoke is the optional operational follow-up; the delivered implementation SHA is already verified on fresh `origin/main`.
+
+
+## Follow-up CI remediation (2026-10-06)
+
+- Inspected failed GitHub Actions run `37444058297` including authenticated job logs. Both frontend jobs failed before tests/build at `npm audit --audit-level=high`.
+- Root cause: transitive `source-map-js@1.2.1`, affected by `GHSA-68fv-2mgg-jv7q`; patched release is `1.2.2`. The UX implementation did not modify either package manifest or lockfile, so the audit failure was not introduced by `c0ae4bbf`.
+- Updated both frontend lockfiles to `source-map-js@1.2.2` without changing dependency ranges or application code.
+- Updated the main clientapp CI runtime from Node 20 to Node 22.12 because current `puppeteer@25.9.0` / `puppeteer-core@25.9.0` require Node >=22.12; POS UI remains on Node 20 because it does not depend on Puppeteer.
+- This follow-up intentionally does not change analytics formulas, API contracts, routing semantics, pagination behavior, export/print projections, or Supplier/Daily data logic.
