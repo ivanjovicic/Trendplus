@@ -7,7 +7,8 @@ export const VIEWPORTS = [320, 360, 375, 390, 768, 1024, 1280, 1800, 2048, 2400]
 export const PUI39_LONG_STORE_OPTION = "Sintetička prodavnica sa izuzetno dugim nazivom za proveru overflow-safe kontrola u responsive rasporedu";
 
 const ROUTES = [
-  { id: "app_shell", path: "/analytics", pui40Shell: true },
+  { id: "app_shell", path: "/analytics", pui40Shell: true, pui45Spinner: true },
+  { id: "home", path: "/", readySelector: '[data-testid="home-seasonal-carousel"]', pui45Carousel: true },
   { id: "prodaja", path: "/prodaja", readySelector: ".mobile-entry-form" },
   { id: "unos_robe", path: "/unos-robe", readySelector: ".mobile-entry-form" },
   { id: "nivelacija_cena", path: "/nivelacija", readySelector: ".form-page" },
@@ -202,6 +203,15 @@ async function fixtureResponse(request, options) {
       generatedAtUtc: "2026-10-02T00:00:00Z",
       jobs: [],
     }) };
+  }
+
+  if (url.pathname === "/api/trends/seasonal-images") {
+    return { status: 200, body: JSON.stringify([{
+      id: 1,
+      imageUrl: "https://example.com/seasonal-fixture.jpg",
+      source: "unsplash",
+      photographerName: "Fixture photographer",
+    }]) };
   }
 
   if (url.pathname === "/api/analytics/cached/filters/stores") {
@@ -1006,6 +1016,7 @@ async function run(options) {
             height: viewportHeight,
             deviceScaleFactor: 1,
             isMobile: viewportWidth < 768,
+            hasTouch: Boolean(route.pui45Carousel && viewportWidth < 768),
           });
           const themeName = themeNameForBaseline(theme);
           await page.evaluateOnNewDocument((selectedTheme) => {
@@ -1018,6 +1029,10 @@ async function run(options) {
               if (!request.url().includes("/api/") && !request.url().includes("/health") && !request.url().includes("/ready")) {
                 request.continue();
                 return;
+              }
+              if (route.pui45Spinner && viewportWidth === 360
+                && new URL(request.url()).pathname === "/api/analytics/refresh-status") {
+                await new Promise((resolve) => setTimeout(resolve, 500));
               }
               const response = await fixtureResponse(request, options);
               request.respond({
@@ -1033,10 +1048,46 @@ async function run(options) {
           let interactionStep = null;
           let interaction = null;
           let pui43DefaultLayout = null;
+          let pui45Layout = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
               await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
+            }
+            if (route.pui45Spinner && viewportWidth === 360) {
+              await page.waitForSelector('[data-testid="global-request-spinner"]', { visible: true, timeout: options.timeoutMs });
+              pui45Layout = await page.evaluate(() => {
+                const spinnerElement = document.querySelector(".global-request-spinner");
+                const spinner = spinnerElement?.getBoundingClientRect();
+                const main = document.querySelector("main")?.getBoundingClientRect();
+                const firstContentTop = main?.top ?? 0;
+                const firstContentBottom = firstContentTop + Math.min(200, main?.height ?? 0);
+                const intersectsFirstContent = Boolean(spinner && main
+                  && spinner.left < main.right && spinner.right > main.left
+                  && spinner.top < firstContentBottom && spinner.bottom > firstContentTop);
+                return {
+                  spinnerPosition: spinnerElement ? getComputedStyle(spinnerElement).position : null,
+                  spinner: spinner ? { top: spinner.top, bottom: spinner.bottom } : null,
+                  main: main ? { top: main.top, bottom: main.bottom } : null,
+                  intersectsFirstContent,
+                };
+              });
+              if (pui45Layout.intersectsFirstContent) {
+                throw new Error(`P-UI-45 loading indicator intersects the first 200px of main content: ${JSON.stringify(pui45Layout)}`);
+              }
+            }
+            if (route.pui45Carousel && viewportWidth === 360) {
+              await page.waitForSelector('[data-testid="carousel-strip"]', { visible: true, timeout: options.timeoutMs });
+              pui45Layout = await page.evaluate(() => {
+                const buttons = [...document.querySelectorAll(".carousel-nav-btn")].map((button) => {
+                  const rect = button.getBoundingClientRect();
+                  return { width: rect.width, height: rect.height };
+                });
+                return { coarsePointer: matchMedia("(pointer: coarse)").matches, buttons };
+              });
+              if (pui45Layout.coarsePointer && pui45Layout.buttons.some((button) => button.width < 44 || button.height < 44)) {
+                throw new Error(`P-UI-45 coarse-pointer carousel nav target is below 44px: ${JSON.stringify(pui45Layout)}`);
+              }
             }
             if (route.pui39Overflow) {
               const expectedPrefix = PUI39_LONG_STORE_OPTION.slice(0, 36);
@@ -1297,6 +1348,7 @@ async function run(options) {
             mode: options.mode,
             geometry,
             pui43Layout,
+            pui45Layout,
             screenshot: screenshotPath,
             consoleErrors,
             pageErrors,

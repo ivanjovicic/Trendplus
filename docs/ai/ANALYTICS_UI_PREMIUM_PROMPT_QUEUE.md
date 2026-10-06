@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-45 (READY; selected by the P-UI-43 post-close recovery). Other READY lanes: `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-45 (IN_PROGRESS; claimed from fresh `origin/main` `9b33ef73ca7b8284675013870c4ccc6ba382d4a0`). Other READY lanes: `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -53,7 +53,7 @@ Use with:
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
-| P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
+| P-UI-45 | IN_PROGRESS | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
@@ -3044,15 +3044,18 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: P-UI-40 DONE AND P-UI-48 DONE (`AppLayout.tsx` is shared ownership; P1 shell/safety changes land first)
 Priority: P2
 Type: frontend/a11y/tests
 Feature family: global-chrome-mobile
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-45-codex.lock.md`
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal image carousel is shown **only on the home page** (`/`). It is removed from every other route, including all analytics, data-entry, šifarnik and admin screens. Reduced-motion behaviour still applies on the home page.
 Commit suggestion: `fix(ui): localize request indicator, show seasonal carousel only on home`
+
+Owner claim 2026-10-06: refreshed `origin/main` at `9b33ef73ca7b8284675013870c4ccc6ba382d4a0`; P-UI-40 and P-UI-48 are DONE, no matching P-UI-45 branch/lock/open PR exists, and the owning files have no active path owner. P-UI-45 moved READY -> IN_PROGRESS. Existing implementation already covers Serbian copy, reduced-motion timer guard, home-only carousel mount and coarse-pointer 44px targets; this claim focuses on the remaining mobile no-overlap presentation, CSS reduced-motion scroll behavior and full named-route proof. Local lock: `.ai/task-locks/P-UI-45-codex.lock.md`.
 
 ### Problem
 

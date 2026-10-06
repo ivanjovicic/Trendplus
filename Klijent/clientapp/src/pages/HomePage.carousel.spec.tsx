@@ -106,4 +106,25 @@ describe("seasonal carousel route ownership", () => {
     await waitFor(() => expect(getAnalyticsRefreshStatus).toHaveBeenCalled());
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/trends/seasonal-images"))).toBe(false);
   });
+
+  it.each([
+    "/analytics/products",
+    "/prodaja",
+    "/unos-robe",
+    "/nivelacija",
+    "/dobavljaci",
+  ])("does not mount carousel or fetch seasonal images on %s", async (pathname) => {
+    render(
+      <MemoryRouter initialEntries={[pathname]}>
+        <Routes>
+          <Route path="*" element={<AppLayout><div>route content</div></AppLayout>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId("home-seasonal-carousel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("carousel-strip")).not.toBeInTheDocument();
+    await waitFor(() => expect(getAnalyticsRefreshStatus).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/trends/seasonal-images"))).toBe(false);
+  });
 });

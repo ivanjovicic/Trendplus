@@ -510,10 +510,11 @@ textarea.input-big {
 
 @media (max-width: 640px) {
     .global-request-spinner {
-        top: 0;
-        right: 0;
+        position: relative;
+        top: auto;
+        right: auto;
         bottom: auto;
-        left: 0;
+        left: auto;
         width: 100%;
         padding-top: env(safe-area-inset-top, 0px);
     }
@@ -522,13 +523,29 @@ textarea.input-big {
         min-width: 0;
         max-width: none;
         width: 100%;
-        gap: 0.55rem;
-        padding: 0.4rem 0.75rem;
+        gap: 0.45rem;
+        padding: 0.3rem 0.75rem;
         border-radius: 0;
         border-left: 0;
         border-right: 0;
         border-top: 0;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+        box-shadow: none;
+    }
+
+    .global-request-spinner__content {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+    }
+
+    .global-request-spinner__content strong,
+    .global-request-spinner__content > span:not(.global-request-spinner__bar) {
+        font-size: 0.7rem;
+    }
+
+    .global-request-spinner__bar {
+        height: 2px;
     }
 
     .backend-wakeup-overlay__panel {

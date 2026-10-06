@@ -281,3 +281,9 @@ div[style*="relative"]:hover .carousel-nav-btn {
         min-height: 44px;
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .carousel-strip {
+        scroll-behavior: auto;
+    }
+}

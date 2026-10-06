@@ -72,5 +72,6 @@ describe("SeasonalImageCarousel", () => {
     await waitFor(() => expect(screen.getByTestId("carousel-strip")).toBeInTheDocument());
     const carouselIntervals = setIntervalSpy.mock.calls.filter((call) => call[1] === 4000);
     expect(carouselIntervals).toHaveLength(0);
+    expect(window.getComputedStyle(screen.getByTestId("carousel-strip")).scrollBehavior).toBe("auto");
   });
 });
