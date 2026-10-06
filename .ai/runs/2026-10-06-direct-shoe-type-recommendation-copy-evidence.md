@@ -4,9 +4,9 @@ Date: 2026-10-06
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 2198bc72b3c871589390d03be7cee71f4a6d90f9
+Main verification: passed - `origin/main` resolves to 2198bc72b3c871589390d03be7cee71f4a6d90f9 and contains the implementation commit
+Evidence state: synchronized
 
 ## What was done
 - Confirmed that `missing_comparable_signal` is an intentional backend safety gate: the pre/post nivelacija impact remains unavailable unless the same article cohort has sufficient sales evidence before and after the event.
