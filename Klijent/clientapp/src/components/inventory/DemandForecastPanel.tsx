@@ -169,7 +169,7 @@ export function DemandForecastPanel({
           </div>
 
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
               <TrendingUp size={14} className="text-[var(--text-primary)]" />
               Rizik prevelike zalihe (28 dana)
             </h3>

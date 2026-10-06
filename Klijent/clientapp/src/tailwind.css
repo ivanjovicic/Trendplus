@@ -8,13 +8,15 @@
   (borders fell back to currentColor, status text lost its colour, solid fills
   were transparent). Values point at the runtime tokens owned by ThemeContext /
   themes.css; this is a mapping, not a second palette.
-  "muted" and "secondary" are intentionally absent: .text-muted, .border-muted
-  and .text-secondary are handwritten below.
+  "secondary" remains handwritten below. "muted" is mapped because opacity
+  variants such as bg-muted/20 and border-muted/30 are used by real components;
+  the handwritten .text-muted/.border-muted rules still own their direct forms.
 */
 @theme inline {
   --color-border: var(--border-default);
   --color-border-hover: var(--border-hover);
   --color-foreground: var(--text-primary);
+  --color-muted: var(--text-muted);
   --color-primary: var(--accent-primary);
   --color-primary-hover: var(--primary-600);
   --color-on-primary: var(--text-on-primary);

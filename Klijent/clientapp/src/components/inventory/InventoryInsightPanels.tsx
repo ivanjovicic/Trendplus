@@ -67,7 +67,7 @@ export function InventoryInsightPanels({
       <div className="inventory-insight-panel min-w-0 rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Zastarelost i obrt zalihe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Zastarelost i obrt zalihe <InfoTip text="Grupisanje artikala po broju dana bez kretanja zalihe (poslednja prodaja ili prijem). 0–30 d: aktivan fond. 30–60 d: prati. 60–90 d: upozorenje. 90+ d: visok rizik zastarevanja — kandidati za akciju ili otpis." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Dani bez kretanja su računati po poslednjem movement-u, uz fallback na poslednje ažuriranje artikla.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
@@ -91,14 +91,14 @@ export function InventoryInsightPanels({
           ) : agingBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className={`min-w-0 rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--status-error-border)] ring-1 ring-[var(--status-error-border)]/30" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(bucket.bucketKey)}`}>{bucket.label}</div>
-              <div className="mt-4 text-2xl font-semibold text-white">{formatNumber(bucket.itemCount)}</div>
+              <div className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{formatNumber(bucket.itemCount)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.totalUnits)} komada | {formatCurrency(bucket.estimatedValue)}</div>
             </article>
           ))}
         </div>
 
         <div className="mt-5 min-w-0 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
             <Clock3 size={16} className="text-[var(--text-primary)]" />
             Najstariji artikli u filtriranom skupu
           </div>
@@ -109,7 +109,7 @@ export function InventoryInsightPanels({
               return (
               <button key={`aged-${insightIdentityKey(item)}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex min-w-0 w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-white" title={item.naziv}>{item.naziv}</div>
+                  <div className="truncate text-sm font-semibold text-[var(--text-primary)]" title={item.naziv}>{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]" title={`${item.plu ?? "Bez PLU"} | ${item.supplierName ?? "Neraspoređeni dobavljač"}`}>{item.plu ?? "Bez PLU"} | {item.supplierName ?? "Neraspoređeni dobavljač"}</div>
                 </div>
                 <div className="flex items-end justify-between gap-3">
@@ -140,7 +140,7 @@ export function InventoryInsightPanels({
       <div className="inventory-insight-panel min-w-0 rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">ABC segmentacija kapitala <InfoTip text="Klasifikacija artikala po udelu nabavne vrednosti zalihe. Klasa A (~70% vrednosti, manji broj artikala): zahteva najjači nadzor. Klasa B (~20%): pratiti redovno. Klasa C (~10%): najmanji uticaj. Koristi za prioritizaciju nabavke i inventara." /></h2>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">ABC segmentacija kapitala <InfoTip text="Klasifikacija artikala po udelu nabavne vrednosti zalihe. Klasa A (~70% vrednosti, manji broj artikala): zahteva najjači nadzor. Klasa B (~20%): pratiti redovno. Klasa C (~10%): najmanji uticaj. Koristi za prioritizaciju nabavke i inventara." /></h2>
             <p className="text-sm text-[var(--text-primary)]">Klasa A predstavlja artikle koji nose najveći deo nabavne vrednosti filtrirane zalihe.</p>
           </div>
           <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
@@ -158,14 +158,14 @@ export function InventoryInsightPanels({
           ) : abcBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className="min-w-0 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAbcTone(bucket.bucketKey)}`}>{bucket.label}</div>
-              <div className="mt-4 text-2xl font-semibold text-white">{formatPercent(bucket.valueSharePct)}</div>
+              <div className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{formatPercent(bucket.valueSharePct)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.itemCount)} artikala | {formatCurrency(bucket.estimatedValue)}</div>
             </article>
           ))}
         </div>
 
         <div className="mt-5 min-w-0 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-          <div className="text-sm font-semibold text-white">Kapital najvise vezan u ovim artiklima</div>
+          <div className="text-sm font-semibold text-[var(--text-primary)]">Kapital najvise vezan u ovim artiklima</div>
           <div className="mt-3 space-y-3">
             {capitalLockedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za ABC ranking.</div> : capitalLockedItems.map((item) => {
               const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);
@@ -173,7 +173,7 @@ export function InventoryInsightPanels({
               return (
               <button key={`capital-${insightIdentityKey(item)}`} type="button" onClick={() => onOpenDetail(resolvedRow)} className="flex min-w-0 w-full flex-col gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-white" title={item.naziv}>{item.naziv}</div>
+                  <div className="truncate text-sm font-semibold text-[var(--text-primary)]" title={item.naziv}>{item.naziv}</div>
                   <div className="truncate text-xs text-[var(--text-primary)]" title={`${item.storeName ?? "Sve lokacije"} | ${item.quantity} kom`}>{item.storeName ?? "Sve lokacije"} | {item.quantity} kom</div>
                 </div>
                 <div className="flex items-end justify-between gap-3">

@@ -42,7 +42,7 @@ describe("theme token usage", () => {
 
     const used = new Set<string>();
     const pattern =
-      /(?:^|[\s"'`:])(?:bg|text|border|ring|divide|from|to|via|fill|stroke|outline)-((?:border|foreground|primary|on-primary|success|warning|error|danger|info|accent)(?:-(?:hover|success|warning|error))?)(?:\/\d+)?(?=[\s"'`]|$)/gm;
+      /(?:^|[\s"'`:])(?:bg|text|border|ring|divide|from|to|via|fill|stroke|outline)-((?:border|foreground|muted|primary|on-primary|success|warning|error|danger|info|accent)(?:-(?:hover|success|warning|error))?)(?:\/\d+)?(?=[\s"'`]|$)/gm;
     for (const { path, text } of files) {
       if (!path.endsWith(".tsx")) continue;
       for (const match of text.matchAll(pattern)) used.add(match[1]);
@@ -55,5 +55,25 @@ describe("theme token usage", () => {
     for (const match of themeBlock.matchAll(/--color-[\w-]+\s*:\s*([^;]+);/g)) {
       expect(match[1].trim()).toMatch(/^var\(--[\w-]+\)$/);
     }
+  });
+
+  it("keeps theme-aware inventory and training surfaces off fixed white utilities", () => {
+    const themeAwarePaths = [
+      "components/inventory/InventoryInsightPanels.tsx",
+      "components/inventory/StoreComparisonPanel.tsx",
+      "components/inventory/InventoryPriorityPanels.tsx",
+      "components/inventory/SizeCurveVisualization.tsx",
+      "components/inventory/DemandForecastPanel.tsx",
+      "components/inventory/MailSchedulerPanel.tsx",
+      "pages/OpenTrainingPage.tsx",
+    ];
+
+    for (const relativePath of themeAwarePaths) {
+      const source = readFileSync(join(SRC, relativePath), "utf8");
+      expect(source, relativePath).not.toMatch(/\b(?:text|bg)-white\b/);
+    }
+
+    const skuDetail = readFileSync(join(SRC, "components/inventory/SKUDetailModal.tsx"), "utf8");
+    expect(skuDetail).not.toMatch(/\bbg-white\b(?!\/)/);
   });
 });

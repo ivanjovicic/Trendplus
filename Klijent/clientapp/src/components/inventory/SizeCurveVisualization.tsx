@@ -80,12 +80,12 @@ export function SizeCurveVisualization({ items, cardLimit = 8 }: SizeCurveVisual
         {items.slice(0, cardLimit).map((item) => (
           <div key={item.sizeCode} className={`rounded-2xl border p-3 ${item.isCoreSizeMissing ? "border-[var(--border-default)] bg-[var(--surface-elevated)]" : item.isDeadSize ? "border-[var(--border-default)] bg-[var(--surface-elevated)]" : "border-[var(--border-default)] bg-[var(--surface-elevated)]"}`}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-white">vel. {item.sizeCode}</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">vel. {item.sizeCode}</span>
               <span className="text-xs text-[var(--text-primary)]">{formatDeltaPct(item.deviationPct == null ? null : item.deviationPct * 100, 0)}</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div><div className="text-[var(--text-primary)]">Stvarno</div><div className="font-semibold text-white">{fmtPctFromRatio(item.actualSizeShare)}</div></div>
-              <div><div className="text-[var(--text-primary)]">Idealno</div><div className="font-semibold text-white">{fmtPctFromRatio(item.idealSizeShare)}</div></div>
+              <div><div className="text-[var(--text-primary)]">Stvarno</div><div className="font-semibold text-[var(--text-primary)]">{fmtPctFromRatio(item.actualSizeShare)}</div></div>
+              <div><div className="text-[var(--text-primary)]">Idealno</div><div className="font-semibold text-[var(--text-primary)]">{fmtPctFromRatio(item.idealSizeShare)}</div></div>
             </div>
             {item.evidenceStatus === "missing" || item.actualSizeShare == null || item.idealSizeShare == null || item.deviationPct == null || item.isCoreSizeMissing == null || item.isDeadSize == null || item.brokenRun == null || item.curveConfidence == null ? (
               <div className="mt-2 text-[11px] font-medium text-warning">Evidencija: nedostaje</div>

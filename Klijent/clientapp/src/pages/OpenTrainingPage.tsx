@@ -72,7 +72,7 @@ function TabBtn({ id, label, active, onClick }: { id: Tab; label: string; active
     return (
         <button
             onClick={() => onClick(id)}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${active ? 'bg-info text-on-primary border-info' : 'bg-white text-muted border border-muted'}`}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${active ? 'bg-info text-on-primary border-info' : 'bg-surface-elevated text-muted border border-muted'}`}
         >
             {label}
         </button>

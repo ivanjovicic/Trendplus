@@ -72,12 +72,12 @@ export function SKUDetailModal({
       {detailRow ? (
         <div className="space-y-5 text-[var(--text-primary)]">
           <div className="flex flex-wrap gap-2">
-            <button type="button" aria-label="Prikaži pregled artikla" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Pregled</button>
-            <button type="button" aria-label="Prikaži raspodelu veličina artikla" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-white text-[var(--text-primary)]"}`}>Raspodela veličina</button>
+            <button type="button" aria-label="Prikaži pregled artikla" onClick={() => onTabChange("overview")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "overview" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-[var(--surface-light)] text-[var(--text-primary)]"}`}>Pregled</button>
+            <button type="button" aria-label="Prikaži raspodelu veličina artikla" onClick={() => onTabChange("sizeCurve")} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${detailTab === "sizeCurve" ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-[var(--surface-light)] text-[var(--text-primary)]"}`}>Raspodela veličina</button>
           </div>
 
           {detailTab === "sizeCurve" ? (
-            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam raspodelu veličina za SKU #{detailRow.id}...</div> : safeSizeCurveError ? <div role="alert" className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]"><div className="font-semibold">{safeSizeCurveError}</div><div className="mt-1">Ovo nije potvrda da artikal nema podataka o veličinama.</div>{onRetrySizeCurve ? <button type="button" aria-label="Pokušaj ponovo učitavanje raspodele veličina" onClick={onRetrySizeCurve} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button> : null}</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema podataka o raspodeli veličina za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
+            detailSizeCurveLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Učitavam raspodelu veličina za SKU #{detailRow.id}...</div> : safeSizeCurveError ? <div role="alert" className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-6 text-center text-sm text-[var(--text-primary)]"><div className="font-semibold">{safeSizeCurveError}</div><div className="mt-1">Ovo nije potvrda da artikal nema podataka o veličinama.</div>{onRetrySizeCurve ? <button type="button" aria-label="Pokušaj ponovo učitavanje raspodele veličina" onClick={onRetrySizeCurve} className="mt-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-light)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button> : null}</div> : !detailSizeCurve?.snapshotAvailable || (detailSizeCurve.items ?? []).length === 0 ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Nema podataka o raspodeli veličina za ovaj artikal.</div> : <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4"><SizeCurveVisualization items={detailSizeCurve.items} cardLimit={6} /></div>
           ) : (
             <>
           {showContextBanner && contextBannerText ? (
@@ -96,7 +96,7 @@ export function SKUDetailModal({
                   {detailData?.agingLabel ? <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(detailData.agingBucket)}`}>{detailData.agingLabel}</span> : null}
                 </div>
               </div>
-              <div className={`rounded-2xl px-4 py-3 text-right ${resolvedStockState ? "border border-white/15 bg-white/10" : "border border-[var(--border-default)] bg-white"}`}>
+              <div className={`rounded-2xl px-4 py-3 text-right ${resolvedStockState ? "border border-white/15 bg-white/10" : "border border-[var(--border-default)] bg-[var(--surface-light)]"}`}>
                 <div className={`text-xs uppercase tracking-[0.2em] ${resolvedStockState ? "text-white/70" : "text-[var(--text-primary)]"}`}>Procena vrednosti</div>
                 <div className={`mt-2 text-xl font-semibold ${resolvedStockState ? "text-white" : "text-[var(--text-primary)]"}`}>{detailEstimatedValue == null ? "Nije dostupno" : formatCurrency(detailEstimatedValue)}</div>
                 <div className={`mt-2 text-xs ${resolvedStockState ? "text-white/75" : "text-[var(--text-primary)]"}`}>
@@ -122,7 +122,7 @@ export function SKUDetailModal({
           ) : null}
 
           {detailLoading ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]">Učitavam istoriju kretanja i dodatne detalje artikla...</div> : null}
-          {safeDetailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{safeDetailError}</div><button type="button" aria-label="Pokušaj ponovo učitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button></div> : null}
+          {safeDetailError ? <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-3 text-sm text-[var(--text-primary)]"><div>{safeDetailError}</div><button type="button" aria-label="Pokušaj ponovo učitavanje detalja artikla" onClick={onRetry} className="mt-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-light)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">Pokušaj ponovo</button></div> : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             {[
@@ -165,7 +165,7 @@ export function SKUDetailModal({
 
             <div className="mt-4 space-y-3">
               {detailData?.history?.length ? detailData.history.map((entry) => (
-                <div key={entry.movementId} className="rounded-2xl border border-[var(--border-default)] bg-white p-4">
+                <div key={entry.movementId} className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-light)] p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -194,7 +194,7 @@ export function SKUDetailModal({
                     </div>
                   ) : null}
                 </div>
-              )) : <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-white px-4 py-8 text-center text-sm text-[var(--text-primary)]">Za ovaj artikal nema evidentiranih istorijskih kretanja.</div>}
+              )) : <div className="rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-light)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Za ovaj artikal nema evidentiranih istorijskih kretanja.</div>}
             </div>
           </div>
             </>

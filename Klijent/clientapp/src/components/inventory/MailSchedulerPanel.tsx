@@ -30,7 +30,7 @@ export function MailSchedulerPanel({
       <div className="rounded-[28px] border border-[var(--border-default)] bg-[var(--surface-elevated)] p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Slanje dnevnog i nedeljnog izveštaja</h2>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Slanje dnevnog i nedeljnog izveštaja</h2>
             <p className="text-sm text-[var(--text-primary)]">Zakaži PDF/Excel/CSV bilans stanja, sa lokalnim vremenom, filterima i ručnim pokretanjem.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export function MailSchedulerPanel({
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{schedule.name}</span>
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">{schedule.name}</span>
                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${schedule.isEnabled ? "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]" : "border-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]"}`}>{schedule.isEnabled ? "Aktivan" : "Pauziran"}</span>
                     <span className="inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-primary)]">{inventoryScheduleFrequencyLabel(schedule.frequency)} u {schedule.runAtLocalTime}</span>
                   </div>
@@ -125,7 +125,7 @@ export function MailSchedulerPanel({
         <div className="flex items-start gap-3">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-3 text-[var(--text-primary)]"><Mail size={18} /></div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Šta raspored izveštaja pokriva</h2>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Šta raspored izveštaja pokriva</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">Raspored koristi isti serverski izvoz kao ručni PDF/Excel, pa menadžment dobija isti izgled i iste filtere kao operativa na ekranu.</p>
           </div>
         </div>

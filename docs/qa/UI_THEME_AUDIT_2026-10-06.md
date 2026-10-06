@@ -59,7 +59,7 @@ Pravilo: boja sa poslovnim značenjem ide preko tokena; fiksna boja samo kada je
 - ~1700 obrazaca `var(--theme-color-xxx, #xxx)` — u praksi tvrde boje (promenljiva nikad nije definisana). To su većinom statične dekorativne nijanse; masovna zamena bila bi rizičan redizajn. Kandidat za P-UI-38 (CSS higijena).
 - Statične boje (kategorija C): štampa (beli papir), dugme za zatvaranje karusela (uvek na beloj podlozi preko fotografije), `.btn-warning` (žuta + crna, kontrast visok u svim temama).
 - `tailwind.config.js` — mrtva konfiguracija (v4 je ne učitava). Nije obrisana da ne bi zbunila druge alate; `@theme inline` je izvor.
-- `muted`/`secondary` Tailwind varijante sa providnošću (`bg-muted/20`, `divide-muted`) i dalje ne generišu CSS — dekorativne, bez poslovnog značenja.
+- `secondary` Tailwind boja ostaje ručna pomoćna klasa. Follow-up provera je pokazala da `muted` opacity varijante (`bg-muted/20`, `border-muted/30`) ipak koriste stvarne komponente, pa je `muted` naknadno mapiran na `--text-muted` i pokriven guard testom.
 - `inventory-dark` (legacy): `text-on-primary` (beli) na svetlim statusnim pozadinama ima <4.5:1. Jedna boja ne može da služi i primarnom dugmetu i svetlim statusnim pozadinama; test to eksplicitno izuzima.
 - Pristupačnost grafikona za čitače ekrana — P-UI-53 (WAITING), nije rađeno.
 
@@ -104,3 +104,14 @@ Tokom rada nađen je i ispravljen **postojeći** overflow Dnevne prodaje na 320p
 ## Validacija
 
 Videti izveštaj predaje (vitest, guardrails, typecheck, build, encoding, `git diff --check`, responsive strict po širinama).
+
+
+## Follow-up verifikacija posle predaje
+
+Naknadna nezavisna provera `cc57cace` našla je dva mala propusta koja CI nije vizuelno mogao da uhvati:
+
+- Inventory analitički paneli su na theme-aware `--surface-elevated` površinama još imali fiksni `text-white`, što je bilo pogrešno u svetlim temama. Naslovi, KPI vrednosti i nazivi artikala sada koriste `--text-primary`; eksplicitni beli tekst ostaje samo tamo gde je podloga namerno fiksna/gradijentna.
+- `muted` Tailwind opacity varijante su bile navedene kao namerno nemapirane, iako ih koriste skeleton/track elementi. `--color-muted` je zato povezan sa `--text-muted`, a guard sada proverava i `muted` semantičke klase.
+- Neutralne `bg-white` površine u SKU detalju i Open Training tabu prebačene su na theme-aware surface tokene. Dodata je ciljana regresiona provera da se fiksna bela boja ne vrati u te panele.
+
+Ovo ne menja poslovnu logiku, API ugovore, analytics formule niti semantiku podataka.
