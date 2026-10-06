@@ -526,7 +526,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
 
         public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
         {
-            var isSupplierPayload = key.Contains("supplier-sales-stats:v7:", StringComparison.Ordinal)
+            var isSupplierPayload = key.Contains("supplier-sales-stats:v8:", StringComparison.Ordinal)
                 && !key.EndsWith(":metadata", StringComparison.Ordinal);
             var exists = _entries.TryGetValue(key, out var value) && value is T;
             if (isSupplierPayload)

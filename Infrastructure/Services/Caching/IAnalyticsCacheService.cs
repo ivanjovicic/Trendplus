@@ -235,7 +235,7 @@ public static class AnalyticsCacheKeys
 
     // Integrity evidence participates because a read-time gate change must not replay cached supplier actionability.
     public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null, string? integrityEvidenceId = null) =>
-        $"{Prefix}supplier-sales-stats:v7:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}:integrity:{HashPart(integrityEvidenceId)}";
+        $"{Prefix}supplier-sales-stats:v8:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}:integrity:{HashPart(integrityEvidenceId)}";
 
     public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
         $"{Prefix}shoe-type-sales-stats:v5:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";

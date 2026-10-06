@@ -48,6 +48,7 @@ namespace Trendplus2.Endpoints;
 public static class AllEndpoints
 {
     private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly JsonSerializerOptions AnalyticsCacheJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly JsonSerializerOptions ColorSalesCacheJsonOptions = new(JsonSerializerDefaults.Web);
     private const int VendorSalesNivelacijaCommandTimeoutSeconds = 45;
     private const int OptionalNivelacijaMetricCommandTimeoutSeconds = 5;
@@ -2110,7 +2111,7 @@ public static class AllEndpoints
                 };
 
                 processingStopwatch.Stop();
-                var responseJson = JsonSerializer.Serialize(response);
+                var responseJson = JsonSerializer.Serialize(response, AnalyticsCacheJsonOptions);
                 await cache.SetAsync(cacheKey, new AnalyticsJsonCachePayload { Json = responseJson }, CacheExpiration.HeavyAnalytics, ct);
                 await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
                 requestStopwatch.Stop();

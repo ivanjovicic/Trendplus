@@ -38,6 +38,9 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         Assert.True(root.TryGetProperty("totals", out _), "Missing 'totals' field");
         Assert.True(root.TryGetProperty("dataQuality", out _), "Missing 'dataQuality' field");
         Assert.True(root.TryGetProperty("generatedAt", out _), "Missing 'generatedAt' field");
+        Assert.True(root.TryGetProperty("meta", out var meta), "Missing 'meta' field");
+        Assert.True(meta.TryGetProperty("success", out _), "Analytics metadata must use web JSON casing");
+        Assert.False(meta.TryGetProperty("Success", out _), "Analytics metadata must not use CLR property casing");
         Assert.Equal(JsonValueKind.Array, root.GetProperty("suppliers").ValueKind);
         Assert.Equal(JsonValueKind.Object, root.GetProperty("totals").ValueKind);
     }

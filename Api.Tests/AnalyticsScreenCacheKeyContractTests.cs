@@ -46,7 +46,7 @@ public sealed class AnalyticsScreenCacheKeyContractTests
 
         Assert.Equal(first, same);
         Assert.NotEqual(first, afterGateChange);
-        Assert.Contains("supplier-sales-stats:v7:", first, StringComparison.Ordinal);
+        Assert.Contains("supplier-sales-stats:v8:", first, StringComparison.Ordinal);
         Assert.Contains(":integrity:", first, StringComparison.Ordinal);
         Assert.DoesNotContain("evidence-before-gate-change", first, StringComparison.Ordinal);
     }
