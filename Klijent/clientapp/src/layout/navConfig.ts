@@ -135,7 +135,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Microscope,
     items: [
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
-      { to: "/analytics/supplier", label: "Pregled dobavljača", icon: Microscope },
+      { to: "/analytics/supplier", label: "Prodaja po dobavljačima", icon: Microscope },
       { to: "/analytics/actions", label: "Centralne akcije", icon: ClipboardList },
       { to: "/analytics/decision-pulse", label: "Decision Pulse", icon: AlertTriangle },
       {
@@ -155,7 +155,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/analytics/inventory", label: "Zalihe i dopuna", icon: Boxes },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
-      { to: "/analytics/daily-sales", label: "Prodaja po smeni i dobavljačima", icon: CalendarDays },
+      { to: "/analytics/daily-sales", label: "Prodaja po smenama", icon: CalendarDays },
       { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
       {
         to: "/analytics/color-sales-stats",

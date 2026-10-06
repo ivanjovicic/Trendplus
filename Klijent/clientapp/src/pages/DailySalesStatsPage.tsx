@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -211,6 +211,8 @@ export type DailyShiftEvidenceState = "complete" | "partial" | "unavailable";
 export { toDailyShiftEvidenceState as getDailyShiftEvidenceState };
 
 const DEFAULT_TOP_N = 15;
+export const DAILY_TABLE_PAGE_SIZES = [14, 30, 60] as const;
+export const DEFAULT_DAILY_TABLE_PAGE_SIZE = DAILY_TABLE_PAGE_SIZES[0];
 const BLANK_SUPPLIER_COLUMN_COUNT = 15;
 const BLANK_PRINT_ROW_COUNT = 31;
 const SHIFT_PLACEHOLDER = "__________";
@@ -238,6 +240,34 @@ const DAILY_FIXED_SORT_KEYS = [
   "othersCount",
   "totalItemsSold",
 ] as const satisfies readonly SortKey[];
+
+export type DailySalesPagination = {
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  startIndex: number;
+  endIndex: number;
+};
+
+export function getDailySalesPagination(
+  totalRows: number,
+  requestedPage: number,
+  requestedPageSize: number,
+): DailySalesPagination {
+  const pageSize = DAILY_TABLE_PAGE_SIZES.includes(requestedPageSize as typeof DAILY_TABLE_PAGE_SIZES[number])
+    ? requestedPageSize
+    : DEFAULT_DAILY_TABLE_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(Math.max(0, totalRows) / pageSize));
+  const page = Math.min(Math.max(1, Math.round(requestedPage)), totalPages);
+  const startIndex = (page - 1) * pageSize;
+  return {
+    page,
+    pageSize,
+    totalPages,
+    startIndex,
+    endIndex: Math.min(startIndex + pageSize, Math.max(0, totalRows)),
+  };
+}
 
 function parseDateInputOrDefault(value: string | null, fallback: string): string {
   if (!value) return fallback;
@@ -828,6 +858,9 @@ export default function DailySalesStatsPage() {
   const [sortKey, setSortKey] = useState<SortKey>(querySort.sortKey);
   const [sortDir, setSortDir] = useState<SortDir>(querySort.sortDir);
   const [qualityPanelOpen, setQualityPanelOpen] = useState(false);
+  const [dailyTableOpen, setDailyTableOpen] = useState(false);
+  const [dailyTablePage, setDailyTablePage] = useState(1);
+  const [dailyTablePageSize, setDailyTablePageSize] = useState<number>(DEFAULT_DAILY_TABLE_PAGE_SIZE);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
   const pendingDataScopeUrlSyncRef = useRef(false);
@@ -1060,6 +1093,25 @@ export default function DailySalesStatsPage() {
 
   const chronologicalChartRows = dailyProjections.chronologicalChartRows;
   const tableRows = dailyProjections.tableRows;
+  const dailyTablePagination = useMemo(
+    () => getDailySalesPagination(tableRows.length, dailyTablePage, dailyTablePageSize),
+    [dailyTablePage, dailyTablePageSize, tableRows.length],
+  );
+  const paginatedTableRows = useMemo(
+    () => tableRows.slice(dailyTablePagination.startIndex, dailyTablePagination.endIndex),
+    [dailyTablePagination.endIndex, dailyTablePagination.startIndex, tableRows],
+  );
+
+  useEffect(() => {
+    setDailyTablePage(1);
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, activeFilters.topN, dataScope, sortDir, sortKey]);
+
+  useEffect(() => {
+    if (dailyTablePage !== dailyTablePagination.page) {
+      setDailyTablePage(dailyTablePagination.page);
+    }
+  }, [dailyTablePage, dailyTablePagination.page]);
+
   const noDataInPeriod = isDailySalesNoDataInPeriod(data);
 
   const mismatchCount = useMemo(
@@ -1825,6 +1877,17 @@ export default function DailySalesStatsPage() {
     );
   }, []);
 
+  const supplierOverviewHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("tab", "overview");
+    params.set("periodPreset", "custom");
+    params.set("fromDate", activeFilters.fromDate);
+    params.set("toDate", activeFilters.toDate);
+    params.set("dataScope", memoizedQueryDataScope);
+    if (activeFilters.storeId != null) params.set("storeId", String(activeFilters.storeId));
+    return `/analytics/supplier?${params.toString()}`;
+  }, [activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, memoizedQueryDataScope]);
+
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
       {
@@ -1943,8 +2006,8 @@ export default function DailySalesStatsPage() {
   return (
     <div className="daily-sales-page">
       <AnalyticsTrustHeader
-        title="Prodaja po smeni"
-        description="Dnevni pregled po smenama: količine, prihodi i top dobavljači."
+        title="Prodaja po smenama"
+        description="Dnevni promet, komadi i raspodela rezultata po smenama."
         periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
         periodTo={toInclusiveCalendarDate(data?.requestedTo) ?? activeFilters.toDate}
         observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
@@ -1975,7 +2038,7 @@ export default function DailySalesStatsPage() {
 
       <AnalyticsControlBar
         title="Opseg i filteri"
-        description="Period, objekat i top N ostaju ovde; tabela po danima ispod ostaje fokusirana na smene i dobavljače."
+        description="Period i objekat ostaju ovde; glavni prikaz prati dnevni ritam i smenski miks."
         chips={controlBarChips}
         primaryAction={{
           key: "apply",
@@ -2002,6 +2065,16 @@ export default function DailySalesStatsPage() {
         responsiveFilterLayout
         mobileFilterSummary="Period, objekat i top N"
       />
+
+      <div className="daily-sales-cross-navigation" data-testid="daily-sales-cross-navigation">
+        <div>
+          <strong>Treba ti pregled dobavljača?</strong>
+          <span>Dobavljačka prodaja je objedinjena na canonical Supplier ekranu.</span>
+        </div>
+        <Link className="daily-sales-cross-navigation__link" to={supplierOverviewHref}>
+          Otvori prodaju po dobavljačima
+        </Link>
+      </div>
 
       {invalidRange ? (
         <div className="daily-sales-message error">Datum 'od' ne može biti posle datuma 'do'.</div>
@@ -2048,7 +2121,7 @@ export default function DailySalesStatsPage() {
 
       {!loading && !error && data && !noDataInPeriod ? (
         <>
-          <section className="daily-sales-kpis">
+          <section className="daily-sales-kpis daily-sales-kpis--primary" aria-label="Ključni pokazatelji prodaje po smenama">
             <article>
               <span>Ukupan prihod <InfoTip text="Suma prihoda od prodaje za sve dane u izabranom opsegu i prodavnici. Prihod / dan je prosek po broju kalendarskih dana u opsegu." /></span>
               <strong>{fmtRsd(currentSummary.totalRevenue, 2)}</strong>
@@ -2060,6 +2133,19 @@ export default function DailySalesStatsPage() {
               <small>{fmtNumber(currentSummary.avgItemsPerDay == null ? null : Math.round(currentSummary.avgItemsPerDay))} / dan</small>
             </article>
             <article>
+              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu uključeni u ovaj procenat." /></span>
+              <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
+              <small>{shiftSummaryText(currentSummary.firstShiftItems, currentSummary.firstShiftEvidenceState)} komada</small>
+            </article>
+            <article>
+              <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00–21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
+              <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
+              <small>{shiftSummaryText(currentSummary.secondShiftItems, currentSummary.secondShiftEvidenceState)} komada</small>
+            </article>
+          </section>
+
+          <section className="daily-sales-kpi-secondary" aria-label="Dodatni kontekst perioda">
+            <article>
               <span>Dana u opsegu <InfoTip text="Broj kalendarskih dana izabranog perioda. Koristi se kao imenilac za dnevne proseke. Prethodni period je isti opseg, pomeren unazad." /></span>
               <strong>{fmtNumber(data.metadata.totalDays)}</strong>
               <small>Prethodni period: {fmtDateShort(previousRange.fromDate)} - {fmtDateShort(previousRange.toDate)}</small>
@@ -2070,39 +2156,45 @@ export default function DailySalesStatsPage() {
               <small>Na osnovu vidljivih komada u tabeli</small>
             </article>
             <article>
-              <span>Prva smena <InfoTip text="Udeo komada prodatih u prvoj smeni (06:00–13:59) u odnosu na ukupne smenske komade (prva + druga). Dani bez razdvajanja po smenama nisu uključeni u ovaj procenat." /></span>
-              <strong>{fmtPct(currentSummary.firstShiftSharePct, 1)}</strong>
-              <small>{shiftSummaryText(currentSummary.firstShiftItems, currentSummary.firstShiftEvidenceState)} komada</small>
-            </article>
-            <article>
-              <span>Druga smena <InfoTip text="Udeo komada prodatih u drugoj smeni (14:00–21:59) u odnosu na ukupne smenske komade. Komplementarno sa Prvom smenom." /></span>
-              <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
-              <small>{shiftSummaryText(currentSummary.secondShiftItems, currentSummary.secondShiftEvidenceState)} komada</small>
-            </article>
-            <article>
-              <span>Udeo top 3 dob. <InfoTip text="Procenat komada koje nose tri dobavljača sa najvećim prometom u opsegu. Formula: (top 3 dobavljača) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljača." /></span>
+              <span>Udeo top 3 dobavljača <InfoTip text="Procenat komada koje nose tri dobavljača sa najvećim prometom u opsegu. Formula: (top 3 dobavljača) / ukupni komadi × 100. Visoka vrednost = visoka zavisnost od malog broja dobavljača." /></span>
               <strong>{fmtPct(supplierConcentration.top3QtySharePct, 1)}</strong>
-              <small>Udeo top 3 dobavljača po komadima</small>
+              <small>Sekundarni kontekst dobavljačke koncentracije</small>
             </article>
           </section>
 
-          <section className="daily-sales-table-card">
-            <div className="daily-sales-table-head">
-              <div>
-                <h2>Tabela po danima</h2>
-                <p>
-                  Top dobavljači su određeni globalno za izabrani opseg, a kolone prikazuju dnevne komade.
-                </p>
+          <details
+            className="daily-sales-table-disclosure"
+            data-testid="daily-sales-table-disclosure"
+            open={dailyTableOpen}
+            onToggle={(event) => setDailyTableOpen(event.currentTarget.open)}
+          >
+            <summary className="daily-sales-table-disclosure__summary">
+              <span>
+                <strong>Detaljna tabela po danima</strong>
+                <small>Prikaži dnevne redove, sortiranje, izvoz i štampu.</small>
+              </span>
+              <span className="daily-sales-table-disclosure__count">
+                {tableRows.length.toLocaleString("sr-RS")} dana
+              </span>
+            </summary>
+
+            <div className="daily-sales-table-card">
+              <div className="daily-sales-table-head">
+                <div>
+                  <h2>Detaljna tabela po danima</h2>
+                  <p>
+                    Smenske kolone su primarne; dobavljačke kolone ostaju dostupne kao sekundarni kontekst.
+                  </p>
+                </div>
               </div>
-            </div>
 
             <AnalyticsDataTable
               testId="daily-sales-stats-data-table"
-              rowCount={tableRows.length}
+              rowCount={paginatedTableRows.length}
               toolbar={(
                 <AnalyticsTableToolbar
                   tableKey="daily-sales-stats"
-                  tableTitle="Dnevna prodaja po smeni i dobavljačima"
+                  tableTitle="Dnevna prodaja po smenama"
                   columns={toolbarColumns}
                   rows={[...dailyProjections.exportRows]}
                   filters={toolbarFilters}
@@ -2189,7 +2281,7 @@ export default function DailySalesStatsPage() {
                       </td>
                     </tr>
                   ) : (
-                    tableRows.map((row) => {
+                    paginatedTableRows.map((row) => {
                       const supplierTotal = sum(row.topSupplierCounts);
                       const others = finiteOrNull(row.othersCount);
                       const total = finiteOrNull(row.totalItemsSold);
@@ -2231,7 +2323,47 @@ export default function DailySalesStatsPage() {
                 Upozorenje: {mismatchCount} redova ima neusklađenost između ukupne kolone i zbira najvećih dobavljača i ostalih.
               </p>
             ) : null}
-          </section>
+              <div className="daily-sales-pagination" data-testid="daily-sales-pagination">
+                <label className="daily-sales-pagination__size">
+                  <span>Redova po strani</span>
+                  <select
+                    aria-label="Redova po strani"
+                    value={dailyTablePageSize}
+                    onChange={(event) => {
+                      setDailyTablePageSize(Number(event.target.value));
+                      setDailyTablePage(1);
+                    }}
+                  >
+                    {DAILY_TABLE_PAGE_SIZES.map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>{pageSize}</option>
+                    ))}
+                  </select>
+                </label>
+                <span className="daily-sales-pagination__status" aria-live="polite">
+                  Strana {dailyTablePagination.page} od {dailyTablePagination.totalPages}
+                </span>
+                <span className="daily-sales-pagination__range">
+                  Prikazano {tableRows.length === 0 ? 0 : dailyTablePagination.startIndex + 1}–{dailyTablePagination.endIndex} od {tableRows.length} dana
+                </span>
+                <div className="daily-sales-pagination__actions">
+                  <button
+                    type="button"
+                    onClick={() => setDailyTablePage((page) => Math.max(1, page - 1))}
+                    disabled={dailyTablePagination.page <= 1}
+                  >
+                    Prethodna
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDailyTablePage((page) => Math.min(dailyTablePagination.totalPages, page + 1))}
+                    disabled={dailyTablePagination.page >= dailyTablePagination.totalPages}
+                  >
+                    Sledeća
+                  </button>
+                </div>
+              </div>
+            </div>
+          </details>
 
           {emptyStateVariant ? null : (data.metadata.warnings?.length ?? 0) > 0 ? (
             <section className="daily-sales-warnings">

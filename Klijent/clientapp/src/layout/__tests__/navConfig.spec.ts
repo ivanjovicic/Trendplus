@@ -34,12 +34,15 @@ describe("navConfig", () => {
 
   it("keeps supplier compatibility routes out of primary Operacije while retaining category analyses", () => {
     const operationsRoutes = new Set(findGroup("analytics-operations")?.items.map((item) => item.to));
+    const decisionItems = findGroup("analytics-decisions")?.items ?? [];
 
     expect(operationsRoutes.has("/analytics/supplier-sales-stats")).toBe(false);
     expect(operationsRoutes.has("/analytics/dobavljaci-tipovi-obuce")).toBe(false);
     expect(operationsRoutes.has("/analytics/shoe-type-sales-stats")).toBe(true);
     expect(operationsRoutes.has("/analytics/color-sales-stats")).toBe(true);
     expect(operationsRoutes.has("/analytics/daily-sales")).toBe(true);
+    expect(decisionItems.find((item) => item.to === "/analytics/supplier")?.label).toBe("Prodaja po dobavljačima");
+    expect(findGroup("analytics-operations")?.items.find((item) => item.to === "/analytics/daily-sales")?.label).toBe("Prodaja po smenama");
     expect(operationsRoutes.has("/analytics/nivelacije-pre-post")).toBe(true);
     expect(findGroup("analytics-operations")?.items.find((item) => item.to === "/analytics/color-sales-stats")?.badge).toMatchObject({
       label: "Analiza",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getStores, getSupplierFilters } from "../services/analyticsApi";
 import { getSezone } from "../services/sezoneApi";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -187,6 +187,14 @@ export default function SupplierConsolidatedPage() {
   const activePeriodLabel = effectivePeriodLabel
     ? effectivePeriodLabel
     : `${canonicalFilters.fromDate} — ${canonicalFilters.toDate}`;
+  const dailySalesHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("fromDate", canonicalFilters.fromDate);
+    params.set("toDate", canonicalFilters.toDate);
+    params.set("dataScope", canonicalFilters.dataScope);
+    if (canonicalFilters.storeId != null) params.set("storeId", String(canonicalFilters.storeId));
+    return `/analytics/daily-sales?${params.toString()}`;
+  }, [canonicalFilters.dataScope, canonicalFilters.fromDate, canonicalFilters.storeId, canonicalFilters.toDate]);
   const datasetLabel = resolveSupplierConsolidatedDatasetLabel(trustPayload);
   const trustHeadline = resolveSupplierConsolidatedTrustHeadline(currentTab, trustPayload);
   const fallbackReasonText = trustPayload?.usedFallback
@@ -327,6 +335,9 @@ export default function SupplierConsolidatedPage() {
             <h2>Dobavljači</h2>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>
+          <Link className="supplier-consolidated-cross-link" to={dailySalesHref}>
+            Otvori prodaju po smenama
+          </Link>
         </div>
       </header>
 

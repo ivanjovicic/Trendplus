@@ -15,6 +15,46 @@
   margin-bottom: 0;
 }
 
+.daily-sales-cross-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid color-mix(in srgb, var(--info) 34%, var(--border-default));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--info) 7%, var(--surface-card));
+  padding: 0.8rem 0.95rem;
+}
+
+.daily-sales-cross-navigation > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.daily-sales-cross-navigation strong {
+  font-size: 0.9rem;
+}
+
+.daily-sales-cross-navigation span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.daily-sales-cross-navigation__link {
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--accent-primary, var(--info));
+  color: var(--text-on-primary, #fff);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.daily-sales-cross-navigation__link:hover {
+  filter: brightness(1.08);
+}
+
 .daily-sales-table-card .analytics-data-table {
   margin-top: 0.75rem;
 }
@@ -160,6 +200,10 @@
   gap: 0.7rem;
 }
 
+.daily-sales-kpis--primary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .daily-sales-kpis article {
   background: linear-gradient(165deg, color-mix(in srgb, var(--ds-surface) 86%, var(--ds-accent) 14%), var(--ds-surface-dark));
   border: 1px solid rgba(30, 200, 255, 0.28);
@@ -201,6 +245,39 @@
   line-height: 1.4;
   margin-top: 10px;
   display: block;
+}
+
+.daily-sales-kpi-secondary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.daily-sales-kpi-secondary article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-card) 86%, var(--surface-elevated));
+  padding: 0.65rem 0.75rem;
+}
+
+.daily-sales-kpi-secondary span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.daily-sales-kpi-secondary strong {
+  font-size: 1rem;
+}
+
+.daily-sales-kpi-secondary small {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .daily-sales-section-grid {
@@ -549,10 +626,70 @@
   margin-top: 0.35rem;
 }
 
+.daily-sales-table-disclosure {
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-card);
+}
+
+.daily-sales-table-disclosure__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.75rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.9rem 1rem;
+}
+
+.daily-sales-table-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.daily-sales-table-disclosure__summary::before {
+  content: "+";
+  order: 2;
+  display: inline-grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.daily-sales-table-disclosure[open] .daily-sales-table-disclosure__summary::before {
+  content: "−";
+}
+
+.daily-sales-table-disclosure__summary > span:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.daily-sales-table-disclosure__summary strong {
+  font-size: 1rem;
+}
+
+.daily-sales-table-disclosure__summary small,
+.daily-sales-table-disclosure__count {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.daily-sales-table-disclosure__count {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .daily-sales-table-card {
   border: 1px solid var(--border-default);
   background: var(--surface-card);
-  border-radius: 14px;
+  border-width: 1px 0 0;
+  border-radius: 0 0 14px 14px;
   padding: 0.9rem;
 }
 
@@ -652,6 +789,59 @@
   font-size: 0.85rem;
 }
 
+.daily-sales-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.9rem;
+  margin-top: 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.daily-sales-pagination__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.daily-sales-pagination__size select {
+  min-height: 2rem;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  padding: 0.25rem 0.45rem;
+}
+
+.daily-sales-pagination__status,
+.daily-sales-pagination__range {
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-sales-pagination__actions {
+  display: inline-flex;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.daily-sales-pagination__actions button {
+  min-height: 2rem;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.daily-sales-pagination__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 @media (max-width: 1200px) {
   .daily-sales-shift-head,
   .daily-sales-filters {
@@ -689,6 +879,10 @@
     grid-template-columns: 1fr;
   }
 
+  .daily-sales-kpis--primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .daily-sales-mini-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -706,6 +900,29 @@
   .daily-sales-filters {
     grid-template-columns: 1fr;
   }
+
+  .daily-sales-cross-navigation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .daily-sales-cross-navigation__link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .daily-sales-kpi-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-sales-pagination__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .daily-sales-pagination__actions button {
+    flex: 1;
+  }
 }
 
 @media (max-width: 480px) {
@@ -717,6 +934,25 @@
   .daily-sales-filters {
     padding: 0.75rem;
     gap: 0.5rem;
+  }
+
+  .daily-sales-kpis--primary {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-sales-table-disclosure__summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .daily-sales-table-disclosure__summary::before {
+    margin-left: auto;
+  }
+
+  .daily-sales-table-disclosure__count {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
   }
 }
 

@@ -100,7 +100,7 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByText(/Prodaja po smeni/i);
+    const title = screen.getByText(/Prodaja po smenama/i);
     expect(title).toBeInTheDocument();
   });
 
@@ -137,6 +137,8 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>,
     );
 
+    const tableDisclosure = await screen.findByTestId("daily-sales-table-disclosure");
+    fireEvent.click(tableDisclosure.querySelector("summary")!);
     const revenueHeader = await screen.findByRole("columnheader", { name: /Prihod dana/i });
     expect(revenueHeader).toHaveAttribute("aria-sort", "ascending");
     expect(screen.getByTestId("location-search")).toHaveTextContent("sort=totalRevenue");

@@ -309,14 +309,14 @@ describe("DailySalesStatsPage premium controls", () => {
 
   it("uses shared trust header, control bar and analytics data table", async () => {
     render(
-      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+      <MemoryRouter initialEntries={["/analytics/daily-sales?fromDate=2026-07-01&toDate=2026-07-31"]}>
         <Routes>
           <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po smeni");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po smenama");
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:00:00Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-quality", "good");
@@ -335,8 +335,77 @@ describe("DailySalesStatsPage premium controls", () => {
     await waitFor(() => {
       expect(screen.getByTestId("daily-sales-stats-data-table")).toBeInTheDocument();
     });
-    expect(screen.getByText("Tabela po danima")).toBeInTheDocument();
+    const tableDisclosure = screen.getByTestId("daily-sales-table-disclosure");
+    expect(tableDisclosure).not.toHaveAttribute("open");
+    fireEvent.click(tableDisclosure.querySelector("summary")!);
+    expect(screen.getByRole("heading", { name: "Detaljna tabela po danima" })).toBeInTheDocument();
+    const supplierLink = screen.getByRole("link", { name: "Otvori prodaju po dobavljačima" });
+    const supplierHref = new URL(supplierLink.getAttribute("href")!, "http://test.local");
+    expect(supplierHref.pathname).toBe("/analytics/supplier");
+    expect(supplierHref.searchParams.get("tab")).toBe("overview");
+    expect(supplierHref.searchParams.get("fromDate")).toBe("2026-07-01");
+    expect(supplierHref.searchParams.get("toDate")).toBe("2026-07-31");
+    expect(supplierHref.searchParams.get("dataScope")).toBe("all");
   });
+
+  it("keeps the daily table closed by default and paginates sorted rows without changing global projections", async () => {
+    const baseRow = response().dateRows[0];
+    const dateRows = Array.from({ length: 30 }, (_, index) => ({
+      ...baseRow,
+      date: `2026-04-${String(index + 1).padStart(2, "0")}`,
+      totalRevenue: (index + 1) * 100,
+      totalItemsSold: index + 1,
+    }));
+    vi.mocked(getDailySalesStats).mockResolvedValue(response({ dateRows }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales?fromDate=2026-04-01&toDate=2026-04-30"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const disclosure = await screen.findByTestId("daily-sales-table-disclosure");
+    expect(disclosure).not.toHaveAttribute("open");
+    const primaryKpis = screen.getByRole("region", { name: "Ključni pokazatelji prodaje po smenama" }).textContent;
+    const chartOrder = screen.getByTestId("line-chart").getAttribute("data-order");
+
+    fireEvent.click(disclosure.querySelector("summary")!);
+
+    const table = await screen.findByTestId("daily-sales-stats-data-table");
+    expect(within(table).getAllByRole("row")).toHaveLength(15);
+    expect(screen.getByText("Strana 1 od 3")).toBeInTheDocument();
+    expect(screen.getByText("Prikazano 1–14 od 30 dana")).toBeInTheDocument();
+
+    const revenueHeader = within(table).getByRole("columnheader", { name: /Prihod dana/i });
+    fireEvent.click(within(revenueHeader).getByRole("button", { name: /Prihod dana/i }));
+    await waitFor(() => {
+      expect(within(table).getAllByRole("row")[1]).toHaveTextContent(/30\.\s*4\.\s*2026/);
+    });
+
+    const firstPageDate = within(table).getAllByRole("row")[1].textContent;
+    fireEvent.click(screen.getByRole("button", { name: "Sledeća" }));
+    await waitFor(() => {
+      expect(screen.getByText("Strana 2 od 3")).toBeInTheDocument();
+    });
+    expect(within(table).getAllByRole("row")).toHaveLength(15);
+    expect(within(table).getAllByRole("row")[1].textContent).not.toBe(firstPageDate);
+    expect(screen.getByRole("region", { name: "Ključni pokazatelji prodaje po smenama" }).textContent).toBe(primaryKpis);
+    expect(screen.getByTestId("line-chart")).toHaveAttribute("data-order", chartOrder);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Redova po strani" }), { target: { value: "30" } });
+    await waitFor(() => {
+      expect(screen.getByText("Strana 1 od 1")).toBeInTheDocument();
+      expect(within(table).getAllByRole("row")).toHaveLength(31);
+    });
+
+    fireEvent.change(screen.getByLabelText("Od"), { target: { value: "2026-04-02" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+    await waitFor(() => {
+      expect(screen.getByText("Strana 1 od 1")).toBeInTheDocument();
+    });
+  }, 15000);
 
   it("localizes and exposes the daily supplier-total mismatch warning", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
@@ -564,6 +633,8 @@ describe("DailySalesStatsPage premium controls", () => {
       </StrictMode>,
     );
 
+    const tableDisclosure = await screen.findByTestId("daily-sales-table-disclosure");
+    fireEvent.click(tableDisclosure.querySelector("summary")!);
     const table = await screen.findByTestId("daily-sales-stats-data-table");
     const revenueSort = within(table).getByRole("button", { name: /Prihod dana/ });
     fireEvent.click(revenueSort);

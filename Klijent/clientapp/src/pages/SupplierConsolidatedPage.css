@@ -44,6 +44,23 @@
   max-width: 600px;
 }
 
+.supplier-consolidated-cross-link {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--info) 42%, var(--border-default));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--info) 8%, var(--surface-card));
+  color: var(--text-primary);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.supplier-consolidated-cross-link:hover {
+  border-color: var(--info);
+  background: color-mix(in srgb, var(--info) 15%, var(--surface-card));
+}
+
 .supplier-consolidated-filters {
   display: block;
   position: sticky;

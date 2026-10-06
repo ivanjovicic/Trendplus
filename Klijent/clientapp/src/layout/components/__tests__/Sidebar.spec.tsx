@@ -36,7 +36,7 @@ describe("Sidebar", () => {
     const activeLinks = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
-    expect(activeLinks[0]).toHaveTextContent("Pregled dobavljača");
+    expect(activeLinks[0]).toHaveTextContent("Prodaja po dobavljačima");
   });
 
   it("exposes the expanded state of the desktop sidebar rail toggle", () => {
@@ -72,11 +72,19 @@ describe("Sidebar", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole("link", { name: /Prodaja po dobavljačima/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Odluke/i }));
+    expect(screen.getByRole("link", { name: "Prodaja po dobavljačima" })).toHaveAttribute(
+      "href",
+      "/analytics/supplier",
+    );
     expect(screen.queryByRole("link", { name: /Dobavljači i tipovi obuće/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po tipu obuće/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po boji artikla/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute(
+      "href",
+      "/analytics/daily-sales",
+    );
+    expect(screen.queryByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pre\/Posle nivelacije/ })).toBeInTheDocument();
   });
 });

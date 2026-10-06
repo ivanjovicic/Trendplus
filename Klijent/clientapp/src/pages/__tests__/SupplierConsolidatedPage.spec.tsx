@@ -167,6 +167,22 @@ describe("SupplierConsolidatedPage", () => {
     });
   });
 
+  it("links back to Daily Sales while preserving the canonical period, scope and store", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=overview&fromDate=2026-04-01&toDate=2026-04-30&dataScope=imported&storeId=7"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole("link", { name: "Otvori prodaju po smenama" });
+    const href = new URL(link.getAttribute("href")!, "http://test.local");
+    expect(href.pathname).toBe("/analytics/daily-sales");
+    expect(href.searchParams.get("fromDate")).toBe("2026-04-01");
+    expect(href.searchParams.get("toDate")).toBe("2026-04-30");
+    expect(href.searchParams.get("dataScope")).toBe("imported");
+    expect(href.searchParams.get("storeId")).toBe("7");
+  });
+
   it("renders the backend counting basis in plain language without raw codes", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier"]}>

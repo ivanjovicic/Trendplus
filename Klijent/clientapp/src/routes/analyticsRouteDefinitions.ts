@@ -32,7 +32,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/supplier",
-        label: "Pregled dobavljača",
+        label: "Prodaja po dobavljačima",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -50,7 +50,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/daily-sales",
-        label: "Dnevna prodaja",
+        label: "Prodaja po smenama",
         isDurableReport: false,
         legacyAliases: [],
     },
