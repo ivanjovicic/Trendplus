@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AnalyticsEmptyState from "../AnalyticsEmptyState";
+
+const emptyStateStyles = readFileSync(resolve(process.cwd(), "src/components/analytics/AnalyticsEmptyState.css"), "utf8");
 
 function renderEmptyState(overrides: Partial<React.ComponentProps<typeof AnalyticsEmptyState>> = {}) {
   return render(
@@ -16,6 +20,12 @@ function renderEmptyState(overrides: Partial<React.ComponentProps<typeof Analyti
 }
 
 describe("AnalyticsEmptyState", () => {
+  it("keeps insufficient-data surfaces on the active theme surface", () => {
+    expect(emptyStateStyles).toMatch(/\.analytics-empty-state\s*\{[^}]*background:\s*var\(--surface-elevated/);
+    const insufficientDataStyles = emptyStateStyles.match(/\.aes-insufficient-data\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(insufficientDataStyles).not.toMatch(/background\s*:/);
+  });
+
   it("maps known empty reason codes to Serbian copy", () => {
     renderEmptyState();
 

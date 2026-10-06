@@ -169,19 +169,19 @@ const decisionColumns: AnalyticsTableColumn<DecisionShoeType>[] = [
   { key: "totalCost", header: "Nabavna vrednost (rešeni trošak)", dataType: "currency" },
 ];
 
-const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600 };
-const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600, paddingTop: 10 };
-const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, rgba(102, 255, 126, 0.14))" };
+const CHART_AXIS_TICK = { fill: "var(--chart-axis)", fontSize: 12, fontWeight: 600 };
+const CHART_LEGEND_STYLE = { color: "var(--chart-axis)", fontSize: 12, fontWeight: 600, paddingTop: 10 };
+const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover)" };
 const COMMAND_TOOLTIP_STYLE = {
   ...CHART_TOOLTIP_STYLE,
-  background: "var(--dashboard-tooltip-bg, var(--surface-elevated, #0f172a))",
-  border: "1px solid var(--dashboard-tooltip-border, var(--border-default, rgba(148, 163, 184, 0.35)))",
-  boxShadow: "var(--dashboard-tooltip-shadow, 0 10px 24px rgba(0, 0, 0, 0.28))",
+  background: "var(--chart-tooltip-bg)",
+  border: "1px solid var(--border-default)",
+  boxShadow: "var(--tooltip-box-shadow)",
   borderRadius: "12px",
 };
 const COMMAND_TOOLTIP_LABEL_STYLE = {
   ...CHART_TOOLTIP_LABEL_STYLE,
-  color: "var(--dashboard-tooltip-label, var(--text-primary, #dbffe8))",
+  color: "var(--chart-tooltip-text)",
   fontWeight: 700,
 };
 
@@ -1300,11 +1300,11 @@ export default function ShoeTypeSalesStatsPage() {
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="shoeShareGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-share-start, var(--dashboard-accent, #33f28b))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-share-end, var(--dashboard-secondary, #1ec8ff))" />
+                          <stop offset="0%" stopColor="var(--chart-series-1)" />
+                          <stop offset="100%" stopColor="var(--chart-series-3)" />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--chart-grid)" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={COMMAND_TOOLTIP_STYLE} labelStyle={COMMAND_TOOLTIP_LABEL_STYLE} cursor={CHART_CURSOR_STYLE} formatter={(value: number | string | undefined) => value == null ? "Nije dostupno" : fmtPct(Number(value), 2)} />
@@ -1337,7 +1337,7 @@ export default function ShoeTypeSalesStatsPage() {
                   <div className="shoetype-decision-chart-wrap">
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                       <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                        <CartesianGrid strokeDasharray="2 6" stroke="var(--chart-grid)" />
                         <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                         <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                         <Tooltip
@@ -1347,7 +1347,7 @@ export default function ShoeTypeSalesStatsPage() {
                           formatter={((value: any) => fmtRsd(Number(value))) as any}
                         />
                         <Legend wrapperStyle={CHART_LEGEND_STYLE} iconType="circle" iconSize={8} />
-                        <Bar dataKey="marginContributionRsd" fill="var(--dashboard-danger)" radius={[0, 6, 6, 0]} name="Maržni doprinos (RSD)" />
+                        <Bar dataKey="marginContributionRsd" fill="var(--chart-negative)" radius={[0, 6, 6, 0]} name="Maržni doprinos (RSD)" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1356,7 +1356,7 @@ export default function ShoeTypeSalesStatsPage() {
                 <div className="shoetype-decision-chart-wrap" data-testid="shoe-type-margin-share-chart">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
                     <BarChart data={marginComparison.data} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
+                      <CartesianGrid strokeDasharray="2 6" stroke="var(--chart-grid)" />
                       <XAxis type="number" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
                       <YAxis type="category" dataKey="name" width={180} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
                       <Tooltip
@@ -1371,8 +1371,8 @@ export default function ShoeTypeSalesStatsPage() {
                         iconSize={8}
                         itemSorter={(item) => (item.dataKey === "udeoPrometa" ? 0 : 1)}
                       />
-                      <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
+                      <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-3)" radius={[0, 6, 6, 0]} name="Udeo u maržnom doprinosu %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

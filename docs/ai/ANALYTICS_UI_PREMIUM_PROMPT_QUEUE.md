@@ -44,7 +44,7 @@ Use with:
 | P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
 | P-UI-35 | DONE | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
-| P-UI-36 | IN_PROGRESS | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
+| P-UI-36 | DONE | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
@@ -2361,6 +2361,25 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 ### Addendum 2026-10-04 (UX/UI audit; no status change)
 
 - Replace `--dashboard-*` status aliases and neon fallbacks in `ShoeTypeSalesStatsPage.css`/`.tsx` (`:172-184`) and the Supplier Hub/Color page CSS with P-UI-47 chart/status tokens (audit UX-013/UX-037).
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: shared empty-state surfaces follow the active theme; Supplier Hub, Shoe Type and Color status/chart colors use canonical theme tokens. The named pages retain the shared responsive table/chart primitives and no root overflow was observed in the tested route matrix.
+- Changed files: `AnalyticsEmptyState.css` and spec; `ShoeTypeSalesStatsPage.css`/`.tsx`; `ColorSalesStatsPage.css`; `SupplierDecisionHubPage.css`; P-UI-36 run log and queue/roadmap evidence.
+- Checks run: focused page/component suites 123/123; responsive Chromium fixture matrix 60/60 with zero overflow/errors; three-theme computed background check; analytics guardrails/typecheck; production build; `git diff --check`.
+- Checks not run: populated Supplier Hub browser rendering (local backend returned HTTP 500); real iOS/iPadOS Safari.
+- Run log: `.ai/runs/2026-10-06-P-UI-36-evidence.md`
+- Evidence state: pending post-close recovery
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: populated Supplier Hub chart/table visual check remains unavailable while local backend returns HTTP 500.
+- Follow-up: determined by mandatory post-close routing recovery.
+- Residual risk: no populated live Hub browser evidence; focused Supplier Hub component tests passed.
+- Post-close routing: pending recovery.
+- Prompt defect / scope repair: none.
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
 

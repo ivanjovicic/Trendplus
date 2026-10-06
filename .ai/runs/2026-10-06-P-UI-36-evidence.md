@@ -6,35 +6,51 @@ Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: pending
 Main verification: pending
-Evidence state: pending
+Evidence state: pending post-close recovery
 
 ## What was done
-- Claimed the Supplier Decision Hub, Shoe Type and Color responsive migration after P-UI-35 closed.
-- Confirmed P-UI-39/P-UI-47/P-UI-28/P-UI-29 are DONE. Kept P-UI-43 trust-header density outside this scope.
-- Implementation has not started yet.
+- Removed the warning-tinted background override from the shared insufficient-data state. Its base surface now follows `--surface-elevated`; the warning border remains.
+- Added a regression assertion that the insufficient-data modifier does not override the theme surface.
+- Migrated Shoe Type chart colors to the canonical chart tokens and Shoe Type, Color and Supplier Hub status/trend colors to the canonical theme status/chart tokens. Recommendation values, statuses, reasons, data and series were not changed.
+- Confirmed the three pages already use the shared responsive table scroll primitive; Supplier Hub panel columns already stack below 1200px and the chart components use `ResponsiveContainer` with a zero minimum width. Kept these existing contracts and verified their current behavior.
 
 ## Files changed
-- `.ai/task-locks/P-UI-36-codex.lock.md` (local claim file, excluded from delivery)
+- `Klijent/clientapp/src/components/analytics/AnalyticsEmptyState.css`
+- `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsEmptyState.spec.tsx`
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.css`
+- `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.tsx`
+- `Klijent/clientapp/src/pages/ColorSalesStatsPage.css`
+- `Klijent/clientapp/src/pages/SupplierDecisionHubPage.css`
 - `.ai/runs/2026-10-06-P-UI-36-evidence.md`
-- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` and `MASTER_ROADMAP.md` (claim and owner-pointer updates)
+- `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- `MASTER_ROADMAP.md`
 
 ## Validation run
-- Full post-close routing recovery at `origin/main` `e7f9bc47325348d5f7ad202e9850926c91df95a5` scanned the complete 16-file active RQ/SQL/UI queue/addendum set. P-UI-36 was READY, dependencies are satisfied, and no active Supplier/segment RQ owner, matching lock, branch or open PR was found.
+- Focused baseline suites before edits: 122 tests passed across 9 files.
+- Focused suites after edits: 123 tests passed across 9 files, including Supplier Hub, Shoe Type, Color and the shared empty-state regression.
+- `npm run responsive:baseline -- --mode fixture --route-ids color_sales,shoe_type --strict --output-dir tmp/ui-visual/pui36-after` -> PASS, 60/60 route/theme/viewport cases, zero root overflow, zero page errors; intentional overflow self-test passed.
+- Browser computed-style check for insufficient-data state in light, soft-gray and neon-dark themes -> rendered background matched each theme's `--surface-elevated` token.
+- Supplier Hub connected browser check at 375/768/1280 -> root had no horizontal overflow. The configured backend returned HTTP 500, so data-backed Hub chart/table elements did not render in this check; focused Hub component tests passed.
+- `npm run check:analytics-guardrails` -> PASS; encoding, guardrail baseline self-test, analytics guardrails and typecheck passed.
+- `npm run build` -> PASS; Vite reported its existing Recharts chunk-size advisory (>500 kB).
+- `git diff --check` -> PASS.
 
 ## Validation not run
-- P-UI-36 focused page/chart tests and responsive matrix -> pending implementation.
+- A populated live Supplier Hub visual comparison -> not available because the connected local backend returned HTTP 500. No production data or semantics were altered.
+- Real iOS/iPadOS Safari -> not run; browser matrix uses Chromium.
 
 ## Documentation impact
-- The UI queue, Master roadmap and RQ supplemental pointer now record P-UI-36 IN_PROGRESS.
+- Updated the P-UI-36 completion record, owner queue pointer and Master roadmap after delivery and post-close recovery.
 
 ## What was missed
-- Implementation and P-UI-36 focused proof have not started.
+- Hub chart/table geometry with a successful populated backend response remains unobserved in a live browser session; its page/component suites and responsive page shell passed.
 
 ## Risks
-- Preserve status/reason, score, supplier/category/store, chart and export semantics. Keep trust-header compaction with P-UI-43.
+- Keep the Hub populated-browser visual check as follow-up evidence if a working local backend becomes available. Existing chart/table semantics and semantic status labels are covered by the focused page tests.
 
 ## Post-close routing recovery
-- P-UI-36 was promoted/claimed in the post-close recovery for P-UI-35 at base `e7f9bc47325348d5f7ad202e9850926c91df95a5`; details are recorded in `.ai/runs/2026-10-06-P-UI-35-evidence.md`.
+- Pending the post-delivery `origin/main` cascade.
 
 ## Next
-- Read the P-UI-36 ownership addenda and the exact three page sources/tests, then establish focused and browser baselines before editing.
+- Pending post-close recovery.

@@ -416,33 +416,33 @@
 }
 
 .sdh-decision-status.status-boost {
-  background: var(--success-soft, var(--theme-color-rgba-52-211-153-0p15, rgba(52, 211, 153, 0.15)));
-  border: 1px solid var(--success-border, var(--theme-color-rgba-52-211-153-0p45, rgba(52, 211, 153, 0.45)));
-  color: var(--success, var(--theme-color-6ee7b7, #6ee7b7));
+  background: var(--status-success-fill);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .sdh-decision-status.status-keep {
-  background: var(--warning-soft, var(--theme-color-rgba-251-191-36-0p15, rgba(251, 191, 36, 0.15)));
-  border: 1px solid var(--warning-border, var(--theme-color-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45)));
-  color: var(--warning, var(--theme-color-fcd34d, #fcd34d));
+  background: var(--status-warning-fill);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .sdh-decision-status.status-reduce {
-  background: var(--error-soft, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, var(--theme-color-rgba-248-113-113-0p15, rgba(248, 113, 113, 0.15)))));
-  border: 1px solid var(--error-border, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));
-  color: var(--error, var(--theme-color-fca5a5, #fca5a5));
+  background: var(--status-error-fill);
+  border: 1px solid var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .trend-up {
-  color: var(--success, var(--theme-color-34d399, #34d399));
+  color: var(--chart-positive);
 }
 
 .trend-down {
-  color: var(--error, var(--theme-color-f87171, #f87171));
+  color: var(--chart-negative);
 }
 
 .trend-neutral {
-  color: var(--info, var(--theme-color-93c5fd, #93c5fd));
+  color: var(--chart-axis);
 }
 
 .sdh-decision-detail-btn {

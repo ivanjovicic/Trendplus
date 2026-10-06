@@ -235,12 +235,12 @@
 
 .color-decision-kpi strong.trend-up,
 .trend-up {
-  color: var(--success, #34d399);
+  color: var(--chart-positive);
 }
 
 .color-decision-kpi strong.trend-down,
 .trend-down {
-  color: var(--error, #f87171);
+  color: var(--chart-negative);
 }
 
 .trend-neutral {
@@ -413,32 +413,32 @@
 }
 
 .color-decision-status.status-boost {
-  background: var(--success-soft, rgba(52, 211, 153, 0.15));
-  border: 1px solid color-mix(in srgb, var(--success, #34d399) 46%, transparent);
-  color: var(--success, #6ee7b7);
+  background: var(--status-success-fill);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .color-decision-status.status-keep {
-  background: var(--warning-soft, rgba(251, 191, 36, 0.15));
-  border: 1px solid color-mix(in srgb, var(--warning, #fcd34d) 46%, transparent);
-  color: var(--warning, #fcd34d);
+  background: var(--status-warning-fill);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .color-decision-status.status-review {
-  background: color-mix(in srgb, var(--warning, #facc15) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warning, #facc15) 42%, transparent);
-  color: var(--warning, #facc15);
+  background: var(--status-warning-fill);
+  border: 1px solid var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .color-decision-status.status-reduce {
-  background: var(--error-soft, rgba(248, 113, 113, 0.15));
-  border: 1px solid color-mix(in srgb, var(--error, #fca5a5) 46%, transparent);
-  color: var(--error, #fca5a5);
+  background: var(--status-error-fill);
+  border: 1px solid var(--status-error-border);
+  color: var(--status-error-text);
 }
 
 .color-decision-status.status-na {
-  background: rgba(148, 163, 184, 0.14);
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
   color: var(--text-secondary);
 }
 
