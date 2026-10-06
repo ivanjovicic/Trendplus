@@ -51,6 +51,7 @@ type AnalyticsTrustHeaderProps = {
   trustPending?: boolean;
   meta?: AnalyticsResponseMeta | null;
   showOperationsTrust?: boolean;
+  showTitle?: boolean;
 };
 
 const MODE_LABELS: Record<AnalyticsTrustHeaderProps["mode"], string> = {
@@ -108,6 +109,20 @@ function renderLink(href: string, label: string, className: string) {
   }
 
   return <a href={href} className={className}>{label}</a>;
+}
+
+function formatBelgradeDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return formatDateTime(value);
+  return date.toLocaleString("sr-RS", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Europe/Belgrade",
+  });
 }
 
 function normalizeFreshness(value: string | null | undefined): "fresh" | "stale" | "critical" | "unknown" {
@@ -219,6 +234,7 @@ export default function AnalyticsTrustHeader({
   trustPending = false,
   meta = null,
   showOperationsTrust = false,
+  showTitle = true,
 }: AnalyticsTrustHeaderProps) {
   const normalizedStatus = trustPending ? null : normalizeStatus(dataQualityStatus);
   const tone = trustPending ? "neutral" : statusTone(normalizedStatus);
@@ -307,6 +323,17 @@ export default function AnalyticsTrustHeader({
   const periodSummary = hasPeriod
     ? `${formatDate(safeRequestedFrom)} - ${formatDate(safeRequestedTo)}`
     : "Period nije definisan";
+  const effectivePeriodSummary = hasEffectivePeriod
+    ? `${formatDate(safeEffectiveFrom)} - ${formatDate(safeEffectiveTo)}`
+    : "Nije dostupno";
+  const readinessSummaryLabel = showOperationsTrust
+    ? resolvedReadinessState === "blocked" ? readinessLabels.blocked : normalizedStatus === "critical" ? statusLabel : readinessLabels[resolvedReadinessState]
+    : statusLabel;
+  const readinessSummaryTone = normalizedStatus === "critical" || freshness === "critical"
+    ? "critical"
+    : showOperationsTrust
+      ? resolvedReadinessState === "blocked" ? "critical" : resolvedReadinessState === "decision_ready" ? "good" : resolvedReadinessState === "signal_only" ? "warning" : "neutral"
+      : tone;
   const detailsId = useId();
 
   return (
@@ -314,10 +341,31 @@ export default function AnalyticsTrustHeader({
       className={`analytics-trust-header${detailsExpanded ? " analytics-trust-header--expanded" : " analytics-trust-header--collapsed"}${compact ? " analytics-trust-header--compact" : ""}`}
       aria-label="Kontekst pouzdanosti analitike"
     >
+      <div className="ath-summary-bar" data-testid="analytics-trust-summary">
+        <span className={`ath-summary-readiness ath-summary-readiness-${readinessSummaryTone}`} data-testid="analytics-trust-summary-readiness">
+          {readinessSummaryLabel}
+        </span>
+        {showTitle ? <h1 className="ath-title ath-summary-title">{title}</h1> : null}
+        <span className="ath-summary-fact ath-summary-period-fact"><span>Efektivni period</span><strong>{effectivePeriodSummary}</strong></span>
+        {hasObservedPeriod ? (
+          <span className="ath-summary-fact"><span>Podaci do</span><strong>{formatDate(safeObservedTo)}</strong></span>
+        ) : null}
+        <span className={`ath-freshness-badge ath-freshness-${freshness}`}>{FRESHNESS_LABELS[freshness]}</span>
+        <button
+          type="button"
+          className="ath-details-toggle"
+          aria-expanded={detailsExpanded}
+          aria-controls={detailsId}
+          data-testid="analytics-trust-details-toggle"
+          onClick={() => setDetailsExpanded((open) => !open)}
+        >
+          {detailsExpanded ? "Sakrij detalje" : "Detalji pouzdanosti"}
+        </button>
+      </div>
+      <div id={detailsId} className="ath-full-details" hidden={!detailsExpanded}>
       <div className="ath-main">
         <div className="ath-main-copy">
           <p className="ath-overline">{MODE_LABELS[mode]}</p>
-          <h1 className="ath-title">{title}</h1>
           <p className={`ath-description${detailsExpanded ? "" : " ath-description--clamp"}`}>{description}</p>
           {refreshIsRunning ? (
             <p className="ath-live">Osvežavanje je u toku{refreshStepLabel ? ` (${refreshStepLabel})` : ""}</p>
@@ -346,7 +394,7 @@ export default function AnalyticsTrustHeader({
       </div>
 
       {showFallbackBanner ? (
-        <div className="ath-banner ath-banner-warning" role="note">
+        <div className="ath-banner ath-banner-warning" role="status">
           <strong>Pomoćni skup je aktivan.</strong>{" "}
           Za traženi period nema dovoljno podataka. Korišćen je skup podataka {effectiveLabel ?? normalizedEffectiveDataset ?? "Nije dostupno"} kao pomoćni signal.
           {fallbackReasonText ? ` ${fallbackReasonText}` : null}
@@ -355,13 +403,13 @@ export default function AnalyticsTrustHeader({
       ) : null}
 
       {showGatedBanner ? (
-        <div className="ath-banner ath-banner-neutral" role="note">
+        <div className="ath-banner ath-banner-neutral" role="status">
           <strong>Preporuka nije dostupna.</strong> Sistem ne prikazuje konačnu preporuku jer nema dovoljno pouzdanih podataka za izabrani period.
         </div>
       ) : null}
 
       {showPartialBanner ? (
-        <div className="ath-banner ath-banner-warning" role="note">
+        <div className="ath-banner ath-banner-warning" role="status">
           <strong>Upozorenje:</strong> Prikaz može biti delimičan ili zastareo.
         </div>
       ) : null}
@@ -369,20 +417,7 @@ export default function AnalyticsTrustHeader({
       {recommendationNoteText ? <p className="ath-note">{recommendationNoteText}</p> : null}
       {emptyStateReasonText ? <p className="ath-empty-reason">{emptyStateReasonText}</p> : null}
 
-      <div className="ath-details-toggle-row">
-        <button
-          type="button"
-          className="ath-details-toggle"
-          aria-expanded={detailsExpanded}
-          aria-controls={detailsId}
-          data-testid="analytics-trust-details-toggle"
-          onClick={() => setDetailsExpanded((open) => !open)}
-        >
-          {detailsExpanded ? "Sakrij detalje pouzdanosti" : "Prikaži detalje pouzdanosti"}
-        </button>
-      </div>
-
-      <div className="ath-details-panel" id={detailsId} data-testid="analytics-trust-details-panel" hidden={!detailsExpanded}>
+      <div className="ath-details-panel" data-testid="analytics-trust-details-panel" hidden={!detailsExpanded}>
         {detailsExpanded ? (
           <>
         <div className="ath-meta-grid">
@@ -403,7 +438,7 @@ export default function AnalyticsTrustHeader({
             <span className="ath-meta-subtle">Poslednji nalaz: {rawIntegrityState}</span>
           ) : null}
           {meta?.operationsIntegrityCheckedAtUtc && !trustPending ? (
-            <span className="ath-meta-subtle">Provereno: {formatDateTime(meta.operationsIntegrityCheckedAtUtc)}</span>
+            <span className="ath-meta-subtle">Provereno: {formatBelgradeDateTime(meta.operationsIntegrityCheckedAtUtc)}</span>
           ) : null}
           {evidenceId ? <span className="ath-integrity-evidence-id">ID dokaza: {evidenceId}</span> : null}
           {evidenceContext ? <span className="ath-integrity-context">Kontekst dokaza: {evidenceContext}</span> : null}
@@ -435,7 +470,7 @@ export default function AnalyticsTrustHeader({
         <div className="ath-meta-item">
           <span className="ath-meta-key">Poslednje osveženje</span>
           <strong className="ath-meta-value">
-            {lastRefreshAt ? formatDateTime(lastRefreshAt) : "Vreme osveženja nije dostupno"}
+            {lastRefreshAt ? formatBelgradeDateTime(lastRefreshAt) : "Vreme osveženja nije dostupno"}
           </strong>
           <span className={`ath-freshness-badge ath-freshness-${freshness}`}>
             {FRESHNESS_LABELS[freshness]}
@@ -478,7 +513,7 @@ export default function AnalyticsTrustHeader({
               <div><span>Redovi bez nabavne cene</span><strong>{renderSummaryValue(dataQualitySummary.missingCostCount)}</strong></div>
               <div><span>Artikli bez kategorije</span><strong>{renderSummaryValue(dataQualitySummary.missingCategoryCount)}</strong></div>
               <div><span>Nedovoljni signali</span><strong>{renderSummaryValue(dataQualitySummary.insufficientSignalCount)}</strong></div>
-              <div><span>Ignorisani redovi</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
+              <div><span>Ignorisani redovi (skriveno zbog limita)</span><strong>{renderSummaryValue(dataQualitySummary.ignoredRowsCount)}</strong></div>
             </div>
           ) : (
             <p className={`ath-summary-missing ${compact ? "ath-summary-missing-compact" : ""}`}>Detaljan kvalitet podataka nije dostupan za ovaj ekran.</p>
@@ -492,6 +527,7 @@ export default function AnalyticsTrustHeader({
         </div>
           </>
         ) : null}
+      </div>
       </div>
     </section>
   );

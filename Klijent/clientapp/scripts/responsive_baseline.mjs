@@ -11,15 +11,15 @@ const ROUTES = [
   { id: "prodaja", path: "/prodaja", readySelector: ".mobile-entry-form" },
   { id: "unos_robe", path: "/unos-robe", readySelector: ".mobile-entry-form" },
   { id: "nivelacija_cena", path: "/nivelacija", readySelector: ".form-page" },
-  { id: "analytics", path: "/analytics", readySelector: '[data-testid="analytics-control-bar"]', expandSelector: ".details-expand", afterExpandSelector: ".analytics-chart-grid .chart-wrap", captureSelector: ".analytics-chart-grid" },
-  { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
-  { id: "supplier", path: "/analytics/supplier", readySelector: ".supplier-consolidated-filters", captureSelector: ".supplier-consolidated-filters" },
+  { id: "analytics", path: "/analytics", readySelector: '[data-testid="analytics-control-bar"]', expandSelector: ".details-expand", afterExpandSelector: ".analytics-chart-grid .chart-wrap", captureSelector: ".analytics-chart-grid", pui43Selector: ".analytics-executive-kpis", pui43DesktopFold: true },
+  { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double", pui43Selector: ".daily-sales-kpis", pui43MobileKpi: true },
+  { id: "supplier", path: "/analytics/supplier", readySelector: ".supplier-consolidated-filters", captureSelector: ".supplier-consolidated-filters", pui43Selector: ".supplier-decision-kpis.analytics-kpi-tier--primary", pui43DesktopFold: true },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "pilot_intake", path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all", readySelector: ".pilot-intake-durable-table-wrap", printSmoke: true },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]', pui39Overflow: true },
   { id: "shoe_type", path: "/analytics/shoe-type-sales-stats", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
-  { id: "pre_nivelacija", path: "/analytics/pre-nivelacija-prioriteti", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
-  { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap" },
+  { id: "pre_nivelacija", path: "/analytics/pre-nivelacija-prioriteti", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true, pui43Selector: ".pnp-decision-kpis", pui43TabletGrid: true, pui43DesktopFold: true },
+  { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap", pui43Selector: ".product-decision-kpis", pui43MobileKpi: true, pui43DesktopFold: true },
   { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
   { id: "articles", path: "/artikli/lista", readySelector: '[data-testid="article-list-table"]' },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
@@ -398,9 +398,9 @@ async function fixtureResponse(request, options) {
         scenarioDisclaimer: "Sintetički podaci; nije poslovna preporuka.",
       },
       summary: {
-        supplierCount: 0, candidatesCount: 0, highPriorityCount: 0, increaseFocusCount: 0,
-        maintainCount: 0, reviewCount: 0, doNotTrustCount: 0, insufficientDataCount: 0,
-        totalStockAtRisk: null, totalStockAtRiskCoverageEligible: 0, totalStockAtRiskCoverageTotal: 0,
+        supplierCount: 1, candidatesCount: 1, highPriorityCount: 1, increaseFocusCount: 0,
+        maintainCount: 0, reviewCount: 0, doNotTrustCount: 0, insufficientDataCount: 1,
+        totalStockAtRisk: 12, totalStockAtRiskCoverageEligible: 1, totalStockAtRiskCoverageTotal: 1,
         estimatedAvoidableMarkdownLoss: null, estimatedAvoidableMarkdownLossCoverageEligible: 0,
         estimatedAvoidableMarkdownLossCoverageTotal: 0, expectedHighlightRevenueUplift: null,
         expectedHighlightRevenueUpliftCoverageEligible: 0, expectedHighlightRevenueUpliftCoverageTotal: 0,
@@ -410,11 +410,90 @@ async function fixtureResponse(request, options) {
       filterFacets: {
         suppliers: [], seasons: [], footwearTypes: [], stores: [{ id: 1, label: PUI39_LONG_STORE_OPTION }],
       },
-      candidates: [],
+      candidates: [{
+        artikalId: 701, sku: "RESP-701", storeId: 1, storeName: "Fixture prodavnica", supplierId: 21,
+        seasonId: 31, footwearTypeId: 4, supplierName: "Fixture dobavljač", category: "Patike",
+        footwearType: "Patike", season: "Fixture sezona", stockUnits: 12, units180: 24,
+        positiveUnits180: 24, negativeUnits180: 0, velocity180: 0.8, daysSinceLastSale: 45,
+        salesHistoryStatus: "sold", firstReceiptDateUtc: "2026-01-01T00:00:00Z", daysSinceReceipt: 90,
+        receiptEvidenceStatus: "received", stockAgeStatus: "established", markdownEvents: 1,
+        avgMarkdownPct: 12, grossMarginPctEst: 34, grossMarginPctSigned: 34, belowCost: false,
+        seasonRecencyBoost: 18, preNivelacijaScore: 86, priorityBand: "high",
+        scoreBreakdown: { stockPressure: 71, velocityRisk: 63, recencyRisk: 54, markdownOpportunity: 42, marginPotential: 61, seasonRecencyBoost: 18 },
+        scenarioHighlightNow: { expectedUnits30d: 16, expectedRevenue30d: 124000, expectedMargin30d: 36000, effectivePrice: 7990 },
+        scenarioMarkdownNow: { expectedUnits30d: 18, expectedRevenue30d: 117000, expectedMargin30d: 33000, effectivePrice: 7190 },
+        marginDeltaHighlightVsMarkdown: 3000, revenueDeltaHighlightVsMarkdown: 7000,
+        hasCompleteEvidence: false, evidenceReason: "synthetic_fixture", salesEvidenceStatus: "positive_net_sales",
+        salesEvidenceReason: null, confidence: "Srednja", reliabilityPct: 62, decisionScore: 72,
+        recommendationAllowed: false,
+        recommendation: { status: "insufficient_data", label: "Nedovoljno podataka", summary: "Sintetički signal za responsive merenje.", confidencePct: 22, reliabilityPct: 28, dataQualityStatus: "insufficient_data", recommendationAllowed: false, reasonCodes: ["responsive_fixture"] },
+      }],
       queues: { highlightNow: [], monitor: [], likelyMarkdownSoon: [] },
       alerts: [], page: 1, pageSize: 20, totalCandidates: 0, recommendationAllowed: false,
       evidenceWindow: null,
       meta: { success: true, dataQualityStatus: "insufficient_data", emptyReason: "no_data_in_period" },
+    }) };
+  }
+
+  if (url.pathname === "/api/analytics/supplier-sales-stats") {
+    const supplier = {
+      dobavljacId: 21, dobavljacNaziv: "Sintetički dobavljač A", isUnknown: false,
+      preNivelacijePromet: 0, preNivelacijeKolicina: 0, posleNivelacijePromet: 100000,
+      posleNivelacijeKolicina: 12, ukupanPromet: 100000, ukupnaKolicina: 12,
+      previousPeriodRevenue: 80000, previousPeriodUnits: 10, brojArtikalaSaNivelacijom: 2,
+      brojArtikalaUkupno: 8, revenueWithCost: 100000, estimatedCostRevenue: 0,
+      marginContribution: 38000, marginDataCoveragePct: 100, fallbackCostCoveragePct: 0,
+      marginPct: 38, totalCost: 62000, historicalCostRevenue: 100000,
+      historicalCostCoveragePct: 100, estimatedCostCoveragePct: 0, snapshotCostRevenue: 0,
+      snapshotCostCoveragePct: 0, noCostRevenue: 0, noCostCoveragePct: 0, isEstimatedMargin: false,
+      marginQualityLabel: "Istorijski potvrđena", marginQualityTier: "confirmed",
+      marginQualityShortLabel: "Potvrđena", marginQualityTooltip: "Sintetički responsive fixture.",
+      popRevenueChangePct: 25, popUnitsChangePct: 20, prePostNivelacijaRevenueImpactPct: null,
+      prePostNivelacijaUnitsImpactPct: null, prePostNivelacijaRevenueCoveragePct: null,
+      prePostSignalNote: null, prePostComparableArticleCount: 0, primaryFootwearType: "Patike",
+      primaryFootwearTypeSharePct: 100, footwearTypeCount: 1,
+      footwearBreakdown: [{ tipObuceId: 4, tipObuceNaziv: "Patike", ukupanPromet: 100000,
+        ukupnaKolicina: 12, brojArtikala: 8, totalCost: 62000, marginContribution: 38000,
+        marginPct: 38, shareOfSupplierRevenuePct: 100, shareOfSupplierMarginContributionPct: 100,
+        previousPeriodRevenue: 80000, previousPeriodUnits: 10, popRevenueChangePct: 25,
+        popUnitsChangePct: 20 }],
+      sharePct: 100, shareOfMarginContribution: 100, shareOfProfit: 100, shareOfUnits: 100,
+      reliabilityPct: 88, recommendation: { status: "maintain", label: "Zadrži",
+        summary: "Sintetički signal za responsive merenje.", confidencePct: 88, reliabilityPct: 88,
+        dataQualityStatus: "good", recommendationAllowed: true, reasonCodes: ["responsive_fixture"] },
+      promenaKolicine: 20,
+    };
+    const totals = {
+      ukupanPromet: 100000, ukupanMarzniDoprinos: 38000, ukupanTrosak: 62000,
+      prosecnaMarza: 38, weightedMarginRevenue: 100000, weightedMarginContribution: 38000,
+      marginBenchmarkBasis: "known_supplier_covered_revenue_weighted", historicalCostCoveragePct: 100,
+      estimatedCostCoveragePct: 0, noCostCoveragePct: 0, snapshotCostRevenue: 0, snapshotCostCoveragePct: 0,
+      isSnapshotActive: false, snapshotGeneratedAtUtc: null, isEstimatedMargin: false,
+      marginQualityLabel: "Istorijski potvrđena", marginQualityTier: "confirmed",
+      marginQualityShortLabel: "Potvrđena", marginQualityTooltip: "Sintetički responsive fixture.",
+      prePromet: 0, poslePromet: 100000, ukupnaKolicina: 12, preKolicina: 0, posleKolicina: 12,
+      previousPeriodRevenue: 80000, previousPeriodUnits: 10, brojDobavljaca: 1,
+      popRevenueChangePct: 25, popUnitsChangePct: 20, prePostNivelacijaRevenueImpactPct: null,
+      prePostNivelacijaUnitsImpactPct: null,
+      recommendationSummary: { increaseFocus: 0, maintain: 1, review: 0, doNotTrust: 0, insufficientData: 0 },
+    };
+    return { status: 200, body: JSON.stringify({
+      generatedAt: "2026-10-02T00:00:00Z", meta: { success: true, dataQualityStatus: "good" },
+      fromDate: "2026-09-01T00:00:00Z", toDate: "2026-10-01T00:00:00Z",
+      dataWindowFrom: "2026-04-01T00:00:00Z", dataWindowTo: "2026-10-01T00:00:00Z",
+      sezonaId: null, storeId: null, dataScope: "all", provenanceBasis: "responsive_fixture",
+      recommendationAllowed: true, recommendationReferenceCohort: { scope: "all_response_suppliers",
+        supplierCount: 1, includesUnknown: false, basis: "responsive_fixture" },
+      suppliers: [supplier], totals, dataQuality: {
+        missingCostQty: 0, missingCostRevenue: 0, missingCostRevenueSharePct: 0,
+        noCostRevenue: 0, noCostRevenueSharePct: 0, costCoveredRevenue: 100000,
+        costCoveredRevenueSharePct: 100, historicalCostRevenue: 100000,
+        historicalCostRevenueSharePct: 100, snapshotCostRevenue: 0, snapshotCostRevenueSharePct: 0,
+        estimatedCostRevenue: 0, estimatedCostRevenueSharePct: 0,
+        costSourceBasis: "responsive_fixture", unknownSupplierRevenue: 0,
+        unknownSupplierRevenueSharePct: 0, revenueWithNivelacijaSplit: 0,
+        revenueWithNivelacijaSplitSharePct: null,
+      }, sezone: [],
     }) };
   }
 
@@ -921,7 +1000,7 @@ async function run(options) {
 
           const viewportHeight = route.pui40Shell
             ? viewportWidth === 1024 ? 768 : viewportWidth === 1280 ? 800 : 900
-            : 900;
+            : route.pui43Selector && viewportWidth === 1280 ? 800 : 900;
           await page.setViewport({
             width: viewportWidth,
             height: viewportHeight,
@@ -953,6 +1032,7 @@ async function run(options) {
           let navigationError = null;
           let interactionStep = null;
           let interaction = null;
+          let pui43DefaultLayout = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
@@ -963,6 +1043,14 @@ async function run(options) {
               await page.waitForFunction((expectedLabel) => [...document.querySelectorAll(".analytics-control-bar select")]
                 .some((select) => [...select.options].some((option) => option.textContent?.trim().startsWith(expectedLabel))),
               { timeout: options.timeoutMs }, expectedPrefix);
+            }
+            if (route.pui43Selector) {
+              await page.waitForSelector(route.pui43Selector, { timeout: options.timeoutMs, visible: true });
+              pui43DefaultLayout = await page.evaluate((selector) => ({
+                trustHeaderHeight: Math.round(document.querySelector(".analytics-trust-header")?.getBoundingClientRect().height ?? 0),
+                firstContentTop: Math.round(((document.querySelector(selector)?.getBoundingClientRect().top ?? 0) + window.scrollY) * 100) / 100,
+                viewportHeight: window.innerHeight,
+              }), route.pui43Selector);
             }
             if (route.expandSelector) {
               await page.waitForFunction((selector) => {
@@ -1115,6 +1203,38 @@ async function run(options) {
 
           const geometry = await collectGeometry(page, viewportWidth);
           if (route.pui40Shell) assertPui40Shell(geometry);
+          let pui43Layout = null;
+          if (route.pui43Selector) {
+            const trustLayout = pui43DefaultLayout ?? await page.evaluate((selector) => {
+              const trustHeader = document.querySelector(".analytics-trust-header");
+              const firstContent = document.querySelector(selector);
+              return {
+                trustHeaderHeight: trustHeader ? Math.round(trustHeader.getBoundingClientRect().height) : null,
+                firstContentTop: firstContent ? Math.round((firstContent.getBoundingClientRect().top + window.scrollY) * 100) / 100 : null,
+                viewportHeight: window.innerHeight,
+              };
+              }, route.pui43Selector);
+            pui43Layout = trustLayout;
+            if (viewportWidth === 360 && (!trustLayout.trustHeaderHeight || trustLayout.trustHeaderHeight > 260)) {
+              throw new Error(`P-UI-43 trust header exceeds 260px at 360px on ${route.id}: ${trustLayout.trustHeaderHeight ?? "missing"}`);
+            }
+            if (viewportWidth === 1280 && (!trustLayout.trustHeaderHeight || trustLayout.trustHeaderHeight > 56)) {
+              throw new Error(`P-UI-43 desktop trust strip exceeds 56px on ${route.id}: ${trustLayout.trustHeaderHeight ?? "missing"}`);
+            }
+            if (route.pui43MobileKpi && viewportWidth === 360 && (!trustLayout.firstContentTop || trustLayout.firstContentTop > trustLayout.viewportHeight * 1.5)) {
+              throw new Error(`P-UI-43 first KPI exceeds 1.5 viewport heights on ${route.id}: ${trustLayout.firstContentTop ?? "missing"}`);
+            }
+            if (route.pui43TabletGrid && viewportWidth >= 640 && viewportWidth < 1024) {
+              await page.click('[data-testid="analytics-trust-details-toggle"]');
+              const columnCount = await page.$eval(".ath-full-details .ath-meta-grid", (grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+              if (columnCount !== 2) throw new Error(`P-UI-43 tablet trust details use ${columnCount} columns at ${viewportWidth}px on ${route.id}`);
+            }
+            if (route.pui43DesktopFold
+              && viewportWidth === 1280
+              && (!trustLayout.firstContentTop || trustLayout.firstContentTop >= trustLayout.viewportHeight)) {
+              throw new Error(`P-UI-43 first decision region is below the desktop fold on ${route.id}: ${trustLayout.firstContentTop ?? "missing"}`);
+            }
+          }
           const printSmoke = route.printSmoke ? await (async () => {
             await page.emulateMediaType("print");
             return page.evaluate(() => {
@@ -1176,6 +1296,7 @@ async function run(options) {
             viewportWidth,
             mode: options.mode,
             geometry,
+            pui43Layout,
             screenshot: screenshotPath,
             consoleErrors,
             pageErrors,

@@ -39,15 +39,70 @@ function expandTrustDetails() {
 }
 
 describe("AnalyticsTrustHeader", () => {
+  it("keeps readiness, effective period, observed horizon and freshness in the compact disclosure summary", () => {
+    renderHeader({
+      effectivePeriodFrom: "2026-06-03T00:00:00Z",
+      effectivePeriodTo: "2026-06-28T23:59:59Z",
+      observedPeriodFrom: "2026-05-12T00:00:00Z",
+      observedPeriodTo: "2026-05-28T00:00:00Z",
+      showOperationsTrust: true,
+      meta: {
+        success: true,
+        decisionReadiness: {
+          state: "blocked",
+          surfaceRole: "recommendation",
+          recommendationAllowed: false,
+          reasonCodes: ["insufficient_evidence"],
+          evidenceReferences: [],
+          repairPath: null,
+        },
+        operationsIntegrityEvidenceId: "sha256:private-evidence",
+      },
+    });
+
+    const summary = screen.getByTestId("analytics-trust-summary");
+    expect(summary).toHaveTextContent("Blokirano");
+    expect(summary).toHaveTextContent("Efektivni period");
+    expect(summary).toHaveTextContent("Podaci do");
+    expect(summary).toHaveTextContent("Sveže");
+    expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("sha256:private-evidence")).not.toBeInTheDocument();
+
+    expandTrustDetails();
+    expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/ID dokaza: sha256:private-evidence/)).toBeInTheDocument();
+  });
+
+  it("does not label the requested period as effective when the backend omits an effective period", () => {
+    renderHeader();
+
+    const periodFact = screen.getByTestId("analytics-trust-summary").querySelector(".ath-summary-period-fact");
+    expect(periodFact?.querySelector("strong")).toHaveTextContent("Nije dostupno");
+    expect(periodFact).not.toHaveTextContent("01.06.2026");
+  });
+
+  it("formats refresh timestamps for Belgrade and uses status semantics for warnings", () => {
+    renderHeader({ dataFreshnessStatus: "stale", isPartial: true });
+    expandTrustDetails();
+
+    expect(screen.getByText("01.07.2026. 10:15")).toBeInTheDocument();
+    expect(screen.getAllByRole("status").some((banner) => banner.textContent?.includes("Prikaz može biti delimičan ili zastareo"))).toBe(true);
+  });
+
+  it("allows a page with its own h1 to suppress the trust-header title", () => {
+    renderHeader({ showTitle: false });
+    expect(screen.queryByRole("heading", { name: "Izvršni pregled" })).not.toBeInTheDocument();
+  });
+
   it("renders decision context, freshness, data quality summary and support links", () => {
     renderHeader();
 
-    expect(screen.getByRole("heading", { name: "Izvršni pregled" })).toBeInTheDocument();
     expect(screen.getByText("Preporuka sistema")).toBeInTheDocument();
     expect(screen.getByText("Podaci deluju pouzdano")).toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-context-strip")).toHaveTextContent("Sveže");
     expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "false");
     expandTrustDetails();
+    expect(screen.getByRole("heading", { name: "Izvršni pregled" })).toBeInTheDocument();
     expect(screen.getByTestId("analytics-trust-details-toggle")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("analytics_daily_summary")).toBeInTheDocument();
     expect(screen.getByText("mv_analytics_daily_summary")).toBeInTheDocument();
@@ -56,7 +111,7 @@ describe("AnalyticsTrustHeader", () => {
     expect(summary).not.toBeNull();
     expect(within(summary as HTMLElement).getByText("Artikli bez dobavljača")).toBeInTheDocument();
     expect(within(summary as HTMLElement).getByText("Redovi bez nabavne cene")).toBeInTheDocument();
-    expect(within(summary as HTMLElement).getByText("Ignorisani redovi")).toBeInTheDocument();
+    expect(within(summary as HTMLElement).getByText("Ignorisani redovi (skriveno zbog limita)")).toBeInTheDocument();
     expect(within(summary as HTMLElement).getByText("5")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");

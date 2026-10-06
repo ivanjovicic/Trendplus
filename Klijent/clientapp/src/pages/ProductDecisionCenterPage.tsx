@@ -1504,6 +1504,7 @@ export default function ProductDecisionCenterPage() {
     <section className="product-decision-page">
       <AnalyticsTrustHeader
         title="Odluke o proizvodima"
+        showTitle={false}
         description="Pregled preporuka za dopunu, pojačanje, cenu, praćenje i proveru podataka po artiklu."
         periodFrom={payload?.periodFromUtc ?? fromDate}
         periodTo={payload?.periodToUtc ?? toDate}
