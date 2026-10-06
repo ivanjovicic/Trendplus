@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-45 (IN_PROGRESS; claimed from fresh `origin/main` `9b33ef73ca7b8284675013870c4ccc6ba382d4a0`). Other READY lanes: `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-49 (READY; selected by the P-UI-45 post-close recovery). Other READY lanes: `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -53,7 +53,7 @@ Use with:
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
-| P-UI-45 | IN_PROGRESS | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
+| P-UI-45 | DONE | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
@@ -3044,7 +3044,7 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-40 DONE AND P-UI-48 DONE (`AppLayout.tsx` is shared ownership; P1 shell/safety changes land first)
 Priority: P2
 Type: frontend/a11y/tests
@@ -3056,6 +3056,25 @@ Owner decision (Ivan, 2026-10-04 21:36): the seasonal image carousel is shown **
 Commit suggestion: `fix(ui): localize request indicator, show seasonal carousel only on home`
 
 Owner claim 2026-10-06: refreshed `origin/main` at `9b33ef73ca7b8284675013870c4ccc6ba382d4a0`; P-UI-40 and P-UI-48 are DONE, no matching P-UI-45 branch/lock/open PR exists, and the owning files have no active path owner. P-UI-45 moved READY -> IN_PROGRESS. Existing implementation already covers Serbian copy, reduced-motion timer guard, home-only carousel mount and coarse-pointer 44px targets; this claim focuses on the remaining mobile no-overlap presentation, CSS reduced-motion scroll behavior and full named-route proof. Local lock: `.ai/task-locks/P-UI-45-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: The mobile request indicator now flows above page content as a compact Serbian progress strip, seasonal carousel reduced-motion scroll uses `auto`, and route/browser proofs cover the named non-home paths and coarse-pointer targets.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/src/components/trendshoes/SeasonalImageCarousel.spec.tsx`; `Klijent/clientapp/src/imagecarousel.css`; `Klijent/clientapp/src/pages/HomePage.carousel.spec.tsx`; `Klijent/clientapp/src/skeleton.css`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `.ai/runs/2026-10-06-P-UI-45-evidence.md`.
+- Checks run: focused Vitest 17/17; `npm run typecheck`; `npm run check:analytics-guardrails` (39 known baseline violations, none removed); production build; 360px responsive fixture; governance validators; `git diff --check` (all passed).
+- Checks not run: full frontend suite not run; no task acceptance required it. No GitHub Actions run was discoverable for implementation SHA at inspection.
+- Run log: `.ai/runs/2026-10-06-P-UI-45-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a1a51aa0bd8987165a7f55073fa203c1367dfc14`
+- Main verification: fresh `origin/main` at implementation SHA `a1a51aa0bd8987165a7f55073fa203c1367dfc14`; ancestry check passed.
+- Missed: none known
+- Follow-up: P-UI-49 is the next primary READY lane; P-UI-51 and P-UI-52 remain independent READY lanes.
+- Residual risk: the responsive fixture returns expected 503 responses for non-modeled unrelated endpoints and records a seasonal-image request abort when the browser page closes; it reports zero page errors and the strict route/viewport assertions pass. Full iOS Safari behavior is not proven by Chromium emulation.
+- Post-close routing: full 16-file recovery will be recorded in `.ai/runs/2026-10-06-P-UI-45-evidence.md`; P-UI-49 is the candidate successor.
+- Prompt defect / scope repair: no scope repair; existing Serbian copy, reduced-motion timer guard, home-only mount and coarse-pointer sizing were already present and were verified. The prompt's stale English-copy evidence was reconciled to current code.
 
 ### Problem
 
