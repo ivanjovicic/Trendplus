@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-45 (READY; selected by the P-UI-43 post-close recovery). Other READY lanes: `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -51,7 +51,7 @@ Use with:
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
 | P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
-| P-UI-43 | IN_PROGRESS | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
+| P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | READY | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
@@ -2867,7 +2867,7 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ569 DONE (RQ569 changes `AnalyticsTrustHeader` to show the observed source horizon)
 Priority: P2
 Type: frontend/ux/tests
@@ -2942,6 +2942,25 @@ The UX/UI audit (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, UX-003/UX-004/UX
 - Consume RQ569 fields exactly as delivered; compute nothing in the browser. Design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §3, §5.
 - Extra tests: evidence IDs are absent from the default render but reachable by keyboard; Belgrade time format; `role="status"`; desktop fold check in `responsive:baseline`.
 - Data Quality trust-state follow-up from the 2026-10-06 hierarchy audit: reproduce the browser fixture before changing semantics. The current `DataQualityPage` clears `health`/intake state on rejected requests and an **all trust sources failed** path must render quality status unavailable, never `good`. Add/retain regression proof for that invariant. If the health/readiness source succeeds as `good` while another decision-relevant Data Quality request fails, the header may keep the backend quality classification but must expose the availability/partial failure prominently enough that the page cannot read as fully verified/healthy. Do not silently convert transport failure into a business `critical` score.
+
+### Completion note
+
+- Date: 2026-10-06
+- Status: DONE
+- Completion: Mobile trust header is condensed, evidence and supporting facts remain keyboard-accessible in details, desktop first-KPI placement is measured, and Data Quality availability failures remain visibly partial/unavailable without fabricating a quality score.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.css`; `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsTrustHeader.spec.tsx`; `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-06-P-UI-43-evidence.md`.
+- Checks run: focused Vitest 68/68; analytics guardrails; production build; responsive browser fixtures at 360px, 768px and 1280×800; governance self-tests and validators; `git diff --check` (all passed).
+- Checks not run: full frontend suite not run; no task acceptance required it. Relevant Analytics Quality Gates run `37522392701` was in progress on implementation SHA at inspection.
+- Run log: `.ai/runs/2026-10-06-P-UI-43-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `1b6856051fa1fb4e759ac4564cbf13cb3e779976`
+- Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA; closure/evidence commit is being delivered after the mandatory recovery scan.
+- Missed: none known
+- Follow-up: P-UI-45 is the next primary READY lane; P-UI-49, P-UI-51 and P-UI-52 remain independent READY lanes. P-UI-42 remains WAITING on P-UI-51.
+- Residual risk: Analytics Quality Gates was still in progress when inspected; existing build emitted the repository's Recharts chunk-size warning.
+- Post-close routing: full 16-file recovery recorded in `.ai/runs/2026-10-06-P-UI-43-evidence.md`; P-UI-45 selected as successor, unclaimed.
+- Prompt defect / scope repair: extended the task to cover the dated Data Quality availability failure contract; the browser keeps backend quality classification while surfacing failed-source availability.
 
 ## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
 
