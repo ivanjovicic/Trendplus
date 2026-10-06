@@ -3069,11 +3069,11 @@ Owner claim 2026-10-06: refreshed `origin/main` at `9b33ef73ca7b8284675013870c4c
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `a1a51aa0bd8987165a7f55073fa203c1367dfc14`
-- Main verification: fresh `origin/main` at implementation SHA `a1a51aa0bd8987165a7f55073fa203c1367dfc14`; ancestry check passed.
+- Main verification: fresh `origin/main` at post-close recovery SHA `33e35bb11fcb9908a7ddb89e459095955fc5771a` contains implementation SHA `a1a51aa0bd8987165a7f55073fa203c1367dfc14` and closure commit `33e35bb11fcb9908a7ddb89e459095955fc5771a`.
 - Missed: none known
 - Follow-up: P-UI-49 is the next primary READY lane; P-UI-51 and P-UI-52 remain independent READY lanes.
 - Residual risk: the responsive fixture returns expected 503 responses for non-modeled unrelated endpoints and records a seasonal-image request abort when the browser page closes; it reports zero page errors and the strict route/viewport assertions pass. Full iOS Safari behavior is not proven by Chromium emulation.
-- Post-close routing: full 16-file recovery will be recorded in `.ai/runs/2026-10-06-P-UI-45-evidence.md`; P-UI-49 is the candidate successor.
+- Post-close routing: full 16-file recovery at `33e35bb11fcb9908a7ddb89e459095955fc5771a` is recorded in `.ai/runs/2026-10-06-P-UI-45-evidence.md`; P-UI-49 is selected as the next primary READY lane, unclaimed.
 - Prompt defect / scope repair: no scope repair; existing Serbian copy, reduced-motion timer guard, home-only mount and coarse-pointer sizing were already present and were verified. The prompt's stale English-copy evidence was reconciled to current code.
 
 ### Problem
