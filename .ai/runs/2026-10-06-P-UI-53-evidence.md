@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/p-ui-53-chart-accessibility / none
 Main commit SHA: c6c19d83e9de19c00af623df426e1b1cecaf52d7
-Main verification: pass - refreshed `origin/main` at c6c19d83e9de19c00af623df426e1b1cecaf52d7; `git merge-base --is-ancestor c6c19d83e9de19c00af623df426e1b1cecaf52d7 origin/main` passed.
+Main verification: pass - refreshed `origin/main` at 83ead40f15ab7923c1e2f9aad9ff3a58ba78337f; `git merge-base --is-ancestor c6c19d83e9de19c00af623df426e1b1cecaf52d7 origin/main` passed.
 Evidence state: synchronized
 
 ## What was done
@@ -71,7 +71,7 @@ Evidence state: synchronized
 - Analytics Quality Gates run `37519116615` remains `in_progress` on the delivered SHA; it is residual risk, not a completion gate.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: `c6c19d83e9de19c00af623df426e1b1cecaf52d7`.
+- Recovery base `origin/main` SHA: `83ead40f15ab7923c1e2f9aad9ff3a58ba78337f` (fresh scan after the evidence synchronization commit).
 - Active owner queue/addendum files scanned (all 16): `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; the 11 active RQ addenda `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`, `ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` and `ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; and `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` plus `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`.
 - Completed/changed task IDs searched: P-UI-53, including every reference across the complete active set; its declared dependencies P-UI-47/P-UI-31/P-UI-35/P-UI-36/P-UI-44 were verified DONE on current main.
 - Newly satisfied dependency: P-UI-38 now has P-UI-53 DONE, but remains WAITING because other named UI migrations are READY, IN_PROGRESS or WAITING. No dependent prompt became dependency-complete; no prompt was promoted.
