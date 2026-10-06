@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import Sidebar from "../Sidebar";
@@ -26,7 +26,7 @@ describe("Sidebar", () => {
     );
   });
 
-  it("marks only the canonical supplier page active after a legacy redirect", () => {
+  it("opens Operacije and marks only the canonical supplier page active", () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier?tab=assortment&legacySource=operations-supplier-footwear"]}>
         <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
@@ -37,6 +37,8 @@ describe("Sidebar", () => {
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
     expect(activeLinks[0]).toHaveTextContent("Prodaja po dobavljačima");
+    expect(screen.getByRole("button", { name: /Operacije/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute("href", "/analytics/daily-sales");
   });
 
   it("exposes the expanded state of the desktop sidebar rail toggle", () => {
@@ -72,11 +74,11 @@ describe("Sidebar", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Odluke/i }));
-    expect(screen.getByRole("link", { name: "Prodaja po dobavljačima" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveAttribute(
       "href",
       "/analytics/supplier",
     );
+    expect(screen.queryByRole("link", { name: "Odluke o dobavljačima" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Dobavljači i tipovi obuće/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po tipu obuće/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po boji artikla/ })).toBeInTheDocument();
@@ -84,7 +86,29 @@ describe("Sidebar", () => {
       "href",
       "/analytics/daily-sales",
     );
+    fireEvent.click(screen.getByRole("button", { name: /Odluke/i }));
+    expect(screen.getByRole("link", { name: /Odluke o dobavljačima/ })).toHaveAttribute(
+      "href",
+      "/analytics/supplier-decision-hub",
+    );
     expect(screen.queryByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pre\/Posle nivelacije/ })).toBeInTheDocument();
+  });
+
+  it("uses the same operational supplier navigation in the mobile sidebar", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier"]}>
+        <Sidebar mobileOpen onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Backoffice/i });
+    expect(within(dialog).getByRole("button", { name: /Operacije/i })).toHaveAttribute("aria-expanded", "true");
+    expect(dialog.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveLength(2);
+    expect(within(dialog).getByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveAttribute(
+      "href",
+      "/analytics/supplier",
+    );
   });
 });
