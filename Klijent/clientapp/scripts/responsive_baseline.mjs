@@ -13,7 +13,7 @@ const ROUTES = [
   { id: "nivelacija_cena", path: "/nivelacija", readySelector: ".form-page" },
   { id: "analytics", path: "/analytics", readySelector: '[data-testid="analytics-control-bar"]', expandSelector: ".details-expand", afterExpandSelector: ".analytics-chart-grid .chart-wrap", captureSelector: ".analytics-chart-grid" },
   { id: "daily_sales", path: "/analytics/daily-sales", readySelector: ".daily-sales-chart-wrap", captureSelector: ".daily-sales-section-grid--double" },
-  { id: "supplier", path: "/analytics/supplier" },
+  { id: "supplier", path: "/analytics/supplier", readySelector: ".supplier-consolidated-filters", captureSelector: ".supplier-consolidated-filters" },
   { id: "inventory", path: "/analytics/inventory", readySelector: '[data-testid="analytics-control-bar"]' },
   { id: "pilot_intake", path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&dataScope=all", readySelector: ".pilot-intake-durable-table-wrap", printSmoke: true },
   { id: "color_sales", path: "/analytics/color-sales-stats", readySelector: '[data-testid="analytics-data-table"]', captureSelector: '[data-testid="analytics-data-table"]', pui39Overflow: true },
@@ -202,6 +202,14 @@ async function fixtureResponse(request, options) {
       generatedAtUtc: "2026-10-02T00:00:00Z",
       jobs: [],
     }) };
+  }
+
+  if (url.pathname === "/api/analytics/cached/filters/stores") {
+    return { status: 200, body: JSON.stringify([{ storeId: 1, storeName: PUI39_LONG_STORE_OPTION, city: "Beograd", region: "Centar" }]) };
+  }
+
+  if (url.pathname === "/api/analytics/cached/filters/suppliers") {
+    return { status: 200, body: JSON.stringify([{ supplierId: 21, supplierName: "Sintetički dobavljač za responsive proveru" }]) };
   }
 
   if (url.pathname === "/api/analytics/reports/pilot-intake") {
@@ -984,6 +992,48 @@ async function run(options) {
               });
               await page.waitForFunction(() => document.body.innerText.includes("Prodaja uspesna"), { timeout: options.timeoutMs });
               interaction = { salesSubmitted: true, boundary: "fixture POST /api/prodaja" };
+            }
+            if (route.id === "supplier") {
+              interactionStep = "open-scorecard-filters";
+              await page.locator("#supplier-tab-scorecard").click();
+              await page.waitForFunction(() => document.querySelector("#supplier-tab-scorecard")?.getAttribute("aria-selected") === "true", { timeout: options.timeoutMs });
+              if (viewportWidth <= 640) {
+                await page.locator(".supplier-consolidated-filter-summary").click();
+                await page.waitForFunction(() => document.querySelector(".supplier-consolidated-filters")?.hasAttribute("open"), { timeout: options.timeoutMs });
+              }
+              interactionStep = "measure-scorecard-filters";
+              interaction = await page.evaluate(() => {
+                const filters = document.querySelector(".supplier-consolidated-filters");
+                const labels = [...(filters?.querySelectorAll(".supplier-consolidated-field > span:first-child") ?? [])]
+                  .map((label) => label.textContent?.trim() ?? "");
+                const controls = [...(filters?.querySelectorAll("select, input:not([type='checkbox']), .supplier-consolidated-actions button, .supplier-consolidated-check") ?? [])]
+                  .filter((element) => element.getBoundingClientRect().width > 0)
+                  .map((element) => ({
+                    label: element.closest("label")?.textContent?.trim() ?? element.textContent?.trim() ?? "",
+                    height: Math.round(element.getBoundingClientRect().height),
+                  }));
+                return {
+                  disclosureOpen: filters?.hasAttribute("open") ?? false,
+                  mobileSummaryAvailable: window.innerWidth > 640
+                    || getComputedStyle(filters?.querySelector("summary") ?? document.body).display !== "none",
+                  desktopStickyPreserved: window.innerWidth <= 900
+                    || getComputedStyle(filters ?? document.body).position === "sticky",
+                  scorecardFieldsReachable: ["Kategorija skorkarte", "Pol skorkarte", "Sezona skorkarte", "Minimalni prihod skorkarte"]
+                    .every((label) => labels.some((value) => value.includes(label))),
+                  confidenceAndStockOptionsReachable: Boolean(filters?.querySelector(".supplier-consolidated-check"))
+                    && [...(filters?.querySelectorAll(".supplier-consolidated-check") ?? [])].length === 2,
+                  phoneTouchTargetsMeet44px: window.innerWidth > 640 || controls.every((control) => control.height >= 44),
+                  controls,
+                };
+              });
+              if (!interaction.disclosureOpen
+                || !interaction.mobileSummaryAvailable
+                || !interaction.desktopStickyPreserved
+                || !interaction.scorecardFieldsReachable
+                || !interaction.confidenceAndStockOptionsReachable
+                || !interaction.phoneTouchTargetsMeet44px) {
+                throw new Error("supplier responsive filter disclosure, reachability, touch-target or sticky check failed");
+              }
             }
             if (route.id === "actions") {
               interactionStep = "wait-for-action-row";

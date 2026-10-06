@@ -42,7 +42,7 @@ const tabLabels: Record<SupplierTab, string> = {
 
 const tabHints: Record<SupplierTab, string> = {
   overview: "Finalna preporuka",
-  scorecard: "Poređenje dobavljača",
+  scorecard: "Pomoćni signal",
   assortment: "Struktura i detaljna razrada",
 };
 
@@ -94,6 +94,11 @@ export default function SupplierConsolidatedPage() {
   const suppliersRef = useRef(suppliers);
   const [trustState, setTrustState] = useState<{ key: string; payload: SupplierTrustHeaderPayload | null }>({ key: "", payload: null });
   const [supplierFiltersLoaded, setSupplierFiltersLoaded] = useState(false);
+  const [filterDisclosureOpen, setFilterDisclosureOpen] = useState(() =>
+    typeof window === "undefined"
+      || typeof window.matchMedia !== "function"
+      || !window.matchMedia("(max-width: 640px)").matches,
+  );
   suppliersRef.current = suppliers;
   const {
     currentTab,
@@ -212,6 +217,19 @@ export default function SupplierConsolidatedPage() {
   );
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const updateDisclosure = () => setFilterDisclosureOpen(!mediaQuery.matches);
+    updateDisclosure();
+    if (mediaQuery.addEventListener) mediaQuery.addEventListener("change", updateDisclosure);
+    else mediaQuery.addListener?.(updateDisclosure);
+    return () => {
+      if (mediaQuery.removeEventListener) mediaQuery.removeEventListener("change", updateDisclosure);
+      else mediaQuery.removeListener?.(updateDisclosure);
+    };
+  }, []);
+
+  useEffect(() => {
     if (currentTab !== "scorecard") return;
     let cancelled = false;
     getSezone()
@@ -312,7 +330,19 @@ export default function SupplierConsolidatedPage() {
         </div>
       </header>
 
-      <section className="supplier-consolidated-filters" aria-label="Filteri dobavljača">
+      <details
+        className="supplier-consolidated-filters"
+        aria-label="Filteri dobavljača"
+        open={filterDisclosureOpen}
+        onToggle={(event) => setFilterDisclosureOpen(event.currentTarget.open)}
+      >
+        <summary className="supplier-consolidated-filter-summary">
+          <span>Filteri</span>
+          <span className="supplier-consolidated-filter-summary-context">
+            {`${activePeriodLabel} • ${activeScopeLabel} • ${selectedStoreLabel} • ${selectedSupplierLabel}`}
+          </span>
+        </summary>
+        <div className="supplier-consolidated-filter-fields">
         <label className="supplier-consolidated-field">
           <span>Period</span>
           <select value={canonicalFilters.periodPreset} onChange={(event) => setPreset(event.target.value as SupplierPeriodPreset)}>
@@ -474,7 +504,8 @@ export default function SupplierConsolidatedPage() {
         <div className="supplier-consolidated-actions">
           <button type="button" className="secondary" onClick={resetFilters}>Reset</button>
         </div>
-      </section>
+        </div>
+      </details>
 
       {invalidRange ? <div className="supplier-consolidated-message error" role="alert">Datum od ne može biti posle datuma do.</div> : null}
 

@@ -7,24 +7,24 @@
   --dashboard-border-soft: var(--border-default, rgba(77, 255, 119, 0.14));
   --dashboard-text: var(--text-primary, #dcfcea);
   --dashboard-text-muted: var(--text-secondary, #98bcae);
-  --dashboard-accent: var(--success, #66ff7e);
-  --dashboard-accent-strong: var(--warning, #8bff00);
-  --dashboard-secondary: var(--info, #1ec8ff);
-  --dashboard-warning: var(--warning, #facc15);
-  --dashboard-danger: var(--error, #fb7185);
+  --dashboard-accent: var(--chart-series-1);
+  --dashboard-accent-strong: var(--chart-series-4);
+  --dashboard-secondary: var(--chart-series-2);
+  --dashboard-warning: var(--status-warning-text);
+  --dashboard-danger: var(--status-error-text);
   --dashboard-grid: color-mix(in srgb, var(--dashboard-accent) 24%, transparent);
-  --dashboard-chart-axis: color-mix(in srgb, var(--dashboard-text-muted) 78%, var(--dashboard-accent) 22%);
+  --dashboard-chart-axis: var(--chart-axis);
   --dashboard-chart-hover: color-mix(in srgb, var(--dashboard-accent) 16%, transparent);
-  --dashboard-tooltip-bg: var(--surface-elevated, #0f172a);
+  --dashboard-tooltip-bg: var(--chart-tooltip-bg);
   --dashboard-tooltip-border: var(--border-default, rgba(148, 163, 184, 0.35));
-  --dashboard-tooltip-label: var(--text-primary, #dbffe8);
+  --dashboard-tooltip-label: var(--chart-tooltip-text);
   --dashboard-tooltip-shadow: 0 10px 24px color-mix(in srgb, black 28%, transparent);
-  --dashboard-gradient-share-start: var(--dashboard-accent, #33f28b);
-  --dashboard-gradient-share-end: var(--dashboard-secondary, #1ec8ff);
-  --dashboard-gradient-revenue-start: var(--dashboard-accent-strong, #8bff00);
-  --dashboard-gradient-revenue-end: var(--dashboard-accent, #33f28b);
-  --dashboard-gradient-margin-start: var(--dashboard-secondary, #1ec8ff);
-  --dashboard-gradient-margin-end: var(--dashboard-accent, #11f59e);
+  --dashboard-gradient-share-start: var(--chart-series-1);
+  --dashboard-gradient-share-end: var(--chart-series-2);
+  --dashboard-gradient-revenue-start: var(--chart-series-4);
+  --dashboard-gradient-revenue-end: var(--chart-series-1);
+  --dashboard-gradient-margin-start: var(--chart-series-2);
+  --dashboard-gradient-margin-end: var(--chart-series-3);
   --dashboard-on-accent: color-mix(in srgb, var(--dashboard-bg) 60%, black);
   --dashboard-surface-overlay: color-mix(in srgb, var(--dashboard-surface) 74%, transparent);
   --dashboard-surface-overlay-soft: color-mix(in srgb, var(--dashboard-surface) 64%, transparent);
@@ -47,15 +47,15 @@
   --dashboard-focus-ring: color-mix(in srgb, var(--dashboard-secondary) 24%, transparent);
 
   background:
-    radial-gradient(1200px 700px at 100% -20%, rgba(30, 200, 255, 0.16), transparent 56%),
-    radial-gradient(1000px 620px at -20% 0%, rgba(102, 255, 126, 0.13), transparent 60%),
+    radial-gradient(1200px 700px at 100% -20%, color-mix(in srgb, var(--chart-series-2) 16%, transparent), transparent 56%),
+    radial-gradient(1000px 620px at -20% 0%, color-mix(in srgb, var(--chart-series-1) 13%, transparent), transparent 60%),
     linear-gradient(160deg, var(--dashboard-bg), var(--dashboard-bg-soft));
   border: 1px solid var(--dashboard-border-soft);
   border-radius: 16px;
   box-shadow:
     0 24px 48px rgba(1, 8, 14, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(30, 200, 255, 0.1);
+    0 0 0 1px color-mix(in srgb, var(--chart-series-2) 10%, transparent);
   color: var(--dashboard-text);
   padding: 18px;
 }
@@ -1090,12 +1090,6 @@
   background: color-mix(in srgb, var(--dashboard-accent) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--dashboard-accent) 38%, transparent);
   color: var(--dashboard-accent);
-}
-
-.supplier-footwear-table-wrap {
-  border: 1px solid color-mix(in srgb, var(--dashboard-accent) 18%, transparent);
-  border-radius: 9px;
-  overflow-x: auto;
 }
 
 .supplier-footwear-table {

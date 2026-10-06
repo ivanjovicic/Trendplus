@@ -184,19 +184,19 @@ const REASON_CODE_LABELS: Record<string, string> = {
   pop_unavailable: "PoP nije dostupan",
 };
 
-const CHART_AXIS_TICK = { fill: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600 };
-const CHART_LEGEND_STYLE = { color: "var(--dashboard-chart-axis, var(--text-muted, #8ad5a8))", fontSize: 12, fontWeight: 600, paddingTop: 10 };
+const CHART_AXIS_TICK = { fill: "var(--chart-axis)", fontSize: 12, fontWeight: 600 };
+const CHART_LEGEND_STYLE = { color: "var(--chart-axis)", fontSize: 12, fontWeight: 600, paddingTop: 10 };
 const CHART_CURSOR_STYLE = { fill: "var(--dashboard-chart-hover, rgba(102, 255, 126, 0.14))" };
 const COMMAND_TOOLTIP_STYLE = {
   ...CHART_TOOLTIP_STYLE,
-  background: "var(--dashboard-tooltip-bg, var(--surface-elevated, #0f172a))",
+  background: "var(--chart-tooltip-bg)",
   border: "1px solid var(--dashboard-tooltip-border, var(--border-default, rgba(148, 163, 184, 0.35)))",
   boxShadow: "var(--dashboard-tooltip-shadow, 0 10px 24px rgba(0, 0, 0, 0.28))",
   borderRadius: "12px",
 };
 const COMMAND_TOOLTIP_LABEL_STYLE = {
   ...CHART_TOOLTIP_LABEL_STYLE,
-  color: "var(--dashboard-tooltip-label, var(--text-primary, #dbffe8))",
+  color: "var(--chart-tooltip-text)",
   fontWeight: 700,
 };
 
@@ -2102,8 +2102,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     <BarChart data={concentrationData} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
                       <defs>
                         <linearGradient id="supplierShareGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="var(--dashboard-gradient-share-start, var(--dashboard-accent, #33f28b))" />
-                          <stop offset="100%" stopColor="var(--dashboard-gradient-share-end, var(--dashboard-secondary, #1ec8ff))" />
+                          <stop offset="0%" stopColor="var(--chart-series-1)" />
+                          <stop offset="100%" stopColor="var(--chart-series-2)" />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="2 6" stroke="var(--dashboard-grid, rgba(102, 255, 126, 0.16))" />
@@ -2147,8 +2147,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         iconSize={8}
                         itemSorter={(item) => (item.dataKey === "udeoPrometa" ? 0 : 1)}
                       />
-                      <Bar dataKey="udeoPrometa" fill="var(--dashboard-accent, #66ff7e)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
-                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--dashboard-secondary, #1ec8ff)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
+                      <Bar dataKey="udeoPrometa" fill="var(--chart-series-1)" radius={[0, 6, 6, 0]} name="Udeo u prometu %" />
+                      <Bar dataKey="udeoMarznogDoprinosa" fill="var(--chart-series-2)" radius={[0, 6, 6, 0]} name={`Udeo u ${canonicalTerms.marginContribution.label} %`} />
                     </BarChart>
                   </ResponsiveContainer> : <div className="supplier-decision-chart-placeholder" role="status">Grafikon se priprema…</div>}
                 </div>
@@ -2555,7 +2555,10 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                     </span>
                     <p>{describeFootwearMix(selectedSupplier)}</p>
                   </div>
-                  <div className="supplier-footwear-table-wrap">
+                  <AnalyticsDataTable
+                    rowCount={selectedFootwearRows.length}
+                    testId="supplier-footwear-breakdown-table"
+                  >
                     <table className="supplier-footwear-table">
                       <thead>
                         <tr>
@@ -2608,7 +2611,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </AnalyticsDataTable>
                 </div>
               ) : (
                 <div className="supplier-decision-empty supplier-footwear-empty">

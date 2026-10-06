@@ -109,10 +109,39 @@ function expandTrustDetails() {
 
 describe("SupplierConsolidatedPage", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.mocked(getSupplierFilters).mockReset();
     vi.mocked(getSupplierFilters).mockResolvedValue([]);
     vi.mocked(getStores).mockReset();
     vi.mocked(getStores).mockResolvedValue([]);
+  });
+
+  it("keeps every scorecard filter reachable from a compact phone disclosure", async () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
+        <SupplierConsolidatedPage />
+      </MemoryRouter>,
+    );
+
+    const filters = screen.getByLabelText("Filteri dobavljača");
+    expect(filters).not.toHaveAttribute("open");
+    fireEvent.click(filters.querySelector("summary")!);
+
+    expect(filters).toHaveAttribute("open");
+    expect(screen.getByLabelText("Dobavljač")).toBeInTheDocument();
+    expect(screen.getByText("Kategorija skorkarte")).toBeInTheDocument();
+    expect(screen.getByText("Pol skorkarte")).toBeInTheDocument();
+    expect(screen.getByText("Sezona skorkarte")).toBeInTheDocument();
+    expect(screen.getByText("Minimalni prihod skorkarte")).toBeInTheDocument();
+    expect(screen.getByLabelText("Samo visoka pouzdanost skorkarte")).toBeInTheDocument();
+    expect(screen.getByLabelText("Isključi artikle bez zaliha pre sniženja iz skorkarte")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
   });
 
   it("renders consolidated trust header and shows fallback banner when child reports fallback", async () => {
