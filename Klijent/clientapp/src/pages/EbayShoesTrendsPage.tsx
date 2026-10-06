@@ -128,7 +128,7 @@ function CategoryPanel({
                 return (
                     <div
                         key={key}
-                        className={`flex items-center justify-between p-2 rounded-md mb-1 transition-all cursor-pointer ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}
+                        className={`flex items-center justify-between p-2 rounded-md mb-1 transition-all cursor-pointer ${active ? 'bg-accent text-on-primary border-accent' : 'bg-surface border-border'}`}
                         onClick={() => onSelect(key)}
                     >
                         <div>

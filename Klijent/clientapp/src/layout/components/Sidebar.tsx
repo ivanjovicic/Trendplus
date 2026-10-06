@@ -155,7 +155,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                     {group.badge && (
                       <span
                         className={`ml-1 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          group.badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
+                          group.badge.tone === "warning" ? "bg-[var(--status-warning-fill)] text-[var(--status-warning-text)]" : "bg-muted/10 text-muted"
                         }`}
                         title={group.badge.title}
                         aria-label={group.badge.title}
@@ -192,7 +192,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
                             {isTestItem && badge && (
                               <span
                                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                  badge.tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted/10 text-muted"
+                                  badge.tone === "warning" ? "bg-[var(--status-warning-fill)] text-[var(--status-warning-text)]" : "bg-muted/10 text-muted"
                                 }`}
                                 title={badge.title}
                                 aria-label={badge.title}

@@ -45,7 +45,7 @@ export default function ConfirmModal({
                     </button>
                     <button
                         type="button"
-                        className={`${confirmClassName} ${confirmVariant === 'danger' ? 'button-danger' : 'bg-primary text-white'}`}
+                        className={`${confirmClassName} ${confirmVariant === 'danger' ? 'button-danger' : 'bg-primary text-on-primary'}`}
                         onClick={onConfirm}
                         disabled={isBusy}
                     >

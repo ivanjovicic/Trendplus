@@ -167,7 +167,7 @@
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin-top: 16px;
-  text-shadow: 0 0 12px currentColor;
+  text-shadow: 0 0 12px var(--analytics-value-glow-color);
 }
 
 .pnp-decision-panels {
@@ -853,15 +853,15 @@
 }
 
 .pnp-score-mini-bar[data-level="high"] {
-  background: var(--accent-success, #33f28b);
+  background: var(--success);
 }
 
 .pnp-score-mini-bar[data-level="mid"] {
-  background: var(--accent-warning, #facc15);
+  background: var(--warning);
 }
 
 .pnp-score-mini-bar[data-level="low"] {
-  background: var(--accent-danger, #f87171);
+  background: var(--error);
 }
 
 /* ─── Queues section ─────────────────────────────────────────── */

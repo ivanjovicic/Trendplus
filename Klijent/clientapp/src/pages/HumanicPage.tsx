@@ -226,7 +226,7 @@ export default function HumanicPage() {
 
                     <div className="ml-auto">
                         <button
-                            className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+                            className="bg-primary hover:bg-primary-hover text-on-primary font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
                             onClick={runHumanicFiltered}
                             disabled={loading}
                         >

@@ -39,7 +39,14 @@ import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFil
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import UltraSpinner from "../components/ui/UltraSpinner";
-import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "../utils/chartTooltipStyle";
+import {
+  CHART_AXIS_TICK,
+  CHART_GRID_STROKE,
+  CHART_LEGEND_STYLE,
+  CHART_METRIC_COLORS,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_TOOLTIP_STYLE,
+} from "../utils/chartTooltipStyle";
 import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyticsTableSortUrl";
 import { fmtPct, fmtRsd, fmtRsdShort, fmtSignedPct, getPresetRange } from "../utils/analyticsFormatters";
 import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
@@ -218,10 +225,7 @@ const BLANK_PRINT_ROW_COUNT = 31;
 const SHIFT_PLACEHOLDER = "__________";
 const FIRST_SHIFT_LABEL = "06:00-13:59";
 const SECOND_SHIFT_LABEL = "14:00-21:59";
-const CHART_GRID_STROKE = "var(--border-default)";
-const CHART_AXIS_TICK = { fill: "var(--text-secondary)", fontSize: 12 };
-const CHART_LEGEND_STYLE = { color: "var(--text-secondary)" };
-const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat("sr-RS", { notation: "compact", maximumFractionDigits: 1 });
+const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat("sr-Latn-RS", { notation: "compact", maximumFractionDigits: 1 });
 const WEEKDAY_ORDER: Array<{ key: number; label: string }> = [
   { key: 1, label: "Pon" },
   { key: 2, label: "Uto" },
@@ -2493,10 +2497,10 @@ export default function DailySalesStatsPage() {
                     }}
                   />
                   <Legend wrapperStyle={CHART_LEGEND_STYLE} />
-                  <Line yAxisId="revenue" type="monotone" dataKey="totalRevenue" name="Prihod" stroke="var(--accent-primary)" strokeWidth={2.5} dot={false} />
-                  <Line yAxisId="revenue" type="monotone" dataKey="ma7Revenue" name="Prihod MA7" stroke="var(--accent-warning)" strokeWidth={2} dot={false} strokeDasharray="6 4" />
-                  <Line yAxisId="items" type="monotone" dataKey="totalItemsSold" name="Komadi" stroke="var(--accent-success)" strokeWidth={2.5} dot={false} />
-                  <Line yAxisId="items" type="monotone" dataKey="ma7Items" name="Komadi MA7" stroke="var(--accent-info, #44d0ff)" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+                  <Line yAxisId="revenue" type="monotone" dataKey="totalRevenue" name="Prihod" stroke={CHART_METRIC_COLORS.revenue} strokeWidth={2.5} dot={false} />
+                  <Line yAxisId="revenue" type="monotone" dataKey="ma7Revenue" name="Prihod MA7" stroke={CHART_METRIC_COLORS.revenueAverage} strokeWidth={2} dot={false} strokeDasharray="6 4" />
+                  <Line yAxisId="items" type="monotone" dataKey="totalItemsSold" name="Komadi" stroke={CHART_METRIC_COLORS.items} strokeWidth={2.5} dot={false} />
+                  <Line yAxisId="items" type="monotone" dataKey="ma7Items" name="Komadi MA7" stroke={CHART_METRIC_COLORS.itemsAverage} strokeWidth={2} dot={false} strokeDasharray="4 4" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -2649,8 +2653,8 @@ export default function DailySalesStatsPage() {
                       }}
                     />
                     <Legend wrapperStyle={CHART_LEGEND_STYLE} />
-                    <Bar yAxisId="revenue" dataKey="avgRevenue" name="Avg prihod" fill="var(--accent-warning)" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="items" type="monotone" dataKey="avgItems" name="Avg komadi" stroke="var(--accent-info, #44d0ff)" strokeWidth={2.5} dot={{ r: 3 }} />
+                    <Bar yAxisId="revenue" dataKey="avgRevenue" name="Avg prihod" fill={CHART_METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="items" type="monotone" dataKey="avgItems" name="Avg komadi" stroke={CHART_METRIC_COLORS.items} strokeWidth={2.5} dot={{ r: 3 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>

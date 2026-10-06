@@ -60,7 +60,7 @@ function Chip({ label, count, active, onClick }: { label: string; count?: number
     return (
         <button
             onClick={onClick}
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${active ? 'bg-info text-white border-info' : 'bg-surface border border-muted text-muted'}`}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${active ? 'bg-info text-on-primary border-info' : 'bg-surface border border-muted text-muted'}`}
         >
             {label}{count != null ? <span className="opacity-70 ml-1">({fmt(count)})</span> : null}
         </button>
@@ -72,7 +72,7 @@ function TabBtn({ id, label, active, onClick }: { id: Tab; label: string; active
     return (
         <button
             onClick={() => onClick(id)}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${active ? 'bg-info text-white border-info' : 'bg-white text-muted border border-muted'}`}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${active ? 'bg-info text-on-primary border-info' : 'bg-white text-muted border border-muted'}`}
         >
             {label}
         </button>

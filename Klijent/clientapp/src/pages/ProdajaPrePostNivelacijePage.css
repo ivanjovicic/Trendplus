@@ -226,13 +226,13 @@
 }
 
 .ppn-data-health-badge--watch {
-  color: var(--accent-warning, #facc15);
-  border-color: color-mix(in srgb, var(--accent-warning, #facc15) 55%, transparent);
+  color: var(--status-warning-text);
+  border-color: color-mix(in srgb, var(--status-warning-border) 55%, transparent);
 }
 
 .ppn-data-health-badge--weak {
-  color: var(--accent-danger, #f87171);
-  border-color: color-mix(in srgb, var(--accent-danger, #f87171) 50%, transparent);
+  color: var(--status-error-text);
+  border-color: color-mix(in srgb, var(--status-error-border) 50%, transparent);
 }
 
 .ppn-data-health-badge--unknown {
@@ -288,7 +288,7 @@
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin-top: 16px;
-  text-shadow: 0 0 12px currentColor;
+  text-shadow: 0 0 12px var(--analytics-value-glow-color);
 }
 
 .ppn-decision-kpi strong.trend-up {

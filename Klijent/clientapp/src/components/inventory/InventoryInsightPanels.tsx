@@ -76,7 +76,7 @@ export function InventoryInsightPanels({
         </div>
 
         {insightsError ? (
-          <div role="alert" className="mt-5 rounded-2xl border border-[var(--accent-danger,#f87171)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-[var(--text-primary)]">
+          <div role="alert" className="mt-5 rounded-2xl border border-[var(--status-error-border)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-[var(--text-primary)]">
             {insightsError}
           </div>
         ) : null}
@@ -89,7 +89,7 @@ export function InventoryInsightPanels({
           ) : agingBuckets.length === 0 ? (
             <div className="col-span-full rounded-2xl border border-dashed border-[var(--border-default)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--text-primary)]">Analitika zastarelosti nije dostupna za trenutne filtere.</div>
           ) : agingBuckets.map((bucket) => (
-            <article key={bucket.bucketKey} className={`min-w-0 rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--accent-danger,#f87171)] ring-1 ring-[var(--accent-danger,#f87171)/30]" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
+            <article key={bucket.bucketKey} className={`min-w-0 rounded-2xl border bg-[var(--surface-elevated)] p-4${bucket.bucketKey === "90+" ? " border-[var(--status-error-border)] ring-1 ring-[var(--status-error-border)]/30" : " border-[var(--border-default)]"}`} data-stale={bucket.bucketKey === "90+" || undefined}>
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(bucket.bucketKey)}`}>{bucket.label}</div>
               <div className="mt-4 text-2xl font-semibold text-white">{formatNumber(bucket.itemCount)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.totalUnits)} komada | {formatCurrency(bucket.estimatedValue)}</div>

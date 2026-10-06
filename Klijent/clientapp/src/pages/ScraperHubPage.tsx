@@ -10,9 +10,9 @@ import { fetchGlobalTop10 } from "../services/scoringApi";
 
 /* ─── SOURCE COLOR PALETTE ───────────────────────────────── */
 const SOURCE_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-    zalando: { bg: "rgba(var(--accent-warning-rgb), 0.1)", text: "var(--accent-warning)", border: "var(--accent-warning)" },
+    zalando: { bg: "color-mix(in srgb, var(--warning) 10%, transparent)", text: "var(--status-warning-text)", border: "var(--warning)" },
     deichmann: { bg: "rgba(var(--info-rgb), 0.1)", text: "var(--info)", border: "var(--info)" },
-    aboutyou: { bg: "rgba(var(--primary-rgb), 0.1)", text: "var(--primary)", border: "var(--primary)" },
+    aboutyou: { bg: "color-mix(in srgb, var(--primary) 10%, transparent)", text: "var(--primary)", border: "var(--primary)" },
     humanic: { bg: "rgba(var(--success-rgb), 0.1)", text: "var(--success)", border: "var(--success)" },
 };
 const SOURCE_EMOJI: Record<string, string> = {
@@ -853,7 +853,7 @@ export default function ScraperHubPage() {
             onClick={onClick}
             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border transition-all text-sm font-medium select-none ${
                 active 
-                    ? "bg-primary border-primary text-white shadow-sm" 
+                    ? "bg-primary border-primary text-on-primary shadow-sm"
                     : "bg-surface-elevated border-muted text-muted hover:border-muted/80 hover:text-contrast"
             }`}
         >
@@ -1078,7 +1078,7 @@ export default function ScraperHubPage() {
                                         {medal}
                                     </div>
                                     {/* score badge */}
-                                    <div className="absolute top-2 right-2 bg-primary text-white rounded-lg px-2 py-1 text-[11px] font-bold">
+                                    <div className="absolute top-2 right-2 bg-primary text-on-primary rounded-lg px-2 py-1 text-[11px] font-bold">
                                         {group.globalScore !== undefined
                                             ? `★ ${group.globalScore.toFixed(2)}`
                                             : `${group.popularityScore} pts`}
@@ -1146,7 +1146,7 @@ export default function ScraperHubPage() {
                                             href={group.representative.url}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="mt-2 block text-center bg-primary text-white rounded-lg py-1.5 text-xs font-semibold no-underline hover:opacity-90 transition-opacity"
+                                            className="mt-2 block text-center bg-primary text-on-primary rounded-lg py-1.5 text-xs font-semibold no-underline hover:opacity-90 transition-opacity"
                                         >
                                             Pogledaj →
                                         </a>

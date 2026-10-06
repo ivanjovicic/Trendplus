@@ -1,6 +1,34 @@
 @import "tailwindcss";
 @import "./styles/themes.css";
 
+/*
+  Semantic colour utilities (border-border, text-foreground, bg-primary,
+  text-success, border-info/30, ...). Tailwind v4 does not read
+  tailwind.config.js here, so without this block those classes generated no CSS
+  (borders fell back to currentColor, status text lost its colour, solid fills
+  were transparent). Values point at the runtime tokens owned by ThemeContext /
+  themes.css; this is a mapping, not a second palette.
+  "muted" and "secondary" are intentionally absent: .text-muted, .border-muted
+  and .text-secondary are handwritten below.
+*/
+@theme inline {
+  --color-border: var(--border-default);
+  --color-border-hover: var(--border-hover);
+  --color-foreground: var(--text-primary);
+  --color-primary: var(--accent-primary);
+  --color-primary-hover: var(--primary-600);
+  --color-on-primary: var(--text-on-primary);
+  --color-accent: var(--accent-primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-danger: var(--error);
+  --color-info: var(--info);
+  --color-accent-success: var(--success);
+  --color-accent-warning: var(--warning);
+  --color-accent-error: var(--error);
+}
+
 /* Base styles reset */
 * {
   box-sizing: border-box;
@@ -54,7 +82,7 @@ body {
 
 .button-big {
   background-color: var(--info, var(--theme-color-2563eb, #2563eb));
-  color: var(--c-ffffff, var(--theme-color-ffffff, #ffffff));
+  color: var(--text-on-primary);
   width: 100%;
   padding: 12px 16px;
   margin-top: 0.5rem;

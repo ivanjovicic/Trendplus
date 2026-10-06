@@ -98,7 +98,7 @@ export function ExportSchedulerPanel({
                   type="button"
                   aria-pressed={printOrientation === "landscape"}
                   onClick={() => onPrintOrientationChange("landscape")}
-                  className={`px-3 py-2 transition-colors duration-150 ${printOrientation === "landscape" ? "bg-info text-white" : "bg-surface text-foreground hover:bg-surface-darker"}`}
+                  className={`px-3 py-2 transition-colors duration-150 ${printOrientation === "landscape" ? "bg-info text-on-primary" : "bg-surface text-foreground hover:bg-surface-darker"}`}
                   title="Horizontalno (A4 landscape)"
                 >
                   ↔ Hor.
@@ -107,7 +107,7 @@ export function ExportSchedulerPanel({
                   type="button"
                   aria-pressed={printOrientation === "portrait"}
                   onClick={() => onPrintOrientationChange("portrait")}
-                  className={`px-3 py-2 border-l border-border transition-colors duration-150 ${printOrientation === "portrait" ? "bg-info text-white" : "bg-surface text-foreground hover:bg-surface-darker"}`}
+                  className={`px-3 py-2 border-l border-border transition-colors duration-150 ${printOrientation === "portrait" ? "bg-info text-on-primary" : "bg-surface text-foreground hover:bg-surface-darker"}`}
                   title="Vertikalno (A4 portrait)"
                 >
                   ↕ Ver.
@@ -224,7 +224,7 @@ export function ExportSchedulerPanel({
                       type="button"
                       onClick={() => onRunScheduleNow(schedule.id)}
                       disabled={schedulerBusy}
-                      className="rounded-lg border border-border bg-info px-2 py-1 text-white transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg border border-border bg-info px-2 py-1 text-on-primary transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Pokreni
                     </button>

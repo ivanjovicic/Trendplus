@@ -351,7 +351,7 @@ export default function SupplierDecisionReportActions({ payload, disabled = fals
       ) : null}
       {status ? (
         <span
-          className={`text-xs ${statusTone === "error" ? "text-[var(--accent-danger,#f87171)]" : "text-[var(--accent-success)]"}`}
+          className={`text-xs ${statusTone === "error" ? "text-[var(--status-error-text)]" : "text-[var(--status-success-text)]"}`}
           role={statusTone === "error" ? "alert" : "status"}
         >
           {status}

@@ -352,7 +352,7 @@ export default function GlobalTrendsPage() {
                                             }}
                                         />
                                         {/* Price badge */}
-                                        <div className="absolute bottom-2 left-2 px-3 py-1 rounded-full bg-info text-white font-bold shadow">
+                                        <div className="absolute bottom-2 left-2 px-3 py-1 rounded-full bg-info text-on-primary font-bold shadow">
                                             €{formatTrendNumber(trend.priceEur, 2)}
                                         </div>
                                         <div className="absolute top-2 right-2 bg-surface-elevated px-3 py-1 rounded-full text-sm font-semibold">

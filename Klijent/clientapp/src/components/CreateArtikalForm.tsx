@@ -317,7 +317,7 @@ export default function CreateArtikalForm({
                 <button
                     type="button"
                     onClick={() => setShowAdvanced(!showAdvanced)}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${showAdvanced ? 'bg-primary text-white shadow-sm' : 'bg-surface-elevated border border-border text-muted hover:opacity-90'}`}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${showAdvanced ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-elevated border border-border text-muted hover:opacity-90'}`}
                     title="Ctrl+Shift+A"
                 >
                     {showAdvanced ? "🔽 Sakrij dodatna polja" : "🔼 Prikaži dodatna polja"}
@@ -445,7 +445,7 @@ export default function CreateArtikalForm({
                 {showAdvanced && (
                     <div className="mb-8 bg-accent-warning/10 p-6 rounded-lg border border-accent-warning shadow-sm">
                         <h3 className="text-lg font-semibold mb-5 text-accent-warning flex items-center gap-2">
-                            <span className="bg-accent-warning text-white w-8 h-8 rounded-lg flex items-center justify-center text-base">📊</span>
+                            <span className="bg-accent-warning text-on-primary w-8 h-8 rounded-lg flex items-center justify-center text-base">📊</span>
                             Dodatni podaci
                         </h3>
                         <div className="form-grid">
@@ -534,7 +534,7 @@ export default function CreateArtikalForm({
                                                     marginBottom: "0.75rem",
                                                 }}>
                                                     <span className="text-sm font-semibold text-accent-warning">Trenutna slika</span>
-                                                    <button type="button" onClick={handleDeleteImage} className="px-3 py-1 rounded-md text-white bg-accent-error font-semibold">🗑️ Obriši</button>
+                                                    <button type="button" onClick={handleDeleteImage} className="px-3 py-1 rounded-md text-on-primary bg-accent-error font-semibold">🗑️ Obriši</button>
                                                 </div>
                                                 <img src={getImageUrl(currentImagePath) || ""} alt="Product" className="max-w-full max-h-[300px] rounded-lg border border-border object-contain block mx-auto" />
                                             </div>

@@ -139,9 +139,9 @@
 }
 
 .accimport-btn-primary {
-    background: var(--info);
-    border-color: var(--info);
-    color: var(--text-primary);
+    background: var(--action-primary-bg);
+    border-color: var(--action-primary-border);
+    color: var(--action-primary-text);
 }
 
 .accimport-btn-primary:hover:not(:disabled) {
@@ -161,7 +161,7 @@
 .accimport-btn-success {
     background: var(--success);
     border-color: var(--success);
-    color: var(--text-primary);
+    color: var(--text-on-primary);
 }
 
 .accimport-btn-success:hover:not(:disabled) {

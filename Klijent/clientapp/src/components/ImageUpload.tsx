@@ -278,7 +278,7 @@ export default function ImageUpload({
                         justifyContent: "space-between",
                         gap: "10px",
                         background: "var(--surface-muted)",
-                        border: "1px solid var(--c-86efac)",
+                        border: "1px solid var(--status-success-border)",
                         padding: "10px 12px",
                         borderRadius: "8px",
                     }}

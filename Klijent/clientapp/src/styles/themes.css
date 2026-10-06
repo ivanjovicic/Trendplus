@@ -1,4 +1,6 @@
 :root {
+  /* Native controls (date pickers, select popups, scrollbars) follow the active palette. */
+  color-scheme: dark;
   --surface-default: var(--theme-color-0f1318, #0f1318);
   --surface-light: var(--theme-color-10141c, #10141c);
   --surface-elevated: var(--theme-color-12161f, #12161f);
@@ -34,10 +36,15 @@
   --info-border: var(--theme-color-rgba-59-130-246-0p4, rgba(59, 130, 246, 0.4));
   --info-text: var(--status-info-text);
   --accent: var(--theme-color-3b82f6, #3b82f6);
-  --panel: var(--theme-color-ffffff, #ffffff);
-  --panel-border: var(--theme-color-e5e7eb, #e5e7eb);
-  --text: var(--theme-color-0f172a, #0f172a);
-  --row-hover: var(--theme-color-rgba-15-23-42-0p04, rgba(15, 23, 42, 0.04));
+  /* Legacy short aliases resolve to the active theme instead of fixed light values. */
+  --panel: var(--surface-elevated);
+  --panel-border: var(--border-default);
+  --row-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --bg: var(--surface-default);
+  --surface: var(--surface-elevated);
+  --surface-2: var(--surface-light);
+  --danger: var(--error);
+  --primary-600: color-mix(in srgb, var(--accent-primary) 82%, var(--surface-darker) 18%);
   --text-primary: var(--theme-color-dbe6fb, #dbe6fb);
   --text-secondary: var(--theme-color-9aa9c6, #9aa9c6);
   --text-muted: var(--theme-color-73809a, #73809a);
@@ -71,6 +78,8 @@
   --chart-tooltip-text: #dbe6fb;
   --chart-positive: #86efac;
   --chart-negative: #fca5a5;
+  /* Neon value glow is a dark-palette effect; light palettes resolve it to transparent. */
+  --analytics-value-glow-color: currentColor;
   --action-primary-bg: var(--accent-primary);
   --action-primary-text: var(--text-on-primary);
   --action-primary-border: var(--accent-primary);
@@ -221,6 +230,8 @@
 [data-theme="soft-gray"],
 [data-theme="light"],
 [data-theme="neon-light"] {
+  color-scheme: light;
+  --analytics-value-glow-color: transparent;
   --success-soft: var(--status-success-fill);
   --warning-soft: var(--status-warning-fill);
   --error-soft: var(--status-error-fill);
@@ -272,10 +283,10 @@
   --border-hover: var(--theme-color-64748b, #64748b);
   --focus-ring: var(--theme-color-475569, #475569);
   --accent-primary: var(--theme-color-475569, #475569);
-  --success: var(--theme-color-10b981, #10b981);
-  --error: var(--theme-color-ef4444, #ef4444);
-  --warning: var(--theme-color-f59e0b, #f59e0b);
-  --info: var(--theme-color-3b82f6, #3b82f6);
+  --success: #166534;
+  --error: #991b1b;
+  --warning: #92400e;
+  --info: #1e40af;
 }
 
 [data-theme="light"] {
@@ -294,6 +305,10 @@
   --border-hover: var(--theme-color-a7b9d3, #a7b9d3);
   --focus-ring: var(--theme-color-2563eb, #2563eb);
   --accent-primary: var(--theme-color-2563eb, #2563eb);
+  --success: #047857;
+  --error: #b91c1c;
+  --warning: #92400e;
+  --info: #1d4ed8;
 }
 
 [data-theme="neon-light"] {
@@ -315,7 +330,7 @@
   --accent-secondary: var(--theme-color-9b1fe8, #9b1fe8);
   --success: var(--theme-color-087f5b, #087f5b);
   --error: var(--theme-color-d11a2a, #d11a2a);
-  --warning: var(--theme-color-b45309, #b45309);
+  --warning: #92400e;
   --info: var(--theme-color-0057d8, #0057d8);
   --text-on-primary: var(--theme-color-ffffff, #ffffff);
 }
@@ -398,6 +413,7 @@
   --warning: var(--theme-color-ffd166, #ffd166);
   --info: var(--theme-color-5cc8ff, #5cc8ff);
   --text-on-primary: var(--theme-color-000000, #000000);
+  --analytics-value-glow-color: transparent;
   --status-success-fill: #052e1b;
   --status-success-border: #00ff88;
   --status-success-text: #86efac;

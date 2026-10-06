@@ -218,7 +218,6 @@
 .supplier-decision-field input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
-  color-scheme: dark;
 }
 
 .supplier-decision-actions {
@@ -684,7 +683,7 @@
 
 .supplier-decision-table th .sortable-header[data-sort-active="true"] .sort-indicator {
   color: var(--dashboard-accent);
-  text-shadow: 0 0 10px rgba(102, 255, 126, 0.65);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--analytics-value-glow-color) 65%, transparent);
 }
 
 .supplier-decision-table th .sortable-header.is-active {

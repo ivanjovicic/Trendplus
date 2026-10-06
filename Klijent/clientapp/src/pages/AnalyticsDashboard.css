@@ -7,7 +7,6 @@
   --muted: var(--text-muted);
   --accent: var(--info);
   --accent-2: var(--info);
-  --warning: var(--error);
   --critical: var(--error);
   --good: var(--success);
   --neutral: var(--text-muted);
@@ -726,7 +725,7 @@
 }
 
 .analytics-errors li {
-  color: var(--text-error);
+  color: var(--status-error-text);
   margin-bottom: 4px;
   font-size: 13px;
 }
@@ -1115,13 +1114,13 @@
 }
 
 .analytics-empty.warning {
-  border-color: var(--theme-color-rgba-255-188-87-0p55, rgba(255, 188, 87, 0.55));
-  color: var(--warning, var(--theme-color-ffe2b2, #ffe2b2));
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
 }
 
 .analytics-empty.success {
-  border-color: var(--theme-color-rgba-49-196-141-0p55, rgba(49, 196, 141, 0.55));
-  color: var(--success, var(--theme-color-aaf5d7, #aaf5d7));
+  border-color: var(--status-success-border);
+  color: var(--status-success-text);
 }
 
 .glossary-grid {

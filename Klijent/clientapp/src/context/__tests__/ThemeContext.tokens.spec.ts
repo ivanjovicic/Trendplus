@@ -64,6 +64,10 @@ const SHARED_COLOR_TOKENS = [
   "--chart-tooltip-text",
   "--chart-positive",
   "--chart-negative",
+  "--analytics-value-glow-color",
+  "--panel",
+  "--panel-border",
+  "--row-hover",
 ];
 
 function captureThemes(): Record<ThemeName, Theme> {
@@ -161,6 +165,13 @@ describe("theme semantic tokens", () => {
         expect(contrastRatio(text, elevated), `${theme} ${status} on elevated`).toBeGreaterThanOrEqual(4.5);
       }
 
+      // Base status colours are used directly as text (text-success, .trend-up, ...).
+      for (const status of STATUS_KINDS) {
+        const base = resolveColor(theme, `--${status}`, themes);
+        expect(contrastRatio(base, defaultSurface), `${theme} --${status} text on default`).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(base, elevated), `${theme} --${status} text on elevated`).toBeGreaterThanOrEqual(4.5);
+      }
+
       expect(contrastRatio(resolveColor(theme, "--chart-axis", themes), elevated), `${theme} chart axis`).toBeGreaterThanOrEqual(3);
       expect(contrastRatio(resolveColor(theme, "--chart-grid", themes), elevated), `${theme} chart grid`).toBeGreaterThanOrEqual(3);
       expect(contrastRatio(resolveColor(theme, "--chart-tooltip-text", themes), resolveColor(theme, "--chart-tooltip-bg", themes)), `${theme} chart tooltip`).toBeGreaterThanOrEqual(4.5);
@@ -168,6 +179,26 @@ describe("theme semantic tokens", () => {
       if (["soft-gray", "light", "neon-light"].includes(theme)) {
         expect(themes[theme].cssVars["--warning-soft"]).toBe("var(--status-warning-fill)");
       }
+    }
+  });
+
+  it("keeps on-primary text readable on solid status fills (bg-info, bg-success, bg-error + text-on-primary)", () => {
+    const themes = captureThemes();
+    // inventory-dark is the legacy palette: its bright status fills need dark text but its
+    // primary action needs white text, so one on-fill colour cannot serve both. Tracked in
+    // docs/qa/UI_THEME_AUDIT_2026-10-06.md as future polish.
+    for (const theme of THEME_NAMES.filter((name) => name !== "inventory-dark")) {
+      const onPrimary = resolveColor(theme, "--text-on-primary", themes);
+      for (const status of ["success", "error", "info"] as const) {
+        expect(contrastRatio(onPrimary, resolveColor(theme, `--${status}`, themes)), `${theme} on-primary on --${status}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("keeps the analytics value glow off in light and high-contrast palettes", () => {
+    const themes = captureThemes();
+    for (const theme of ["soft-gray", "light", "neon-light", "high-contrast"] as const) {
+      expect(themes[theme].cssVars["--analytics-value-glow-color"], theme).toBe("transparent");
     }
   });
 

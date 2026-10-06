@@ -12,7 +12,7 @@
 .config-title {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--color-foreground);
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
@@ -65,13 +65,13 @@
 }
 
 .config-menu-item:hover {
-  background: var(--color-hover);
-  color: var(--color-foreground);
+  background: var(--row-hover);
+  color: var(--text-primary);
 }
 
 .config-menu-item.active {
   background: var(--color-primary);
-  color: var(--color-primary-foreground);
+  color: var(--text-on-primary);
   font-weight: 600;
 }
 
@@ -97,12 +97,12 @@
 .panel-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--color-foreground);
+  color: var(--text-primary);
   margin: 0 0 1.5rem 0;
 }
 
 .panel-card {
-  background: var(--color-background);
+  background: var(--surface-default);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1.5rem;
@@ -121,14 +121,14 @@
 .card-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-foreground);
+  color: var(--text-primary);
   flex: 1;
 }
 
 .status-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-pill);
   font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -161,7 +161,7 @@
 }
 
 .card-content {
-  color: var(--color-foreground);
+  color: var(--text-primary);
 }
 
 .card-content p {
@@ -182,7 +182,7 @@
 }
 
 /* Buttons */
-.btn {
+.configuration-page .btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -195,53 +195,53 @@
   transition: all 0.2s ease;
 }
 
-.btn:disabled {
+.configuration-page .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn-primary {
+.configuration-page .btn-primary {
   background: var(--color-primary);
-  color: var(--color-primary-foreground);
+  color: var(--text-on-primary);
 }
 
-.btn-primary:hover:not(:disabled) {
+.configuration-page .btn-primary:hover:not(:disabled) {
   opacity: 0.9;
 }
 
-.btn-secondary {
-  background: var(--color-secondary);
-  color: var(--color-secondary-foreground);
+.configuration-page .btn-secondary {
+  background: var(--action-secondary-bg);
+  color: var(--action-secondary-text);
 }
 
-.btn-secondary:hover:not(:disabled) {
+.configuration-page .btn-secondary:hover:not(:disabled) {
   opacity: 0.9;
 }
 
-.btn-warning {
+.configuration-page .btn-warning {
   background: rgb(234, 179, 8);
   color: #000;
 }
 
-.btn-warning:hover:not(:disabled) {
+.configuration-page .btn-warning:hover:not(:disabled) {
   opacity: 0.9;
 }
 
-.btn-ghost {
+.configuration-page .btn-ghost {
   background: transparent;
-  color: var(--color-foreground);
+  color: var(--text-primary);
   border: 1px solid var(--color-border);
 }
 
-.btn-ghost:hover:not(:disabled) {
-  background: var(--color-hover);
+.configuration-page .btn-ghost:hover:not(:disabled) {
+  background: var(--row-hover);
 }
 
-.btn-small {
+.configuration-page .btn-small {
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
-  background: var(--color-secondary);
-  color: var(--color-secondary-foreground);
+  background: var(--action-secondary-bg);
+  color: var(--action-secondary-text);
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
@@ -250,7 +250,7 @@
   transition: all 0.2s;
 }
 
-.btn-small:hover {
+.configuration-page .btn-small:hover {
   opacity: 0.8;
 }
 
@@ -269,24 +269,24 @@
 
 .config-table thead {
   border-bottom: 2px solid var(--color-border);
-  background: var(--color-background);
+  background: var(--surface-default);
 }
 
 .config-table th {
   padding: 0.75rem;
   text-align: left;
   font-weight: 600;
-  color: var(--color-foreground);
+  color: var(--text-primary);
 }
 
 .config-table td {
   padding: 0.75rem;
   border-bottom: 1px solid var(--color-border);
-  color: var(--color-foreground);
+  color: var(--text-primary);
 }
 
 .config-table tbody tr:hover {
-  background: var(--color-hover);
+  background: var(--row-hover);
 }
 
 .mono {
@@ -298,11 +298,11 @@
   text-align: center;
 }
 
-.text-small {
+.configuration-page .text-small {
   font-size: 0.85rem;
 }
 
-.text-muted {
+.configuration-page .text-muted {
   color: var(--color-muted);
 }
 
@@ -310,7 +310,7 @@
   width: 100%;
   height: 6px;
   background: var(--color-border);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
@@ -380,7 +380,7 @@
   gap: 0.75rem;
   padding: 1.5rem;
   border: 2px solid var(--color-border);
-  background: var(--color-background);
+  background: var(--surface-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -388,12 +388,12 @@
 
 .theme-btn:hover {
   border-color: var(--color-primary);
-  background: var(--color-hover);
+  background: var(--row-hover);
 }
 
 .theme-btn.selected {
   border-color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
 }
 
@@ -413,7 +413,7 @@
   padding: 0.75rem 0;
   padding-left: 1.5rem;
   position: relative;
-  color: var(--color-foreground);
+  color: var(--text-primary);
 }
 
 .info-list li:before {

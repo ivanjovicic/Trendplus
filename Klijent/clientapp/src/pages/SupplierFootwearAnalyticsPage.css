@@ -76,12 +76,6 @@
 .sf-decision-field input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
-  color-scheme: light;
-}
-
-[data-theme="inventory-dark"] .sf-decision-field input[type="date"],
-[data-theme="high-contrast"] .sf-decision-field input[type="date"] {
-  color-scheme: dark;
 }
 
 .sf-decision-field select:focus,
@@ -276,7 +270,7 @@
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin-top: 16px;
-  text-shadow: 0 0 12px currentColor;
+  text-shadow: 0 0 12px var(--analytics-value-glow-color);
 }
 
 .sf-decision-panels {

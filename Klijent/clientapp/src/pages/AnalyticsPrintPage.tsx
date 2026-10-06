@@ -36,7 +36,7 @@ export default function AnalyticsPrintPage() {
   return (
     <div
       className={`analytics-print-page${isDenseDailySalesBlank ? " analytics-print-page-dense" : ""}`}
-      style={{ background: "var(--surface)", color: "var(--foreground)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
+      style={{ background: "var(--surface)", color: "var(--text-primary)", minHeight: "100vh", padding: 24, fontFamily: "Arial, sans-serif" }}
     >
       <style>{`
         @page { size: A4 ${pageOrientation}; margin: ${pageMarginMm}mm; }
@@ -44,7 +44,10 @@ export default function AnalyticsPrintPage() {
           .analytics-print-actions { display: none !important; }
           html, body { margin: 0 !important; padding: 0 !important; }
           body { background: var(--c-fff, var(--theme-color-ffffff, #ffffff)) !important; }
-          .analytics-print-page { padding: 0 !important; }
+          /* Paper is always white: print with dark text regardless of the active screen theme. */
+          .analytics-print-page { padding: 0 !important; background: #ffffff !important; color: #111827 !important; }
+          .analytics-print-table th, .analytics-print-table td { border-color: #94a3b8 !important; }
+          .analytics-print-table th { background: #f1f5f9 !important; }
         }
         .analytics-print-table { width: 100%; border-collapse: collapse; }
         .analytics-print-table th,
@@ -70,10 +73,10 @@ export default function AnalyticsPrintPage() {
       `}</style>
 
       <div className="analytics-print-actions" style={{ marginBottom: 20, display: "flex", gap: 12 }}>
-        <button type="button" onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--muted)", background: "var(--foreground)", color: "var(--on-foreground)", cursor: "pointer" }}>
-          Print
+        <button type="button" onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--action-primary-border)", background: "var(--action-primary-bg)", color: "var(--action-primary-text)", cursor: "pointer" }}>
+          Štampaj
         </button>
-        <button type="button" onClick={() => window.close()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--foreground)", cursor: "pointer" }}>
+        <button type="button" onClick={() => window.close()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--action-secondary-border)", background: "var(--action-secondary-bg)", color: "var(--action-secondary-text)", cursor: "pointer" }}>
           Zatvori
         </button>
       </div>
@@ -105,7 +108,7 @@ export default function AnalyticsPrintPage() {
 
           {payload.metadata.length > 0 ? (
             <div>
-              <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Metadata</h2>
+              <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>Metapodaci</h2>
               {payload.metadata.map((item) => (
                 <div key={item.key} style={{ fontSize: 12, marginBottom: 4 }}>
                   <strong>{item.label}:</strong> {formatAnalyticsCellValue(item.value, "text", "-")}

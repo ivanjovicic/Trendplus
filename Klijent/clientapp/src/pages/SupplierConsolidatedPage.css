@@ -357,12 +357,12 @@
 
 .supplier-consolidated-tab:hover {
   color: var(--text-primary);
-  background-color: var(--surface-hover);
+  background-color: var(--row-hover);
 }
 
 .supplier-consolidated-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--accent-text);
+  border-bottom-color: var(--accent-primary);
   background-color: transparent;
 }
 

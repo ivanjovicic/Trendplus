@@ -126,7 +126,7 @@ export default function DobavljaciPage() {
                 </div>
                 <button
                     onClick={() => { setShowForm(!showForm); setError(null); setSuccess(null); }}
-                    className="flex items-center gap-1.5 rounded-xl bg-info px-3 py-2 text-xs font-semibold text-white hover:opacity-90 transition-colors"
+                    className="flex items-center gap-1.5 rounded-xl bg-info px-3 py-2 text-xs font-semibold text-on-primary hover:opacity-90 transition-colors"
                 >
                     <Plus size={14} />
                     {showForm ? "Otkaži" : "Novi dobavljač"}
@@ -208,7 +208,7 @@ export default function DobavljaciPage() {
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="flex items-center gap-1.5 rounded-lg bg-info px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-colors"
+                                className="flex items-center gap-1.5 rounded-lg bg-info px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50 hover:opacity-90 transition-colors"
                             >
                                 <Plus size={14} />
                                 {isSaving ? "Kreiram..." : "Kreiraj dobavljača"}
@@ -236,7 +236,7 @@ export default function DobavljaciPage() {
                         <button
                             onClick={confirmDelete}
                             disabled={isDeleting}
-                            className="flex items-center gap-1 rounded-lg bg-error px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 hover:bg-error/80"
+                            className="flex items-center gap-1 rounded-lg bg-error px-3 py-1.5 text-xs font-semibold text-on-primary disabled:opacity-50 hover:bg-error/80"
                         >
                             <Trash2 size={12} /> {isDeleting ? "Brišem..." : "Da, obriši"}
                         </button>
@@ -260,7 +260,7 @@ export default function DobavljaciPage() {
                         <p className="text-sm text-muted">Nema kreiranih dobavljača.</p>
                         <button
                             onClick={() => setShowForm(true)}
-                            className="flex items-center gap-1.5 rounded-lg bg-info px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+                            className="flex items-center gap-1.5 rounded-lg bg-info px-3 py-2 text-xs font-semibold text-on-primary hover:opacity-90"
                         >
                             <Plus size={13} /> Dodaj prvog dobavljača
                         </button>

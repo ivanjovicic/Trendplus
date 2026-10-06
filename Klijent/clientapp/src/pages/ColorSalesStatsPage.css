@@ -104,12 +104,6 @@
 .color-decision-field input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
-  color-scheme: light;
-}
-
-[data-theme="inventory-dark"] .color-decision-field input[type="date"],
-[data-theme="high-contrast"] .color-decision-field input[type="date"] {
-  color-scheme: dark;
 }
 
 .color-decision-field select:focus,
@@ -171,9 +165,9 @@
 
 .color-decision-message.loading,
 .color-decision-message.info {
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 34%, transparent);
-  color: var(--color-accent);
+  background: var(--status-info-fill);
+  border: 1px solid var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 .color-decision-message.loading {
@@ -230,7 +224,7 @@
   letter-spacing: -0.02em;
   line-height: 1.08;
   margin-top: 14px;
-  text-shadow: 0 0 16px currentColor;
+  text-shadow: 0 0 16px var(--analytics-value-glow-color);
 }
 
 .color-decision-kpi strong.trend-up,

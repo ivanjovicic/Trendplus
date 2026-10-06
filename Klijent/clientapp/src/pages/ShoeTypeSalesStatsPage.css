@@ -205,7 +205,6 @@
 .shoetype-decision-field input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
-  color-scheme: dark;
 }
 
 .shoetype-decision-field select:focus,
@@ -319,7 +318,7 @@
   font-weight: 800;
   line-height: 1.1;
   margin-top: 16px;
-  text-shadow: 0 0 18px currentColor;
+  text-shadow: 0 0 18px var(--analytics-value-glow-color);
 }
 
 .shoetype-decision-kpi strong.trend-up {
@@ -550,7 +549,7 @@
 
 .shoetype-decision-table th .sortable-header[data-sort-active="true"] .sort-indicator {
   color: var(--dashboard-accent);
-  text-shadow: 0 0 10px rgba(102, 255, 126, 0.65);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--analytics-value-glow-color) 65%, transparent);
 }
 
 .shoetype-decision-table th .sortable-header.is-active {

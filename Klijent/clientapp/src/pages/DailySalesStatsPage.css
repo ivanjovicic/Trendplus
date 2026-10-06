@@ -115,7 +115,7 @@
 .daily-sales-filters select {
   border: 1px solid var(--border-default);
   border-radius: 10px;
-  background: var(--surface-primary);
+  background: var(--surface-light);
   color: var(--text-primary);
   padding: 0.55rem 0.7rem;
 }
@@ -172,11 +172,11 @@
 }
 
 .daily-sales-message.error {
-  border-color: var(--accent-danger);
+  border-color: var(--status-error-border);
 }
 
 .daily-sales-message.warning {
-  border-color: var(--accent-warning);
+  border-color: var(--status-warning-border);
 }
 
 .daily-sales-message.info {
@@ -184,7 +184,7 @@
 }
 
 .daily-sales-message.loading {
-  border-color: var(--accent-warning);
+  border-color: var(--status-warning-border);
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -236,7 +236,7 @@
   font-size: 24px;
   font-weight: 800;
   margin-top: 16px;
-  text-shadow: 0 0 18px currentColor;
+  text-shadow: 0 0 18px var(--analytics-value-glow-color);
 }
 
 .daily-sales-kpis small {
@@ -313,6 +313,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.8rem;
+  /* The quality badge drops under the heading on narrow phones instead of widening the page. */
+  flex-wrap: wrap;
   margin-bottom: 0.85rem;
 }
 
@@ -340,6 +342,7 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  max-width: 100%;
   transition: background 0.15s;
 }
 
@@ -350,18 +353,18 @@
 }
 
 .daily-sales-health-badge--good {
-  color: var(--accent-success, #33f28b);
-  border-color: color-mix(in srgb, var(--accent-success, #33f28b) 45%, var(--border-default));
+  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--status-success-border) 45%, var(--border-default));
 }
 
 .daily-sales-health-badge--warning {
-  color: var(--accent-warning, #facc15);
-  border-color: color-mix(in srgb, var(--accent-warning, #facc15) 55%, var(--border-default));
+  color: var(--status-warning-text);
+  border-color: color-mix(in srgb, var(--status-warning-border) 55%, var(--border-default));
 }
 
 .daily-sales-health-badge--danger {
-  color: var(--accent-danger, #f87171);
-  border-color: color-mix(in srgb, var(--accent-danger, #f87171) 50%, var(--border-default));
+  color: var(--status-error-text);
+  border-color: color-mix(in srgb, var(--status-error-border) 50%, var(--border-default));
 }
 
 .daily-sales-health-caret {
@@ -429,7 +432,7 @@
   font-size: 22px;
   font-weight: 800;
   margin-top: 12px;
-  text-shadow: 0 0 16px currentColor;
+  text-shadow: 0 0 16px var(--analytics-value-glow-color);
 }
 
 .daily-sales-compare-card small,
@@ -511,7 +514,7 @@
 .daily-sales-anomaly-summary strong {
   font-size: 1.05rem;
   font-weight: 800;
-  text-shadow: 0 0 12px currentColor;
+  text-shadow: 0 0 12px var(--analytics-value-glow-color);
 }
 
 .daily-sales-insight-list {
@@ -603,15 +606,15 @@
 }
 
 .trend-up {
-  color: var(--accent-success);
+  color: var(--status-success-text);
 }
 
 .trend-down {
-  color: var(--accent-danger);
+  color: var(--status-error-text);
 }
 
 .daily-sales-warnings {
-  border: 1px solid var(--accent-warning);
+  border: 1px solid var(--status-warning-border);
   background: var(--surface-card);
   border-radius: 12px;
   padding: 0.7rem 0.9rem;
@@ -772,14 +775,14 @@
 }
 
 .daily-sales-table tr.row-mismatch td {
-  background: color-mix(in srgb, var(--accent-warning) 9%, transparent);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
 }
 
 .mismatch-badge {
   margin-left: 0.45rem;
   padding: 0.12rem 0.4rem;
   border-radius: 999px;
-  border: 1px solid var(--accent-warning);
+  border: 1px solid var(--status-warning-border);
   font-size: 0.72rem;
 }
 
@@ -809,7 +812,7 @@
   min-height: 2rem;
   border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: var(--surface-primary);
+  background: var(--surface-light);
   color: var(--text-primary);
   padding: 0.25rem 0.45rem;
 }

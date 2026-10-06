@@ -103,12 +103,6 @@
 .sdh-decision-field input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
-  color-scheme: light;
-}
-
-[data-theme="inventory-dark"] .sdh-decision-field input[type="date"],
-[data-theme="high-contrast"] .sdh-decision-field input[type="date"] {
-  color-scheme: dark;
 }
 
 .sdh-decision-field select:focus,
@@ -271,7 +265,7 @@
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin-top: 16px;
-  text-shadow: 0 0 18px currentColor;
+  text-shadow: 0 0 18px var(--analytics-value-glow-color);
 }
 
 .sdh-decision-panels {

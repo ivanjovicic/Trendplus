@@ -392,7 +392,7 @@
   color: var(--analytics-text-muted);
   display: flex;
   flex-wrap: wrap;
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-label);
   font-weight: var(--font-weight-heavy);
   gap: var(--space-1);
   letter-spacing: 0.22em;
@@ -415,7 +415,7 @@
   line-height: var(--line-height-tight);
   margin-top: var(--space-4);
   overflow-wrap: anywhere;
-  text-shadow: 0 0 14px currentColor;
+  text-shadow: 0 0 14px var(--analytics-value-glow-color);
 }
 
 .analytics-kpi-card__note,

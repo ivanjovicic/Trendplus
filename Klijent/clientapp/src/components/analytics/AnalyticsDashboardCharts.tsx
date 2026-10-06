@@ -15,8 +15,16 @@
   XAxis,
   YAxis,
 } from "recharts";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import InfoTip from "../ui/InfoTip";
+import {
+  CHART_AXIS_TICK,
+  CHART_GRID_STROKE,
+  CHART_LEGEND_STYLE,
+  CHART_METRIC_COLORS,
+  CHART_SERIES_COLORS,
+  CHART_TOOLTIP_STYLE,
+} from "../../utils/chartTooltipStyle";
 import type { CategoricalDimensionCoverage, DailySale } from "../../types/analytics";
 import {
   dimensionNotPopulatedMessage,
@@ -56,16 +64,9 @@ type Props = {
   formatNumber: (value: number, digits?: number) => string;
 };
 
-const CHART_COLORS = ["var(--success)", "var(--info)", "var(--warning)", "var(--error)", "var(--accent-info)", "var(--primary)", "var(--accent-success)", "var(--accent-warning)"];
-const CHART_GRID_STROKE = "rgba(var(--text-muted-rgb, 154, 164, 199), 0.2)";
-const CHART_TEXT_COLOR = "var(--text-muted)";
-const CHART_TOOLTIP_CONTENT_STYLE: CSSProperties = {
-  background: "var(--surface-elevated)",
-  border: "1px solid var(--muted)",
-  color: "var(--contrast)",
-  borderRadius: "8px",
-  boxShadow: "var(--tooltip-box-shadow)",
-};
+const CHART_COLORS = CHART_SERIES_COLORS;
+const CHART_TEXT_COLOR = CHART_AXIS_TICK.fill;
+const CHART_TOOLTIP_CONTENT_STYLE = CHART_TOOLTIP_STYLE;
 
 function formatChartValue(
   value: number | string | undefined,
@@ -131,9 +132,9 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     name === "totalRevenue" ? "Promet" : "Prodajni dokumenti",
                   ]}
                 />
-                <Legend />
-                <Line type="monotone" dataKey="totalRevenue" stroke="var(--success)" strokeWidth={2.5} dot={false} name="Promet" />
-                <Line type="monotone" dataKey="transactionCount" stroke="var(--info)" strokeWidth={2} dot={false} name="Prodajni dokumenti" />
+                <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                <Line type="monotone" dataKey="totalRevenue" stroke={CHART_METRIC_COLORS.revenue} strokeWidth={2.5} dot={false} name="Promet" />
+                <Line type="monotone" dataKey="transactionCount" stroke={CHART_METRIC_COLORS.documents} strokeWidth={2} dot={false} name="Prodajni dokumenti" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -160,7 +161,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>,
@@ -186,7 +187,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>,
@@ -207,7 +208,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--info)" />
+                  <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill={CHART_METRIC_COLORS.revenue} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -228,7 +229,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill="var(--success)" />
+                  <Bar dataKey="totalRevenue" radius={[0, 8, 8, 0]} fill={CHART_METRIC_COLORS.revenue} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -249,8 +250,8 @@ export default function AnalyticsDashboardCharts(props: Props) {
                 <AreaChart data={hourChartData}>
                   <defs>
                     <linearGradient id="hourGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent-info)" stopOpacity={0.85} />
-                      <stop offset="95%" stopColor="var(--accent-info)" stopOpacity={0.05} />
+                      <stop offset="5%" stopColor={CHART_METRIC_COLORS.revenue} stopOpacity={0.85} />
+                      <stop offset="95%" stopColor={CHART_METRIC_COLORS.revenue} stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
@@ -260,7 +261,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Area type="monotone" dataKey="totalRevenue" stroke="var(--accent-info)" fill="url(#hourGradient)" strokeWidth={2.2} />
+                  <Area type="monotone" dataKey="totalRevenue" stroke={CHART_METRIC_COLORS.revenue} fill="url(#hourGradient)" strokeWidth={2.2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>,
@@ -286,7 +287,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
                     contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
                     formatter={(value: number | string | undefined) => formatChartValue(value, formatCurrency)}
                   />
-                  <Bar dataKey="totalRevenue" fill="var(--warning)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="totalRevenue" fill={CHART_METRIC_COLORS.revenue} radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>,
