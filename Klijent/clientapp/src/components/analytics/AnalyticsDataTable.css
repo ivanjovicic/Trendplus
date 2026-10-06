@@ -122,7 +122,7 @@
   color: var(--text-secondary);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1279px) {
   .analytics-data-table__meta {
     justify-content: flex-start;
   }
@@ -136,24 +136,56 @@
     cursor: grabbing;
   }
 
-  .analytics-data-table--responsive-pilot .analytics-data-table__scroll > table thead th:first-child {
+  .analytics-data-table--responsive-pilot .analytics-data-table__scroll-hint {
+    display: block;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 1279px) {
+  .analytics-data-table--responsive-pilot .analytics-wide-table-scroll--overflowing > table thead th:first-child,
+  .inventory-items-table__scroll--overflowing > table thead th:first-child {
     left: 0;
     position: sticky;
     z-index: 4;
     background: var(--surface-darker);
   }
 
-  .analytics-data-table--responsive-pilot .analytics-data-table__scroll > table tbody td:first-child {
+  .analytics-data-table--responsive-pilot .analytics-wide-table-scroll--overflowing > table tbody td:first-child,
+  .inventory-items-table__scroll--overflowing > table tbody td:first-child {
     left: 0;
     position: sticky;
     z-index: 2;
     background: var(--surface-elevated);
     box-shadow: 5px 0 8px -7px var(--text-primary);
   }
+}
 
-  .analytics-data-table--responsive-pilot .analytics-data-table__scroll-hint {
+.inventory-items-table__scroll {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--info) var(--surface-darker);
+  scrollbar-width: thin;
+  touch-action: pan-x pan-y;
+}
+
+.inventory-items-table__scroll:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
+}
+
+.inventory-items-table__scroll-hint {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .inventory-items-table__scroll-hint {
     display: block;
     margin: 0;
+    padding: 8px 12px;
     color: var(--text-secondary);
     font-size: 12px;
     line-height: 1.4;

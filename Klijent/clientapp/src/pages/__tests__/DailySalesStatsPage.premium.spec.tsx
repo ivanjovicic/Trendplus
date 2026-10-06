@@ -374,6 +374,8 @@ describe("DailySalesStatsPage premium controls", () => {
     fireEvent.click(disclosure.querySelector("summary")!);
 
     const table = await screen.findByTestId("daily-sales-stats-data-table");
+    expect(table).toHaveClass("analytics-data-table--responsive-pilot");
+    expect(within(table).getByRole("region", { name: "Tabela sa vodoravnim pomeranjem" })).toBeInTheDocument();
     expect(within(table).getAllByRole("row")).toHaveLength(15);
     expect(screen.getByText("Strana 1 od 3")).toBeInTheDocument();
     expect(screen.getByText("Prikazano 1–14 od 30 dana")).toBeInTheDocument();

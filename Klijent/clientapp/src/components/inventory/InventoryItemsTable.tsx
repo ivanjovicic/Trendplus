@@ -1,4 +1,5 @@
 import KpiExplainButton from "../analytics/KpiExplainButton";
+import { useHorizontalOverflow } from "../analytics/AnalyticsDataTable";
 import {
   formatCurrency,
   formatNumber,
@@ -63,6 +64,8 @@ export function InventoryItemsTable({
   isRowQueued,
   isRowQueueBusy,
 }: InventoryItemsTableProps) {
+  const { containerRef, isOverflowing } = useHorizontalOverflow<HTMLDivElement>();
+
   return (
     <section className="rounded-[30px] border border-[var(--border-default)] bg-[linear-gradient(180deg,var(--surface-elevated)_0%,var(--surface-default)_100%)] p-5 shadow-[0_24px_70px_-56px_rgba(0,0,0,0.9)]">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -77,7 +80,17 @@ export function InventoryItemsTable({
       </div>
 
       <div className="mt-4 overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--surface-darker)]">
-        <div className="overflow-x-auto">
+        <p className="inventory-items-table__scroll-hint" id="inventory-items-table-scroll-hint" role="note">
+          Tabela se pomera vodoravno — prevucite ili skrolujte za ostale kolone.
+        </p>
+        <div
+          ref={containerRef}
+          className={`inventory-items-table__scroll analytics-wide-table-scroll${isOverflowing ? " analytics-wide-table-scroll--overflowing inventory-items-table__scroll--overflowing" : ""}`}
+          tabIndex={0}
+          role="region"
+          aria-label="Tabela artikala sa vodoravnim pomeranjem"
+          aria-describedby="inventory-items-table-scroll-hint"
+        >
           <table aria-label="Lista artikala na stanju" className="min-w-full border-separate border-spacing-0 text-sm">
             <thead className="bg-[var(--surface-darker)] text-left text-secondary">
               <tr>

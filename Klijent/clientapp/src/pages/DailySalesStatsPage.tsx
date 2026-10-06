@@ -2184,6 +2184,7 @@ export default function DailySalesStatsPage() {
 
             <AnalyticsDataTable
               testId="daily-sales-stats-data-table"
+              responsivePilot
               rowCount={paginatedTableRows.length}
               toolbar={(
                 <AnalyticsTableToolbar

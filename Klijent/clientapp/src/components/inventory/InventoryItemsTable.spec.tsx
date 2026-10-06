@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { InventoryItemsTable } from "./InventoryItemsTable";
@@ -63,6 +63,38 @@ function renderTable(overrides: Partial<ComponentProps<typeof InventoryItemsTabl
 }
 
 describe("Inventory signal presentation", () => {
+  it("provides an accessible scroll region and detects overflowing table width", () => {
+    const observers: Array<{ trigger: () => void }> = [];
+    vi.stubGlobal("ResizeObserver", class {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+        observers.push({
+          trigger: () => this.callback([], this as unknown as ResizeObserver),
+        });
+      }
+
+      observe() {}
+      disconnect() {}
+    });
+
+    renderTable();
+    const scrollArea = screen.getByRole("region", {
+      name: "Tabela artikala sa vodoravnim pomeranjem",
+    });
+    expect(scrollArea).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("note")).toHaveTextContent("za ostale kolone");
+    Object.defineProperties(scrollArea, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollWidth: { configurable: true, value: 1323 },
+    });
+
+    act(() => observers[0]?.trigger());
+    expect(scrollArea).toHaveClass("analytics-wide-table-scroll--overflowing");
+    vi.unstubAllGlobals();
+  });
+
   it("maps insufficient_data to explicit no-signal text", () => {
     expect(buildSignalText("insufficient_data", "good")).toBe("Nedovoljno podataka");
     expect(buildSignalText("healthy", "insufficient_data")).toBe("Nedovoljno podataka");

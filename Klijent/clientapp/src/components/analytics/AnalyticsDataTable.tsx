@@ -1,5 +1,35 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import "./AnalyticsDataTable.css";
+
+export function useHorizontalOverflow<T extends HTMLElement>() {
+  const containerRef = useRef<T>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      setIsOverflowing(container.scrollWidth > container.clientWidth);
+    };
+
+    measure();
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(measure);
+    observer?.observe(container);
+    const table = container.querySelector("table");
+    if (table) observer?.observe(table);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return { containerRef, isOverflowing };
+}
 
 type AnalyticsDataTableProps = {
   toolbar?: ReactNode;
@@ -23,6 +53,8 @@ export default function AnalyticsDataTable({
   children,
   testId = "analytics-data-table",
 }: AnalyticsDataTableProps) {
+  const { containerRef, isOverflowing } = useHorizontalOverflow<HTMLDivElement>();
+
   return (
     <section
       className={`analytics-data-table${responsivePilot ? " analytics-data-table--responsive-pilot" : ""}`}
@@ -52,7 +84,8 @@ export default function AnalyticsDataTable({
         </p>
       ) : null}
       <div
-        className="analytics-data-table__scroll"
+        ref={containerRef}
+        className={`analytics-data-table__scroll analytics-wide-table-scroll${isOverflowing ? " analytics-wide-table-scroll--overflowing" : ""}`}
         tabIndex={responsivePilot ? 0 : undefined}
         role={responsivePilot ? "region" : undefined}
         aria-label={responsivePilot ? "Tabela sa vodoravnim pomeranjem" : undefined}

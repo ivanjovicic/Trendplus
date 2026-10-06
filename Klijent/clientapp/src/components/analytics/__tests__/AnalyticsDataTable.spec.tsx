@@ -1,9 +1,51 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import AnalyticsDataTable from "../AnalyticsDataTable";
 
 describe("AnalyticsDataTable", () => {
+  it("sticks the key column only after ResizeObserver detects horizontal overflow", () => {
+    const observers: Array<{ trigger: () => void }> = [];
+    vi.stubGlobal("ResizeObserver", class {
+      private readonly callback: ResizeObserverCallback;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+        observers.push({
+          trigger: () => this.callback([], this as unknown as ResizeObserver),
+        });
+      }
+
+      observe() {}
+      disconnect() {}
+    });
+
+    const { unmount } = render(
+      <AnalyticsDataTable rowCount={1}>
+        <table>
+          <thead><tr><th>Datum</th><th>Prodaja</th></tr></thead>
+          <tbody><tr><td>2026-04-01</td><td>120.000 RSD</td></tr></tbody>
+        </table>
+      </AnalyticsDataTable>,
+    );
+
+    const scrollArea = screen.getByRole("region", { name: "Tabela sa vodoravnim pomeranjem" });
+    Object.defineProperties(scrollArea, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollWidth: { configurable: true, value: 760 },
+    });
+    expect(scrollArea).not.toHaveClass("analytics-wide-table-scroll--overflowing");
+
+    act(() => observers[0]?.trigger());
+    expect(scrollArea).toHaveClass("analytics-wide-table-scroll--overflowing");
+
+    Object.defineProperty(scrollArea, "scrollWidth", { configurable: true, value: 300 });
+    act(() => observers[0]?.trigger());
+    expect(scrollArea).not.toHaveClass("analytics-wide-table-scroll--overflowing");
+    unmount();
+    vi.unstubAllGlobals();
+  });
+
   it("renders toolbar content, row-count metadata, truncation metadata and table children", () => {
     render(
       <AnalyticsDataTable

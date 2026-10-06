@@ -23,6 +23,7 @@ beforeAll(() => {
 
   if (!window.ResizeObserver) {
     Object.defineProperty(window, "ResizeObserver", {
+      configurable: true,
       writable: true,
       value: class ResizeObserver {
         observe() {}
