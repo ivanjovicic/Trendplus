@@ -53,7 +53,14 @@ Residual: the trust header (P-UI-43) and sticky filters still occupy most of the
 
 ## Suspicious / left intentionally
 
-- Data Quality trust header reads "Podaci deluju pouzdano" while every data request failed (fixture) — header is P-UI-43.
+- Data Quality browser fixture showed "Podaci deluju pouzdano" alongside request failures. Source review does **not** support the stronger claim that an all-trust-sources-failed path can stay `good`: `DataQualityPage` clears failed health/intake state and passes no quality status. A regression test now proves the all-fail case is unavailable; P-UI-43 owns reproduction of the mixed-success/partial-failure browser case and the final shared-header presentation.
 - Many service error strings lack diacritics (`Greska pri ucitavanju…`, `Neuspesno citanje…`) — service layer, not changed.
 - `validateDOMNesting`: InfoTip button inside sortable header button (AnalyticsTableToolbar/table headers).
 - Inventory and supplier report had no fixture data; only error-state hierarchy was improved there.
+
+## Independent follow-up review
+
+- Confirmed Analytics Quality Gates run #820 (`37474296273`) on `033129888eba6e4fa89b7d734d000eaa02a48867`: all three jobs succeeded, including frontend analytics tests/guardrails/build.
+- Confirmed supplier highlight helpers run over the full current response/display population (`displayProjection.rows`), not a paginated table slice; focused/known-only filters intentionally narrow that population.
+- Fixed the remaining real interactive contrast issue from the browser report: the active Shoe Type sorted-column label no longer switches to the lower-contrast chart accent; the sorted background and sort indicator still communicate state.
+- Added Data Quality all-trust-sources-failed regression proof and routed the mixed-success/partial-failure trust presentation explicitly to active P-UI-43 without changing backend quality semantics.

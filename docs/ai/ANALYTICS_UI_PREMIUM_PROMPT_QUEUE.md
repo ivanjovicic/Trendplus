@@ -2939,6 +2939,7 @@ The UX/UI audit (`docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`, UX-003/UX-004/UX
 - One `h1`: the trust header renders no title when the page already has one (live: "Odluke o proizvodima" three times).
 - Consume RQ569 fields exactly as delivered; compute nothing in the browser. Design system: `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` §3, §5.
 - Extra tests: evidence IDs are absent from the default render but reachable by keyboard; Belgrade time format; `role="status"`; desktop fold check in `responsive:baseline`.
+- Data Quality trust-state follow-up from the 2026-10-06 hierarchy audit: reproduce the browser fixture before changing semantics. The current `DataQualityPage` clears `health`/intake state on rejected requests and an **all trust sources failed** path must render quality status unavailable, never `good`. Add/retain regression proof for that invariant. If the health/readiness source succeeds as `good` while another decision-relevant Data Quality request fails, the header may keep the backend quality classification but must expose the availability/partial failure prominently enough that the page cannot read as fully verified/healthy. Do not silently convert transport failure into a business `critical` score.
 
 ## P-UI-44 - Wide Operations tables: sticky key column and scroll affordance for Daily Sales and Inventory items
 

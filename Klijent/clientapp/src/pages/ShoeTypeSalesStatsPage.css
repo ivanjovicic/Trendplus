@@ -564,7 +564,8 @@
 }
 
 .shoetype-decision-table th .sortable-header.is-active {
-  color: var(--dashboard-accent);
+  /* Sorted state is already conveyed by the highlighted cell + indicator; keep label text AA-readable. */
+  color: var(--dashboard-text);
 }
 
 .shoetype-decision-table td {

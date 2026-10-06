@@ -316,6 +316,22 @@ describe("DataQualityPage", () => {
     expect(screen.getByText(/Top lista: 1/)).toBeInTheDocument();
   });
 
+  it("does not report healthy trust when every data-quality trust source fails", async () => {
+    vi.mocked(getDataQualityIssues).mockRejectedValueOnce(new Error("issues unavailable"));
+    vi.mocked(getAnalyticsDataQualityHealth).mockRejectedValueOnce(new Error("health unavailable"));
+    vi.mocked(getAnalyticsRefreshStatus).mockRejectedValueOnce(new Error("refresh unavailable"));
+    vi.mocked(getPilotDataQualityIntakeReport).mockRejectedValueOnce(new Error("intake unavailable"));
+    vi.mocked(getPilotIntakeDurableReport).mockRejectedValueOnce(new Error("durable intake unavailable"));
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: n/a");
+    });
+    expect(screen.getByText("health unavailable")).toBeInTheDocument();
+    expect(screen.queryByText(/status: good/)).not.toBeInTheDocument();
+  });
+
   it("does not show green health when the backend reports no sales or insufficient data", async () => {
     vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
       totalRevenue: 0,
