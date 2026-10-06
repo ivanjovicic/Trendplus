@@ -5,8 +5,8 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: 2170fae56c1439c17bea50467d51241714637df2
-Main verification: passed - fresh `origin/main` matched `2170fae56c1439c17bea50467d51241714637df2`
-Evidence state: pending
+Main verification: passed - fresh `origin/main` at `19f9d94e07aab4cc754d46d5db49d38687820a49` contains implementation `2170fae56c1439c17bea50467d51241714637df2`
+Evidence state: synchronized
 
 ## What was done
 - Replaced the long phone filter stack with a theme-aware disclosure that summarizes the active period, scope, store and supplier; kept every scorecard filter reachable.
@@ -37,11 +37,11 @@ Evidence state: pending
 - `npm run build` -> pass; existing warning for the Recharts chunk exceeding 500 kB.
 - `node --check scripts/responsive_baseline.mjs` -> pass.
 - `git diff --check` -> pass (Git reports expected LF/CRLF normalization notices).
-- GitHub Analytics Quality Gates run `37394820689` -> in progress on implementation SHA `2170fae56c1439c17bea50467d51241714637df2` at queue closure preparation.
+- GitHub Analytics Quality Gates run `37394820689` -> pass on implementation SHA `2170fae56c1439c17bea50467d51241714637df2`.
+- GitHub Planning Governance run `37395096609` -> pass on queue-closure SHA `19f9d94e07aab4cc754d46d5db49d38687820a49`.
 
 ## Validation not run
-- Physical iPhone/iPad checks -> not run; automated browser fixture only.
-- Remote Actions for the implementation SHA -> pending main delivery.
+- Physical-device iOS/iPadOS Safari -> not run; automated browser fixture only.
 
 ## Documentation impact
 - No product documentation changed. Applied the P-UI-31 addendum requiring P-UI-47 tokens and the Supplier chart/table/filter patterns.
@@ -54,7 +54,14 @@ Evidence state: pending
 - Build reports the existing large Recharts chunk warning.
 
 ## Post-close routing recovery
-- Pending implementation delivery and the mandatory post-close scan of all active owner queues/addenda.
+- Recovery base: fresh `origin/main` `19f9d94e07aab4cc754d46d5db49d38687820a49`.
+- Active owner files scanned: `MASTER_ROADMAP.md`; the RQ root and its Action Outcome, Advanced, Cross Surface, Executive DQ, Inventory Signals, Legacy, Nivelacija Audit, Operations Accuracy, Supplier Audit, Test Hardening and UI Table Chart addenda; `SQL_ANALYTICS_PROMPT_QUEUE.md`; `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md` (16 files; no missing files).
+- Completed/changed IDs searched: P-UI-31; checked P-UI-31 dependent references across the entire active set. No RQ/SQL prompt became newly runnable.
+- Global lanes: BCI has no READY/IN_PROGRESS; STAB16 remains provider/deployed-proof blocked; RQ Current READY is none; SQL Current READY is none; QDB/MT/GAI have no runnable repository-local execution lane.
+- P-UI candidates re-evaluated: P-UI-35/36/43/44/45/49/51/52 READY; P-UI-38/42/46/50/53 WAITING on listed completion or shared-owner gates. P-UI-35 is the current primary P2, with P-UI-39/47/28/29 DONE.
+- P-UI-35 collision check: RQ552/RQ553/RQ571 are DONE; RQ556 is WAITING for owner-gated signal weights and does not block the prompt's presentation-only slice; no active Nivelacija owner, matching lock, branch or open PR exists. No candidate path conflict was found.
+- Promoted and claimed successor: P-UI-35 (`READY -> IN_PROGRESS`), local lock `.ai/task-locks/P-UI-35-codex.lock.md`; fresh claim record is in the UI queue.
+- No Zero-READY conclusion applies.
 
 ## Next
-- Pending post-close dependency recovery.
+- P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives.

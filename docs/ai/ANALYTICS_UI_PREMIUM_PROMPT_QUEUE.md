@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-35 (READY; P-UI-31 implementation delivered, post-close recovery pending). Other READY lanes: `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-35 (IN_PROGRESS; claimed after P-UI-31 post-close recovery at `19f9d94e07aab4cc754d46d5db49d38687820a49`). Other READY lanes: `P-UI-36`, `P-UI-43`, `P-UI-44`, `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -43,7 +43,7 @@ Use with:
 | P-UI-32 | DONE | product-decision-responsive | Product Decision Center responsive + measured row rendering |
 | P-UI-33 | DONE | central-actions-responsive | Central Actions responsive migration |
 | P-UI-34 | DONE | analytics-overview-responsive | Dashboard and Daily Sales responsive migration |
-| P-UI-35 | READY | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
+| P-UI-35 | IN_PROGRESS | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | READY | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
 | P-UI-38 | WAITING | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
@@ -1943,14 +1943,14 @@ Supplier overview has a dense filter surface and wide tables. The original audit
 - Checks run: focused Supplier suites 91/91; typecheck; responsive fixture 30/30 across three themes and ten widths, zero root overflow/page errors, all scorecard filters reachable, phone targets >=44px and desktop sticky preserved; analytics guardrails; production build; responsive runner syntax; diff check.
 - Checks not run: physical-device iOS/iPadOS Safari.
 - Run log: `.ai/runs/2026-10-06-P-UI-31-evidence.md`
-- Evidence state: pending post-close recovery synchronization.
+- Evidence state: synchronized.
 - Delivery mode: direct-main
 - Main commit SHA: `2170fae56c1439c17bea50467d51241714637df2`
 - Main verification: fresh `origin/main` matched implementation SHA `2170fae56c1439c17bea50467d51241714637df2`.
 - Missed: physical-device verification.
-- Follow-up: P-UI-35 is the current READY candidate; confirm through the mandatory post-close scan.
-- Residual risk: responsive fixtures use synthetic filters and do not prove live Supplier API or Safari behavior; Analytics Quality Gates run `37394820689` is in progress on the implementation SHA.
-- Post-close routing: pending fresh `origin/main` dependency cascade.
+- Follow-up: P-UI-35 was claimed IN_PROGRESS after the mandatory post-close scan.
+- Residual risk: responsive fixtures use synthetic filters and do not prove live Supplier API or Safari behavior; Analytics Quality Gates run `37394820689` passed on the implementation SHA.
+- Post-close routing: fresh `origin/main` `19f9d94e07aab4cc754d46d5db49d38687820a49` scan of all 16 active owner files found no newly runnable RQ/SQL dependency and claimed dependency-complete P-UI-35; details are in the run log.
 - Prompt defect / scope repair: initial supplier browser baseline captured the global loading screen and did not wait for Supplier controls; the route now waits for and captures the filter panel and exercises scorecard filters using synthetic filter responses.
 
 ---
@@ -2200,13 +2200,14 @@ Completion 2026-10-02: Implemented in `c2874c9a6ce70a7a1fc38ec6477021c721852847`
 
 ## P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-27/P-UI-28/P-UI-29 are already DONE); then re-check active Nivelacija owners
 Priority: P2
 Type: frontend/pages/tests
 Feature family: nivelacija-responsive
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/P-UI-35-codex.lock.md`
 Commit suggestion: `feat(ui): make nivelacija analytics responsive`
 
 ### Problem
@@ -3551,3 +3552,5 @@ The design system already says every chart needs a textual summary or table alte
 Owner claim 2026-10-06: after P-UI-41 DONE was freshly verified on origin/main cf9ba0428387d9c1e962e3dad77de13cb37eb5eb, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no newly runnable RQ dependency and no P-UI dependent on P-UI-41. Current primary RQ READY is none; BCI/STAB/QDB/MT/GAI have no higher-priority repository-local READY execution lane. P-UI-47 is dependency-complete and explicitly parallel-safe with current READY paths; no active lock, matching branch or open PR was found. P-UI-47 moved READY -> IN_PROGRESS. Local lock: .ai/task-locks/P-UI-47-codex.lock.md. P-UI-41 run log: .ai/runs/2026-10-06-P-UI-41-evidence.md; evidence synchronized.
 
 Owner claim 2026-10-06: after P-UI-47 DONE was verified on `origin/main` `88e388c3718b7ea006d79df949b2eaf20b207c72`, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no RQ/SQL dependent and no higher-priority global queue lane. P-UI-31's P-UI-47 dependency was satisfied; no active owner, lock, matching branch or open PR conflicted with Supplier overview paths. P-UI-31 moved WAITING -> READY -> IN_PROGRESS as the highest-priority safe P1 successor. P-UI-35/P-UI-36/P-UI-43/P-UI-44 were promoted to READY. P-UI-42 remains WAITING behind P-UI-43 and P-UI-51 shared paths. Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`. P-UI-47 run log: `.ai/runs/2026-10-06-P-UI-47-evidence.md`; evidence synchronized.
+
+Owner promotion/claim 2026-10-06: after P-UI-31 DONE was delivered and `origin/main` refreshed to `19f9d94e07aab4cc754d46d5db49d38687820a49`, a full 16-file active RQ/SQL/P-UI/MASTER cascade searched P-UI-31 and re-evaluated the P-UI non-terminal candidates. No RQ/SQL dependency became newly runnable; BCI/STAB/RQ/QDB/MT/GAI exposed no higher-priority repo-local candidate. P-UI-35 was READY with P-UI-39/P-UI-47/P-UI-28/P-UI-29 DONE; RQ552/RQ553/RQ571 are DONE, RQ556 remains owner-gated and non-blocking for this presentation-only scope, and no active Nivelacija owner, matching lock, branch or PR remained. P-UI-35 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/P-UI-35-codex.lock.md`; P-UI-31 evidence: `.ai/runs/2026-10-06-P-UI-31-evidence.md`.
