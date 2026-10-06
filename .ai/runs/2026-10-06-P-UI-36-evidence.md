@@ -6,7 +6,7 @@ Delivery target: main
 Working branch / PR: main / none
 Main commit SHA: 3d6c538d4b60508accea3c5942fdf8a1f2a303df
 Main verification: passed - fresh `origin/main` contains `3d6c538d4b60508accea3c5942fdf8a1f2a303df`
-Evidence state: pending post-close recovery
+Evidence state: synchronized
 
 ## What was done
 - Removed the warning-tinted background override from the shared insufficient-data state. Its base surface now follows `--surface-elevated`; the warning border remains.
@@ -24,6 +24,8 @@ Evidence state: pending post-close recovery
 - `.ai/runs/2026-10-06-P-UI-36-evidence.md`
 - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 - `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`
 - `MASTER_ROADMAP.md`
 
 ## Validation run
@@ -58,7 +60,10 @@ Evidence state: pending post-close recovery
 - Collision review: no active matching P-UI-43 lock, branch or open PR existed; `gh pr list --state open` was empty. The P-UI-36 local lock was removed. P-UI-43 claimed IN_PROGRESS with a new local lock.
 - Routing repairs: synchronized P-UI-36's detail status and the stale P-UI-48 summary status (its completion record already said DONE); corrected the stale P-UI-41 claim wording to DONE. The P-UI-48 status reconciliation requires the final fresh cascade below.
 - Promoted successor: P-UI-43 - compact the trust header on phones.
-- Final post-reconciliation cascade: pending after the routing-repair/claim metadata commit reaches `origin/main`.
+- Final post-reconciliation recovery base: refreshed `origin/main` `7b6cac1573ae7a3fbb8a84ed84599b7446cbfec1`; the full 16-file active set was scanned again after routing repairs reached `main`.
+- Final cascade re-searched P-UI-36, P-UI-43, P-UI-48, P-UI-53, RQ569 and changed dependency statuses. RQ/SQL current READY pointers remain none; no higher-priority BCI/STAB/QDB/MT/GAI repository-local lane became runnable. P-UI-43 remains the primary collision-safe IN_PROGRESS successor. P-UI-44/P-UI-45/P-UI-49/P-UI-51/P-UI-52 remain READY. P-UI-53 remains WAITING because it overlaps READY P-UI-44's Daily/Inventory page paths. No new status or dependency change required another promotion.
+- The stale P-UI-41 “claimed” entry was corrected to DONE in both active RQ addenda, P-UI-48's stale summary row was reconciled to its existing DONE completion, and Master/RQ pointers now show P-UI-36 DONE and P-UI-43 IN_PROGRESS.
+- Final post-reconciliation cascade: complete at `7b6cac1573ae7a3fbb8a84ed84599b7446cbfec1`.
 
 ## Next
-- P-UI-43 - compact the trust header on phones; verify again on the final post-reconciliation recovery base before proceeding with implementation.
+- P-UI-43 - compact the trust header on phones.

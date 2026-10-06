@@ -2371,14 +2371,14 @@ The Hub/Shoe Type/Color surfaces contain wide tables, desktop-oriented multi-col
 - Checks run: focused page/component suites 123/123; responsive Chromium fixture matrix 60/60 with zero overflow/errors; three-theme computed background check; analytics guardrails/typecheck; production build; `git diff --check`.
 - Checks not run: populated Supplier Hub browser rendering (local backend returned HTTP 500); real iOS/iPadOS Safari.
 - Run log: `.ai/runs/2026-10-06-P-UI-36-evidence.md`
-- Evidence state: pending post-close verification
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `3d6c538d4b60508accea3c5942fdf8a1f2a303df`
 - Main verification: fresh `origin/main` contains `3d6c538d4b60508accea3c5942fdf8a1f2a303df`
 - Missed: populated Supplier Hub chart/table visual check remains unavailable while local backend returns HTTP 500.
-- Follow-up: determined by mandatory post-close routing recovery.
+- Follow-up: P-UI-43 - compact the trust header on phones.
 - Residual risk: no populated live Hub browser evidence; focused Supplier Hub component tests passed.
-- Post-close routing: full 16-file recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df` selected and claimed P-UI-43; final post-reconciliation verification pending.
+- Post-close routing: full 16-file cascades at `3d6c538d4b60508accea3c5942fdf8a1f2a303df` and `7b6cac1573ae7a3fbb8a84ed84599b7446cbfec1` selected and reconfirmed P-UI-43 as current primary.
 - Prompt defect / scope repair: none.
 
 ## P-UI-37 - Finish responsive Article List and bounded long-tail surfaces
