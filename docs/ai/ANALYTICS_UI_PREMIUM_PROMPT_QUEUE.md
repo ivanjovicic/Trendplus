@@ -3008,7 +3008,7 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 - Changed files: `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.css`; `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsDataTable.spec.tsx`; `Klijent/clientapp/src/components/inventory/InventoryItemsTable.tsx`; `Klijent/clientapp/src/components/inventory/InventoryItemsTable.spec.tsx`; `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`; `Klijent/clientapp/src/setupTests.ts`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-06-P-UI-44-evidence.md`
 - Contract/runtime behavior changed: no API, analytics value, sorting, or export contract changed; the UI measures scroll-width overflow and keeps the first table column visible in the affected responsive layout.
 - Checks run: focused Vitest 3 files / 36 tests passed; `npm run check:analytics-guardrails` (encoding, guardrail scan and typecheck) passed; `npm run build` passed; synthetic Chromium checks at 360/768/1024 for Daily Sales and Inventory passed the overflow, sticky-style and post-scroll header/cell visibility assertions; all six queue/planning validators and `git diff --check` passed.
-- Checks not run: full frontend suite and physical iOS/iPad verification. Current-main Actions run `37513716654` for `7fc26c93` was queued at inspection.
+- Checks not run: full frontend suite and physical iOS/iPad verification. Current-main Actions run `37513716654` for `7fc26c93` completed successfully after implementation delivery.
 - Run log: `.ai/runs/2026-10-06-P-UI-44-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
@@ -3016,8 +3016,8 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 - Main verification: fresh `git fetch origin main`; `origin/main` equals `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`; implementation SHA is present on `origin/main`.
 - Missed: none within P-UI-44 acceptance.
 - Follow-up: P-UI-53 is READY after its dependency and path collision review; P-UI-43 remains the primary in-progress pointer.
-- Post-close routing: P-UI-53 promoted WAITING -> READY from recovery base `e5a3ba80c20ed53bfe9f4f858475a5c10a76f06e` after the 16-file cascade.
-- Residual risk: the 360px Inventory synthetic fixture has one page-level horizontal-overflow observation outside the table region; the table itself stayed clipped to its scroll region and its key cells remained visible. Physical touch-device behavior is not verified.
+- Post-close routing: P-UI-53 promoted WAITING -> READY, unclaimed, after the 16-file cascade refreshed at `a3ebc6dbed48fefd159153ae52ef637288d424d2`.
+- Residual risk: the 360px Inventory synthetic fixture has one page-level horizontal-overflow observation outside the table region; the table itself stayed clipped to its scroll region and its key cells remained visible. Physical touch-device behavior is not verified. GitHub Actions run `37513716654` for the implementation SHA completed successfully.
 - Next: P-UI-43 remains the primary IN_PROGRESS pointer; P-UI-53 is the secondary READY lane and remains unclaimed.
 - Prompt defect / scope repair: added the shared ResizeObserver hook to `AnalyticsDataTable.tsx` and made the test polyfill configurable in `setupTests.ts`; both changes were required by the prompt's mocked observer and conditional overflow acceptance.
 
