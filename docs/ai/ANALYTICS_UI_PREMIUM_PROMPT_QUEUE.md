@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51` and `P-UI-52`. P-UI-44 is independently claimed IN_PROGRESS after collision review.
+Current primary prompt: P-UI-43 (IN_PROGRESS; claimed after P-UI-36 post-close recovery at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`). Other READY lanes: `P-UI-45`, `P-UI-49`, `P-UI-51`, `P-UI-52` and `P-UI-53`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -61,7 +61,7 @@ Use with:
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
-| P-UI-53 | WAITING | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
+| P-UI-53 | READY | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
 
@@ -2200,7 +2200,7 @@ Completion 2026-10-02: Implemented in `c2874c9a6ce70a7a1fc38ec6477021c721852847`
 
 ## P-UI-35 - Migrate Pre/Post and Pre-Nivelacija analytics to responsive primitives
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-39 DONE AND P-UI-47 DONE (P-UI-27/P-UI-28/P-UI-29 are already DONE); then re-check active Nivelacija owners
 Priority: P2
 Type: frontend/pages/tests
@@ -3015,10 +3015,10 @@ The P-UI-29 table pilot (sticky first column, labelled scroll region, scroll hin
 - Main commit SHA: `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`
 - Main verification: fresh `git fetch origin main`; `origin/main` equals `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`; implementation SHA is present on `origin/main`.
 - Missed: none within P-UI-44 acceptance.
-- Follow-up: fresh post-close routing recovery must reassess P-UI-53 now that its P-UI-44 serialization dependency is complete. P-UI-43 remains the primary in-progress pointer.
-- Post-close routing: pending fresh post-delivery cascade.
+- Follow-up: P-UI-53 is READY after its dependency and path collision review; P-UI-43 remains the primary in-progress pointer.
+- Post-close routing: P-UI-53 promoted WAITING -> READY from recovery base `e5a3ba80c20ed53bfe9f4f858475a5c10a76f06e` after the 16-file cascade.
 - Residual risk: the 360px Inventory synthetic fixture has one page-level horizontal-overflow observation outside the table region; the table itself stayed clipped to its scroll region and its key cells remained visible. Physical touch-device behavior is not verified.
-- Next: post-close dependency cascade from the resulting `origin/main` SHA.
+- Next: P-UI-43 remains the primary IN_PROGRESS pointer; P-UI-53 is the secondary READY lane and remains unclaimed.
 - Prompt defect / scope repair: added the shared ResizeObserver hook to `AnalyticsDataTable.tsx` and made the test polyfill configurable in `setupTests.ts`; both changes were required by the prompt's mocked observer and conditional overflow acceptance.
 
 ## P-UI-45 - Global chrome on phones: Serbian, non-blocking request indicator and calmer seasonal carousel
@@ -3583,14 +3583,15 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
 
-Status: WAITING
+Status: READY
 Ready after: P-UI-47 DONE AND P-UI-31/P-UI-35/P-UI-36 DONE or explicitly deferred AND P-UI-44 DONE or explicitly deferred; an owner may only split a demonstrably disjoint chart-only slice earlier after a fresh path/owner/lock/PR collision check
 Priority: P2
 Type: frontend/a11y/tests
 Feature family: analytics-chart-accessibility
 Parallel-safe: no while a page-family owner is editing the same chart files
 Owner: unassigned (Analytics Frontend / Accessibility)
-Routing note 2026-10-06: P-UI-47/P-UI-31/P-UI-35/P-UI-36 are now DONE, but P-UI-53 intentionally remains WAITING because READY P-UI-44 owns overlapping Daily Sales/Inventory page/table paths. Fresh review found no P-UI-53 owner/branch/open PR; serialization is the blocker, not a stale dependency. Re-evaluate immediately when P-UI-44 is DONE/explicitly deferred, or split only a proven disjoint chart-only slice.
+Historical routing note 2026-10-06 (before P-UI-44 completion): P-UI-47/P-UI-31/P-UI-35/P-UI-36 were DONE, but P-UI-53 remained WAITING while READY P-UI-44 owned overlapping Daily Sales/Inventory page/table paths. The serialization dependency is now complete.
+Post-close promotion 2026-10-06: `P-UI-44` is DONE on `origin/main` `7fc26c93bf67b8d4c5951510812f14c47bb29ca3`. The fresh 16-file cascade verified P-UI-47/P-UI-31/P-UI-35/P-UI-36/P-UI-44 dependencies DONE. Reconciled the stale P-UI-35 detail status from IN_PROGRESS to DONE using synchronized completion evidence and current `origin/main` `e7f9bc47325348d5f7ad202e9850926c91df95a5`. No P-UI-53 lock, matching local/remote branch or open PR exists. Active owners are path-disjoint: P-UI-43 owns `AnalyticsTrustHeader`; P-UI-45 owns global chrome; P-UI-49 owns empty/error taxonomy; P-UI-51 owns Executive Board controls/shared control bar; P-UI-52's copy sweep must hand off active page-family paths. Promoted WAITING -> READY, unclaimed.
 Commit suggestion: `feat(ui): add accessible analytics chart contract`
 
 ### Problem
