@@ -29554,8 +29554,8 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 
 ### Evidence
 
-- Decision Board currently shows 5 "urgent" cards that are blockers/sample warnings (`blocker-outcome-sample`) and `Pouzdani produkt signali: 0`; Decision Pulse returns no items (`suppressedCount=124`).
-- Product Decision has 0 actionable rows today (RQ573/RQ574 root causes).
+- Dated live evidence: the 2026-10-04 Decision Board showed blocker/sample-warning cards rather than useful product actions, while the 2026-09-28 Decision Pulse returned no items with `suppressedCount=124`.
+- Dated 2026-10-04 Product Decision evidence had 0 actionable rows. RQ573/RQ574 are DONE on current main and fixed ranking/quality-policy defects; those old counts are motivation for a fresh deployed reproof, not a claim about today's fixed code.
 
 ### Scope
 

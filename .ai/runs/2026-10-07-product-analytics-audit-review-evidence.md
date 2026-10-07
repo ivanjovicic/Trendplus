@@ -32,7 +32,7 @@ Key correction: local products clearly cover many standard retail/inventory/repo
 4. RQ574 removes the universal missing-category blocker when TipObuce is authoritative.
 5. Commercial thresholds/pricing/ROI are hypotheses.
 6. Audit commit-category percentages are treated as snapshot estimates, not canonical metrics.
-7. Live results are dated; no 2026-10-04/09-28 observation is presented as current-main runtime truth.
+7. Live results are dated; no 2026-10-04/09-28 observation is presented as current-main runtime truth. Final follow-up also repaired RQ585's old `currently`/`today` evidence wording.
 
 ## Owner decisions applied
 
