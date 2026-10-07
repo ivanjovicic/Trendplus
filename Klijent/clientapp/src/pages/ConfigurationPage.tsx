@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Activity,
   AlertCircle,
@@ -118,6 +118,7 @@ function replacePanelInLocation(panel: Panel) {
 export default function ConfigurationPage() {
   const [activePanel, setActivePanel] = useState<Panel>(() => readPanelFromLocation());
   const [batches, setBatches] = useState<PendingBatch[]>([]);
+  const [batchSearch, setBatchSearch] = useState("");
   const [health, setHealth] = useState<HealthCheck | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +128,11 @@ export default function ConfigurationPage() {
   const [refreshHintVisible, setRefreshHintVisible] = useState(false);
   const { currentTheme, themes, setTheme } = useTheme();
   const { showToast } = useToast();
+  const filteredBatches = useMemo(() => {
+    const query = batchSearch.trim().toLocaleLowerCase("sr-Latn");
+    if (!query) return batches;
+    return batches.filter((batch) => `${batch.sourceFileName} ${batch.status} ${batch.id}`.toLocaleLowerCase("sr-Latn").includes(query));
+  }, [batchSearch, batches]);
 
   const changePanel = useCallback((panel: Panel) => {
     setActivePanel(panel);
@@ -595,6 +601,16 @@ export default function ConfigurationPage() {
                     <HardDrive size={20} />
                     <span className="card-title">Pending/Failed batches ({batches.length})</span>
                   </div>
+                  <label className="config-list-search">
+                    <span className="sr-only">Pretraži import batch-eve</span>
+                    <input
+                      type="search"
+                      aria-label="Pretraži import batch-eve"
+                      placeholder="Pretraži po fajlu, statusu ili ID-ju"
+                      value={batchSearch}
+                      onChange={(event) => setBatchSearch(event.target.value)}
+                    />
+                  </label>
                   <div className="table-wrapper">
                     <table className="config-table">
                       <thead>
@@ -609,14 +625,14 @@ export default function ConfigurationPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {batches.length === 0 ? (
+                        {filteredBatches.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="text-center text-muted">
-                              Nema pending batch-eva
+                              {batches.length === 0 ? "Nema pending batch-eva" : "Nema batch-eva za zadatu pretragu"}
                             </td>
                           </tr>
                         ) : (
-                          batches.map((batch) => (
+                          filteredBatches.map((batch) => (
                             <tr key={batch.id}>
                               <td className="mono">{batch.id}</td>
                               <td>{batch.sourceFileName}</td>

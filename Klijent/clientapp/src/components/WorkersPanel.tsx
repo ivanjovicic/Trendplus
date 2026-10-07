@@ -16,7 +16,7 @@ import {
   RefreshCw,
   RotateCcw,
   CalendarCheck,
-  CalendarOff,
+  CalendarOff, MoreVertical, Search,
 } from "lucide-react";
 import "./WorkersPanel.css";
 
@@ -111,6 +111,9 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
       if (isManual) setLoading(false);
     }
   }, []);
+
+  const [workerSearch, setWorkerSearch] = useState("");
+  const [openWorkerMenu, setOpenWorkerMenu] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchWorkers(true);
@@ -250,6 +253,14 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
     () => [...workers].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     [workers],
   );
+  const filteredWorkers = useMemo(() => {
+    const query = workerSearch.trim().toLocaleLowerCase("sr-Latn");
+    if (!query) return orderedWorkers;
+    return orderedWorkers.filter((worker) =>
+      [worker.displayName, worker.workerName, worker.description, worker.status]
+        .some((value) => value.toLocaleLowerCase("sr-Latn").includes(query)),
+    );
+  }, [orderedWorkers, workerSearch]);
 
   return (
     <div className="workers-panel">
@@ -315,6 +326,19 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
         </div>
       ) : null}
 
+      {orderedWorkers.length > 0 ? (
+        <label className="wp-search">
+          <Search className="wp-icon-sm" aria-hidden="true" />
+          <input
+            type="search"
+            aria-label="Pretraži radnike"
+            placeholder="Pretraži radnike po nazivu, opisu ili statusu"
+            value={workerSearch}
+            onChange={(event) => setWorkerSearch(event.target.value)}
+          />
+        </label>
+      ) : null}
+
       {loading && orderedWorkers.length === 0 ? (
         <div className="wp-empty">Ucitavanje radnika...</div>
       ) : orderedWorkers.length === 0 ? (
@@ -337,7 +361,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
               </tr>
             </thead>
             <tbody>
-              {orderedWorkers.map((worker) => {
+              {filteredWorkers.map((worker) => {
                 const actionKey = (a: WorkerAction) => `${worker.workerName}:${a}`;
                 const isRunning = (a: WorkerAction) => actionInProgress === actionKey(a);
                 const anyRunning = (
@@ -480,6 +504,21 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                           </button>
                         )}
                       </div>
+                      <details className="wp-touch-actions" open={openWorkerMenu === worker.workerName}>
+                        <summary aria-label={`Akcije za ${worker.displayName}`} title="Akcije" onClick={(event) => { event.preventDefault(); setOpenWorkerMenu((current) => current === worker.workerName ? null : worker.workerName); }} className="wp-touch-actions__trigger">
+                          <MoreVertical className="wp-icon-sm" aria-hidden="true" />
+                        </summary>
+                        <div className="wp-touch-actions__menu" hidden={openWorkerMenu !== worker.workerName}>
+                          <button type="button" onClick={() => void runAction(worker, "start")} disabled={!!runtimeDisabled || anyRunning} className="wp-btn wp-btn--run">Pokreni odmah</button>
+                          <button type="button" onClick={() => void runAction(worker, "stop")} disabled={!!runtimeDisabled || anyRunning} className="wp-btn wp-btn--stop">Zaustavi</button>
+                          <button type="button" onClick={() => void runAction(worker, "restart")} disabled={!!runtimeDisabled || anyRunning} className="wp-btn wp-btn--restart">Restartuj</button>
+                          {worker.scheduleEnabled ? (
+                            <button type="button" onClick={() => void runAction(worker, "disableSchedule")} disabled={!!scheduleDisabled || anyRunning} className="wp-btn wp-btn--sched-off">Onemogući raspored</button>
+                          ) : (
+                            <button type="button" onClick={() => void runAction(worker, "enableSchedule")} disabled={!!scheduleDisabled || anyRunning} className="wp-btn wp-btn--sched-on">Omogući raspored</button>
+                          )}
+                        </div>
+                      </details>
                       {(runtimeDisabled ?? scheduleDisabled) && (
                         <div className="wp-disabled-reason">{runtimeDisabled ?? scheduleDisabled}</div>
                       )}
@@ -487,6 +526,9 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ refreshInterval = 50
                   </tr>
                 );
               })}
+              {filteredWorkers.length === 0 && (
+                <tr><td colSpan={10} className="wp-empty">Nema radnika koji odgovaraju pretrazi.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

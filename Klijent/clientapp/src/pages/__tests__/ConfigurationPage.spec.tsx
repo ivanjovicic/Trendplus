@@ -231,5 +231,10 @@ describe("ConfigurationPage", () => {
     expect(screen.queryByText("Worker Management")).not.toBeInTheDocument();
     expect(screen.queryByText("Refresh")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Osveži status workera" })).toHaveLength(1);
+    const workerSearch = screen.getByRole("searchbox", { name: "Pretraži radnike" });
+    expect(screen.getByLabelText("Akcije za Access Import")).toBeInTheDocument();
+    fireEvent.change(workerSearch, { target: { value: "sync" } });
+    expect(screen.getByText("Analytics Sync")).toBeInTheDocument();
+    expect(screen.queryByText("Access Import")).not.toBeInTheDocument();
   });
 });

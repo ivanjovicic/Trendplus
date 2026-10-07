@@ -295,4 +295,18 @@ describe("WorkersPanel", () => {
 
     view.unmount();
   });
+
+  it("provides a touch action menu and filters the worker list by name or status", async () => {
+    vi.mocked(workerApiModule.workerApi.getWorkersConfiguration).mockResolvedValue(mockResponse as any);
+    vi.mocked(analyticsApiModule.getAnalyticsRefreshStatus).mockResolvedValue({ isRunning: false, recentRuns: [] } as any);
+    vi.mocked(analyticsApiModule.getAnalyticsCacheStatus).mockResolvedValue({} as any);
+
+    render(<WorkersPanel refreshInterval={60_000} />);
+
+    const search = await screen.findByRole("searchbox", { name: "Pretraži radnike" });
+    expect(await screen.findByLabelText("Akcije za Access Import")).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: "startup" } });
+    expect(await screen.findByText("Readiness Warmup")).toBeInTheDocument();
+    expect(screen.queryByText("Access Import")).not.toBeInTheDocument();
+  });
 });
