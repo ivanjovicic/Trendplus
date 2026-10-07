@@ -110,3 +110,43 @@
   margin-top: 4px !important;
   font-style: italic;
 }
+
+.aes-technical-code {
+  margin-top: 10px;
+  color: var(--text-secondary, #374151);
+}
+
+.aes-technical-code summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.aes-technical-code code {
+  display: inline-block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+}
+
+.aes-loading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.aes-loading-actions button {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default, #d1d5db);
+  border-radius: 8px;
+  background: var(--surface-elevated, #fff);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+}
+
+.aes-loading-actions button:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--accent, #6366f1));
+  outline-offset: 2px;
+}

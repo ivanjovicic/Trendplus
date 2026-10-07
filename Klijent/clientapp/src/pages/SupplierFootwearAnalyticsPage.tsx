@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { AnalyticsChartAccessibility, describeChartProjection } from "../components/analytics/AnalyticsChartAccessibility";
 import AnalyticsControlBar, { type AnalyticsControlBarChip, type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
@@ -37,6 +38,7 @@ import {
 } from "../utils/supplierAssortmentSizeCurveEvidence";
 import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyticsMetricValue";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
+import { getAnalyticsFailureCode } from "../utils/analyticsStateTaxonomy";
 import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
 import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
 import {
@@ -321,6 +323,7 @@ export default function SupplierFootwearAnalyticsPage({
   const [previousPeriodEmptyNote, setPreviousPeriodEmptyNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorMeta, setErrorMeta] = useState<AnalyticsResponseMeta | null>(null);
   const [dataHint, setDataHint] = useState<string | null>(null);
   const [suggestedRange, setSuggestedRange] = useState<SuggestedRange | null>(null);
@@ -427,6 +430,7 @@ export default function SupplierFootwearAnalyticsPage({
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    setErrorCode(null);
     setErrorMeta(null);
     setDataHint(null);
     setSuggestedRange(null);
@@ -518,6 +522,7 @@ export default function SupplierFootwearAnalyticsPage({
       setPreviousPeriodEmptyNote(null);
       setDataHint(null);
       setErrorMeta(reason instanceof AnalyticsMetaError ? reason.meta ?? null : null);
+      setErrorCode(getAnalyticsFailureCode(reason, reason instanceof AnalyticsMetaError ? reason.meta : null));
       setSuggestedRange(null);
       setError(reason instanceof Error ? reason.message : "Greška pri učitavanju analize dobavljača i tipova obuće.");
     } finally {
@@ -978,7 +983,9 @@ export default function SupplierFootwearAnalyticsPage({
         <AnalyticsErrorState
           title="Asortiman dobavljača nije dostupan"
           message={error}
+          code={errorCode}
           errorCode={errorMeta?.errorCode ?? undefined}
+          meta={errorMeta}
           correlationId={errorMeta?.correlationId ?? undefined}
           readinessId={errorMeta?.readinessId ?? undefined}
           recoveryInstruction={errorMeta?.recoveryInstruction ?? undefined}
@@ -987,7 +994,23 @@ export default function SupplierFootwearAnalyticsPage({
           helpHref="/analytics/data-quality"
         />
       ) : null}
-      {loading ? <div className="sf-decision-message loading" role="status" aria-live="polite">Učitavam dobavljače i tipove obuće...</div> : null}
+      {loading ? (
+        <AnalyticsEmptyState
+          loading
+          showDefaultLinks={false}
+          onRetry={() => { void load(activeFilters); }}
+          onCancel={() => { requestIdRef.current += 1; setLoading(false); }}
+        />
+      ) : null}
+      {!loading && !error && dataMeta?.emptyReason ? (
+        <AnalyticsEmptyState
+          code={dataMeta.emptyReason}
+          meta={dataMeta}
+          message={dataMetaMessage ?? undefined}
+          showDefaultLinks={false}
+          onRetry={() => { void load(activeFilters); }}
+        />
+      ) : null}
       {!loading && !error && previousPeriodWarning ? (
         <div className="sf-decision-message warning" role="status" aria-live="polite">{previousPeriodWarning}</div>
       ) : null}

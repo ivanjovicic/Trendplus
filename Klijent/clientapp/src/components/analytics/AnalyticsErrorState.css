@@ -45,6 +45,33 @@
   padding-left: 1.2rem;
 }
 
+.aes-correlation-id {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.4rem;
+}
+
+.aes-correlation-id .aes-code {
+  margin: 0;
+}
+
+.aes-correlation-id button {
+  min-height: 40px;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--analytics-error-border);
+  border-radius: 8px;
+  background: var(--surface-elevated, #ffffff);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+}
+
+.aes-correlation-id button:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--analytics-error-border));
+  outline-offset: 2px;
+}
+
 .aes-actions {
   margin-top: 0.8rem;
   display: flex;

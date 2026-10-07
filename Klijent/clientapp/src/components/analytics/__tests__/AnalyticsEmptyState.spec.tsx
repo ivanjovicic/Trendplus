@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import AnalyticsEmptyState from "../AnalyticsEmptyState";
@@ -29,7 +29,7 @@ describe("AnalyticsEmptyState", () => {
   it("maps known empty reason codes to Serbian copy", () => {
     renderEmptyState();
 
-    expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(2);
+    expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(1);
     expect(screen.queryByText("no_data_in_period")).not.toBeInTheDocument();
   });
 
@@ -40,14 +40,49 @@ describe("AnalyticsEmptyState", () => {
     });
 
     expect(screen.getByText(/van dostupnog raspona prodaje/)).toBeInTheDocument();
-    expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(2);
+    expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(1);
   });
 
   it("fails closed for unknown or malicious-looking empty reasons", () => {
     renderEmptyState({ emptyReason: "<script>alert('backend-code')</script>" });
 
-    expect(screen.getByText("Nema podataka za izabrani opseg.")).toBeInTheDocument();
-    expect(screen.queryByText(/backend-code|<script>/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Sačuvajte tehnički kod iz detalja i kontaktirajte podršku.")).toBeInTheDocument();
+    expect(screen.getByText(/<script>/i).closest("details")).not.toBeNull();
+  });
+
+  it("keeps an unknown backend code in an accessible details disclosure", () => {
+    renderEmptyState({ code: "FUTURE_EMPTY_REASON" });
+
+    expect(screen.getByRole("heading", { name: "Prikaz nije dostupan." })).toBeInTheDocument();
+    expect(screen.getByText("FUTURE_EMPTY_REASON")).toBeInTheDocument();
+    expect(screen.getByText("FUTURE_EMPTY_REASON").closest("details")).not.toBeNull();
+  });
+
+  it("does not turn an error response meta into a successful empty state", () => {
+    const { container } = renderEmptyState({
+      meta: { success: false, errorCode: "MISSING_OBJECT" },
+    });
+
+    expect(container.querySelector(".analytics-empty-state")).toBeNull();
+  });
+
+  it("shows a slow-loading recovery state only after the configured delay", () => {
+    const onRetry = vi.fn();
+    const onCancel = vi.fn();
+    vi.useFakeTimers();
+    try {
+      renderEmptyState({ loading: true, loadingDelayMs: 1000, onRetry, onCancel });
+
+      expect(screen.getByRole("heading", { name: "Učitavanje podataka…" })).toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByRole("heading", { name: "Učitavanje traje duže nego obično." })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Otkaži" }));
+      fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+      expect(onRetry).toHaveBeenCalledOnce();
+      expect(onCancel).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("sanitizes technical empty-state messages", () => {

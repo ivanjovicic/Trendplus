@@ -39,7 +39,7 @@ describe("AnalyticsErrorState", () => {
     expect(alert).toHaveTextContent(
       "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
     );
-    expect(alert).not.toHaveTextContent("FUTURE_ANALYTICS_ERROR_V2");
+    expect(screen.getByText("FUTURE_ANALYTICS_ERROR_V2").closest("details")).not.toBeNull();
     expect(alert).not.toHaveTextContent("System.InvalidOperationException");
   });
 
@@ -55,7 +55,7 @@ describe("AnalyticsErrorState", () => {
       "Podaci trenutno nisu dostupni. Proverite kvalitet podataka i pokušajte ponovo.",
     );
     expect(alert).toHaveTextContent("Correlation ID: corr-253");
-    expect(alert).not.toHaveTextContent("sql_timeout_v2");
+    expect(screen.getByText("sql_timeout_v2").closest("details")).not.toBeNull();
   });
 
   it("does not pass a technical page message through when no code is provided", () => {
@@ -93,5 +93,43 @@ describe("AnalyticsErrorState", () => {
       "href",
       "/analytics/data-quality",
     );
+  });
+
+  it("maps contract errors, offers retry, and makes the correlation ID copyable", async () => {
+    const onRetry = vi.fn();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    try {
+      renderError({
+        code: "MISSING_OBJECT",
+        meta: { success: false, errorCode: "MISSING_OBJECT", correlationId: "corr-contract-42" },
+        onRetry,
+      });
+
+      expect(screen.getByRole("heading", { name: "Server je vratio neočekivan format podataka." })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Kopiraj ID" }));
+      expect(writeText).toHaveBeenCalledWith("corr-contract-42");
+      expect(await screen.findByText("ID je kopiran.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+      expect(onRetry).toHaveBeenCalledOnce();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("puts an unknown code in a keyboard-accessible disclosure and keeps the main copy safe", () => {
+    renderError({ code: "FUTURE_ANALYTICS_ERROR_V3" });
+
+    expect(screen.getByRole("heading", { name: "Analitika nije dostupna" })).toBeInTheDocument();
+    expect(screen.getByText("FUTURE_ANALYTICS_ERROR_V3")).toBeInTheDocument();
+    expect(screen.getByText("FUTURE_ANALYTICS_ERROR_V3").closest("details")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Pokušaj ponovo" })).not.toBeInTheDocument();
   });
 });

@@ -212,7 +212,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(screen.getByText("Poništi filtere")).toBeInTheDocument();
     expect(within(await screen.findByTestId("analytics-control-bar")).getByText("Kvalitet podataka")).toBeInTheDocument();
     expect(await screen.findByText(/Prikazano:\s*1 red/i)).toBeInTheDocument();
-    expect(screen.getByText("Sveže")).toBeInTheDocument();
+    expect(within(screen.getByTestId("analytics-trust-summary")).getByText("Sveže")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Dobavljači i tipovi obuće" })).toBeInTheDocument();
   });
@@ -357,7 +357,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Nije poznato")).toBeInTheDocument();
+    expect(within(screen.getByTestId("analytics-trust-summary")).getByText("Nije poznato")).toBeInTheDocument();
     expect(screen.queryByText("Sveže")).not.toBeInTheDocument();
   });
 
@@ -380,8 +380,8 @@ describe("SupplierFootwearAnalyticsPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Zastarelo")).toBeInTheDocument();
-    expect(screen.getByText(/Prikaz može biti delimičan ili zastareo/i)).toBeInTheDocument();
+    expect(await screen.findByTestId("analytics-trust-summary-availability")).toHaveTextContent("Prikaz delimičan");
+    expect(within(screen.getByTestId("analytics-trust-summary")).getByText("Zastarelo")).toBeInTheDocument();
   });
 
   it("keeps an empty supplier footwear response distinct from an error", async () => {
@@ -418,6 +418,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     );
 
     expect(await screen.findByText("Nema podataka za izabrane filtere.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nema podataka za izabrani period." })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -493,7 +494,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Pre/post nivelacija nije dostupna.");
-    expect(screen.getByText("Nije poznato")).toBeInTheDocument();
+    expect(within(screen.getByTestId("analytics-trust-summary")).getByText("Nije poznato")).toBeInTheDocument();
     expect(screen.queryByText("Sveže")).not.toBeInTheDocument();
   });
 
