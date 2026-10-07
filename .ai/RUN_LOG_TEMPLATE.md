@@ -20,6 +20,7 @@ Working branch / PR:
 Main commit SHA:
 Main verification:
 Evidence state: synchronized | pending | fallback <reason>
+Ownership transfer: none | <previous owner> -> <new owner>; authority/evidence: <source>
 ```
 
 ## Required sections
@@ -51,6 +52,7 @@ Use each exactly once:
 - `Next` must come from that post-close recovery, not from a pre-claim queue header or older run log. Use `- none` only when the Zero-READY proof is complete.
 - `Main commit SHA` is the implementation/delivery SHA that current `main` was freshly verified to contain; use `pending` until that proof exists.
 - `Evidence state` is separate from queue status and never creates a new queue status.
+- `Ownership transfer` stays `none` unless ownership actually changed. When used, it must match the explicit handoff/release contract in `PROMPT_QUEUE_PROTOCOL.md`; inferred inactivity/missing lock/branch/PR is not authority.
 - A delivered implementation SHA or synchronized evidence **does not release another owner's active claim**; queue ownership/takeover is governed only by `PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Queue completion-note backlink
