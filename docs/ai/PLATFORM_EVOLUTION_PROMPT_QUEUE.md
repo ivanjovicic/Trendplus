@@ -2815,8 +2815,8 @@ Commit suggestion: `perf(frontend): restore chart chunk route isolation`
 - Run log: `.ai/runs/2026-10-07-PERF18-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending push and refreshed `origin/main` verification.
+- Main commit SHA: `315f3e5824105734b2f4367e5a0ae37841ea0640`
+- Main verification: refreshed `origin/main` `1bd1d65c15d2b3f35b4f69fe10a0b9e537fbeb90` contains the implementation commit.
 - Missed: none in PERF18 acceptance.
 - Follow-up: none.
 - Residual risk: fixture is synthetic local browser evidence and does not claim production API correctness or data fidelity.

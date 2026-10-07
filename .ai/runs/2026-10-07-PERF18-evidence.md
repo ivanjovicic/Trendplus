@@ -4,8 +4,8 @@ Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/perf18-recharts-preload / none
-Main commit SHA: 42baa32987590ad44660afc72b4a3641baff576f
-Main verification: pass - refreshed `origin/main` `42baa32987590ad44660afc72b4a3641baff576f` contains the implementation SHA
+Main commit SHA: 315f3e5824105734b2f4367e5a0ae37841ea0640
+Main verification: pass - refreshed `origin/main` `1bd1d65c15d2b3f35b4f69fe10a0b9e537fbeb90` contains the implementation SHA
 Evidence state: synchronized after browser-proof follow-up below
 Ownership transfer: none
 
@@ -42,8 +42,8 @@ Ownership transfer: none
 - `git diff --check` -> pass.
 - GitHub Actions on `42baa32987590ad44660afc72b4a3641baff576f`: Planning Governance `37649069166` -> success; Analytics Quality Gates `37649069125` -> failure, 153 passed / 6 failed in five analytics UI specs outside changed paths. Its analytics guardrail and build steps were skipped after tests failed. No causal link to PERF18's Rollup chunk setting was found; report as unrelated-scope CI risk, not passing validation.
 
-## Validation not run
-- Data-backed browser chart SVG render and SPA route-hop -> not proven. The existing `responsive_baseline.mjs --route-id daily_sales --mode fixture` failed inside its geometry collector while reading `scrollWidth` from a null target; fixture-free browser runs correctly exposed the missing backend and therefore did not render chart data. A subsequent direct browser route proved the Recharts chunk loads without module-init errors, but this does not replace the requested render/hop proof.
+## Validation not run at initial close (resolved in browser-proof follow-up)
+- At the first close, data-backed browser chart SVG render and SPA route-hop were not proven. The existing `responsive_baseline.mjs --route-id daily_sales --mode fixture` failed inside its geometry collector. The follow-up below adds an independently scoped Puppeteer fixture and completes this acceptance.
 
 ## Documentation impact
 - Updated the PERF18 source-of-truth bundle budget with current build/import/network measurements and the guard behavior.
@@ -52,17 +52,17 @@ Ownership transfer: none
 ## What was missed
 - Deterministic browser evidence that a chart SVG renders after an SPA route-hop from `/prodaja`.
 
-## Risks
-- The build and source-map evidence show the preload regression is fixed, and the chart route loads the Recharts chunk without a JavaScript page error. The missing data-backed route-hop render keeps acceptance incomplete; PERF18 is PARTIAL.
+## Risks at initial close (updated by follow-up)
+- Initial risk was missing data-backed route-hop render proof. The deterministic synthetic fixture now proves route/chunk/render integration. It does not claim production API semantics or deployed performance.
 
-## Post-close routing recovery
+## Post-close routing recovery after initial close (historical snapshot; superseded by browser-proof follow-up)
 - Recovery base `origin/main`: `42baa32987590ad44660afc72b4a3641baff576f`.
 - Active owner queue files scanned: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (full active PERF/OBS/SEC set), `MASTER_ROADMAP.md` current priority/current-READY table, and all current owner queues/addenda named there through the canonical active queue inventory.
 - Changed task searched: `PERF18`; dependencies checked: `PERF17` remains DONE; no newly satisfied dependency was discovered.
-- PERF candidates: `PERF18` remains PARTIAL with the explicit browser-proof follow-up; `PERF19` is DONE; `PERF16` is BLOCKED on MT10/shared-SaaS authority; OBS queue is complete; SEC05 remains WAITING on MT09. No different PERF/OBS/SEC task was promoted.
+- PERF candidates at the initial close: `PERF18` was PARTIAL pending its browser-proof follow-up; `PERF19` was DONE; `PERF16` was BLOCKED on MT10/shared-SaaS authority; OBS queue was complete; SEC05 was WAITING on MT09. No different PERF/OBS/SEC task was promoted.
 - Higher-priority/global candidates: BCI has no READY/IN_PROGRESS; STAB16 remains provider/deployed-evidence gated; RQ and SQL current pointers are none with remaining WAITING/PARTIAL prompts gated by dependencies/evidence; P-UI-52 is already IN_PROGRESS under its named owner; P-UI-50 is blocked by a user-owned local Product Decision page edit; P-UI-38 is the final gate; QDB07 waits for release gates; MT02 waits for an owner decision; GAI waits for core-pilot/release evidence; DEX/RL/DT have no current READY prompt.
 - Safe/disjoint split: none identified that is both dependency-complete and collision-safe; do not take over P-UI-52 or alter the user's blocked P-UI-50 checkout edit.
-- Successor: no different prompt promoted. The explicit next action is PERF18's own deterministic browser fixture proving chart SVG render after SPA route-hop. This is an authorized same-task follow-up, so no `Next: none` / Zero-READY conclusion is asserted.
+- Successor at the initial close: no different prompt was promoted because the explicit same-task PERF18 browser fixture remained open. That follow-up is resolved below.
 - The remaining active queue inventory considered: BCI parent/addendum; STAB; all RQ queue/addenda and active SQL queue; P-UI main/addenda; QDB; MT; GAI; DEX/RL/DT; PERF/OBS/SEC. No other READY candidate was promoted. Existing owners and blockers remain unchanged.
 
 ## Browser-proof follow-up (2026-10-07)
@@ -72,7 +72,7 @@ Ownership transfer: none
 - The first fixture attempt omitted CORS response headers and correctly failed closed in the browser; adding explicit wildcard origin/method/header allowances made the deterministic fixture work without contacting the remote API. Unknown API routes return 503 fixture responses.
 - Fresh validation on the final implementation: `npm run build` PASS (2,732 modules; entry 326,002 bytes, Recharts 263,632 bytes); `npm run check:bundle-budget -- --self-test` PASS; `npm run check:bundle-budget` PASS; `npm run test:run -- src/pages/__tests__/DailySalesStatsPage.spec.tsx` PASS (5/5); route-loading helper PASS (13 SVG surfaces); `node --check scripts/check-recharts-route-loading.mjs` PASS.
 - Evidence limits: browser fixture is synthetic and proves route/chunk/render integration, not API/data semantics or deployed performance.
-- PERF18 status: DONE; no PERF18 acceptance item remains. Queue, master roadmap and performance roadmap synchronized. Commit/push verification pending.
+- PERF18 status: DONE; no PERF18 acceptance item remains. Queue, master roadmap and performance roadmap synchronized. Implementation/evidence commit `315f3e5824105734b2f4367e5a0ae37841ea0640` is contained by verified `origin/main` `1bd1d65c15d2b3f35b4f69fe10a0b9e537fbeb90`.
 
 ## Next
 - None for PERF18.
