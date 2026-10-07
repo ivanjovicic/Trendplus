@@ -4,12 +4,12 @@ Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: cursor/queue-idle-recovery-1156-61ea / https://github.com/ivanjovicic/Trendplus/pull/110
-Main commit SHA: 83377412df041aa130de157c168e5f108c643740
-Main verification: passed - origin/main contains the fresh zero-ready recovery evidence at 83377412df041aa130de157c168e5f108c643740
+Main commit SHA: pending
+Main verification: pending final evidence-sync delivery
 Evidence state: synchronized
 
 ## What was done
-- Refreshed `origin/main` to `95f9f13ac00e86e97a6485a91e6b986c0e5c3b1c`.
+- Refreshed `origin/main` first to `95f9f13ac00e86e97a6485a91e6b986c0e5c3b1c`, then revalidated after the routing-only sync to `dd4c3303b3b36e6f954a0e6a8692a9bd10326bcd`.
 - Re-ran canonical idle recovery from that SHA instead of inheriting the older P-UI-54 or queue-idle `none` conclusion.
 - Scanned the full active queue/addendum set, parsed live section statuses, checked locks, matching branches and merged/open PR ownership, and decomposed the remaining blockers.
 - Found no dependency-complete, collision-safe `READY` or `IN_PROGRESS` prompt to claim.
@@ -18,8 +18,8 @@ Evidence state: synchronized
 - `.ai/runs/2026-10-07-queue-idle-recovery-1156-evidence.md`
 
 ## Validation run
-- `git fetch origin main` -> pass; recovery base `95f9f13ac00e86e97a6485a91e6b986c0e5c3b1c`.
-- Live queue-section status parser -> pass; no current `READY` or `IN_PROGRESS` section exists in active execution queues. Nested historical promotion/claim notes were not treated as live status.
+- `git fetch origin main` -> pass; final revalidation base `dd4c3303b3b36e6f954a0e6a8692a9bd10326bcd`.
+- Live queue-section status parser -> pass; no current `READY` or `IN_PROGRESS` section exists in active execution queues. The only parser match is the protocol's status-model example; nested historical promotion/claim notes were not treated as live status.
 - Active lock scan -> pass; no `.ai/task-locks/*.lock.md` files exist in this workspace.
 - Matching branch/PR scan -> pass; `cursor/queue-idle-recovery-61ea` and P-UI-54 are merged historical transport; no open matching PR or active owner was found for a runnable task.
 - `node scripts/check-agent-instructions.mjs --self-test && node scripts/check-agent-instructions.mjs` -> pass; 18 canonical files checked.
@@ -42,7 +42,7 @@ Evidence state: synchronized
 - Several RQ partials/waiting prompts still need broad cross-surface, provider/deployment, browser, owner-policy or production-freshness evidence.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: `95f9f13ac00e86e97a6485a91e6b986c0e5c3b1c`.
+- Recovery base `origin/main` SHA: `dd4c3303b3b36e6f954a0e6a8692a9bd10326bcd`.
 - Active owner queue/addendum files scanned:
   - `MASTER_ROADMAP.md`
   - `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
@@ -57,7 +57,7 @@ Evidence state: synchronized
   - `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
   - `docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md`
   - `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`
-- Completed/changed task IDs searched: no product/dependency status changed during this recovery; the latest main changes were governance-only.
+- Completed/changed task IDs searched: no product/dependency status changed during this recovery; the post-recovery delta only marked the P-UI-54 split note historical and preserved current P-UI READY as none.
 - Candidate/blocker matrix:
   - BCI: no READY/IN_PROGRESS; current BCI work is terminal.
   - STAB16: BLOCKED on authorized provider/deployment/worker evidence; this is a true external start gate, not a local final-proof-only residual.
