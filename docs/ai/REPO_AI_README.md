@@ -55,6 +55,20 @@ If a summary/helper doc disagrees with its canonical owner, update or deprecate 
 - Commit naming and commit-body expectations: `docs/ai/COMMIT_STANDARDS.md`
 - UTF-8 and text-only repair workflow: `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 
+## Helper documents and non-authoritative roles
+
+These files remain useful, but **must not become alternate policy owners**:
+
+- `docs/ai/CODEX_QUEUE_RUNNER.md` — thin launcher/start packet only; no independent selector or session rules.
+- `docs/ai/CODEX_TASK_CHECKLIST.md` — execution checklist only; it verifies that the canonical protocol was followed.
+- `docs/ai/QUEUE_STATUS_TEMPLATE.md` — status/evidence formatting template only; it does not decide readiness or ownership.
+- `docs/ai/PROMPT_BATCH_REVIEW_POLICY.md` — audit/review procedure only; it checks for duplication and drift but does not route tasks.
+- `.cursor/rules/agent-execution-efficiency.mdc` — Cursor execution topology/token-efficiency guard; queue mechanics still come from the protocol.
+- `docs/ai/AGENTS_QUEUE_ADDENDUM.md` — **deprecated compatibility pointer** retained so old references fail safely; never use as a router.
+- `docs/ai/NEXT_PROMPT_QUEUE.md` — **historical ledger**, never live routing.
+
+If a new helper doc starts restating selector/takeover/lock/no-READY algorithms, remove that duplication and link to `PROMPT_QUEUE_PROTOCOL.md` instead.
+
 ## Architecture and boundaries
 
 Use `docs/ai/ARCHITECTURE_BOUNDARIES.md` to identify:
