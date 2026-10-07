@@ -4,7 +4,7 @@ Owner: `agent-system`
 
 This is the repository-level rulebook for Codex, Copilot agent mode and other AI agents that inspect or change Trendplus.
 
-Current code, focused tests and executable tooling override stale prose. When agent documents disagree, use the canonical owner table below instead of combining conflicting rules.
+Current code, focused tests and executable tooling override stale prose **about implementation facts**. They do not override named ownership, queue status or claim/takeover policy. When agent documents disagree, use the canonical owner table below instead of combining conflicting rules.
 
 ## 1. Mission and non-negotiable product outcome
 
@@ -110,23 +110,19 @@ Do not introduce a new status, claim mechanism, local lock format or selector fa
 
 ## 6. Queue work
 
-Queue mechanics have one owner: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`. Do not duplicate the selector, promotion, takeover or lock algorithm here.
+Queue mechanics have one owner: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`. Do not duplicate its selector, promotion, blocker-decomposition, takeover, lock, no-READY or close algorithm here.
 
-For formal queue work:
-- resolve the owner/program from `MASTER_ROADMAP.md`, then select/claim through the canonical protocol;
-- treat `Current READY` as the primary/default pointer, not as a global mutex; execute one claimed prompt at a time **per agent/workspace**;
-- when `Current READY` is `none`, run the protocol's **Idle recovery** before reporting no work: re-evaluate stale dependency/status truth, relevant `PARTIAL/BLOCKED/WAITING` prompts and recent run-log `What was missed` / `Risks` / `Next`, then promote and claim only a genuinely runnable candidate;
-- classify blockers instead of accepting old wording at face value: distinguish true start gates from final/deployed evidence, external authority from repo-local proof, and circular prerequisites from artifacts the prompt itself should create;
-- when a prompt safely contains an executable same-owner repo-local slice plus an external final-proof residual, repair/narrow the prompt before claim rather than refusing the whole task; never lower business acceptance or fake deployed proof;
-- if the highest-priority candidate remains genuinely blocked, try a collision-safe candidate in the same program and then the next eligible program before reporting no work;
-- after **every terminal queue transition** (`DONE`/`PARTIAL`/`BLOCKED`/`OBSOLETE`), treat every previous `Current READY: none` / `Next: none` conclusion as invalid; refresh the **post-delivery `origin/main` SHA** and run the protocol's mandatory **Post-close dependency cascade** across the entire active owner queue/addendum set;
-- search the just-completed task ID and every dependency whose state changed across all active queue files, then re-evaluate all dependent `WAITING/PARTIAL/BLOCKED` prompts; if any is now dependency-complete and collision-safe, promote it in the same recovery run;
-- a zero-READY conclusion requires the protocol's durable **Zero-READY proof** (recovery-base SHA, files scanned, candidate/blocker matrix, start-gate-vs-final-proof classification, safe-slice result and exact unblock event); an old queue header, old run-log `Next`, blocked P0, queued CI or missing deployed proof is never sufficient;
-- if the agent did not inspect the entire active owner queue/addendum set from current post-delivery `origin/main`, it must report recovery incomplete and **must not** say there is no READY work;
-- when the user asked to continue/claim-and-execute, re-enter selection/recovery after closure and continue with the newly promoted candidate when safe;
-- stop only for a genuine authority/gate/owner conflict or when the canonical router proves there is no safe repository-local action left.
+Non-negotiable invariants:
 
-A mechanical prompt/routing defect may be repaired without asking when the authoritative owner and acceptance are clear, the repair stays same-owner and evidence records it. Direct user work does not need to become a queue prompt before implementation.
+- `MASTER_ROADMAP.md` owns cross-program priority/current routing data; the current owner queue owns task status, named owner, dependencies and the program's READY set. The protocol owns **how** those states may be changed.
+- `Current READY` is the primary/default pointer, not a global mutex. One agent/workspace owns one claimed prompt at a time; independent top-level agents may work different collision-safe READY prompts.
+- **Same-task ownership remains exclusive through close-out.** Another owner's `IN_PROGRESS` task is not released by a runtime commit on `main`, a missing local lock, or an absent branch/PR. Only explicit handoff/release or the protocol's independently proven stale-takeover path permits takeover.
+- When no READY task exists, run the protocol's **Mandatory no-READY action ladder**. Repair stale gates, perform authorized repo-local proof/unblock work, split a meaningful path-disjoint slice when permitted, and try the next eligible program before concluding no work exists.
+- After a terminal transition, refresh post-delivery `origin/main` and run the protocol's **Post-close dependency cascade**. A previous `none` conclusion is not durable.
+- A final no-work result requires the protocol's current **Zero-READY proof**, including what unblock action was attempted, why no safe split exists and the exact unblock event.
+- Direct user work does not need to become a queue prompt unless the request is itself queue/planning work. A mechanical same-owner routing defect may be repaired when the protocol authorizes it and evidence records the repair.
+
+All operational details—status transitions, lock format, takeover proof, blocker classes, promotion preference and exact close path—must be read from the canonical protocol at execution time.
 
 ## 7. Delivery truth
 
