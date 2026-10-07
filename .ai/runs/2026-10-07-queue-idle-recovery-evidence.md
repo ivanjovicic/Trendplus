@@ -28,6 +28,7 @@ Evidence state: synchronized
 - `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs` -> pass (14 canonical files).
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (709 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 planning tasks).
+- Post-delivery `gh run list --commit 6744ecbb96ca5111f8a5e9f0fae3c9bb75772db6` -> Analytics Quality Gates `37607854293` `in_progress`; Analytics Tests & Data Integrity `37607854325` `in_progress`.
 
 ## Validation not run
 - Runtime/unit/integration/browser tests -> not run; no queue prompt was safely claimable, so no implementation scope existed to validate.
@@ -43,6 +44,7 @@ Evidence state: synchronized
 - Historical queue sections still contain old promotion/claim prose; current headers and terminal completion notes were treated as the live status source.
 - STAB16 and several certification prompts remain blocked by provider/deployment/browser evidence that is not available in this repository session.
 - The existing Product Decision workspace edit continues to block P-UI-50 ownership; it was not taken over or overwritten.
+- The two current-main workflows above were still `in_progress` when inspected; no result is claimed.
 
 ## Post-close routing recovery
 - Recovery base: fresh `origin/main` SHA `344133826ff2b83da02923c02de10fd659656d43`.
