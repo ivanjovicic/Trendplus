@@ -3,7 +3,7 @@
 Owner product-priority refinement 2026-10-07:
 - **Two lanes run in parallel.** STAB16 remains operational P0 for deployed currentness/import/worker truth, but it is **not a global start gate** for repository-local formula correctness, historical analysis or latest-known-horizon decision work.
 - **Primary RQ READY: RQ593 (P1)** — stop missing monetary evidence becoming zero in Product Decision and Inventory aggregates/ABC/value rollups.
-- **Additional collision-safe IN_PROGRESS: RQ595 (P1, Codex)** in the Supplier addendum — build the selected-supplier negotiation/value view only from already-authoritative Supplier + Inventory evidence; it does not wait for new imports.
+- **Additional RQ595 is PARTIAL (P1)** in the Supplier addendum — the selected-supplier value/negotiation surface is delivered, but its 90+ aging capital remains explicitly estimated until RQ593 supplies per-aging-bucket cost basis/coverage; it is no longer an active READY/IN_PROGRESS lane.
 - **RQ555 (P1)** owner decision is resolved: Pre-Nivelacija is the canonical retail markdown action source. It waits only for RQ593 because of shared Product/action paths.
 - **RQ594 (P1)** waits for RQ593 on shared Inventory paths, then strengthens the existing action workflow; no duplicate transfer feature is created.
 - **RQ556 (P1)** follows RQ555 as shadow-v9 evidence/ranking comparison. Final activation/weights remain an owner decision, but evidence-field/shadow work is no longer blocked by that decision.
