@@ -295,7 +295,7 @@ export default function SupplierConsolidatedPage() {
   return (
     <div className="supplier-consolidated-page">
       <AnalyticsTrustHeader
-        title="Dobavljači"
+        title="Prodaja po dobavljačima"
         description="Jedinstveni ekran za glavnu preporuku, poređenje dobavljača i analizu asortimana."
         periodFrom={trustPayload?.periodFrom ?? canonicalFilters.fromDate}
         periodTo={trustPayload?.periodTo ?? canonicalFilters.toDate}
@@ -331,8 +331,8 @@ export default function SupplierConsolidatedPage() {
       <header className="supplier-consolidated-header">
         <div className="supplier-consolidated-header-content">
           <div>
-            {/* The visible page title lives in the trust header (h1); this h2 keeps the outline for screen readers without repeating a second 28px "Dobavljači". */}
-            <h2 className="sr-only">Dobavljači</h2>
+            {/* The visible page title lives in the trust header (h1); this h2 keeps the outline for screen readers without repeating a second 28px title. */}
+            <h2 className="sr-only">Prodaja po dobavljačima</h2>
             <p className="supplier-consolidated-header-desc">{tabDescriptions[currentTab]}</p>
           </div>
           <Link className="supplier-consolidated-cross-link" to={dailySalesHref}>

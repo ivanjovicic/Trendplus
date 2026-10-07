@@ -178,12 +178,12 @@ export function ExportSchedulerPanel({
               </button>
               <button
                 type="button"
-                aria-label="Osvezi stranicu bilansa stanja"
+                aria-label="Osveži stranicu bilansa stanja"
                 onClick={onRefresh}
                 className="inline-flex items-center justify-center gap-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-all duration-200 hover:border-secondary hover:shadow-md col-span-2 sm:col-span-1"
               >
                 <RefreshCw size={13} />
-                <span className="hidden sm:inline">Osvezi</span>
+                <span className="hidden sm:inline">Osveži</span>
               </button>
             </div>
 

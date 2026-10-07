@@ -39,9 +39,9 @@ export function InventoryPriorityPanels({
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Najveci rizici <InfoTip text="Artikli sa najlosijim statusom zalihe (Kriticno > Niska zaliha) na ovoj strani tabele. Klik otvara detalj sa preporukom." /></h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Najveći rizici <InfoTip text="Artikli sa najlošijim statusom zalihe (Kritično > Niska zaliha) na ovoj strani tabele. Klik otvara detalj sa preporukom." /></h3>
             <div className="mt-3 space-y-3">
-              {topRiskRows.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema rizicnih artikala na ovoj strani.</div> : topRiskRows.map((row) => (
+              {topRiskRows.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema rizičnih artikala na ovoj strani.</div> : topRiskRows.map((row) => (
                 <button key={`risk-${row.id}`} type="button" onClick={() => onOpenDetail(row)} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-3 text-left transition hover:border-[var(--border-default)]">
                   <div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--text-primary)]">{row.naziv}</div><div className="truncate text-xs text-[var(--text-primary)]">{row.plu ?? "Bez PLU"} | {row.supplierName}</div></div>
                   <div className="text-right"><div className="text-sm font-semibold text-[var(--text-primary)]">{row.quantity}</div><div className="text-xs text-[var(--text-primary)]">{row.stockStateLabel}</div></div>

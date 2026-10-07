@@ -173,7 +173,7 @@ export default function DnevnikPromenaPage() {
       } catch (err: unknown) {
         if (aborted) return;
         console.error(err);
-        setError((err as Error)?.message ?? "Greska pri ucitavanju dnevnika promena.");
+        setError((err as Error)?.message ?? "Greška pri učitavanju dnevnika promena.");
       } finally {
         if (!aborted) setLoading(false);
       }

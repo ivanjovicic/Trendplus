@@ -8,7 +8,7 @@ export type AnalyticsSmokeRouteDefinition = {
 export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] = [
     {
         path: "/analytics",
-        label: "Trendplus pregled",
+        label: "Pregled poslovanja",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -20,7 +20,13 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/decision-board",
-        label: "Izvršni board",
+        label: "Izvršni board odluka",
+        isDurableReport: false,
+        legacyAliases: [],
+    },
+    {
+        path: "/analytics/decision-pulse",
+        label: "Puls odluka",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -38,7 +44,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/inventory",
-        label: "Zalihe i dopuna",
+        label: "Analitika zaliha",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -62,7 +68,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/color-sales-stats",
-        label: "Prodaja po boji",
+        label: "Prodaja po boji artikla",
         isDurableReport: false,
         legacyAliases: [],
     },
@@ -86,25 +92,25 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/data-quality",
-        label: "Kvalitet podataka",
+        label: "Pregled zdravlja podataka",
         isDurableReport: false,
         legacyAliases: [],
     },
     {
         path: "/analytics/actions",
-        label: "Centralne akcije",
+        label: "Akcije i preporuke",
         isDurableReport: false,
         legacyAliases: [],
     },
     {
         path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&scope=all",
-        label: "Izveštaj dobavljača",
+        label: "Trendplus izveštaj dobavljača",
         isDurableReport: true,
         legacyAliases: [],
     },
     {
         path: "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&scope=all",
-        label: "Pilot intake izveštaj",
+        label: "Pilot izveštaj kvaliteta podataka",
         isDurableReport: true,
         legacyAliases: ["/analytics/data-quality/pilot-intake-report"],
     },

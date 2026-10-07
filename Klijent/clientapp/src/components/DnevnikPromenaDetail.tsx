@@ -60,7 +60,7 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
             const data = await getDnevnikPromenaById(id);
             setDetail(data);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Greska pri ucitavanju detalja.");
+            setError(err instanceof Error ? err.message : "Greška pri učitavanju detalja.");
         } finally {
             setLoading(false);
         }
@@ -96,7 +96,7 @@ export default function DnevnikPromenaDetail({ id }: { id: number }) {
                         style={{ borderColor: 'var(--focus-ring)', background: 'var(--surface-default)', color: 'var(--text-primary)' }}
                     >
                         <RefreshCw size={14} />
-                        Pokusaj ponovo
+                        Pokušaj ponovo
                     </button>
                 </div>
             </div>

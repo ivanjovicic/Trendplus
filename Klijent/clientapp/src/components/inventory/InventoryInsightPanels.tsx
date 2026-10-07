@@ -165,7 +165,7 @@ export function InventoryInsightPanels({
         </div>
 
         <div className="mt-5 min-w-0 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
-          <div className="text-sm font-semibold text-[var(--text-primary)]">Kapital najvise vezan u ovim artiklima</div>
+          <div className="text-sm font-semibold text-[var(--text-primary)]">Kapital najviše vezan u ovim artiklima</div>
           <div className="mt-3 space-y-3">
             {capitalLockedItems.length === 0 ? <div className="text-sm text-[var(--text-primary)]">Nema artikala za ABC ranking.</div> : capitalLockedItems.map((item) => {
               const resolvedRow = resolveInsightRow(item, rows, stores, suppliers);

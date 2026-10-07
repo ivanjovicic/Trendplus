@@ -56,7 +56,7 @@ export default function DecisionPulsePage() {
             <AlertTriangle size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Decision Pulse</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Puls odluka</h1>
             <p className="text-sm text-muted">
               Izuzeci iz Product Decision porodice sa Zašto i deep linkom. Stale, prazno i greška nisu alert.
             </p>

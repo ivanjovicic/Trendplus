@@ -33,6 +33,7 @@ describe("DecisionPulsePage", () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole("heading", { level: 1, name: "Puls odluka" })).toBeInTheDocument();
     expect(await screen.findByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText(/0 RSD/i)).not.toBeInTheDocument();

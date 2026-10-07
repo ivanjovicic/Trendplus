@@ -133,7 +133,7 @@ export default function AnalyticsDetailView(props: {
             className="inline-flex items-center gap-2 rounded-lg border border-info bg-info/10 px-3 py-2 text-xs font-semibold text-info"
           >
             <RefreshCw size={14} />
-            Pokusaj ponovo
+            Pokušaj ponovo
           </button>
         </div>
       </div>

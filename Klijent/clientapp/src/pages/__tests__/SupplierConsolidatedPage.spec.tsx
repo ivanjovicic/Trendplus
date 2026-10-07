@@ -151,10 +151,10 @@ describe("SupplierConsolidatedPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByText("Dobavljači").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Prodaja po dobavljačima").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Prodaja po dobavljačima" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Prodaja po dobavljačima" })).toBeInTheDocument();
 
     await waitFor(() => {
       expandTrustDetails();
@@ -267,8 +267,8 @@ describe("SupplierConsolidatedPage", () => {
       SUPPLIER_TAB_ROLE_CUE[tab],
     );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Dobavljači" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Dobavljači" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Prodaja po dobavljačima" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Prodaja po dobavljačima" })).toBeInTheDocument();
     expect(screen.getAllByLabelText("Filteri dobavljača")).toHaveLength(1);
     expect(screen.getByRole("tab", { name: new RegExp(tabLabel, "i") })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", `supplier-tab-${tab}`);

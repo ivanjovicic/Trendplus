@@ -12,20 +12,30 @@ type SidebarProps = {
   returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
-function isRouteMatch(pathname: string, route: string): boolean {
-  if (route === "/") return pathname === "/";
-  return pathname === route || pathname.startsWith(`${route}/`);
+function isRouteMatch(pathname: string, route: string, search: string): boolean {
+  const canonicalRoute = route.split(/[?#]/)[0] || "/";
+  const requiredParams = new URLSearchParams(route.includes("?") ? route.split("?")[1]?.split("#")[0] : "");
+  const activeParams = new URLSearchParams(search);
+  for (const [key, value] of requiredParams) {
+    if (activeParams.get(key) !== value) return false;
+  }
+  if (canonicalRoute === "/") return pathname === "/";
+  return pathname === canonicalRoute || pathname.startsWith(`${canonicalRoute}/`);
 }
 
-function findCurrentGroupId(pathname: string): string {
+function findCurrentGroupId(pathname: string, search: string): string {
   let selectedGroupId = "core";
   let longestMatch = 0;
+  let querySpecificity = -1;
 
   for (const group of NAV_GROUPS) {
     for (const item of group.items) {
-      if (!isRouteMatch(pathname, item.to)) continue;
-      if (item.to.length < longestMatch) continue;
-      longestMatch = item.to.length;
+      if (!isRouteMatch(pathname, item.to, search)) continue;
+      const routePath = item.to.split(/[?#]/)[0];
+      const itemQuerySpecificity = new URLSearchParams(item.to.includes("?") ? item.to.split("?")[1]?.split("#")[0] : "").size;
+      if (routePath.length < longestMatch || (routePath.length === longestMatch && itemQuerySpecificity <= querySpecificity)) continue;
+      longestMatch = routePath.length;
+      querySpecificity = itemQuerySpecificity;
       selectedGroupId = group.id;
     }
   }
@@ -33,13 +43,17 @@ function findCurrentGroupId(pathname: string): string {
   return selectedGroupId;
 }
 
-function findBestMatchForGroup(pathname: string, group: { id: string; items: { to: string }[] }) {
+function findBestMatchForGroup(pathname: string, search: string, group: { id: string; items: { to: string }[] }) {
   let best: string | null = null;
   let bestLen = -1;
+  let querySpecificity = -1;
   for (const item of group.items) {
-    if (!isRouteMatch(pathname, item.to)) continue;
-    if (item.to.length > bestLen) {
-      bestLen = item.to.length;
+    if (!isRouteMatch(pathname, item.to, search)) continue;
+    const routePath = item.to.split(/[?#]/)[0];
+    const itemQuerySpecificity = new URLSearchParams(item.to.includes("?") ? item.to.split("?")[1]?.split("#")[0] : "").size;
+    if (routePath.length > bestLen || (routePath.length === bestLen && itemQuerySpecificity > querySpecificity)) {
+      bestLen = routePath.length;
+      querySpecificity = itemQuerySpecificity;
       best = item.to;
     }
   }
@@ -59,13 +73,13 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
     returnFocusRef,
   });
   const defaultOpenGroups = useMemo(() => {
-    return new Set<string>([findCurrentGroupId(location.pathname)]);
-  }, [location.pathname]);
+    return new Set<string>([findCurrentGroupId(location.pathname, location.search)]);
+  }, [location.pathname, location.search]);
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(defaultOpenGroups);
 
   useEffect(() => {
-    const currentGroupId = findCurrentGroupId(location.pathname);
+    const currentGroupId = findCurrentGroupId(location.pathname, location.search);
 
     if (!currentGroupId) return;
 
@@ -75,7 +89,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
       next.add(currentGroupId);
       return next;
     });
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   const toggleGroup = (groupId: string) => {
     setOpenGroups((prev) => {
@@ -127,7 +141,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile, collapsed, onToggle
             const GroupIcon = group.icon;
             const groupLabel = group.sidebarLabel ?? group.label;
             const isOpen = openGroups.has(group.id);
-            const activeItemTo = findBestMatchForGroup(location.pathname, group);
+            const activeItemTo = findBestMatchForGroup(location.pathname, location.search, group);
             const isGroupActive = activeItemTo != null;
             return (
               <div

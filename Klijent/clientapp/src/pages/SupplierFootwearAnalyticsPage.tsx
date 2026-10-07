@@ -169,7 +169,7 @@ type StatusTooltipData = {
 function buildStatusTooltip(data: StatusTooltipData): string {
   const trust = data.recommendationAllowed
     ? ` | Pouzdanost ${formatMetricDisplayValue({ value: data.reliabilityPct, kind: "percent", digits: 0 })} | Poverenje ${formatMetricDisplayValue({ value: data.confidencePct, kind: "percent", digits: 0 })}`
-    : " | Pouzdanost Nije dostupno | Poverenje Nije dostupno";
+    : " | Pouzdanost nije dostupna | Poverenje nije dostupno";
   return `${statusDisplayLabel(data.status, data.statusLabel)}: ${data.statusReason} | Udeo ${formatMetricDisplayValue({ value: data.sharePct, kind: "percent" })} | Trend ${fmtSignedPct(data.trendPct, 1)} | Tip ${data.topFootwearType} (${formatMetricDisplayValue({ value: data.topFootwearTypeSharePct, kind: "percent" })})${trust}`;
 }
 const TYPE_INSIGHT_VISIBLE_CATEGORY_LIMIT = 8;

@@ -29,7 +29,7 @@ export default function PovracajPage() {
       setTotalCount(res.totalCount ?? 0);
     } catch (e: unknown) {
       console.error(e);
-      setError(e instanceof Error ? e.message : "Greska pri ucitavanju povracaja");
+      setError(e instanceof Error ? e.message : "Greška pri učitavanju povraćaja");
     } finally {
       setLoading(false);
     }
