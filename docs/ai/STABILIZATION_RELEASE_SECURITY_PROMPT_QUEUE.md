@@ -30,13 +30,12 @@ This queue intentionally does not duplicate analytics correctness prompts such a
    - the analytics reliability router has no earlier unresolved P0 task;
    - this queue has no unresolved P0 `READY`, `PARTIAL` or `BLOCKED` task;
    - the current-main release evidence is fresh.
-5. One task per session and commit. Do not combine this queue with an analytics formula fix.
+5. Keep STAB/release scope separate from analytics formula fixes. Task selection, concurrency, session flow and commit/claim mechanics are governed only by `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Queue rules
 
-- Follow `docs/ai/PROMPT_QUEUE_PROTOCOL.md` exactly.
-- Use only: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
-- Create a local uncommitted lock under `.ai/task-locks/` before work.
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` is the sole owner of selection, claim, lock, concurrency, promotion, no-READY and close-out mechanics.
+- The rules below are release/security evidence constraints, not a second queue algorithm.
 - Never mark live smoke, backup/restore or authorization readiness `DONE` from docs-only assumptions.
 - Do not add secrets, real customer data or production credentials to source, tests or evidence documents.
 - If provider dashboards, deployment logs or a safe restore target are unavailable, record the missing evidence and mark the task `BLOCKED` rather than guessing.
