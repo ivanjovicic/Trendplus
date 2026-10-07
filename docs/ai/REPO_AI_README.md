@@ -45,7 +45,7 @@ If a summary/helper doc disagrees with its canonical owner, update or deprecate 
 - Repo-wide agent behavior and question threshold: `AGENTS.md`
 - Cross-program priority/current program routing data: `MASTER_ROADMAP.md`
 - Per-program task status/READY set/dependencies/named owner: the current owner queue named by `MASTER_ROADMAP.md`
-- Queue mechanics (selection, claim, active-owner exclusivity, takeover, locks, Idle recovery, no-READY action ladder, Post-close cascade and Zero-READY proof): **`docs/ai/PROMPT_QUEUE_PROTOCOL.md`**
+- **All queue mechanics** (selection, claim, active-owner exclusivity, takeover, locks, Idle recovery, no-READY action ladder, Post-close cascade and Zero-READY proof): **`docs/ai/PROMPT_QUEUE_PROTOCOL.md`**
 - Agent entry/orientation and read order: `docs/ai/AGENT_START_HERE.md`
 - Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md`, `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md` and `docs/ai/BACKEND_STANDARDS.md`
@@ -129,7 +129,7 @@ When a queue has no current READY prompt, the expected behavior is proactive rec
 ## Production and queue references
 
 - Queue workflow: `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, owner queue named by the roadmap
-- Historical queue ledger: `docs/ai/NEXT_PROMPT_QUEUE.md`
+- Historical queue ledger: `docs/ai/NEXT_PROMPT_QUEUE.md`. `NEXT_PROMPT_QUEUE.md` is a **historical ledger**, never the live router.
 - GenAI gated queue: `docs/ai/GENAI_PRODUCT_PROMPT_QUEUE.md`
 - Analytics roadmap: `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
 - GenAI roadmap: `docs/ai/GENAI_COPILOT_ROADMAP.md`
