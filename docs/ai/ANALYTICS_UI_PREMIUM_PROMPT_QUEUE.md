@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-51 (IN_PROGRESS; claimed 2026-10-07). Other READY lane: `P-UI-52`.
+Current primary prompt: P-UI-42 (IN_PROGRESS; claimed 2026-10-07 after P-UI-51 completed). Other READY lane: `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -50,7 +50,7 @@ Use with:
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
-| P-UI-42 | WAITING | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
+| P-UI-42 | IN_PROGRESS | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | DONE | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
@@ -59,7 +59,7 @@ Use with:
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
-| P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
+| P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
@@ -2817,13 +2817,15 @@ Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be
 
 ## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets and hybrid touch devices
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: P-UI-39 DONE, P-UI-40 DONE, P-UI-47 DONE, P-UI-48 DONE, P-UI-43 DONE and P-UI-51 DONE (shared trust-header/control-bar/theme/header ownership)
 Priority: P2
 Type: frontend/css/tests
 Feature family: responsive-coarse-pointer-tablet
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex (Analytics Frontend / Responsive UI)
+Owned paths checked: `tailwind.css`, `styles/themes.css`, `styles/forms.css`, `AnalyticsControlBar.css`, shared UI/header class contracts, and focused responsive/browser tests.
+Local lock: `.ai/task-locks/P-UI-42-codex.lock.md`
 Commit suggestion: `feat(ui): apply touch and input-size floor to coarse-pointer tablets`
 
 ### Problem
@@ -2864,6 +2866,13 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 ### Dependencies
 
 - P-UI-39, P-UI-40, P-UI-47 and P-UI-48 own overlapping shared CSS/header/token surfaces and land first. P-UI-46 consumes the leftover list.
+
+### Owner claim 2026-10-07
+
+- After P-UI-51 DONE, refreshed `origin/main` to `68731e8269ac4ab064fbe17fefec964c8c7d3f3e` and scanned all 15 active RQ/SQL/P-UI queue files plus `MASTER_ROADMAP.md`.
+- Verified P-UI-39/P-UI-40/P-UI-43/P-UI-47/P-UI-48/P-UI-51 DONE; P-UI-42 has no matching local/remote branch, open PR or active task lock. P-UI-52 remains independently READY and owns nav/copy paths, not the tablet shared CSS paths.
+- Higher-priority RQ/SQL current READY pointers remain none; RQ139's derived builder residual is already addressed by DONE RQ152 and RQ153 is DONE. The remaining RQ PARTIAL items are broad cross-surface or live/runtime acceptance. STAB16 remains provider/deployment gated; the current roadmap exposes no higher-priority BCI/QDB/MT/GAI READY execution candidate.
+- Promoted WAITING -> READY -> IN_PROGRESS and claimed on `codex/p-ui-42-coarse-pointer-tablet` from refreshed `origin/main` `68731e8269ac4ab064fbe17fefec964c8c7d3f3e`.
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 

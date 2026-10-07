@@ -58,12 +58,13 @@ Evidence state: synchronized
 - The existing Recharts chunk-size advisory remains.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: pending closure commit and fresh post-delivery scan.
-- Active owner queue/addendum files scanned: all active Analytics Reliability/RQ queue files and addenda, SQL Analytics queue, P-UI queue and least-improved addendum, plus `MASTER_ROADMAP.md` (16 files total; full recovery details to be appended after closure delivery).
-- Completed/changed task IDs searched: P-UI-51 and explicit P-UI-51 dependents.
-- RQ review: RQ139's derived-intelligence residual is already addressed by RQ152 DONE; RQ153 is DONE. Remaining RQ137/RQ139/RQ140 partial states require broad cross-surface or live/runtime acceptance; no separate safe runnable RQ slice was identified. RQ and SQL current READY pointers remain none. STAB16 is provider/deployment gated; other higher-priority BCI/QDB/MT/GAI queues expose no READY runtime candidate in the current roadmap.
-- Newly satisfied dependency: P-UI-42's explicit P-UI-51 dependency; remaining explicit P-UI-42 prerequisites are already DONE.
-- Promoted successor: P-UI-42, after fresh post-close collision review (details to be appended).
+- Recovery base `origin/main` SHA: `68731e8269ac4ab064fbe17fefec964c8c7d3f3e` (P-UI-51 completion/evidence commit).
+- Active owner queue/addendum files scanned: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; all 11 active `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_*_ADDENDUM.md` files; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`; `MASTER_ROADMAP.md` (16 files).
+- Completed/changed task IDs searched: P-UI-51 and its explicit dependent P-UI-42; the complete P-UI non-terminal list was re-evaluated, as were the RQ/SQL primary and supplemental queues.
+- RQ review: RQ139's derived-intelligence residual is addressed by RQ152 DONE; RQ153 is DONE. RQ137/RQ139/RQ140 retain broad cross-surface or live/runtime acceptance and expose no distinct safe READY slice in the active queue. RQ and SQL current READY pointers remain none. STAB16 is provider/deployment gated; the current roadmap exposes no higher-priority BCI/QDB/MT/GAI READY execution candidate.
+- Newly satisfied dependency: P-UI-42's explicit P-UI-51 dependency; its other named prerequisites (P-UI-39/40/43/47/48) are DONE.
+- Collision review: no matching P-UI-42 local or remote branch, open PR, or active local task lock. P-UI-52 remains READY on navigation configuration/copy paths and is disjoint from P-UI-42's shared responsive CSS/header primitives.
+- Promoted successor: P-UI-42 moved WAITING -> READY -> IN_PROGRESS and was claimed on `codex/p-ui-42-coarse-pointer-tablet` from recovery base `68731e8269ac4ab064fbe17fefec964c8c7d3f3e`.
 
 ## Next
 - P-UI-42 - coarse-pointer tablet controls and touch target sizing.
