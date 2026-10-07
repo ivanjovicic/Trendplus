@@ -2,8 +2,8 @@
 
 Created: 2026-07-31
 Repo: `ivanjovicic/Trendplus`
-Status: dormant until the analytics reliability router and the stabilization/release/security queue have no unresolved P0 `READY`, `PARTIAL`, `BLOCKED` or `IN_PROGRESS` item.
-Current gate verdict: BLOCKED by STAB08 refresh evidence on 2026-08-06.
+Status: dormant until the current core-pilot/release gates in `MASTER_ROADMAP.md` explicitly permit GenAI entry.
+Current gate verdict: no READY GenAI work; live blocking truth is owned by the current master roadmap and stabilization/release evidence (currently STAB16/provider-deployed proof), not the historical STAB08 snapshot.
 
 ## Goal
 
@@ -21,16 +21,14 @@ Target outcome:
 ## Queue rules
 
 1. Read `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/GENAI_COPILOT_ROADMAP.md`, `docs/security/GENAI_SECURITY_AND_DATA_BOUNDARIES.md` and `docs/qa/GENAI_EVALUATION_AND_RELEASE_GATE.md`.
-2. Confirm the stabilization queue and analytics reliability router have no unresolved P0 `READY`/`PARTIAL`/`BLOCKED`/`IN_PROGRESS` items.
-3. Take only the first task with `Status: READY` (or the first unblocked `WAITING` task after promoting it to `READY`) whose dependencies are DONE.
-4. Change it to `IN_PROGRESS` before implementation.
-5. Use one task and one focused commit per session.
-6. Finish as `DONE`, `PARTIAL` or `BLOCKED` with files, checks, risks and next step.
-7. Never skip a P0 security/evaluation gate to start an LLM UI or agent.
-8. Do not add a paid provider dependency unless the task explicitly allows it.
-9. Do not use real customer data in development fixtures.
-10. Stop if auth, scope, provider policy or source-of-truth ownership is unclear.
-11. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`. Never use `TODO` or `OPEN`.
+2. Treat `MASTER_ROADMAP.md` and the current stabilization/analytics owner queues as the gate truth. Do not use the dated STAB08 note as a live entry decision.
+3. `docs/ai/PROMPT_QUEUE_PROTOCOL.md` is the sole owner of selection, claim, lock, concurrency, promotion, no-READY and close-out mechanics. `Current READY` is the default pointer, not a one-task allowlist.
+4. If there is no READY GenAI prompt, run the canonical no-READY action ladder but do not weaken or split around a security/release/tenant gate that is genuinely required for the proposed runtime capability.
+5. Keep each implementation commit focused and reviewable; this is not a one-task-per-session restriction.
+6. Never skip a P0 security/evaluation gate to start an LLM UI or agent.
+7. Do not add a paid provider dependency unless the task explicitly allows it.
+8. Do not use real customer data in development fixtures.
+9. Stop if auth, scope, provider policy or source-of-truth ownership is unclear.
 
 ## Global stop conditions
 
