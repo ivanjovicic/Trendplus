@@ -227,3 +227,24 @@
 - Wrong fix: Leaving useful work on a branch indefinitely, claiming `DONE` from green branch CI while `main` is stale, or using `PARTIAL` only because CI is still running.
 - Required checks: fresh `origin/main` SHA verification; governance docs `AGENTS.md` section 7.1 and `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`
 - Usually touched files: evidence/run logs, queue completion notes, agent delivery workflow only
+
+## 23. Active claim mistaken as released after implementation reaches `main`
+
+- Symptom: A second agent sees the implementation SHA on `main`, no visible local lock/branch/PR, and starts “finishing” the same `IN_PROGRESS` prompt by re-running validation, editing evidence, changing status or opening a same-task PR.
+- Detection: The canonical owner queue still names another owner as `IN_PROGRESS`, while a different agent begins same-task close-out work.
+- Root cause: Repository-state evidence was confused with queue authority; local locks are uncommitted/removed before commit and direct-main work may have no remote branch/PR.
+- Correct fix: Treat the named `IN_PROGRESS` owner as exclusive through validation/evidence/status/CI-classification/post-close routing. Perform read-only review only, hand findings to that owner, or choose another collision-safe READY task. Take over only after explicit handoff/release or the canonical stale-takeover proof.
+- Wrong fix: “The code is already on main, so I can finish the evidence/status”, or “there is no lock/branch, so the claim is stale”.
+- Required checks: current owner queue task row; `docs/ai/PROMPT_QUEUE_PROTOCOL.md` active-claim/takeover rules; relevant owner/session/branch/PR evidence.
+- Usually touched files: queue/evidence docs only when the original owner closes the task.
+
+## 24. Zero-READY declared before real unblock attempts
+
+- Symptom: Agent reports “all prompts are WAITING/BLOCKED/PARTIAL” and stops without repairing stale gates, running safe repo-local proof, attempting a meaningful disjoint split, or checking the next eligible program.
+- Detection: Zero-READY evidence has blocker descriptions but no `unblock action attempted`, no split analysis, or no exact unblock event.
+- Root cause: Blocker enumeration was treated as recovery; one blocked path/program was allowed to serialize unrelated safe work.
+- Correct fix: Run the protocol's **Mandatory no-READY action ladder**. Re-verify dependencies, execute bounded repository-local unblock/proof work, split a path-disjoint same-owner child prompt when safe, repair missing owner work items, then try the next program. Only after those attempts may a Zero-READY proof close the run.
+- Wrong fix: Copying an older `Current READY: none`, treating an unknown local edit as a program-wide blocker, or listing external proof requirements without checking safe repository-local work.
+- Required checks: current post-delivery `origin/main`; complete active queue/addendum scan; blocker matrix with attempted action/result, why no safe split exists and exact unblock event.
+- Usually touched files: canonical queue/roadmap/evidence docs; no product code unless the selected unblock prompt owns it.
+
