@@ -1,48 +1,22 @@
-# AGENTS.md Addendum - Prompt Queue Workflow
+# Deprecated AGENTS Queue Addendum
 
-Use this content only when an older AGENTS variant needs the current Trendplus queue summary patched in. The live owner remains `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
+Status: **DEPRECATED — compatibility pointer only**
 
-## Prompt queue workflow
+This file used to duplicate the live queue workflow for older `AGENTS.md` variants. Do **not** use it as a router, checklist, selector or source of claim/takeover/lock/no-READY rules, and do not copy its historical workflow into new agent instructions.
 
-If the task comes from a live queue:
+Current canonical sources:
 
-1. Read `MASTER_ROADMAP.md`.
-2. Resolve the owner program and current `READY` prompt.
-3. Treat `docs/ai/NEXT_PROMPT_QUEUE.md` as a historical ledger, not a live router.
-4. Use only protocol statuses: `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
-5. If no READY prompt exists, run canonical Idle recovery and Mandatory blocker decomposition before reporting no work.
-6. Treat every older `Current READY: none` / `Next: none` as invalid after any terminal prompt transition, dependency/evidence change or owner decision.
-7. After closure reaches `main`, refresh the post-delivery `origin/main` SHA and run the canonical **Post-close dependency cascade** across the entire active owner queue/addendum set; search changed task IDs, re-evaluate all dependents, then all non-terminal prompts.
-8. If a dependency-complete collision-safe prompt exists, promote it in the same recovery run. Do not preserve WAITING because older prose called the queue empty.
-9. A final `no READY` result requires a durable **Zero-READY proof** with recovery-base SHA, files scanned, candidate/blocker matrix, start-gate-vs-final-proof classification, safe-slice result and exact unblock event. If the full active set was not inspected, report recovery incomplete instead.
-10. Treat stale dependencies, circular same-prompt prerequisites and external final-proof requirements differently; repair routing when a same-owner repo-local slice can safely proceed.
-11. If the first candidate remains truly blocked, check another collision-safe lane in the same program and then the next eligible program.
-12. Work one prompt per session/commit unless the prompt explicitly allows a bounded docs consolidation.
-13. Before implementation, promote to `READY`, then set `IN_PROGRESS` or create the local lock from `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
-14. After work, record changed files, checks, remaining risk, post-close routing proof, next step and main verification.
-15. Stop as `PARTIAL` or `BLOCKED` only for a genuine unresolved start gate/owner boundary; do not use missing provider/deployed evidence as a blanket blocker when safe repo-local acceptance can be separated.
+- repository-wide behavior: `AGENTS.md`
+- entry/read order: `docs/ai/AGENT_START_HERE.md`
+- cross-program routing data: `MASTER_ROADMAP.md`
+- per-program task status/owner/READY data: the current owner queue
+- **all queue mechanics:** `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+- evidence contract: `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` and `.ai/RUN_LOG_TEMPLATE.md`
 
-## Final report
+Critical invariants retained here only so old references fail safely:
 
-```text
-Queue task:
-- Qxx title
+- another owner's `IN_PROGRESS` task remains exclusive through its close-out phase; a commit on `main`, missing local lock, or absent branch/PR does not release it;
+- when there is no READY prompt, use the canonical **Mandatory no-READY action ladder** before any Zero-READY conclusion;
+- never infer current routing from `docs/ai/NEXT_PROMPT_QUEUE.md`; it is a historical ledger.
 
-Status:
-- DONE/PARTIAL/BLOCKED
-
-Changed:
-- ...
-
-Checks:
-- ...
-
-Risks:
-- ...
-
-Main verification:
-- ...
-
-Next:
-- Qyy title
-```
+If an older document points here for operational instructions, follow the canonical files above and update that old reference when it is part of the current task.

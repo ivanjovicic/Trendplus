@@ -28,21 +28,25 @@ After `AGENTS.md` and `.github/copilot-instructions.md`, read:
 
 ## Authority order when docs conflict
 
-Use this order instead of combining contradictory guidance:
+Do not use one global precedence list for both **facts** and **authority**. They are different:
 
-1. current code, focused tests and executable validators
-2. `MASTER_ROADMAP.md` plus the current owner queue header, primary READY pointer and READY task statuses for planning and routing
-3. the canonical owner doc for the rule you are using
-4. short entrypoints such as `AGENTS.md`, `.github/copilot-instructions.md` and this README
-5. historical ledgers, old addenda, dated audits, stale "next READY" prose and interrupted command output
+1. **Implementation facts** — current code, focused tests, executable validators and synchronized run evidence prove what is actually implemented or passing.
+2. **Queue/routing data** — `MASTER_ROADMAP.md` owns cross-program priority/current program pointer; the current owner queue owns task status, named owner, dependencies and the program's READY set.
+3. **Mechanics/policy** — the canonical owner document for the rule controls how those facts/statuses may be interpreted or changed. For queue selection, claim, takeover, locks, no-READY recovery and close-out, that owner is **only** `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
+4. **Entrypoints/summaries** — `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/AGENT_START_HERE.md` and this README summarize/route; they do not create competing mechanics.
+5. **Historical evidence** — old ledgers, addenda, dated audits, stale "next READY" prose and interrupted command output never override current routing.
 
-If a summary doc disagrees with its owner, update or ignore the summary; do not merge both versions into a new hybrid rule.
+**Evidence does not grant authority.** A runtime commit on `main`, a green test, a missing local lock or an absent branch/PR may prove repository state, but none of them releases another owner's `IN_PROGRESS` claim or authorizes takeover. Only the queue protocol plus current routing/owner evidence can do that.
+
+If a summary/helper doc disagrees with its canonical owner, update or deprecate the helper; do not merge both versions into a hybrid rule.
 
 ## Canonical owners by topic
 
 - Repo-wide agent behavior and question threshold: `AGENTS.md`
-- Queue routing/primary READY/full runnable set/global priority: `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
-- Idle/no-READY recovery and blocker decomposition: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not treat stale/circular/external-final-proof blockers as permanent without reclassification.
+- Cross-program priority/current program routing data: `MASTER_ROADMAP.md`
+- Per-program task status/READY set/dependencies/named owner: the current owner queue named by `MASTER_ROADMAP.md`
+- Queue mechanics (selection, claim, active-owner exclusivity, takeover, locks, Idle recovery, no-READY action ladder, Post-close cascade and Zero-READY proof): **`docs/ai/PROMPT_QUEUE_PROTOCOL.md`**
+- Agent entry/orientation and read order: `docs/ai/AGENT_START_HERE.md`
 - Architecture ownership and safe path boundaries: `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - Analytics/runtime semantics: `docs/ai/ANALYTICS_STANDARDS.md`, `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md` and `docs/ai/BACKEND_STANDARDS.md`
 - Frontend presentation guardrails: `docs/ai/FRONTEND_UX_STANDARDS.md`
@@ -120,7 +124,7 @@ Update docs when:
 
 ## Queue recovery principle
 
-When a queue has no current READY prompt, the expected behavior is proactive recovery, not early refusal. Follow the canonical protocol to re-check stale dependencies, split repo-local work from external final proof, detect circular prerequisites, try an independent lane, and only then report no safe task. Do not invent owner decisions or bypass production/security/tenant gates.
+When a queue has no current READY prompt, the expected behavior is proactive recovery, not early refusal. Follow the canonical protocol's **Mandatory no-READY action ladder**; this README intentionally does not restate the algorithm. A final no-work result must come from the protocol's current Zero-READY proof. Do not invent owner decisions, steal active claims or bypass production/security/tenant gates.
 
 ## Production and queue references
 
