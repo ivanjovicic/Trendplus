@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-10-04
+Updated: 2026-10-07
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -122,8 +122,13 @@ If a prompt mixes executable repo-local work with external final proof, the agen
    - Resume the agent/workspace's own active claim.
    - Inspect recent relevant run logs plus known task branch/PR state before selecting new work. If a valid implementation/proof exists on a branch or PR but `main` does not contain it, finish the permitted merge/push to `main`, resolve only in-scope conflicts, verify the delivered SHA, and synchronize evidence before moving on. Do not merge stale/unverified transport work blindly.
    - Do not steal a live claim from another owner.
-   - If an `IN_PROGRESS` row is only stale metadata and current `main` plus its run log already prove delivery, reconcile it to the truthful terminal status before selecting new work.
-   - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting lock/branch/PR/owner. Record the takeover evidence.
+   - **An implementation/runtime commit reaching `main` does not release an active claim.** The original claiming owner/workspace keeps ownership through focused re-validation, evidence/run-log synchronization, queue/completion status, relevant CI classification, final `main` verification and the post-close dependency cascade, unless it explicitly releases/hands off the task.
+   - While the canonical task row is `IN_PROGRESS` with another owner, a second agent MUST NOT create a same-task lock/branch/PR, write or finalize that task's evidence, change its completion note/status, or describe itself as “continuing”/“finishing” the claim. It may perform read-only review and hand findings to the owner, or choose another collision-safe task.
+   - **No visible lock/branch/PR is not proof that an `IN_PROGRESS` claim is stale.** Local locks are intentionally uncommitted and are deleted before commit by this protocol; direct-main owners may therefore have no remotely visible lock or branch during the close-out phase.
+   - If an `IN_PROGRESS` task already has a runtime SHA on `main` but evidence/status/focused verification is still being finalized, treat that as **active close-out**, not delivered-but-free work.
+   - If prose is contradictory (for example section `Status: IN_PROGRESS` but a terminal-looking completion note was added), fail closed on ownership: do not “repair” or take over the task while the named owner is still active. The owner must reconcile its own closure, unless there is an explicit handoff/release or the takeover rule below is independently satisfied.
+   - If an `IN_PROGRESS` row is only stale metadata and current `main` plus synchronized run evidence already prove terminal delivery **and no active owner/workspace remains**, reconcile it to the truthful terminal status before selecting new work.
+   - A takeover is allowed only when current evidence proves the old claim is abandoned/stale and there is no active conflicting owner/session, lock, branch or PR. A runtime commit on `main`, missing local lock, or unfinished completion evidence alone never proves abandonment. Record the takeover evidence.
 3. **Re-evaluate non-DONE prompts instead of trusting old blockers.** First run the Post-close dependency cascade for every task/dependency that changed state in the current run; then inspect **all** `PARTIAL`, `BLOCKED` and `WAITING` candidates across the program's active queue/addenda in program priority, then task priority. Verify every named dependency against current code, commits and synchronized run evidence, then apply the Mandatory blocker decomposition above.
    - If a dependency is already satisfied, repair the stale dependency/status text.
    - Detect circular prerequisites: if the missing baseline/report/fixture/measurement is an output this prompt itself owns, make it step 1 of the prompt rather than a precondition.
@@ -171,7 +176,7 @@ Use these statuses exactly:
 |---|---|---|
 | READY | Runnable, unclaimed prompt. A program may have multiple READY prompts when they are independently safe. | Yes, subject to master priority/dependencies/collision checks |
 | WAITING | Valid prompt that is dependency-blocked, collision-prone, owner-gated or intentionally deferred. | No |
-| IN_PROGRESS | Claimed by one owner/workspace. Multiple independent IN_PROGRESS prompts may coexist. | Only the claiming owner/workspace continues that prompt |
+| IN_PROGRESS | Claimed by one owner/workspace, including its close-out phase after implementation reaches `main`. Multiple independent IN_PROGRESS prompts may coexist. | Only the claiming owner/workspace continues/closes that prompt unless it explicitly hands off/releases it or takeover is independently proven stale |
 | BLOCKED | Missing dependency/decision/evidence that prevents safe progress. | No |
 | PARTIAL | Useful work exists but acceptance/proof/delivery is incomplete. | No unless an explicit follow-up says so |
 | DONE | Acceptance met with synchronized evidence and delivery truth. | No |
@@ -254,8 +259,8 @@ Exclusive area: <paths/contract>
 2. Read `AGENTS.md`, `.github/copilot-instructions.md`, `docs/ai/AGENT_START_HERE.md`, `MASTER_ROADMAP.md`, this protocol and the target prompt.
 3. Verify the queue still declares the selected task READY. The selected task may be the primary pointer or another READY candidate.
 4. Verify dependencies and global priority.
-5. Confirm no active READY/IN_PROGRESS task, lock, branch or PR owns a conflicting feature family/path where that evidence is available.
-6. Create local lock for implementation work.
+5. Confirm no active READY/IN_PROGRESS task, owner, lock, branch or PR owns the same task or a conflicting feature family/path where that evidence is available. **For the exact task ID, `IN_PROGRESS` + another named owner is sufficient to stop the claim even when no remote lock/branch/PR is visible and even when an implementation SHA is already on `main`.**
+6. Create local lock for implementation work only after the ownership check passes.
 7. Work only inside Scope.
 8. If extra scope crosses an owner/program boundary, stop as PARTIAL/BLOCKED and create a separate follow-up plan. A smallest same-owner mechanical repair allowed above is recorded and may continue.
 9. Run exact tests/checks.
