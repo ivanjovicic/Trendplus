@@ -4,8 +4,8 @@ Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: cursor/queue-idle-recovery-1156-61ea / https://github.com/ivanjovicic/Trendplus/pull/110
-Main commit SHA: pending
-Main verification: pending final evidence-sync delivery
+Main commit SHA: 2da05987b00eb8e8d0619e5600816968b846e1e1
+Main verification: passed - origin/main contains the refreshed zero-ready evidence and its final recovery base
 Evidence state: synchronized
 
 ## What was done
