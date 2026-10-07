@@ -46,6 +46,7 @@ describe("NivelacijePage", () => {
     expect(screen.getByLabelText("Od datuma (Beograd)")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Do datuma, uključujući ceo dan")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Artikal ID")).toHaveValue("14");
+    expect(screen.getByRole("region", { name: "Tabela nivelacija" })).toHaveAttribute("tabindex", "0");
   });
 
   it("surfaces load errors with alert semantics and retry", async () => {

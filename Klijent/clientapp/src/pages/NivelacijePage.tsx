@@ -240,11 +240,11 @@ export default function NivelacijePage() {
         )}
 
         {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-muted">
+          <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-muted" role="region" aria-label="Tabela nivelacija" tabIndex={0}>
             <table className="min-w-full divide-y divide-muted text-sm">
               <thead className="bg-surface-darker text-muted">
                 <tr>
-                  <th scope="col" aria-sort={sortAria(sortBy, "datum", sortDir)} className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("datum")}>Datum<SortIcon field="datum" sortBy={sortBy} sortDir={sortDir} /></th>
+                  <th scope="col" aria-sort={sortAria(sortBy, "datum", sortDir)} className="sticky left-0 z-10 cursor-pointer select-none bg-surface-darker px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("datum")}>Datum<SortIcon field="datum" sortBy={sortBy} sortDir={sortDir} /></th>
                   <th scope="col" className="px-3 py-3 text-left">Tip</th>
                   <th scope="col" aria-sort={sortAria(sortBy, "artikalid", sortDir)} className="cursor-pointer select-none px-3 py-3 text-left hover:text-contrast" onClick={() => toggleSort("artikalid")}>Artikal<SortIcon field="artikalid" sortBy={sortBy} sortDir={sortDir} /></th>
                   <th scope="col" className="px-3 py-3 text-left">Prodavnica</th>
@@ -258,7 +258,7 @@ export default function NivelacijePage() {
               <tbody className="divide-y divide-muted bg-surface-elevated text-contrast">
                 {items.map((it) => (
                   <tr key={it.id} className="hover:bg-surface">
-                    <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-muted">{new Date(it.datum).toLocaleString("sr-RS")}</td>
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-surface-elevated px-3 py-3 font-mono text-xs text-muted">{new Date(it.datum).toLocaleString("sr-RS")}</td>
                     <td className="px-3 py-3">{it.tipPromene === "Nivelacija" ? "Uvezena nivelacija" : "Promena cene"}</td>
                     <td className="px-3 py-3">{it.artikalId ?? "-"}</td>
                     <td className="px-3 py-3">{it.idObjekat == null ? "Sve prodavnice (lančano)" : `Prodavnica #${it.idObjekat}`}</td>
