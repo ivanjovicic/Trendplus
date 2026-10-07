@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { Building2, Plus, Pencil, Trash2, X, Check, AlertCircle } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, X, Check, AlertCircle, Search, MoreVertical } from "lucide-react";
 import { createDobavljac, getDobavljaci } from "../services/dobavljaciApi";
 import { apiUrl } from "../utils/apiUrl";
 
@@ -33,6 +33,9 @@ export default function DobavljaciPage() {
     // Delete confirm
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [visibleCount, setVisibleCount] = useState(50);
+    const [openActionMenuId, setOpenActionMenuId] = useState<number | null>(null);
 
     const loadDobavljaci = async () => {
         setLoading(true);
@@ -48,6 +51,13 @@ export default function DobavljaciPage() {
     };
 
     useEffect(() => { loadDobavljaci(); }, []);
+
+    const filteredDobavljaci = dobavljaci.filter((supplier) => {
+        const query = searchQuery.trim().toLocaleLowerCase("sr-Latn");
+        return !query || [supplier.naziv, supplier.adresa, supplier.telefon, supplier.napomena]
+            .some((value) => value?.toLocaleLowerCase("sr-Latn").includes(query));
+    });
+    const visibleDobavljaci = filteredDobavljaci.slice(0, visibleCount);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -251,26 +261,40 @@ export default function DobavljaciPage() {
             )}
 
             {/* Table */}
+            <label className="relative block">
+                <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                    type="search"
+                    aria-label="Pretraži dobavljače"
+                    placeholder="Pretraži dobavljače po nazivu, adresi, telefonu ili napomeni"
+                    value={searchQuery}
+                    onChange={(event) => { setSearchQuery(event.target.value); setVisibleCount(50); }}
+                    className="w-full rounded-xl border border-muted bg-surface-darker py-3 pl-10 pr-3 text-base text-contrast placeholder:text-muted"
+                />
+            </label>
+
             <div className="rounded-xl border border-muted bg-surface-darker overflow-hidden">
                 {loading ? (
                     <div className="py-12 text-center text-sm text-muted">Učitavanje...</div>
-                ) : dobavljaci.length === 0 ? (
+                ) : filteredDobavljaci.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 py-12">
                         <Building2 size={32} className="text-muted/50" />
-                        <p className="text-sm text-muted">Nema kreiranih dobavljača.</p>
-                        <button
-                            onClick={() => setShowForm(true)}
-                            className="flex items-center gap-1.5 rounded-lg bg-info px-3 py-2 text-xs font-semibold text-on-primary hover:opacity-90"
-                        >
-                            <Plus size={13} /> Dodaj prvog dobavljača
-                        </button>
+                        <p className="text-sm text-muted">{searchQuery ? "Nema dobavljača koji odgovaraju pretrazi." : "Nema kreiranih dobavljača."}</p>
+                        {!searchQuery && (
+                            <button
+                                onClick={() => setShowForm(true)}
+                                className="flex items-center gap-1.5 rounded-lg bg-info px-3 py-2 text-xs font-semibold text-on-primary hover:opacity-90"
+                            >
+                                <Plus size={13} /> Dodaj prvog dobavljača
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="hidden overflow-x-auto overscroll-x-contain sm:block" role="region" aria-label="Tabela dobavljača" tabIndex={0}>
                         <table className="min-w-full divide-y divide-muted text-sm">
                             <thead className="bg-surface text-muted">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Naziv</th>
+                                    <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Naziv</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Adresa</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Telefon</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Napomena</th>
@@ -278,11 +302,11 @@ export default function DobavljaciPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted bg-surface-elevated text-contrast">
-                                {dobavljaci.map((d) =>
+                                {visibleDobavljaci.map((d) =>
                                     editId === d.id ? (
                                         // ── Inline Edit Row ──
                                         <tr key={d.id} className="bg-surface-elevated">
-                                            <td className="px-3 py-2">
+                                            <td className="sticky left-0 z-10 bg-surface-elevated px-3 py-2">
                                                 <input
                                                     className="w-full rounded border border-info bg-surface-darker px-2 py-1 text-sm text-contrast focus:outline-none"
                                                     value={editData.naziv ?? ""}
@@ -334,12 +358,12 @@ export default function DobavljaciPage() {
                                     ) : (
                                         // ── Normal Row ──
                                         <tr key={d.id} className="hover:bg-surface/50 transition-colors">
-                                            <td className="px-4 py-3 font-medium text-contrast">{d.naziv}</td>
+                                            <td className="sticky left-0 z-10 bg-surface-elevated px-4 py-3 font-medium text-contrast">{d.naziv}</td>
                                             <td className="px-4 py-3 text-muted">{d.adresa || <span className="opacity-30">—</span>}</td>
                                             <td className="px-4 py-3 text-muted">{d.telefon || <span className="opacity-30">—</span>}</td>
                                             <td className="px-4 py-3 max-w-xs truncate text-muted">{d.napomena || <span className="opacity-30">—</span>}</td>
                                             <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-1.5">
+                                                <div className="supplier-desktop-actions flex justify-end gap-1.5">
                                                     <button
                                                         onClick={() => startEdit(d)}
                                                         title="Izmeni"
@@ -355,6 +379,15 @@ export default function DobavljaciPage() {
                                                         <Trash2 size={11} /> Obriši
                                                     </button>
                                                 </div>
+                                                <details className="supplier-touch-actions" open={openActionMenuId === d.id}>
+                                                    <summary aria-label={`Akcije za ${d.naziv}`} title="Akcije" onClick={(event) => { event.preventDefault(); setOpenActionMenuId((current) => current === d.id ? null : d.id); }} className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-lg border border-muted text-contrast">
+                                                        <MoreVertical size={18} aria-hidden="true" />
+                                                    </summary>
+                                                    <div className="supplier-touch-menu mt-1 grid min-w-40 gap-1 rounded-lg border border-muted bg-surface-elevated p-1 shadow-xl" hidden={openActionMenuId !== d.id}>
+                                                        <button type="button" onClick={() => startEdit(d)} className="min-h-11 rounded px-3 text-left text-sm text-contrast hover:bg-surface">Izmeni</button>
+                                                        <button type="button" onClick={() => { setDeleteId(d.id); setError(null); }} className="min-h-11 rounded px-3 text-left text-sm text-error hover:bg-surface">Obriši</button>
+                                                    </div>
+                                                </details>
                                             </td>
                                         </tr>
                                     )
@@ -364,6 +397,74 @@ export default function DobavljaciPage() {
                     </div>
                 )}
             </div>
+            {!loading && filteredDobavljaci.length > 0 && (
+                <div className="grid gap-2 sm:hidden" role="list" aria-label="Dobavljači">
+                    {visibleDobavljaci.map((supplier) => (
+                        <article key={supplier.id} className="rounded-xl border border-muted bg-surface-elevated p-2" role="listitem">
+                            {editId === supplier.id ? (
+                                <div className="grid gap-2">
+                                    <label className="grid gap-1 text-xs text-muted">Naziv
+                                        <input aria-label="Naziv dobavljača" className="min-h-11 rounded border border-muted bg-surface-darker px-3 text-base text-contrast" value={editData.naziv ?? ""} onChange={(event) => setEditData((prev) => ({ ...prev, naziv: event.target.value }))} />
+                                    </label>
+                                    <label className="grid gap-1 text-xs text-muted">Adresa
+                                        <input aria-label="Adresa dobavljača" className="min-h-11 rounded border border-muted bg-surface-darker px-3 text-base text-contrast" value={editData.adresa ?? ""} onChange={(event) => setEditData((prev) => ({ ...prev, adresa: event.target.value }))} />
+                                    </label>
+                                    <label className="grid gap-1 text-xs text-muted">Telefon
+                                        <input aria-label="Telefon dobavljača" className="min-h-11 rounded border border-muted bg-surface-darker px-3 text-base text-contrast" value={editData.telefon ?? ""} onChange={(event) => setEditData((prev) => ({ ...prev, telefon: event.target.value }))} />
+                                    </label>
+                                    <label className="grid gap-1 text-xs text-muted">Napomena
+                                        <input aria-label="Napomena dobavljača" className="min-h-11 rounded border border-muted bg-surface-darker px-3 text-base text-contrast" value={editData.napomena ?? ""} onChange={(event) => setEditData((prev) => ({ ...prev, napomena: event.target.value }))} />
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => void saveEdit()} disabled={isEditing} className="min-h-11 flex-1 rounded-lg bg-success/20 px-3 text-sm font-semibold text-success">{isEditing ? "Čuvam..." : "Sačuvaj"}</button>
+                                        <button type="button" onClick={cancelEdit} className="min-h-11 rounded-lg border border-muted px-3 text-sm text-contrast">Otkaži</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex min-h-11 items-center justify-between gap-2">
+                                        <h2 className="min-w-0 break-words text-base font-semibold text-contrast">{supplier.naziv}</h2>
+                                        <details className="supplier-touch-actions supplier-mobile-actions" open={openActionMenuId === supplier.id}>
+                                            <summary aria-label={`Akcije na mobilnom prikazu za ${supplier.naziv}`} title="Akcije" onClick={(event) => { event.preventDefault(); setOpenActionMenuId((current) => current === supplier.id ? null : supplier.id); }} className="flex h-11 w-11 shrink-0 cursor-pointer list-none items-center justify-center rounded-lg border border-muted text-contrast">
+                                                <MoreVertical size={18} aria-hidden="true" />
+                                            </summary>
+                                            <div className="supplier-touch-menu mt-1 grid min-w-40 gap-1 rounded-lg border border-muted bg-surface-elevated p-1 shadow-xl" hidden={openActionMenuId !== supplier.id}>
+                                                <button type="button" onClick={() => startEdit(supplier)} className="min-h-11 rounded px-3 text-left text-sm text-contrast hover:bg-surface">Izmeni</button>
+                                                <button type="button" onClick={() => { setDeleteId(supplier.id); setError(null); }} className="min-h-11 rounded px-3 text-left text-sm text-error hover:bg-surface">Obriši</button>
+                                            </div>
+                                        </details>
+                                    </div>
+                                    <details className="mt-1">
+                                        <summary className="min-h-11 cursor-pointer py-3 text-sm text-muted">Kontakt i napomena</summary>
+                                        <dl className="grid gap-1 pb-2 text-sm">
+                                            <div><dt className="inline text-muted">Adresa: </dt><dd className="inline break-words text-contrast">{supplier.adresa || "—"}</dd></div>
+                                            <div><dt className="inline text-muted">Telefon: </dt><dd className="inline text-contrast">{supplier.telefon || "—"}</dd></div>
+                                            {supplier.napomena && <div><dt className="inline text-muted">Napomena: </dt><dd className="inline break-words text-contrast">{supplier.napomena}</dd></div>}
+                                        </dl>
+                                    </details>
+                                </>
+                            )}
+                        </article>
+                    ))}
+                </div>
+            )}
+            {filteredDobavljaci.length > visibleDobavljaci.length && (
+                <button type="button" onClick={() => setVisibleCount((count) => count + 50)} className="min-h-11 w-full rounded-lg border border-muted bg-surface-elevated px-4 py-2 text-sm font-semibold text-contrast">
+                    Prikaži još ({filteredDobavljaci.length - visibleDobavljaci.length})
+                </button>
+            )}
+            <style>{`
+                .supplier-touch-actions { display: none; position: relative; }
+                @media (max-width: 639px) {
+                    .supplier-mobile-actions { display: block; }
+                }
+                @media (any-pointer: coarse) {
+                    .supplier-desktop-actions { display: none; }
+                    .supplier-touch-actions { display: block; }
+                    .supplier-touch-actions > div { display: none; }
+                    .supplier-touch-actions[open] > div:not([hidden]) { display: grid; }
+                }
+            `}</style>
         </div>
     );
 }
