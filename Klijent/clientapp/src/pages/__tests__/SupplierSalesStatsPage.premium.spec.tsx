@@ -326,6 +326,94 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(panel).getByText("42")).toBeInTheDocument();
   });
 
+  it("shows a filter-scoped negotiation evidence pack only for one selected supplier", async () => {
+    vi.mocked(getInventoryBalance).mockResolvedValue({
+      totalSku: 3,
+      totalOnHand: 42,
+      lowStockCount: 1,
+      outOfStockCount: 0,
+      estimatedInventoryValue: 12_500,
+      valueCoveragePct: 75,
+      valuationBasis: "known_cost_only",
+      unknownValueUnits: 4,
+      meta: { success: true, dataQualityStatus: "warning", lastRefreshAtUtc: "2026-07-01T07:55:00Z" },
+    });
+    vi.mocked(getInventoryInsights).mockResolvedValue({
+      totalItems: 3,
+      totalEstimatedValue: 12_500,
+      aging: [{ bucketKey: "90_plus", label: "90+ dana", itemCount: 2, totalUnits: 30, estimatedValue: 9_000 }],
+      abc: [],
+      topAgedItems: [{
+        id: 19,
+        naziv: "Patika bez cene",
+        supplierId: 1,
+        storeId: 4,
+        quantity: 6,
+        minimum: 0,
+        reorderGap: 0,
+        estimatedValue: null,
+        unitCost: null,
+        costSource: "missing",
+        costMissing: true,
+        daysSinceMovement: 100,
+        agingBucket: "90_plus",
+        agingLabel: "90+ dana",
+        abcClass: "N",
+        stockState: "stale",
+        stockCoverDays: null,
+        stockCoverStatus: "unavailable",
+        stockCoverStatusLabel: "Nije dostupno",
+        sellThroughRatio: null,
+        sellThroughStatus: "unavailable",
+        sellThroughStatusLabel: "Nije dostupno",
+        signalConfidencePct: 0,
+        recommendationAllowed: false,
+        dataQualityStatus: "warning",
+        reasonCodes: ["cost_missing"],
+      }],
+      topCapitalLockedItems: [],
+      meta: { success: true, dataQualityStatus: "warning" },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats?supplierId=1&fromDate=2026-06-01&toDate=2026-06-30&storeId=4&dataScope=live"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    const panel = await screen.findByTestId("supplier-negotiation-value-panel");
+    expect(within(panel).getByRole("heading", { name: /Vrednost i rizik za pregovor · Alfa/ })).toBeInTheDocument();
+    expect(within(panel).getAllByRole("article")).toHaveLength(5);
+    expect(within(panel).getByText(/Prodaja i marža: 2026-06-01–2026-06-30/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Coverage vrednosti: 75,0%/)).toBeInTheDocument();
+    expect(within(panel).getByText("Poznata nabavna cena")).toBeInTheDocument();
+    expect(within(panel).getByText(/istorijski trošak: 100,0% · procenjeni trošak: 0,0%/)).toBeInTheDocument();
+    expect(within(panel).getByText(/ne izlaže cost basis\/coverage po bucket-u/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Vrednost nije potvrđena/)).toBeInTheDocument();
+    expect(within(panel).getByText(/nije kauzalna procena|ne daje konačan savet/i)).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: "Otvori prodaju i maržu dobavljača" })).toHaveAttribute(
+      "href",
+      "/analytics/supplier-sales-stats?supplierId=1&fromDate=2026-06-01&toDate=2026-06-30&dataScope=all&storeId=4",
+    );
+    expect(within(panel).getByRole("link", { name: "Otvori zalihe i stare artikle" })).toHaveAttribute(
+      "href",
+      "/analytics/inventory?supplierId=1&dataScope=all&storeId=4",
+    );
+    expect(within(panel).queryByText(/danas/i)).not.toBeInTheDocument();
+    expect(within(panel).queryByText(/PO.*lead-time.*: 0/i)).not.toBeInTheDocument();
+  });
+
+  it("does not present a supplier negotiation pack when no supplier is selected", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("supplier-sales-stats-data-table");
+    expect(screen.queryByTestId("supplier-negotiation-value-panel")).not.toBeInTheDocument();
+  });
+
   it("publishes sortable-column direction for screen readers", async () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>

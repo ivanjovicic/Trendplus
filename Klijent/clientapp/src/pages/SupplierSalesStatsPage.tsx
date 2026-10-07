@@ -1174,6 +1174,58 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     [expandedSupplierKey, visibleSuppliers]
   );
 
+  const focusedSupplier = useMemo(
+    () => activeSupplierId == null
+      ? null
+      : visibleSuppliers.find((row) => row.dobavljacId === activeSupplierId && !row.isUnknown) ?? null,
+    [activeSupplierId, visibleSuppliers],
+  );
+
+  const supplierValueDrilldowns = useMemo(() => {
+    if (!focusedSupplier?.dobavljacId) return null;
+    const supplierParams = new URLSearchParams({
+      supplierId: String(focusedSupplier.dobavljacId),
+      fromDate: activeFilters.fromDate,
+      toDate: activeFilters.toDate,
+      dataScope: activeDataScope,
+    });
+    if (activeFilters.storeId != null) supplierParams.set("storeId", String(activeFilters.storeId));
+
+    const inventoryParams = new URLSearchParams({
+      supplierId: String(focusedSupplier.dobavljacId),
+      dataScope: activeDataScope,
+    });
+    if (activeFilters.storeId != null) inventoryParams.set("storeId", String(activeFilters.storeId));
+
+    return {
+      supplier: `/analytics/supplier-sales-stats?${supplierParams.toString()}`,
+      inventory: `/analytics/inventory?${inventoryParams.toString()}`,
+    };
+  }, [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, focusedSupplier]);
+
+  const inventoryAsOf = buyingEvidence.balance?.meta?.lastRefreshAtUtc
+    ?? buyingEvidence.balance?.meta?.generatedAtUtc
+    ?? buyingEvidence.insights?.meta?.lastRefreshAtUtc
+    ?? buyingEvidence.insights?.meta?.generatedAtUtc
+    ?? null;
+  const inventoryValuationBasisLabel = buyingEvidence.balance?.valuationBasis === "known_cost_only"
+    ? "Poznata nabavna cena"
+    : buyingEvidence.balance?.valuationBasis === "estimated_from_sale_cost"
+      ? "Procena iz prodajne cene"
+      : buyingEvidence.balance?.valuationIsEstimated
+        ? "Procenjena vrednost"
+        : buyingEvidence.balance?.valuationBasis
+          ? "Druga evidentirana osnova"
+          : "Nije dostupno";
+  const agedInventory = useMemo(() => {
+    const buckets = buyingEvidence.insights?.aging.filter((bucket) => /90|stari|aged/i.test(`${bucket.bucketKey} ${bucket.label}`)) ?? [];
+    return buckets.length === 0 ? null : {
+      items: buckets.reduce((sum, bucket) => sum + bucket.itemCount, 0),
+      units: buckets.reduce((sum, bucket) => sum + bucket.totalUnits, 0),
+      estimateValue: buckets.reduce((sum, bucket) => sum + bucket.estimatedValue, 0),
+    };
+  }, [buyingEvidence.insights?.aging]);
+
   const selectedFootwearRows = useMemo(
     () => [...(selectedSupplier?.footwearBreakdown ?? [])]
       .sort((a, b) => compareFiniteMetrics(b.ukupanPromet, a.ukupanPromet))
@@ -2760,6 +2812,54 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               )}
             </article>
           </section>
+
+          {focusedSupplier && supplierValueDrilldowns ? (
+            <section className="supplier-negotiation-value-panel analytics-surface-panel" data-testid="supplier-negotiation-value-panel" aria-labelledby="supplier-negotiation-value-title">
+              <div className="supplier-buying-value-header">
+                <div>
+                  <h2 id="supplier-negotiation-value-title">Vrednost i rizik za pregovor · {focusedSupplier.dobavljacNaziv}</h2>
+                  <p>
+                    Prodaja i marža: {data?.fromDate ?? activeFilters.fromDate}–{data?.toDate ?? activeFilters.toDate}; objekat {data?.storeId ?? activeFilters.storeId ?? "svi"}; scope {dataScopeLabel(normalizeDataScope(data?.dataScope ?? activeDataScope))}. Zaliha je zaseban trenutni/presek poslednje poznate evidencije, ne prodaja u periodu.
+                  </p>
+                </div>
+                <InfoTip text="Sažetak prikazuje postojeće prodajne i inventarske izvore. Nema izvedenog BUY_MORE/BUY_LESS saveta, narudžbine, roka isporuke ni kauzalnog zaključka." />
+              </div>
+              <dl className="supplier-negotiation-value-context">
+                <div><dt>Objekat</dt><dd>{activeFilters.storeId == null ? "Svi objekti" : stores.find((store) => store.storeId === activeFilters.storeId)?.storeName ?? `Objekat ${activeFilters.storeId}`}</dd></div>
+                <div><dt>Data scope</dt><dd>{dataScopeLabel(activeDataScope)}</dd></div>
+                <div><dt>As-of zalihe</dt><dd>{inventoryAsOf && Number.isFinite(Date.parse(inventoryAsOf)) ? new Date(inventoryAsOf).toLocaleString("sr-RS") : "Nije dostupno"}</dd></div>
+                <div><dt>Osnova zalihe</dt><dd>{inventoryValuationBasisLabel}</dd></div>
+              </dl>
+              <div className="supplier-buying-value-grid supplier-negotiation-value-grid">
+                <article className="supplier-buying-value-card"><span>Prodaja u periodu · promet / količina</span><strong>{fmtRsd(focusedSupplier.ukupanPromet)} · {fmtQty(focusedSupplier.ukupnaKolicina)}</strong></article>
+                <article className="supplier-buying-value-card"><span>Zarada na robi · doprinos / ponderisana marža</span><strong>{fmtRsd(focusedSupplier.marginContribution)} · {fmtSignedPct(focusedSupplier.marginPct, 1)}</strong><small>Troškovno pokriće: {fmtPct(focusedSupplier.marginDataCoveragePct, 1)} · istorijski trošak: {fmtPct(focusedSupplier.historicalCostCoveragePct, 1)} · procenjeni trošak: {fmtPct(focusedSupplier.estimatedCostCoveragePct ?? focusedSupplier.fallbackCostCoveragePct, 1)}</small></article>
+                <article className="supplier-buying-value-card"><span>Trend prema prethodnom periodu · promet / količina</span><strong>{describePopMetric(focusedSupplier).label} · {describePopUnitsMetric(focusedSupplier).label}</strong></article>
+                <article className="supplier-buying-value-card"><span>Zaliha na preseku · jedinice / poznata vrednost</span><strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })} · {formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? null, kind: "currency" })}</strong><small>Coverage vrednosti: {fmtPct(buyingEvidence.balance?.valueCoveragePct, 1)} · nepoznate jedinice: {formatMetricDisplayValue({ value: buyingEvidence.balance?.unknownValueUnits ?? null, kind: "number" })}</small></article>
+                <article className="supplier-buying-value-card"><span>Artikli 90+ dana · jedinice / procena vrednosti</span><strong>{agedInventory ? `${fmtQty(agedInventory.units)} · ${fmtRsd(agedInventory.estimateValue)}` : "Nije dostupno"}</strong><small>{agedInventory ? `${agedInventory.items} artikala; Inventory aging zbir ne izlaže cost basis/coverage po bucket-u, pa ovo nije potvrđena poznata vrednost kapitala.` : "Nema potvrđenog 90+ aging bucket-a u izvoru."}</small></article>
+              </div>
+              {buyingEvidence.insights?.topAgedItems.length ? (
+                <div className="supplier-negotiation-aged-items">
+                  <h3>Najstarije stavke u trenutnom preseku</h3>
+                  <ul>
+                    {buyingEvidence.insights.topAgedItems.slice(0, 5).map((item) => (
+                      <li key={item.id}><span>{item.naziv}</span><small>{item.agingLabel} · {fmtQty(item.quantity)} · {item.estimatedValue == null || item.costMissing ? "Vrednost nije potvrđena" : fmtRsd(item.estimatedValue)}</small></li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {focusedSupplier.prePostNivelacijaRevenueImpactPct != null ? (
+                <p className="supplier-negotiation-value-note" data-testid="supplier-negotiation-markdown-evidence">
+                  Deskriptivni pre/post nivelacija signal: {fmtSignedPct(focusedSupplier.prePostNivelacijaRevenueImpactPct, 1)} na uporedivoj kohorti; pokriće {fmtPct(focusedSupplier.prePostNivelacijaRevenueCoveragePct, 1)}. Ovo nije kauzalna procena.
+                </p>
+              ) : null}
+              {buyingEvidence.error ? <p className="supplier-negotiation-value-note" role="status">{buyingEvidence.error}</p> : null}
+              <nav className="supplier-negotiation-value-links" aria-label="Dokazi za dobavljača">
+                <Link to={supplierValueDrilldowns.supplier}>Otvori prodaju i maržu dobavljača</Link>
+                <Link to={supplierValueDrilldowns.inventory}>Otvori zalihe i stare artikle</Link>
+              </nav>
+              <p className="supplier-negotiation-value-note">Operativni pokazatelji koji nisu potvrđeni ostaju nedostupni — ne prikazuju se kao nula. Ovaj sažetak ne daje konačan savet za pregovor.</p>
+            </section>
+          ) : null}
 
           {/* Inventarski presek je kontekst, ne rezultat perioda: prikazuje se posle odluke i detalja. */}
           <section className="supplier-buying-value-panel analytics-surface-panel" data-testid="supplier-buying-value-panel">
