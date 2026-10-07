@@ -3966,13 +3966,13 @@ After P-UI-54 is DONE:
 - Checks run: UI ratchet self-test/full check; theme/token Vitest specs (9/9); chart accessibility self-test/full check (25 charts checked, 8 documented exclusions); encoding; analytics guardrails + typecheck; production build; `git diff --check`.
 - Checks not run: real-device/browser proof and final whole-program route inclusion remain P-UI-38 scope; no current-main GitHub Actions run for the delivered SHA was discoverable when checked.
 - Run log: `.ai/runs/2026-10-07-P-UI-54-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `3363ddd4c4de76219eb9cebd08b42f70f85321d9`
-- Main verification: passed - `origin/main` was fast-forwarded from `646be1545d1da77a7ad7183057f5d13a47bc8125` to the tested implementation SHA.
+- Main commit SHA: `e0ed8f55f140d7d168f572ee183ecbaac263ced8`
+- Main verification: passed - `origin/main` contains the tested implementation SHA `3363ddd4c4de76219eb9cebd08b42f70f85321d9` and the synchronized P-UI-54 closure.
 - Missed: Product Decision paths remain excluded because P-UI-50's active checkout edit is unresolved.
 - Follow-up: P-UI-50 re-check/promotion when its exact page-path collision is cleared; P-UI-38 consumes this ratchet as the final whole-program gate.
 - Residual risk: Legacy pseudo-token fallback inventory remains measured at `themes.css` 141 and `interactionTokens.ts` 7; broader cleanup stays with P-UI-38.
-- Post-close routing: pending final post-delivery recovery synchronization.
+- Post-close routing: final recovery at `origin/main=e0ed8f55f140d7d168f572ee183ecbaac263ced8`; P-UI-50 remains BLOCKED and P-UI-38 remains WAITING; no P-UI successor was promoted.
 - Prompt defect / scope repair: P-UI-54 used the documented P-UI-38 disjoint split; no Product Decision scope was taken.
 
