@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-51 (READY; selected as the next unclaimed lane after P-UI-49 closure). Other READY lane: `P-UI-52`.
+Current primary prompt: P-UI-51 (IN_PROGRESS; claimed 2026-10-07). Other READY lane: `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -3545,7 +3545,7 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 
 ## P-UI-51 - Decision-surface controls: Executive Board period/scope/URL state and date clarity
 
-Status: IN_PROGRESS
+Status: DONE
 Claimed: 2026-10-07 by Codex after fresh origin/main, dependency, lock, branch, PR and path collision checks.
 Ready after: RQ570 and P-UI-39 are DONE (horizon-anchored default periods; P-UI-39 owns `AnalyticsControlBar.css` overflow); must not run while RQ319/RQ320 are IN_PROGRESS (shared `AnalyticsControlBar`)
 Priority: P2
@@ -3554,7 +3554,6 @@ Feature family: decision-surface-controls
 Parallel-safe: no (shared control bar)
 Owner: Codex (Analytics Frontend)
 Owned paths: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx` (controls/URL only), `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` (filter URL/history only), `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx/.css`, `Klijent/clientapp/src/utils/analyticsFormatters.ts`, and focused specs for those owners
-Local lock: `.ai/task-locks/P-UI-51-codex.lock.md`
 Avoid paths: Decision Board backend and scoring; Decision Pulse page (RQ481/RQ482)
 Commit suggestion: `feat(ui): board scope controls and unambiguous dates`
 
@@ -3609,6 +3608,26 @@ The Executive Board has no period, store or data-scope control and no URL state;
 - The URL/history acceptance explicitly names `/analytics` Dashboard custom dates, but its page and focused test were missing from the original owned-path list. Add only `AnalyticsDashboard.tsx` filter URL/history behavior and its focused spec; preserve backend-owned horizon defaults and existing filter semantics. Date echo formatting is shared through `analyticsFormatters.ts`; do not expand into broader dashboard redesign or alter business queries.
 
 Owner claim 2026-10-07: refreshed `origin/main` at `a330671f09e557c6626895e3e15bad452695d683`; verified RQ570/P-UI-39 DONE, RQ319/RQ320 WAITING, and no matching P-UI-51 lock, branch or open PR. Higher-priority BCI/RQ/SQL queues have no READY task; STAB16 remains provider/deployment blocked. Claimed READY -> IN_PROGRESS on `codex/p-ui-51-decision-surface-controls` from the refreshed main SHA. Local lock: `.ai/task-locks/P-UI-51-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Board period/store/dataScope controls round-trip through URL state; Dashboard applied filters use one history entry and Back restores them; date echoes are locale-independent `dd.MM.yyyy`.
+- Changed files: `Klijent/clientapp/scripts/known-guardrail-baseline.json`; `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css`; `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsControlBar.spec.tsx`; `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`; `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.spec.tsx`; `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx`; `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.controlBar.spec.tsx`; `Klijent/clientapp/src/utils/analyticsFormatters.ts`; `Klijent/clientapp/src/utils/__tests__/analyticsformatters.spec.ts`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`.
+- Contract/runtime behavior changed: only supported backend Board filters are applied; backend default period remains authoritative; Dashboard query semantics are unchanged and browser history tracks applied filters only.
+- Checks run: focused Vitest 4 files / 35 tests passed; `npm run typecheck`; `npm run check:analytics-guardrails` (39 known findings, 0 new); `npm run build`; agent-instruction, prompt-queue and planning-architecture self-tests/checks; `git diff --check` all passed.
+- Checks not run: full Vitest suite and browser viewport/visual verification; no browser harness was used. Relevant current-main Actions run on the delivered SHA was not visible when queried; latest red Analytics Quality Gates run `35354567260` targets older SHA `b57a6383` and predates this change.
+- Run log: `.ai/runs/2026-10-07-P-UI-51-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `6de421712d43f52aa21e4751e3c1c03271cc2b31`.
+- Main verification: fresh `origin/main` at `6de421712d43f52aa21e4751e3c1c03271cc2b31`; `git merge-base --is-ancestor 6de421712d43f52aa21e4751e3c1c03271 origin/main` passed.
+- Missed: no in-table search control exists on the Dashboard; its filter changes are history-tracked without changing search behavior.
+- Follow-up: post-close recovery promotes P-UI-42 after verifying all explicit dependencies.
+- Residual risk: full browser visual verification was not run; existing Recharts chunk-size advisory remains.
+- Post-close routing: recovery details and successor claim are recorded in `.ai/runs/2026-10-07-P-UI-51-evidence.md`.
+- Prompt defect / scope repair: added `AnalyticsDashboard.tsx` and its focused test to owned paths because the URL/history acceptance explicitly covered `/analytics`; clarified no Dashboard in-table search surface exists.
 
 ---
 
