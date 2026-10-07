@@ -60,12 +60,10 @@ Rules:
 - do not duplicate another queue's feature family;
 - do not make a task READY just because it is high priority;
 - current READY must be explicitly declared near the queue top; it is a routing pointer, not a global mutex.
-- when no READY work exists but non-DONE prompts remain, run canonical Idle recovery; blocker text must be re-verified against current evidence rather than treated as permanent.
-- **zero-READY is not durable state**: every terminal prompt transition, dependency/evidence change, owner decision or newly delivered artifact invalidates the previous `none` conclusion. After closure on `main`, run the protocol's **Post-close dependency cascade** across the entire active owner queue/addendum set.
-- `Next: none` / `Current READY: none` is valid only with a current **Zero-READY proof** from the post-delivery `origin/main` SHA. If the full active owner queue/addendum set was not inspected, the router is unresolved rather than empty.
-- when a task becomes DONE, explicitly search for every non-terminal prompt that references it or its changed dependency family; dependency-complete collision-safe dependents must be promoted instead of remaining WAITING behind stale text.
-- distinguish a true start gate from final/deployed acceptance evidence. A prerequisite produced by the prompt itself (baseline, fixture, measurement, contract report) is circular and belongs in the prompt steps, not in `Ready after`.
-- a prompt that mixes safe same-owner repo-local work with external/provider final proof may be repaired/narrowed before promotion, provided business semantics and safety acceptance are not weakened.
+- queue selection, claim/takeover, blocker decomposition, no-READY recovery and close-out mechanics are owned only by `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; lifecycle docs state invariants, not a second algorithm.
+- an `IN_PROGRESS` claim remains owned through validation/evidence/status close-out after implementation reaches `main`; implementation evidence is not claim-release authority.
+- when no READY work exists but non-DONE prompts remain, run the protocol's **Mandatory no-READY action ladder**. One blocked path must not serialize meaningful path-disjoint same-owner work when the protocol permits a safe split.
+- **zero-READY is not durable state**: terminal transitions, dependency/evidence changes, owner decisions or newly delivered artifacts invalidate the previous `none`; the protocol's Post-close dependency cascade and Zero-READY proof determine current routing.
 - when multiple READY/IN_PROGRESS prompts share a feature family, every active task in that family must explicitly be `Parallel-safe: yes`; `Parallel-safe: no` is family/surface exclusivity, not program-wide serialization.
 - analytics prompts must name the authoritative data contract and prove that observed, reconstructed, estimated and unavailable inputs cannot be confused.
 
