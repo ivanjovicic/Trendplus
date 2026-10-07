@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-46 (IN_PROGRESS; claimed 2026-10-07 after P-UI-42 completion). Other READY lane: `P-UI-52`.
+Current primary prompt: P-UI-52 (IN_PROGRESS; claimed 2026-10-07 after P-UI-46 completion). Other READY lanes: none.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -54,13 +54,13 @@ Use with:
 | P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | DONE | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
-| P-UI-46 | IN_PROGRESS | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
+| P-UI-46 | DONE | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
-| P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
+| P-UI-52 | IN_PROGRESS | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
@@ -3205,6 +3205,29 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 - Higher-priority RQ/SQL queues remain without READY work; STAB16 remains provider/deployment gated and BCI/QDB/MT/GAI expose no higher-priority runnable candidate in the current roadmap.
 - Promoted WAITING -> READY -> IN_PROGRESS and claimed on `codex/p-ui-46-operational-mobile-lists` from refreshed `origin/main` `c755b79a26e41834ad98cfeb1ee2e95e2670b0cc`.
 
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Operational supplier, season, price-change, change-log, returns, logs, configuration, worker and transfer lists are usable at phone/tablet widths with progressive rendering where required. API, paging and permission semantics are unchanged.
+- Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/src/components/WorkersPanel.css`; `Klijent/clientapp/src/components/WorkersPanel.tsx`; `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`; `Klijent/clientapp/src/components/transfers/TransferItemsTable.tsx`; `Klijent/clientapp/src/components/transfers/__tests__/TransferItemsTable.spec.tsx`; `Klijent/clientapp/src/pages/ConfigurationPage.css`; `Klijent/clientapp/src/pages/ConfigurationPage.tsx`; `Klijent/clientapp/src/pages/DnevnikPromenaPage.tsx`; `Klijent/clientapp/src/pages/DobavljaciPage.tsx`; `Klijent/clientapp/src/pages/LogsPage.tsx`; `Klijent/clientapp/src/pages/NivelacijePage.tsx`; `Klijent/clientapp/src/pages/PovracajPage.tsx`; `Klijent/clientapp/src/pages/SezonaPage.tsx`; seven corresponding `Klijent/clientapp/src/pages/__tests__/*.spec.tsx` files; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-07-P-UI-42-evidence.md`; `.ai/runs/2026-10-07-P-UI-46-evidence.md`.
+- Contract/runtime behavior changed: presentation and progressive client rendering only; endpoint contracts, server paging, filter requests, data, actions and permission gates are preserved.
+- Checks run: nine focused Vitest files, 21 tests; `npm run check:analytics-guardrails` (39 existing baseline findings, zero new); `npm run build`; responsive browser fixture matrix at 360/768/1024 for eight routes (zero document overflow and page errors); `git diff --check`; responsive runner executed successfully.
+- Checks not run: full frontend suite; physical iOS/Safari; full responsive dark-theme matrix. Analytics Quality Gates run `37602941157` on the implementation SHA was `in_progress` at evidence capture.
+- Run log: `.ai/runs/2026-10-07-P-UI-46-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `02dddf8da4431e07059b62f1d8df2a462ef35be8`
+- Main verification: fresh `origin/main` equals `02dddf8da4431e07059b62f1d8df2a462ef35be8`; implementation commit is contained.
+- Missed: no known in-scope repo-local acceptance; physical iOS/Safari validation remains unavailable.
+- Follow-up: P-UI-52 owns navigation IA and bounded user-facing Serbian copy; page-family paths owned by active tasks remain excluded.
+- Residual risk: browser matrix uses deterministic API fixtures; no physical-device Safari run. Existing Recharts bundle advisory and pre-existing focused-test warnings remain.
+- Next: P-UI-52 IN_PROGRESS on `codex/p-ui-52-analytics-navigation-copy`.
+- Prompt defect / scope repair: none.
+- Post-close routing: full post-close dependency cascade and candidate classification recorded in `.ai/runs/2026-10-07-P-UI-46-evidence.md`.
+
+---
+
 ---
 
 ## P-UI-47 - Make one theme-token source of truth and repair light-theme status contrast
@@ -3670,17 +3693,18 @@ Owner claim 2026-10-07: refreshed `origin/main` at `a330671f09e557c6626895e3e15b
 
 ## P-UI-52 - Analytics navigation IA and user-facing glossary sweep
 
-Progress note 2026-10-05: presentation/UX audits already replaced many user-facing `N/A` strings with `Nije dostupno` and documented canonical terms in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`. **P-UI-52 stays READY** — nav/group label reconciliation, badge cleanup and canonical route `to` targets in `navConfig.ts` remain executable scope.
+Progress note 2026-10-05 (historical, before claim): presentation/UX audits already replaced many user-facing `N/A` strings with `Nije dostupno` and documented canonical terms in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`. Nav/group label reconciliation, badge cleanup and canonical route `to` targets in `navConfig.ts` remain executable scope.
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ553 is DONE and RQ582 has released its exclusive navigation entry/visibility work; RQ589 is backend-only and does not own `navConfig.ts`
 Priority: P2
 Type: frontend/copy/tests
 Feature family: analytics-nav-ia-copy
 Parallel-safe: no (`navConfig.ts`)
-Owner: unassigned (Frontend Shell / Analytics UX)
+Owner: Codex (Frontend Shell / Analytics UX)
 Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`, plus copy-only edits in otherwise unowned frontend files found by the bounded user-facing-text sweep after a fresh collision check
 Avoid paths: `GlobalRequestSpinner.tsx` and the carousel (P-UI-45), header/breadcrumb (P-UI-40/P-UI-48), routes and redirects themselves (RQ507 legacy contract), Insight Studio entry (RQ582), RQ555 Actions logic
+Local lock: `.ai/task-locks/P-UI-52-codex.lock.md` (remove after close)
 Commit suggestion: `fix(ui): consistent analytics navigation labels and glossary`
 
 ### Problem
@@ -3728,6 +3752,13 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 ### Dependencies
 
 - RQ553 (same file) and RQ582 (exclusive Insight Studio navigation entry) are DONE. RQ589 owns only Advanced/V2 backend certification. P-UI remains supplemental and must not displace READY/IN_PROGRESS RQ work.
+
+### Owner claim 2026-10-07
+
+- P-UI-46 is DONE and verified on refreshed `origin/main`; its completion released all P-UI-46 operational paths.
+- The post-close scan found no higher-priority runnable BCI, STAB, RQ/SQL, QDB, MT or GAI prompt. RQ current READY and SQL current READY are none; STAB16 remains provider/deployed-proof gated.
+- RQ553 and RQ582 are DONE. No P-UI-52 lock, matching branch or open PR exists. P-UI-52 owns navigation/copy paths; the bounded sweep will skip P-UI-46 operational paths and all other active owners' paths.
+- Promoted/claimed READY -> IN_PROGRESS on `codex/p-ui-52-analytics-navigation-copy`; local lock `.ai/task-locks/P-UI-52-codex.lock.md`.
 
 
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
