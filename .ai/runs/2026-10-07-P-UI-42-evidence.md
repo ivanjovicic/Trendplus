@@ -60,11 +60,14 @@ Evidence state: synchronized
 - Existing Recharts chunk-size advisory and 39 guardrail baseline entries remain.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA: pending the P-UI-42 terminal documentation commit and fresh post-delivery scan.
-- Active owner queue/addendum files scanned: all active RQ queue/addenda, SQL queue, P-UI queue/addendum and `MASTER_ROADMAP.md` (16 files; final recovery details to follow after the terminal commit).
-- Completed/changed IDs searched: P-UI-42 and dependent P-UI-46.
-- Newly satisfied dependency: P-UI-46's explicit P-UI-42 gate; its route list is bounded and provided the owner with measured P-UI-42 residual links.
-- Promoted successor: expected P-UI-46 subject to fresh post-close collision review.
+- Recovery base `origin/main` SHA: `c755b79a26e41834ad98cfeb1ee2e95e2670b0cc` (P-UI-42 terminal evidence commit).
+- Active owner queue/addendum files scanned: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; all 11 active `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_*_ADDENDUM.md` files; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`; `MASTER_ROADMAP.md` (16 files).
+- Completed/changed IDs searched: P-UI-42 and its explicit dependent P-UI-46; the P-UI non-terminal candidates, all current RQ/SQL READY pointers and the global queue lanes were re-evaluated.
+- RQ review: RQ139's derived-intelligence residual is addressed by RQ152 DONE and RQ153 is DONE. Remaining RQ137/RQ139/RQ140 PARTIAL states need broad cross-surface or live/runtime acceptance and expose no separate runnable READY slice. RQ and SQL current READY pointers remain none. STAB16 remains provider/deployment gated; the current roadmap exposes no higher-priority BCI/QDB/MT/GAI READY execution candidate.
+- Newly satisfied dependency: P-UI-46's explicit P-UI-42 gate; the remaining page-local links and measured sizes are recorded above for its implementation.
+- Candidate matrix: P-UI-46 is P3 but its explicit dependency became DONE and the prompt consumes the bounded residual list; P-UI-52 remains independent READY on nav/copy work; P-UI-50 remains BLOCKED by the preserved primary-checkout Product Decision page edit; P-UI-38 remains WAITING for all UI migrations.
+- Collision review: no P-UI-46 branch, open PR or local lock; no active lock exists in this workspace. P-UI-52 owns `navConfig.ts`, route-label-only edits and bounded copy in otherwise unowned files; its page sweep must skip P-UI-46's explicitly owned operational screen paths. No conflicting live owner was found.
+- Promoted successor: P-UI-46 moved WAITING -> READY -> IN_PROGRESS and was claimed on `codex/p-ui-46-operational-mobile-lists` from recovery base `c755b79a26e41834ad98cfeb1ee2e95e2670b0cc`.
 
 ## Next
 - P-UI-46 - Operational and šifarnik screens: phone-usable lists, actions and paging.
