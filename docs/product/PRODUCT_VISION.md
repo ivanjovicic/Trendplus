@@ -9,15 +9,29 @@ Trendplus exists to turn fragmented retail operational data into trustworthy, ex
 
 The product is not successful when it merely shows more charts. It is successful when an operator can make a better decision with less manual reconciliation and can later audit whether that decision worked.
 
-## Near-term product focus (owner decision 2026-10-07)
+## Near-term product focus (owner refinement 2026-10-07)
 
-Before scaling breadth, Trendplus must prove one narrow retail value loop. Priority order:
+Trendplus now runs **two parallel lanes**. Freshness is not a prerequisite for proving formula correctness or historical analytical value.
 
-1. restore production freshness and durable import/refresh evidence;
-2. make inventory capital/aging/cost trustworthy enough to quantify slow/dead stock;
-3. turn markdown/nivelacija into an explainable recommendation -> action -> observed outcome loop;
-4. combine margin, sell-through/stock evidence and markdown dependence into supplier decision support;
-5. prove the workflow with one external retailer before investing materially in shared SaaS or GenAI.
+### Lane A — Product truth and value (repository-local, start now)
+
+1. eliminate remaining financial `unknown -> 0` aggregation defects (RQ593);
+2. make Inventory actions use source-horizon, distinct age/recency evidence and demand-aware transfers (RQ594);
+3. make Pre-Nivelacija the one canonical retail markdown action source (RQ555);
+4. build v9 cover/age/season evidence as a shadow comparison without changing live recommendations (RQ556);
+5. turn already-authoritative supplier sales/margin + inventory-capital facts into a negotiation view (RQ595);
+6. compose the owner digest on the **latest trustworthy horizon** (RQ585), with explicit as-of wording when stale.
+
+Historical imports, deterministic fixtures and certified bounded windows are valid evidence for these tasks. A new import is required only when the claim itself is about the present.
+
+### Lane B — Currentness and prospective proof (operational, parallel)
+
+- STAB16 restores/proves the current production import/worker/deploy path and freshness SLA.
+- Freshness gates wording such as "danas", "ove nedelje" and "trenutno"; it does not erase the value of correct historical analytics.
+- RQ592 uses fresh production data for the prospective markdown action -> measured outcome pilot.
+- Deployed/live reconciliation remains necessary for production-readiness claims, not for every repository-local formula or product task.
+
+The next wave therefore optimizes for **implementation and business decisions, not audit volume**. New documentation/evidence is justified only when it changes product truth, financial semantics, an owner policy, queue routing or deployed acceptance.
 
 Current positioning is **decision support**, not proven optimization. The product may use words such as optimization/uplift/causal effect only when the relevant outcome/causal gate is satisfied. Standard sales, stock, size/color and reporting capabilities are necessary table stakes, not the primary moat.
 

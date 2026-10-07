@@ -3,8 +3,8 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none (RQ532 DONE — negative source path)
-Additional READY prompts: none; RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
+Current READY prompt: none (primary RQ program pointer is RQ593; this addendum has additional collision-safe READY RQ595)
+Additional READY prompts: RQ595 (P1 Supplier Value / Negotiation Pack v1); RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
 Canonical routing update 2026-10-02: `RQ487` is now READY in the main Analytics Reliability queue after current-main re-audit. Its repository-local baseline/query-bounds/cache-truth work no longer waits on provider logs; deployed/provider root-cause proof remains RQ454/STAB16. RQ530 stays PARTIAL until RQ487 reaches its equivalence/performance acceptance, then its authoritative periodized Supplier buying-metric follow-up may be reconsidered. This addendum still has no independent current READY prompt.
 Audit reconciliation 2026-10-03: RQ487 is DONE on current `main`, closing its repository-local baseline/equivalence acceptance. RQ530 remains PARTIAL because authoritative supplier-level periodized cover/sell-through, returns, margin trend, sales top/bottom, and PO/lead-time sources are still unavailable or unapproved. The RQ487 dependency is satisfied; further buyer-metric scope needs an approved source and contract, then a newly scoped prompt. Deployed Supplier 503/root-cause evidence remains with RQ454/STAB16.
 Owner promotion/claim 2026-10-02: idle recovery verified RQ520, RQ527 and RQ500 DONE on current `main`, found no active RQ532 lock/branch/PR collision, and promoted/claimed RQ532 for source discovery. Local lock: `.ai/task-locks/RQ532-codex.lock.md`; branch: `cursor/rq532-supplier-size-curve-78b0`.
@@ -1212,4 +1212,77 @@ RQ521 and RQ526 DONE. RQ531 consumes this baseline for later owner-approved poli
 - Follow-up: keep RQ531 owner-gated for any numeric policy change; select RQ475/Q83 through fresh queue and collision checks.
 - Residual risk: live production/provider cause analysis and the full backend suite were outside RQ536 scope.
 - Prompt defect / scope repair: status was `PARTIAL` solely because required backend proof was unavailable; re-entry closed that evidence gap without changing product policy.
+
+---
+
+## RQ595 - Supplier Value / Negotiation Pack v1 from already authoritative evidence
+
+Status: READY
+Ready after: RQ530 PARTIAL foundation delivered; RQ487 and RQ576 DONE (satisfied)
+Priority: P1
+Type: backend/frontend/product/tests
+Feature family: supplier-value-negotiation-v1
+Parallel-safe: yes with RQ593; no concurrent edit of the same Supplier overview/report page
+Owner: Analytics Product / Supplier
+Commit suggestion: `feat(analytics): supplier value negotiation pack from proven evidence`
+
+### Problem
+
+RQ530 already delivered a useful Supplier buying-value foundation: current on-hand/value/aging evidence from Inventory, with unavailable metrics correctly blocked. Creating another generic Supplier panel would duplicate it.
+
+The remaining product gap is narrower: when exactly one supplier is selected, Trendplus should turn the **already authoritative** Supplier sales/margin facts plus trustworthy current inventory-capital evidence into a compact negotiation view. We do not need PO/lead-time, size curves, new imports or a new score to make the existing evidence more actionable.
+
+### Evidence
+
+- Supplier Overview already exposes certified period revenue, units, covered cost, margin contribution/margin coverage and previous-period revenue/units.
+- RQ576 supplies current inventory valuation/aging basis and coverage.
+- RQ530 PARTIAL already renders inventory buying evidence and explicit unavailable states.
+- RQ465 DONE already enforces: negotiation pack/action exists only when exactly one supplier is selected.
+- RQ557 can provide descriptive mature markdown outcomes when the bounded supplier evidence is available; it is not required to invent a metric.
+
+### Scope
+
+- Extend/refine the existing single-supplier negotiation/value surface; do not create a second Supplier product.
+- Use only sources already authoritative on current main.
+- No new Supplier score weights, BUY_MORE/BUY_LESS policy, PO/lead-time inference, size-curve inference or causal uplift claim.
+
+### Read first
+
+- RQ465, RQ476, RQ530, RQ536, RQ557, RQ576;
+- Supplier Overview response/contracts and `AnalyticsMarginPolicy`;
+- existing `SupplierBuyingValueEvidenceContract` and negotiation report/actions.
+
+### Do
+
+1. For exactly one selected supplier, present a compact **"Vrednost i rizik za pregovor"** block with:
+   - period revenue and units;
+   - covered cost, margin contribution and weighted margin with coverage;
+   - equal-period revenue/units trend already supported by the Supplier response;
+   - current known inventory units/value with valuation coverage;
+   - known aged/90+ inventory units/value and top aged items;
+   - markdown/nivelacija dependence or mature descriptive outcome only where the existing contract can reproduce it.
+2. Every metric shows period/as-of/store/dataScope and known-vs-estimated basis. Inventory is current/latest-known snapshot evidence and must not be presented as period sales.
+3. Produce 3-5 **negotiation facts**, not an invented recommendation score, e.g. "X RSD poznate zalihe 90+ dana", "maržni doprinos Y uz Z% cost coverage", "promet -N% prema prethodnom uporedivom periodu".
+4. Do not generate "povećaj/smanji porudžbinu" unless an existing backend rule explicitly owns that recommendation. Facts can support a human negotiation without pretending to be an order policy.
+5. Reuse RQ465 single-supplier gating. With no supplier selected there is no pack, no final supplier-specific advice and no negotiation action.
+6. Keep RQ530's unavailable metrics unavailable: supplier periodized cover/sell-through, gross return burden, PO and lead time stay out until an authoritative source/contract exists.
+7. Preserve one drill-down path to sales/margin rows, aged inventory rows and descriptive markdown evidence where available.
+
+### Tests
+
+- selected supplier -> pack values reproduce Supplier Overview + filtered Inventory source facts;
+- no supplier -> no supplier-specific pack/action;
+- missing/partial cost -> margin/inventory coverage visible, no fake zero;
+- stale latest inventory -> explicit as-of label, no "current today" wording;
+- unavailable PO/lead-time/size/sell-through cannot appear as zero or as a negotiation fact;
+- store/dataScope filters are preserved;
+- focused backend/frontend tests, analytics guardrails, governance validators and `git diff --check`.
+
+### Acceptance
+
+For one supplier, the owner can answer **"šta pouzdano znam o zaradi, vezanom kapitalu i staroj robi kod ovog dobavljača pre pregovora?"** from one surface. Every displayed fact is reproducible from an already authoritative source and unavailable buying metrics remain unavailable.
+
+### Dependencies
+
+RQ530 PARTIAL foundation is present; RQ487 and RQ576 are DONE. Fresh production data is not required for implementation or historical/latest-known proof; freshness only changes the as-of/currentness label.
 

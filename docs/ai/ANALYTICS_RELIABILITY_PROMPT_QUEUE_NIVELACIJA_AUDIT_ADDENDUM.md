@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current READY routing: RQ453 repository certification CI is DONE on `337fcb42`; RQ553 copy/a11y is DONE on `e20fdb50`. RQ555-RQ559 remain product/value lanes with explicit owner/source gates; RQ545 remains PARTIAL only for deployed acceptance.
+Current product/value routing 2026-10-07 refinement: RQ555 owner choice is resolved (Pre-Nivelacija is the canonical retail markdown action source) but it waits behind READY RQ593 because both touch Product Decision/action aggregation paths. RQ556 is narrowed to evidence fields + shadow-v9 comparison after RQ555; final score activation remains a later owner decision. RQ558 remains sample-gated and RQ559 remains source-gated. RQ545 remains PARTIAL only for deployed acceptance.
 Owner recovery 2026-10-05 after RQ569: RQ569 is DONE on current `origin/main` (`8a784df0f298bc9837e106faf7604113e9d066a3`). RQ552's RQ564/RQ569 dependencies are complete; no matching lock, branch or open PR was found. Promoted RQ552 from WAITING to READY; RQ453 still waits for RQ552.
 Owner completion/promotion 2026-10-04: RQ544/NV-F8 is DONE on implementation SHA `b890f88ec30084f3d1e640562ed63386162bd0b1`, freshly verified in `origin/main`. The startup migration now uses explicit event aliases, preserves storno/re-nivelacija/supplier-return values with bounded unmapped audit notices, and guards leading-zero/oversized receipt references with bigint-safe matching. Focused disposable PostgreSQL proof passed, including idempotency and the 12-digit view case; governance validators and `git diff --check` passed. Promoted RQ551/NV-I1 to primary READY after confirming RQ542/RQ534 dependencies DONE and no active RQ551 lock, branch or open PR. Actions run 37201544462 (Analytics Tests & Data Integrity) is in progress on the implementation SHA. Run log: `.ai/runs/2026-10-04-RQ544-evidence.md`; evidence state synchronized.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
@@ -1252,90 +1252,134 @@ Owner claim 2026-10-03: RQ545 repo-local backend error states are already delive
 
 ---
 
-## RQ555 - NV-I5 - One markdown candidate source across Products, Actions and Prioriteti, with URL state
+## RQ555 - Use Pre-Nivelacija as the one canonical retail markdown action source
 
 Status: WAITING
-Registration note: (owner decision on which model is canonical)
-Priority: P2
-Type: backend/frontend/product
+Ready after: RQ593 DONE (shared Product Decision/action aggregation paths)
+Priority: P1
+Type: backend/frontend/product/tests
 Feature family: markdown-candidate-source
-Parallel-safe: no (`CachedAnalyticsEndpoints.cs` action generation, `AnalyticsActionsPage.tsx`)
-Owner: Analytics Product
+Parallel-safe: no
+Owner: Analytics Product / Pricing
 Findings: NV-N34 (L5, L6)
-Commit suggestion: `feat(analytics): align markdown action source with pre-nivelacija candidates`
+Commit suggestion: `feat(analytics): align markdown actions to pre-nivelacija source`
 
-#### Problem
+### Owner decision — resolved 2026-10-07
 
-"Nivelacija" actions are generated only from Product Decision rows with `RecommendationStatus = MARKDOWN` (at least 2 rows, confidence ≥ 55), but they deep-link to Prioriteti, which ranks candidates with a different model. Product Decision currently returns 0 allowed MARKDOWN rows (1,078 rows without cost, everything gated), so the Actions source is always 0, whatever Prioriteti would rank. The source filter is read from the URL but never written to it.
+For the approved retail decision population, **Pre-Nivelacija is the canonical source for "treba sniziti sada" / markdown actions** because it is SKU + store grain and already owns source-horizon, retail-store and non-footwear gating through RQ571. Product Decision may still describe product status and other action families, but it must not independently create a competing markdown action population.
 
-#### Evidence
+### Problem
 
-- `Api/Endpoints/CachedAnalyticsEndpoints.cs:4447-4460,7537,7599,7269`.
-- `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx:594,697-702`.
+The product still has two possible markdown narratives: Product Decision can emit MARKDOWN while Prioriteti has its own store-grain candidate model. Actions deep-link to Prioriteti, so using a Product Decision-only generator makes counts and explanations diverge even when both surfaces are individually correct.
 
-#### Do
+The previous prompt still listed an unresolved owner choice and old dependencies, although RQ537/NV-F1, RQ539/NV-F3, RQ548/NV-P2, RQ475, RQ487 and RQ571 are DONE.
 
-1. The owner decides which model is canonical for "treba sniziti sada". Proposal: Pre-Nivelacija after NV-F1/NV-F3 and NV-E1, because it is store-grain and markdown-specific.
-2. Generate `nivelacija` actions from the canonical candidates (allowed recommendations only), with the same evidence gates. Show "0 jer nema dozvoljenih kandidata (razlog)" instead of a silent 0.
-3. Make the Products MARKDOWN label and the Prioriteti status reference each other, or explain the difference in the KPI help.
-4. Write `sourceType`, `priority` and `dataQualityStatus` to the URL on change, using `replace` for filter edits, so back and share work.
+### Evidence
 
-#### Tests
+- RQ571 pins the retail population to Trend PLUS 1/2, separates non-retail/Oprema stock and prohibits disallowed rows in `highlightNow`.
+- RQ548 provides the independent Pre-Nivelacija oracle.
+- RQ537/RQ539 corrected scenario/candidate semantics.
+- RQ593 owns money completeness and must land first because the existing action/Product paths share files.
 
-- Backend: a fixture with Prioriteti-allowed candidates and no Product MARKDOWN rows still yields `nivelacija` actions under the chosen policy.
-- Frontend: changing the source updates `location.search`.
+### Scope
 
-#### Acceptance
+- Markdown action source, lineage, deep-link and URL state only.
+- No v9 weight change (RQ556), no causal claim, no new Product Decision scoring.
 
-The Actions count for "Nivelacija" is explainable from Prioriteti, and the filter state can be shared by URL.
+### Read first
 
-#### Dependencies
+- RQ537, RQ539, RQ548, RQ571, RQ593;
+- `CachedAnalyticsEndpoints.cs` action generation;
+- Pre-Nivelacija endpoint/models and `AnalyticsActionsPage.tsx`.
 
-NV-F1, NV-F3; the products owners (RQ475/RQ487) for the gate context.
+### Do
 
----
+1. Generate `nivelacija` actions from Pre-Nivelacija candidates that are in the approved retail population and have `recommendationAllowed=true`.
+2. Preserve SKU + store grain, source horizon, dataScope, formula/version and reason/evidence lineage in the action source key/metadata.
+3. Product Decision MARKDOWN rows may link/explain the canonical Pre-Nivelacija result but cannot create a second competing markdown action.
+4. If no candidates are allowed, show an explicit reasoned zero/unavailable state rather than a silent 0.
+5. Keep source/priority/data-quality filters shareable in URL state.
+6. Reuse existing Actions lifecycle/idempotency; do not create another action store.
 
-## RQ556 - NV-E1 - Rebuild the Pre-Nivelacija priority signal around weeks of cover, age and season end
+### Tests
+
+- fixture with allowed Prioriteti candidates and zero Product Decision MARKDOWN rows still yields canonical nivelacija actions;
+- Product Decision cannot duplicate a Pre-Nivelacija action for the same SKU/store/context;
+- excluded store/Oprema/disallowed candidates never enter the retail action list;
+- deep link preserves article/store/as-of/dataScope;
+- URL filter state round-trip;
+- focused backend/frontend tests, validators and `git diff --check`.
+
+### Acceptance
+
+There is one explainable answer to "koji SKU u kojoj prodavnici treba razmotriti za sniženje sada/prema poslednjem horizontu", and Actions/Prioriteti/Product Decision cannot disagree because they generated independent markdown populations.
+
+### Dependencies
+
+RQ593 DONE. RQ537, RQ539, RQ548, RQ475, RQ487 and RQ571 are DONE. No fresh import is required to implement or test the canonical-source contract.
+
+## RQ556 - Build Pre-Nivelacija v9 evidence fields and shadow ranking without activating new weights
 
 Status: WAITING
-Registration note: (owner-gated weights)
-Priority: P2
-Type: backend/frontend/product
-Feature family: pre-nivelacija-signal-v9
-Parallel-safe: no (`PreNivelacijaScoringService.cs`)
-Owner: Analytics Product / Pricing (owner approval required)
+Ready after: RQ555 DONE
+Priority: P1
+Type: backend/frontend/product/tests
+Feature family: pre-nivelacija-signal-v9-shadow
+Parallel-safe: no
+Owner: Analytics Product / Pricing
 Findings: NV-N21, NV-N22
-Commit suggestion: `feat(analytics): pre-nivelacija v9 signal with weeks of cover and season end`
+Commit suggestion: `feat(analytics): add pre-nivelacija v9 shadow evidence`
 
-#### Problem
+### Problem
 
-The score uses absolute stock and velocity normalized to the cohort maximum, plus a symmetric in-season boost. Footwear markdown timing depends on weeks of cover against the weeks left in the season, on the article's age and on sell-through since receipt.
+The current score still depends heavily on cohort max-normalized stock/velocity. A more retail-natural model should consider cover, age and season timing, but the old prompt made **all implementation** wait for final owner approval of v9 weights. That is unnecessary: the evidence fields and a non-authoritative shadow comparison can be built and tested on existing historical imports without changing a single live recommendation.
 
-#### Do
+### Product rule
 
-1. Add the evidence fields `weeksOfCover = stock / max(velocity7d·7, ε)`, `weeksToSeasonEnd`, `ageDays` (from NV-F3), `sellThroughSinceReceipt = sold / (sold + stock)` and `coverGap = weeksOfCover − weeksToSeasonEnd`.
-2. Propose a v9 formula that uses percentile or absolute thresholds instead of the max-normalization. Ship it behind a flag, run it in parallel with v8 and publish the rank-correlation diff. The owner approves the weights.
-3. In the UI show "Pokrivenost: 14 ned. / do kraja sezone: 6 ned." per row.
+This prompt does **not** activate v9. Canonical recommendation/scoring remains the current approved version until a later explicit owner decision reviews the shadow evidence. Building evidence is not a policy decision.
 
-#### Acceptance
+### Scope
 
-The weights are approved by the owner. v8 and v9 can be compared on the same snapshot, and every score input is visible per row.
+- Additive evidence fields and shadow-v9 calculation/comparison.
+- No canonical recommendation, action eligibility, confidence or queue ordering change.
+- No new import requirement.
 
-#### Dependencies
+### Read first
 
-NV-F1, NV-F3, NV-P2.
+- RQ537/RQ539/RQ548/RQ571/RQ555;
+- current `PreNivelacijaScoringService`, endpoint DTO and page methodology;
+- existing season/receipt/sales evidence contracts.
 
----
+### Do
 
----
+1. Expose where evidence supports it:
+   - `weeksOfCover`;
+   - `weeksToSeasonEnd`;
+   - `ageDays` with explicit age basis;
+   - `sellThroughSinceReceipt` only when denominator evidence exists;
+   - `coverGap = weeksOfCover - weeksToSeasonEnd`.
+2. Missing/unsupported evidence stays null with a reason; do not synthesize age, season end, opening stock or sell-through.
+3. Implement a **shadow** v9 candidate score/rank using a simple documented configuration proposed by the implementation, but do not feed it into canonical recommendation/action fields.
+4. Produce deterministic comparison output: v8 vs shadow-v9 rank correlation, top-N overlap/movement, rows with largest movement and the evidence inputs that caused it.
+5. UI methodology/detail may display the new evidence fields and an explicitly labelled "eksperimentalno poređenje"; default action list remains canonical v8.
+6. Record the proposed thresholds/weights in one versioned configuration location so the later owner decision can accept/change them without rewriting the pipeline.
 
-### Addendum 2026-10-04 (all-screen re-audit, live evidence for the rebuild)
+### Tests
 
-- Live top candidates on 2026-10-04 are accessories and legacy stock: #1 `85` PERTLE (footwear type `Oprema`, store `STARO`, season proleće/leto2017, 381 units, 5,559 days without sale, score 86.0 `high`); #2 `155` PERTLA 1 (`Oprema`, Trend PLUS 1, 226 units, score 77.77 `high`) — the only item in `queues.highlightNow`, although its row recommendation is `insufficient_data` / `recommendationAllowed=false`.
-- Most medium-band rows are season "Proleće-leto 2021" stock; 371 of 537 candidates are `insufficient_data`.
-- Owner decision (Ivan, 2026-10-04): the retail decision stores are **Trend PLUS 1 and Trend PLUS 2**. `STARO`, `Magacin`, all `Komision*` stores and `Objekat 20828` are excluded from retail markdown recommendations until a durable active-store master flag explicitly re-enables them; keep them visible in a separate legacy/cleanup/transfer view. `Oprema` is separated from footwear markdown ranking. A row with `recommendationAllowed=false` can never enter `highlightNow`.
-- The executable population/gating work above is now owned by `RQ571` together with the source-horizon anchor so it is not blocked behind RQ556's still-owner-gated v9 score weights.
-- RQ556 remains WAITING only for the v9 weight/threshold approval. Do not treat the resolved store/Oprema policy as a blocker for RQ571.
+- fixed historical fixture gives deterministic cover/age/season/sell-through fields;
+- missing source inputs stay unavailable;
+- unrelated extreme SKU does not unpredictably re-scale every shadow row if absolute/percentile bands are used;
+- shadow score never changes canonical recommendation/action/output ordering;
+- snapshot comparison proves reproducibility across runs;
+- frontend labels shadow output as experimental/non-actionable.
+
+### Acceptance
+
+The owner can compare current ranking with a more decision-relevant cover/age/season model using real historical evidence **before** approving any new weight. No production action changes simply because the shadow model exists.
+
+### Dependencies
+
+RQ555 DONE. RQ537, RQ539, RQ548 and RQ571 are DONE. Final activation/weight approval is a separate owner decision after the shadow comparison; it is not a start gate for this prompt.
 
 ## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
