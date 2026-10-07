@@ -80,6 +80,19 @@ const STRICT_COMPLETION_REQUIRED_FIELDS = [
   "Residual risk",
 ];
 
+const FORBIDDEN_ACTIVE_QUEUE_HEADER_RULES = [
+  "one prompt per commit/session",
+  "one task per session and commit",
+  "take only the first task with `status: ready`",
+  "use one task and one focused commit per session",
+  "only the prompt marked `ready` may be started",
+  "if this header says `current ready prompt: none`, do not claim a later `waiting` prompt",
+  "later prompts are sequential unless their own section explicitly says otherwise",
+  "one prompt per branch/commit",
+  "do not run more than one queue prompt in the same session/commit",
+  "execute only the current ready prompt",
+];
+
 function normalizeStatus(raw) {
   return String(raw ?? "")
     .trim()
@@ -251,6 +264,16 @@ function validateQueueFile(filePath, content) {
     }
   }
 
+  const firstTaskLine = tasks.length > 0 ? tasks[0].headerLine - 1 : lines.length;
+  const queueHeader = lines.slice(0, firstTaskLine).join("\n").toLowerCase();
+  for (const phrase of FORBIDDEN_ACTIVE_QUEUE_HEADER_RULES) {
+    if (queueHeader.includes(phrase)) {
+      errors.push(
+        `${filePath}:1: active queue header contains stale/duplicated mechanics '${phrase}'; use docs/ai/PROMPT_QUEUE_PROTOCOL.md instead`,
+      );
+    }
+  }
+
   const activeTasks = tasks.filter((task) => task.status === "READY" || task.status === "IN_PROGRESS");
 
   if (activeTasks.length > 1) {
@@ -383,6 +406,21 @@ function runSelfTest() {
     if (valid.errors.length > 0) {
       failures.push(`valid sample failed:\n${valid.errors.join("\n")}`);
     }
+
+    writeFixture(
+      tmpRoot,
+      "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
+      `# BCI\nCurrent READY prompt: none\nOne prompt per commit/session.\n\n## BCI99 - Evidence\n\nStatus: WAITING\nPriority: P0\nFeature family: backend-ci-selftest\nParallel-safe: no\n`,
+    );
+    const staleHeaderRule = validateRoot(tmpRoot);
+    if (!staleHeaderRule.errors.some((error) => error.includes("active queue header contains stale/duplicated mechanics"))) {
+      failures.push("expected stale active-queue header mechanics failure");
+    }
+    writeFixture(
+      tmpRoot,
+      "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md",
+      `# BCI\nCurrent READY prompt: none\n\n## BCI99 - Evidence\n\nStatus: WAITING\nPriority: P0\nFeature family: backend-ci-selftest\nParallel-safe: no\n`,
+    );
 
     // Prove BCI IDs are parsed and their Current READY pointer is validated.
     writeFixture(
