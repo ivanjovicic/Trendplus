@@ -60,7 +60,7 @@ Use with:
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
-| P-UI-52 | IN_PROGRESS | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
+| P-UI-52 | DONE | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
@@ -3695,7 +3695,7 @@ Owner claim 2026-10-07: refreshed `origin/main` at `a330671f09e557c6626895e3e15b
 
 Progress note 2026-10-05 (historical, before claim): presentation/UX audits already replaced many user-facing `N/A` strings with `Nije dostupno` and documented canonical terms in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`. Nav/group label reconciliation, badge cleanup and canonical route `to` targets in `navConfig.ts` remain executable scope.
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ553 is DONE and RQ582 has released its exclusive navigation entry/visibility work; RQ589 is backend-only and does not own `navConfig.ts`
 Priority: P2
 Type: frontend/copy/tests
@@ -3704,7 +3704,7 @@ Parallel-safe: no (`navConfig.ts`)
 Owner: Codex (Frontend Shell / Analytics UX)
 Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`, plus copy-only edits in otherwise unowned frontend files found by the bounded user-facing-text sweep after a fresh collision check
 Avoid paths: `GlobalRequestSpinner.tsx` and the carousel (P-UI-45), header/breadcrumb (P-UI-40/P-UI-48), routes and redirects themselves (RQ507 legacy contract), Insight Studio entry (RQ582), RQ555 Actions logic
-Local lock: `.ai/task-locks/P-UI-52-codex.lock.md` (remove after close)
+Local lock: `.ai/task-locks/P-UI-52-codex.lock.md` (removed after close)
 Commit suggestion: `fix(ui): consistent analytics navigation labels and glossary`
 
 ### Problem
