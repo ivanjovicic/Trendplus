@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-52 (IN_PROGRESS; claimed 2026-10-07 after P-UI-46 completion). Other READY lanes: none.
+Current primary prompt: none (P-UI-52 DONE on 2026-10-07; post-close recovery recorded in its run log). Other READY lanes: none.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -60,7 +60,7 @@ Use with:
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
-| P-UI-52 | IN_PROGRESS | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
+| P-UI-52 | DONE | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
 
 ---
@@ -3695,7 +3695,7 @@ Owner claim 2026-10-07: refreshed `origin/main` at `a330671f09e557c6626895e3e15b
 
 Progress note 2026-10-05 (historical, before claim): presentation/UX audits already replaced many user-facing `N/A` strings with `Nije dostupno` and documented canonical terms in `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`. Nav/group label reconciliation, badge cleanup and canonical route `to` targets in `navConfig.ts` remain executable scope.
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ553 is DONE and RQ582 has released its exclusive navigation entry/visibility work; RQ589 is backend-only and does not own `navConfig.ts`
 Priority: P2
 Type: frontend/copy/tests
@@ -3704,7 +3704,7 @@ Parallel-safe: no (`navConfig.ts`)
 Owner: Codex (Frontend Shell / Analytics UX)
 Owned paths: `Klijent/clientapp/src/layout/navConfig.ts` (+ nav specs), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (labels only), the "N/A" fallbacks in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx`, plus copy-only edits in otherwise unowned frontend files found by the bounded user-facing-text sweep after a fresh collision check
 Avoid paths: `GlobalRequestSpinner.tsx` and the carousel (P-UI-45), header/breadcrumb (P-UI-40/P-UI-48), routes and redirects themselves (RQ507 legacy contract), Insight Studio entry (RQ582), RQ555 Actions logic
-Local lock: `.ai/task-locks/P-UI-52-codex.lock.md` (remove after close)
+Local lock: `.ai/task-locks/P-UI-52-codex.lock.md` (removed after close)
 Commit suggestion: `fix(ui): consistent analytics navigation labels and glossary`
 
 ### Problem
@@ -3759,6 +3759,25 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 - The post-close scan found no higher-priority runnable BCI, STAB, RQ/SQL, QDB, MT or GAI prompt. RQ current READY and SQL current READY are none; STAB16 remains provider/deployed-proof gated.
 - RQ553 and RQ582 are DONE. No P-UI-52 lock, matching branch or open PR exists. P-UI-52 owns navigation/copy paths; the bounded sweep will skip P-UI-46 operational paths and all other active owners' paths.
 - Promoted/claimed READY -> IN_PROGRESS on `codex/p-ui-52-analytics-navigation-copy`; local lock `.ai/task-locks/P-UI-52-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Analytics navigation now uses distinct IA group labels, canonical destination links and route-definition labels; status-like navigation badges were removed or replaced with descriptive markers; owned unavailable-value/copy surfaces use Serbian user-facing wording without changing machine-readable contracts.
+- Changed files: `Klijent/clientapp/src/layout/navConfig.ts`; `Klijent/clientapp/src/layout/__tests__/navConfig.spec.ts`; `Klijent/clientapp/src/layout/components/Sidebar.tsx`; `Klijent/clientapp/src/layout/components/__tests__/Sidebar.spec.tsx`; `Klijent/clientapp/src/layout/components/__tests__/headerNavigation.spec.ts`; `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts`; bounded copy/test files recorded in commit `31b0a8d95906019163a135f3db66f89ffac8ea2d`.
+- Contract/runtime behavior changed: presentation-only navigation labels, canonical menu targets, descriptive badges and Serbian display copy; API/error codes, route aliases, JSON keys and backend decision semantics are unchanged.
+- Checks run: P-UI-52 owner Vitest `42/42`; `npm run check:encoding`; `npm run check:analytics-guardrails` (39 known baseline findings, 0 new); `npm run build`; `git diff --check` pending final documentation commit; governance validators pending final queue update.
+- Checks not run: full frontend Vitest suite; browser visual/manual verification; remote CI for the final documentation closure SHA.
+- Run log: `.ai/runs/2026-10-07-P-UI-52-evidence.md`
+- Evidence state: pending post-close routing recovery
+- Delivery mode: branch transport, then direct-main
+- Main commit SHA: `31b0a8d95906019163a135f3db66f89ffac8ea2d` (implementation); final evidence/queue closure pending
+- Main verification: implementation is contained in current `origin/main`; final closure verification pending.
+- Missed: one broader focused command included an existing `SupplierConsolidatedPage` duplicate trust-header assertion and failed `61/62`; the P-UI-52 owner-only suite passed `42/42`. That neighboring failure remains outside this copy/navigation claim.
+- Follow-up: P-UI-38 remains WAITING as the final responsive/theme/a11y gate; P-UI-50 remains BLOCKED by the separate Product Decision page workspace edit.
+- Residual risk: existing Recharts chunk-size advisory and unrelated trust-header test failures remain; no browser visual or remote final-SHA proof was run.
+- Prompt defect / scope repair: no runtime scope expansion; bounded copy sweep skipped active-owner paths as required.
 
 
 ## P-UI-53 - Analytics chart accessibility contract and screen-reader alternatives
