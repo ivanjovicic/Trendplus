@@ -341,7 +341,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     vi.mocked(getInventoryInsights).mockResolvedValue({
       totalItems: 3,
       totalEstimatedValue: 12_500,
-      aging: [{ bucketKey: "90_plus", label: "90+ dana", itemCount: 2, totalUnits: 30, estimatedValue: 9_000 }],
+      aging: [{ bucketKey: "90_plus", label: "90+ dana", itemCount: 2, totalUnits: 30, estimatedValue: 9_000, valueCoveragePct: 50, unknownValueRows: 1 }],
       abc: [],
       topAgedItems: [{
         id: 19,
@@ -388,7 +388,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(panel).getByText(/Coverage vrednosti: 75,0%/)).toBeInTheDocument();
     expect(within(panel).getByText("Poznata nabavna cena")).toBeInTheDocument();
     expect(within(panel).getByText(/istorijski trošak: 100,0% · procenjeni trošak: 0,0%/)).toBeInTheDocument();
-    expect(within(panel).getByText(/pokrivenost poznatom vrednošću Nije dostupno/)).toBeInTheDocument();
+    expect(within(panel).getByText(/pokrivenost poznatom vrednošću 50,0% \(1 bez vrednosti\)/)).toBeInTheDocument();
     expect(within(panel).getByText(/Vrednost nije potvrđena/)).toBeInTheDocument();
     expect(within(panel).getByText(/nije kauzalna procena|ne daje konačan savet/i)).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Otvori prodaju i maržu dobavljača" })).toHaveAttribute(
