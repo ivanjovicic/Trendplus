@@ -50,7 +50,7 @@ Use with:
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
-| P-UI-42 | IN_PROGRESS | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
+| P-UI-42 | DONE | responsive-coarse-pointer-tablet | 16px/44px floor for coarse-pointer tablets |
 | P-UI-43 | DONE | trust-header-mobile-compaction | Compact trust header on phones (after RQ569) |
 | P-UI-44 | DONE | operations-wide-table-responsive | Sticky key column for Daily Sales and Inventory tables (after RQ569) |
 | P-UI-45 | DONE | global-chrome-mobile | Serbian non-blocking request indicator; carousel only on home page (owner decision 2026-10-04); reduced motion |
@@ -2817,7 +2817,7 @@ Owner routing correction 2026-10-06: after P-UI-48 closure SHA `9663b4b8be7624be
 
 ## P-UI-42 - Extend the touch-size and 16px input floor to coarse-pointer tablets and hybrid touch devices
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-39 DONE, P-UI-40 DONE, P-UI-47 DONE, P-UI-48 DONE, P-UI-43 DONE and P-UI-51 DONE (shared trust-header/control-bar/theme/header ownership)
 Priority: P2
 Type: frontend/css/tests
@@ -2825,7 +2825,6 @@ Feature family: responsive-coarse-pointer-tablet
 Parallel-safe: no
 Owner: Codex (Analytics Frontend / Responsive UI)
 Owned paths checked: `tailwind.css`, `styles/themes.css`, `styles/forms.css`, `AnalyticsControlBar.css`, shared UI/header class contracts, and focused responsive/browser tests.
-Local lock: `.ai/task-locks/P-UI-42-codex.lock.md`
 Commit suggestion: `feat(ui): apply touch and input-size floor to coarse-pointer tablets`
 
 ### Problem
@@ -2873,6 +2872,26 @@ The P-UI-25 foundation applies the 16px form-control font and 44px button height
 - Verified P-UI-39/P-UI-40/P-UI-43/P-UI-47/P-UI-48/P-UI-51 DONE; P-UI-42 has no matching local/remote branch, open PR or active task lock. P-UI-52 remains independently READY and owns nav/copy paths, not the tablet shared CSS paths.
 - Higher-priority RQ/SQL current READY pointers remain none; RQ139's derived builder residual is already addressed by DONE RQ152 and RQ153 is DONE. The remaining RQ PARTIAL items are broad cross-surface or live/runtime acceptance. STAB16 remains provider/deployment gated; the current roadmap exposes no higher-priority BCI/QDB/MT/GAI READY execution candidate.
 - Promoted WAITING -> READY -> IN_PROGRESS and claimed on `codex/p-ui-42-coarse-pointer-tablet` from refreshed `origin/main` `68731e8269ac4ab064fbe17fefec964c8c7d3f3e`.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Coarse-pointer and hybrid devices now receive the shared 16px field and 44x44 shared-target floors. The responsive runner verifies 768/1024 touch profiles and reports remaining page-local links for P-UI-46.
+- Changed files: `Klijent/clientapp/src/tailwind.css`; `Klijent/clientapp/src/styles/forms.css`; `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.css`; `Klijent/clientapp/src/components/analytics/AnalyticsDataTable.css`; `Klijent/clientapp/src/components/analytics/AnalyticsEmptyState.css`; `Klijent/clientapp/src/components/analytics/AnalyticsRefreshStatusBanner.css`; `Klijent/clientapp/src/components/analytics/AnalyticsTrustHeader.css`; `Klijent/clientapp/src/components/analytics/MetricMethodologyPanel.css`; `Klijent/clientapp/src/components/analytics/__tests__/AnalyticsEmptyState.spec.tsx`; `Klijent/clientapp/scripts/responsive_baseline.mjs`.
+- Contract/runtime behavior changed: `any-pointer: coarse` applies shared touch floors using existing tokens; fine-pointer layouts do not receive these rules. Empty-state, refresh, trust-header, KPI explanation, table toolbar and control-bar actions are covered.
+- Checks run: 8 focused Vitest files / 65 tests passed; `npm run responsive:baseline -- --self-test` passed; responsive fixture profiles passed on 9 routes at both 768px and 1024px (zero shared undersized targets, zero root overflow, zero page errors); fine-pointer 1280px profile passed on 8 routes with 0px maximum change in audited control font/width/height; analytics guardrails/encoding/typecheck passed (39 existing findings, zero new); production build passed; `git diff --check` passed.
+- Checks not run: full Vitest suite; physical iPad/Safari and other device/browser evidence. Chromium touch emulation is the available deterministic runner.
+- Run log: `.ai/runs/2026-10-07-P-UI-42-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: direct-main.
+- Main commit SHA: `6313e1d5ff20023d814c68f6ac8422b710d58043`.
+- Main verification: fresh `origin/main` at `6313e1d5ff20023d814c68f6ac8422b710d58043`; `git merge-base --is-ancestor 6313e1d5 origin/main` passed.
+- Missed: smaller page-local links remain for the owning P-UI-46 follow-up. Their exact selectors/labels and measured sizes are listed in the run log.
+- Follow-up: P-UI-46 consumes the remaining page-local offender list. P-UI-52 remains an independent READY lane.
+- Residual risk: local responsive Chromium fixture evidence does not replace physical-device Safari evidence; existing Recharts chunk-size advisory remains.
+- Post-close routing: full post-delivery scan and P-UI-46 successor claim are recorded in `.ai/runs/2026-10-07-P-UI-42-evidence.md`.
+- Prompt defect / scope repair: no change to task boundaries; applied the common foundation to two shared refresh/empty-state links after the live shared-control audit exposed them.
 
 ## P-UI-43 - Compact the trust header on phones so data appears in the first screen
 
