@@ -125,6 +125,7 @@ export default function PovracajPage() {
                 <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-primary)]" />
                 <input
                   value={searchQuery}
+                  aria-label="Pretraga povraćaja po broju zapisnika ili dobavljaču"
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Pretraga po broju zapisnika ili dobavljacu..."
                   className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-elevated)] py-2 pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--border-default)]"
@@ -162,11 +163,11 @@ export default function PovracajPage() {
 
             {!loading && !error && visibleItems.length > 0 && (
               <>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-default)]">
+                <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-[var(--border-default)]" role="region" aria-label="Lista povraćaja" tabIndex={0}>
                   <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
                     <thead className="bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                       <tr>
-                        <th className="px-3 py-3 text-left">Broj</th>
+                        <th className="sticky left-0 z-10 bg-[var(--surface-elevated)] px-3 py-3 text-left">Broj</th>
                         <th className="px-3 py-3 text-left">Datum</th>
                         <th className="px-3 py-3 text-left">Dobavljac</th>
                         <th className="px-3 py-3 text-left">Status</th>
@@ -177,7 +178,7 @@ export default function PovracajPage() {
                     <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-elevated)] text-[var(--text-primary)]">
                       {visibleItems.map((p) => (
                         <tr key={p.id} className="hover:bg-[var(--surface-light)]">
-                          <td className="px-3 py-3 font-mono font-semibold">{p.brojZapisnika}</td>
+                          <td className="sticky left-0 z-10 bg-[var(--surface-elevated)] px-3 py-3 font-mono font-semibold">{p.brojZapisnika}</td>
                           <td className="whitespace-nowrap px-3 py-3">{formatDate(p.datumPovracaja)}</td>
                           <td className="px-3 py-3">{p.dobavljacNaziv ?? formatEntityFallbackLabel("supplier", p.dobavljacId)}</td>
                           <td className="px-3 py-3">{p.status}</td>
