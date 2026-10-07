@@ -3,10 +3,10 @@ Queue: docs/ai/PROMPT_QUEUE_PROTOCOL.md (cross-program idle recovery)
 Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: cursor/queue-idle-recovery-1156-61ea / pending
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Working branch / PR: cursor/queue-idle-recovery-1156-61ea / https://github.com/ivanjovicic/Trendplus/pull/110
+Main commit SHA: 83377412df041aa130de157c168e5f108c643740
+Main verification: passed - origin/main contains the fresh zero-ready recovery evidence at 83377412df041aa130de157c168e5f108c643740
+Evidence state: synchronized
 
 ## What was done
 - Refreshed `origin/main` to `95f9f13ac00e86e97a6485a91e6b986c0e5c3b1c`.
@@ -22,10 +22,10 @@ Evidence state: pending
 - Live queue-section status parser -> pass; no current `READY` or `IN_PROGRESS` section exists in active execution queues. Nested historical promotion/claim notes were not treated as live status.
 - Active lock scan -> pass; no `.ai/task-locks/*.lock.md` files exist in this workspace.
 - Matching branch/PR scan -> pass; `cursor/queue-idle-recovery-61ea` and P-UI-54 are merged historical transport; no open matching PR or active owner was found for a runnable task.
-- `node scripts/check-agent-instructions.mjs --self-test && node scripts/check-agent-instructions.mjs` -> not yet run; run after this evidence commit.
-- `node scripts/check-prompt-queues.mjs --self-test && node scripts/check-prompt-queues.mjs` -> not yet run; run after this evidence commit.
-- `node scripts/check-planning-architecture.mjs --self-test && node scripts/check-planning-architecture.mjs` -> not yet run; run after this evidence commit.
-- `git diff --check` -> not yet run; run after this evidence commit.
+- `node scripts/check-agent-instructions.mjs --self-test && node scripts/check-agent-instructions.mjs` -> pass; 18 canonical files checked.
+- `node scripts/check-prompt-queues.mjs --self-test && node scripts/check-prompt-queues.mjs` -> pass; 710 tasks checked.
+- `node scripts/check-planning-architecture.mjs --self-test && node scripts/check-planning-architecture.mjs` -> pass; 80 planning tasks checked.
+- `git diff --check` -> pass.
 
 ## Validation not run
 - Runtime/unit/integration/browser tests -> not run; no implementation prompt was safely claimable.
