@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { createSezona, getSezone } from "../services/sezoneApi";
 import type { Sezona } from "../types/Sezona";
 
@@ -26,6 +27,8 @@ export default function SezonaPage() {
     const [datumDo, setDatumDo] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [visibleCount, setVisibleCount] = useState(50);
 
     const seasonSuggestions = generateSeasonSuggestions();
 
@@ -47,6 +50,11 @@ export default function SezonaPage() {
     useEffect(() => {
         loadSezone();
     }, []);
+
+    const filteredSezone = sezone.filter((season) =>
+        season.naziv.toLocaleLowerCase("sr-Latn").includes(searchQuery.trim().toLocaleLowerCase("sr-Latn"))
+    );
+    const visibleSezone = filteredSezone.slice(0, visibleCount);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -191,29 +199,41 @@ export default function SezonaPage() {
 
             <h3 className="text-xl font-bold mb-4 text-contrast">Postojeće sezone</h3>
 
+            <label className="relative mb-3 block">
+                <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                    type="search"
+                    aria-label="Pretraži sezone"
+                    placeholder="Pretraži sezone"
+                    value={searchQuery}
+                    onChange={(event) => { setSearchQuery(event.target.value); setVisibleCount(50); }}
+                    className="w-full rounded-xl border border-muted bg-surface-darker py-3 pl-10 pr-3 text-base text-contrast"
+                />
+            </label>
+
             {loading && <div className="py-10 text-center text-muted">Učitavanje...</div>}
 
-            {!loading && sezone.length === 0 && (
+            {!loading && filteredSezone.length === 0 && (
                 <div className="py-10 text-center text-muted border border-dashed border-muted rounded-xl">
-                    Nema nijedne kreirane sezone.
+                    {searchQuery ? "Nema sezona koje odgovaraju pretrazi." : "Nema nijedne kreirane sezone."}
                 </div>
             )}
 
             {!loading && sezone.length > 0 && (
-                <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-muted text-sm">
+                <div className="hidden overflow-hidden rounded-xl border border-muted bg-surface-elevated sm:block">
+                    <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Tabela sezona" tabIndex={0}>
+                        <table className="min-w-[520px] divide-y divide-muted text-sm">
                             <thead className="bg-surface-darker text-muted">
                                 <tr>
-                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Naziv</th>
+                                    <th className="sticky left-0 z-10 bg-surface-darker px-6 py-4 text-left font-semibold uppercase tracking-wider">Naziv</th>
                                     <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Datum od</th>
                                     <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Datum do</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted text-contrast">
-                                {sezone.map((season) => (
+                                {visibleSezone.map((season) => (
                                     <tr key={season.id} className="hover:bg-surface/50 transition-colors">
-                                        <td className="px-6 py-4 font-bold">{season.naziv}</td>
+                                        <td className="sticky left-0 z-10 bg-surface-elevated px-6 py-4 font-bold">{season.naziv}</td>
                                         <td className="px-6 py-4">{new Date(season.datumOd).toLocaleDateString("sr-RS")}</td>
                                         <td className="px-6 py-4">{new Date(season.datumDo).toLocaleDateString("sr-RS")}</td>
                                     </tr>
@@ -222,6 +242,24 @@ export default function SezonaPage() {
                         </table>
                     </div>
                 </div>
+            )}
+            {!loading && visibleSezone.length > 0 && (
+                <div className="grid gap-2 sm:hidden" role="list" aria-label="Sezone">
+                    {visibleSezone.map((season) => (
+                        <article key={season.id} className="rounded-xl border border-muted bg-surface-elevated p-3" role="listitem">
+                            <h4 className="break-words font-semibold text-contrast">{season.naziv}</h4>
+                            <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <div><dt className="text-xs text-muted">Datum od</dt><dd className="text-contrast">{new Date(season.datumOd).toLocaleDateString("sr-RS")}</dd></div>
+                                <div><dt className="text-xs text-muted">Datum do</dt><dd className="text-contrast">{new Date(season.datumDo).toLocaleDateString("sr-RS")}</dd></div>
+                            </dl>
+                        </article>
+                    ))}
+                </div>
+            )}
+            {!loading && filteredSezone.length > visibleSezone.length && (
+                <button type="button" onClick={() => setVisibleCount((count) => count + 50)} className="mt-3 min-h-11 w-full rounded-lg border border-muted bg-surface-elevated px-4 py-2 text-sm font-semibold text-contrast">
+                    Prikaži još ({filteredSezone.length - visibleSezone.length})
+                </button>
             )}
         </div>
     );
