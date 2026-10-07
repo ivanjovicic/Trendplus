@@ -24,6 +24,14 @@ const ROUTES = [
   { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
   { id: "articles", path: "/artikli/lista", readySelector: '[data-testid="article-list-table"]' },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
+  { id: "operational_suppliers", path: "/dobavljaci", readySelector: 'input[aria-label="Pretraži dobavljače"]', pui46Supplier: true, pui46ActionMenu: 'summary[aria-label^="Akcije za"]', pui46MobileActionMenu: 'summary[aria-label^="Akcije na mobilnom prikazu"]' },
+  { id: "operational_seasons", path: "/sezone", readySelector: 'input[aria-label="Pretraži sezone"]' },
+  { id: "operational_nivelacije", path: "/nivelacije", readySelector: '[aria-label="Tabela nivelacija"]' },
+  { id: "operational_change_log", path: "/dnevnik-promena", readySelector: '[aria-label="Tabela dnevnika promena"]' },
+  { id: "operational_returns", path: "/povracaj", readySelector: '[aria-label="Lista povraćaja"]' },
+  { id: "operational_logs", path: "/logs", readySelector: '[aria-label="Tabela logova"]' },
+  { id: "operational_configuration", path: "/admin/configuration?panel=workers", readySelector: ".wp-table-scroll", pui46ActionMenu: 'summary[aria-label^="Akcije za"]' },
+  { id: "operational_transfers", path: "/transfers", readySelector: ".form-page" },
 ];
 
 const THEMES = ["light", "soft-gray", "dark"];
@@ -227,6 +235,75 @@ async function fixtureResponse(request, options) {
       workersEnabled: true,
       generatedAtUtc: "2026-10-02T00:00:00Z",
       jobs: [],
+    }) };
+  }
+
+  if (url.pathname === "/api/dobavljaci") {
+    return { status: 200, body: JSON.stringify(Array.from({ length: 12 }, (_, index) => ({
+      id: index + 1,
+      naziv: `Sintetički dobavljač ${index + 1}`,
+      adresa: `Adresa ${index + 1}, Beograd`,
+      telefon: `011-100-${index}`,
+      napomena: "Responsive fixture — sintetički podaci.",
+    }))) };
+  }
+
+  if (url.pathname === "/api/sezone") {
+    return { status: 200, body: JSON.stringify(Array.from({ length: 8 }, (_, index) => ({
+      id: index + 1,
+      naziv: `Sintetička sezona ${index + 1}`,
+      datumOd: "2026-03-01T00:00:00Z",
+      datumDo: "2026-08-31T00:00:00Z",
+    }))) };
+  }
+
+  if (url.pathname === "/api/nivelacije") {
+    const items = Array.from({ length: 50 }, (_, index) => ({
+      id: index + 1, datum: "2026-10-01T10:00:00Z", tipPromene: "Nivelacija",
+      artikalId: index + 1, idObjekat: 1, artikalNaziv: `Sintetički artikal ${index + 1}`,
+      staraProdajnaCena: 100, novaProdajnaCena: 90, komentar: "Responsive fixture", korisnikIme: "Fixture",
+    }));
+    return { status: 200, body: JSON.stringify({ items, totalCount: 50, pageNumber: 1, pageSize: 50, sortBy: "datum", sortDir: "desc" }) };
+  }
+
+  if (url.pathname === "/api/dnevnik-promena") {
+    const items = Array.from({ length: 50 }, (_, index) => ({
+      id: index + 1, tipPromene: "Promena cene", datum: "2026-10-01T10:00:00Z", iznos: 10,
+      brojRacuna: `R-2026-${index + 1}`, artikalId: index + 1, artikalNaziv: `Sintetički artikal ${index + 1}`,
+      dobavljacId: 1, dobavljacNaziv: "Sintetički dobavljač", staraProdajnaCena: 100,
+      novaProdajnaCena: 110, komentar: "Responsive fixture", korisnikIme: "Fixture",
+    }));
+    return { status: 200, body: JSON.stringify({ items, totalCount: 50, pageNumber: 1, pageSize: 50, sortBy: "datum", sortDir: "desc" }) };
+  }
+
+  if (url.pathname === "/api/povracaj") {
+    const items = Array.from({ length: 25 }, (_, index) => ({
+      id: index + 1, brojZapisnika: `P-2026-${index + 1}`, datumPovracaja: "2026-10-01T10:00:00Z",
+      dobavljacId: 1, dobavljacNaziv: "Sintetički dobavljač", status: "Kreiran", ukupanIznos: 1234.5,
+      datumKreiranja: "2026-10-01T10:00:00Z", brojStavki: 3,
+    }));
+    return { status: 200, body: JSON.stringify({ items, totalCount: 25, pageNumber: 1, pageSize: 25 }) };
+  }
+
+  if (url.pathname === "/api/logs") {
+    const logs = Array.from({ length: 100 }, (_, index) => ({
+      id: index + 1, timestamp: "2026-10-01T10:00:00Z", level: index % 2 ? "Information" : "Warning",
+      message: `Sintetička poruka loga ${index + 1}`, properties: { userName: "fixture" },
+    }));
+    return { status: 200, body: JSON.stringify({ logs, totalCount: 100, pageNumber: 1, pageSize: 100 }) };
+  }
+
+  if (url.pathname === "/api/workers/configuration") {
+    return { status: 200, body: JSON.stringify({
+      processType: "worker", workersEnabledGlobally: true, runtimeToggleAllowed: true, total: 3,
+      workers: Array.from({ length: 3 }, (_, index) => ({
+        workerName: `FixtureWorker${index + 1}`, displayName: `Sintetički worker ${index + 1}`,
+        description: "Responsive fixture worker", workerType: "fixture", isRuntimeControllable: true,
+        isScheduleControllable: true, status: "Running", scheduleEnabled: true, isManuallyStopped: false,
+        isRegisteredInCurrentProcess: true, isConfiguredButNotRunning: false,
+        lastHeartbeat: "2026-10-01T10:00:00Z", lastRunAt: null, nextRunAt: null,
+        lastSuccessAt: null, lastFailureAt: null, lastError: null,
+      })),
     }) };
   }
 
@@ -878,6 +955,7 @@ async function collectGeometry(page, viewportWidth) {
       ".analytics-trust-header button", ".analytics-data-table__toolbar a",
       ".analytics-data-table__toolbar button", ".analytics-data-table__toolbar [role='button']",
       ".analytics-empty-state a:not(p a)", ".arb-link", ".kpi-explain-button", ".info-tip",
+      ".supplier-touch-actions summary", ".wp-touch-actions summary",
     ].join(",");
     const touchAudit = [...new Set(document.querySelectorAll(touchAuditSelectors))]
       .filter(isVisible)
@@ -1064,6 +1142,7 @@ async function run(options) {
             if (message.type() === "error") consoleErrors.push(message.text());
           });
           page.on("pageerror", (error) => pageErrors.push(String(error)));
+          page.on("dialog", (dialog) => dialog.accept("responsive-fixture-admin-key"));
           page.on("requestfailed", (request) => {
             if (request.url().includes("/api/")) {
               requestFailures.push({ url: request.url(), error: request.failure()?.errorText ?? "unknown" });
@@ -1111,10 +1190,37 @@ async function run(options) {
           let interaction = null;
           let pui43DefaultLayout = null;
           let pui45Layout = null;
+          let pui46Layout = null;
           try {
             await page.goto(url, { waitUntil: "domcontentloaded", timeout: options.timeoutMs });
             if (route.readySelector) {
               await page.waitForSelector(route.readySelector, { timeout: options.timeoutMs });
+            }
+            if (route.pui46Supplier && viewportWidth === 360) {
+              pui46Layout = await page.evaluate(() => {
+                const search = document.querySelector('input[aria-label="Pretraži dobavljače"]');
+                const list = document.querySelector('[role="list"][aria-label="Dobavljači"]');
+                const searchRect = search?.getBoundingClientRect();
+                const visibleRows = [...(list?.querySelectorAll('[role="listitem"]') ?? [])]
+                  .filter((row) => {
+                    const rect = row.getBoundingClientRect();
+                    return rect.top >= (searchRect?.bottom ?? Infinity) && rect.bottom <= window.innerHeight;
+                  }).length;
+                return { searchVisible: Boolean(searchRect && searchRect.top >= 0 && searchRect.bottom <= window.innerHeight), visibleRows };
+              });
+              if (!pui46Layout.searchVisible || pui46Layout.visibleRows < 5) {
+                throw new Error(`P-UI-46 Dobavljači first screen must show search and five rows: ${JSON.stringify(pui46Layout)}`);
+              }
+            }
+            const pui46ActionMenu = viewportWidth < 640
+              ? route.pui46MobileActionMenu ?? route.pui46ActionMenu
+              : route.pui46ActionMenu;
+            if (pui46ActionMenu && options.touchProfile) {
+              await page.click(pui46ActionMenu);
+              await page.waitForFunction((selector) => {
+                const details = document.querySelector(selector)?.closest("details");
+                return Boolean(details?.open && details.querySelector("[hidden]") === null);
+              }, { timeout: options.timeoutMs }, pui46ActionMenu);
             }
             if (route.pui45Spinner && viewportWidth === 360) {
               await page.waitForSelector('[data-testid="global-request-spinner"]', { visible: true, timeout: options.timeoutMs });
@@ -1414,6 +1520,7 @@ async function run(options) {
             geometry,
             pui43Layout,
             pui45Layout,
+            pui46Layout,
             screenshot: screenshotPath,
             consoleErrors,
             pageErrors,
