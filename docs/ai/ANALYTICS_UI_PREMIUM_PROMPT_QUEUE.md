@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none. Zero-READY recovery after P-UI-52 is recorded in `.ai/runs/2026-10-07-P-UI-52-evidence.md` at `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab`; P-UI-50 remains blocked and P-UI-38 remains waiting on that migration.
+Current READY prompt: P-UI-54. The P-UI-52 zero-READY proof was valid for its recovery SHA, but post-review applied P-UI-38's documented split escape hatch: P-UI-54 is a disjoint regression/theme/a11y ratchet slice that explicitly excludes `ProductDecisionCenterPage.tsx` and P-UI-50-owned behavior. P-UI-50 remains BLOCKED on the unresolved primary-checkout edit; P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 and P-UI-54 are closed.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -62,6 +62,7 @@ Use with:
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
 | P-UI-52 | DONE | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
+| P-UI-54 | READY | ui-regression-ratchet-split | Disjoint theme/Tailwind/a11y/static regression ratchet while Product Decision remains blocked |
 
 ---
 
@@ -2462,7 +2463,7 @@ Article List has small pagination/input controls and a table without an explicit
 ## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
 
 Status: WAITING
-Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred; this prompt is the final responsive/theme/a11y regression gate
+Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred, **and P-UI-54 is DONE**; this prompt is the final whole-program responsive/theme/a11y gate and remains WAITING while P-UI-50 is unresolved
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
 Feature family: responsive-ui-regression-gates
@@ -2544,6 +2545,7 @@ The original audit proposed Playwright, axe, Lighthouse and Stylelint simultaneo
 - The theme-contrast unit test added by P-UI-47 becomes part of the gate.
 - P-UI-53 supplies the chart semantics; this gate adds a deterministic check that chart regions have an accessible name plus either a textual summary or a discoverable table alternative, and that seeded missing-a11y fixtures fail.
 - If the responsive migrations remain blocked, the owner may split this ratchet into its own prompt with a fresh collision check; do not duplicate it elsewhere.
+- 2026-10-07 routing action: that split is now registered as `P-UI-54` because `P-UI-50` is blocked only on its Product Decision page path. P-UI-54 owns only path-disjoint static/theme/a11y/tooling ratchets; P-UI-38 retains final cross-surface closure, Product Decision inclusion and any invariant that cannot be proved without P-UI-50.
 
 ### Addendum 2026-10-06 (post-theme-audit residual hardening; no status change)
 
@@ -3878,3 +3880,71 @@ Owner claim 2026-10-06: after P-UI-41 DONE was freshly verified on origin/main c
 Owner claim 2026-10-06: after P-UI-47 DONE was verified on `origin/main` `88e388c3718b7ea006d79df949b2eaf20b207c72`, a full 16-file active RQ/SQL/P-UI/MASTER cascade found no RQ/SQL dependent and no higher-priority global queue lane. P-UI-31's P-UI-47 dependency was satisfied; no active owner, lock, matching branch or open PR conflicted with Supplier overview paths. P-UI-31 moved WAITING -> READY -> IN_PROGRESS as the highest-priority safe P1 successor. P-UI-35/P-UI-36/P-UI-43/P-UI-44 were promoted to READY. P-UI-42 remains WAITING behind P-UI-43 and P-UI-51 shared paths. Local lock: `.ai/task-locks/P-UI-31-codex.lock.md`. P-UI-47 run log: `.ai/runs/2026-10-06-P-UI-47-evidence.md`; evidence synchronized.
 
 Owner promotion/claim 2026-10-06: after P-UI-31 DONE was delivered and `origin/main` refreshed to `19f9d94e07aab4cc754d46d5db49d38687820a49`, a full 16-file active RQ/SQL/P-UI/MASTER cascade searched P-UI-31 and re-evaluated the P-UI non-terminal candidates. No RQ/SQL dependency became newly runnable; BCI/STAB/RQ/QDB/MT/GAI exposed no higher-priority repo-local candidate. P-UI-35 was READY with P-UI-39/P-UI-47/P-UI-28/P-UI-29 DONE; RQ552/RQ553/RQ571 are DONE, RQ556 remains owner-gated and non-blocking for this presentation-only scope, and no active Nivelacija owner, matching lock, branch or PR remained. P-UI-35 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/P-UI-35-codex.lock.md`; P-UI-31 evidence: `.ai/runs/2026-10-06-P-UI-31-evidence.md`.
+
+## P-UI-54 - Run the disjoint UI regression/theme/a11y ratchet while Product Decision is blocked
+
+Status: READY
+Ready after: P-UI-47, P-UI-52 and P-UI-53 are DONE; P-UI-50 is **not** a prerequisite because this prompt must not touch its owned Product Decision page/spec/CSS paths
+Priority: P2
+Type: frontend/tests/tooling/css-hygiene
+Feature family: ui-regression-ratchet-split
+Parallel-safe: yes, only against tasks that do not touch the named shared tooling/theme paths
+Owner: unassigned (Analytics Frontend / UI Platform)
+Owned paths: existing responsive/theme/accessibility guard scripts and tests, theme token files/tests, package scripts/CI wiring required for those guards, bounded shared CSS/theme cleanup proven by the guards, and run evidence
+Avoid paths: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, its page CSS/specs, backend Product Decision contracts, and any file currently owned by another IN_PROGRESS task
+Commit suggestion: `test(ui): ratchet stable theme and accessibility invariants`
+
+### Why this exists
+
+The P-UI-52 post-close recovery found no READY prompt because P-UI-50 has an unresolved uncommitted edit in the primary checkout and P-UI-38 was modeled as a final gate behind every migration. P-UI-38 already explicitly allowed a collision-safe split when a migration remained blocked. This prompt activates only the portion that is independent of Product Decision so one unknown local edit does not serialize unrelated repository-owned regression work.
+
+This is **not** a second owner for P-UI-38. It is the documented disjoint child slice. P-UI-38 consumes its result and remains responsible for final whole-program closure after P-UI-50 is DONE or explicitly deferred.
+
+### Scope
+
+1. Promote the already-proven theme/Tailwind invariants into deterministic ratchets using the existing toolchain:
+   - semantic Tailwind v4 colors used in production must resolve through active `@theme inline` mappings or canonical helpers, including opacity variants;
+   - theme-aware shared/critical surfaces may not add unsafe fixed white/black utilities unless explicitly allowlisted with a fixed-background reason;
+   - supported theme token parity / undefined-var checks stay enforced;
+   - duplicate/self/nested fallback chains may be reduced only where computed behavior is proven unchanged.
+2. Consume and stabilize the existing `ThemeContext.tokens.spec.ts`, `themeTokenUsage.spec.ts`, theme-contrast tests and chart-accessibility guard rather than inventing parallel test systems.
+3. Extend static/responsive guard coverage only for **completed, collision-free** routes/surfaces. Product Decision is excluded from this slice.
+4. Add deterministic negative/self-test fixtures where practical so a seeded missing semantic Tailwind mapping, unsafe fixed-white theme surface, or missing chart accessibility contract fails.
+5. Do bounded CSS/token cleanup only when a new/existing guard proves the pattern harmful. No repository-wide blind rewrite of `var(--theme-color-*, #fallback)`.
+6. Keep real-device proof, final Product Decision route inclusion and any whole-program “all migrations complete” assertion in P-UI-38.
+
+### Mandatory first step
+
+Fresh-fetch `origin/main`, inspect all current READY/IN_PROGRESS rows and active branches/PRs, then confirm none owns the shared tooling/theme files selected for this slice. If a selected file is newly owned elsewhere, shrink this prompt to the remaining disjoint files and record the hand-off; do not steal the owner.
+
+### Tests / proof
+
+Run the smallest mapped set plus:
+- theme/token focused tests;
+- `npm run check:analytics-chart-accessibility` and its self-test;
+- any changed/new Node guard self-test;
+- `npm run check:encoding`;
+- `npm run check:analytics-guardrails`;
+- typecheck and production build when package/theme/build wiring changes;
+- queue/planning/agent-instruction governance validators when those files change;
+- `git diff --check`.
+
+If current-main Analytics Quality Gates is already red, classify whether failures predate this task. Fix only an in-scope regression; do not absorb unrelated red tests merely to make this prompt look green.
+
+### Acceptance
+
+- The stable theme/Tailwind/a11y invariants above have deterministic local guards with negative proof where practical.
+- P-UI-50/Product Decision files were not edited or used as a reason to block the entire slice.
+- No new UI test framework is added unless an existing-tooling gap is demonstrated and documented.
+- Any remaining `var(--theme-color-*, fallback)` debt is measured/classified, with unsafe critical/shared cases reduced and justified fixed-color cases documented.
+- Evidence states exactly which routes/files were excluded due to P-UI-50 or another active owner.
+- Delivery reaches `main`, relevant CI is classified, and the post-close cascade immediately re-evaluates P-UI-50 and P-UI-38.
+
+### Post-close routing
+
+After P-UI-54 is DONE:
+1. re-check whether the primary-checkout edit blocking P-UI-50 was delivered, cleared, explicitly handed off or still active;
+2. if clear, promote P-UI-50 immediately;
+3. if still blocked, keep P-UI-38 WAITING only for the remaining final/Product-Decision-owned invariants and record the exact owner/path/unblock event;
+4. do not recreate a generic zero-READY conclusion without the canonical cross-program blocker matrix.
+
