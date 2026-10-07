@@ -58,7 +58,7 @@ Use with:
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
-| P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
+| P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
@@ -3464,7 +3464,7 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
-Status: WAITING
+Status: BLOCKED
 Ready after: RQ573 and RQ574 are DONE (same page/contract) and P-UI-49 is DONE
 Priority: P2
 Type: frontend/tests
@@ -3520,6 +3520,26 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 ### Dependencies
 
 - RQ573, RQ574 (same page/contract); P-UI-49 (taxonomy).
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: BLOCKED
+- Completion: Post-close recovery verified RQ573, RQ574 and P-UI-49 DONE. P-UI-50 was not claimed or implemented because `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` has an uncommitted change in the shared primary checkout; the edit's owner/intent is not recorded, so the owned path is not safe to take.
+- Changed files: Queue routing metadata only; no P-UI-50 product files changed.
+- Contract/runtime behavior changed: none.
+- Checks run: fresh main/dependency review; no matching P-UI-50/P-UI-51 branch, lock or open PR; confirmed the existing working-tree change directly touches P-UI-50's owned page path.
+- Checks not run: P-UI-50 implementation tests; the prompt remains unclaimed.
+- Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending post-close synchronization
+- Missed: P-UI-50 remains unimplemented.
+- Follow-up: Re-evaluate the page path after the existing checkout edit is delivered or cleared; then promote to READY if collision-free.
+- Residual risk: Owner/intent for the existing uncommitted Product Decision page edit is unknown.
+- Next: P-UI-51 remains the primary READY, unclaimed prompt.
+- Prompt defect / scope repair: none.
 
 ---
 
