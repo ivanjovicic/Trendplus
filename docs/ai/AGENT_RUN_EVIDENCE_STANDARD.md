@@ -132,6 +132,7 @@ Before `DONE`, evidence must identify:
 - for formal queue work, **post-close routing recovery from the post-delivery `origin/main` SHA**;
 - when next is `none`, a durable **Zero-READY proof** listing active queue/addendum files scanned, plausible non-terminal candidates, blocker class/start-gate classification, **unblock action attempted and result**, safe/disjoint-slice result, why no safe split exists and exact unblock event;
 - prompt defect/scope repair when one occurred.
+- when ownership changed during the task, an **Ownership transfer** record naming the previous owner, authoritative handoff/release source, evidence location/date, new owner/workspace and treatment of existing branch/PR/worktree artifacts.
 
 Missing required completion evidence means `PARTIAL` or `BLOCKED`, not a new status.
 
