@@ -403,11 +403,11 @@ export default function DnevnikPromenaPage() {
         )}
 
         {!error && promene.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-muted">
+          <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-muted" role="region" aria-label="Tabela dnevnika promena" tabIndex={0}>
             <table className="min-w-full divide-y divide-[var(--border-default)] text-sm">
               <thead className="bg-[var(--surface-darker)] text-secondary">
                 <tr>
-                  <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("datum")}>Datum{renderSortIndicator("datum")}</th>
+                  <th className="sticky left-0 z-10 cursor-pointer bg-[var(--surface-darker)] px-3 py-3 text-left" onClick={() => handleSort("datum")}>Datum{renderSortIndicator("datum")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("tipPromene")}>Tip{renderSortIndicator("tipPromene")}</th>
                   <th className="cursor-pointer px-3 py-3 text-left" onClick={() => handleSort("naziv")}>Artikal{renderSortIndicator("naziv")}</th>
                   <th className="px-3 py-3 text-left">Dobavljac</th>
@@ -435,7 +435,7 @@ export default function DnevnikPromenaPage() {
                     tabIndex={0}
                     aria-label={`Otvori detalje promene ${item.id}`}
                   >
-                    <td className="px-3 py-3 text-xs text-secondary">{formatDate(item.datum)}</td>
+                    <td className="sticky left-0 z-10 bg-[var(--surface-light)] px-3 py-3 text-xs text-secondary">{formatDate(item.datum)}</td>
                     <td className="px-3 py-3">
                       <span className="inline-block rounded-md px-2 py-1 text-xs font-semibold" style={getTipPromeneStyle(item.tipPromene)}>
                         {item.tipPromene}
@@ -452,7 +452,7 @@ export default function DnevnikPromenaPage() {
                     <td className="px-3 py-3 text-center">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold text-contrast transition hover:opacity-90"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold text-contrast transition hover:opacity-90"
                         style={{ borderColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))", backgroundColor: "var(--info, var(--theme-color-3b82f6, #3b82f6))" }}
                         onClick={(e) => {
                           e.stopPropagation();
