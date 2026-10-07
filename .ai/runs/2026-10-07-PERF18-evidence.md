@@ -4,9 +4,9 @@ Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/perf18-recharts-preload / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 42baa32987590ad44660afc72b4a3641baff576f
+Main verification: pass - refreshed `origin/main` `42baa32987590ad44660afc72b4a3641baff576f` contains the implementation SHA
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -40,10 +40,10 @@ Ownership transfer: none
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass, 711 tasks.
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass, 80 planning tasks.
 - `git diff --check` -> pass.
+- GitHub Actions on `42baa32987590ad44660afc72b4a3641baff576f`: Planning Governance `37649069166` -> success; Analytics Quality Gates `37649069125` -> failure, 153 passed / 6 failed in five analytics UI specs outside changed paths. Its analytics guardrail and build steps were skipped after tests failed. No causal link to PERF18's Rollup chunk setting was found; report as unrelated-scope CI risk, not passing validation.
 
 ## Validation not run
 - Data-backed browser chart SVG render and SPA route-hop -> not proven. The existing `responsive_baseline.mjs --route-id daily_sales --mode fixture` failed inside its geometry collector while reading `scrollWidth` from a null target; fixture-free browser runs correctly exposed the missing backend and therefore did not render chart data. A subsequent direct browser route proved the Recharts chunk loads without module-init errors, but this does not replace the requested render/hop proof.
-- GitHub Actions status -> pending post-delivery inspection.
 
 ## Documentation impact
 - Updated the PERF18 source-of-truth bundle budget with current build/import/network measurements and the guard behavior.
@@ -56,7 +56,14 @@ Ownership transfer: none
 - The build and source-map evidence show the preload regression is fixed, and the chart route loads the Recharts chunk without a JavaScript page error. The missing data-backed route-hop render keeps acceptance incomplete; PERF18 is PARTIAL.
 
 ## Post-close routing recovery
-- Pending: refresh post-delivery `origin/main`, inspect current queue state and relevant Actions, then record the cascade/Zero-READY result here.
+- Recovery base `origin/main`: `42baa32987590ad44660afc72b4a3641baff576f`.
+- Active owner queue files scanned: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (full active PERF/OBS/SEC set), `MASTER_ROADMAP.md` current priority/current-READY table, and all current owner queues/addenda named there through the canonical active queue inventory.
+- Changed task searched: `PERF18`; dependencies checked: `PERF17` remains DONE; no newly satisfied dependency was discovered.
+- PERF candidates: `PERF18` remains PARTIAL with the explicit browser-proof follow-up; `PERF19` is DONE; `PERF16` is BLOCKED on MT10/shared-SaaS authority; OBS queue is complete; SEC05 remains WAITING on MT09. No different PERF/OBS/SEC task was promoted.
+- Higher-priority/global candidates: BCI has no READY/IN_PROGRESS; STAB16 remains provider/deployed-evidence gated; RQ and SQL current pointers are none with remaining WAITING/PARTIAL prompts gated by dependencies/evidence; P-UI-52 is already IN_PROGRESS under its named owner; P-UI-50 is blocked by a user-owned local Product Decision page edit; P-UI-38 is the final gate; QDB07 waits for release gates; MT02 waits for an owner decision; GAI waits for core-pilot/release evidence; DEX/RL/DT have no current READY prompt.
+- Safe/disjoint split: none identified that is both dependency-complete and collision-safe; do not take over P-UI-52 or alter the user's blocked P-UI-50 checkout edit.
+- Successor: no different prompt promoted. The explicit next action is PERF18's own deterministic browser fixture proving chart SVG render after SPA route-hop. This is an authorized same-task follow-up, so no `Next: none` / Zero-READY conclusion is asserted.
+- The remaining active queue inventory considered: BCI parent/addendum; STAB; all RQ queue/addenda and active SQL queue; P-UI main/addenda; QDB; MT; GAI; DEX/RL/DT; PERF/OBS/SEC. No other READY candidate was promoted. Existing owners and blockers remain unchanged.
 
 ## Next
-- Resume PERF18 with a deterministic API fixture and prove an SVG render after the SPA route-hop; then complete post-close routing recovery and update this evidence.
+- Resume PERF18 with a deterministic API fixture and prove an SVG render after the SPA route-hop; then update acceptance and queue status.

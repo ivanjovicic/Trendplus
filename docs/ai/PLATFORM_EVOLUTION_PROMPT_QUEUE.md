@@ -2810,13 +2810,14 @@ Commit suggestion: `perf(frontend): restore chart chunk route isolation`
 - Completion: production entry no longer preloads Recharts on `/prodaja`; shared React dependencies are separated; the existing bundle budget rejects a seeded Recharts preload recurrence.
 - Changed files: `Klijent/clientapp/vite.config.ts`; `Klijent/clientapp/scripts/check-bundle-budget.mjs`; `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`; `docs/roadmaps/PERFORMANCE_ROADMAP.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-07-PERF18-evidence.md`.
 - Checks run: `npm run typecheck`; `npm run build`; `npm run check:bundle-budget -- --self-test`; `npm run check:bundle-budget`; `npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx` (5/5); all prompt-queue/planning/instruction validators; Puppeteer entry and chart-route network checks; `git diff --check`.
-- Checks not run: data-backed browser SVG render/SPA route-hop (fixture-free API requests fail locally; existing responsive harness crashes in its geometry collector); CI not inspected after delivery.
+- Checks not run: data-backed browser SVG render/SPA route-hop (fixture-free API requests fail locally; existing responsive harness crashes in its geometry collector).
+- CI: Planning Governance run `37649069166` PASS on `42baa329`; Analytics Quality Gates run `37649069125` RED in `Run analytics tests` (153 pass / 6 fail across unrelated analytics UI specs; guardrails/build were skipped after test failure; no causal link to PERF18 established).
 - Run log: `.ai/runs/2026-10-07-PERF18-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: pending
-- Main verification: pending
-- Missed: prove a Recharts SVG renders after an SPA hop from `/prodaja` using deterministic API fixtures; inspect relevant current-main CI run.
+- Main verification: `origin/main` `42baa32987590ad44660afc72b4a3641baff576f` contains implementation SHA.
+- Missed: prove a Recharts SVG renders after an SPA hop from `/prodaja` using deterministic API fixtures.
 - Follow-up: resume PERF18 browser proof and synchronize evidence; do not claim DONE until the missing route-hop/chart-render acceptance passes.
 - Residual risk: local network evidence confirms correct asset isolation and route loading, but not a chart SVG render with data.
 - Next: PERF18 browser proof follow-up

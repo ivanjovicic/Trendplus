@@ -38,6 +38,8 @@ Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain 
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
+Routing correction 2026-10-07: the PERF19 status in the summary above is stale; PERF19 is DONE on main with local HTTP/contributor measurements. PERF18 is PARTIAL after fixing and guarding the Recharts entry-preload regression; its current browser-render/SPA-hop follow-up is recorded in `.ai/runs/2026-10-07-PERF18-evidence.md`.
+
 ### PERF-19 - Decision Board composition regression
 
 Retained production evidence from 2026-10-04 measured the Decision Board at about 17.3 seconds for a fixed July window. PERF19 measured the full local HTTP endpoint after RQ573 on the same July window: cold-process/cold-cache HTTP 3.35 s and warm N=20 p50/p95 343/654 ms, with all seven contributors and composition timed. Warm local p95 is within the 2 s target; the production-vs-local gap remains unexplained. The local fixture has degraded source states and no supplier 90-day dataset, so this is a local performance result rather than deployed or fully healthy-source proof. See `.ai/runs/2026-10-07-PERF19-evidence.md`.
