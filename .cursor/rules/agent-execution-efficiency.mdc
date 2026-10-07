@@ -9,6 +9,8 @@ Follow `AGENTS.md`, `docs/ai/AGENT_START_HERE.md`, and `docs/ai/AI_WORKFLOW_AND_
 
 This topology limit is **per parent run/workspace**, not repository-global. Independent top-level Cursor/Codex/ChatGPT agents may concurrently claim different collision-safe `READY` prompts. Do not turn the “one subagent” rule into a one-agent-for-the-whole-queue rule.
 
+**Same-task ownership is never parallel-safe.** If the canonical queue says task `X` is `IN_PROGRESS` and names another owner/workspace, Cursor must not adopt `X` merely because an implementation commit for `X` is already on `origin/main`, because a local lock is not visible, or because no remote branch/PR is found. The original owner still owns focused validation, evidence/status synchronization and post-close routing. Do not create a same-task draft PR or evidence-closure commit. Read-only review is allowed; send findings to the owner and choose another READY lane. Only an explicit handoff/release or the canonical stale-takeover proof in `docs/ai/PROMPT_QUEUE_PROTOCOL.md` permits takeover.
+
 ## Direct-by-default
 
 The current/main agent owns normal execution. Complete bounded work directly through:
