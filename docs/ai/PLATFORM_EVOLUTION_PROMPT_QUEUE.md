@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF17` DONE; `PERF18` WAITING on current browser/network proof; `PERF19` WAITING after RQ573 for measured Decision Board composition profiling; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF19` DONE with local cold/warm HTTP and per-contributor evidence; `PERF18` WAITING on current browser/network proof; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
@@ -2868,7 +2868,7 @@ Commit suggestion: `perf(frontend): restore chart chunk route isolation`
 
 ## PERF19 - Measure and bound Decision Board server composition after Product Decision slimming
 
-Status: WAITING
+Status: DONE
 Ready after: RQ573 DONE; then fresh collision check against any active Decision Board backend owner
 Priority: P1
 Type: backend/performance/observability/tests
@@ -2876,6 +2876,28 @@ Feature family: decision-board-composition-performance
 Parallel-safe: no with an active `DecisionBoardEndpoints.cs` owner
 Owner: Performance / Analytics Reliability
 Commit suggestion: `perf(analytics): measure decision board composition before optimizing it`
+$1
+Owner claim 2026-10-07: RQ573 is DONE on current origin/main and its evidence confirms that only the Board projection (not full endpoint latency/contributor timing) was measured; the retained 17.3s Board observation remains unresolved. Fresh collision check found DecisionBoardEndpoints.cs clean in this worktree, no matching local/remote PERF19 or active Decision Board backend branch/lock, and no related open PR. PERF19 moved WAITING -> READY -> IN_PROGRESS on codex/perf19-decision-board-composition; see .ai/runs/2026-10-07-PERF19-evidence.md.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: 100% of repository-local PERF19 scope
+- Changed files: `Api/Endpoints/DecisionBoardEndpoints.cs`, `Api.Tests/DecisionBoardEndpointsTests.cs`, `Api.Tests/OperationsAnalyticsAllRoutesIntegrationTests.cs`, `Api.Tests/Api.Tests.csproj`, `.ai/runs/2026-10-07-PERF19-evidence.md`, `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`, `docs/roadmaps/PERFORMANCE_ROADMAP.md`, `MASTER_ROADMAP.md`
+- Checks run: full Decision Board HTTP harness + focused endpoint tests, API/test build, `git diff --check`, queue/planning validators
+- Checks not run: deployed/provider-side latency verification; external evidence remains under STAB16
+- Run log: `.ai/runs/2026-10-07-PERF19-evidence.md`
+- Evidence state: pending main delivery verification
+- Ownership transfer: none
+- Delivery mode: main-first
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: no local optimization was justified; supplier summary remains fail-closed because the fixture has no supplier 90-day dataset
+- Follow-up: STAB16 must compare deployed contributor latency with this local profile
+- Residual risk: local fixture is not production data; its product/inventory/data-quality source states are degraded and its supplier summary is unavailable
+
+PERF19 local HTTP evidence (fixed July 7–August 6 fixture, post-RQ573): cold-process/cold-cache HTTP 3,351.94 ms; first server composition 2,064.89 ms. Warm process N=20 HTTP p50 343.05 ms / p95 653.56 ms (min 81.06, max 760.88), within the 2 s warm p95 budget. Warm contributor p50/p95 ms: Product Decision 71.09/174.07; inventory insights 22.12/53.22; inventory workflow 46.86/83.64; supplier summary 41.10/148.65 (`failed` on all samples because fixture has no supplier dataset); Actions 47.59/107.78; refresh status 41.15/101.97; Data Quality 31.30/82.64; board composition 0.54/3.57. Cache logs show initial miss then warm hits. Stable Board business/trust payload (sections/cards/order/counts/warnings/source states/metrics) matched across all 20 warm samples. Source-state summary was `product-decision-center:critical, inventory-workflow:warning, supplier-decision-hub:unknown, analytics-actions:good, action-outcome-summary:unknown, refresh-status:unknown, data-quality-health:warning`; this is explicitly a degraded local fixture, not deployed proof. The production ~17.3 s observation remains unexplained locally; no speculative index/cache/concurrency change was made.
 
 ### Problem
 

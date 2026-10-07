@@ -10,6 +10,7 @@ using Infrastructure.Services.Analytics;
 using Infrastructure.Services.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Globalization;
 using Trendplus2.Dtos;
 
@@ -54,6 +55,31 @@ public static class DecisionBoardEndpoints
     {
         var correlationId = ResolveCorrelationId(httpContext);
         var normalizedDataScope = NormalizeDataScope(dataScope);
+        var profileSections = configuration.GetValue<bool>("AnalyticsDecisionBoardSectionTiming:Enabled")
+            || (httpContext.Request.Query.TryGetValue("profileSections", out var profileSectionsQuery)
+                && bool.TryParse(profileSectionsQuery.ToString(), out var parsedProfileSections)
+                && parsedProfileSections);
+        var profileSample = NormalizeProfileSample(
+            httpContext.Request.Query.TryGetValue("profileSample", out var profileSampleQuery)
+                ? profileSampleQuery.ToString()
+                : null);
+        var requestStopwatch = profileSections ? Stopwatch.StartNew() : null;
+
+        void LogProfiledSection(string section, Stopwatch? stopwatch, string outcome)
+        {
+            if (stopwatch is null)
+            {
+                return;
+            }
+
+            stopwatch.Stop();
+            logger.LogInformation(
+                "decision-board.section sample={Sample} section={Section} elapsedMs={ElapsedMs:F2} outcome={Outcome}",
+                profileSample,
+                section,
+                stopwatch.Elapsed.TotalMilliseconds,
+                outcome);
+        }
         string? defaultPeriodBasis = null;
         DateTime? resolvedObservedHorizonUtc = null;
         if (!fromDate.HasValue && !toDate.HasValue)
@@ -80,6 +106,7 @@ public static class DecisionBoardEndpoints
         AnalyticsRefreshStatusDto? refreshStatus = null;
         AnalyticsDataQualityHealthSnapshot? dataQualityHealth = null;
 
+        var productDecisionCenterStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             productDecisionCenter = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
@@ -99,7 +126,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("product_decision_center_unavailable");
             logger.LogWarning(ex, "Decision board product snapshot failed.");
         }
+        LogProfiledSection("product-decision-center", productDecisionCenterStopwatch, ResolveProfileOutcome(warnings, "product_decision_center_unavailable", productDecisionCenter is not null));
 
+        var inventoryInsightsStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             inventoryInsights = await InventoryEndpoints.GetInventoryInsightsAsync(
@@ -118,7 +147,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("inventory_insights_unavailable");
             logger.LogWarning(ex, "Decision board inventory insights failed.");
         }
+        LogProfiledSection("inventory-insights", inventoryInsightsStopwatch, ResolveProfileOutcome(warnings, "inventory_insights_unavailable", inventoryInsights is not null));
 
+        var inventoryWorkflowStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             inventoryWorkflow = await InventoryEndpoints.GetInventoryActionWorkflowAsync(
@@ -137,7 +168,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("inventory_workflow_unavailable");
             logger.LogWarning(ex, "Decision board inventory workflow failed.");
         }
+        LogProfiledSection("inventory-workflow", inventoryWorkflowStopwatch, ResolveProfileOutcome(warnings, "inventory_workflow_unavailable", inventoryWorkflow is not null));
 
+        var supplierSummaryStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             var analyticsConnectionString = AnalyticsConnectionResolver.Resolve(configuration);
@@ -174,7 +207,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("supplier_summary_unavailable");
             logger.LogWarning(ex, "Decision board supplier summary failed.");
         }
+        LogProfiledSection("supplier-summary", supplierSummaryStopwatch, ResolveProfileOutcome(warnings, "supplier_summary_unavailable", supplierSummary is not null));
 
+        var actionsStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             var actionList = await actionItemService.ListOperationalAsync(
@@ -208,7 +243,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("analytics_actions_unavailable");
             logger.LogWarning(ex, "Decision board actions snapshot failed.");
         }
+        LogProfiledSection("actions", actionsStopwatch, ResolveProfileOutcome(warnings, "analytics_actions_unavailable", outcomeSummary is not null));
 
+        var refreshStatusStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             refreshStatus = await refreshStatusService.GetStatusAsync(ct);
@@ -218,7 +255,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("refresh_status_unavailable");
             logger.LogWarning(ex, "Decision board refresh status failed.");
         }
+        LogProfiledSection("refresh-status", refreshStatusStopwatch, ResolveProfileOutcome(warnings, "refresh_status_unavailable", refreshStatus is not null));
 
+        var dataQualityHealthStopwatch = profileSections ? Stopwatch.StartNew() : null;
         try
         {
             var lookbackDays = Math.Clamp((int)Math.Ceiling((periodToUtc.Date - periodFromUtc.Date).TotalDays) + 1, 1, 365);
@@ -229,7 +268,9 @@ public static class DecisionBoardEndpoints
             warnings.Add("data_quality_health_unavailable");
             logger.LogWarning(ex, "Decision board data quality snapshot failed.");
         }
+        LogProfiledSection("data-quality-health", dataQualityHealthStopwatch, ResolveProfileOutcome(warnings, "data_quality_health_unavailable", dataQualityHealth is not null));
 
+        var compositionStopwatch = profileSections ? Stopwatch.StartNew() : null;
         var response = BuildDecisionBoardResponse(
             generatedAtUtc: DateTime.UtcNow,
             periodFromUtc,
@@ -248,6 +289,7 @@ public static class DecisionBoardEndpoints
             storeId,
             supplierId,
             excludedFixtureCount);
+        LogProfiledSection("board-composition", compositionStopwatch, "returned");
 
         var responseMeta = BuildDecisionBoardMeta(
             response,
@@ -258,8 +300,41 @@ public static class DecisionBoardEndpoints
             supplierId);
         responseMeta.DefaultPeriodBasis = defaultPeriodBasis;
         responseMeta.ComparisonUnavailableReasonCode = productDecisionCenter?.Meta?.ComparisonUnavailableReasonCode;
+        if (requestStopwatch is not null)
+        {
+            requestStopwatch.Stop();
+            var sourceStates = string.Join(',', response.SourceStates.Select(source => $"{source.SourceKey}:{source.Status}"));
+            if (sourceStates.Length > 512)
+            {
+                sourceStates = sourceStates[..512];
+            }
+
+            logger.LogInformation(
+                "decision-board.total sample={Sample} elapsedMs={ElapsedMs:F2} sourceWarnings={WarningCount} sourceStates={SourceStates}",
+                profileSample,
+                requestStopwatch.Elapsed.TotalMilliseconds,
+                warnings.Count,
+                sourceStates);
+        }
         return Results.Ok(response with { Meta = responseMeta });
     }
+
+    internal static string NormalizeProfileSample(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unspecified";
+        }
+
+        var normalized = new string(value
+            .Where(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_')
+            .Take(48)
+            .ToArray());
+        return normalized.Length == 0 ? "unspecified" : normalized;
+    }
+
+    internal static string ResolveProfileOutcome(IReadOnlyCollection<string> warnings, string failureCode, bool returned) =>
+        warnings.Contains(failureCode, StringComparer.Ordinal) ? "failed" : returned ? "returned" : "unavailable";
 
     internal static DecisionBoardAggregateResponseDto BuildDecisionBoardResponse(
         DateTime generatedAtUtc,

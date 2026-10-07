@@ -40,16 +40,9 @@ No runtime optimization is accepted without a baseline and a before/after compar
 
 ### PERF-19 - Decision Board composition regression
 
-Retained production evidence from 2026-10-04 measured the Decision Board at about 17.3 seconds for a fixed July window. The endpoint awaits Product Decision, inventory insights, inventory workflow, supplier summary, Actions, refresh status and Data Quality in sequence. This is a measured regression relative to the existing Decision Board budget, but the evidence has no per-contributor timing.
+Retained production evidence from 2026-10-04 measured the Decision Board at about 17.3 seconds for a fixed July window. PERF19 measured the full local HTTP endpoint after RQ573 on the same July window: cold-process/cold-cache HTTP 3.35 s and warm N=20 p50/p95 343/654 ms, with all seven contributors and composition timed. Warm local p95 is within the 2 s target; the production-vs-local gap remains unexplained. The local fixture has degraded source states and no supplier 90-day dataset, so this is a local performance result rather than deployed or fully healthy-source proof. See `.ai/runs/2026-10-07-PERF19-evidence.md`.
 
-The executable owner is `PERF19` in `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`:
-- wait for RQ573 because it changes the largest known PDC payload/work;
-- remeasure cold/warm and cache state on the same fixture;
-- add safe contributor timing;
-- close measurement-only if the budget is already restored;
-- otherwise optimize only the measured dominant cause;
-- do not add speculative indexes, caching or concurrency;
-- preserve exact Board cards, ordering, counts, warnings, actionability and trust semantics.
+`PERF19` is DONE as a measurement-only run. No local optimization was justified by the warm fixture result. Preserve its post-RQ573 section profile and route the deployed ~17.3 s discrepancy to STAB16 for provider/database/network evidence; do not infer production latency from the local fixture.
 
 A small dataset is not a reason to ignore a 17-second decision surface; it is a reason to diagnose it before scaling work.
 

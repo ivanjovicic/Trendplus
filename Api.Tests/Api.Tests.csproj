@@ -27,4 +27,43 @@
   <ItemGroup>
     <ProjectReference Include="..\Api\Api.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Database\Migrations\002_CreatePerformanceLogsTable.sql">
+      <Link>Database\Migrations\002_CreatePerformanceLogsTable.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\operations-analytics-all-routes-seed.sql">
+      <Link>Api.Tests\Fixtures\operations-analytics-all-routes-seed.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\rq568-prepost-adversarial.sql">
+      <Link>Api.Tests\Fixtures\rq568-prepost-adversarial.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Migrations\012_AddAccessImportSupport.sql">
+      <Link>Database\Migrations\012_AddAccessImportSupport.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Migrations\017_CreateNightlyAnalyticsMaterializedViews.sql">
+      <Link>Database\Migrations\017_CreateNightlyAnalyticsMaterializedViews.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Migrations\013_AddVendorSalesNivelacijaViews.sql">
+      <Link>Database\Migrations\013_AddVendorSalesNivelacijaViews.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Migrations\014_NormalizeNivelacijaEvents.sql">
+      <Link>Database\Migrations\014_NormalizeNivelacijaEvents.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Analytics\014_CreateVendorSalesNivelacijaViews.sql">
+      <Link>Database\Analytics\014_CreateVendorSalesNivelacijaViews.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Database\Migrations\016_AnalyticsNivelacijaEnhancements.sql">
+      <Link>Database\Migrations\016_AnalyticsNivelacijaEnhancements.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

@@ -10,6 +10,32 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class DecisionBoardEndpointsTests
 {
+    [Theory]
+    [InlineData("sample 42/secret", "sample42secret")]
+    [InlineData("", "unspecified")]
+    [InlineData("***", "unspecified")]
+    public void NormalizeProfileSample_RemovesUnsafeCharacters(string input, string expected)
+    {
+        Assert.Equal(expected, DecisionBoardEndpoints.NormalizeProfileSample(input));
+    }
+
+    [Fact]
+    public void NormalizeProfileSample_CapsLengthAt48Characters()
+    {
+        Assert.Equal(new string('a', 48), DecisionBoardEndpoints.NormalizeProfileSample(new string('a', 64)));
+    }
+
+    [Fact]
+    public void ResolveProfileOutcome_UsesFailureWarningEvenWhenFallbackValueExists()
+    {
+        Assert.Equal("failed", DecisionBoardEndpoints.ResolveProfileOutcome(
+            ["analytics_actions_unavailable"],
+            "analytics_actions_unavailable",
+            returned: true));
+        Assert.Equal("returned", DecisionBoardEndpoints.ResolveProfileOutcome([], "analytics_actions_unavailable", returned: true));
+        Assert.Equal("unavailable", DecisionBoardEndpoints.ResolveProfileOutcome([], "analytics_actions_unavailable", returned: false));
+    }
+
     [Fact]
     public void BuildDecisionBoardResponse_QuarantinesSmokeActionsAndKeepsRealIncompleteEvidenceAction()
     {

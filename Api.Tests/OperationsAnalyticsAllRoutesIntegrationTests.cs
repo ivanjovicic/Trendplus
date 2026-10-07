@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 using Xunit;
 
@@ -35,6 +36,113 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         _postgres = postgres;
         _output = output;
     }
+
+    [Fact(DisplayName = "PERF19 measures full Decision Board cold and warm HTTP composition")]
+    public async Task DecisionBoardHttp_ProfilesColdWarmAndPreservesBusinessPayload()
+    {
+        Assert.True(_postgres.IsAvailable, "PERF19 requires its disposable PostgreSQL Testcontainer.");
+        var connectionString = await _postgres.TryCreateDatabaseConnectionStringAsync($"perf19_board_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+        await SeedSharedFixtureAsync(connectionString!);
+
+        var logs = new CapturingLoggerProvider();
+        await using var factory = new OperationsEndpointFactory(connectionString!, logs, "memory");
+        using var client = factory.CreateDefaultClient();
+        const string route = "/api/analytics/decision-board?fromDate=2026-07-07&toDate=2026-08-06&dataScope=all&profileSections=true&profileSample=perf19-cold";
+
+        var coldWatch = System.Diagnostics.Stopwatch.StartNew();
+        using var coldResponse = await client.GetAsync(route);
+        coldWatch.Stop();
+        Assert.Equal(HttpStatusCode.OK, coldResponse.StatusCode);
+        var coldBody = await coldResponse.Content.ReadAsStringAsync();
+        using var coldDocument = JsonDocument.Parse(coldBody);
+        var stableCold = StableDecisionBoardPayload(coldDocument.RootElement);
+        _output.WriteLine("PERF19 Decision Board HTTP cold-process/cold-cache elapsedMs={0}; payloadBytes={1}", coldWatch.Elapsed.TotalMilliseconds, System.Text.Encoding.UTF8.GetByteCount(coldBody));
+
+        var warmSamples = new List<double>(20);
+        for (var sample = 0; sample < 20; sample++)
+        {
+            var requestRoute = route.Replace("perf19-cold", $"perf19-warm-{sample}", StringComparison.Ordinal);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            using var response = await client.GetAsync(requestRoute);
+            watch.Stop();
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(body);
+            Assert.Equal(stableCold, StableDecisionBoardPayload(document.RootElement));
+            warmSamples.Add(watch.Elapsed.TotalMilliseconds);
+        }
+
+        var orderedSamples = warmSamples.Order().ToArray();
+        _output.WriteLine("PERF19 Decision Board HTTP warm-process samples={0}; p50Ms={1:F2}; p95Ms={2:F2}; minMs={3:F2}; maxMs={4:F2}; cacheProvider=memory",
+            orderedSamples.Length,
+            Percentile(orderedSamples, 0.50),
+            Percentile(orderedSamples, 0.95),
+            orderedSamples[0],
+            orderedSamples[^1]);
+
+        var profileLines = logs.Messages.Where(message => message.Contains("decision-board.section", StringComparison.Ordinal)
+            || message.Contains("decision-board.total", StringComparison.Ordinal)
+            || message.Contains("Cache HIT", StringComparison.Ordinal)
+            || message.Contains("Cache MISS", StringComparison.Ordinal)
+            || message.Contains("Decision board supplier summary failed", StringComparison.Ordinal)).ToArray();
+        Assert.Contains(profileLines, message => message.Contains("Cache MISS", StringComparison.Ordinal));
+        Assert.Contains(profileLines, message => message.Contains("Cache HIT", StringComparison.Ordinal));
+        foreach (var section in new[] { "product-decision-center", "inventory-insights", "inventory-workflow", "supplier-summary", "actions", "refresh-status", "data-quality-health", "board-composition" })
+            Assert.Contains(profileLines, message => message.Contains($"section={section}", StringComparison.Ordinal));
+        foreach (var line in profileLines)
+            _output.WriteLine("PERF19 log {0}", line);
+    }
+
+    private static string StableDecisionBoardPayload(JsonElement root)
+    {
+        var fields = new[] { "sections", "sourceStates", "warnings", "metrics", "counts" };
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            foreach (var field in fields)
+            {
+                if (!root.TryGetProperty(field, out var value))
+                    continue;
+                writer.WritePropertyName(field);
+                WriteStableJson(value, writer);
+            }
+            writer.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void WriteStableJson(JsonElement value, Utf8JsonWriter writer)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in value.EnumerateObject())
+                {
+                    if (property.Name.EndsWith("AtUtc", StringComparison.OrdinalIgnoreCase)
+                        || property.Name.Equals("generatedAt", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    writer.WritePropertyName(property.Name);
+                    WriteStableJson(property.Value, writer);
+                }
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in value.EnumerateArray())
+                    WriteStableJson(item, writer);
+                writer.WriteEndArray();
+                break;
+            default:
+                value.WriteTo(writer);
+                break;
+        }
+    }
+
+    private static double Percentile(double[] orderedValues, double percentile) =>
+        orderedValues[Math.Clamp((int)Math.Ceiling(percentile * orderedValues.Length) - 1, 0, orderedValues.Length - 1)];
 
     [Fact(DisplayName = "RQ561 certifies the six current Operations screens against one adversarial fixture")]
     public async Task SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts()
@@ -573,6 +681,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
+        await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "002_CreatePerformanceLogsTable.sql");
         await ExecuteRepositorySqlAsync(connection, "Database", "Migrations", "012_AddAccessImportSupport.sql");
 
         var sharedFixture = await File.ReadAllTextAsync(
@@ -856,14 +965,17 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
 
     private static string FindRepositoryFile(params string[] segments)
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
+        foreach (var startPath in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory }.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var candidate = Path.Combine(new[] { directory.FullName }.Concat(segments).ToArray());
-            if (File.Exists(candidate))
-                return candidate;
+            var directory = new DirectoryInfo(startPath);
+            while (directory is not null)
+            {
+                var candidate = Path.Combine(new[] { directory.FullName }.Concat(segments).ToArray());
+                if (File.Exists(candidate))
+                    return candidate;
 
-            directory = directory.Parent;
+                directory = directory.Parent;
+            }
         }
 
         throw new FileNotFoundException($"Could not find repository fixture: {Path.Combine(segments)}");
@@ -911,7 +1023,10 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         }
     }
 
-    private sealed class OperationsEndpointFactory(string connectionString) : WebApplicationFactory<global::Program>
+    private sealed class OperationsEndpointFactory(
+        string connectionString,
+        CapturingLoggerProvider? loggerProvider = null,
+        string analyticsCacheProvider = "disabled") : WebApplicationFactory<global::Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -922,15 +1037,31 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
                     ["StartupReadiness:GateApiTraffic"] = "false",
                     ["PROCESS_TYPE"] = "web",
                     ["Workers:Enabled"] = "false",
-                    ["Caching:Provider"] = "disabled",
+                    ["AnalyticsCache:Provider"] = analyticsCacheProvider,
+                    ["AnalyticsDecisionBoardSectionTiming:Enabled"] = "true",
+                    ["Analytics:AllowLoopbackInProduction"] = "true",
                     ["ConnectionStrings:DefaultConnection"] = connectionString,
                     ["ConnectionStrings:AnalyticsConnection"] = connectionString,
                     ["ConnectionStrings:OpenProductTrainingConnection"] = connectionString,
                     ["DailySales:TimeZoneId"] = "Europe/Belgrade"
                 }));
 
+            if (loggerProvider is not null)
+                builder.ConfigureLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Debug);
+                    logging.AddProvider(loggerProvider);
+                });
+
             builder.ConfigureServices(services =>
             {
+                if (loggerProvider is not null)
+                {
+                    services.AddSingleton<ILogger<global::Program>>(
+                        _ => loggerProvider.CreateLogger<global::Program>());
+                    services.AddSingleton<ILogger<Infrastructure.Services.Caching.InMemoryCacheService>>(
+                        _ => loggerProvider.CreateLogger<Infrastructure.Services.Caching.InMemoryCacheService>());
+                }
                 services.RemoveAll<IHostedService>();
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
@@ -946,6 +1077,50 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
                 services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString));
                 services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
             });
+        }
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> _messages = new();
+        public IReadOnlyCollection<string> Messages => _messages.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(_messages);
+        public ILogger<T> CreateLogger<T>() => new CapturingLogger<T>(_messages);
+        public void Dispose() { }
+
+        private sealed class CapturingLogger(System.Collections.Concurrent.ConcurrentQueue<string> messages) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (IsEnabled(logLevel))
+                    messages.Enqueue(exception is null
+                        ? formatter(state, exception)
+                        : $"{formatter(state, exception)} error={exception.GetType().Name}:{exception.Message}");
+            }
+        }
+
+        private sealed class CapturingLogger<T>(System.Collections.Concurrent.ConcurrentQueue<string> messages) : ILogger<T>
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                if (IsEnabled(logLevel))
+                    messages.Enqueue(exception is null
+                        ? formatter(state, exception)
+                        : $"{formatter(state, exception)} error={exception.GetType().Name}:{exception.Message}");
+            }
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static NullScope Instance { get; } = new();
+            public void Dispose() { }
         }
     }
 }
