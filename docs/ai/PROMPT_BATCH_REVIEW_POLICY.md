@@ -1,6 +1,6 @@
 # Trendplus Prompt Batch Review Policy
 
-Date: 2026-07-01
+Date: 2026-10-07
 Repo: `ivanjovicic/Trendplus`
 Status: prompt-system maintenance policy
 Adapted from: AgentsWatch batch review rule and MathLearning prompt-evidence discipline
@@ -54,6 +54,10 @@ A batch review must check:
 - prompts marked ready despite blocked gates
 - missing validation/evidence requirements
 - contradictions between `AGENT_START_HERE`, protocol, `MASTER_ROADMAP`, safety gate and owner queues
+- **queue-mechanics duplication outside `PROMPT_QUEUE_PROTOCOL.md`** (selector/takeover/lock/no-READY algorithms copied into launchers, addenda or summaries)
+- authority inversion: implementation evidence/code/tests treated as permission to override a named owner, `IN_PROGRESS` claim or takeover rule
+- stale helper rules such as “execute only Current READY”, one-prompt-per-session serialization, commit-on-main implying release, or missing-lock/branch implying stale ownership
+- zero-READY prose that lists blockers without the Mandatory no-READY action ladder, attempted unblock work, disjoint-split analysis and exact unblock event
 - old prompts superseded by newer refined prompts
 - excessive token requirements caused by unnecessary read-first docs
 - missing follow-up prompts for discovered issues
@@ -84,6 +88,10 @@ If review finds more than three unrelated issues, do not fix everything in one c
 Docs-only default:
 
 ```bash
+node scripts/check-agent-instructions.mjs --self-test
+node scripts/check-agent-instructions.mjs
+node scripts/check-prompt-queues.mjs --self-test
+node scripts/check-prompt-queues.mjs
 git diff --check
 ```
 
