@@ -180,7 +180,7 @@ If a line cannot be answered, do not guess the runtime contract.
 Queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not maintain a second selector algorithm here.
 
 1. Resolve the owner program from `MASTER_ROADMAP.md` and use the protocol to select/claim a collision-safe `READY` prompt. Never take the same task ID from another active owner: an `IN_PROGRESS` claim remains owned through validation/evidence/status close-out even after its implementation commit reaches `main`; absence of a visible lock/branch/PR is not release evidence.
-2. If `Current READY` is `none`, run the protocol's **Idle recovery** sequence before reporting that no work is available. Re-check stale dependencies/statuses, recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program.
+2. If `Current READY` is `none`, run the protocol's **Idle recovery** and **Mandatory no-READY action ladder** before reporting that no work is available. Re-check stale dependencies/statuses, actively attempt bounded repo-local unblock/proof work, split a meaningful disjoint slice when one path blocks a broader same-owner prompt, inspect recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program. A zero-READY answer must say what was attempted, why no safe split exists and the exact unblock event.
 3. Before leaving a candidate blocked, perform the protocol's **Mandatory blocker decomposition**:
    - is the dependency already satisfied/stale?
    - is it a true start gate or only final/deployed acceptance evidence?
