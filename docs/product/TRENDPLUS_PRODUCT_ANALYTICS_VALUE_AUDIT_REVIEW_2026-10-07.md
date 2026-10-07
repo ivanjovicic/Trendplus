@@ -1,7 +1,9 @@
 # Trendplus product / analytics audit — claim review and owner actions (2026-10-07)
 
-Status: current product-direction correction; does not replace live queue routing  
-Reviewed base: `origin/main=016ea46fbca87bccc49e562e15df75367e01c06e` before this correction commit  
+Status: current product-direction correction; does not replace live queue routing
+
+Reviewed base: `origin/main=016ea46fbca87bccc49e562e15df75367e01c06e` before this correction commit
+
 Primary audited document: `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md`
 
 ## Verdict
