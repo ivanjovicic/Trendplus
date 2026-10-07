@@ -3150,7 +3150,7 @@ Two always-mounted chrome elements degrade every screen on phones:
 
 ## P-UI-46 - Operational and šifarnik screens: phone-usable lists, actions and paging
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: P-UI-42 DONE (coarse-pointer target foundation)
 Priority: P3
 Type: frontend/tests
@@ -3213,7 +3213,7 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 - Changed files: `Klijent/clientapp/scripts/responsive_baseline.mjs`; `Klijent/clientapp/src/components/WorkersPanel.css`; `Klijent/clientapp/src/components/WorkersPanel.tsx`; `Klijent/clientapp/src/components/__tests__/WorkersPanel.spec.tsx`; `Klijent/clientapp/src/components/transfers/TransferItemsTable.tsx`; `Klijent/clientapp/src/components/transfers/__tests__/TransferItemsTable.spec.tsx`; `Klijent/clientapp/src/pages/ConfigurationPage.css`; `Klijent/clientapp/src/pages/ConfigurationPage.tsx`; `Klijent/clientapp/src/pages/DnevnikPromenaPage.tsx`; `Klijent/clientapp/src/pages/DobavljaciPage.tsx`; `Klijent/clientapp/src/pages/LogsPage.tsx`; `Klijent/clientapp/src/pages/NivelacijePage.tsx`; `Klijent/clientapp/src/pages/PovracajPage.tsx`; `Klijent/clientapp/src/pages/SezonaPage.tsx`; seven corresponding `Klijent/clientapp/src/pages/__tests__/*.spec.tsx` files; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-07-P-UI-42-evidence.md`; `.ai/runs/2026-10-07-P-UI-46-evidence.md`.
 - Contract/runtime behavior changed: presentation and progressive client rendering only; endpoint contracts, server paging, filter requests, data, actions and permission gates are preserved.
 - Checks run: nine focused Vitest files, 21 tests; `npm run check:analytics-guardrails` (39 existing baseline findings, zero new); `npm run build`; responsive browser fixture matrix at 360/768/1024 for eight routes (zero document overflow and page errors); `git diff --check`; responsive runner executed successfully.
-- Checks not run: full frontend suite; physical iOS/Safari; full responsive dark-theme matrix. Analytics Quality Gates run `37602941157` on the implementation SHA was `in_progress` at evidence capture.
+- Checks not run: full frontend suite locally; physical iOS/Safari; full responsive dark-theme matrix. Analytics Quality Gates run `37602941157` on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8` finished red: 1132 passed / 6 failed across 5 analytics spec files; the POS build job passed. Failures are outside P-UI-46 changed paths. Three duplicate trust-header text assertions (`Postoje upozorenja`, `Sveže`, `Učitavanje pouzdanosti`) were already red in prior run `37592911311`; the remaining failures are in Dashboard, Decision Board and Supplier analytics specs, also outside this prompt's paths. Workflow guardrails/build steps were skipped after the analytics test step failed.
 - Run log: `.ai/runs/2026-10-07-P-UI-46-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
@@ -3221,7 +3221,7 @@ The store/back-office list screens were outside P-UI-30/P-UI-37. They render ful
 - Main verification: fresh `origin/main` equals `02dddf8da4431e07059b62f1d8df2a462ef35be8`; implementation commit is contained.
 - Missed: no known in-scope repo-local acceptance; physical iOS/Safari validation remains unavailable.
 - Follow-up: P-UI-52 owns navigation IA and bounded user-facing Serbian copy; page-family paths owned by active tasks remain excluded.
-- Residual risk: browser matrix uses deterministic API fixtures; no physical-device Safari run. Existing Recharts bundle advisory and pre-existing focused-test warnings remain.
+- Residual risk: browser matrix uses deterministic API fixtures; no physical-device Safari run. Analytics Quality Gates run `37602941157` is red on out-of-scope analytics specs; the repeated trust-header failures already appeared in run `37592911311`. The implementation's focused suites, guardrails and local build passed. Existing Recharts bundle advisory and focused-test warnings remain.
 - Next: P-UI-52 IN_PROGRESS on `codex/p-ui-52-analytics-navigation-copy`.
 - Prompt defect / scope repair: none.
 - Post-close routing: full post-close dependency cascade and candidate classification recorded in `.ai/runs/2026-10-07-P-UI-46-evidence.md`.

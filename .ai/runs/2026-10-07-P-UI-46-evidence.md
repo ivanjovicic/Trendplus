@@ -52,7 +52,7 @@ Evidence state: synchronized
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (709 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 planning tasks checked).
 - `node --check Klijent/clientapp/scripts/responsive_baseline.mjs` -> pass before final runner additions; final runner executed successfully in the browser matrix.
-- GitHub Actions Analytics Quality Gates run `37602941157`, exact SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`, was `in_progress` when inspected.
+- GitHub Actions Analytics Quality Gates run `37602941157`, exact SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`, -> red. POS UI build passed; frontend analytics job had 1132 pass / 6 fail across 5 unrelated analytics spec files and skipped downstream guardrail/build steps. Three duplicate trust-header assertions were already red in earlier run `37592911311`; all failed spec paths are outside P-UI-46's changed paths.
 
 ## Validation not run
 - Full frontend suite -> not run; focused acceptance suite and mapped guardrails/build passed.
@@ -69,18 +69,18 @@ Evidence state: synchronized
 ## Risks
 - Responsive proof uses deterministic API fixtures; it does not prove behavior on physical iOS/Safari.
 - Existing focused-test console warnings include nested InfoTip buttons and unhandled worker/analytics status requests in a Configuration test; assertions passed.
-- Build retains the existing Recharts chunk-size advisory. Current-main Analytics Quality Gates run `37602941157` was in progress at evidence capture.
+- Build retains the existing Recharts chunk-size advisory. Analytics Quality Gates run `37602941157` is red on `AnalyticsDashboard.operationalFallback.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`, `ExecutiveDecisionBoardPage.emptyState.spec.tsx` (two cases), `ExecutiveDecisionBoardPage.reuse.spec.tsx`, and `SupplierConsolidatedPage.spec.tsx`. The duplicate trust-header failures are also present in earlier run `37592911311`; every failing path is outside P-UI-46's changed files. The focused suites, local guardrails and local build passed.
 - Local ignored/untracked responsive artifacts remain under `Klijent/clientapp/tmp/` in this isolated worktree; they are excluded from the commit. The user's primary checkout is untouched.
 
 ## Post-close routing recovery
-- Recovery base `origin/main` SHA after the closure push: pending final fresh fetch.
+- Recovery base `origin/main` SHA after the terminal queue transition: pending fresh fetch after this status update is pushed.
 - Implementation SHA searched across the active queue set: `02dddf8da4431e07059b62f1d8df2a462ef35be8`.
 - Active owner queue/addendum files scanned (16): `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; the 11 `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_*_ADDENDUM.md` files; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`; `MASTER_ROADMAP.md`.
 - Higher-priority candidate matrix: BCI has no READY/IN_PROGRESS prompt; STAB16 remains gated on provider/deployed evidence; RQ current READY and SQL current READY are none, with remaining RQ WAITING/PARTIAL items requiring named dependencies, owner/business decisions, sample evidence or authenticated deployed/runtime proof; QDB, MT and GAI have no runnable current READY prompt. No higher-priority repository-local candidate was identified.
 - P-UI non-terminal review: P-UI-38 waits for remaining responsive/theme migrations; P-UI-50 is BLOCKED by an existing uncommitted edit to its owned Product Decision page in the primary checkout; P-UI-46 is DONE; P-UI-52 is dependency-complete and path-disjoint from released P-UI-46 operational work. No P-UI-52 lock, matching branch or open PR was found. No task was promoted from the P-UI-46 completion itself; P-UI-52 was already READY and was then claimed as the safe successor.
 - Newly satisfied dependency: P-UI-46 operational page-family paths are released. P-UI-52 does not depend on P-UI-46.
 - Successor promoted/claimed: P-UI-52, READY -> IN_PROGRESS, `codex/p-ui-52-analytics-navigation-copy`.
-- Full post-close file scan and candidate re-evaluation will be repeated from the recovery SHA after the closure commit reaches `main`.
+- Full post-close file scan and candidate re-evaluation will be repeated from the recovery SHA after the terminal status update reaches `main`.
 
 ## Next
 - Continue P-UI-52 navigation IA and bounded user-facing Serbian copy; skip every active-owner path.
