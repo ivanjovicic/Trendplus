@@ -1,11 +1,21 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { rest } from "../../mocks/mswCompat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../mocks/server";
 import * as analyticsApi from "../../services/analyticsApi";
 import AnalyticsDashboard from "../AnalyticsDashboard";
+
+function LocationDisplay() {
+  const location = useLocation();
+  return <output data-testid="current-location">{`${location.pathname}${location.search}`}</output>;
+}
+
+function HistoryBackButton() {
+  const navigate = useNavigate();
+  return <button type="button" onClick={() => navigate(-1)}>Nazad</button>;
+}
 
 vi.mock("../../components/analytics/AnalyticsDashboardCharts", () => ({
   default: () => <div data-testid="charts-stub" />,
@@ -312,6 +322,8 @@ describe("AnalyticsDashboard control bar", () => {
       target: { value: "6" },
     });
 
+    expect(bootstrapResolvers).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
     await waitFor(() => expect(bootstrapResolvers).toHaveLength(2));
 
     await act(async () => {
@@ -346,10 +358,10 @@ describe("AnalyticsDashboard control bar", () => {
       target: { value: "custom" },
     });
 
-    const fromDate = await screen.findByLabelText("Datum od");
-    const toDate = screen.getByLabelText("Datum do");
+    const fromDate = await screen.findByText("Datum od", { exact: true }).then((label) => label.closest("label")?.querySelector("input") as HTMLInputElement);
+    const toDate = screen.getByText("Datum do", { exact: true }).closest("label")?.querySelector("input") as HTMLInputElement;
     fireEvent.change(fromDate, { target: { value: "" } });
-    expect(await screen.findByTestId("dashboard-period-validation")).toHaveTextContent(
+    expect(await screen.findByTestId("dashboard-draft-period-validation")).toHaveTextContent(
       "unesite oba validna datuma i vremena",
     );
     expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount);
@@ -361,14 +373,16 @@ describe("AnalyticsDashboard control bar", () => {
 
     fireEvent.change(toDate, { target: { value: "2026-09-11T10:00" } });
     fireEvent.change(fromDate, { target: { value: "2026-09-10T10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
     await waitFor(() => expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 1));
     fireEvent.change(toDate, { target: { value: "2026-09-09T10:00" } });
-    expect(await screen.findByTestId("dashboard-period-validation")).toHaveTextContent(
+    expect(await screen.findByTestId("dashboard-draft-period-validation")).toHaveTextContent(
       "datum od ne može biti posle datuma do",
     );
     expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 1);
 
     fireEvent.change(toDate, { target: { value: "2026-09-10T10:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
     await waitFor(() => expect(getBootstrap).toHaveBeenCalledTimes(initialCallCount + 2));
     expect(getBootstrap).toHaveBeenLastCalledWith(
       "2026-09-10T10:00",
@@ -377,6 +391,56 @@ describe("AnalyticsDashboard control bar", () => {
       undefined,
       undefined,
     );
+  });
+
+  it("shares applied filters in the URL and restores them with browser history", async () => {
+    const getBootstrap = vi.spyOn(analyticsApi, "getDashboardBootstrap").mockResolvedValue(buildBootstrapResponse("URL state"));
+    const previous = "/analytics?fromDate=2026-09-01T00%3A00&toDate=2026-09-01T23%3A59&periodPreset=custom";
+    const current = "/analytics?fromDate=2026-09-02T00%3A00&toDate=2026-09-02T23%3A59&periodPreset=custom";
+
+    render(
+      <MemoryRouter initialEntries={[previous, current]} initialIndex={1}>
+        <HistoryBackButton />
+        <Routes>
+          <Route path="/analytics" element={<><AnalyticsDashboard /><LocationDisplay /></>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getBootstrap).toHaveBeenCalledWith(
+      "2026-09-02T00:00",
+      "2026-09-02T23:59",
+      true,
+      undefined,
+      undefined,
+    ));
+    expect(screen.getAllByText("02.09.2026").length).toBe(2);
+    const callsBeforeDraft = getBootstrap.mock.calls.length;
+    const fromDate = screen.getByText("Datum od", { exact: true }).closest("label")?.querySelector("input") as HTMLInputElement;
+    const toDate = screen.getByText("Datum do", { exact: true }).closest("label")?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(fromDate, { target: { value: "2026-09-03T08:00" } });
+    fireEvent.change(toDate, { target: { value: "2026-09-03T18:00" } });
+    expect(getBootstrap).toHaveBeenCalledTimes(callsBeforeDraft);
+
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+    await waitFor(() => expect(getBootstrap).toHaveBeenLastCalledWith(
+      "2026-09-03T08:00",
+      "2026-09-03T18:00",
+      true,
+      undefined,
+      undefined,
+    ));
+    expect(screen.getByTestId("current-location")).toHaveTextContent("fromDate=2026-09-03T08%3A00");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nazad" }));
+    await waitFor(() => expect(fromDate).toHaveValue("2026-09-02T00:00"));
+    await waitFor(() => expect(getBootstrap).toHaveBeenLastCalledWith(
+      "2026-09-02T00:00",
+      "2026-09-02T23:59",
+      true,
+      undefined,
+      undefined,
+    ));
   });
 
   it.each([

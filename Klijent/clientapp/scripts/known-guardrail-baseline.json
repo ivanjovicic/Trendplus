@@ -23,13 +23,13 @@
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1436,
+      "line": 1506,
       "reason": "Existing dashboard fallback requires a reviewed empty/error-state exception."
     },
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "page_reduce_kpi",
-      "line": 157,
+      "line": 158,
       "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
     },
     {
@@ -59,7 +59,7 @@
     {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1045,
+      "line": 1046,
       "reason": "Existing decision-board fallback requires a reviewed trust-contract exception."
     },
     {

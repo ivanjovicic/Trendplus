@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty, fmtNumber, fmtPctFromRatio, getPresetRange } from "../analyticsFormatters";
+import { fmtRsd, fmtRsdShort, fmtPct, fmtSignedPct, fmtQty, fmtNumber, fmtPctFromRatio, formatDateInputEcho, getPresetRange } from "../analyticsFormatters";
 
 describe("analyticsformatters", () => {
   it("formats RSD values and includes currency suffix", () => {
@@ -12,6 +12,12 @@ describe("analyticsformatters", () => {
     expect(fmtPct(12.34, 1)).toBe("12,3%");
     expect(fmtSignedPct(2.5)).toContain("+");
     expect(fmtSignedPct(-1.2)).not.toContain("+");
+  });
+
+  it("formats native date input echoes as zero-padded dd.MM.yyyy independent of browser locale", () => {
+    expect(formatDateInputEcho("2026-09-05T10:30")).toBe("05.09.2026");
+    expect(formatDateInputEcho("2026-12-31")).toBe("31.12.2026");
+    expect(formatDateInputEcho("")).toBe("");
   });
 
   it("returns Nije dostupno for null/undefined values", () => {

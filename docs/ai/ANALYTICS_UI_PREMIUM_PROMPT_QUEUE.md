@@ -3545,14 +3545,16 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 
 ## P-UI-51 - Decision-surface controls: Executive Board period/scope/URL state and date clarity
 
-Status: READY
+Status: IN_PROGRESS
+Claimed: 2026-10-07 by Codex after fresh origin/main, dependency, lock, branch, PR and path collision checks.
 Ready after: RQ570 and P-UI-39 are DONE (horizon-anchored default periods; P-UI-39 owns `AnalyticsControlBar.css` overflow); must not run while RQ319/RQ320 are IN_PROGRESS (shared `AnalyticsControlBar`)
 Priority: P2
 Type: frontend/tests
 Feature family: decision-surface-controls
 Parallel-safe: no (shared control bar)
-Owner: unassigned (Analytics Frontend)
-Owned paths: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx` (controls/URL only), `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx/.css`
+Owner: Codex (Analytics Frontend)
+Owned paths: `Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx` (controls/URL only), `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx` (filter URL/history only), `Klijent/clientapp/src/components/analytics/AnalyticsControlBar.tsx/.css`, `Klijent/clientapp/src/utils/analyticsFormatters.ts`, and focused specs for those owners
+Local lock: `.ai/task-locks/P-UI-51-codex.lock.md`
 Avoid paths: Decision Board backend and scoring; Decision Pulse page (RQ481/RQ482)
 Commit suggestion: `feat(ui): board scope controls and unambiguous dates`
 
@@ -3585,7 +3587,8 @@ The Executive Board has no period, store or data-scope control and no URL state;
 ### Tests
 
 - RTL: Board URL round-trips period/store/scope; unsupported parameters are display-only.
-- RTL: the date echo renders `dd.MM.yyyy` regardless of browser locale; preset labels are not truncated at 1280/768/375.
+- RTL: Dashboard custom dates round-trip in URL; Apply adds one history entry and Back restores applied filters; in-table search does not change history.
+- RTL: the date echo renders `dd.MM.yyyy` regardless of browser locale; preset labels remain readable at 1280/768/375.
 - `npm run check:analytics-guardrails`, `npm run typecheck`, focused Vitest; governance validators; `git diff --check`.
 
 ### Acceptance
@@ -3600,6 +3603,12 @@ The Executive Board has no period, store or data-scope control and no URL state;
 ### Promotion note 2026-10-06
 
 - Promoted WAITING -> READY after RQ570 and P-UI-39 were verified DONE on main. RQ319/RQ320 remain WAITING, so their explicit IN_PROGRESS serialization gate is clear. P-UI-40 owns only shell layout paths and does not collide with this prompt's shared control-bar/page paths.
+
+### Scope clarification 2026-10-07
+
+- The URL/history acceptance explicitly names `/analytics` Dashboard custom dates, but its page and focused test were missing from the original owned-path list. Add only `AnalyticsDashboard.tsx` filter URL/history behavior and its focused spec; preserve backend-owned horizon defaults and existing filter semantics. Date echo formatting is shared through `analyticsFormatters.ts`; do not expand into broader dashboard redesign or alter business queries.
+
+Owner claim 2026-10-07: refreshed `origin/main` at `a330671f09e557c6626895e3e15bad452695d683`; verified RQ570/P-UI-39 DONE, RQ319/RQ320 WAITING, and no matching P-UI-51 lock, branch or open PR. Higher-priority BCI/RQ/SQL queues have no READY task; STAB16 remains provider/deployment blocked. Claimed READY -> IN_PROGRESS on `codex/p-ui-51-decision-surface-controls` from the refreshed main SHA. Local lock: `.ai/task-locks/P-UI-51-codex.lock.md`.
 
 ---
 

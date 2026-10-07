@@ -6,6 +6,11 @@ import {
 
 type DateLikeValue = string | Date | null | undefined;
 
+export function formatDateInputEcho(value: string | null | undefined): string {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : "";
+}
+
 export function fmtNumber(value: number | null | undefined, digits = 0, fallback = ANALYTICS_UNAVAILABLE_LABEL): string {
   if (value == null || !Number.isFinite(value)) return fallback;
   return value.toLocaleString("sr-RS", {

@@ -76,6 +76,7 @@ import {
   fmtNumber,
   fmtPct,
   fmtRsd,
+  formatDateInputEcho,
   formatDateTime,
 } from "../utils/analyticsFormatters";
 import {
@@ -236,6 +237,12 @@ function parseInputDate(value: string): Date | null {
   }
 
   return parsed;
+}
+
+function readDashboardDateParam(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00` : value;
+  return parseInputDate(normalized) ? normalized : fallback;
 }
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -668,17 +675,29 @@ function MetricCard(props: {
 export default function AnalyticsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const initialPeriodRequestRef = useRef(true);
-  const [preset, setPreset] = useState<AnalyticsPeriodPreset>("30d");
+  const initialSearchParams = new URLSearchParams(location.search);
+  const initialPeriodRequestRef = useRef(!initialSearchParams.has("fromDate") && !initialSearchParams.has("toDate"));
+  const lastSearchRef = useRef(location.search);
   const initialRange = getAnalyticsPeriodPresetRange("30d");
+  const requestedInitialPreset = initialSearchParams.get("periodPreset") as AnalyticsPeriodPreset | null;
+  const initialPreset: AnalyticsPeriodPreset = ANALYTICS_PERIOD_PRESET_OPTIONS.some((option) => option.value === requestedInitialPreset)
+    ? requestedInitialPreset!
+    : initialSearchParams.has("fromDate") || initialSearchParams.has("toDate") ? "custom" : "30d";
+  const [preset, setPreset] = useState<AnalyticsPeriodPreset>(initialPreset);
+  const initialFromDate = readDashboardDateParam(initialSearchParams.get("fromDate"), `${initialRange.fromDate}T00:00`);
+  const initialToDate = readDashboardDateParam(initialSearchParams.get("toDate"), `${initialRange.toDate}T23:59`);
   const [fromDate, setFromDate] = useState<string>(
-    () => `${initialRange.fromDate}T00:00`,
+    () => initialFromDate,
   );
   const [toDate, setToDate] = useState<string>(
-    () => `${initialRange.toDate}T23:59`,
+    () => initialToDate,
   );
-  const [selectedStore, setSelectedStore] = useState("");
-  const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [draftFromDate, setDraftFromDate] = useState(initialFromDate);
+  const [draftToDate, setDraftToDate] = useState(initialToDate);
+  const [selectedStore, setSelectedStore] = useState(initialSearchParams.get("storeId") ?? "");
+  const [selectedSupplier, setSelectedSupplier] = useState(initialSearchParams.get("supplierId") ?? "");
+  const [draftStore, setDraftStore] = useState(initialSearchParams.get("storeId") ?? "");
+  const [draftSupplier, setDraftSupplier] = useState(initialSearchParams.get("supplierId") ?? "");
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [supplierOptions, setSupplierOptions] = useState<
     SupplierFilterOption[]
@@ -751,6 +770,13 @@ export default function AnalyticsDashboard() {
     }
     return null;
   }, [fromDate, toDate]);
+  const draftFilterValidationMessage = useMemo(() => {
+    const from = parseInputDate(draftFromDate);
+    const to = parseInputDate(draftToDate);
+    if (!from || !to) return "Proverite filtere: unesite oba validna datuma i vremena.";
+    if (from > to) return "Proverite filtere: datum od ne može biti posle datuma do.";
+    return null;
+  }, [draftFromDate, draftToDate]);
   const selectedDays = useMemo(() => {
     return resolveDashboardPeriodDays(dashboardMeta, fromDate, toDate);
   }, [dashboardMeta, fromDate, toDate]);
@@ -768,9 +794,49 @@ export default function AnalyticsDashboard() {
     const range =
       value === "custom" ? null : getAnalyticsPeriodPresetRange(value);
     if (!range) return;
-    setFromDate(`${range.fromDate}T00:00`);
-    setToDate(`${range.toDate}T23:59`);
+    setDraftFromDate(`${range.fromDate}T00:00`);
+    setDraftToDate(`${range.toDate}T23:59`);
   }, []);
+
+  useEffect(() => {
+    if (lastSearchRef.current === location.search) return;
+    lastSearchRef.current = location.search;
+    const params = new URLSearchParams(location.search);
+    const nextFrom = readDashboardDateParam(params.get("fromDate"), `${initialRange.fromDate}T00:00`);
+    const nextTo = readDashboardDateParam(params.get("toDate"), `${initialRange.toDate}T23:59`);
+    const nextStore = params.get("storeId") ?? "";
+    const nextSupplier = params.get("supplierId") ?? "";
+    const requestedPreset = params.get("periodPreset") as AnalyticsPeriodPreset | null;
+    const nextPreset = ANALYTICS_PERIOD_PRESET_OPTIONS.some((option) => option.value === requestedPreset)
+      ? requestedPreset!
+      : params.has("fromDate") || params.has("toDate") ? "custom" : "30d";
+    setFromDate(nextFrom);
+    setToDate(nextTo);
+    setDraftFromDate(nextFrom);
+    setDraftToDate(nextTo);
+    setSelectedStore(nextStore);
+    setSelectedSupplier(nextSupplier);
+    setDraftStore(nextStore);
+    setDraftSupplier(nextSupplier);
+    setPreset(nextPreset);
+    initialPeriodRequestRef.current = !params.has("fromDate") && !params.has("toDate");
+  }, [initialRange.fromDate, initialRange.toDate, location.search]);
+
+  const applyDashboardFilters = useCallback(() => {
+    if (draftFilterValidationMessage) return;
+    const params = new URLSearchParams(location.search);
+    for (const key of ["fromDate", "toDate", "storeId", "supplierId", "periodPreset"]) params.delete(key);
+    params.set("fromDate", draftFromDate);
+    params.set("toDate", draftToDate);
+    params.set("periodPreset", preset);
+    if (draftStore) params.set("storeId", draftStore);
+    if (draftSupplier) params.set("supplierId", draftSupplier);
+    initialPeriodRequestRef.current = false;
+    const nextSearch = `?${params.toString()}`;
+    if (nextSearch !== location.search) {
+      navigate({ pathname: location.pathname, search: nextSearch }, { replace: false });
+    }
+  }, [draftFilterValidationMessage, draftFromDate, draftStore, draftSupplier, draftToDate, location.pathname, location.search, navigate, preset]);
 
   const loadStores = useCallback(async () => {
     const requestSeq = ++storesRequestSeqRef.current;
@@ -875,6 +941,8 @@ export default function AnalyticsDashboard() {
           if (resolvedFrom && resolvedTo) {
             setFromDate(`${resolvedFrom}T00:00`);
             setToDate(`${resolvedTo}T23:59`);
+            setDraftFromDate(`${resolvedFrom}T00:00`);
+            setDraftToDate(`${resolvedTo}T23:59`);
           }
         }
       }
@@ -1190,22 +1258,24 @@ export default function AnalyticsDashboard() {
             {
               key: "fromDate",
               label: "Datum od",
+              dateEcho: formatDateInputEcho(draftFromDate),
               control: (
                 <input
                   type="datetime-local"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  value={draftFromDate}
+                  onChange={(e) => setDraftFromDate(e.target.value)}
                 />
               ),
             },
             {
               key: "toDate",
               label: "Datum do",
+              dateEcho: formatDateInputEcho(draftToDate),
               control: (
                 <input
                   type="datetime-local"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  value={draftToDate}
+                  onChange={(e) => setDraftToDate(e.target.value)}
                 />
               ),
             },
@@ -1216,8 +1286,8 @@ export default function AnalyticsDashboard() {
         label: "Prodavnica",
         control: (
           <select
-            value={selectedStore}
-            onChange={(e) => setSelectedStore(e.target.value)}
+            value={draftStore}
+            onChange={(e) => setDraftStore(e.target.value)}
           >
             <option value="">Sve prodavnice</option>
             {stores.map((store) => (
@@ -1233,8 +1303,8 @@ export default function AnalyticsDashboard() {
         label: "Dobavljač",
         control: (
           <select
-            value={selectedSupplier}
-            onChange={(e) => setSelectedSupplier(e.target.value)}
+            value={draftSupplier}
+            onChange={(e) => setDraftSupplier(e.target.value)}
           >
             <option value="">Svi dobavljači</option>
             {supplierOptions.map((supplier) => (
@@ -1248,13 +1318,13 @@ export default function AnalyticsDashboard() {
     ],
     [
       applyPreset,
-      fromDate,
+      draftFromDate,
+      draftStore,
+      draftSupplier,
       preset,
-      selectedStore,
-      selectedSupplier,
       stores,
       supplierOptions,
-      toDate,
+      draftToDate,
     ],
   );
   const executiveMiniQualityCards = useMemo(() => {
@@ -1592,14 +1662,18 @@ export default function AnalyticsDashboard() {
         description="Menjajte period, prodavnicu ili dobavljača ovde; ključni pregled ispod ostaje fokusiran na odluku, ne na operativni šum."
         chips={controlBarChips}
         primaryAction={{
-          key: "refresh",
-          label: loading ? "Učitavanje..." : "Osveži dashboard",
-          onClick: () => {
-            void load();
-          },
-          disabled: loading,
+          key: "apply-filters",
+          label: "Primeni filtere",
+          onClick: applyDashboardFilters,
+          disabled: Boolean(draftFilterValidationMessage),
         }}
         secondaryActions={[
+          {
+            key: "refresh",
+            label: loading ? "Učitavanje..." : "Osveži dashboard",
+            onClick: () => { void load(); },
+            disabled: loading,
+          },
           {
             key: "data-quality",
             label: "Kvalitet podataka",
@@ -1616,6 +1690,11 @@ export default function AnalyticsDashboard() {
         mobileFilterSummary="Period, prodavnica i dobavljač"
       />
       {healthText ? <div className="analytics-health">{healthText}</div> : null}
+      {draftFilterValidationMessage ? (
+        <div className="analytics-empty warning" data-testid="dashboard-draft-period-validation" role="alert">
+          {draftFilterValidationMessage}
+        </div>
+      ) : null}
       {filterValidationMessage ? (
         <div className="analytics-empty warning" data-testid="dashboard-period-validation" role="alert">
           {filterValidationMessage}

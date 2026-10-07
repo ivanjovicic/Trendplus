@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
+import AnalyticsControlBar, { type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import { buildRowFromInsightItem, stockCoverStatusLabel } from "../components/inventory/inventoryUtils";
 import type { InventoryRow } from "../components/inventory/types";
 import { buildInventorySignalActionSpec } from "./InventoryPage";
@@ -42,9 +43,9 @@ import type {
   SummaryResponse,
   SummarySupplierItem,
 } from "../services/supplierDecisionHubApi";
-import { getDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { getRecommendationMeta } from "../components/supplierDecisionHub/utils";
-import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateTime } from "../utils/analyticsFormatters";
+import { fmtNumber, fmtPct, fmtPctFromRatio, fmtRsd, formatDateInputEcho, formatDateTime } from "../utils/analyticsFormatters";
 import { getAnalyticsMetaMessage, isAnalyticsMetaError, isAnalyticsMetaInsufficient } from "../utils/analyticsResponseMeta";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { normalizeRecommendationPct } from "../utils/canonicalRecommendationSemantics";
@@ -1357,16 +1358,54 @@ export function buildExecutiveDecisionBoardModel(payload: BoardPayload): BoardMo
   return buildBoardModel(payload);
 }
 
+type DecisionBoardFilters = {
+  fromDate: string;
+  toDate: string;
+  storeId: string;
+  dataScope: DataScope;
+};
+
+function parseDecisionBoardFilters(params: URLSearchParams, fallbackScope: DataScope): DecisionBoardFilters {
+  const storeId = params.get("storeId") ?? "";
+  return {
+    fromDate: params.get("fromDate") ?? "",
+    toDate: params.get("toDate") ?? "",
+    storeId: /^\d+$/.test(storeId) && Number(storeId) > 0 ? storeId : "",
+    dataScope: params.has("dataScope")
+      ? normalizeDataScope(params.get("dataScope"))
+      : fallbackScope,
+  };
+}
+
 export default function ExecutiveDecisionBoardPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchKey = searchParams.toString();
+  const lastSearchKey = useRef(searchKey);
+  const [filters, setFilters] = useState<DecisionBoardFilters>(() =>
+    parseDecisionBoardFilters(searchParams, getDataScope()),
+  );
+  const [draftFilters, setDraftFilters] = useState<DecisionBoardFilters>(filters);
+  const [stores, setStores] = useState<StoreOption[]>([]);
+  const [filterError, setFilterError] = useState<string | null>(null);
   const [payload, setPayload] = useState<BoardPayload>(null);
   const [loadError, setLoadError] = useState<BoardLoadError | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
-  const [dataScope, setDataScopeValue] = useState<DataScope>(() => getDataScope());
+  useEffect(() => {
+    if (lastSearchKey.current === searchKey) return;
+    lastSearchKey.current = searchKey;
+    const nextFilters = parseDecisionBoardFilters(new URLSearchParams(searchKey), getDataScope());
+    setFilters(nextFilters);
+    setDraftFilters(nextFilters);
+    setFilterError(null);
+  }, [searchKey]);
 
   useEffect(() => {
     const handleScopeChange = () => {
-      setDataScopeValue(getDataScope());
+      if (new URLSearchParams(lastSearchKey.current).has("dataScope")) return;
+      const scope = getDataScope();
+      setFilters((current) => ({ ...current, dataScope: scope }));
+      setDraftFilters((current) => ({ ...current, dataScope: scope }));
     };
 
     window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
@@ -1375,11 +1414,30 @@ export default function ExecutiveDecisionBoardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getStores(true, draftFilters.dataScope)
+      .then((items) => {
+        if (!cancelled) setStores(items);
+      })
+      .catch(() => {
+        if (!cancelled) setStores([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftFilters.dataScope]);
+
   const loadBoard = useCallback(async (isCancelled?: () => boolean) => {
     setLoading(true);
 
     try {
-      const response = await getDecisionBoardAggregate({ dataScope });
+      const response = await getDecisionBoardAggregate({
+        fromDate: filters.fromDate || undefined,
+        toDate: filters.toDate || undefined,
+        storeId: filters.storeId ? Number(filters.storeId) : undefined,
+        dataScope: filters.dataScope,
+      });
       if (isCancelled?.()) return;
       setPayload(response);
       setLoadError(null);
@@ -1392,7 +1450,7 @@ export default function ExecutiveDecisionBoardPage() {
         setLoading(false);
       }
     }
-  }, [dataScope]);
+  }, [filters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1409,6 +1467,57 @@ export default function ExecutiveDecisionBoardPage() {
   const globalError = !loading && !model.hasData ? loadError : null;
   const isEmpty = !loading && !model.hasData && !globalError;
   const showBoardContent = !globalError && !isEmpty;
+  const controlFields = useMemo<AnalyticsControlBarField[]>(() => [
+    {
+      key: "fromDate",
+      label: "Datum od",
+      dateEcho: formatDateInputEcho(draftFilters.fromDate),
+      control: <input type="date" value={draftFilters.fromDate} onChange={(event) => setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))} />,
+    },
+    {
+      key: "toDate",
+      label: "Datum do",
+      dateEcho: formatDateInputEcho(draftFilters.toDate),
+      control: <input type="date" value={draftFilters.toDate} onChange={(event) => setDraftFilters((current) => ({ ...current, toDate: event.target.value }))} />,
+    },
+    {
+      key: "store",
+      label: "Prodavnica",
+      control: (
+        <select value={draftFilters.storeId} onChange={(event) => setDraftFilters((current) => ({ ...current, storeId: event.target.value }))}>
+          <option value="">Sve prodavnice</option>
+          {draftFilters.storeId && !stores.some((store) => String(store.storeId) === draftFilters.storeId) ? (
+            <option value={draftFilters.storeId}>Prodavnica {draftFilters.storeId}</option>
+          ) : null}
+          {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
+        </select>
+      ),
+    },
+    {
+      key: "dataScope",
+      label: "Opseg podataka",
+      control: (
+        <select value={draftFilters.dataScope} onChange={(event) => setDraftFilters((current) => ({ ...current, dataScope: normalizeDataScope(event.target.value) }))}>
+          {(["all", "existing", "imported"] as const).map((scope) => <option key={scope} value={scope}>{dataScopeLabel(scope)}</option>)}
+        </select>
+      ),
+    },
+  ], [draftFilters, stores]);
+
+  const applyFilters = () => {
+    if (draftFilters.fromDate && draftFilters.toDate && draftFilters.fromDate > draftFilters.toDate) {
+      setFilterError("Datum od ne može biti posle datuma do.");
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    for (const key of ["fromDate", "toDate", "storeId", "dataScope"]) nextParams.delete(key);
+    if (draftFilters.fromDate) nextParams.set("fromDate", draftFilters.fromDate);
+    if (draftFilters.toDate) nextParams.set("toDate", draftFilters.toDate);
+    if (draftFilters.storeId) nextParams.set("storeId", draftFilters.storeId);
+    nextParams.set("dataScope", draftFilters.dataScope);
+    setFilterError(null);
+    if (nextParams.toString() !== searchKey) setSearchParams(nextParams, { replace: false });
+  };
 
   return (
     <div className="decision-board-page">
@@ -1434,6 +1543,15 @@ export default function ExecutiveDecisionBoardPage() {
         emptyStateReason={model.emptyReason}
         compact
       />
+
+      <AnalyticsControlBar
+        title="Opseg board-a"
+        description="Period i prodavnica koriste postojeće serverske filtere; bez izabranih datuma važi period koji odredi server."
+        fields={controlFields}
+        primaryAction={{ key: "apply-filters", label: "Primeni filtere", onClick: applyFilters }}
+        chips={[{ key: "active-period", label: "Aktivni period", value: model.periodFrom && model.periodTo ? `${formatDateTime(model.periodFrom)} – ${formatDateTime(model.periodTo)}` : "Serverski period" }]}
+      />
+      {filterError ? <p className="analytics-control-bar__filter-error" role="alert">{filterError}</p> : null}
 
       {globalError ? (
         <AnalyticsErrorState

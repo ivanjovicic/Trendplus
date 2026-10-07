@@ -34,6 +34,7 @@ describe("AnalyticsControlBar", () => {
             {
               key: "period",
               label: "Period",
+              dateEcho: "05.09.2026",
               control: (
                 <select defaultValue="30d">
                   <option value="30d">Poslednjih 30 dana</option>
@@ -49,6 +50,10 @@ describe("AnalyticsControlBar", () => {
     expect(screen.getByTestId("analytics-control-bar").querySelector(".analytics-control-bar__fields"))
       .toHaveClass("analytics-control-bar__fields--overflow-safe");
     expect(screen.getByRole("heading", { name: "Opseg i filteri" })).toBeInTheDocument();
+    expect(screen.getByText("05.09.2026")).toBeInTheDocument();
+    expect(screen.getByText("Period").closest("label")).toHaveClass(
+      "analytics-control-bar__field--period",
+    );
     expect(screen.getByText("Opseg")).toBeInTheDocument();
     expect(screen.getByText("30 dana")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute(
@@ -58,7 +63,7 @@ describe("AnalyticsControlBar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Osvezi dashboard" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText("Period")).toBeInTheDocument();
+    expect(screen.getByText("Period").closest("label")?.querySelector("select")).toBeInTheDocument();
   });
 
   it("opts a single pilot into responsive filter sizing without changing its controls", () => {

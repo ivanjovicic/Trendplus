@@ -29,6 +29,7 @@ export type AnalyticsControlBarField = {
   key: string;
   label: string;
   control: ReactNode;
+  dateEcho?: string;
   span?: "default" | "wide";
 };
 
@@ -119,7 +120,7 @@ export default function AnalyticsControlBar({
       {fields.map((field) => (
         <label
           key={field.key}
-          className={`analytics-control-bar__field ${
+          className={`analytics-control-bar__field analytics-control-bar__field--${field.key} ${
             field.span === "wide"
               ? "analytics-control-bar__field--wide"
               : ""
@@ -129,6 +130,11 @@ export default function AnalyticsControlBar({
             {field.label}
           </span>
           {field.control}
+          {field.dateEcho ? (
+            <span className="analytics-control-bar__date-echo" aria-hidden="true">
+              {field.dateEcho}
+            </span>
+          ) : null}
         </label>
       ))}
     </div>

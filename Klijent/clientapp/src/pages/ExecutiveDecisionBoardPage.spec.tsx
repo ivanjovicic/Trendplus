@@ -1,5 +1,5 @@
 ﻿import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExecutiveDecisionBoardPage from "./ExecutiveDecisionBoardPage";
 import { getDecisionBoardAggregate } from "../services/analyticsApi";
@@ -58,6 +58,7 @@ vi.mock("../services/analyticsApi", async () => {
   return {
     ...actual,
     getDecisionBoardAggregate: vi.fn(),
+    getStores: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -286,6 +287,11 @@ function renderPage() {
   );
 }
 
+function LocationDisplay() {
+  const location = useLocation();
+  return <output data-testid="current-location">{`${location.pathname}${location.search}`}</output>;
+}
+
 describe("ExecutiveDecisionBoardPage", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -299,14 +305,14 @@ describe("ExecutiveDecisionBoardPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ dataScope: "imported" });
+      expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ fromDate: undefined, toDate: undefined, storeId: undefined, dataScope: "imported" });
     });
 
     localStorage.setItem("trendplus:dataScope", "existing");
     window.dispatchEvent(new Event("trendplus:data-scope-changed"));
 
     await waitFor(() => {
-      expect(getDecisionBoardAggregate).toHaveBeenLastCalledWith({ dataScope: "existing" });
+      expect(getDecisionBoardAggregate).toHaveBeenLastCalledWith({ fromDate: undefined, toDate: undefined, storeId: undefined, dataScope: "existing" });
     });
   });
 
@@ -316,7 +322,7 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.queryByTestId("refresh-banner")).not.toBeInTheDocument();
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
-    expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ dataScope: "all" });
+    expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ fromDate: undefined, toDate: undefined, storeId: undefined, dataScope: "all" });
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Izvršni board odluka");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: warning");
     expect(screen.getByText("Urgentne odluke")).toBeInTheDocument();
@@ -345,6 +351,37 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect(screen.getAllByRole("link", { name: "Dodaj u akcije" }).some((link) => link.getAttribute("href") === "/analytics/actions?sourceType=product")).toBe(true);
     expect(screen.getByRole("link", { name: "U akcijama" })).toHaveAttribute("href", "/analytics/actions");
     expect(screen.getByRole("link", { name: "Već zatvoreno" })).toHaveAttribute("href", "/analytics/actions");
+  });
+
+  it("round-trips Board period, store and data scope through the URL and backend filters", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-board?fromDate=2026-07-01&toDate=2026-07-31&storeId=12&dataScope=imported"]}>
+        <Routes>
+          <Route path="/analytics/decision-board" element={<><ExecutiveDecisionBoardPage /><LocationDisplay /></>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getDecisionBoardAggregate).toHaveBeenCalledWith({
+      fromDate: "2026-07-01",
+      toDate: "2026-07-31",
+      storeId: 12,
+      dataScope: "imported",
+    }));
+    expect(screen.getByText("Datum od").closest("label")?.querySelector("input")).toHaveValue("2026-07-01");
+    expect(screen.getByText("01.07.2026")).toBeInTheDocument();
+    expect(screen.getByText("Prodavnica").closest("label")?.querySelector("select")).toHaveValue("12");
+    expect(screen.getByText("Opseg podataka").closest("label")?.querySelector("select")).toHaveValue("imported");
+
+    fireEvent.change(screen.getByText("Datum od").closest("label")?.querySelector("input") as HTMLInputElement, { target: { value: "2026-07-05" } });
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+    await waitFor(() => expect(getDecisionBoardAggregate).toHaveBeenLastCalledWith({
+      fromDate: "2026-07-05",
+      toDate: "2026-07-31",
+      storeId: 12,
+      dataScope: "imported",
+    }));
+    expect(screen.getByTestId("current-location")).toHaveTextContent("fromDate=2026-07-05");
   });
 
   it.each([

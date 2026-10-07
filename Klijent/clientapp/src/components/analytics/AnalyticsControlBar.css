@@ -175,6 +175,18 @@
   grid-column: span 2;
 }
 
+.analytics-control-bar__field--period select,
+.analytics-control-bar__field--preset select {
+  min-width: 190px;
+}
+
+.analytics-control-bar__date-echo {
+  min-height: 1em;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .analytics-control-bar__field-label {
   font-size: 12px;
   color: var(--text-secondary);
@@ -213,6 +225,11 @@
 }
 
 @media (max-width: 640px) {
+  .analytics-control-bar__field--period select,
+  .analytics-control-bar__field--preset select {
+    min-width: 0;
+  }
+
   .analytics-control-bar {
     padding: 16px;
     border-radius: 22px;
