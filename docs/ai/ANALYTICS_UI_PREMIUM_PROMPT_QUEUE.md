@@ -3775,7 +3775,7 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 - Main verification: fresh fetch confirmed `origin/main` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`.
 - Missed: None known in repository-local acceptance; the owned production `N/A` fallbacks were already “Nije dostupno” before this run.
 - Follow-up: none currently READY; re-run idle recovery when the P-UI-50 page-path collision clears or its owner explicitly defers it.
-- Residual risk: Analytics Quality Gates run `37605941949` is queued on the implementation SHA; the known duplicate trust-header assertion remains red locally.
+- Residual risk: Analytics Quality Gates run `37605941949` is red on six failures already present on prior run `37602941157`; details/classification are in the run log. POS UI build passed; frontend guardrail/build steps were skipped. Planning Governance run `37606619563` passed on the synchronized closure/evidence SHA.
 - Post-close routing: Zero-READY proof at `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab`; no successor was promoted.
 - Prompt defect / scope repair: canonical `/analytics/supplier?tab=scorecard` needs query-aware active-link selection in the Sidebar; header/breadcrumb files remain outside this task's owned paths.
 

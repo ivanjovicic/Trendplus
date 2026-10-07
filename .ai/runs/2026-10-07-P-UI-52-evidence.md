@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: `codex/p-ui-52-analytics-navigation-copy` / none
 Main commit SHA: `31b0a8d95906019163a135f3db66f89ffac8ea2d`
-Main verification: passed - fresh `origin/main` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`
+Main verification: passed - fresh `origin/main` `1e03202941f663f61c6725d9caf9e15f770a2c49` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`
 Evidence state: synchronized
 
 ## What was done
@@ -74,7 +74,8 @@ Evidence state: synchronized
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 tasks).
 - `git diff --check` -> pass before implementation commit.
 - Targeted `rg -n 'N/A'` in `AnalyticsActionsPage.tsx` and `SupplierFootwearAnalyticsPage.tsx` returned no matches.
-- GitHub Analytics Quality Gates run `37605941949` is queued on exact implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`.
+- GitHub Analytics Quality Gates run `37605941949` on exact implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d` -> red: 1132 passed / 6 failed across five unchanged analytics spec files; the POS UI build passed, while downstream analytics guardrails/build steps were skipped. The SupplierConsolidated failure is the unchanged pending-trust duplicate-text assertion at line 472; the changed title assertions are on separate lines and the title-specific test passes locally. The same six failures were already present on the prior P-UI-46 run `37602941157`.
+- GitHub Planning Governance run `37606619563` on closure/evidence SHA `1e03202941f663f61c6725d9caf9e15f770a2c49` -> green; all queue, agent-instruction, planning and analytics-execution-plan checks passed.
 
 ## Validation not run
 - Full frontend suite -> not run; mapped focused specs and guardrails were used.
@@ -89,8 +90,8 @@ Evidence state: synchronized
 - None known in repository-local acceptance. No in-scope production `N/A` fallback remained to change.
 
 ## Risks
-- Full scoped tests have one known duplicate-text assertion failure at `SupplierConsolidatedPage.spec.tsx:472`: it expects one “Učitavanje pouzdanosti” text node while the existing trust header renders the label in two regions. This same class of trust-header assertion was red on earlier Analytics Quality Gates run `37592911311`, and run `37602941157` was red on unchanged analytics specs; the changed supplier title test passes in isolation. The assertion is outside P-UI-52's page-title behavior.
-- Analytics Quality Gates run `37605941949` is queued; it has not proved anything yet.
+- Analytics Quality Gates run `37605941949` is red on six failures: `AnalyticsDashboard.operationalFallback.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`, `ExecutiveDecisionBoardPage.emptyState.spec.tsx` (two assertions), `ExecutiveDecisionBoardPage.reuse.spec.tsx`, and `SupplierConsolidatedPage.spec.tsx`. All six failing assertions were already present on prior P-UI-46 run `37602941157`; all relevant assertion lines are unchanged. POS UI build passed; frontend guardrail/build steps were skipped after the test job failed. The changed SupplierConsolidated title assertions are not the failing line, and its targeted title test passes.
+- Planning Governance run `37606619563` passed on closure/evidence SHA `1e03202941f663f61c6725d9caf9e15f770a2c49`.
 - A pre-existing untracked responsive artifact directory `Klijent/clientapp/tmp/` remains in this isolated worktree and is excluded from commits; it was not cleaned. The primary checkout and its user changes remain untouched.
 
 ## Post-close routing recovery
