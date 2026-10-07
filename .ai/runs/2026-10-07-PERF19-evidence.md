@@ -37,11 +37,11 @@ Ownership transfer: none
 - `node scripts/check-agent-instructions.mjs` -> initial run on pre-rebase base `18be0819` failed on five consistency markers in unchanged governance files; after rebase onto current `origin/main` `700b15c5`, rerun passed (18 canonical files checked).
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (710 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 planning tasks).
+- Current-main Actions classification: Analytics Tests & Data Integrity `37621214565` on implementation SHA `1469077568badc6d1aaab5384f819281b4a4bbc6` is `in_progress`; Planning Governance `37621214592` on that SHA is `success`. Planning Governance also passed on evidence-only SHAs `674b0eff7784a831f6062f6a5b9f311de9d6988f` (`37621587685`) and `93f866db95f324ef3ac6f62e74cbfe40a5f3c37d` (`37621661609`).
 
 ## Validation not run
 - Deployed/provider-side p50/p95 and current production contributor logs -> not run; this remains STAB16 external/provider evidence.
 - Full backend suite -> not run; focused endpoint and integration checks cover the changed behavior.
-- Current-main Actions are residual in progress: Analytics Tests & Data Integrity `37621214565`; Planning Governance `37621214592`, both on `1469077568badc6d1aaab5384f819281b4a4bbc6`.
 
 ## Documentation impact
 - Updated the owning platform queue, performance roadmap and master routing row with local measurement and the deployed-vs-local residual.
