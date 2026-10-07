@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-10-06
+Updated: 2026-10-07
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -32,7 +32,7 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 ## Current direction
 
-Owner routing update 2026-10-07: P-UI-46 operational/mobile lists are DONE on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`; P-UI-52 navigation/copy is DONE on implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`. Post-close recovery at `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab` found no safe READY successor: P-UI-50 remains blocked by an existing uncommitted edit to its Product Decision page, and P-UI-38 remains waiting on all migrations including P-UI-50. Re-run idle recovery when that page-path collision clears or is explicitly deferred; details are in `.ai/runs/2026-10-07-P-UI-52-evidence.md`.
+Owner routing update 2026-10-07: P-UI-46 operational/mobile lists are DONE on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`; P-UI-52 navigation/copy is DONE on implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`. The P-UI-52 zero-READY proof was valid at its recovery SHA, but follow-up routing review used the already-documented P-UI-38 split escape hatch: **P-UI-54 is now READY** for path-disjoint stable theme/Tailwind/a11y/static regression ratchets. It must not touch `ProductDecisionCenterPage.tsx` or P-UI-50-owned Product Decision behavior. P-UI-50 remains BLOCKED only by that unresolved primary-checkout edit; P-UI-38 remains WAITING as final whole-program closure until P-UI-50 and P-UI-54 finish.
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
