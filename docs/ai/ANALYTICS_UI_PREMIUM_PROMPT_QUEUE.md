@@ -3449,7 +3449,7 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 - Changed files: See `.ai/runs/2026-10-07-P-UI-49-evidence.md` (16 clientapp source/test paths plus guardrail and owner-evidence files).
 - Contract/runtime behavior changed: Centralized Serbian state copy and reason-code handling. Unknown codes remain neutral and disclosed; row counts do not infer backend state; only explicit backend horizon/dimension codes activate those states. Cancelling slow-load recovery cancels the pilot page request.
 - Checks run: Focused tests 192/192; analytics guardrails (39 existing baseline findings, zero new); typecheck/build; queue, instruction and planning governance validators; diff checks. Exact commands and the remote run classification are in the run log.
-- Checks not run: Full frontend suite locally; live/browser API smoke. Remote Analytics Quality Gates run `37592911311` on correction SHA `1814be27d6d94375ce32f74f816371f3a21b590c` passed 150/153 specs and remains red only on three duplicate trust-header assertions in unchanged P-UI-43-owned surfaces; Planning Governance run `37590771658` passed on the initial implementation SHA.
+- Checks not run: Full frontend suite locally; live/browser API smoke. Remote Analytics Quality Gates run `37592911311` on correction SHA `1814be27d6d94375ce32f74f816371f3a21b590c` passed 150/153 specs and remains red only on three duplicate trust-header assertions in unchanged P-UI-43-owned surfaces; Planning Governance run `37593471184` passed on final synchronized evidence SHA `51ba47f426832ee4d262b6651ade5dd6508cd121`.
 - Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main

@@ -47,6 +47,7 @@ Evidence state: synchronized
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass.
 - `git diff --check` and `git diff --cached --check` -> pass.
 - GitHub Planning Governance run `37590771658` -> success on `da0931309dbf0d2145a8f6e42c1912ca567a5d24`.
+- GitHub Planning Governance run `37593471184` -> success on final synchronized evidence SHA `51ba47f426832ee4d262b6651ade5dd6508cd121`.
 - Analytics Quality Gates run `37590771745` failed on initial SHA `da0931309dbf0d2145a8f6e42c1912ca567a5d24` with 10 stale shared-state assertions; taxonomy consumer assertions were corrected and the focused cases passed locally.
 - Follow-up Analytics Quality Gates run `37592911311` on correction SHA `1814be27d6d94375ce32f74f816371f3a21b590c` ran 153 specs: 150 passed and 3 failed. The remaining failures are duplicate trust-header summary/detail text queries in `AnalyticsDashboard.operationalFallback.spec.tsx`, `ColorSalesStatsPage.premium.spec.tsx`, and `SupplierConsolidatedPage.spec.tsx`; they exercise unchanged `AnalyticsTrustHeader` markup (P-UI-43 ownership), not the taxonomy. Build and dependency audit jobs passed; the workflow skipped later guardrail/build steps after the test failure.
 
