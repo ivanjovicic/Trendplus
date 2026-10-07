@@ -5,33 +5,47 @@ Status: canonical business milestone map
 
 This roadmap maps commercial/product milestones to existing technical planning programs. It does not create a second implementation backlog.
 
-## Milestone 0 - Fresh Data and First Proven Value
+## Milestone 0 - Decision Truth + Currentness
 
 ### Business outcome
 
-Trendplus operates on current production data and can show one reproducible owner decision loop that ends in an observed business outcome rather than only a tested dashboard.
+Trendplus can make useful, reproducible decisions from the latest trustworthy imported horizon **and** can separately prove when those decisions are current. Product-value work and production-freshness recovery run in parallel rather than serially.
 
-### Required evidence
+### Track A — product truth/value
 
-- production observed sales horizon stays within the RQ583 freshness SLA; target: 14 consecutive days without silent stale fallback;
+Required before calling the core decision product internally useful:
+
+- financial aggregates preserve unknown/partial money instead of turning missing values into zero (RQ593);
+- Inventory capital/action semantics distinguish valuation coverage, receipt age, sales recency and demand (RQ594);
+- one canonical retail markdown action population exists (RQ555);
+- Supplier negotiation/value view uses only authoritative revenue/margin/inventory facts (RQ595);
+- the owner digest can run on the latest trustworthy horizon with explicit `asOf` semantics (RQ585);
+- RQ556 may compare shadow-v9 ranking on historical data without activating new policy.
+
+This track may use existing historical imports, deterministic fixtures and certified bounded windows. It does **not** wait for a fresh import unless the tested claim is specifically about current production state.
+
+### Track B — currentness/operations
+
+Required before calling recommendations "today/current/this week" or starting a prospective outcome pilot:
+
+- production observed sales horizon stays within the RQ583 freshness SLA;
 - canonical web/worker/deploy ownership is known and durable successful import/refresh evidence is visible;
-- inventory cost and inbound-age evidence are trustworthy enough to quantify aged stock without missing-as-zero;
-- live Pre/Post nivelacija contract is verified on the deployed SHA;
-- at least 20 real markdown actions are pre-registered, executed and measured under RQ592;
-- one owner-readable result page states observed margin/units/remaining-stock outcomes and limitations;
-- RQ585 weekly digest is built only from certified current signals and is used for four consecutive weekly decision cycles.
+- deployed Pre/Post/schema readiness is verified where customer-facing current behavior depends on it;
+- operational monitoring can detect failed import/refresh/worker execution.
 
 ### Queue mapping
 
-- STAB16: production freshness/deploy/worker proof;
-- RQ545/RQ454/RQ565/RQ566: deployed analytics reconciliation;
-- RQ576 and inventory owners: cost/aging truth;
-- RQ585: weekly owner digest;
-- RQ592: first closed markdown action-to-outcome pilot.
+- RQ593: financial unknown/coverage correctness;
+- RQ594: Inventory action decision truth;
+- RQ555/RQ556: canonical markdown source + shadow next-model evidence;
+- RQ595/RQ530: Supplier value/negotiation evidence;
+- RQ585: latest-horizon owner digest;
+- STAB16/RQ545/RQ454/RQ565/RQ566: production currentness/deployed reconciliation;
+- RQ592: prospective markdown action-to-outcome pilot after currentness is restored.
 
 ### Exit rule
 
-No amount of local oracle/UI/governance evidence substitutes for fresh production data and at least one real measured decision loop.
+Track A can progress independently and should not be replaced by more audit/documentation work. **Pilot/current-production claims require both tracks**, but stale production data does not invalidate already-proven historical formulas or bounded analytical value.
 
 ## Milestone 1 - Pilot Ready
 

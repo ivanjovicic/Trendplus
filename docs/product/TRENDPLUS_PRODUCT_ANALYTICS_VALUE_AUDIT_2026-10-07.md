@@ -4,6 +4,10 @@ Osnova: `HEAD == origin/main == cb5ae4dfca00e257c711bf1cb7c764d5eec95019` (box c
 Produkcija (jedan read-only GET, 2026-10-07 ~14:50 Beograd): `GET /api/runtime/version` → `commitSha=194df308…`, build 2026-10-07 10:24 (Beograd), `processType=web`; `GET /api/analytics/refresh-status?dataScope=all` → `observedSalesPeriodToUtc=2026-08-05`, `lastSuccessfulRefreshAtUtc=null`, `lastSuccessfulImportAtUtc=null`, `workersEnabled=false`, `dataFreshnessStatus=unknown`, `cacheMode=in-memory`. Ostali live GET-ovi u ovom auditu nisu izvršeni (automatska bezbednosna provera ih je zaustavila), pa su live tvrdnje ispod koje nisu iz ta dva odgovora preuzete iz datiranih audita i označene datumom.
 Ovaj dokument je **dated product snapshot**, ne live router. Routing ostaje u `MASTER_ROADMAP.md` i owner queue-ovima.
 
+## Owner correction on freshness vs value (2026-10-07)
+
+Freshness is a **currentness gate**, not a universal value gate. Existing historical imports and certified bounded windows remain valid for formula correctness, historical sales/margin analysis, inventory/markdown semantics, supplier evidence and product implementation. A new import is required when Trendplus claims that a recommendation reflects the **current** business state or when running a prospective action-to-outcome pilot. Canonical execution priority is now maintained in `PRODUCT_VISION.md`, `BUSINESS_ROADMAP.md`, `MASTER_ROADMAP.md` and the RQ queue; this dated audit must not be used to serialize all product work behind STAB16.
+
 ## Post-review status (2026-10-07)
 
 Ovaj audit je ponovo proveravan protiv current-main koda, queue/evidence dokumenata i javno dostupnih stranica konkurenata. Koristi sledeće oznake:
