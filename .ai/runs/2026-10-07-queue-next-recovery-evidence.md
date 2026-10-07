@@ -25,12 +25,13 @@ Ownership transfer: none
 - Live task-section scan across 23 queue files -> pass; found no READY or IN_PROGRESS task sections. The nonterminal candidates are listed in the blocker matrix below.
 - `node scripts/check-prompt-queues.mjs` -> pass; 710 tasks checked.
 - Primary checkout `git status --short`, targeted `git diff --stat` and bounded diff for `ProductDecisionCenterPage.tsx` -> confirmed the one-line page-path collision remains; other dirty analytics files were preserved.
+- `gh run list --branch main --limit 6` -> no Actions run was discoverable for the recovery/evidence SHA; latest returned runs predate this recovery (latest listed September 11).
 - `git diff --check` -> pass.
 
 ## Validation not run
 - Runtime, unit, integration or browser tests -> not run; no implementation task was safely claimable.
 - Provider/production diagnostics -> not run; this workspace has no authorized Render/Neon provider evidence or deployed read-only audit connection for STAB16.
-- CI monitoring -> not run; no implementation SHA was produced in this recovery.
+- No relevant current-main CI run was available to classify for this docs-only recovery; no implementation SHA was produced.
 
 ## Documentation impact
 - Added a fresh durable queue recovery record. No task status, dependency, owner or routing pointer was changed because no promotion was supported by current evidence.
