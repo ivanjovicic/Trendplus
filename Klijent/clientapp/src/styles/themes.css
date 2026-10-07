@@ -207,6 +207,7 @@
 }
 
 /* Legacy theme name shares the inventory-dark semantic palette. */
+[data-theme="inventory-dark"],
 [data-theme="dark"] {
   --surface-default: var(--theme-color-0f1318, #0f1318);
   --surface-light: var(--theme-color-10141c, #10141c);
