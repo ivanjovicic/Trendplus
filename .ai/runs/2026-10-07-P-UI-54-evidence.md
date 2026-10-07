@@ -33,7 +33,7 @@ Evidence state: synchronized
 - `npm run build` -> pass; Vite production build completed with existing chunk-size warnings.
 - `git diff --check` -> pass.
 - `git fetch origin main && git merge-base --is-ancestor origin/main HEAD && git push origin HEAD:main` -> pass; implementation delivered to `origin/main`.
-- `gh run list --branch main` -> no current-main run for the delivered SHA was discoverable; latest listed runs predate this delivery.
+- `gh run view 37617027490 --log-failed` -> red in `Validate agent instructions`; five missing markers are in concurrently changed governance files and outside P-UI-54 frontend/runtime scope.
 
 ## Validation not run
 - Real-device/browser proof -> not run; final whole-program route inclusion and live-device evidence remain P-UI-38 scope.
@@ -49,7 +49,7 @@ Evidence state: synchronized
 ## Risks
 - Legacy pseudo-token fallback inventory remains measured rather than globally rewritten: 141 matches in `themes.css` and 7 in `interactionTokens.ts`.
 - The canonical queue still records P-UI-50's unresolved primary-checkout edit; this task did not take ownership of that path.
-- No current-main remote CI result for the delivered SHA was available to classify beyond the absence of a discoverable run.
+- Current-main Planning Governance run `37617027490` is red for the concurrent governance-doc validator issue described above; this is residual to the parallel agent-instruction stream, not a P-UI-54 regression.
 
 ## Post-close routing recovery
 - Recovery base after final closure delivery: `origin/main` SHA `73d6af2e9e8a2e252de6a6fb9dc1b8e7ae4b91d6`.
