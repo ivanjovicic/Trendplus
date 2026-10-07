@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: P-UI-49 (IN_PROGRESS on `codex/p-ui-49-analytics-state-taxonomy`; claimed 2026-10-07). Other READY lanes: `P-UI-51` and `P-UI-52`.
+Current primary prompt: P-UI-51 (READY; selected as the next unclaimed lane after P-UI-49 closure). Other READY lane: `P-UI-52`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -57,7 +57,7 @@ Use with:
 | P-UI-46 | WAITING | operational-long-tail-responsive | Operational/šifarnik list screens usable on phones |
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
-| P-UI-49 | READY | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
+| P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
 | P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (after RQ573/RQ574/P-UI-49) |
 | P-UI-51 | READY | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history (after RQ570/P-UI-39) |
 | P-UI-52 | READY | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
@@ -3375,7 +3375,7 @@ The UX defect is therefore global placement, misleading action naming and missin
 
 ## P-UI-49 - Map backend reason codes into one shared empty/error state taxonomy
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none (registered 2026-10-04 from `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
 Priority: P2
 Type: frontend/tests
@@ -3440,6 +3440,27 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 
 
 ---
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Added the shared typed analytics state taxonomy for backend empty, warning, loading and error reasons; extended the shared empty/error components with backward-compatible code/meta props, safe unknown-code details, retry/correlation actions and delayed-loading recovery; adopted it on the Supplier Footwear pilot page.
+- Changed files: See `.ai/runs/2026-10-07-P-UI-49-evidence.md` (13 implementation, test and owner-evidence paths).
+- Contract/runtime behavior changed: Centralized Serbian state copy and reason-code handling. Unknown codes remain neutral and disclosed; row counts do not infer backend state; only explicit backend horizon/dimension codes activate those states. Cancelling slow-load recovery cancels the pilot page request.
+- Checks run: Focused tests 54/54; analytics guardrails (39 existing baseline findings, zero new); typecheck; production build; queue, instruction and planning governance self-tests/checks; diff checks. Exact commands are in the run log.
+- Checks not run: Full frontend test suite; local live/browser API smoke. GitHub Analytics Quality Gates run `37590771745` was in progress on implementation SHA `da0931309dbf0d2145a8f6e42c1912ca567a5d24`; Planning Governance run `37590771658` passed.
+- Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `da0931309dbf0d2145a8f6e42c1912ca567a5d24`
+- Main verification: refreshed `origin/main` at `da0931309dbf0d2145a8f6e42c1912ca567a5d24`; it contains the implementation commit.
+- Missed: No additional page families adopted the taxonomy; adoption remains with their owning prompts.
+- Follow-up: P-UI-50 consumes the taxonomy after its RQ573/RQ574 dependencies and path ownership are clear.
+- Residual risk: Existing Recharts bundle warning (>500 kB); Analytics Quality Gates remained in progress at last verified status.
+- Next: Pending mandatory post-close cascade from the terminal closure SHA.
+- Prompt defect / scope repair: Retargeted three shifted guardrail baseline line references without adding exemptions. The pilot adoption stays within this prompt's one-page allowance.
+- Post-close routing: Pending; will be synchronized after refreshing `origin/main` from the closure delivery.
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
