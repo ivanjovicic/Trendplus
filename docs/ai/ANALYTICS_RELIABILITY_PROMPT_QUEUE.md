@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ READY prompt: none after RQ588 DONE. Post-close recovery from P-UI-48 closure SHA `858ade29e8c5a95315ce94c3d870ba71f4746d06` scanned the complete active RQ/SQL/UI set; no RQ dependency became newly runnable. With higher-priority BCI/STAB/RQ/QDB/MT/GAI execution lanes clear or externally gated, supplemental P-UI-31 is DONE on main at 2170fae56c1439c17bea50467d51241714637df2; P-UI-36 is DONE on main at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`; P-UI-43 is DONE on `1b6856051fa1fb4e759ac4564cbf13cb3e779976`; the post-close primary P-UI lane is P-UI-45 DONE; P-UI-35 DONE at `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`. RQ586 is DONE on `6d5a7414ef61ef70829597bdb6b755ae71c95a30`; RQ557 is DONE on `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`; RQ558 remains WAITING for measured non-trivial mature-event/control-dimension coverage, and RQ559 remains owner/source-policy gated. RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583, RQ587 and RQ588 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
-Product value audit owner review 2026-10-07: `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` is corrected by the same-day claim review. Owner decision applies RQ585 P3→P1 while preserving its production-freshness start gate; RQ592 remains P1 but its pre-registration no longer waits for 14 consecutive fresh days. STAB16 remains the only product-critical P0. Other low-value/deferred families keep their existing canonical statuses/dependencies; this review does not bulk-mark them obsolete. QDB non-Access support is correctly classified as SQL Server-to-staging delivered, canonical customer ingestion still incomplete. Current RQ READY prompt remains none.
+Current RQ READY prompt: RQ593 (P1, financial unknown/coverage correctness). Additional collision-safe READY lane: RQ595 in the Supplier addendum. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or last-known-horizon product work.
+Product value plan refinement 2026-10-07: freshness is a currentness/deployed-operations gate, not a global prerequisite for historical formula/product work. RQ593 is primary READY; RQ595 is an additional disjoint READY Supplier lane. RQ555/RQ594 wait on RQ593 path ownership, RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -29537,57 +29537,65 @@ Supplier, Shoe Type and Color treat `toDate` as an exclusive bound (client sends
 
 Owner completion 2026-10-05: RQ584 moved READY -> DONE after timestamp `toDate` values became exact half-open UTC ends, date-only values retained inclusive-day compatibility, and Daily meta reports `dateBoundaryConvention`. Upstream end-bound code had landed while RQ584 remained READY; this completion repaired date-only compatibility, exact timestamp precision, and the missing contract field. Parity fixture confirms one Daily row/10 units/1,300 RSD for the shared exclusive bound, matching Supplier; date-only Jan 2 still includes two days. Delivered as implementation SHA `5ce67972eb922d2d3e5109519fd52fcc6bf7217a`, contained in `origin/main`. Focused backend integration/service suites 17/17 each, Daily page spec 24/24, API build, all governance validators, and `git diff --check` pass. Exact-SHA Analytics Tests & Data Integrity run `37336996570` is in progress; unrelated earlier Analytics Quality Gates run `37336310560` is red on Pre-Nivelacija/Inventory frontend tests, not the Daily Sales surface. Run log: `.ai/runs/2026-10-05-RQ584-evidence.md`. Evidence state: synchronized.
 
-## RQ585 - Weekly owner decision digest built only from certified signals
+## RQ585 - Owner decision digest on the latest trustworthy horizon
 
 Status: WAITING
-Ready after: production data freshness within the RQ583 SLA (`RQ570`, `RQ573`, `RQ574`, `RQ576` are DONE)
+Ready after: RQ593, RQ594 and RQ555 DONE
 Priority: P1
 Type: product/backend/frontend
 Feature family: owner-weekly-decision-digest
 Parallel-safe: no
 Owner: Product owner + Analytics Reliability
-Commit suggestion: `feat(analytics): weekly owner decision digest from certified signals`
+Commit suggestion: `feat(analytics): owner decision digest from certified signals`
 
 ### Problem
 
-The analytics now has many trustworthy building blocks (Supplier overview, Shoe Type, Daily parity; Pre-Nivelacija SKU+store grain; Product Decision rules), but the owner still has to visit 10+ screens to find the 5 decisions that matter this week. There is no single "šta da uradim ove nedelje" view.
+Trendplus has trustworthy building blocks, but the owner still has to visit many screens to find the few decisions that matter. The previous prompt incorrectly made production freshness a **start gate for building the product**. Freshness is a gate for calling the digest "today"/"this week"/"current", not for composing a useful decision list from the latest certified horizon.
 
 ### Evidence
 
-- Dated live evidence: the 2026-10-04 Decision Board showed blocker/sample-warning cards rather than useful product actions, while the 2026-09-28 Decision Pulse returned no items with `suppressedCount=124`.
-- Dated 2026-10-04 Product Decision evidence had 0 actionable rows. RQ573/RQ574 are DONE on current main and fixed ranking/quality-policy defects; those old counts are motivation for a fresh deployed reproof, not a claim about today's fixed code.
+- RQ570/RQ573/RQ574/RQ576 are DONE.
+- RQ571 already anchors stale-source analytics to the observed source horizon instead of counting days after the source stopped.
+- Existing historical imports and certified bounded windows remain valid evidence for formulas and historical decisions even when the current production pipeline is stale.
+- RQ593/RQ594/RQ555 close the remaining money/Inventory/markdown-source semantics that this digest should consume rather than duplicate.
 
 ### Scope
 
-- A weekly digest page/export listing at most 10 actions from currently certified families: markdown candidates, inventory/dead-stock/transfer signals and supplier flags when their source is available. Size-run/replenishment items are optional and may appear only after the size source/policy is certified (RQ559); missing size evidence must not block the whole digest. Each item carries an evidence link, confidence/reliability state and expected RSD impact only when certified.
+- One page/export with at most 10 highest-value owner decisions from certified markdown, inventory/transfer and supplier sources.
+- Every item declares `asOfUtc` / observed horizon, evidence basis and whether the decision is historical/latest-known or current.
+- Size-run/replenishment is optional and may appear only when its source/policy is certified; missing families do not block the digest.
+- No new scoring model and no frontend-invented recommendation.
 
 ### Read first
 
-- Decision Board/Pulse endpoints; `RQ465`, `RQ483`, `RQ492`, `RQ530`, `RQ557`.
+- RQ593, RQ594, RQ555; RQ465, RQ530, RQ557; RQ571 horizon contract.
 
 ### Do
 
-1. Compose from existing backend signals only (no new scoring); exclude anything with `recommendationAllowed=false`.
-2. Show data horizon and freshness at the top; empty state explains which blocker prevents actions.
+1. Compose only backend-authoritative eligible actions/signals; exclude `recommendationAllowed=false`.
+2. When freshness is outside RQ583 SLA, label the surface e.g. **"Pregled odluka prema stanju do <datum>"** and prohibit "danas", "ove nedelje" or other current-tense claims.
+3. When freshness is inside SLA, the same contract may render as the current weekly digest without changing formulas.
+4. Rank only by existing certified priority/financial evidence. Unknown expected impact stays unavailable.
+5. Link every row to the owning evidence/detail screen and preserve store/supplier/dataScope context.
+6. Record owner disposition (accepted/deferred/rejected/ignored) without requiring outcome measurement to use the page.
 
 ### Tests
 
-- Composition unit tests; page spec; validators; `git diff --check`.
+- stale-horizon fixture renders an explicit as-of date and no current-tense copy;
+- fresh-horizon fixture uses current weekly copy with identical business values;
+- blocked/unavailable source families cannot invent placeholder actions;
+- composition, deep-link context and expected-impact nullability tests;
+- validators and `git diff --check`.
 
 ### Acceptance
 
-- One page answers "which 10 things should I do this week, and why" with traceable evidence.
-- No unavailable signal family is silently replaced by a heuristic/fallback just to fill ten rows.
-- The pilot adoption metric is four consecutive weekly owner reviews with a recorded disposition per surfaced item; this is product evidence, not a start gate for implementation.
+- The owner can answer "koje su sledeće najvažnije odluke prema poslednjem pouzdanom stanju i zašto?" from one page.
+- Stale data reduces **currentness**, not historical truth: the same values remain visible with an explicit as-of boundary.
+- Four consecutive owner review cycles with recorded disposition are the adoption target; they are not an implementation start gate.
 
 ### Dependencies
 
-- As listed in Ready after.
-
-### Addendum 2026-10-04 (next-wave review correction; RQ585)
-
-- An empty/smoke-only Analytics Actions ledger is **not** a dependency of this prompt. RQ585 composes certified current signals and already has explicit gates: RQ570/RQ573/RQ574/RQ576 DONE plus production freshness within the RQ583 SLA.
-- Do not defer RQ585 waiting for measured outcomes. Outcome/learning may enrich a later digest, but the first digest is a bounded owner worklist from certified actionable signals. Rows with recommendationAllowed=false remain excluded and expected impact stays unavailable when not certified.
+RQ593, RQ594 and RQ555 DONE. Production freshness is a **currentness/acceptance dimension**, not a start dependency. RQ592 outcome proof is not a dependency.
 
 
 Owner claim 2026-10-05 after RQ557: fresh post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` scanned all 15 active owner queue/addendum files. RQ558 remains sample-gated; RQ559 remains source/policy-gated. RQ586 is dependency-complete and collision-safe (no matching lock, branch or open PR); RQ588 remains an independent READY lane. RQ586 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
@@ -30081,6 +30089,147 @@ Trendplus has no repository evidence that a recommendation has already produced 
 - Explicit limitation section: no randomization, no historical stock-by-day, selection bias.
 - No change to formulas, scoring, confidence or schema.
 
+### Non-blocking boundary
+
+RQ592 is a **prospective current-production value experiment**. It does not gate formula correctness, historical nivelacija value, RQ593/RQ594/RQ595, RQ555/RQ556, or construction of RQ585 on the latest trustworthy horizon. RQ557 already owns descriptive historical markdown outcomes.
+
 ### Dependencies
 
 STAB16 freshness restored, RQ545 live verified, RQ557 (DONE), RQ571 (DONE).
+
+## RQ593 - Money unknown is not zero across Product Decision and Inventory aggregates
+
+Status: READY
+Ready after: none
+Priority: P1
+Type: backend/frontend/tests
+Feature family: financial-unknown-coverage
+Parallel-safe: yes with RQ595; no with RQ555/RQ594 because of shared Product/Inventory endpoint files
+Owner: Analytics Reliability / Product Value
+Owned paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision summary, `Api/Endpoints/InventoryEndpoints.cs` monetary aggregation/ABC/store-comparison paths, related DTO/types/UI/tests
+Avoid paths: recommendation thresholds/weights, supplier scorecard policy, Pre-Nivelacija scoring, production/provider configuration
+Commit suggestion: `fix(analytics): preserve unknown financial values in decision aggregates`
+
+### Problem
+
+Two current-main monetary paths still convert unavailable evidence to zero inside aggregates:
+
+1. Product Decision accumulates `totalLostSalesEstimate += lostSalesEstimate ?? 0m` and `totalSlowStockCapital += slowStockCapital ?? 0m`. A partial population can therefore look like a complete RSD total.
+2. Inventory row DTOs hide missing cost correctly, but internal `InventoryDatasetItem` still stores missing unit cost/value as `0`; total value, aging value, ABC classification and store comparison sum/classify those rows as zero-value stock.
+
+This is a correctness defect independent of data freshness. Historical imports and deterministic fixtures are sufficient to fix and prove it.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_ACCURACY_AUDIT_2026-10-05.md` §56.6 names both residuals.
+- Current `CachedAnalyticsEndpoints.cs` still sums nullable PDC money with `?? 0m`.
+- Current `InventoryEndpoints.cs` preserves `CostMissing` at the row edge but monetary aggregate/ABC internals consume non-null `EstimatedValue`.
+
+### Scope
+
+- Financial nullability, coverage metadata and aggregate/ABC semantics only.
+- Preserve true measured zero.
+- No new recommendation formula, scoring threshold or data-source policy.
+
+### Read first
+
+- RQ576 completion/valuation basis;
+- RQ59/RQ60 and `ANALYTICS_ACCURACY_AUDIT_2026-10-05.md`;
+- PDC summary DTO/tests and Inventory balance/insights/store-comparison DTO/tests.
+
+### Do
+
+1. PDC: aggregate Lost Sales / Slow Stock Capital only across rows with known eligible values; expose known-row/value coverage and unknown count (or an equivalent explicit completeness contract).
+2. A PDC RSD "total" with incomplete coverage must be labelled covered/partial or unavailable according to the contract; never silently certify a partial sum as complete.
+3. Inventory: represent unknown monetary value internally as nullable/evidence-bearing rather than relying on numeric zero plus `CostMissing`.
+4. Total inventory value, aging value and store-comparison value aggregate only known monetary rows and expose value coverage / unknown units or rows.
+5. ABC/value ranking must not classify an unknown-cost positive-stock SKU as a measured zero-value C item. Keep it outside monetary ABC or mark monetary class unavailable.
+6. Preserve true zero for zero quantity or a genuinely measured zero value.
+7. Keep screen/export/detail semantics aligned; frontend must render unknown/partial explicitly.
+
+### Tests
+
+- mixed known + unknown cost/value population;
+- all values unknown;
+- true-zero quantity/value;
+- PDC mixed known/unknown Lost Sales and Slow Stock Capital;
+- Inventory ABC with a high-quantity unknown-cost row;
+- aggregate/detail/export parity where applicable;
+- focused builds/tests, analytics guardrails, governance validators and `git diff --check`.
+
+### Acceptance
+
+No customer-facing financial KPI, subtotal, aging value, store-comparison value or ABC monetary rank silently treats missing money as 0. Every partial aggregate exposes its coverage/completeness, while true zero remains distinguishable.
+
+### Dependencies
+
+None. No fresh import, deployed runtime or owner pricing decision is required.
+
+---
+
+## RQ594 - Make Inventory actions source-horizon anchored and decision-semantic, including demand-aware transfers
+
+Status: WAITING
+Ready after: RQ593 DONE (shared `InventoryEndpoints.cs`)
+Priority: P1
+Type: backend/frontend/product/tests
+Feature family: inventory-action-decision-truth
+Parallel-safe: no
+Owner: Analytics Product / Inventory
+Owned paths: Inventory action-workflow generation, nearby action DTO/UI/tests; reuse existing rebalance/action key contracts
+Avoid paths: forecast model materialization, generic RebalancingTable rewrite, new transfer tables, Product Decision and Pre-Nivelacija scoring
+Commit suggestion: `fix(inventory): anchor and strengthen inventory action decisions`
+
+### Problem
+
+The Inventory action workflow already supports `dopuna`, `markdown`, `clearance` and `transfer`, so a new transfer feature would be duplicate work. The remaining problem is decision truth:
+
+- its sales/movement lookback is anchored to `DateTime.UtcNow`, so a stale source can look like 30 days with no demand;
+- after RQ576, `DaysSinceMovement` is receipt-age/proxy evidence, while workflow copy/rules still use it as if it meant "days without movement";
+- transfer chooses source/destination mainly from minimum/current quantity and does not require stronger destination demand than source demand;
+- action money must consume RQ593's coverage/null contract.
+
+### Evidence
+
+- `BuildActionWorkflowAsync` calls 30-day sales/movement helpers whose default window ends at now.
+- Markdown/clearance predicates use `DaysSinceMovement` with copy such as "90+ dana bez kretanja".
+- Existing transfer logic groups the same SKU across stores and compares excess vs minimum deficit; `GetRebalanceSuggestions`, `RebalancingTable`, central Actions and RQ418 source keys already exist.
+
+### Scope
+
+Improve the **existing** workflow; do not add another transfer subsystem or dashboard.
+
+### Read first
+
+- RQ576, RQ308, RQ371, RQ418 and RQ563 completion evidence;
+- RQ571 source-horizon pattern;
+- `BuildActionWorkflowAsync`, `InventorySignalCalculator`, existing rebalance/action tests.
+
+### Do
+
+1. Resolve workflow `asOfUtc` from the latest observed source horizon for the active scope; only use now when the source is current/has no earlier observed horizon.
+2. End sales/movement signal windows at `asOfUtc`, not wall-clock now.
+3. Keep receipt/inbound age separate from sales recency and velocity. Rename/reason-code/copy any rule that currently calls receipt age "bez kretanja".
+4. Markdown/clearance eligibility must combine reliable age with source-horizon sales velocity/stock-cover/sell-through evidence; age alone cannot create a confident action.
+5. Transfer: for the same SKU/store population, compare source/destination demand over the same anchored window. Recommend transfer only when destination need/demand is materially stronger, source remains above a safe cover/minimum after transfer, and both store identities are reliable. Use deterministic transparent thresholds, not a new forecast model.
+6. Rank actionable slow-stock/transfer rows using existing priority plus **known** capital evidence from RQ593; missing cost stays null and cannot become 0 impact.
+7. Expose `asOfUtc`, window, basis and reason codes in the existing workflow/central queue context. Preserve existing action keys, statuses and idempotency.
+8. Keep the existing RebalancingTable as evidence/drill-down; do not duplicate it.
+
+### Tests
+
+- source horizon 60 days before wall clock produces the same workflow decisions as running the clock at that horizon;
+- new receipt + no recent sale is not automatically clearance solely from age;
+- old stock with low/no velocity can become markdown/clearance with visible evidence;
+- transfer source A / destination B with stronger B demand is allowed when post-transfer source cover is safe;
+- equal/weaker destination demand, missing identity or unsafe source cover blocks transfer;
+- missing cost keeps action capital unavailable;
+- existing central queue/source-key idempotency remains green.
+
+### Acceptance
+
+Inventory actions answer "šta da uradim sa ovom zalihom i zašto" from the latest trustworthy source horizon. Receipt age, no-sale recency, demand and capital are not conflated, and transfer is a demand-backed decision rather than only a min/max stock heuristic.
+
+### Dependencies
+
+RQ593 DONE. No fresh import is required for implementation or deterministic proof; freshness only decides whether the resulting action set may be called current.
