@@ -10,14 +10,13 @@ Purpose: isolate SQL analytics work so Codex, Cursor and manual edits do not imp
 
 ## Queue rules
 
-1. Only the prompt marked `READY` may be started.
-2. All `WAITING` prompts must stay untouched until their dependency is DONE or explicitly unblocked.
-3. Create a local uncommitted lock before starting:
-   - `.ai/task-locks/<task-id>-<agent>.lock.md`
-4. Do not touch files outside `Scope only`.
-5. Do not combine SQL semantics, frontend UX and deploy proof in one task.
-6. If a SQL change needs DB evidence, mark `BLOCKED` or `PARTIAL` and record the missing evidence.
-7. Queue status must be updated only after the task has checks and notes.
+`docs/ai/PROMPT_QUEUE_PROTOCOL.md` is the sole owner of selection, claim, lock, concurrency, promotion, no-READY and close-out mechanics.
+
+1. A SQL task may start only after it is `READY` and passes the protocol's dependency/owner/path checks. The queue's `Current READY` is the primary/default pointer, not a global mutex.
+2. A `WAITING` task is not implemented directly; if its gate is now satisfied, repair/promote it through the protocol first. If the queue has no READY task, use the canonical no-READY action ladder rather than treating `none` as permanent.
+3. Do not touch files outside `Scope only`.
+4. Do not combine SQL semantics, frontend UX and deploy proof in one task.
+5. If required DB evidence is genuinely unavailable after blocker decomposition, use the protocol's truthful non-terminal status and record the missing evidence.
 
 ## Status summary
 
