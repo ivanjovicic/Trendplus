@@ -4,9 +4,9 @@ Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: `codex/perf19-decision-board-composition` / none
-Main commit SHA: pending (selection/recovery evidence only; no implementation prompt was claimable)
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `31b51cc38c4944aa7da587691d58cdf301a8879e` (Zero-READY recovery record; no implementation prompt was claimable)
+Main verification: passed - fresh `origin/main` contains `31b51cc38c4944aa7da587691d58cdf301a8879e`; final evidence synchronization follows on `main`
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
