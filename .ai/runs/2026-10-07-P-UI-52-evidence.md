@@ -3,10 +3,10 @@ Queue: docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md
 Date: 2026-10-07
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: `codex/p-ui-52-analytics-navigation-copy` / none
+Working branch / PR: `cursor/p-ui-52-recovery-61ea` / pending
 Main commit SHA: `31b0a8d95906019163a135f3db66f89ffac8ea2d`
 Main verification: passed - fresh `origin/main` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`
-Evidence state: pending post-close routing synchronization
+Evidence state: pending final recovery delivery
 
 ## What was done
 - Reconciled analytics sidebar labels, route-definition labels and page titles; removed status-like analytics group/item badges and retained descriptive `Analiza` / `Izveštaj` badges.
@@ -15,6 +15,7 @@ Evidence state: pending post-close routing synchronization
 - Swept the bounded set of disjoint user-facing frontend copy: corrected Serbian diacritics/grammar in change-log, return, inventory and analytics detail surfaces. No API identifiers, enums, route segments, fixture contract values or business logic changed.
 - The owned “N/A” fallbacks in Analytics Actions and Supplier Footwear already displayed “Nije dostupno” before this claim; a targeted search found no remaining `N/A` in those production files, so they needed no edit.
 - Delivered implementation directly to `main` in `31b0a8d95906019163a135f3db66f89ffac8ea2d`.
+- Completed the post-close routing scan from current `origin/main`; no safe successor was promoted.
 
 ### Navigation label reconciliation
 
@@ -69,6 +70,8 @@ Evidence state: pending post-close routing synchronization
 - `npm run check:encoding` -> pass; no mojibake detected.
 - `npm run check:analytics-guardrails` -> pass; baseline remains at 39 known findings with no new findings; includes encoding and TypeScript build-mode check.
 - `npm run typecheck` -> pass.
+- `npm run test -- --run src/layout/__tests__/navConfig.spec.ts src/layout/components/__tests__/Sidebar.spec.tsx src/layout/components/__tests__/headerNavigation.spec.ts src/pages/__tests__/DecisionPulsePage.spec.tsx src/pages/__tests__/SupplierFootwearAnalyticsPage.spec.tsx` -> pass, 5 files / 42 tests.
+- `npm run build` -> pass; Vite production build completed with the existing Recharts chunk-size advisory.
 - `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs` -> pass (14 canonical files).
 - `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (709 tasks).
 - `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 tasks).
@@ -78,12 +81,11 @@ Evidence state: pending post-close routing synchronization
 
 ## Validation not run
 - Full frontend suite -> not run; mapped focused specs and guardrails were used.
-- Production build -> not run; the prompt's typecheck and analytics guardrail proof passed.
 - Browser/device smoke -> not required for this copy/navigation prompt; canonical-link, active-sidebar and legacy redirect behavior have focused route/component tests.
 
 ## Documentation impact
 - Updated the P-UI queue completion note, `MASTER_ROADMAP.md` routing row and `ANALYTICS_UI_PREMIUM_ROADMAP.md` current direction.
-- Added this durable evidence log. The closure commit will synchronize the mandatory post-close recovery section.
+- Added this durable evidence log and synchronized the mandatory post-close recovery section.
 
 ## What was missed
 - None known in repository-local acceptance. No in-scope production `N/A` fallback remained to change.
@@ -94,7 +96,12 @@ Evidence state: pending post-close routing synchronization
 - A pre-existing untracked responsive artifact directory `Klijent/clientapp/tmp/` remains in this isolated worktree and is excluded from commits; it was not cleaned. The primary checkout and its user changes remain untouched.
 
 ## Post-close routing recovery
-- Pending the terminal closure commit landing on `main`; recovery must refresh `origin/main`, scan the complete 16-file active owner queue/addendum set and record the candidate/blocker matrix here before final evidence synchronization.
+- Recovery scan base: `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab`.
+- Active owner queue/addendum files scanned (16): `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; all 11 active `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_*_ADDENDUM.md` files; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`.
+- Completed/changed task IDs searched: `P-UI-52`; dependencies `RQ553`, `RQ582`, `RQ589`; UI successors `P-UI-38` and `P-UI-50`.
+- Candidate/blocker matrix: BCI and RQ/SQL have no READY prompt; STAB16 is blocked on provider/deployed proof; QDB07 is waiting on release gates; MT02 is waiting on tenant identity/membership authority; GAI remains behind core-pilot/release gates; P-UI-38 is waiting on remaining migrations; P-UI-50 is blocked by the separate uncommitted Product Decision page edit. No dependency-complete, collision-safe repo-local successor exists.
+- Start-gate vs final-proof classification: STAB16/provider, QDB07/release, MT02/owner authority and GAI/core-pilot are true external gates; no safe same-owner P-UI slice exists behind P-UI-38/P-UI-50 because their owned paths remain gated or actively edited.
+- Promoted successor: none. Zero-READY proof is complete after final recovery delivery; exact recovery SHA will be refreshed in the final evidence commit.
 
 ## Next
-- Pending the required post-close recovery; do not infer a successor from the pre-close queue pointer.
+- No safe successor; the next unblock event is completion/deferment of P-UI-38's remaining migration gate or release of the P-UI-50 Product Decision page edit, while higher-priority external gates remain unchanged.
