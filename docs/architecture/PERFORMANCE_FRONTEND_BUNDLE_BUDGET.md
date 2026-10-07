@@ -2,7 +2,7 @@
 
 Status: measured contract for the current dedicated-customer pilot frontend
 
-Owner: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`PERF17`)
+Owner: `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` (`PERF17` baseline; `PERF18` loading-graph follow-up)
 
 ## Baseline
 
@@ -57,3 +57,19 @@ The raw-size budget can therefore remain green while the **loading graph regress
 Owner follow-up: `PERF18` in `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md`.
 
 PERF18 must extend the existing `check:bundle-budget` contract rather than create a parallel budget script, and it must respect PERF17's evidence that blindly removing the Recharts manual split produced Rollup circular-dependency/execution-order warnings.
+
+## PERF18 current-main implementation measurement (2026-10-07)
+
+On refreshed base `d80564ad367a21aa08dbc12f94e6e71feb8af4be`, the production build transformed 2,732 modules. The existing `manualChunks` callback assigned Recharts, while Rollup also placed its transitive shared React runtime in that manual chunk. Sourcemap inspection found `react`, `react-dom`, `scheduler`, and `react-redux` inside the 548,036-byte Recharts chunk; the application entry consequently modulepreloaded that chunk even on `/prodaja`.
+
+The PERF18 change sets Rollup `onlyExplicitManualChunks: true`, keeping the manual assignment limited to matching Recharts modules and allowing shared dependencies to be separately chunked. The measured result is:
+
+| Asset | Raw bytes | Meaning |
+|---|---:|---|
+| `index-CkIohQnG.js` | 326,002 | application entry |
+| `index-LinKfANW.js` | 141,410 | shared React runtime chunk |
+| `recharts-DSZTXKZH.js` | 263,632 | chart-library chunk |
+
+The generated `dist/index.html` preloads the shared React runtime, not Recharts. Puppeteer observed `/prodaja` requesting no `recharts-*.js` asset and `/analytics/daily-sales` requesting it. A focused Daily Sales Vitest suite passed (5/5). The browser smoke without an API fixture observed no JavaScript page errors, but API requests failed because no backend was running; the existing responsive fixture harness reached its geometry collector and failed on a null `scrollWidth` target, so data-backed chart SVG rendering remains unproven by this measurement. See `.ai/runs/2026-10-07-PERF18-evidence.md` for exact commands and remaining proof.
+
+The existing `check:bundle-budget` now also rejects a Recharts-named JavaScript chunk in the application's `modulepreload` links. Its `--self-test` seeds the prior preload recurrence and verifies that it is detected. PERF18 remains open until the browser route-hop/chart-render and remaining acceptance checks are complete.

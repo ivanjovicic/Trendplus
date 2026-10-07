@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF19` DONE with local cold/warm HTTP and per-contributor evidence; `PERF18` WAITING on current browser/network proof; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF18` PARTIAL: preload regression is fixed and guarded, but a browser fixture must still prove chart SVG rendering and SPA route-hop; `PERF19` DONE with local cold/warm HTTP and per-contributor evidence; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
@@ -2787,14 +2787,40 @@ Admin API-key / deployment-secret rotation and emergency-access expectations are
 
 ## PERF18 - Reconcile the Recharts initial-preload regression with the measured bundle contract
 
-Status: WAITING
-Ready after: P-UI-24 records current route/network evidence, or equivalent current-main browser proof is attached
+Status: PARTIAL
+Ready after: current-main production-build and browser/network baseline is recorded below; P-UI-24 is historical context, not a remaining start gate
 Priority: P1
 Type: frontend performance/runtime/tests
 Feature family: frontend-bundle-loading
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex (`codex/perf18-recharts-preload`)
 Commit suggestion: `perf(frontend): restore chart chunk route isolation`
+
+### Claim and start-gate repair (2026-10-07)
+
+- Claimed from refreshed `origin/main` `d80564ad367a21aa08dbc12f94e6e71feb8af4be`; no PERF18 remote branch, matching lock, or GitHub PR was found at claim time.
+- The named P-UI-24 artifact is from 2026-10-01 and does not contain a current Recharts route/network trace. The protocol classifies current-main proof owned by this prompt as repo-local proof / same-prompt artifact, not a prerequisite that must be satisfied by another prompt. Its production build and Puppeteer network trace are now recorded in `.ai/runs/2026-10-07-PERF18-evidence.md`.
+- Current-main baseline: Vite 7.3.6 transformed 2,732 modules; `index-BBtS7uFU.js` is 325,810 bytes and `recharts-BFPhEesj.js` is 548,036 bytes. `dist/index.html` modulepreloads the Recharts asset. Puppeteer observed `/prodaja` request that asset despite zero Recharts chart nodes; `/analytics` also requested it. No browser page errors or failed asset requests were observed. API network-idle was not used because fixture-free local API calls remain active; navigation was measured at `domcontentloaded`.
+- Prompt defect repaired: current route/network baseline is the first executable step and no longer depends on P-UI-24 producing the same artifact. Runtime implementation remains scoped to the existing PERF18 paths and gates.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: PARTIAL
+- Completion: production entry no longer preloads Recharts on `/prodaja`; shared React dependencies are separated; the existing bundle budget rejects a seeded Recharts preload recurrence.
+- Changed files: `Klijent/clientapp/vite.config.ts`; `Klijent/clientapp/scripts/check-bundle-budget.mjs`; `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`; `docs/roadmaps/PERFORMANCE_ROADMAP.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-07-PERF18-evidence.md`.
+- Checks run: `npm run typecheck`; `npm run build`; `npm run check:bundle-budget -- --self-test`; `npm run check:bundle-budget`; `npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx` (5/5); all prompt-queue/planning/instruction validators; Puppeteer entry and chart-route network checks; `git diff --check`.
+- Checks not run: data-backed browser SVG render/SPA route-hop (fixture-free API requests fail locally; existing responsive harness crashes in its geometry collector); CI not inspected after delivery.
+- Run log: `.ai/runs/2026-10-07-PERF18-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: prove a Recharts SVG renders after an SPA hop from `/prodaja` using deterministic API fixtures; inspect relevant current-main CI run.
+- Follow-up: resume PERF18 browser proof and synchronize evidence; do not claim DONE until the missing route-hop/chart-render acceptance passes.
+- Residual risk: local network evidence confirms correct asset isolation and route loading, but not a chart SVG render with data.
+- Next: PERF18 browser proof follow-up
+- Prompt defect / scope repair: circular `Ready after: P-UI-24 ...` prerequisite repaired; PERF18 now creates its own current-main baseline as step one.
 
 ### Problem
 

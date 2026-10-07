@@ -13,6 +13,8 @@ export default defineConfig({
         minify: "esbuild", // Changed from 'terser' to 'esbuild' for proper UTF-8 support
         rollupOptions: {
             output: {
+                // Keep the explicit Recharts assignment from absorbing shared React runtime dependencies.
+                onlyExplicitManualChunks: true,
                 manualChunks(id) {
                     if (id.includes("node_modules/recharts")) {
                         return "recharts";
