@@ -1,63 +1,46 @@
-# Codex Queue Runner Instructions
+# Codex Queue Runner
 
-Updated: 2026-08-11
+Updated: 2026-10-07
 
-Use this guide when Codex is explicitly asked to execute live Trendplus queue work.
+This file is a **thin compatibility launcher** for Codex queue execution. It is not a queue-policy owner and must not redefine selection, claim, takeover, lock, no-READY recovery, delivery or close-out semantics.
 
-## Important
+Canonical owner: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-Codex should not try to finish the whole queue in one run. Work one prompt per session and keep the change set scoped to that prompt unless the prompt explicitly allows a bounded docs consolidation.
+## Start packet
 
-## Start prompt for Codex
+Before queue work, read only what is needed:
+
+1. `AGENTS.md`
+2. `.github/copilot-instructions.md`
+3. `docs/ai/AGENT_START_HERE.md`
+4. `MASTER_ROADMAP.md`
+5. `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
+6. the current owner queue and the selected prompt
+
+Then follow the protocol exactly.
+
+## Non-negotiable launcher invariants
+
+- `Current READY` is the primary/default pointer, not a global mutex. A different READY prompt may be selected only when the canonical protocol proves it dependency-complete and collision-safe.
+- One agent/workspace owns one claimed prompt at a time. Different top-level agents may work different collision-safe READY prompts.
+- **Same-task ownership is exclusive through close-out.** Another owner's `IN_PROGRESS` task stays theirs through focused validation, evidence/status synchronization, CI classification and post-close routing even when its implementation SHA is already on `main`.
+- Missing local lock, branch or PR is not release evidence.
+- If no READY prompt exists, run the protocol's **Mandatory no-READY action ladder**. Do not stop at `WAITING/BLOCKED`; attempt stale-gate repair, bounded repo-local unblock/proof work, meaningful disjoint split when permitted, and the next eligible program before a Zero-READY result.
+- A queue task starts only after the protocol's current READY/dependency/owner/path checks pass. Do not invent a second claim mechanism here.
+- Deliver and close through the protocol/evidence standard. If the user's instruction is to continue queue execution, post-close routing may select the next safe prompt; this file does not impose a one-prompt-per-session rule.
+
+## Suggested invocation
 
 ```text
 Repo: ivanjovicic/Trendplus
 
-Before work, read:
-- .github/copilot-instructions.md
-- AGENTS.md
-- docs/ai/AGENT_START_HERE.md
-- MASTER_ROADMAP.md
-- docs/ai/PROMPT_QUEUE_PROTOCOL.md
-- the current owner queue named by MASTER_ROADMAP.md
+Execute queue work using MASTER_ROADMAP.md + the current owner queue and
+docs/ai/PROMPT_QUEUE_PROTOCOL.md as the sole queue-mechanics authority.
 
-Task:
-Execute only the current READY prompt for the owning program.
-
-Rules:
-1. Resolve the owner program from MASTER_ROADMAP.md.
-2. Start only a prompt that is currently READY and whose dependencies are satisfied.
-3. Treat docs/ai/NEXT_PROMPT_QUEUE.md as a historical ledger, not a live router.
-4. Do not run more than one queue prompt in the same session/commit.
-5. Before edits, set the prompt to IN_PROGRESS or create the local lock from docs/ai/PROMPT_QUEUE_PROTOCOL.md.
-6. Make the smallest change that satisfies the prompt acceptance.
-7. Run the exact prompt checks; if a check stalls or fails twice without new evidence, stop as PARTIAL/BLOCKED.
-8. Record status, changed files, checks, residual risk, next step and main verification evidence.
-9. Use only protocol statuses: READY, WAITING, IN_PROGRESS, BLOCKED, PARTIAL, DONE, OBSOLETE.
-10. Do not change unrelated files or another program's queue.
-
-Finish with:
-- completed prompt
-- changed files
-- checks
-- risks
-- main verification
-- next owner-queue item if known
+Do not take over another owner's IN_PROGRESS task.
+If there is no READY prompt, run the Mandatory no-READY action ladder.
+Use the smallest collision-safe scope, validate honestly, deliver to main when permitted,
+synchronize evidence, then run the post-close dependency cascade.
 ```
 
-## When Codex should stop
-
-Stop if:
-- the prompt is not the current READY item for its owner program
-- source of truth, tenant authority or business contract is unclear
-- the task spills into another program or a broad rewrite
-- secrets, production access or unresolved security decisions are required
-- required proof cannot be produced honestly
-
-## Manual continuation
-
-After each commit:
-1. Re-open `MASTER_ROADMAP.md`.
-2. Re-check the current owner queue header/current READY pointer.
-3. Continue only if the same prompt still owns the next action.
-4. Do not jump to an older historical `TODO` or `OPEN` entry.
+For status names, local-lock format, takeover proof, blocker decomposition, Zero-READY proof and exact close path, read the canonical protocol rather than this launcher.
