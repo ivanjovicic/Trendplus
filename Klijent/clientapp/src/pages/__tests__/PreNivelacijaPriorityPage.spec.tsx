@@ -1146,7 +1146,7 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(document.querySelector(".pnp-decision-kpis")).toBeNull();
   });
 
-  it("uses the same safe period reason in the trust header and empty state", async () => {
+  it("keeps the period reason and insufficient-data empty state distinct", async () => {
     getPreNivelacijaPrioritetiMock.mockResolvedValueOnce({
       ...makeResponse([]),
       meta: {
@@ -1163,7 +1163,8 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     const periodReason = "Nema podataka za izabrani period.";
-    expect(await screen.findByText(periodReason)).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(".analytics-empty-state")).toHaveAttribute("data-state-code", "insufficient_data"));
+    expect(document.querySelector(".analytics-empty-state h2")).toHaveTextContent("Signal nije dovoljno jak za prioritetnu listu.");
     expect(screen.getByTestId("analytics-trust-empty-reason")).toHaveTextContent(periodReason);
   });
 

@@ -101,13 +101,17 @@ function normalizeCode(code: string): string {
   return code.trim().toLocaleLowerCase().replace(/[\s-]+/g, "_");
 }
 
+export function isAnalyticsReasonCode(value?: string | null): boolean {
+  return Boolean(value?.trim() && /^[a-z][a-z0-9_.:-]*$/i.test(value.trim()));
+}
+
 function stateCodeFromMeta(meta?: AnalyticsResponseMeta | null): string | null {
   if (!meta) return null;
   if (meta.errorCode?.trim()) return meta.errorCode;
   if (meta.success === false) return "error_retryable";
   if (meta.warningCode?.trim() && (!meta.isPartial || isKnownAnalyticsStateCode(meta.warningCode))) return meta.warningCode;
   if (meta.isPartial) return "partial";
-  if (meta.emptyReason?.trim()) return meta.emptyReason;
+  if (isAnalyticsReasonCode(meta.emptyReason)) return meta.emptyReason ?? null;
   if (meta.success === true && meta.dataQualityStatus === "insufficient_data") return "insufficient_data";
   return null;
 }

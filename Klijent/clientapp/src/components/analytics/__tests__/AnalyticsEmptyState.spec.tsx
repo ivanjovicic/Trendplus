@@ -43,8 +43,8 @@ describe("AnalyticsEmptyState", () => {
     expect(screen.getAllByText("Nema podataka za izabrani period.")).toHaveLength(1);
   });
 
-  it("fails closed for unknown or malicious-looking empty reasons", () => {
-    renderEmptyState({ emptyReason: "<script>alert('backend-code')</script>" });
+  it("fails closed for unknown or malicious-looking backend codes", () => {
+    renderEmptyState({ code: "<script>alert('backend-code')</script>" });
 
     expect(screen.getByText("Sačuvajte tehnički kod iz detalja i kontaktirajte podršku.")).toBeInTheDocument();
     expect(screen.getByText(/<script>/i).closest("details")).not.toBeNull();

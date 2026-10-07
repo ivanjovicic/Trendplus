@@ -131,7 +131,8 @@ describe("RecommendationMeasurementStatisticsReview", () => {
     });
 
     expect(screen.getByText("Nema izdatih preporuka za izabrani period.")).toBeInTheDocument();
-    expect(screen.getByText("Nema podataka za izabrani opseg.")).toBeInTheDocument();
+    const panel = screen.getByTestId("measurement-statistics-review");
+    expect(within(panel).getByRole("status")).toHaveAttribute("data-state-code", "empty_no_data");
     expect(screen.queryByText("no_rows")).not.toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
     expect(screen.queryByText("Stopa pozitivnih ishoda")).not.toBeInTheDocument();
@@ -145,7 +146,8 @@ describe("RecommendationMeasurementStatisticsReview", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Polje measurementStatistics nedostaje");
-    expect(alert).not.toHaveTextContent("missing_statistics");
+    const technicalCode = within(alert).getByText("missing_statistics");
+    expect(technicalCode.closest("details")).not.toHaveAttribute("open");
     expect(screen.queryByText("90%")).not.toBeInTheDocument();
     expect(screen.queryByText("Stopa pozitivnih ishoda")).not.toBeInTheDocument();
   });

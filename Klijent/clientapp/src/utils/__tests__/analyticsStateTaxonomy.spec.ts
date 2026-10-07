@@ -48,6 +48,8 @@ describe("analytics state taxonomy", () => {
       .toMatchObject({ code: "partial", rawCode: "future_partial_v4" });
     expect(resolveAnalyticsState(undefined, { success: false, isPartial: true }))
       .toMatchObject({ code: "error_retryable" });
+    expect(resolveAnalyticsState(undefined, { success: true, emptyReason: "Signal nije dovoljno jak za prioritetnu listu." }, "insufficient_data"))
+      .toMatchObject({ code: "insufficient_data", rawCode: null });
   });
 
   it("classifies validation and fetch failures without exposing their technical messages", () => {

@@ -944,7 +944,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Pozitivan efekat/i }));
 
-    expect(await screen.findByRole("heading", { name: "Nema rezultata za trenutne filtere." })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nema rezultata za filtere." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Vrati prikaz svih dobavljača." })).toBeInTheDocument();
     expect(screen.queryByTestId("prodaja-pre-post-nivelacije-data-table")).not.toBeInTheDocument();
     expect(screen.queryByText("Vendor B")).not.toBeInTheDocument();
@@ -1300,9 +1300,9 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
       renderPage();
 
       const alert = await screen.findByRole("alert");
-      expect(alert).toHaveTextContent("Podaci trenutno nisu dostupni");
-      expect(alert).toHaveTextContent("Pre/post analiza čeka ispravku šeme baze. Sačuvajte kod i ID za podršku.");
-      expect(alert).toHaveTextContent("vendor_sales_nivelacija_contract_missing");
+      expect(within(alert).getByRole("heading", { name: "Server je vratio neočekivan format podataka." })).toBeInTheDocument();
+      const technicalCode = within(alert).getByText("vendor_sales_nivelacija_contract_missing");
+      expect(technicalCode.closest("details")).not.toHaveAttribute("open");
       expect(alert).toHaveTextContent("corr-page-contract");
       expect(alert).not.toHaveTextContent("nije potvrdila traženi objekat");
       expect(alert).not.toHaveTextContent("change_percent_revenue_semantic");

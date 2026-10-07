@@ -877,7 +877,9 @@ describe("SupplierDecisionHubPage", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
 
-    expect(await screen.findByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("heading", { name: "Analitika trenutno nije dostupna." })).toBeInTheDocument();
+    expect(alert).toHaveTextContent("Skorkarta dobavljača trenutno nije dostupna.");
     expect(screen.getByText("ID provere: supplier-scorecard-cache:90d")).toBeInTheDocument();
     expect(screen.getByText("Administrator treba read-only da proveri analitički skup.")).toBeInTheDocument();
     expect(screen.getByText(/Traženi period: 2026-07-01 – 2026-09-30; efektivni period: 2026-07-03 – 2026-09-30/)).toBeInTheDocument();

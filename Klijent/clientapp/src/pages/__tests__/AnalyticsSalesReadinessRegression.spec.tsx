@@ -155,8 +155,8 @@ describe("Analytics sales-readiness regressions", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: /Nema dovoljno podataka za pouzdanu analizu/i })).toBeInTheDocument();
-    expect(screen.getByText(/Ne prikazujemo automatsku preporuku jer signal nije dovoljno jak/i)).toBeInTheDocument();
+    const emptyState = await screen.findByRole("status");
+    expect(emptyState).toHaveAttribute("data-state-code", "empty_no_data");
   });
 
   it("Inventory API failure renders error state instead of hanging loader", async () => {

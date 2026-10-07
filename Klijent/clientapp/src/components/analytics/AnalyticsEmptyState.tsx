@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { AnalyticsResponseMeta } from "../../types/analytics";
 import { getAnalyticsEmptyReasonMessage } from "../../utils/analyticsResponseMeta";
 import { getSafeAnalyticsErrorMessage } from "../../utils/analyticsErrorMessages";
-import { resolveAnalyticsState } from "../../utils/analyticsStateTaxonomy";
+import { isAnalyticsReasonCode, resolveAnalyticsState } from "../../utils/analyticsStateTaxonomy";
 import "./AnalyticsEmptyState.css";
 
 type EmptyStateAction = {
@@ -78,7 +78,7 @@ export default function AnalyticsEmptyState({
     return () => window.clearTimeout(timer);
   }, [loading, loadingAttempt, loadingDelayMs]);
 
-  const resolvedState = resolveAnalyticsState(code ?? emptyReason, meta, variant);
+  const resolvedState = resolveAnalyticsState(code ?? (isAnalyticsReasonCode(emptyReason) ? emptyReason : null), meta, variant);
   const isSlowLoading = code?.trim().toLocaleLowerCase() === "loading_slow"
     || resolvedState.definition?.kind === "loading"
     || (loading && loadingIsSlow);
