@@ -32,7 +32,7 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 ## Current direction
 
-Owner routing update 2026-10-07: P-UI-46 operational/mobile lists are DONE on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`; P-UI-52 navigation/copy is DONE on implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`. The P-UI-52 zero-READY proof was valid at its recovery SHA, but follow-up routing review used the already-documented P-UI-38 split escape hatch: **P-UI-54 is now READY** for path-disjoint stable theme/Tailwind/a11y/static regression ratchets. It must not touch `ProductDecisionCenterPage.tsx` or P-UI-50-owned Product Decision behavior. P-UI-50 remains BLOCKED only by that unresolved primary-checkout edit; P-UI-38 remains WAITING as final whole-program closure until P-UI-50 and P-UI-54 finish.
+Owner routing update 2026-10-07: P-UI-46 and P-UI-52 are DONE, and the disjoint P-UI-54 regression/theme/a11y ratchet split is also **DONE** and consumed by P-UI-38. Current P-UI READY is none: P-UI-50 remains BLOCKED only by the unresolved primary-checkout edit on its Product Decision path, and P-UI-38 remains WAITING as final whole-program closure until P-UI-50 is completed or explicitly deferred. Re-run the canonical Mandatory no-READY action ladder on fresh `origin/main`; do not resurrect P-UI-54 from its historical split note.
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
