@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ READY prompt: RQ593 (P1, financial unknown/coverage correctness). RQ595 in the Supplier addendum is PARTIAL, not READY, after its evidence pack landed; it awaits per-aging-bucket cost basis/coverage from the RQ593 Inventory contract before closing the remaining known-capital acceptance. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or last-known-horizon product work.
-Product value plan refinement 2026-10-07: freshness is a currentness/deployed-operations gate, not a global prerequisite for historical formula/product work. RQ593 remains primary READY; RQ595 is PARTIAL on the disjoint Supplier lane pending the Inventory aging coverage contract. RQ555/RQ594 wait on RQ593 path ownership, RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
+Current RQ READY prompt: RQ596 (P1, Inventory financial unknown/coverage correctness). RQ593 is WAITING on the unresolved user-owned Product Decision page edit; its PDC-only slice remains authoritative. RQ595 in the Supplier addendum is PARTIAL, not READY, after its evidence pack landed; it awaits per-aging-bucket cost basis/coverage from RQ596 before closing the remaining known-capital acceptance. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or last-known-horizon product work.
+Product value plan refinement 2026-10-07: freshness is a currentness/deployed-operations gate, not a global prerequisite for historical formula/product work. RQ596 owns Inventory money/coverage; RQ593 is the PDC-only slice and waits on its exact page-path collision. RQ595 is PARTIAL on the disjoint Supplier lane pending RQ596's Inventory aging coverage contract. RQ555 waits on RQ593; RQ594 waits on both RQ593 and RQ596. RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ596/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -30097,16 +30097,16 @@ RQ592 is a **prospective current-production value experiment**. It does not gate
 
 STAB16 freshness restored, RQ545 live verified, RQ557 (DONE), RQ571 (DONE).
 
-## RQ593 - Money unknown is not zero across Product Decision and Inventory aggregates
+## RQ593 - Money unknown is not zero across Product Decision aggregates
 
-Status: READY
-Ready after: none
+Status: WAITING
+Ready after: release/resolve the existing user-owned edit on `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
 Priority: P1
 Type: backend/frontend/tests
 Feature family: financial-unknown-coverage
-Parallel-safe: yes with RQ595; no with RQ555/RQ594 because of shared Product/Inventory endpoint files
+Parallel-safe: yes with RQ596 and RQ595; no with RQ555 because of shared Product Decision paths
 Owner: Analytics Reliability / Product Value
-Owned paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision summary, `Api/Endpoints/InventoryEndpoints.cs` monetary aggregation/ABC/store-comparison paths, related DTO/types/UI/tests
+Owned paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs` Product Decision summary, Product Decision DTO/types/UI/tests, including `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
 Avoid paths: recommendation thresholds/weights, supplier scorecard policy, Pre-Nivelacija scoring, production/provider configuration
 Commit suggestion: `fix(analytics): preserve unknown financial values in decision aggregates`
 
@@ -30115,7 +30115,6 @@ Commit suggestion: `fix(analytics): preserve unknown financial values in decisio
 Two current-main monetary paths still convert unavailable evidence to zero inside aggregates:
 
 1. Product Decision accumulates `totalLostSalesEstimate += lostSalesEstimate ?? 0m` and `totalSlowStockCapital += slowStockCapital ?? 0m`. A partial population can therefore look like a complete RSD total.
-2. Inventory row DTOs hide missing cost correctly, but internal `InventoryDatasetItem` still stores missing unit cost/value as `0`; total value, aging value, ABC classification and store comparison sum/classify those rows as zero-value stock.
 
 This is a correctness defect independent of data freshness. Historical imports and deterministic fixtures are sufficient to fix and prove it.
 
@@ -30123,7 +30122,6 @@ This is a correctness defect independent of data freshness. Historical imports a
 
 - `docs/qa/ANALYTICS_ACCURACY_AUDIT_2026-10-05.md` §56.6 names both residuals.
 - Current `CachedAnalyticsEndpoints.cs` still sums nullable PDC money with `?? 0m`.
-- Current `InventoryEndpoints.cs` preserves `CostMissing` at the row edge but monetary aggregate/ABC internals consume non-null `EstimatedValue`.
 
 ### Scope
 
@@ -30141,36 +30139,95 @@ This is a correctness defect independent of data freshness. Historical imports a
 
 1. PDC: aggregate Lost Sales / Slow Stock Capital only across rows with known eligible values; expose known-row/value coverage and unknown count (or an equivalent explicit completeness contract).
 2. A PDC RSD "total" with incomplete coverage must be labelled covered/partial or unavailable according to the contract; never silently certify a partial sum as complete.
-3. Inventory: represent unknown monetary value internally as nullable/evidence-bearing rather than relying on numeric zero plus `CostMissing`.
-4. Total inventory value, aging value and store-comparison value aggregate only known monetary rows and expose value coverage / unknown units or rows.
-5. ABC/value ranking must not classify an unknown-cost positive-stock SKU as a measured zero-value C item. Keep it outside monetary ABC or mark monetary class unavailable.
-6. Preserve true zero for zero quantity or a genuinely measured zero value.
-7. Keep screen/export/detail semantics aligned; frontend must render unknown/partial explicitly.
+3. Preserve true zero for a genuinely measured zero value.
+
+### Tests
+
+- PDC mixed known/unknown Lost Sales and Slow Stock Capital;
+- Product Decision aggregate/detail/export parity where applicable;
+- focused builds/tests, analytics guardrails, governance validators and `git diff --check`.
+
+### Acceptance
+
+No Product Decision financial KPI silently treats missing money as 0. Partial aggregates expose coverage/completeness, while true zero remains distinguishable.
+
+### Dependencies
+
+The existing user-owned page edit must be released/resolved before claiming this PDC-only slice. No fresh import, deployed runtime or owner pricing decision is required.
+
+---
+
+## RQ596 - Inventory money unknown is not zero across aggregates and ABC
+
+Status: IN_PROGRESS
+Ready after: none
+Priority: P1
+Type: backend/frontend/tests
+Feature family: financial-unknown-coverage
+Parallel-safe: yes with RQ593 and RQ595; no with RQ594 because of shared Inventory endpoints
+Owner: Analytics Reliability / Product Value
+Owned paths: `Api/Endpoints/InventoryEndpoints.cs` Inventory monetary aggregation/ABC/store-comparison paths; `Api/Dtos/InventoryExperienceDtos.cs`; Inventory API types/UI/export/tests
+Avoid paths: Product Decision endpoints/page, recommendation thresholds/weights, supplier scorecard policy, Pre-Nivelacija scoring, production/provider configuration
+Commit suggestion: `fix(inventory): preserve unknown value coverage in aggregates`
+
+### Problem
+
+Inventory row DTOs preserve missing cost, but internal `InventoryDatasetItem` converts unknown unit cost/value to zero before total, aging, ABC and store-comparison calculations. This makes positive-stock unknown-cost rows look like measured zero-value stock and makes partial totals appear complete.
+
+### Evidence
+
+- `Api/Endpoints/InventoryEndpoints.cs` builds dataset values with `ComputeEstimatedValue(...) ?? 0m` and `UnitCost ?? 0m`.
+- `ApplyAbcClassification`, `BuildInsights`, store comparison, and export projections consume those non-null values.
+- `InventoryBalanceDto` already exposes coverage metadata for a separate balance endpoint, but insight/aging/ABC/store-comparison DTOs do not.
+- `InventoryStockEvidence.ComputeEstimatedValue` already preserves null when positive quantity has unknown cost and zero for measured zero quantity.
+
+### Scope
+
+- Inventory monetary nullability, coverage metadata and aggregate/ABC semantics only.
+- Preserve true measured zero; unknown stays distinct from zero.
+- No new recommendation formula, threshold or data-source policy.
+
+### Read first
+
+- RQ576 completion/valuation basis;
+- RQ59/RQ60 and `ANALYTICS_ACCURACY_AUDIT_2026-10-05.md`;
+- Inventory balance/insights/store-comparison DTOs, frontend consumers and tests.
+
+### Do
+
+1. Represent unknown monetary value internally as nullable/evidence-bearing rather than relying on numeric zero plus `CostMissing`.
+2. Total inventory value, aging value and store-comparison value aggregate only known monetary rows and expose value coverage / unknown rows or units.
+3. ABC/value ranking must not classify an unknown-cost positive-stock SKU as a measured zero-value C item. Keep it outside monetary ABC or mark its monetary class unavailable.
+4. Preserve true zero for zero quantity or a genuinely measured zero value.
+5. Keep screen/export/detail semantics aligned; frontend renders unknown/partial explicitly.
 
 ### Tests
 
 - mixed known + unknown cost/value population;
 - all values unknown;
 - true-zero quantity/value;
-- PDC mixed known/unknown Lost Sales and Slow Stock Capital;
-- Inventory ABC with a high-quantity unknown-cost row;
+- ABC with a high-quantity unknown-cost row;
 - aggregate/detail/export parity where applicable;
 - focused builds/tests, analytics guardrails, governance validators and `git diff --check`.
 
 ### Acceptance
 
-No customer-facing financial KPI, subtotal, aging value, store-comparison value or ABC monetary rank silently treats missing money as 0. Every partial aggregate exposes its coverage/completeness, while true zero remains distinguishable.
+No customer-facing Inventory financial KPI, subtotal, aging value, store-comparison value or ABC monetary rank silently treats missing money as 0. Every partial aggregate exposes coverage/completeness, while true zero remains distinguishable.
 
 ### Dependencies
 
 None. No fresh import, deployed runtime or owner pricing decision is required.
+
+### Claim
+
+Claimed 2026-10-07 from refreshed `origin/main` `a031ef29d03686449cad8e32d5cdebf97c9005b7`; branch `codex/rq596-inventory-money-coverage`, worktree `C:\Users\Ivan\.codex\worktrees\rq596-inventory-money-coverage`. The RQ593 Product Decision path is isolated behind its exact user-owned page edit; this task owns only the disjoint Inventory slice. Local lock `.ai/task-locks/RQ596-codex.lock.md`.
 
 ---
 
 ## RQ594 - Make Inventory actions source-horizon anchored and decision-semantic, including demand-aware transfers
 
 Status: WAITING
-Ready after: RQ593 DONE (shared `InventoryEndpoints.cs`)
+Ready after: RQ593 DONE and RQ596 DONE (shared Inventory/Product Decision action contract)
 Priority: P1
 Type: backend/frontend/product/tests
 Feature family: inventory-action-decision-truth
@@ -30187,7 +30244,7 @@ The Inventory action workflow already supports `dopuna`, `markdown`, `clearance`
 - its sales/movement lookback is anchored to `DateTime.UtcNow`, so a stale source can look like 30 days with no demand;
 - after RQ576, `DaysSinceMovement` is receipt-age/proxy evidence, while workflow copy/rules still use it as if it meant "days without movement";
 - transfer chooses source/destination mainly from minimum/current quantity and does not require stronger destination demand than source demand;
-- action money must consume RQ593's coverage/null contract.
+- action money must consume RQ596's Inventory coverage/null contract alongside RQ593's Product Decision contract.
 
 ### Evidence
 
@@ -30212,7 +30269,7 @@ Improve the **existing** workflow; do not add another transfer subsystem or dash
 3. Keep receipt/inbound age separate from sales recency and velocity. Rename/reason-code/copy any rule that currently calls receipt age "bez kretanja".
 4. Markdown/clearance eligibility must combine reliable age with source-horizon sales velocity/stock-cover/sell-through evidence; age alone cannot create a confident action.
 5. Transfer: for the same SKU/store population, compare source/destination demand over the same anchored window. Recommend transfer only when destination need/demand is materially stronger, source remains above a safe cover/minimum after transfer, and both store identities are reliable. Use deterministic transparent thresholds, not a new forecast model.
-6. Rank actionable slow-stock/transfer rows using existing priority plus **known** capital evidence from RQ593; missing cost stays null and cannot become 0 impact.
+6. Rank actionable slow-stock/transfer rows using existing priority plus **known** capital evidence from RQ596; missing cost stays null and cannot become 0 impact.
 7. Expose `asOfUtc`, window, basis and reason codes in the existing workflow/central queue context. Preserve existing action keys, statuses and idempotency.
 8. Keep the existing RebalancingTable as evidence/drill-down; do not duplicate it.
 
@@ -30232,4 +30289,4 @@ Inventory actions answer "šta da uradim sa ovom zalihom i zašto" from the late
 
 ### Dependencies
 
-RQ593 DONE. No fresh import is required for implementation or deterministic proof; freshness only decides whether the resulting action set may be called current.
+RQ593 and RQ596 DONE. No fresh import is required for implementation or deterministic proof; freshness only decides whether the resulting action set may be called current.

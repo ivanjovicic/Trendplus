@@ -158,6 +158,31 @@ describe("analytics response trust metadata", () => {
   });
 });
 
+describe("Inventory money coverage response contract", () => {
+  it("accepts null/partial aggregate values and explicit unknown ABC rows", () => {
+    expect(inventoryInsightsResponseSchema.safeParse({
+      totalItems: 2,
+      totalEstimatedValue: 100,
+      valueCoveragePct: 50,
+      unknownValueRows: 1,
+      aging: [{ bucketKey: "90+", label: "90+", itemCount: 2, totalUnits: 8, estimatedValue: 100, valueCoveragePct: 50, unknownValueRows: 1 }],
+      abc: [{ bucketKey: "N/A", label: "Klasa N/A", itemCount: 1, estimatedValue: null, valueSharePct: 0, valueCoveragePct: 0, unknownValueRows: 1 }],
+      topAgedItems: [],
+      topCapitalLockedItems: [],
+    }).success).toBe(true);
+    expect(inventoryInsightsResponseSchema.safeParse({
+      totalItems: 1,
+      totalEstimatedValue: null,
+      valueCoveragePct: 0,
+      unknownValueRows: 1,
+      aging: [],
+      abc: [],
+      topAgedItems: [],
+      topCapitalLockedItems: [],
+    }).success).toBe(true);
+  });
+});
+
 const validShoeResponse = {
   generatedAt: "2026-07-01T08:00:00Z",
   fromDate: "2026-06-01T00:00:00Z",

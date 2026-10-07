@@ -58,15 +58,19 @@ public sealed record InventoryAgingBucketDto(
     string Label,
     int ItemCount,
     int TotalUnits,
-    decimal EstimatedValue
+    decimal? EstimatedValue,
+    decimal ValueCoveragePct = 100m,
+    int UnknownValueRows = 0
 );
 
 public sealed record InventoryAbcBucketDto(
     string BucketKey,
     string Label,
     int ItemCount,
-    decimal EstimatedValue,
-    decimal ValueSharePct
+    decimal? EstimatedValue,
+    decimal ValueSharePct,
+    decimal ValueCoveragePct = 100m,
+    int UnknownValueRows = 0
 );
 
 public sealed record InventoryInsightItemDto(
@@ -103,12 +107,14 @@ public sealed record InventoryInsightItemDto(
 
 public sealed record InventoryInsightsDto(
     int TotalItems,
-    decimal TotalEstimatedValue,
+    decimal? TotalEstimatedValue,
     IReadOnlyList<InventoryAgingBucketDto> Aging,
     IReadOnlyList<InventoryAbcBucketDto> Abc,
     IReadOnlyList<InventoryInsightItemDto> TopAgedItems,
     IReadOnlyList<InventoryInsightItemDto> TopCapitalLockedItems,
-    AnalyticsResponseMetaDto? Meta = null
+    AnalyticsResponseMetaDto? Meta = null,
+    decimal ValueCoveragePct = 100m,
+    int UnknownValueRows = 0
 );
 
 public sealed class InventoryExportRequestDto
@@ -133,9 +139,11 @@ public sealed record InventoryStoreComparisonItemDto(
     int OutOfStockCount,
     int CriticalCount,
     int Stale90PlusCount,
-    decimal EstimatedValue,
+    decimal? EstimatedValue,
     decimal AvgUnitsPerSku,
-    decimal HealthySharePct
+    decimal HealthySharePct,
+    decimal ValueCoveragePct = 100m,
+    int UnknownValueRows = 0
 );
 
 public sealed record InventoryStoreComparisonFocusDto(

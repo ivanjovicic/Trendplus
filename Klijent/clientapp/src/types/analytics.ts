@@ -1474,15 +1474,19 @@ export interface InventoryAgingBucket {
   label: string;
   itemCount: number;
   totalUnits: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
+  valueCoveragePct?: number;
+  unknownValueRows?: number;
 }
 
 export interface InventoryAbcBucket {
   bucketKey: string;
   label: string;
   itemCount: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
   valueSharePct: number;
+  valueCoveragePct?: number;
+  unknownValueRows?: number;
 }
 
 export interface InventoryInsightItem {
@@ -1519,7 +1523,9 @@ export interface InventoryInsightItem {
 
 export interface InventoryInsights {
   totalItems: number;
-  totalEstimatedValue: number;
+  totalEstimatedValue: number | null;
+  valueCoveragePct?: number;
+  unknownValueRows?: number;
   aging: InventoryAgingBucket[];
   abc: InventoryAbcBucket[];
   topAgedItems: InventoryInsightItem[];
@@ -1743,9 +1749,11 @@ export interface InventoryStoreComparisonItem {
   outOfStockCount: number;
   criticalCount: number;
   stale90PlusCount: number;
-  estimatedValue: number;
+  estimatedValue: number | null;
   avgUnitsPerSku: number;
   healthySharePct: number;
+  valueCoveragePct?: number;
+  unknownValueRows?: number;
 }
 
 export interface InventoryStoreComparisonFocus {

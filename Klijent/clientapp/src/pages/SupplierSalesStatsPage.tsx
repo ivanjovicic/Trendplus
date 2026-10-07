@@ -1219,10 +1219,18 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           : "Nije dostupno";
   const agedInventory = useMemo(() => {
     const buckets = buyingEvidence.insights?.aging.filter((bucket) => /90|stari|aged/i.test(`${bucket.bucketKey} ${bucket.label}`)) ?? [];
+    const knownBucketValues = buckets.map((bucket) => bucket.estimatedValue).filter((value): value is number => value != null);
     return buckets.length === 0 ? null : {
       items: buckets.reduce((sum, bucket) => sum + bucket.itemCount, 0),
       units: buckets.reduce((sum, bucket) => sum + bucket.totalUnits, 0),
-      estimateValue: buckets.reduce((sum, bucket) => sum + bucket.estimatedValue, 0),
+      estimateValue: knownBucketValues.length > 0 ? knownBucketValues.reduce((sum, value) => sum + value, 0) : null,
+      valueCoveragePct: buckets.every((bucket) => bucket.valueCoveragePct != null)
+        ? buckets.reduce((sum, bucket) => sum + bucket.valueCoveragePct! * bucket.itemCount, 0)
+          / Math.max(buckets.reduce((sum, bucket) => sum + bucket.itemCount, 0), 1)
+        : null,
+      unknownValueRows: buckets.every((bucket) => bucket.unknownValueRows != null)
+        ? buckets.reduce((sum, bucket) => sum + bucket.unknownValueRows!, 0)
+        : null,
     };
   }, [buyingEvidence.insights?.aging]);
 
@@ -2835,7 +2843,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <article className="supplier-buying-value-card"><span>Zarada na robi · doprinos / ponderisana marža</span><strong>{fmtRsd(focusedSupplier.marginContribution)} · {fmtSignedPct(focusedSupplier.marginPct, 1)}</strong><small>Troškovno pokriće: {fmtPct(focusedSupplier.marginDataCoveragePct, 1)} · istorijski trošak: {fmtPct(focusedSupplier.historicalCostCoveragePct, 1)} · procenjeni trošak: {fmtPct(focusedSupplier.estimatedCostCoveragePct ?? focusedSupplier.fallbackCostCoveragePct, 1)}</small></article>
                 <article className="supplier-buying-value-card"><span>Trend prema prethodnom periodu · promet / količina</span><strong>{describePopMetric(focusedSupplier).label} · {describePopUnitsMetric(focusedSupplier).label}</strong></article>
                 <article className="supplier-buying-value-card"><span>Zaliha na preseku · jedinice / poznata vrednost</span><strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })} · {formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? null, kind: "currency" })}</strong><small>Coverage vrednosti: {fmtPct(buyingEvidence.balance?.valueCoveragePct, 1)} · nepoznate jedinice: {formatMetricDisplayValue({ value: buyingEvidence.balance?.unknownValueUnits ?? null, kind: "number" })}</small></article>
-                <article className="supplier-buying-value-card"><span>Artikli 90+ dana · jedinice / procena vrednosti</span><strong>{agedInventory ? `${fmtQty(agedInventory.units)} · ${fmtRsd(agedInventory.estimateValue)}` : "Nije dostupno"}</strong><small>{agedInventory ? `${agedInventory.items} artikala; Inventory aging zbir ne izlaže cost basis/coverage po bucket-u, pa ovo nije potvrđena poznata vrednost kapitala.` : "Nema potvrđenog 90+ aging bucket-a u izvoru."}</small></article>
+                <article className="supplier-buying-value-card"><span>Artikli 90+ dana · jedinice / poznata procena</span><strong>{agedInventory ? `${fmtQty(agedInventory.units)} · ${fmtRsd(agedInventory.estimateValue)}` : "Nije dostupno"}</strong><small>{agedInventory ? `${agedInventory.items} artikala; pokrivenost poznatom vrednošću ${fmtPct(agedInventory.valueCoveragePct, 1)} (${agedInventory.unknownValueRows ?? "nepoznat broj"} bez vrednosti). Ovo nije potvrđena puna vrednost kapitala.` : "Nema potvrđenog 90+ aging bucket-a u izvoru."}</small></article>
               </div>
               {buyingEvidence.insights?.topAgedItems.length ? (
                 <div className="supplier-negotiation-aged-items">

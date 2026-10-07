@@ -388,7 +388,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(panel).getByText(/Coverage vrednosti: 75,0%/)).toBeInTheDocument();
     expect(within(panel).getByText("Poznata nabavna cena")).toBeInTheDocument();
     expect(within(panel).getByText(/istorijski trošak: 100,0% · procenjeni trošak: 0,0%/)).toBeInTheDocument();
-    expect(within(panel).getByText(/ne izlaže cost basis\/coverage po bucket-u/)).toBeInTheDocument();
+    expect(within(panel).getByText(/pokrivenost poznatom vrednošću Nije dostupno/)).toBeInTheDocument();
     expect(within(panel).getByText(/Vrednost nije potvrđena/)).toBeInTheDocument();
     expect(within(panel).getByText(/nije kauzalna procena|ne daje konačan savet/i)).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Otvori prodaju i maržu dobavljača" })).toHaveAttribute(

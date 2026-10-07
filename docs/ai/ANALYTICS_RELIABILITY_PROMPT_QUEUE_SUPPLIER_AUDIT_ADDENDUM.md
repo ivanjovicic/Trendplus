@@ -1227,7 +1227,7 @@ Parallel-safe: yes with RQ593; no concurrent edit of the same Supplier overview/
 Owner: Analytics Product / Supplier
 Commit suggestion: `feat(analytics): supplier value negotiation pack from proven evidence`
 
-Claim: 2026-10-07 by Codex on `codex/rq595-supplier-value`, recovery base `cce7892aa497bf3276b7713b84d8d6d9099a009b`. No matching active branch, lock or open PR was found. RQ593 remains the primary READY prompt and is not taken over; RQ595 is the disjoint additional lane.
+Claim: 2026-10-07 by Codex on `codex/rq595-supplier-value`, recovery base `cce7892aa497bf3276b7713b84d8d6d9099a009b`. No matching active branch, lock or open PR was found. RQ596 owns the disjoint Inventory coverage contract; RQ595 remains PARTIAL pending that evidence.
 
 ### Problem
 
@@ -1289,7 +1289,7 @@ For one supplier, the owner can answer **"šta pouzdano znam o zaradi, vezanom k
 
 RQ530 PARTIAL foundation is present; RQ487 and RQ576 are DONE. Fresh production data is not required for implementation or historical/latest-known proof; freshness only changes the as-of/currentness label.
 
-Completion note 2026-10-07: the single-selected-supplier evidence pack is implemented on the Supplier Overview, with period sales/margin/trend facts, inventory valuation coverage/as-of, 90+ aging units and item drilldown, descriptive pre/post evidence where available, preserved store/dataScope links, and explicit unavailable states. Focused frontend proofs, typecheck, analytics guardrails and production build pass. RQ595 remains PARTIAL because the current Inventory aging aggregate does not expose known-vs-estimated cost basis or valuation coverage per 90+ bucket; its amount is shown only as an explicitly incomplete estimate, never as known tied capital. Reassess this remaining acceptance after the RQ593 Inventory coverage contract is delivered. No BUY_MORE/BUY_LESS recommendation or supplier score was added.
+Completion note 2026-10-07: the single-selected-supplier evidence pack is implemented on the Supplier Overview, with period sales/margin/trend facts, inventory valuation coverage/as-of, 90+ aging units and item drilldown, descriptive pre/post evidence where available, preserved store/dataScope links, and explicit unavailable states. Focused frontend proofs, typecheck, analytics guardrails and production build pass. RQ595 remains PARTIAL because the current Inventory aging aggregate does not expose known-vs-estimated cost basis or valuation coverage per 90+ bucket; its amount is shown only as an explicitly incomplete estimate, never as known tied capital. Reassess this remaining acceptance after RQ596 Inventory coverage contract is delivered. No BUY_MORE/BUY_LESS recommendation or supplier score was added.
 
 - Run log: `.ai/runs/2026-10-07-RQ595-evidence.md`
 - Evidence state: synchronized

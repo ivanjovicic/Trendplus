@@ -93,6 +93,7 @@ export function InventoryInsightPanels({
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAgingTone(bucket.bucketKey)}`}>{bucket.label}</div>
               <div className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{formatNumber(bucket.itemCount)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.totalUnits)} komada | {formatCurrency(bucket.estimatedValue)}</div>
+              {bucket.valueCoveragePct != null && bucket.valueCoveragePct < 100 ? <div className="mt-1 text-xs text-[var(--text-primary)]">Poznata vrednost pokriva {formatPercent(bucket.valueCoveragePct)} ({bucket.unknownValueRows ?? 0} bez vrednosti)</div> : null}
             </article>
           ))}
         </div>
@@ -158,8 +159,9 @@ export function InventoryInsightPanels({
           ) : abcBuckets.map((bucket) => (
             <article key={bucket.bucketKey} className="min-w-0 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-elevated)] p-4">
               <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getAbcTone(bucket.bucketKey)}`}>{bucket.label}</div>
-              <div className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{formatPercent(bucket.valueSharePct)}</div>
+              <div className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{bucket.bucketKey === "N/A" ? "Nije klasifikovano" : formatPercent(bucket.valueSharePct)}</div>
               <div className="mt-2 text-sm text-[var(--text-primary)]">{formatNumber(bucket.itemCount)} artikala | {formatCurrency(bucket.estimatedValue)}</div>
+              {bucket.bucketKey === "N/A" ? <div className="mt-1 text-xs text-[var(--text-primary)]">Nije moguće monetarno klasifikovati — nedostaje vrednost.</div> : bucket.valueCoveragePct != null && bucket.valueCoveragePct < 100 ? <div className="mt-1 text-xs text-[var(--text-primary)]">Poznata vrednost pokriva {formatPercent(bucket.valueCoveragePct)}</div> : null}
             </article>
           ))}
         </div>

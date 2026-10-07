@@ -367,8 +367,8 @@ public static class InventoryEndpoints
                     article.Naziv,
                     article.Quantity ?? 0,
                     article.Minimum ?? 0,
-                    valuation.UnitCost ?? 0m,
-                    estimatedValue ?? 0m,
+                    valuation.UnitCost,
+                    estimatedValue,
                     valuation.ValuationBasis == InventoryValuationBases.Unknown,
                     article.StoreId,
                     ResolveLookup(storeNameMap, article.StoreId),
@@ -984,7 +984,7 @@ public static class InventoryEndpoints
                 var valuation = valuationsByArticle.GetValueOrDefault(
                     item.Id,
                     new InventoryArticleValuation(null, InventoryValuationBases.Unknown, false));
-                var estimatedValue = InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, valuation.UnitCost) ?? 0m;
+                var estimatedValue = InventoryStockEvidence.ComputeEstimatedValue(item.Quantity, valuation.UnitCost);
                 var costMissing = valuation.ValuationBasis == InventoryValuationBases.Unknown;
                 lastReceiptDates.TryGetValue(item.Id, out var lastReceiptAt);
                 var aging = InventoryValuationAndAgingPolicy.ResolveAgingFromReceipt(lastReceiptAt);
@@ -995,7 +995,7 @@ public static class InventoryEndpoints
                     item.Naziv,
                     item.Quantity ?? 0,
                     item.Minimum ?? 0,
-                    valuation.UnitCost ?? 0m,
+                    valuation.UnitCost,
                     estimatedValue,
                     costMissing,
                     item.StoreId,
@@ -1161,22 +1161,8 @@ public static class InventoryEndpoints
 
     private static List<InventoryDatasetItem> ApplyAbcClassification(List<InventoryDatasetItem> items)
     {
-        var totalValue = items.Sum(x => x.EstimatedValue);
-        if (totalValue <= 0)
-        {
-            return items.Select(x => x with { AbcClass = "C" }).ToList();
-        }
-
-        var runningValue = 0m;
-        var abcById = new Dictionary<int, string>();
-        foreach (var item in items.OrderByDescending(x => x.EstimatedValue).ThenBy(x => x.Naziv))
-        {
-            runningValue += item.EstimatedValue;
-            var share = runningValue / totalValue;
-            abcById[item.Id] = share <= 0.80m ? "A" : share <= 0.95m ? "B" : "C";
-        }
-
-        return items.Select(item => item with { AbcClass = abcById.GetValueOrDefault(item.Id, "C") }).ToList();
+        var classes = InventoryValueCoverage.ClassifyAbc(items.Select(item => (item.EstimatedValue, item.Naziv)).ToArray());
+        return items.Select((item, index) => item with { AbcClass = classes[index] }).ToList();
     }
 
     private static InventoryInsightsDto BuildInsights(
@@ -1184,16 +1170,22 @@ public static class InventoryEndpoints
         IReadOnlyDictionary<int, int> soldUnitsByArticle,
         IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
-        var totalValue = items.Sum(x => x.EstimatedValue);
+        var totalAggregate = InventoryValueCoverage.Aggregate(items.Select(item => item.EstimatedValue));
 
         var aging = items
             .GroupBy(x => new { x.AgingBucket, x.AgingLabel })
-            .Select(g => new InventoryAgingBucketDto(
-                g.Key.AgingBucket,
-                g.Key.AgingLabel,
-                g.Count(),
-                g.Sum(x => x.Quantity),
-                Math.Round(g.Sum(x => x.EstimatedValue), 2)))
+            .Select(g =>
+            {
+                var value = InventoryValueCoverage.Aggregate(g.Select(item => item.EstimatedValue));
+                return new InventoryAgingBucketDto(
+                    g.Key.AgingBucket,
+                    g.Key.AgingLabel,
+                    g.Count(),
+                    g.Sum(x => x.Quantity),
+                    value.Value is null ? null : Math.Round(value.Value.Value, 2),
+                    value.CoveragePct,
+                    value.UnknownRows);
+            })
             .OrderBy(x => AgingOrder(x.BucketKey))
             .ToList();
 
@@ -1201,34 +1193,38 @@ public static class InventoryEndpoints
             .GroupBy(x => x.AbcClass)
             .Select(g =>
             {
-                var bucketValue = g.Sum(x => x.EstimatedValue);
+                var value = InventoryValueCoverage.Aggregate(g.Select(item => item.EstimatedValue));
                 return new InventoryAbcBucketDto(
                     g.Key,
                     $"Klasa {g.Key}",
                     g.Count(),
-                    Math.Round(bucketValue, 2),
-                    totalValue <= 0 ? 0 : Math.Round(bucketValue / totalValue * 100m, 1));
+                    value.Value is null ? null : Math.Round(value.Value.Value, 2),
+                    g.Key == "N/A" || totalAggregate.Value is null ? 0 : Math.Round(value.Value!.Value / totalAggregate.Value.Value * 100m, 1),
+                    value.CoveragePct,
+                    value.UnknownRows);
             })
             .OrderBy(x => x.BucketKey)
             .ToList();
 
         return new InventoryInsightsDto(
             items.Count,
-            Math.Round(totalValue, 2),
+            totalAggregate.Value is null ? null : Math.Round(totalAggregate.Value.Value, 2),
             aging,
             abc,
             items
                 .OrderByDescending(x => x.AgeBasis == InventoryAgeBases.Unknown ? -1 : x.DaysSinceMovement)
-                .ThenByDescending(x => x.EstimatedValue)
+                .ThenByDescending(x => x.EstimatedValue ?? decimal.MinValue)
                 .Take(5)
                 .Select(item => ToInsightItem(item, soldUnitsByArticle, movementWindowStatsByArticle))
                 .ToList(),
             items
-                .OrderByDescending(x => x.EstimatedValue)
+                .OrderByDescending(x => x.EstimatedValue ?? decimal.MinValue)
                 .ThenByDescending(x => x.Quantity)
                 .Take(5)
                 .Select(item => ToInsightItem(item, soldUnitsByArticle, movementWindowStatsByArticle))
-                .ToList());
+                .ToList(),
+            ValueCoveragePct: totalAggregate.CoveragePct,
+            UnknownValueRows: totalAggregate.UnknownRows);
     }
 
     private static InventoryInsightItemDto ToInsightItem(
@@ -1253,7 +1249,7 @@ public static class InventoryEndpoints
             item.Quantity,
             item.Minimum,
             reorderGap,
-            item.CostMissing && item.Quantity > 0 ? null : item.EstimatedValue,
+            item.EstimatedValue,
             item.CostMissing ? null : item.UnitCost,
             ResolveInventoryCostSource(item.ValuationBasis),
             item.CostMissing,
@@ -1293,12 +1289,8 @@ public static class InventoryEndpoints
             selectedStoreIds = await ApplyInventoryFilters(db.Artikli.AsNoTracking(), null, supplierId, search, dataScope: dataScope)
                 .Where(item => item.IDObjekat.HasValue)
                 .GroupBy(item => item.IDObjekat!.Value)
-                .Select(group => new
-                {
-                    StoreId = group.Key,
-                    EstimatedValue = group.Sum(item => (item.NabavnaCena ?? 0m) * ((item.Kolicina ?? 0) > 0 ? (item.Kolicina ?? 0) : 0))
-                })
-                .OrderByDescending(group => group.EstimatedValue)
+                .Select(group => new { StoreId = group.Key, SkuCount = group.Count() })
+                .OrderByDescending(group => group.SkuCount)
                 .Take(3)
                 .Select(group => group.StoreId)
                 .ToListAsync(ct);
@@ -1319,7 +1311,7 @@ public static class InventoryEndpoints
                 var outOfStock = items.Count(item => item.Quantity <= 0);
                 var critical = items.Count(item => ResolveStockState(item.Quantity, item.Minimum) == "critical");
                 var healthy = items.Count(item => ResolveStockState(item.Quantity, item.Minimum) == "healthy");
-                var estimatedValue = items.Sum(item => item.EstimatedValue);
+                var valueAggregate = InventoryValueCoverage.Aggregate(items.Select(item => item.EstimatedValue));
                 var stale = items.Count(item => item.DaysSinceMovement >= 90);
                 var healthyShare = totalSku == 0 ? 0 : Math.Round((decimal)healthy / totalSku * 100m, 1);
 
@@ -1332,12 +1324,14 @@ public static class InventoryEndpoints
                     outOfStock,
                     critical,
                     stale,
-                    Math.Round(estimatedValue, 2),
+                    valueAggregate.Value is null ? null : Math.Round(valueAggregate.Value.Value, 2),
                     totalSku == 0 ? 0 : Math.Round((decimal)totalOnHand / totalSku, 1),
-                    healthyShare);
+                    healthyShare,
+                    valueAggregate.CoveragePct,
+                    valueAggregate.UnknownRows);
             })
             .Where(item => item.TotalSku > 0)
-            .OrderByDescending(item => item.EstimatedValue)
+            .OrderByDescending(item => item.EstimatedValue ?? decimal.MinValue)
             .ToList();
 
         var sharedRisks = selectedItems
@@ -1352,7 +1346,7 @@ public static class InventoryEndpoints
                     .ToList();
                 var lead = group
                     .OrderByDescending(item => Math.Max(item.Minimum - item.Quantity, 0))
-                    .ThenByDescending(item => item.EstimatedValue)
+                    .ThenByDescending(item => item.EstimatedValue ?? decimal.MinValue)
                     .First();
 
                 return new InventoryStoreComparisonFocusDto(
@@ -1368,7 +1362,7 @@ public static class InventoryEndpoints
             .ToList();
 
         var worstStore = stores.OrderByDescending(item => item.CriticalCount).ThenByDescending(item => item.Stale90PlusCount).FirstOrDefault();
-        var bestStore = stores.OrderByDescending(item => item.HealthySharePct).ThenByDescending(item => item.EstimatedValue).FirstOrDefault();
+        var bestStore = stores.OrderByDescending(item => item.HealthySharePct).ThenByDescending(item => item.EstimatedValue ?? decimal.MinValue).FirstOrDefault();
         var summary = stores.Count == 0
             ? "Nema dovoljno podataka za poređenje lokacija."
             : worstStore is null || bestStore is null
@@ -1511,7 +1505,7 @@ public static class InventoryEndpoints
                     source.StoreName,
                     destination.StoreName,
                     qty,
-                    Math.Round(destination.UnitCost * qty, 2),
+                    destination.UnitCost is null ? null : Math.Round(destination.UnitCost.Value * qty, 2),
                     soldUnitsByArticle,
                     movementWindowStatsByArticle,
                     BuildActionDatasetContext(
@@ -1585,7 +1579,7 @@ public static class InventoryEndpoints
         string? fromStoreName,
         string? toStoreName,
         int suggestedQty,
-        decimal estimatedValue,
+        decimal? estimatedValue,
         Dictionary<int, int> soldUnitsByArticle,
         Dictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle,
         InventoryActionDatasetContextDto datasetContext)
@@ -1609,7 +1603,7 @@ public static class InventoryEndpoints
             fromStoreName,
             toStoreName,
             suggestedQty,
-            Math.Round(estimatedValue, 2),
+            estimatedValue is null ? null : Math.Round(estimatedValue.Value, 2),
             item.DaysSinceMovement,
             decision?.Note,
             decision?.UpdatedAtUtc,
@@ -2077,7 +2071,8 @@ public static class InventoryEndpoints
                 new() { Key = "dataScope", Label = "Opseg podataka", Value = ResolveInventoryDataScopeLabel(dataScope ?? dto.DataScope) },
                 new() { Key = "signalWindowNote", Label = "Napomena o signalima", Value = "Signali stock cover/sell-through na ekranu koriste poslednjih 30 dana prodaje; ovaj dokument prikazuje trenutno stanje zaliha i aging na osnovu kretanja." },
                 new() { Key = "totalRows", Label = "Ukupno artikala", Value = items.Count.ToString(SerbianCulture) },
-                new() { Key = "inventoryValue", Label = "Procena vrednosti", Value = FormatCurrency(insights.TotalEstimatedValue) },
+                new() { Key = "inventoryValue", Label = "Poznata procena vrednosti", Value = FormatCurrency(insights.TotalEstimatedValue) },
+                new() { Key = "inventoryValueCoverage", Label = "Pokrivenost poznatom vrednošću", Value = $"{insights.ValueCoveragePct.ToString("0.0", SerbianCulture)}% ({insights.UnknownValueRows} artikala bez poznate vrednosti)" },
                 new() { Key = "aging90", Label = "Aging 90+", Value = insights.Aging.FirstOrDefault(x => x.BucketKey == "90+")?.ItemCount.ToString(SerbianCulture) ?? "0" },
                 new() { Key = "classA", Label = "ABC klasa A", Value = insights.Abc.FirstOrDefault(x => x.BucketKey == "A")?.ItemCount.ToString(SerbianCulture) ?? "0" }
             ]
@@ -2177,8 +2172,8 @@ public static class InventoryEndpoints
 
     private static string FormatInteger(int value) => value.ToString("N0", SerbianCulture);
 
-    private static string FormatCurrency(decimal value) =>
-        value.ToString("C0", SerbianCulture);
+    private static string FormatCurrency(decimal? value) =>
+        value?.ToString("C0", SerbianCulture) ?? "Nije dostupno";
 
     private sealed record InventoryArticleProjection(
         int Id,
@@ -2228,8 +2223,8 @@ public static class InventoryEndpoints
         string Naziv,
         int Quantity,
         int Minimum,
-        decimal UnitCost,
-        decimal EstimatedValue,
+        decimal? UnitCost,
+        decimal? EstimatedValue,
         bool CostMissing,
         int? StoreId,
         string? StoreName,

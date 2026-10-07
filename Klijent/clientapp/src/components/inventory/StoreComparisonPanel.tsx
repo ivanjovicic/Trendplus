@@ -52,6 +52,7 @@ export function StoreComparisonPanel({
               <div>
                 <div className="text-sm font-semibold text-[var(--text-primary)]">{store.storeName}</div>
                 <div className="mt-1 text-xs text-[var(--text-primary)]">{formatNumber(store.totalSku)} SKU | {formatCurrency(store.estimatedValue)}</div>
+                {store.valueCoveragePct != null && store.valueCoveragePct < 100 ? <div className="mt-1 text-xs text-[var(--text-primary)]">Poznata vrednost: {formatPercent(store.valueCoveragePct)} pokrivenosti ({store.unknownValueRows ?? 0} bez vrednosti)</div> : null}
               </div>
               <GitCompareArrows size={16} className="text-[var(--text-primary)]" />
             </div>
