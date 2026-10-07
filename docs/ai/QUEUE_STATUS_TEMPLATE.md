@@ -17,6 +17,7 @@ Delivery mode:
 Main commit SHA:
 Main verification:
 Notes:
+- Ownership transfer: none | <previous owner -> new owner; authority/evidence/date>
 - ...
 Post-close routing recovery (required after every terminal queue transition):
 - Recovery base origin/main SHA:
