@@ -1,6 +1,6 @@
 # Agent Start Here
 
-Updated: 2026-10-05
+Updated: 2026-10-07
 
 Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
@@ -177,26 +177,17 @@ If a line cannot be answered, do not guess the runtime contract.
 
 ## Queue task workflow
 
-Queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not maintain a second selector algorithm here.
+This is an entrypoint summary only. **All queue mechanics live in `docs/ai/PROMPT_QUEUE_PROTOCOL.md`; do not reconstruct a second algorithm from this section.**
 
-1. Resolve the owner program from `MASTER_ROADMAP.md` and use the protocol to select/claim a collision-safe `READY` prompt. Never take the same task ID from another active owner: an `IN_PROGRESS` claim remains owned through validation/evidence/status close-out even after its implementation commit reaches `main`; absence of a visible lock/branch/PR is not release evidence.
-2. If `Current READY` is `none`, run the protocol's **Idle recovery** and **Mandatory no-READY action ladder** before reporting that no work is available. Re-check stale dependencies/statuses, actively attempt bounded repo-local unblock/proof work, split a meaningful disjoint slice when one path blocks a broader same-owner prompt, inspect recent run logs, `PARTIAL/BLOCKED/WAITING` prompts and the next eligible program. A zero-READY answer must say what was attempted, why no safe split exists and the exact unblock event.
-3. Before leaving a candidate blocked, perform the protocol's **Mandatory blocker decomposition**:
-   - is the dependency already satisfied/stale?
-   - is it a true start gate or only final/deployed acceptance evidence?
-   - is it external/provider/owner authority, or can repo-local proof proceed?
-   - is the "missing prerequisite" actually an artifact this prompt owns creating (circular prerequisite)?
-   - can the prompt be safely narrowed to a same-owner executable slice without changing business semantics?
-4. Repair stale/circular routing first. Promote and claim a now-runnable prompt in the same run; if the first candidate remains genuinely blocked, try a collision-safe candidate in the same program and then the next eligible program.
-5. Once claimed, identify the source of truth, nearest shared contract/helper and focused proof; run the tenant/analytics safety gate where relevant.
-6. Implement the smallest owned change and validate it through `docs/ai/VALIDATION_SELECTOR.md`.
-7. Merge/push to `main` when permitted, verify `origin/main` contains the implementation SHA, and record remote CI separately unless the prompt explicitly gates on it.
-8. After the implementation/closure is delivered to `main`, refresh the **post-delivery `origin/main` SHA** and run the protocol's mandatory **Post-close dependency cascade**. Search the completed task ID and every dependency whose state changed across the entire active owner queue/addendum set, re-evaluate all dependents, then scan all non-terminal prompts for stale blockers.
-9. If a dependent or independent prompt is now dependency-complete and collision-safe, repair routing and promote it in the same recovery run. Never copy a pre-claim `Next: none` or older agent's zero-READY conclusion into the new completion note.
-10. Only when the router is genuinely exhausted may the queue remain at `none`; record the protocol's durable **Zero-READY proof** with recovery-base SHA, files scanned, candidate/blocker matrix, start-gate-vs-final-proof classification, safe-slice result and exact unblock event.
-11. When the user asked to continue executing prompts, continue with the newly promoted candidate when safe instead of ending after the just-finished prompt.
+1. Resolve cross-program priority from `MASTER_ROADMAP.md`, then read the current owner queue for task status/owner/dependencies.
+2. Refuse same-task takeover while another owner is `IN_PROGRESS`. That ownership survives implementation delivery through validation/evidence/status close-out; commit-on-main, missing lock and absent branch/PR are not release signals.
+3. Select/claim only through the canonical protocol. `Current READY` is the primary/default pointer, not the only possible READY lane.
+4. If READY is `none`, run the protocol's **Mandatory no-READY action ladder** before any no-work result: repair stale routing, execute authorized repo-local unblock/proof work, split a meaningful disjoint slice when permitted, then try the next eligible program.
+5. Implement/validate/deliver the smallest owned change through `docs/ai/VALIDATION_SELECTOR.md` and the evidence standard.
+6. After terminal delivery, refresh post-delivery `origin/main` and run the protocol's **Post-close dependency cascade**; promote newly runnable work instead of copying an older `Next: none`.
+7. If nothing is still claimable, produce the protocol's **Zero-READY proof** with the attempted unblock action, why no safe split exists and the exact unblock event. If the full active set was not inspected, recovery is incomplete rather than empty.
 
-A final "no safe task" result is valid only from a post-delivery Zero-READY proof on current `origin/main`. If the full active queue/addendum set was not inspected, recovery is incomplete and the agent must **not** say there is no READY work. A bare `Current READY: none`, old run-log `Next: none`, blocked P0, queued CI or missing deployed proof is never enough.
+When the user explicitly asked to continue queue execution, return to step 1 after closure and continue with the next safe prompt. Do not invent business/security/tenant authority to keep work moving.
 
 ## Stop rules
 
