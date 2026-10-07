@@ -24,10 +24,13 @@ Evidence state: synchronized
 - Active task-lock scan -> pass; no `.ai/task-locks/*.lock.md` files exist.
 - Open PR/branch ownership scan -> pass; only historical P-UI-52 draft PRs are open and their unique commits are documentation transport, not a new runnable prompt.
 - Canonical queue/status scan -> pass; no live `READY` or `IN_PROGRESS` candidate was found in the active execution families.
+- `git diff --check` -> pass.
+- `node scripts/check-agent-instructions.mjs --self-test` and `node scripts/check-agent-instructions.mjs` -> pass (14 canonical files).
+- `node scripts/check-prompt-queues.mjs --self-test` and `node scripts/check-prompt-queues.mjs` -> pass (709 tasks).
+- `node scripts/check-planning-architecture.mjs --self-test` and `node scripts/check-planning-architecture.mjs` -> pass (80 planning tasks).
 
 ## Validation not run
 - Runtime/unit/integration/browser tests -> not run; no queue prompt was safely claimable, so no implementation scope existed to validate.
-- Governance validators -> not run; this recovery adds an evidence log but does not alter a live queue status, routing pointer or planning contract.
 
 ## Documentation impact
 - Added this durable zero-READY recovery record.
