@@ -3966,6 +3966,7 @@ After P-UI-54 is DONE:
 - Checks run: UI ratchet self-test/full check; theme/token Vitest specs (9/9); chart accessibility self-test/full check (25 charts checked, 8 documented exclusions); encoding; analytics guardrails + typecheck; production build; `git diff --check`.
 - Checks not run: real-device/browser proof and final whole-program route inclusion remain P-UI-38 scope.
 - Remote CI classification: current-main Planning Governance run [37617027490](https://github.com/ivanjovicic/Trendplus/actions/runs/37617027490) is red in `Validate agent instructions` for five missing markers in concurrently changed governance files (`REPO_AI_README.md`, `AGENTS_QUEUE_ADDENDUM.md`, `AGENT_RUN_EVIDENCE_STANDARD.md`, `.ai/RUN_LOG_TEMPLATE.md`); none is a P-UI-54 frontend/runtime file or regression.
+- Current-main follow-up run [37617269111](https://github.com/ivanjovicic/Trendplus/actions/runs/37617269111) is `in_progress`; it is not treated as passing proof or a delivery blocker.
 - Run log: `.ai/runs/2026-10-07-P-UI-54-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main

@@ -34,6 +34,7 @@ Evidence state: synchronized
 - `git diff --check` -> pass.
 - `git fetch origin main && git merge-base --is-ancestor origin/main HEAD && git push origin HEAD:main` -> pass; implementation delivered to `origin/main`.
 - `gh run view 37617027490 --log-failed` -> red in `Validate agent instructions`; five missing markers are in concurrently changed governance files and outside P-UI-54 frontend/runtime scope.
+- `gh run list --branch main` -> current follow-up Planning Governance run `37617269111` is `in_progress`; it remains residual CI state and is not treated as passing proof.
 
 ## Validation not run
 - Real-device/browser proof -> not run; final whole-program route inclusion and live-device evidence remain P-UI-38 scope.
