@@ -115,6 +115,21 @@ Before leaving any candidate `WAITING`, `BLOCKED` or `PARTIAL` during idle recov
 
 If a prompt mixes executable repo-local work with external final proof, the agent may **repair/narrow the prompt before claim** so the repo-local acceptance is explicit and the external proof remains a named residual/follow-up. This is permitted only when the owner, business semantics and safety boundaries do not change. Do not silently lower acceptance or mark deployed behavior verified.
 
+### Mandatory no-READY action ladder
+
+Before an agent is allowed to finish with `no READY`, `no safe claimable task`, `nothing to take` or equivalent, it MUST attempt these actions in order for the highest-value blocked/non-terminal candidates:
+
+1. **Repair stale routing:** verify every named dependency/status against current code, commits and synchronized evidence; promote immediately when the gate is already satisfied.
+2. **Remove repository-local proof blockers:** run the focused test/fixture/measurement/contract reconciliation when it is within repository authority. A proof task is work; do not cite it as a blocker when the same agent can execute it safely.
+3. **Resolve or narrow collisions:** identify the exact owner/path. If the broad prompt is blocked by one path but a meaningful same-owner slice is disjoint, split/register the smallest non-duplicative child prompt and promote it when its dependencies are satisfied. Do not let one file serialize unrelated test/tooling/docs work.
+4. **Repair missing work-item ownership:** if a concrete repository-local gap has no prompt, de-duplicate first, add the smallest prompt to the existing owner queue and promote it only when dependency-complete.
+5. **Try the next program:** scan the next eligible program according to `MASTER_ROADMAP.md`; an external blocker in one program does not globally stop independent repository-local work.
+6. **Only then prove zero READY.** A valid proof must show not only why each candidate is blocked, but also **what unblock action was attempted**, why a disjoint safe slice does not exist, who/what authority is required next, and the exact event that changes readiness.
+
+For an **unknown uncommitted workspace edit** on a candidate-owned path: never stash/reset/delete or overwrite it without ownership. If the agent can inspect that workspace, record `git status`, the exact changed path(s), a bounded diff summary and any discoverable owner/branch/session evidence. If the edit is no longer present, repair the stale blocker and promote immediately. If it remains and ownership is unresolved, treat only that path/scope as blocked; search for a disjoint slice or another candidate. An unknown local edit is not permission to declare the entire program exhausted.
+
+When zero READY is still the truthful result, the **final response and durable evidence** must contain a compact blocker matrix with at least: `candidate`, `status`, `blocker class`, `evidence`, `unblock attempt performed`, `why no safe split exists`, and `exact unblock event`. Prefer the top actionable candidates rather than a vague sentence that everything is gated.
+
 ### Recovery order
 
 1. **Refresh routing truth.** Fetch current `origin/main` and record the exact recovery-base SHA. Read `MASTER_ROADMAP.md`, the owning queue header **and the entire active addendum set**, plus all current `READY` / `IN_PROGRESS` rows. After a task closure, this refresh MUST happen from the post-delivery SHA. Do not trust an older audit's “next” or “none” sentence.
