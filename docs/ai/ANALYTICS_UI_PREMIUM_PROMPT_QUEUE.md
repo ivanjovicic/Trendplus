@@ -3446,21 +3446,21 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 - Date: 2026-10-07
 - Status: DONE
 - Completion: Added the shared typed analytics state taxonomy for backend empty, warning, loading and error reasons; extended the shared empty/error components with backward-compatible code/meta props, safe unknown-code details, retry/correlation actions and delayed-loading recovery; adopted it on the Supplier Footwear pilot page.
-- Changed files: See `.ai/runs/2026-10-07-P-UI-49-evidence.md` (13 implementation, test and owner-evidence paths).
+- Changed files: See `.ai/runs/2026-10-07-P-UI-49-evidence.md` (16 clientapp source/test paths plus guardrail and owner-evidence files).
 - Contract/runtime behavior changed: Centralized Serbian state copy and reason-code handling. Unknown codes remain neutral and disclosed; row counts do not infer backend state; only explicit backend horizon/dimension codes activate those states. Cancelling slow-load recovery cancels the pilot page request.
-- Checks run: Focused tests 54/54; analytics guardrails (39 existing baseline findings, zero new); typecheck; production build; queue, instruction and planning governance self-tests/checks; diff checks. Exact commands are in the run log.
-- Checks not run: Full frontend test suite; local live/browser API smoke. GitHub Analytics Quality Gates run `37590771745` was in progress on implementation SHA `da0931309dbf0d2145a8f6e42c1912ca567a5d24`; Planning Governance run `37590771658` passed.
+- Checks run: Focused tests 192/192; analytics guardrails (39 existing baseline findings, zero new); typecheck/build; queue, instruction and planning governance validators; diff checks. Exact commands and the remote run classification are in the run log.
+- Checks not run: Full frontend suite locally; live/browser API smoke. Remote Analytics Quality Gates run `37592911311` on correction SHA `1814be27d6d94375ce32f74f816371f3a21b590c` passed 150/153 specs and remains red only on three duplicate trust-header assertions in unchanged P-UI-43-owned surfaces; Planning Governance run `37590771658` passed on the initial implementation SHA.
 - Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `da0931309dbf0d2145a8f6e42c1912ca567a5d24`
-- Main verification: refreshed `origin/main` at `da0931309dbf0d2145a8f6e42c1912ca567a5d24`; it contains the implementation commit.
+- Main commit SHA: `1814be27d6d94375ce32f74f816371f3a21b590c`
+- Main verification: refreshed `origin/main` at `194df3081cd4013b4320e77ffe34329e01547ff6`; it contains the implementation and compatibility correction.
 - Missed: No additional page families adopted the taxonomy; adoption remains with their owning prompts.
-- Follow-up: P-UI-50 consumes the taxonomy after its RQ573/RQ574 dependencies and path ownership are clear.
-- Residual risk: Existing Recharts bundle warning (>500 kB); Analytics Quality Gates remained in progress at last verified status.
-- Next: Pending mandatory post-close cascade from the terminal closure SHA.
-- Prompt defect / scope repair: Retargeted three shifted guardrail baseline line references without adding exemptions. The pilot adoption stays within this prompt's one-page allowance.
-- Post-close routing: Pending; will be synchronized after refreshing `origin/main` from the closure delivery.
+- Follow-up: P-UI-50 consumes the taxonomy after its page path is released; P-UI-51 is the current next READY lane.
+- Residual risk: Analytics Quality Gates run `37592911311` remains red on three unrelated trust-header duplicate-text assertions; Recharts chunk warning (>500 kB) remains.
+- Next: P-UI-51 READY, unclaimed; P-UI-50 BLOCKED on the existing Product Decision page edit.
+- Prompt defect / scope repair: Retargeted three shifted guardrail baseline line references without adding exemptions. Preserved legacy prose `emptyReason` values while reserving taxonomy disclosure for machine reason codes; updated shared-consumer test expectations.
+- Post-close routing: Full 16-file cascade at post-close base `origin/main` `194df3081cd4013b4320e77ffe34329e01547ff6`; P-UI-51 remains the primary unclaimed READY candidate, P-UI-50 is blocked by an active uncommitted edit to its owned page path. Details: `.ai/runs/2026-10-07-P-UI-49-evidence.md`.
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
@@ -3531,10 +3531,10 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 - Checks run: fresh main/dependency review; no matching P-UI-50/P-UI-51 branch, lock or open PR; confirmed the existing working-tree change directly touches P-UI-50's owned page path.
 - Checks not run: P-UI-50 implementation tests; the prompt remains unclaimed.
 - Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending post-close synchronization
+- Main commit SHA: `194df3081cd4013b4320e77ffe34329e01547ff6`
+- Main verification: passed - refreshed `origin/main` at `194df3081cd4013b4320e77ffe34329e01547ff6` contains the BLOCKED routing record and P-UI-49 delivery.
 - Missed: P-UI-50 remains unimplemented.
 - Follow-up: Re-evaluate the page path after the existing checkout edit is delivered or cleared; then promote to READY if collision-free.
 - Residual risk: Owner/intent for the existing uncommitted Product Decision page edit is unknown.
