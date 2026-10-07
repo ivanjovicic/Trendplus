@@ -3588,7 +3588,7 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 - The current blocker is **not a missing code dependency**: RQ573, RQ574 and P-UI-49 are DONE. It is only an unresolved uncommitted edit on `ProductDecisionCenterPage.tsx` observed in another/primary checkout.
 - Every idle-recovery pass must re-check whether that edit still exists before repeating `BLOCKED`. If it disappeared, was delivered to `main`, was explicitly handed off/released, or its owner is identified and no longer active, repair the status and promote P-UI-50 immediately after the normal collision check.
 - If the agent can see the affected checkout, record the exact changed path(s), a bounded `git diff --stat`/diff summary and any discoverable owner/session/branch evidence. Never stash/reset/delete/overwrite unknown work to unblock the prompt.
-- If the edit remains unresolved, do not use it to block unrelated UI-platform work: P-UI-54 is the registered path-disjoint READY lane. P-UI-50 remains blocked only for its owned Product Decision page/spec/CSS scope.
+- If the edit remains unresolved, block only the owned Product Decision page/spec/CSS scope. The previously split disjoint UI-platform lane P-UI-54 is now DONE; do not resurrect it. Any further split requires a fresh non-duplicate scope and collision proof under the canonical Mandatory no-READY action ladder.
 - A future zero-READY statement must name the blocking path/owner evidence, the re-check performed, why P-UI-50 cannot be safely split further, and the exact event that permits promotion.
 
 ### Completion note
