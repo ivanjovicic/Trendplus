@@ -2888,11 +2888,11 @@ Owner claim 2026-10-07: RQ573 is DONE on current origin/main and its evidence co
 - Checks run: full Decision Board HTTP harness + focused endpoint tests, API/test build, `git diff --check`, queue/planning validators
 - Checks not run: deployed/provider-side latency verification; external evidence remains under STAB16
 - Run log: `.ai/runs/2026-10-07-PERF19-evidence.md`
-- Evidence state: pending main delivery verification
+- Evidence state: synchronized
 - Ownership transfer: none
 - Delivery mode: main-first
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `1469077568badc6d1aaab5384f819281b4a4bbc6`
+- Main verification: passed - freshly fetched `origin/main` equals the delivered PERF19 SHA
 - Missed: no local optimization was justified; supplier summary remains fail-closed because the fixture has no supplier 90-day dataset
 - Follow-up: STAB16 must compare deployed contributor latency with this local profile
 - Residual risk: local fixture is not production data; its product/inventory/data-quality source states are degraded and its supplier summary is unavailable
