@@ -29597,6 +29597,9 @@ Trendplus has trustworthy building blocks, but the owner still has to visit many
 
 RQ593, RQ594 and RQ555 DONE. Production freshness is a **currentness/acceptance dimension**, not a start dependency. RQ592 outcome proof is not a dependency.
 
+
+Owner claim 2026-10-05 after RQ557: fresh post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` scanned all 15 active owner queue/addendum files. RQ558 remains sample-gated; RQ559 remains source/policy-gated. RQ586 is dependency-complete and collision-safe (no matching lock, branch or open PR); RQ588 remains an independent READY lane. RQ586 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
+
 ## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
 
 Status: DONE
@@ -30230,4 +30233,3 @@ Inventory actions answer "šta da uradim sa ovom zalihom i zašto" from the late
 ### Dependencies
 
 RQ593 DONE. No fresh import is required for implementation or deterministic proof; freshness only decides whether the resulting action set may be called current.
-
