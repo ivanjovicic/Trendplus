@@ -16,10 +16,11 @@ const TransferItemsTable: React.FC<Props> = ({ items }) => {
   return (
     <div className="rounded-2xl border p-4 bg-[var(--surface-elevated)] mt-4">
       <h3 className="font-semibold mb-2">Stavke</h3>
-      <table className="w-full text-sm">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Stavke za prenos" tabIndex={0}>
+      <table className="min-w-[420px] w-full text-sm">
         <thead>
           <tr>
-            <th>Šifra</th>
+            <th className="sticky left-0 z-10 bg-[var(--surface-elevated)] text-left">Šifra</th>
             <th>Naziv</th>
             <th className="text-right">Količina</th>
           </tr>
@@ -30,14 +31,15 @@ const TransferItemsTable: React.FC<Props> = ({ items }) => {
           ) : (
             items.map(i => (
               <tr key={i.skuId}>
-                <td>{i.code}</td>
-                <td>{i.name}</td>
+                <td className="sticky left-0 z-10 bg-[var(--surface-elevated)]">{i.code}</td>
+                <td className="break-words">{i.name}</td>
                 <td className="text-right">{i.quantity}</td>
               </tr>
             ))
           )}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
