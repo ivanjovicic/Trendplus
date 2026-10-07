@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: P-UI-54. The P-UI-52 zero-READY proof was valid for its recovery SHA, but post-review applied P-UI-38's documented split escape hatch: P-UI-54 is a disjoint regression/theme/a11y ratchet slice that explicitly excludes `ProductDecisionCenterPage.tsx` and P-UI-50-owned behavior. P-UI-50 remains BLOCKED on the unresolved primary-checkout edit; P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 and P-UI-54 are closed.
+Current READY prompt: none in the P-UI queue after P-UI-54 closure. P-UI-50 remains BLOCKED on the unresolved primary-checkout edit to its owned Product Decision path; P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 is cleared or explicitly deferred. Post-close recovery is recorded in `.ai/runs/2026-10-07-P-UI-54-evidence.md`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -62,7 +62,7 @@ Use with:
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
 | P-UI-52 | DONE | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
-| P-UI-54 | READY | ui-regression-ratchet-split | Disjoint theme/Tailwind/a11y/static regression ratchet while Product Decision remains blocked |
+| P-UI-54 | DONE | ui-regression-ratchet-split | Disjoint theme/Tailwind/a11y/static regression ratchet while Product Decision remains blocked |
 
 ---
 
@@ -3891,7 +3891,7 @@ Owner promotion/claim 2026-10-06: after P-UI-31 DONE was delivered and `origin/m
 
 ## P-UI-54 - Run the disjoint UI regression/theme/a11y ratchet while Product Decision is blocked
 
-Status: READY
+Status: DONE
 Ready after: P-UI-47, P-UI-52 and P-UI-53 are DONE; P-UI-50 is **not** a prerequisite because this prompt must not touch its owned Product Decision page/spec/CSS paths
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
@@ -3955,4 +3955,24 @@ After P-UI-54 is DONE:
 2. if clear, promote P-UI-50 immediately;
 3. if still blocked, keep P-UI-38 WAITING only for the remaining final/Product-Decision-owned invariants and record the exact owner/path/unblock event;
 4. do not recreate a generic zero-READY conclusion without the canonical cross-program blocker matrix.
+
+### Completion note
+
+- Date: 2026-10-07
+- Status: DONE
+- Completion: Added deterministic semantic Tailwind, fixed-colour, nested-fallback and supported-theme ratchets with negative self-test fixtures; reduced only proven duplicate fallback chains and removed the unsafe shared input text utility.
+- Changed files: `Klijent/clientapp/package.json`, `Klijent/clientapp/scripts/check-ui-ratchets.mjs`, `Klijent/clientapp/src/styles/interactionTokens.ts`, `Klijent/clientapp/src/styles/themes.css`, `.ai/runs/2026-10-07-P-UI-54-evidence.md`
+- Contract/runtime behavior changed: Shared inputs now use the active primary text token; inventory-dark has an explicit CSS selector; duplicate fallback chains resolve identically; no Product Decision contract or page path changed.
+- Checks run: UI ratchet self-test/full check; theme/token Vitest specs (9/9); chart accessibility self-test/full check (25 charts checked, 8 documented exclusions); encoding; analytics guardrails + typecheck; production build; `git diff --check`.
+- Checks not run: real-device/browser proof and final whole-program route inclusion remain P-UI-38 scope; no current-main GitHub Actions run for the delivered SHA was discoverable when checked.
+- Run log: `.ai/runs/2026-10-07-P-UI-54-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: `3363ddd4c4de76219eb9cebd08b42f70f85321d9`
+- Main verification: passed - `origin/main` was fast-forwarded from `646be1545d1da77a7ad7183057f5d13a47bc8125` to the tested implementation SHA.
+- Missed: Product Decision paths remain excluded because P-UI-50's active checkout edit is unresolved.
+- Follow-up: P-UI-50 re-check/promotion when its exact page-path collision is cleared; P-UI-38 consumes this ratchet as the final whole-program gate.
+- Residual risk: Legacy pseudo-token fallback inventory remains measured at `themes.css` 141 and `interactionTokens.ts` 7; broader cleanup stays with P-UI-38.
+- Post-close routing: pending final post-delivery recovery synchronization.
+- Prompt defect / scope repair: P-UI-54 used the documented P-UI-38 disjoint split; no Product Decision scope was taken.
 
