@@ -68,23 +68,24 @@ Do not continue blind.
 
 ## Queue task checklist
 
-- [ ] If this is a queue-driven task, I updated the queue status appropriately.
+This checklist does not define queue mechanics; use `docs/ai/PROMPT_QUEUE_PROTOCOL.md` for the algorithm.
+
+- [ ] I resolved cross-program priority from `MASTER_ROADMAP.md` and task status/owner/dependencies from the current owner queue.
 - [ ] I treated `Current READY` as the primary/default pointer, not as proof that every other READY task is blocked.
-- [ ] If `Current READY` is `none`, I ran Idle recovery instead of stopping immediately.
-- [ ] For every candidate blocker I classified: stale/satisfied, circular same-prompt artifact, repo-local proof, external/provider/deployed evidence, product/security/tenant authority, or active owner/path collision.
-- [ ] I checked whether a prerequisite is circular (for example requiring a baseline before the prompt whose first job is to create that baseline).
-- [ ] I did not use provider/live/CI proof needed only for final acceptance as a blanket start blocker for independently safe repo-local work.
-- [ ] If a prompt mixed safe repo-local work with external final proof, I repaired/narrowed it before claim without changing business semantics or weakening acceptance.
-- [ ] If the first candidate remained genuinely blocked, I checked another collision-safe lane in the same program and then the next eligible program before reporting no work.
-- [ ] After any terminal queue transition, I refreshed the **post-delivery origin/main SHA**; I did not reuse the pre-claim routing result.
-- [ ] I ran the **Post-close dependency cascade**: searched every active owner queue/addendum for the completed task ID and changed dependencies, re-evaluated all dependents, then scanned all non-terminal prompts for stale blockers.
-- [ ] If any dependent/independent prompt became dependency-complete and collision-safe, I promoted it in the same recovery run instead of leaving it WAITING behind stale prose.
-- [ ] If multiple READY tasks exist, I selected one whose dependency, feature-family, path, owner and gate collision checks are clear; this agent/workspace still owns only one claimed prompt at a time.
+- [ ] I verified the exact task is not another owner's active `IN_PROGRESS` claim. I did **not** treat a runtime commit on `main`, missing local lock, or absent branch/PR as release evidence.
+- [ ] If `Current READY` is `none`, I ran the protocol's **Mandatory no-READY action ladder** rather than stopping.
+- [ ] For each serious candidate I re-verified stale/satisfied dependencies and classified the blocker through the protocol.
+- [ ] I executed any safe repository-local unblock/proof step that this agent is authorized to perform instead of citing that proof as a blocker.
+- [ ] If one owned path blocked a broader prompt, I checked whether a meaningful same-owner **disjoint slice** could be split without weakening business/safety acceptance.
+- [ ] If a concrete repo-local gap had no owner work item, I de-duplicated before adding the smallest prompt to the existing owner queue.
+- [ ] If the current program remained genuinely blocked, I checked the next eligible program before reporting no work.
+- [ ] After any terminal queue transition, I refreshed the **post-delivery origin/main SHA** and ran the protocol's **Post-close dependency cascade**.
+- [ ] I promoted newly dependency-complete collision-safe work instead of preserving stale `WAITING` / `none` prose.
 - [ ] I did not copy an older queue header, run-log `Next: none`, blocked P0, pending CI or missing deployed proof into a new zero-READY conclusion.
-- [ ] A final "no safe task" report has a **Zero-READY proof**: recovery-base SHA, active queue/addendum files scanned, every plausible candidate checked, blocker class, start-gate-vs-final-proof classification, why no repo-local slice is safe, and the exact unblock event.
+- [ ] A final no-work result has a current **Zero-READY proof** with candidate/blocker matrix, **unblock attempt performed**, why no safe split exists and the exact unblock event.
+- [ ] If an unknown uncommitted workspace edit is the blocker, I did not stash/reset/delete/overwrite it; where visible I recorded exact paths plus bounded diff/owner evidence and blocked only that affected scope.
 - [ ] If I could not inspect the entire active owner queue/addendum set, I reported recovery incomplete and did **not** claim there was no READY work.
-- [ ] I added evidence: date, files changed, checks, risks, next step.
-- [ ] I did not execute an additional queue task unless explicitly instructed.
+- [ ] I added durable evidence with changed files, checks, risks, delivery/main verification and next routing truth.
 
 ## Commands
 
