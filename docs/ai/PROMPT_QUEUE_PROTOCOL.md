@@ -130,6 +130,18 @@ For an **unknown uncommitted workspace edit** on a candidate-owned path: never s
 
 When zero READY is still the truthful result, the **final response and durable evidence** must contain a compact blocker matrix with at least: `candidate`, `status`, `blocker class`, `evidence`, `unblock attempt performed`, `why no safe split exists`, and `exact unblock event`. Prefer the top actionable candidates rather than a vague sentence that everything is gated.
 
+### Explicit ownership release / handoff contract
+
+For an `IN_PROGRESS` task, **silence is not release**. A handoff/release is valid only when at least one authoritative source explicitly transfers or releases the task:
+
+- the current claiming owner/workspace writes a durable queue/run-evidence note for that exact task saying `handed off` / `released`, with the date and target owner (or `unassigned`); or
+- the user explicitly reassigns/releases that exact task in the current instruction, and the receiving agent records that authority in the task/run evidence before changing ownership-sensitive files; or
+- the canonical queue is reconciled to a terminal/non-active state from synchronized completion evidence **and** there is no unresolved contradictory owner signal.
+
+The following are **never release evidence by themselves**: implementation on `main`, elapsed time/inactivity, no local lock, no branch, no PR, a closed/stale PR, green CI, a terminal-looking note under a still-`IN_PROGRESS` row, or another agent saying the task “looks stale”. If the task still says `IN_PROGRESS` with another named owner and no authoritative release above exists, fail closed: do not take it over. If active-owner absence cannot be established, treat ownership as unresolved and choose a different collision-safe lane.
+
+Any legitimate takeover/reassignment must record: previous owner, authority source, evidence location, effective time/date, new owner/workspace, and whether existing branch/PR/worktree artifacts are reused or left untouched. This makes future agents able to distinguish a real handoff from inferred abandonment.
+
 ### Recovery order
 
 1. **Refresh routing truth.** Fetch current `origin/main` and record the exact recovery-base SHA. Read `MASTER_ROADMAP.md`, the owning queue header **and the entire active addendum set**, plus all current `READY` / `IN_PROGRESS` rows. After a task closure, this refresh MUST happen from the post-delivery SHA. Do not trust an older audit's “next” or “none” sentence.
