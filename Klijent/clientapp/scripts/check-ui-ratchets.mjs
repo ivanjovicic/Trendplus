@@ -101,7 +101,7 @@ function runSelfTest() {
   if (semanticMappingProblems(fixtureTailwind, ["text-success bg-success/20"]).length !== 0) {
     throw new Error("mapped semantic colour fixture should pass");
   }
-  if (semanticMappingProblems(fixtureTailwind, ["text-missing"]).length !== 1) {
+  if (semanticMappingProblems(fixtureTailwind, ["text-primary-hover"]).length !== 1) {
     throw new Error("missing semantic colour fixture should fail");
   }
   if (fixedColorFindings("styles/interactionTokens.ts", "className=\"text-white\"").length !== 1) {
