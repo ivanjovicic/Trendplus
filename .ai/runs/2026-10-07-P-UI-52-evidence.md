@@ -6,7 +6,7 @@ Delivery target: main
 Working branch / PR: `codex/p-ui-52-analytics-navigation-copy` / none
 Main commit SHA: `31b0a8d95906019163a135f3db66f89ffac8ea2d`
 Main verification: passed - fresh `origin/main` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`
-Evidence state: pending post-close routing synchronization
+Evidence state: synchronized
 
 ## What was done
 - Reconciled analytics sidebar labels, route-definition labels and page titles; removed status-like analytics group/item badges and retained descriptive `Analiza` / `Izveštaj` badges.
@@ -83,7 +83,7 @@ Evidence state: pending post-close routing synchronization
 
 ## Documentation impact
 - Updated the P-UI queue completion note, `MASTER_ROADMAP.md` routing row and `ANALYTICS_UI_PREMIUM_ROADMAP.md` current direction.
-- Added this durable evidence log. The closure commit will synchronize the mandatory post-close recovery section.
+- Added this durable evidence log and synchronized its mandatory post-close recovery section.
 
 ## What was missed
 - None known in repository-local acceptance. No in-scope production `N/A` fallback remained to change.
@@ -94,7 +94,14 @@ Evidence state: pending post-close routing synchronization
 - A pre-existing untracked responsive artifact directory `Klijent/clientapp/tmp/` remains in this isolated worktree and is excluded from commits; it was not cleaned. The primary checkout and its user changes remain untouched.
 
 ## Post-close routing recovery
-- Pending the terminal closure commit landing on `main`; recovery must refresh `origin/main`, scan the complete 16-file active owner queue/addendum set and record the candidate/blocker matrix here before final evidence synchronization.
+- Recovery base: fresh `origin/main` SHA `4ef338a62ff852f44e7d7342ea002e5d38107aab`, after P-UI-52 implementation and terminal closure reached main.
+- Active owner queue/addendum files scanned (16): `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ACTION_OUTCOME_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_ADVANCED_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_EXECUTIVE_DQ_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_INVENTORY_SIGNALS_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_LEGACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_OPERATIONS_ACCURACY_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_UI_TABLE_CHART_ADDENDUM.md`; `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE_LEAST_IMPROVED_ADDENDUM.md`; `MASTER_ROADMAP.md`.
+- Completed/changed task searched across the active set: P-UI-52. Its only newly relevant UI dependency is P-UI-38; P-UI-38 now has P-UI-52 DONE but still has a true start gate because P-UI-50 is BLOCKED. P-UI-50's RQ573/RQ574/P-UI-49 prerequisites remain DONE; P-UI-52 did not change its blocker.
+- Candidate/blocker matrix: BCI has no READY/IN_PROGRESS work; STAB16 is BLOCKED on provider/deployed evidence; canonical RQ current READY is none and remaining partials/WAITING items require their named owner, sample, deployed, production-freshness or broad cross-surface proof; SQL current READY is none; QDB has no READY candidate and QDB07 remains release/e2e-gated; MT02 requires an owner identity/membership decision; GAI remains behind core-pilot/release gates. Within P-UI, P-UI-50 is BLOCKED by the separate primary-checkout uncommitted edit to `ProductDecisionCenterPage.tsx`; P-UI-38 is WAITING until all listed migrations are DONE or explicitly deferred. Other current P-UI migration prompts are DONE. No dependency-complete, collision-safe successor was found.
+- Start-gate vs final-proof classification: P-UI-38's migration dependency on P-UI-50 is a true start gate, not a final proof residual; no owner has explicitly deferred P-UI-50. P-UI-50 is a genuine active path collision with user work, not an external proof that can be completed in this task. STAB16/provider and production-freshness requirements are external gates. The remaining RQ PARTIAL/WAITING items lack a path-safe repository-local slice under their current ownership and acceptance.
+- Safe-slice result: no same-owner P-UI-38 split was taken because the only remaining eligible UI scope is the final cross-surface regression gate and its prompt requires P-UI-50 completion/deferral; Product Decision page/CSS overlap is not safe while its existing edit remains unresolved. Higher-priority programs have no runnable repository-local candidate after the full owner-set review.
+- Exact unblock event: the owner clears/delivers the existing edit to `ProductDecisionCenterPage.tsx` or explicitly resolves its ownership; then re-evaluate/promote P-UI-50, complete or explicitly defer it, and re-run P-UI-38 dependency recovery. For STAB16, the exact unblock is authorized provider/deployment evidence.
+- Zero-READY proof: the current active owner queue/addendum set is fully scanned from the recovery SHA above; candidate and blocker classes, safe-slice result and exact unblock events are recorded here. Current P-UI READY is none; no successor was promoted or claimed.
 
 ## Next
-- Pending the required post-close recovery; do not infer a successor from the pre-close queue pointer.
+- None currently READY. Re-run canonical idle recovery when the P-UI-50 ownership collision is cleared/resolved, or when new provider/deployed evidence unblocks a higher-priority lane.

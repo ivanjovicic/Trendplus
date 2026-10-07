@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current primary prompt: pending post-close recovery after P-UI-52. P-UI-52 implementation is DONE on `31b0a8d95906019163a135f3db66f89ffac8ea2d`; other READY lanes are pending the required full recovery scan.
+Current READY prompt: none. Zero-READY recovery after P-UI-52 is recorded in `.ai/runs/2026-10-07-P-UI-52-evidence.md` at `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab`; P-UI-50 remains blocked and P-UI-38 remains waiting on that migration.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -3769,14 +3769,14 @@ Five sidebar groups share `label: "Analitika"`. Internal badges (P0, Ops, DQ, Ar
 - Checks run: focused navigation/title tests 21/21; full scoped nine-file Vitest run 60/61 (the single unchanged duplicate trust-header text assertion is classified in the run log); encoding, analytics guardrails/typecheck, governance validators/self-tests and `git diff --check` passed.
 - Checks not run: production build and full frontend suite; neither is required by this prompt's mapped proof, and the full scoped suite exposed the known unrelated assertion described in the run log.
 - Run log: `.ai/runs/2026-10-07-P-UI-52-evidence.md`
-- Evidence state: pending post-close dependency recovery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `31b0a8d95906019163a135f3db66f89ffac8ea2d`
 - Main verification: fresh fetch confirmed `origin/main` contains implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`.
 - Missed: None known in repository-local acceptance; the owned production `N/A` fallbacks were already “Nije dostupno” before this run.
-- Follow-up: full post-close recovery pending.
+- Follow-up: none currently READY; re-run idle recovery when the P-UI-50 page-path collision clears or its owner explicitly defers it.
 - Residual risk: Analytics Quality Gates run `37605941949` is queued on the implementation SHA; the known duplicate trust-header assertion remains red locally.
-- Post-close routing: pending; see the synchronized recovery section in the run log.
+- Post-close routing: Zero-READY proof at `origin/main` `4ef338a62ff852f44e7d7342ea002e5d38107aab`; no successor was promoted.
 - Prompt defect / scope repair: canonical `/analytics/supplier?tab=scorecard` needs query-aware active-link selection in the Sidebar; header/breadcrumb files remain outside this task's owned paths.
 
 
