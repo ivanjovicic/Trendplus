@@ -37,7 +37,7 @@ Evidence synchronization is a separate field:
 Evidence state: synchronized | pending | fallback <reason>
 ```
 
-Delivery/evidence facts do **not** grant queue ownership. An implementation SHA on `main`, green validation or synchronized evidence does not release another owner's `IN_PROGRESS` claim; claim lifecycle and takeover remain exclusively governed by `PROMPT_QUEUE_PROTOCOL.md`.
+Delivery/evidence facts do not grant queue ownership. An implementation SHA on `main`, green validation or synchronized evidence does not release another owner's `IN_PROGRESS` claim; claim lifecycle and takeover remain exclusively governed by `PROMPT_QUEUE_PROTOCOL.md`.
 
 Rules:
 - use `DONE` only when required proof and delivery evidence are synchronized;

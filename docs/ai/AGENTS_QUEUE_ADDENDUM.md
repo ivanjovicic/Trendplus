@@ -2,7 +2,7 @@
 
 Status: **DEPRECATED — compatibility pointer only**
 
-This file used to duplicate the live queue workflow for older `AGENTS.md` variants. Do **not** use it as a router, checklist, selector or source of claim/takeover/lock/no-READY rules, and do not copy its historical workflow into new agent instructions.
+This file used to duplicate the live queue workflow for older `AGENTS.md` variants. **Do not use it as a router.** It is not a checklist, selector or source of claim/takeover/lock/no-READY rules, and its historical workflow must not be copied into new agent instructions.
 
 Current canonical sources:
 
