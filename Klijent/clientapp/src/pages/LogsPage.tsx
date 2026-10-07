@@ -252,7 +252,7 @@ export default function LogsPage() {
                 <span>{"\u{1F4CB}"}</span> Pregled logova
             </h2>
 
-            <div className="toolbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker">
+            <div className="toolbar grid min-w-0 grid-cols-1 gap-4 mb-6 p-4 rounded-xl border border-muted bg-surface-darker sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted">Nivo</label>
                     <select
@@ -318,7 +318,7 @@ export default function LogsPage() {
                     />
                 </div>
 
-                <div className="flex items-end gap-2">
+                <div className="flex min-w-0 flex-wrap items-end gap-2 lg:col-span-3 xl:col-span-1">
                     <button
                         className="button-big flex-1"
                         onClick={fetchLogs}
@@ -361,7 +361,7 @@ export default function LogsPage() {
                     <strong className="text-muted">Ukupno:</strong> {totalCount} logova |{" "}
                     <strong className="text-muted">Stranica:</strong> {currentPage} od {totalPages}
                 </span>
-                <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <input
                         type="number"
                         min={1}
@@ -404,11 +404,11 @@ export default function LogsPage() {
             ) : (
                 <>
                     <div className="overflow-hidden rounded-xl border border-muted bg-surface-elevated">
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto" role="region" aria-label="Tabela logova" tabIndex={0}>
                             <table className="min-w-full divide-y divide-muted text-sm">
                                 <thead className="bg-surface-darker text-muted">
                                     <tr>
-                                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-40">Vreme</th>
+                                        <th className="sticky left-0 z-10 bg-surface-darker px-4 py-3 text-left font-semibold uppercase tracking-wider w-40">Vreme</th>
                                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider w-24">Nivo</th>
                                         <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Poruka</th>
                                         <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider w-20">Akcije</th>
@@ -422,7 +422,7 @@ export default function LogsPage() {
                                                 style={{ backgroundColor: getLevelBgColor(log.level) }}
                                                 onClick={() => setSelectedLog(log)}
                                             >
-                                                <td className="px-4 py-2 whitespace-nowrap opacity-70">
+                                                <td className="sticky left-0 z-10 px-4 py-2 whitespace-nowrap opacity-70" style={{ backgroundColor: getLevelBgColor(log.level) }}>
                                                     {formatDate(log.timestamp)}
                                                 </td>
                                                 <td className="px-4 py-2">
@@ -441,8 +441,10 @@ export default function LogsPage() {
                                                     {log.message}
                                                 </td>
                                                 <td className="px-4 py-2 text-right">
-                                                    <button 
-                                                        className="text-muted hover:text-contrast"
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Otvori detalje loga"
+                                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-muted hover:text-contrast"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setSelectedLog(log);
