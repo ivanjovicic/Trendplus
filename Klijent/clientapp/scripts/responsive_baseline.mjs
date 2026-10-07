@@ -49,6 +49,7 @@ function parseArgs(argv) {
     selfTest: false,
     productRowCount: 1200,
     viewportWidth: null,
+    touchProfile: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -65,6 +66,7 @@ function parseArgs(argv) {
     else if (argument === "--self-test") options.selfTest = true;
     else if (argument === "--product-row-count") options.productRowCount = Number(argv[++index]);
     else if (argument === "--viewport-width") options.viewportWidth = Number(argv[++index]);
+    else if (argument === "--touch-profile") options.touchProfile = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
 
@@ -113,6 +115,16 @@ export function assertPui40Shell(metrics) {
   return true;
 }
 
+export function assertPui42TouchTargets(metrics) {
+  const smallControls = (metrics.touchAudit?.controls ?? []).filter((control) =>
+    control.width < 44 || control.height < 44
+      || (control.kind === "text-entry" && control.fontSizePx < 16));
+  if (smallControls.length > 0) {
+    throw new Error(`P-UI-42 shared touch controls below 44px/16px: ${smallControls.slice(0, 8).map((control) => `${control.selector} ${control.width}x${control.height} ${control.fontSizePx}px`).join("; ")}`);
+  }
+  return true;
+}
+
 export function evaluateGeometry(documentMetrics, viewportWidth) {
   return {
     viewportWidth,
@@ -130,6 +142,8 @@ export function evaluateGeometry(documentMetrics, viewportWidth) {
       ? Math.min(...documentMetrics.controls.map((control) => control.fontSizePx))
       : null,
     controls: documentMetrics.controls,
+    touchAudit: { controls: documentMetrics.touchAudit ?? [] },
+    pageLocalTouchOffenders: documentMetrics.pageLocalTouchOffenders ?? [],
     relevantRegions: documentMetrics.relevantRegions,
     overflowingElements: documentMetrics.overflowingElements,
     chartRegions: documentMetrics.chartRegions,
@@ -178,10 +192,21 @@ function runSelfTest() {
     throw new Error("intentional P-UI-40 shell fixture did not fail the geometry assertion");
   }
 
+  assertPui42TouchTargets({ touchAudit: { controls: [{ selector: "button", kind: "target", width: 44, height: 44, fontSizePx: 13 }] } });
+  let touchTargetFailedAsExpected = false;
+  try {
+    assertPui42TouchTargets({ touchAudit: { controls: [{ selector: "input", kind: "text-entry", width: 43, height: 43, fontSizePx: 15 }] } });
+  } catch (error) {
+    touchTargetFailedAsExpected = /P-UI-42 shared touch controls below/.test(String(error));
+  }
+  if (!touchTargetFailedAsExpected) {
+    throw new Error("intentional P-UI-42 touch target fixture did not fail as expected");
+  }
+
   return {
     name: "intentional-overflow-fixture",
     status: "PASS",
-    detail: "overflow and P-UI-40 shell regression fixtures failed as expected and were caught by the self-test",
+    detail: "overflow and P-UI-40/P-UI-42 regression fixtures failed as expected and were caught by the self-test",
   };
 }
 
@@ -846,6 +871,41 @@ async function collectGeometry(page, viewportWidth) {
           rect: rectValue(rect),
         };
       });
+    const touchAuditSelectors = [
+      "button", ".btn", ".button-big", "[role='button']",
+      "input:not([type='checkbox']):not([type='radio']):not([type='range'])",
+      "select", "textarea", "[role='banner'] a", ".analytics-trust-header a:not(p a)",
+      ".analytics-trust-header button", ".analytics-data-table__toolbar a",
+      ".analytics-data-table__toolbar button", ".analytics-data-table__toolbar [role='button']",
+      ".analytics-empty-state a:not(p a)", ".arb-link", ".kpi-explain-button", ".info-tip",
+    ].join(",");
+    const touchAudit = [...new Set(document.querySelectorAll(touchAuditSelectors))]
+      .filter(isVisible)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        const isTextEntry = element.matches("input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea");
+        return {
+          selector: [element.tagName.toLowerCase(), element.className?.baseVal ?? element.className ?? "", element.getAttribute("aria-label") || element.textContent?.trim().slice(0, 40) || ""].filter(Boolean).join("."),
+          kind: isTextEntry ? "text-entry" : "target",
+          width: Math.round(rect.width * 100) / 100,
+          height: Math.round(rect.height * 100) / 100,
+          fontSizePx: Number.parseFloat(style.fontSize),
+        };
+      });
+    const pageLocalTouchOffenders = [...document.querySelectorAll("a:not(p a)")]
+      .filter((element) => isVisible(element)
+        && !element.closest(".sr-only, [role='banner'], header, .analytics-trust-header, .analytics-data-table__toolbar, .analytics-empty-state, .analytics-refresh-status-banner"))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          className: typeof element.className === "string" ? element.className : null,
+          label: element.getAttribute("aria-label") || element.textContent?.trim().slice(0, 60) || null,
+          width: Math.round(rect.width * 100) / 100,
+          height: Math.round(rect.height * 100) / 100,
+        };
+      })
+      .filter((element) => element.width < 44 || element.height < 44);
 
     const regions = [...document.querySelectorAll(
       ".pilot-intake-durable-table-wrap, .pilot-intake-durable-sections, .pilot-intake-durable-section, .pilot-intake-card, .analytics-trust-header, [data-testid='analytics-control-bar'], [class~='analytics-data-table__scroll'], [class*='control-bar'], [class*='chart-grid'], [class*='chart-wrap'], [class*='card-grid'], [class*='daily-sales-kpis'], [class*='command-center__hero'], table, [role='dialog'], [role='banner'], [data-testid*='data-table'], [class*='filter'], [class*='toolbar']",
@@ -915,6 +975,8 @@ async function collectGeometry(page, viewportWidth) {
       ),
       main: rectValue(document.querySelector("main")?.getBoundingClientRect()),
       controls,
+      touchAudit,
+      pageLocalTouchOffenders,
       relevantRegions: regions,
       overflowingElements,
       chartRegions,
@@ -1016,7 +1078,7 @@ async function run(options) {
             height: viewportHeight,
             deviceScaleFactor: 1,
             isMobile: viewportWidth < 768,
-            hasTouch: Boolean(route.pui45Carousel && viewportWidth < 768),
+            hasTouch: options.touchProfile || Boolean(route.pui45Carousel && viewportWidth < 768),
           });
           const themeName = themeNameForBaseline(theme);
           await page.evaluateOnNewDocument((selectedTheme) => {
@@ -1254,6 +1316,9 @@ async function run(options) {
 
           const geometry = await collectGeometry(page, viewportWidth);
           if (route.pui40Shell) assertPui40Shell(geometry);
+          if (options.touchProfile && [768, 1024].includes(viewportWidth)) {
+            assertPui42TouchTargets(geometry);
+          }
           let pui43Layout = null;
           if (route.pui43Selector) {
             const trustLayout = pui43DefaultLayout ?? await page.evaluate((selector) => {

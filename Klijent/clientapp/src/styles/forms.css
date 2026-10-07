@@ -558,7 +558,7 @@ textarea.form-control {
 
   .btn {
     font-size: var(--font-size-control-phone, 1rem);
-    min-height: var(--size-touch-target, 2.75rem);
+    min-height: var(--size-touch-target, 2.75rem) !important;
   }
 }
 
@@ -567,11 +567,28 @@ textarea.form-control {
   .mobile-entry-form select,
   .mobile-entry-form textarea {
     font-size: var(--font-size-control-phone, 1rem) !important;
-    min-height: var(--size-touch-target, 2.75rem);
+    min-height: var(--size-touch-target, 2.75rem) !important;
   }
 
   .mobile-entry-form button {
     min-height: var(--size-touch-target, 2.75rem);
+  }
+}
+
+@media (any-pointer: coarse) {
+  .form-control,
+  .form-control--compact,
+  .mobile-entry-form input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .mobile-entry-form select,
+  .mobile-entry-form textarea {
+    font-size: var(--font-size-control-phone, 1rem) !important;
+    min-height: var(--size-touch-target, 2.75rem);
+  }
+
+  .btn,
+  .mobile-entry-form button {
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
   }
 }
 

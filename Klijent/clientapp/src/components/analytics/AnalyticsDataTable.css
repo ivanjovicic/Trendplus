@@ -16,6 +16,13 @@
   flex: 1 1 420px;
 }
 
+@media (any-pointer: coarse) {
+  .analytics-data-table__toolbar :is(button, .btn, [role="button"], a) {
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+  }
+}
+
 .analytics-data-table__meta {
   display: flex;
   flex-wrap: wrap;

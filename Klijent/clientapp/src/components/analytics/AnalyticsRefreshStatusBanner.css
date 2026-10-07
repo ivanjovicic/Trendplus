@@ -90,6 +90,15 @@
   white-space: nowrap;
 }
 
+@media (any-pointer: coarse) {
+  .arb-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+  }
+}
+
 .arb-link:hover {
   text-decoration: underline;
 }

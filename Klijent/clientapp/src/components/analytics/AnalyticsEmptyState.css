@@ -103,6 +103,15 @@
   text-decoration: underline;
 }
 
+@media (any-pointer: coarse) {
+  .analytics-empty-state :is(.aes-action-link, .aes-footer-link) {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+  }
+}
+
 /* Empty reason (from API) */
 .aes-empty-reason {
   color: var(--text-secondary, #374151);

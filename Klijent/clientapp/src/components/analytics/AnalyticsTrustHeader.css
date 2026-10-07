@@ -11,6 +11,18 @@
   box-shadow: 0 24px 70px -54px var(--theme-color-rgba-0-0-0-0p9, rgba(0, 0, 0, 0.9));
 }
 
+@media (any-pointer: coarse) {
+  .analytics-trust-header a:not(p a),
+  .analytics-trust-header button,
+  .analytics-trust-header .ath-summary-bar .ath-details-toggle,
+  .analytics-trust-header .ath-summary-bar a:not(p a) {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+  }
+}
+
 .analytics-trust-header::before {
   content: "";
   position: absolute;

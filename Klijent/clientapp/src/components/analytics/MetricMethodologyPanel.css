@@ -16,6 +16,14 @@
   color: var(--info);
 }
 
+@media (any-pointer: coarse) {
+  .kpi-explain-button {
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+    padding-inline: 0.5rem;
+  }
+}
+
 .kpi-explain-button:focus-visible,
 .metric-methodology-close:focus-visible,
 .metric-methodology-link:focus-visible {

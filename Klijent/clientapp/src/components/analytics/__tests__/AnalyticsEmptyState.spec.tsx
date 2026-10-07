@@ -26,6 +26,10 @@ describe("AnalyticsEmptyState", () => {
     expect(insufficientDataStyles).not.toMatch(/background\s*:/);
   });
 
+  it("enlarges shared action links for coarse pointers", () => {
+    expect(emptyStateStyles).toMatch(/@media\s*\(any-pointer:\s*coarse\)[\s\S]*\.analytics-empty-state\s+:is\(\.aes-action-link,\s*\.aes-footer-link\)[\s\S]*min-height:\s*var\(--size-touch-target/);
+  });
+
   it("maps known empty reason codes to Serbian copy", () => {
     renderEmptyState();
 

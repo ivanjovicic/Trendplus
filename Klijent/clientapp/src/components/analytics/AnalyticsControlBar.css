@@ -284,3 +284,16 @@
     margin-top: 12px;
   }
 }
+
+@media (any-pointer: coarse) {
+  .analytics-control-bar__field select,
+  .analytics-control-bar__field input {
+    min-height: var(--size-touch-target, 2.75rem) !important;
+    font-size: var(--font-size-control-phone, 1rem);
+  }
+
+  .analytics-control-bar__actions :is(button, a) {
+    min-width: var(--size-touch-target, 2.75rem) !important;
+    min-height: var(--size-touch-target, 2.75rem) !important;
+  }
+}
