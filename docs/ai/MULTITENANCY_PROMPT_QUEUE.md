@@ -17,14 +17,12 @@ Priority rules:
 4. Until `MT10` is `DONE`, supported customer isolation is one deployment/database/storage/cache scope per customer.
 5. Connector prompts `QDB01`/`QDB02` may proceed when path-safe. Persistent connection/mapping/checkpoint work (`QDB04`–`QDB06`) must include or wait for the corresponding tenant-ownership contract.
 6. GenAI work may operate in the current dedicated-customer mode, but any shared-SaaS GenAI/RAG/tool surface must wait for tenant authorization, storage and retrieval isolation.
-7. One prompt per branch/commit unless the prompt explicitly allows a bounded documentation update.
+7. Keep implementation commits bounded and reviewable; task concurrency/session routing is governed only by `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, not by this queue.
 
 ## Governance rules
 
-- Follow `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
-- Use only `READY`, `WAITING`, `IN_PROGRESS`, `BLOCKED`, `PARTIAL`, `DONE`, `OBSOLETE`.
-- Create a local uncommitted lock under `.ai/task-locks/`.
-- Before claim, inspect current `main`, open PRs, remote branches and exact changed-path ownership.
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` is the sole owner of selection, claim, lock, concurrency, promotion, no-READY and close-out mechanics.
+- The rules below are Multi-Tenancy safety additions, not a second claim algorithm.
 - Never put real customer data, tenant secrets, API keys, connection strings or report payloads in tests/evidence.
 - Tenant selection must fail closed. Do not introduce a permanent default-tenant fallback.
 - `StoreId`, `IDObjekat`, user ID, source connection ID and file path are not tenant identity.
