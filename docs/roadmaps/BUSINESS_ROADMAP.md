@@ -5,11 +5,39 @@ Status: canonical business milestone map
 
 This roadmap maps commercial/product milestones to existing technical planning programs. It does not create a second implementation backlog.
 
+## Milestone 0 - Fresh Data and First Proven Value
+
+### Business outcome
+
+Trendplus operates on current production data and can show one reproducible owner decision loop that ends in an observed business outcome rather than only a tested dashboard.
+
+### Required evidence
+
+- production observed sales horizon stays within the RQ583 freshness SLA; target: 14 consecutive days without silent stale fallback;
+- canonical web/worker/deploy ownership is known and durable successful import/refresh evidence is visible;
+- inventory cost and inbound-age evidence are trustworthy enough to quantify aged stock without missing-as-zero;
+- live Pre/Post nivelacija contract is verified on the deployed SHA;
+- at least 20 real markdown actions are pre-registered, executed and measured under RQ592;
+- one owner-readable result page states observed margin/units/remaining-stock outcomes and limitations;
+- RQ585 weekly digest is built only from certified current signals and is used for four consecutive weekly decision cycles.
+
+### Queue mapping
+
+- STAB16: production freshness/deploy/worker proof;
+- RQ545/RQ454/RQ565/RQ566: deployed analytics reconciliation;
+- RQ576 and inventory owners: cost/aging truth;
+- RQ585: weekly owner digest;
+- RQ592: first closed markdown action-to-outcome pilot.
+
+### Exit rule
+
+No amount of local oracle/UI/governance evidence substitutes for fresh production data and at least one real measured decision loop.
+
 ## Milestone 1 - Pilot Ready
 
 ### Business outcome
 
-A real retailer can use Trendplus for a bounded pilot without the team overstating deploy, data, recommendation or recovery readiness.
+A real retailer can use Trendplus for a bounded pilot after Milestone 0, without the team overstating deploy, data, recommendation, outcome or recovery readiness.
 
 ### Required evidence
 
@@ -35,7 +63,12 @@ A real retailer can use Trendplus for a bounded pilot without the team overstati
 
 The current STAB/release evidence must say Pilot Ready or Pilot Ready With Accepted Warnings. Old historical readiness documents do not satisfy this milestone.
 
-## Milestone 2 - First Customer
+## Milestone 2 - First External Customer
+
+### Priority note
+
+Do not require shared multi-tenancy or GenAI for this milestone. A dedicated database/deployment per customer is acceptable if it reduces onboarding risk and preserves isolation. The commercial blocker is repeatable mapping into the canonical retail/analytics model, not the existence of another provider driver.
+
 
 ### Business outcome
 
@@ -43,7 +76,7 @@ Onboarding the first paying/production customer is repeatable enough that the pr
 
 ### Required evidence
 
-- source connection/import contract documented and tested;
+- source connection/import contract documented and tested end-to-end into the canonical retail/analytics model (not staging only);
 - customer mapping/onboarding procedure documented;
 - dedicated-customer deployment/isolation model explicit;
 - data-quality/freshness and support triage visible;

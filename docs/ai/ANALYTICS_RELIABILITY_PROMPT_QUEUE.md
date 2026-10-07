@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ READY prompt: none after RQ588 DONE. Post-close recovery from P-UI-48 closure SHA `858ade29e8c5a95315ce94c3d870ba71f4746d06` scanned the complete active RQ/SQL/UI set; no RQ dependency became newly runnable. With higher-priority BCI/STAB/RQ/QDB/MT/GAI execution lanes clear or externally gated, supplemental P-UI-31 is DONE on main at 2170fae56c1439c17bea50467d51241714637df2; P-UI-36 is DONE on main at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`; P-UI-43 is DONE on `1b6856051fa1fb4e759ac4564cbf13cb3e779976`; the post-close primary P-UI lane is P-UI-45 DONE; P-UI-35 DONE at `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`. RQ586 is DONE on `6d5a7414ef61ef70829597bdb6b755ae71c95a30`; RQ557 is DONE on `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`; RQ558 remains WAITING for measured non-trivial mature-event/control-dimension coverage, and RQ559 remains owner/source-policy gated. RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583, RQ587 and RQ588 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
-Product value audit registration 2026-10-07: `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` (base `origin/main` `cb5ae4df`, deployed runtime `194df308`, live sales horizon still 2026-08-05) registered WAITING `RQ592` (first closed markdown action→outcome pilot, gated on STAB16 freshness). Priority corrections (RQ585 P3→P1; deprioritize P-UI-38/P-UI-50/PERF18/RQ319/RQ320/legacy RQ18 and RQ25-RQ38/GAI/MT) are proposed in that audit and are **not** applied pending owner decision. Current RQ READY prompt remains none.
+Product value audit owner review 2026-10-07: `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` is corrected by the same-day claim review. Owner decision applies RQ585 P3→P1 while preserving its production-freshness start gate; RQ592 remains P1 but its pre-registration no longer waits for 14 consecutive fresh days. STAB16 remains the only product-critical P0. Other low-value/deferred families keep their existing canonical statuses/dependencies; this review does not bulk-mark them obsolete. QDB non-Access support is correctly classified as SQL Server-to-staging delivered, canonical customer ingestion still incomplete. Current RQ READY prompt remains none.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -29540,8 +29540,8 @@ Owner completion 2026-10-05: RQ584 moved READY -> DONE after timestamp `toDate` 
 ## RQ585 - Weekly owner decision digest built only from certified signals
 
 Status: WAITING
-Ready after: `RQ570`, `RQ573`, `RQ574`, `RQ576` DONE and production data freshness within the RQ583 SLA
-Priority: P3
+Ready after: production data freshness within the RQ583 SLA (`RQ570`, `RQ573`, `RQ574`, `RQ576` are DONE)
+Priority: P1
 Type: product/backend/frontend
 Feature family: owner-weekly-decision-digest
 Parallel-safe: no
@@ -29559,7 +29559,7 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 
 ### Scope
 
-- A weekly digest page/export listing at most 10 actions across: reorder best sellers by size (REPLENISH/BOOST), markdown candidates (Pre-Nivelacija high band, store grain), supplier negotiation flags (RQ465 pack), dead stock to transfer between Trend PLUS 1 and Trend PLUS 2; each item with evidence link, confidence and expected RSD impact only when certified.
+- A weekly digest page/export listing at most 10 actions from currently certified families: markdown candidates, inventory/dead-stock/transfer signals and supplier flags when their source is available. Size-run/replenishment items are optional and may appear only after the size source/policy is certified (RQ559); missing size evidence must not block the whole digest. Each item carries an evidence link, confidence/reliability state and expected RSD impact only when certified.
 
 ### Read first
 
@@ -29577,6 +29577,8 @@ The analytics now has many trustworthy building blocks (Supplier overview, Shoe 
 ### Acceptance
 
 - One page answers "which 10 things should I do this week, and why" with traceable evidence.
+- No unavailable signal family is silently replaced by a heuristic/fallback just to fill ten rows.
+- The pilot adoption metric is four consecutive weekly owner reviews with a recorded disposition per surfaced item; this is product evidence, not a start gate for implementation.
 
 ### Dependencies
 
@@ -30046,7 +30048,7 @@ Addendum 2026-10-05 (gap review after harden): FE margin-pressure copy now uses 
 ## RQ592 - First closed markdown action-to-outcome pilot with pre-registered comparison
 
 Status: WAITING
-Ready after: STAB16 DONE (production sales horizon within 48 h of today for 14 consecutive days) and RQ545 live Pre/Post contract verified on the deployed SHA
+Ready after: STAB16 has restored/proven production freshness inside the RQ583 SLA and RQ545 live Pre/Post contract is verified on the deployed SHA
 Priority: P1
 Type: product/pilot/evidence
 Feature family: markdown-outcome-pilot
@@ -30058,7 +30060,7 @@ Commit suggestion: `docs(product): record first markdown action-outcome pilot`
 
 ### Problem
 
-Trendplus has never proven that a recommendation made or saved money. Production Actions contained only four smoke fixtures and `measuredSampleSize=0` (`docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`). RQ557 provides a descriptive markdown ledger and RL12 is a documentation-only causal gate, but no prompt owns executing real actions and measuring them. Without this, every recommendation surface stays decision-support/unvalidated and cannot be sold.
+Trendplus has no repository evidence that a recommendation has already produced a measured business outcome. The last explicit live Actions evidence (2026-09-28) contained four smoke fixtures and `measuredSampleSize=0`. RQ557 provides a descriptive markdown ledger and RL12 owns the causal-claim gate, but no prompt owns executing a real pilot cohort and measuring it. Without this, recommendation surfaces remain decision-support/unvalidated and must not be marketed as outcome-proven optimization.
 
 ### Evidence
 
@@ -30067,18 +30069,18 @@ Trendplus has never proven that a recommendation made or saved money. Production
 
 ### Scope
 
-1. Before any markdown: owner selects 20-30 SKU×store candidates from Pre-Nivelacija prioriteti (retail scope per RQ571) and records each as an Analytics Action (old price, new price, date, store, reason).
+1. As soon as production freshness and live Pre/Post are restored, **before any markdown execution**, owner selects 20-30 SKU×store candidates from Pre-Nivelacija prioriteti (retail scope per RQ571) and records each as an Analytics Action (old price, new price, date, store, reason). Do not wait 14 days before pre-registering the cohort.
 2. Pre-register in the evidence file, before execution: the measurement window (4 weeks), the pre window (4 weeks), and a comparison group of not-marked-down SKUs matched by supplier, shoe type, store and age band.
 3. After 4 weeks record per action and in total: pairs sold pre/post, realized gross margin RSD (historical cost), remaining stock pairs, and the same for the comparison group.
 4. Publish one owner-readable page: RSD margin realized from aged stock, pairs cleared, and which actions did not help. Use the words "posmatrani ishod", never "efekat" or "uplift".
 
 ### Acceptance
 
-- ≥ 20 real (non-smoke) actions with recorded execution and a measured outcome; pre-registration commit precedes execution date.
+- ≥ 20 real (non-smoke) actions with recorded execution and a measured outcome; pre-registration commit precedes execution date. Freshness remains inside the RQ583 SLA through the measurement window; the 14-day stability target is evidence quality, not a late start gate.
 - Every number on the result page reproducible from a documented query over production facts.
 - Explicit limitation section: no randomization, no historical stock-by-day, selection bias.
 - No change to formulas, scoring, confidence or schema.
 
 ### Dependencies
 
-STAB16, RQ545 (live), RQ557 (DONE), RQ571 (DONE).
+STAB16 freshness restored, RQ545 live verified, RQ557 (DONE), RQ571 (DONE).

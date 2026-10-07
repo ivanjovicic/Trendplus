@@ -1,21 +1,27 @@
-# Trendplus — Inventory & Sales Management (Developer + Ops Guide)
+# Trendplus — Retail Decision Analytics (Developer + Ops Guide)
 
-Trendplus is a production-grade backend and analytics pipeline for retail data: a .NET 8 Web API that ingests legacy point-of-sale databases (Access .mdb/.accdb), normalizes transactional and master data, stores it in PostgreSQL and maintains a synchronized Analytics database for reporting.
+Trendplus is a retail analytics and decision-support system built on .NET and PostgreSQL. Its strongest current technical capability is trustworthy retail calculation/provenance; its highest-value product direction is inventory capital, markdown/nivelacija outcomes and supplier decisions.
 
-This README aims to be a single source of truth for developers and operators: quickstart, architecture, Access-import specifics, deployment notes, troubleshooting and developer workflows.
+**Current product status (2026-10-07):** internal pilot / decision-support, **not outcome-proven optimization**. Production freshness and deployed schema/worker evidence are the primary release blockers. The canonical pilot ingestion path is Access-based. The QDB connector program also proves SQL Server discovery, mapping preview and checkpointed application into `SourceSyncAppliedRows` staging, but that is **not yet equivalent to a repeatable SQL Server -> canonical Artikli/Prodaja -> analytics customer onboarding path**.
+
+This README is primarily a developer/ops guide. Product strategy and current business-value evidence live in `docs/product/PRODUCT_VISION.md`, `docs/roadmaps/BUSINESS_ROADMAP.md` and the dated product audit under `docs/product/`.
 
 —
 
 ## Key Highlights
 
+### Core currently relevant to the product
 - Language & Frameworks: C#, .NET 8, ASP.NET Core Web API
 - Persistence: Entity Framework Core (Npgsql) + PostgreSQL; `pgvector` for vector features
 - Import: Robust Access importer using `unixODBC` + `libmdbodbc` (mdbtools) with a CLI fallback (mdb-export/mdb-tables)
 - Patterns: CQRS + MediatR, background HostedServices (Workers), streaming I/O (IAsyncEnumerable)
 - Resilience & Observability: Polly retries/circuit-breakers, Serilog (console/file), Swagger, health & perf endpoints
-- Messaging & Cache: RabbitMQ broker integration, Redis caching (optional hybrid cache)
-- ML Integration: ONNX runtime and optional Python embedding/model services via HTTP
 - Container-first: Dockerfile with mdbtools preinstalled for Linux containers
+
+### Optional / platform capabilities — not proof of current customer value
+- Messaging & Cache: RabbitMQ broker integration, Redis caching / hybrid-cache options.
+- ML/vector capabilities: ONNX runtime, pgvector and optional Python embedding/model services.
+- These components should not be presented as product differentiation until a shipped customer workflow depends on them and has measured value.
 
 —
 

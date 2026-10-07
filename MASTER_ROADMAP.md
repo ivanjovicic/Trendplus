@@ -1,4 +1,13 @@
 # Trendplus Master Roadmap
+
+Owner product-priority decision 2026-10-07 (post product/analytics value-audit review):
+- **P0 remains STAB16**: restore/prove current production data, durable worker/import evidence and deployed-schema truth. `workersEnabled=false` on the web process must not be rewritten as proof that no separate worker exists.
+- **RQ585 is raised P3 -> P1** once production freshness is inside the RQ583 SLA. Its repository dependencies RQ570/RQ573/RQ574/RQ576 are DONE. The digest composes only certified available signals; unavailable size/supplier families do not authorize invented fallbacks.
+- **RQ592 remains P1 WAITING** for restored freshness and live Pre/Post verification. Pre-registration starts before execution; 14-day freshness stability is a pilot quality target, not a reason to delay pre-registration.
+- QDB is **not empty**: SQL Server discovery/mapping/checkpoint-to-staging is delivered. Commercial portability still lacks a proven staged-source -> canonical Artikli/Prodaja -> analytics path and repeatable onboarding; QDB10 owns that residual after QDB07/QDB08 and external-pilot source selection.
+- Product order for the next wave is: freshness -> inventory capital truth -> markdown outcome proof -> supplier value -> external pilot. New GenAI/MT/experimental analytics work stays behind those milestones unless it fixes a concrete release/security blocker.
+- Current READY remains unchanged by this priority overlay; dependencies/provider gates still control promotion.
+
 Owner completion 2026-10-07: after the post-P-UI-54 recovery, P-UI-50 remains blocked by the unresolved primary-checkout Product Decision edit and P-UI-38 remains gated on P-UI-50; RQ573 is DONE and its full Decision Board HTTP follow-up is now measured by PERF19. The fixed July local fixture warm N=20 p95 is 654 ms with per-contributor logs and stable business/trust parity; deployed ~17.3 s remains unexplained and routes to STAB16. PERF19 implementation SHA `1469077568badc6d1aaab5384f819281b4a4bbc6` is verified on `origin/main`; the post-close Zero-READY cascade and blocker matrix are in `.ai/runs/2026-10-07-PERF19-evidence.md`.
 
 

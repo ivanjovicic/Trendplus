@@ -4,16 +4,26 @@ Osnova: `HEAD == origin/main == cb5ae4dfca00e257c711bf1cb7c764d5eec95019` (box c
 Produkcija (jedan read-only GET, 2026-10-07 ~14:50 Beograd): `GET /api/runtime/version` → `commitSha=194df308…`, build 2026-10-07 10:24 (Beograd), `processType=web`; `GET /api/analytics/refresh-status?dataScope=all` → `observedSalesPeriodToUtc=2026-08-05`, `lastSuccessfulRefreshAtUtc=null`, `lastSuccessfulImportAtUtc=null`, `workersEnabled=false`, `dataFreshnessStatus=unknown`, `cacheMode=in-memory`. Ostali live GET-ovi u ovom auditu nisu izvršeni (automatska bezbednosna provera ih je zaustavila), pa su live tvrdnje ispod koje nisu iz ta dva odgovora preuzete iz datiranih audita i označene datumom.
 Ovaj dokument je **dated product snapshot**, ne live router. Routing ostaje u `MASTER_ROADMAP.md` i owner queue-ovima.
 
+## Post-review status (2026-10-07)
+
+Ovaj audit je ponovo proveravan protiv current-main koda, queue/evidence dokumenata i javno dostupnih stranica konkurenata. Koristi sledeće oznake:
+- **VERIFIED** — direktno potvrđeno current-main kodom/testom ili datiranim live evidence-om.
+- **SUPPORTED JUDGMENT** — zaključak koji dobro sledi iz dokaza, ali nije merena tržišna činjenica.
+- **HYPOTHESIS** — komercijalna/product pretpostavka koju pilot mora da potvrdi.
+- **CORRECTED** — prvobitna formulacija je bila prejaka ili netačna i ispravljena je ispod.
+
+Ključne korekcije: `workersEnabled=false` važi za web proces i ne dokazuje da poseban worker servis ne postoji; QDB već ima SQL Server discovery/mapping/checkpoint put do `SourceSyncAppliedRows`, ali ne i dokazano canonical `Artikli/Prodaja` punjenje/onboarding; komercijalni pragovi i pricing su hipoteze; konkurentski pregled pokazuje da su size/color, zalihe, nivelacije i reporting široko dostupni, dok zatvoren lokalni recommendation→action→outcome loop ostaje diferencijaciona hipoteza, ne dokazana tržišna ekskluziva.
+
 ## Executive verdict
 
-1. **Trendplus danas nije proizvod koji vlasniku obuće menja odluku — jer radi nad podacima starim 63 dana.** Poslednja prodaja u produkciji je 05.08.2026; nijedan uspešan import/refresh nije zabeležen; workeri ne rade. Sve ostalo u ovom dokumentu je sekundarno dok se to ne reši.
-2. **Najveći problem više nije formula.** Osnovni brojevi (promet, komadi, marža po dobavljaču / vrsti obuće / danu) se slažu između ekrana i imaju nezavisne oracle testove (L4/L5 lokalno). To je realan i težak uspeh. Ali to su brojevi koje POS/ERP (Logosoft, Sverko…) već daje.
-3. **Nijedna preporuka Trendplus-a nikada nije dokazano zaradila ili sačuvala ni jedan dinar.** U produkciji su u Akcijama bila 4 smoke zapisa i 0 stvarnih akcija (28.09); `measuredSampleSize=0`. Outcome loop postoji kao šema, ne kao dokaz. Business outcome proof = **0/10, UNPROVEN**.
-4. **Izvorni podaci ne podržavaju polovinu ekrana.** Boja, kategorija, pol, način plaćanja i sat su 100% „Nepoznato“; „transakcija“ je dnevni dokument, ne račun (25 dokumenata za 307 pari u julu); nabavna cena na artiklu je u pogrešnoj razmeri; zaliha vredi ~26 RSD po paru. Ekrani Boja, Smene, Korpa i vrednost zaliha su zato **prazne ljušture sa savršenim trust metadata**.
-5. **Obim podataka je mali: 2 prodavnice, ~300 pari i ~1,56 mil. RSD za 30 dana (jul).** DiD, elastičnost, MA7, winsorizacija i log-ratio nad ~10 pari dnevno daju lažnu naučnost. Za ovu nišu vredi jednostavna, transparentna pravila + iskren „premalo podataka“.
-6. **Razvoj je pretežno ceremonija.** Od 126 poslednjih commita ~100 (≈79%) je queue/agents/evidence/roadmap dokumentacija, 22 UI polish, 1 perf merenje, **0 novih poslovnih mogućnosti**. Queue fajlovi imaju ~70.000 linija, 854 registrovana prompta, 897 run-evidence fajlova. Ovo optimizuje dokazivost rada agenata, ne vrednost za kupca.
+1. **Trendplus danas ne može pouzdano da menja aktuelnu odluku vlasnika jer je potvrđeni prodajni horizont zastareo.** Poslednja potvrđena prodaja u produkciji je 05.08.2026. `refresh-status` 07.10. nema durable uspešan import/refresh i web proces prijavljuje `workersEnabled=false`; postojanje/zdravlje posebnog worker servisa je **UNPROVEN**, ne dokazano odsustvo. **VERIFIED** za zastarelost i durable evidence gap.
+2. **Najveći problem više nije osnovna formula.** Promet/komadi i veliki deo maržnih semantika imaju jaku lokalnu oracle/parity evidenciju. Javne stranice lokalnih POS/ERP proizvoda potvrđuju da su inventory, dimenzije artikla, nivelacije i standardni prodajni/zalihni izveštaji već široko dostupni; zato same deskriptivne tabele nisu dovoljan razlog za plaćanje Trendplus-a. **VERIFIED + SUPPORTED JUDGMENT**.
+3. **Repo nema dokaz da je ijedna Trendplus preporuka već donela merljiv poslovni rezultat.** Poslednji eksplicitni live dokaz (28.09) imao je 4 smoke zapisa i `measuredSampleSize=0`; nema novijeg evidence-a koji dokazuje realne izmerene akcije. Zato je business outcome proof i dalje **0/10, UNPROVEN**. **VERIFIED kao evidence-gap, ne tvrdnja da se van sistema nikad nije desila korisna odluka.**
+4. **Više važnih dimenzija i odluka nema dovoljno dobar izvor.** Live re-audit 04.10 je našao 100% nepoznatu boju/kategoriju/pol/plaćanje/sat; `TipObuce` ipak postoji i RQ574 ga je proglasio autoritativnim za relevantne odluke. Dokument prodaje nije dokazan customer receipt (25 dokumenata / 307 kom u referentnom prozoru), a inventory valuation je istorijski davala ~26 RSD/par zbog lošeg cost lineage-a. Boja, smene, basket metrike i deo inventory vrednosti zato treba fail-closed/degradirati dok izvor nije dovoljan. **VERIFIED, uz korekciju da nisu svi analytics ekrani nepodržani.**
+5. **Referentni retail decision scope je mali: Trend PLUS 1/2 i sertifikovani prozor 07.07–05.08 ima 307 kom / 1.561.120 RSD.** Sofisticiranije metode (DiD/elastičnost/MA7/winsor/log-ratio) mogu stvoriti **preveliku percepciju preciznosti** kada su uzorci i pretpostavke slabi. Preferirati jednostavna pravila i prikaz veličine uzorka; napredniju statistiku zadržati samo gde prolazi unapred definisan signal/coverage gate. **VERIFIED podaci + SUPPORTED JUDGMENT.**
+6. **Razvojna istorija je nesrazmerno opterećena governance/evidence/UI radom u odnosu na validaciju poslovnog ishoda.** Prvobitni ~79% obračun bio je audit-snapshot klasifikacija, ne kanonska metrika i ne treba ga tretirati kao egzaktan KPI. Ono što jeste dokazano jeste veoma veliki queue/evidence corpus i nula outcome proof-a. Uvesti cilj da governance ostane pomoćni trošak, ne razvojni proizvod. **SUPPORTED JUDGMENT; precizan procenat povučen kao tvrda činjenica.**
 7. **Tri modula su potencijalni razlog za plaćanje:** (a) markdown/nivelacija ciklus (šta sniziti → da li je uspelo), (b) zalihe kao kapital (mrtva/spora roba po dobavljaču, rupe u veličinama), (c) dobavljač kao pregovarački argument (marža × obrt × koliko kapitala drži). Sva tri su danas **HV/LC**: vredni, ali bez svežih podataka, bez ispravne nabavne cene i bez ijednog izmerenog ishoda.
-8. **Ne sme se prodavati kao „optimizacija“.** Danas je to, u najboljem slučaju, dobro proveren deskriptivni izveštaj za jednog trgovca (Ivan), vezan za Access, Europe/Belgrade, `DUG/KOREKCIJA` i objekte „Trend PLUS 1/2“.
+8. **Ne sme se još prodavati kao outcome-proven „optimizacija“.** Trenutni komercijalni/pilot put je Access-dominantan i sadrži Ivan-specifičnu semantiku (`Europe/Belgrade`, `DUG/KOREKCIJA`, retail-store policy). QDB ipak već ima provider-neutral contract i SQL Server put do checkpointed staging-a; ono što nedostaje je ponovljiv canonical import/onboarding do istog analytics modela i spoljašnji customer proof. **CORRECTED.**
 9. **Najvažniji sledeći korak:** vratiti svež import u produkciju i za 6 nedelja zatvoriti JEDAN loop: 20–30 stvarnih nivelacija koje je Trendplus predložio, sprovedene, i izmerene prema unapred zapisanom poređenju. Do tada: stop novim trust/UI/queue slojevima.
 
 Sažete ocene: **CURRENT PRODUCT VALUE 3/10 · CURRENT ANALYTICS TRUST 5/10 (lokalno 7, produkcija 3) · CURRENT BUSINESS OUTCOME PROOF 0/10 · COMMERCIAL READINESS 2/10 · POTENTIAL IF EXECUTED WELL 7/10.**
@@ -27,7 +37,7 @@ Sažete ocene: **CURRENT PRODUCT VALUE 3/10 · CURRENT ANALYTICS TRUST 5/10 (lok
 | HEAD = origin/main = `cb5ae4df` | `git rev-parse` | — |
 | Deployed API = `194df308`, 107 commita iza HEAD, ali svi osim `14690775` (perf merenje) su docs/UI | `git log 194df308..HEAD -- Api Application Infrastructure Domain Database` → samo `14690775` | L6 (SHA) |
 | `d4ae1b9b` (stale `vw_vendor_sales_nivelacija` fix) **jeste u deployed SHA** | `git merge-base --is-ancestor d4ae1b9b 194df308` = true | L6 za SHA; **Pre/Post live odgovor posle deploya: UNPROVEN** (nije proveren u ovom auditu; zadnji poznati live = `contract_missing` 04.10, RQ545 PARTIAL) |
-| Podaci staju 05.08.2026; nema uspešnog refresh/importa; workeri off; in-memory cache | live `refresh-status` 07.10 | L6 |
+| Podaci staju 05.08.2026; `refresh-status` nema durable successful import/refresh; web proces ima `workersEnabled=false`; poseban worker servis nije potvrđen ni opovrgnut; cache je in-memory | live `refresh-status` 07.10 + STAB16 contract | L6 za javni runtime signal / worker-service state UNPROVEN |
 | Access import ne stiže u prod | STAB16 BLOCKED („provider deployment authority“), `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md` §5.1 | L6 (negativno) |
 | Smene u UTC zbog TimeZoneId | RQ586 DONE (`6d5a7414`) za konfiguraciju; ali live redovi imaju `legacy_access_wall_clock` i izvor nema satnicu → smene **nisu merljive** (reaudit §3) | L2 kod / izvor ne podržava |
 | Neon schema drift / AutoMigrate | RQ587/RQ588 DONE (vidljivost + discovery guard); stvarno usklađivanje produkcione šeme = STAB16/RQ545 | UNPROVEN live |
@@ -49,8 +59,8 @@ Zaključak: produkcija je kodno skoro aktuelna, ali **podatkovno zamrznuta**. Sv
 | Outcome measurement | 1 | RQ557 deskriptivni ledger i RL lifecycle postoje; 0 izmerenih ishoda; RL12 (kauzalni gate) WAITING. |
 | UX clarity | 6 | P-UI-41…54 doneli hijerarhiju i kontrast; ali 18+ analitičkih ruta za 2 prodavnice. |
 | Trust/transparency | 7 | Najjači sloj: no-fake-zero, partial/stale vidljivi. Delimično preteran (vidi §8). |
-| Differentiation | 2 | Danas ništa što POS/ERP + Excel ne daje, osim trust sloja koji kupac ne plaća. |
-| Time-to-value (novi kupac) | 1 | Samo Access/Windows import, Ivan-specifična semantika, prazan `DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` (0 linija). |
+| Differentiation | 3 | Core reporting se snažno preklapa sa POS/ERP-om. Potencijalna razlika je lokalni explainable decision + action/outcome loop, ali još nije outcome-proven. |
+| Time-to-value (novi kupac) | 2 | Access je jedini dokazani pilot-to-analytics put. QDB ima SQL Server discovery/mapping/checkpoint sync do staging-a, ali nema dokazano canonical Artikli/Prodaja punjenje, operator onboarding i external-customer proof. |
 | Maintainability | 4 | Dobri testovi, ali ~70k linija queue teksta, 35 root `.md`, tmp/pgdata/`*.txt` artefakti u rootu. |
 | Documentation quality | 3 | Mnogo, pedantno, ali nije proizvodno; README opisuje RabbitMQ/Redis/pgvector/ONNX koji u produkciji ne nose vrednost. |
 | Test quality | 7 | Oracle/golden/adversarial testovi realno vredni za finansijske greške. |
@@ -72,7 +82,7 @@ Najviši dostignuti nivo; razdvojeno po vrsti tačnosti. „—“ = ne primenju
 | Zalihe: vrednost / starost | L4 logika (RQ576) | pogrešna ulazna nabavna cena; starost = datum importa | loša | stara | low-stock 0 vs 213 (04.10) | L6 pogrešno | visoka (potencijal) | — |
 | Pre/Post nivelacije | L4 (RQ568 oracle 6 ruta) | L3 (event-aligned DiD RQ542; OOS/LostSales eksplicitno nedostupni) | bez istorije zaliha | stara | L3 | **UNPROVEN posle `d4ae1b9b` deploya** | visoka | **L0** (deskriptivno, RQ557) |
 | Pre-nivelacija prioriteti | L3 | heuristika, nekalibrisana (`RQ556` v9 težine owner-gated) | bez veličina/zaliha istorije | stara | RQ555 WAITING | L6 (radi, 537 kandidata 04.10) | visoka | L0 |
-| Product Decision | L3 | RQ573/RQ574 popravili rang | kategorija 0% → blocker na svakom redu | stara | parcijalno | 0 primenljivih (04.10) | potencijalno visoka | L0 |
+| Product Decision | L3 | RQ573/RQ574 popravili rang i uklonili univerzalni category blocker kada `TipObuce` postoji | 04.10 live je imao 0 primenljivih; current-main kvalitet politike je popravljen, deployed reproof nedostaje | stara | parcijalno | 0 primenljivih je **datirani 04.10 live nalaz**, ne current-main tvrdnja | potencijalno visoka | L0 |
 | Supplier Report / hub / scorecard | L3 | L3 | MV ne postoji u prod (`MISSING_OBJECT`) | — | share razlike (RQ476) | **ne radi (04.10)** | visoka | L0 |
 | Data Quality health | L3 | RQ578 popravio „100 odlično“ | — | — | — | UNPROVEN posle fixa | srednja | — |
 | Actions / outcome | L2 | RQ478 denominator fix | 0 stvarnih akcija | — | — | 4 smoke reda (28.09) | — | **L0** |
@@ -122,14 +132,14 @@ Pravilo: ništa nije „100% tačno“. Najviše što se pošteno može reći: *
 
 | | High confidence | Low confidence |
 |---|---|---|
-| **High value** | *(prazno danas)* — samo istorijski promet/marža po dobavljaču; to je vrednost koju POS već daje | **Markdown ciklus, Zalihe-kapital, Dobavljač-vrednost, Actions/outcome, svežina.** Ovde ide skoro sav trud: podaci, nabavna cena, produkciono sravnjenje, prvi izmereni ishod. |
+| **High value** | *(praktično prazno danas)* — istorijski promet/marža imaju visoko poverenje, ali su standardna retail reporting sposobnost dostupna i u drugim POS/ERP rešenjima | **Markdown ciklus, Zalihe-kapital, Dobavljač-vrednost, Actions/outcome, svežina.** Ovde ide skoro sav trud: podaci, nabavna cena, produkciono sravnjenje, prvi izmereni ishod. |
 | **Low value** | Prodaja po vrsti obuće/dobavljačima/dnevna kao tabele, trust header, Operations integrity ekrani, UI ratchet testovi → **zadržati, ne ulagati** | Boja, smene, korpa, Insight Studio, forecast/scenario, Pulse, GenAI, MT, embedding/ONNX/RabbitMQ → **stop / defer / sakriti** |
 
 Najvažnija istina matrice: **HV/HC kvadrant je prazan.** Sve što je skupo dokazano je jeftino po vrednosti; sve što je vredno nije dokazano.
 
 ## 7. Top business opportunities
 
-1. **Mrtva i spora roba kao kapital u RSD po dobavljaču i objektu** (pare koje stoje, starost od poslednjeg ulaza, ne od importa). Najčešća odluka (nedeljno), visok finansijski uticaj, reverzibilno, Excel to teško radi preko 12k artikala. Zahteva ispravnu nabavnu cenu (RQ576 residual) i ispravan datum ulaza.
+1. **Mrtva i spora roba kao kapital u RSD po dobavljaču i objektu** (pare koje stoje, starost od poslednjeg ulaza, ne od importa). **Product hypothesis:** odluka je česta, finansijski materijalna i vrednija od još jednog sales dashboarda; pilot mora potvrditi učestalost i willingness-to-pay. Zahteva ispravan cost lineage i datum ulaza.
 2. **Markdown lista + izmeren ishod:** „ovih 20 artikala sniziti 20–30%; za 4 nedelje: prodato X od Y pari, realizovana marža Z, ostatak na zalihi“. Prvi verodostojan dokaz vrednosti.
 3. **Pregovarački paket za dobavljača** (RQ465 postoji): marža, sell-through, kapital u zalihi, % prodato samo uz sniženje, povrati — jedna strana po dobavljaču pred sezonsku porudžbinu. Retka (2×godišnje) ali vrlo skupa odluka.
 4. **Rupe u veličinama** (RQ559 owner/source-gated): za obuću je ovo specifično i vredno, ali zahteva zalihe po veličini — proveriti da li ih Access izvor ima pre ulaganja.
@@ -154,7 +164,7 @@ Gde je matematika sofisticiranija od ulaza: DiD/control (RQ542), elastičnost, M
 
 ## 9. Over-engineering findings
 
-- **Queue ceremonija (kvantifikovano):** `docs/ai/*QUEUE*.md` ≈ 70.384 linija; `ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` sam 30.044; 854 prompta sa statusom (759 DONE); 897 fajlova u `.ai/runs/`; 153 u `docs/qa/`; 348 `.md` u `docs/`; 35 `.md` u rootu. Od 1.187 commita od 01.09: `docs(queue)` 217, `docs(analytics)` 138, `docs(evidence)` 97, `chore(queue)` 37, `docs(agents)` 44 → ~530 dokumentacionih vs 17 `feat(analytics)`. Poslednjih 126: ~100 governance. Header jednog queue fajla je paragraf od ~1.500 reči istorije claim/close. Ovo je trošak koordinacije više agenata, ne proizvod.
+- **Queue ceremonija:** audit-time brojanje je pokazalo veoma veliki queue/run-evidence corpus i dugačke istorijske headere. Tačne brojke su snapshot i brzo zastarevaju; važniji signal je da se mnogo rada meri kroz claim/close/evidence, dok business-outcome dokaz ostaje prazan. Zadržati guardrail-e koji sprečavaju finansijske greške, ali prekinuti dodavanje governance slojeva bez konkretnog rizika.
 - **Sertifikacija skrivenih ekrana:** RQ589/590/591 sertifikovali Insight Studio/Advanced koji su karantinovani (RQ582). Rad bez korisnika.
 - **Trust metadata > korisnička vrednost:** context fingerprint, generation-bound integrity, readiness evaluator (RQ509–514) su opravdani protiv finansijski opasnih grešaka, ali su završeni pre nego što postoji ijedan svež podatak koji bi štitili.
 - **Infrastruktura za veći proizvod:** README: RabbitMQ, Redis, pgvector, ONNX, Python embedding servis, Fly + Render + Vercel + Neon, MT queue (12 promptova), GAI queue (12). Produkcija: jedan web proces, in-memory cache, workeri off.
@@ -168,13 +178,13 @@ Gde je matematika sofisticiranija od ulaza: DiD/control (RQ542), elastičnost, M
 |---|---|---|
 | `AGENTS.md`, `docs/ai/AGENT_START_HERE.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md` | CURRENT AUTHORITATIVE (za agente) | Dobro razdvajaju istoriju od trenutnog; ali opisuju proces, ne proizvod. |
 | `MASTER_ROADMAP.md` | CURRENT, ali **engineering backlog/ledger, ne strategija** | Prvih ~80 linija su completion/claim beleške; nema product metrike, nema kupca, nema cilja u RSD. |
-| `docs/product/PRODUCT_VISION.md`, `docs/roadmaps/BUSINESS_ROADMAP.md` | CURRENT po nameri, LOW VALUE po sadržaju | Nemaju north-star metriku ni outcome cilj. |
-| `README.md` | **STALE / impresivniji od proizvoda** | „production-grade“, RabbitMQ/Redis/pgvector/ONNX; ne pominje da je jedini izvor Access i da su podaci stari. |
+| `docs/product/PRODUCT_VISION.md`, `docs/roadmaps/BUSINESS_ROADMAP.md` | CURRENT, **korigovano ovim review-om** | Sada eksplicitno stavljaju freshness → inventory capital → markdown outcome → supplier value → external pilot ispred scale/AI rada. |
+| `README.md` | **CORRECTED** | Developer/ops opis ostaje, ali sada odvaja aktivni core path od opcione/eksperimentalne infrastrukture i tačno opisuje Access-dominant pilot + SQL Server staging status. |
 | `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, `ANALYTICS_ACCURACY_AUDIT_2026-10-05.md` | USEFUL HISTORICAL EVIDENCE | Najkorisniji dokazi u repou. |
 | `docs/qa/ANALYTICS_AUDITS_RECERTIFY_{,2,3,4}_2026-10-05.md`, ROUND3–ROUND15 prompt fajlovi | DUPLICATE / CANDIDATE FOR CONSOLIDATION | 4 recertifikacije u jednom danu; 13 „round“ fajlova. |
 | `docs/qa/BACKEND_CI_*_2026-08-1x*.md` (15 fajlova) | HISTORICAL → ARCHIVE | |
 | `docs/ai/NEXT_PROMPT_QUEUE.md` | HISTORICAL (deklarisano) | |
-| `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` | **prazan fajl (0 linija)** dok je onboarding drugog kupca najveći komercijalni blokator | |
+| `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` | **CURRENT; prvobitna tvrdnja INCORRECT** | QDB01–QDB06/QDB09 imaju provider-neutral + SQL Server staging put; QDB07/08 su WAITING. Review registruje residual canonical-ingestion gap kao QDB10. |
 | Root `*.md` (HITNA_POMOC, ONE_LINE_FIX, QUICK_FIX_README, MARGIN_FORENSIC_*, untitled-plan-*.prompt.md…) i root `tmp_*`, `stdout.txt`, `pgdata/` | STALE / LOW VALUE → ARCHIVE | Šum za svakog novog čitaoca. |
 
 Ključni nalaz: dokumentacija meri **da li je prompt zatvoren sa dokazom**, ne **da li je vlasnik doneo bolju odluku**. Acceptance kriterijumi su implementacioni (testovi prolaze, SHA na main), nema nijednog product success kriterijuma (RSD, pari, dani zalihe).
@@ -197,11 +207,11 @@ Ključni nalaz: dokumentacija meri **da li je prompt zatvoren sa dokazom**, ne *
 
 ## 12. Plan 2–6 nedelja (rangirano: vrednost × smanjenje neizvesnosti × učestalost / trošak)
 
-1. **Svež import u produkciji (STAB16 + import put).** WHY NOW: bez ovoga sve je istorija. Vrednost: maksimalna. Radimo: utvrditi zašto Access import ne stiže (provider pristup koji Ivan ima), pokrenuti worker ili ručni dnevni import, dokazati `lastSuccessfulImportAtUtc` < 48 h. NE radimo: nove trust slojeve. Metrika: `observedSalesPeriodTo` ≥ juče, 14 dana zaredom. DoD: live `refresh-status` + Supplier/Daily brojevi za poslednjih 7 dana sravnjeni sa POS dnevnim izveštajem (RQ454/RQ565).
+1. **Svež import u produkciji (STAB16 + import put).** WHY NOW: bez ovoga sve je istorija. Vrednost: maksimalna. Radimo: uz owner/provider pristup utvrditi stvarni worker/deploy/import put, obnoviti dnevni import i dokazati durable uspeh. NE radimo: nove trust slojeve. Metrika: `observedSalesPeriodTo` ≤ 48 h iza očekivanog izvora; cilj 14 uzastopnih dana u SLA. DoD: live `refresh-status` + Supplier/Daily brojevi za poslednjih 7 dana sravnjeni sa izvorom (RQ454/RQ565).
 2. **Ispravna nabavna cena i datum ulaza → zalihe u RSD.** WHY NOW: bez toga nema mrtve robe, kapitala ni marže po artiklu. Radimo: potvrditi razmeru troška na 20 artikala ručno sa kalkulacijom; ispraviti mapiranje u importu. NE: novi inventory ekrani. Metrika: vrednost zalihe u ±5% od knjigovodstvenog lagera. DoD: tabela 20 artikala trošak Trendplus = trošak kalkulacija.
 3. **Prvi zatvoreni markdown loop (novi RQ592).** WHY NOW: jedini put do dokaza vrednosti. Radimo: Ivan bira 20–30 artikala iz Pre-nivelacija liste, zapisuje akciju u Actions (datum, artikal, objekat, stara/nova cena), unapred zapisujemo poređenje (isti artikli 4 nedelje pre, i kontrolni artikli istog dobavljača/tipa koji nisu sniženi), merimo za 4 nedelje: pari, realizovana marža RSD, preostala zaliha. NE: kauzalni model, elastičnost. Metrika: N akcija sa izmerenim ishodom ≥ 20; izveštaj „RSD marže realizovano iz robe koja je inače stajala“. DoD: jedna stranica ishoda koju vlasnik razume.
 4. **Pre/Post i Supplier Report proveriti uživo posle `d4ae1b9b` deploya.** WHY NOW: kod je deployovan, dokaz nije. Radimo: read-only GET + browser, zatvoriti RQ545 ili ga precizno re-otvoriti; Supplier MV kreirati/osvežiti (STAB16). Metrika: `contract_missing`/`MISSING_OBJECT` = 0. DoD: evidence fajl sa live odgovorima.
-5. **Jedna „ove nedelje“ stranica (RQ585, podignut prioritet).** Max 10 stavki: mrtva roba za sniženje, transfer 1↔2, best-seller rupa, dobavljač za razgovor. Sa linkom na dokaz. NE: nova Board logika. Metrika: Ivan je koristi 4 nedelje zaredom. DoD: 4 nedeljne verzije sa zapisanom odlukom po stavci.
+5. **Jedna „ove nedelje“ stranica (RQ585, sada P1).** Max 10 stavki iz **postojećih sertifikovanih** signal families: markdown, inventory/transfer i supplier; size-run samo ako RQ559/source proof postoji. Sa linkom na dokaz. NE: nova Board logika ni novi scoring. Metrika: vlasnik je koristi 4 nedelje zaredom. DoD: 4 nedeljne verzije sa zapisanom odlukom po stavci.
 6. **Sakriti ili degradirati prazne ekrane (Boja, Smene, Pulse, Executive) i ažurirati README.** Mali rad, veliko smanjenje šuma. Metrika: ≤ 8 ruta u glavnoj analitičkoj navigaciji.
 7. **Zamrznuti queue ceremoniju:** jedna stranica „product status“ (ovaj dokument + nedeljni update) umesto paragraf-istorije u headerima. Metrika: < 20% commita su governance.
 8. **Demo za drugog vlasnika obuće** (posle 1–3): 20 minuta, njihov problem = „koliko para mi stoji u robi koja se ne prodaje i šta da snizim“.
@@ -212,7 +222,7 @@ Ključni nalaz: dokumentacija meri **da li je prompt zatvoren sa dokazom**, ne *
 2. **Markdown intelligence v2** — iz izmerenih ishoda RQ592 kalibrisati jednostavna pravila (npr. „starost > 120 dana i < 2 para/mes → 20%“); elastičnost tek kad bude ≥ 50 mature događaja po grupi.
 3. **Supplier value + pregovarački paket** pred sezonsku porudžbinu (marža × sell-through × kapital × % prodato tek uz sniženje).
 4. **Outcome learning** — RL12 iz dokumenta u minimalni runtime: unapred registrovano poređenje, ne ML.
-5. **Import/onboarding kvalitet** — konfigurabilna semantika (`DUG/KOREKCIJA`, vremenska zona, objekti, šta je obuća) po kupcu; CSV/Excel uvoz lagera, prodaje i kalkulacija kao drugi izvor (danas samo Access). Popuniti prazan connector queue.
+5. **Import/onboarding kvalitet** — konfigurabilna semantika (`DUG/KOREKCIJA`, vremenska zona, objekti, šta je obuća) po kupcu; završiti QDB admin/onboarding i canonical-ingestion seam tako da non-Access izvor zaista puni isti retail model. CSV/Excel može biti sledeći jednostavan ulaz tek nakon izbora prvog spoljnog pilota; nije potrebno paralelno graditi više konektora.
 6. **Komercijalni pilot** sa 1 spoljnim trgovcem (2–5 prodavnica), jedna baza po kupcu.
 7. **Veličine** (size holes) samo ako izvor nosi lager po veličini.
 AI/ML samo gde pobeđuje pravilo na izmerenim ishodima; GenAI kao „objasni ovu stavku“ tek posle toga.
@@ -231,7 +241,7 @@ Moat sastojci: lokalna semantika (nivelacija, kalkulacija, KEP — POS ih *dokum
 
 - Lokalni POS/ERP već nude dimenzije veličina/boja, nivelacije, dnevnu prodaju, maržu, „artikli bez prodaje“, stanje zaliha na dan, naručivanje: [Logosoft SmartPOS](https://www.logosoft.rs/smartpos/), [Logosoft POSitiv](https://www.logosoft.rs/positiv/), [Sverko SVEra (nivelacije po rasteru, OLAP prodaja)](https://svera.rs/moduli-2/), [TiramisuPOS (multi-objekat zalihe, min. količine)](https://tiramisuerp.com/rs/pos-retail), [Konty (izveštaji po lokaciji, Excel uvoz)](https://konty.com/rs/products/retail).
 - SMB globalno: [Lightspeed za obuću (size/color forecasting, reorder points, slow movers)](https://www.lightspeedhq.com/pos/retail/shoe-store-pos/), [Lightspeed Analytics dynamic reorder](https://retail-support.lightspeedhq.com/hc/en-us/articles/16090664795035-Inventory-forecasting-with-Lightspeed-Analytics). Enterprise: [Retalon markdown optimization](https://retalon.com/solutions/markdown-optimization-software).
-- Zaključak: prodaja po dobavljaču/tipu/boji/danu je **commodity**. Niko od lokalnih ne tvrdi da *meri da li je nivelacija uspela* niti da rangira mrtvu robu po kapitalu i dobavljaču — to je jedini prostor, i Trendplus ga danas ne pokriva dokazano.
+- Zaključak: prodaja/zalihe/dimenzije/nivelacije i standardni izveštaji su **commodity capabilities**. U javnim stranicama lokalnih proizvoda pregledanim 07.10 nisam našao eksplicitno dokumentovan closed-loop „preporuka → izvršenje → izmeren ishod nivelacije“, ali to **nije dokaz da ga nijedan lokalni proizvod nema**. Globalno, Retalon eksplicitno nudi markdown/promotion optimization i impact claims, pa Trendplus diferencijacija nije sama ideja optimizacije nego jednostavniji regionalni workflow, lokalna semantika, explainability i dokaz ishoda na podacima kupca. **SUPPORTED MARKET OBSERVATION, ne ekskluzivnost.**
 
 ## 16. Nivelacija deep-dive
 
@@ -282,26 +292,26 @@ Uz ispravan trošak i datum ulaza: mrtva roba (0 prodaje N dana), spora roba, da
 **Nije spreman za prodaju. Spreman je za interni pilot kod Ivana kada se vrati svež import.**
 
 - Idealan prvi kupac: lanac obuće/odeće 3–10 prodavnica u Srbiji, sa lokalnim POS-om koji može da izveze prodaju, lager i kalkulacije; vlasnik koji sam radi nivelacije i nabavku.
-- Minimalno: 2–3 prodavnice i ≥ 30–50 mil. RSD zalihe (inače Excel pobeđuje).
+- **HYPOTHESIS:** početni ICP verovatno ima 2–10 prodavnica i dovoljno lagera da je ručna analiza skupa; prag „30–50 mil. RSD zalihe“ nije tržišno dokazan i ne treba ga koristiti kao hard qualification pre intervjua/pilota.
 - Demo problem: „koliko para vam stoji u robi koja se ne prodaje 120+ dana, i koja sniženja su vam prošle sezone stvarno vratila novac“.
 - Prve 3 funkcije: zalihe-kapital/mrtva roba; nivelacija → ishod; dobavljač-vrednost jedna strana.
 - Ne pokazivati: Boja, Smene, Insight Studio, Pulse, Executive, Operations/trust ekrane, confidence/fingerprint metadata, DiD/elastičnost.
-- Potreban benefit: da bi ~100–200 €/mes po prodavnici bilo lako opravdano, proizvod mora pokazati ≥ 5–10× (npr. ≥ 150–300k RSD/mes realizovane marže iz oslobođenog kapitala za lanac od 3–5 prodavnica). **UNPROVEN.**
+- **HYPOTHESIS za pricing discovery:** ~100–200 €/mes po prodavnici i cilj 5–10× merljivog benefita mogu biti početna test-teza, ali nisu validirana cena ni willingness-to-pay. Pilot/intervjui treba da ih potvrde ili odbace.
 - Pricing: fiksno po prodavnici mesečno + jednokratni onboarding; kasnije opcioni success fee na izmerenu mrtvu-zalihu redukciju (zahteva kredibilan outcome loop).
-- Onboarding: danas težak (nedelje, developer). Samo Access/Windows import (`Api/Services/AccessImportService.cs`, `Api/Services/Access/WindowsAccessSession.cs`); tvrdo kodirani `DUG/KOREKCIJA` (`SalesReceiptPopulationPolicy.cs`), `Europe/Belgrade` (`BelgradeCalendarDatePolicy.cs`), retail scope po imenima objekata (RQ571); prazan connector queue.
+- Onboarding: danas i dalje developer-heavy. Access je dokazani end-to-end pilot put; QDB ima SQL Server discovery/mapping/checkpoint application do `SourceSyncAppliedRows`, ali QDB09 eksplicitno ne upisuje canonical `Artikli/Prodaja`, a QDB07/08 admin/onboarding su WAITING. Tvrdo kodirani/pilot-specifični poslovni policy-ji (`DUG/KOREKCIJA`, `Europe/Belgrade`, retail store scope) takođe moraju postati customer configuration pre ponovljivog onboardinga.
 - Šta blokira prodaju drugoj firmi: (1) izvor podataka, (2) Ivan-specifična semantika u kodu, (3) nula dokaza ishoda, (4) previše ekrana za objasniti.
 
 ## 22. Queue/prompt usklađivanje (posle audita)
 
 **Već pokriveno — samo referencirati:** STAB16 (svežina/workeri/deploy), RQ454/RQ565/RQ566 (produkciono sravnjenje), RQ545 (Pre/Post live), RQ576 residual (trošak), RQ585 (weekly digest), RQ465 (pregovarački paket), RQ555/RQ556 (markdown izvor/težine), RQ559 (veličine), RL12 (kauzalni gate), RQ455 (customer acceptance).
 
-**Predložene korekcije prioriteta (nisu primenjene — traže vlasničku odluku):**
-- RQ585 P3 → **P1** (jedina „šta da radim“ površina koja može da zameni tri postojeće).
+**Owner priority decision 2026-10-07 (primenjeno u canonical queue-u):**
+- RQ585 P3 → **P1**. Repo-zavisnosti `RQ570/573/574/576` su DONE; start gate ostaje production freshness unutar RQ583 SLA. Digest mora da radi i kada size/supplier family nije dostupna — bez inventovanja signala.
 - STAB16 ostaje P0, ali je to **jedini** P0; owner = Ivan (provider pristup), ne agenti.
 - Previsok prioritet u odnosu na vrednost: P-UI-38 (ratchet gate), P-UI-50, PERF18, RQ319/RQ320 (filter apply semantika), RQ18/RQ25–RQ38 (legacy, predlog OBSOLETE), RQ46/RQ50, RQ558, GAI03–GAI12, MT02–MT12, SEC05.
 - RQ589–RQ591 (DONE) kao primer: ne ponavljati sertifikaciju karantinovanih ruta.
 
-**Novi prompt:** `RQ592` — prvi zatvoreni markdown action→outcome pilot (WAITING na STAB16/svežinu). Nije pokriven: RQ557 je deskriptivni ledger bez akcija, RL12 je samo dokument, RQ455 je opšti acceptance. Materijalan, jasan acceptance, dokaz problema: `measuredSampleSize=0`, 4 smoke akcije.
+**Novi prompt:** `RQ592` — prvi zatvoreni markdown action→outcome pilot. Ostaje P1 i WAITING na obnovljen production freshness + live Pre/Post ugovor, ali **pre-registration ne čeka 14 uzastopnih dana**; 14-dnevni SLA je dokaz stabilnosti kroz pilot, ne razlog da se kasno zabeleži plan. Nije duplikat RQ557/RL12/RQ455.
 
 ## The five things I would do if this were my product
 

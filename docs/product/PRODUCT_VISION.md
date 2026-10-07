@@ -9,6 +9,20 @@ Trendplus exists to turn fragmented retail operational data into trustworthy, ex
 
 The product is not successful when it merely shows more charts. It is successful when an operator can make a better decision with less manual reconciliation and can later audit whether that decision worked.
 
+## Near-term product focus (owner decision 2026-10-07)
+
+Before scaling breadth, Trendplus must prove one narrow retail value loop. Priority order:
+
+1. restore production freshness and durable import/refresh evidence;
+2. make inventory capital/aging/cost trustworthy enough to quantify slow/dead stock;
+3. turn markdown/nivelacija into an explainable recommendation -> action -> observed outcome loop;
+4. combine margin, sell-through/stock evidence and markdown dependence into supplier decision support;
+5. prove the workflow with one external retailer before investing materially in shared SaaS or GenAI.
+
+Current positioning is **decision support**, not proven optimization. The product may use words such as optimization/uplift/causal effect only when the relevant outcome/causal gate is satisfied. Standard sales, stock, size/color and reporting capabilities are necessary table stakes, not the primary moat.
+
+The current commercial hypothesis is a small/mid-sized footwear or apparel retailer with multiple stores and painful manual stock/markdown decisions. Exact store-count, inventory-value and price thresholds are hypotheses to validate through interviews and pilots, not product facts.
+
 ## Target users
 
 Primary users:
@@ -111,7 +125,16 @@ Trendplus becomes a decision-learning retail platform:
 
 ## Product success measures
 
-Roadmaps should increasingly measure outcomes such as:
+Near-term North Stars, in order:
+
+- freshness SLA attainment and observed sales horizon;
+- RSD value of aged/slow inventory that has trustworthy cost and inbound-age evidence;
+- count and share of real owner-confirmed recommendations that reach execution and measured outcome;
+- realized gross-margin RSD / pairs cleared from aged inventory after a Trendplus-confirmed markdown action, labelled as observed outcome unless causal proof exists;
+- weekly owner-digest usage and decision disposition (accepted/deferred/rejected/ignored);
+- external-pilot onboarding lead time and reconciliation effort.
+
+Roadmaps should also measure supporting outcomes such as:
 
 - time from import to trusted decision availability;
 - percentage of high-priority recommendations with complete evidence/explanation;
