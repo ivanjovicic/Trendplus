@@ -3,6 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ READY prompt: none after RQ588 DONE. Post-close recovery from P-UI-48 closure SHA `858ade29e8c5a95315ce94c3d870ba71f4746d06` scanned the complete active RQ/SQL/UI set; no RQ dependency became newly runnable. With higher-priority BCI/STAB/RQ/QDB/MT/GAI execution lanes clear or externally gated, supplemental P-UI-31 is DONE on main at 2170fae56c1439c17bea50467d51241714637df2; P-UI-36 is DONE on main at `3d6c538d4b60508accea3c5942fdf8a1f2a303df`; P-UI-43 is DONE on `1b6856051fa1fb4e759ac4564cbf13cb3e779976`; the post-close primary P-UI lane is P-UI-45 DONE; P-UI-35 DONE at `cee0665c0d67fe8f1f9cbefd4cd5aedd01ab9321`. RQ586 is DONE on `6d5a7414ef61ef70829597bdb6b755ae71c95a30`; RQ557 is DONE on `facb3a011bbaa75b7daa27a78a9f4ba4173a345c`; RQ558 remains WAITING for measured non-trivial mature-event/control-dimension coverage, and RQ559 remains owner/source-policy gated. RQ584 is DONE. RQ88 closed action KPI done/rejected split is DONE. RQ48 supplier action duplicate-guard pagination is DONE. RQ591 Insight Studio frontend trust certification is DONE. RQ590 legacy Advanced backend certification is DONE. RQ74 Executive supplier impact semantics is DONE; RQ79 Pilot Intake percent unit is DONE in the Executive/Data Quality addendum; RQ80 missing-cost workflow is DONE; RQ47 Supplier action source-key lineage is DONE on `e3c2debe`; RQ589 Advanced/V2 backend certification is DONE on `5224926b` after RQ582 DONE. RQ582 Insight Studio quarantine is DONE on `08bfc333`; RQ479 smoke-action quarantine is DONE. RQ452 remains WAITING for RQ451/RQ448; RQ453 certification CI is DONE on `337fcb42`; RQ578 Data Quality health is DONE on `9f25bf8e`; RQ579 non-vacuous integrity verification is DONE on `1107df2d`. RQ580 Supplier report period labels is DONE on `c8ceb978`; RQ581 Insight Studio encoding is DONE on `977df8cd`; RQ572, RQ575, RQ576, RQ577, RQ552, RQ553, RQ583, RQ587 and RQ588 are DONE. RQ585 still depends on production freshness within the RQ583 SLA. See Operations and Nivelacija addenda.
+Product value audit registration 2026-10-07: `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` (base `origin/main` `cb5ae4df`, deployed runtime `194df308`, live sales horizon still 2026-08-05) registered WAITING `RQ592` (first closed markdown action→outcome pilot, gated on STAB16 freshness). Priority corrections (RQ585 P3→P1; deprioritize P-UI-38/P-UI-50/PERF18/RQ319/RQ320/legacy RQ18 and RQ25-RQ38/GAI/MT) are proposed in that audit and are **not** applied pending owner decision. Current RQ READY prompt remains none.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -30042,3 +30043,42 @@ Owner completion 2026-10-05: RQ591 moved `READY -> DONE` after Insight Studio AP
 
 
 Addendum 2026-10-05 (gap review after harden): FE margin-pressure copy now uses `lowMarginAlertStatLabel()` / `LOW_MARGIN_ALERT_THRESHOLD_PCT = 15` so the RQ591 trust presentation stays aligned with the V2 backend cutoff. Status remains DONE.
+## RQ592 - First closed markdown action-to-outcome pilot with pre-registered comparison
+
+Status: WAITING
+Ready after: STAB16 DONE (production sales horizon within 48 h of today for 14 consecutive days) and RQ545 live Pre/Post contract verified on the deployed SHA
+Priority: P1
+Type: product/pilot/evidence
+Feature family: markdown-outcome-pilot
+Parallel-safe: yes (evidence/docs plus existing Actions write path; no formula, scoring or schema change)
+Owner: Product owner (Ivan) + Analytics Reliability
+Owned paths: `.ai/runs/<date>-RQ592-evidence.md`, `docs/product/` pilot result page, existing Analytics Actions records created through the normal UI/API
+Avoid paths: Pre-Nivelacija scoring/weights (`RQ556`), causal model (`RQ558`/`RL12`), Pre/Post SQL/views, recommendation confidence mutation
+Commit suggestion: `docs(product): record first markdown action-outcome pilot`
+
+### Problem
+
+Trendplus has never proven that a recommendation made or saved money. Production Actions contained only four smoke fixtures and `measuredSampleSize=0` (`docs/qa/ACTIONS_DECISION_PULSE_SUPPLIER_SCORECARD_LIVE_AUDIT_2026-09-28.md`). RQ557 provides a descriptive markdown ledger and RL12 is a documentation-only causal gate, but no prompt owns executing real actions and measuring them. Without this, every recommendation surface stays decision-support/unvalidated and cannot be sold.
+
+### Evidence
+
+- `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` §19 (outcome loop: action/result/learning steps empty).
+- Live `refresh-status` 2026-10-07: `observedSalesPeriodToUtc=2026-08-05`, no successful import/refresh (hence the STAB16 gate).
+
+### Scope
+
+1. Before any markdown: owner selects 20-30 SKU×store candidates from Pre-Nivelacija prioriteti (retail scope per RQ571) and records each as an Analytics Action (old price, new price, date, store, reason).
+2. Pre-register in the evidence file, before execution: the measurement window (4 weeks), the pre window (4 weeks), and a comparison group of not-marked-down SKUs matched by supplier, shoe type, store and age band.
+3. After 4 weeks record per action and in total: pairs sold pre/post, realized gross margin RSD (historical cost), remaining stock pairs, and the same for the comparison group.
+4. Publish one owner-readable page: RSD margin realized from aged stock, pairs cleared, and which actions did not help. Use the words "posmatrani ishod", never "efekat" or "uplift".
+
+### Acceptance
+
+- ≥ 20 real (non-smoke) actions with recorded execution and a measured outcome; pre-registration commit precedes execution date.
+- Every number on the result page reproducible from a documented query over production facts.
+- Explicit limitation section: no randomization, no historical stock-by-day, selection bias.
+- No change to formulas, scoring, confidence or schema.
+
+### Dependencies
+
+STAB16, RQ545 (live), RQ557 (DONE), RQ571 (DONE).
