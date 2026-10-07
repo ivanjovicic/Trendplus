@@ -13,19 +13,22 @@ import os from "node:os";
 import path from "node:path";
 
 const REQUIRED_SNIPPETS = new Map([
-  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "per agent/workspace", "Idle recovery", "circular prerequisites", "final/deployed evidence", "Post-close dependency cascade", "Zero-READY proof", "post-delivery"]],
-  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "PROMPT_QUEUE_PROTOCOL.md", "VALIDATION_SELECTOR.md", "najužu proveru", "Idle recovery", "kružni prerequisite", "repo-local", "Post-close dependency cascade", "Zero-READY proof", "post-delivery"]],
+  ["AGENTS.md", ["direct repository request", "MASTER_ROADMAP.md", "historical ledger", "VALIDATION_SELECTOR.md", "Queue mechanics have one owner", "Same-task ownership remains exclusive through close-out", "Mandatory no-READY action ladder", "Post-close dependency cascade", "Zero-READY proof"]],
+  [".github/copilot-instructions.md", ["AGENT_START_HERE.md", "PROMPT_QUEUE_PROTOCOL.md", "VALIDATION_SELECTOR.md", "Isti task nije paralelan", "Mandatory no-READY action ladder", "Post-close dependency cascade", "Zero-READY"]],
   ["MASTER_ROADMAP.md", ["primary/default READY", "additional READY", "Parallel-safe"]],
-  ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY", "Post-close dependency cascade", "Zero-READY proof", "zero-READY is not durable state"]],
-  ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "VALIDATION_SELECTOR.md", "primary READY"]],
-  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Idle recovery", "Mandatory blocker decomposition", "no safe task", "Post-close dependency cascade", "Zero-READY proof", "post-delivery"]],
-  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "unfinished delivery", "What was missed", "WAITING -> READY", "no safe claimable task", "Mandatory blocker decomposition", "circular", "external/provider/deployed evidence", "Try another safe lane before refusing", "RQ487 precedent", "Post-close dependency cascade", "Zero-READY proof", "none is the last conclusion"]],
-  ["docs/ai/CODEX_TASK_CHECKLIST.md", ["Queue task checklist", "blocker class", "circular same-prompt artifact", "no safe task", "Post-close dependency cascade", "Zero-READY proof", "post-delivery"]],
-  ["docs/ai/QUEUE_STATUS_TEMPLATE.md", ["Post-close routing recovery", "Zero-READY proof", "Recovery base origin/main SHA", "True start gate or final acceptance only", "Safe repo-local slice available"]],
+  ["docs/planning/FEATURE_LIFECYCLE.md", ["multiple READY", "Parallel-safe", "Current READY", "queue selection, claim/takeover", "IN_PROGRESS", "Mandatory no-READY action ladder", "zero-READY is not durable state"]],
+  ["docs/ai/REPO_AI_README.md", ["Authority order when docs conflict", "Canonical owners by topic", "Evidence does not grant authority", "all queue mechanics", "Mandatory no-READY action ladder"]],
+  ["docs/ai/AGENT_START_HERE.md", ["Direct task workflow", "Queue task workflow", "VALIDATION_SELECTOR.md", "historical ledger", "Multiple READY", "Same-task", "Mandatory no-READY action ladder", "Post-close dependency cascade", "Zero-READY proof"]],
+  ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["Mechanical prompt conflicts", "same-owner", "VALIDATION_SELECTOR.md", "primary/default", "Idle recovery", "unfinished delivery", "What was missed", "WAITING -> READY", "no safe claimable task", "Mandatory blocker decomposition", "Mandatory no-READY action ladder", "implementation/runtime commit reaching `main` does not release an active claim", "No visible lock/branch/PR is not proof", "unknown uncommitted workspace edit", "Try another safe lane before refusing", "Post-close dependency cascade", "Zero-READY proof", "none is the last conclusion"]],
+  ["docs/ai/CODEX_QUEUE_RUNNER.md", ["thin compatibility launcher", "not a queue-policy owner", "Same-task ownership is exclusive through close-out", "Mandatory no-READY action ladder", "does not impose a one-prompt-per-session rule"]],
+  ["docs/ai/AGENTS_QUEUE_ADDENDUM.md", ["DEPRECATED", "compatibility pointer only", "Do not use it as a router", "Mandatory no-READY action ladder"]],
+  ["docs/ai/CODEX_TASK_CHECKLIST.md", ["Queue task checklist", "runtime commit on `main`", "Mandatory no-READY action ladder", "disjoint slice", "unblock attempt performed", "Zero-READY proof"]],
+  ["docs/ai/QUEUE_STATUS_TEMPLATE.md", ["Post-close routing recovery", "Zero-READY proof", "Recovery base origin/main SHA", "Unblock action attempted", "Why no safe split exists", "Exact unblock event"]],
+  ["docs/ai/PROMPT_BATCH_REVIEW_POLICY.md", ["queue-mechanics duplication", "authority inversion", "Mandatory no-READY action ladder"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
-  ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md", "Post-close routing", "Zero-READY proof", "post-delivery"]],
-  [".ai/RUN_LOG_TEMPLATE.md", ["What was done", "What was missed", "Risks", "Post-close routing recovery", "Zero-READY proof", "Next"]],
+  ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md", "Post-close routing", "Zero-READY proof", "post-delivery", "do not grant queue ownership", "unblock action attempted"]],
+  [".ai/RUN_LOG_TEMPLATE.md", ["What was done", "What was missed", "Risks", "Post-close routing recovery", "Zero-READY proof", "Next", "unblock attempt/result", "does not release another owner's active claim"]],
   ["docs/ai/VALIDATION_SELECTOR.md", ["React and analytics UI", ".NET API, application and infrastructure", "Workers, refresh and scheduled jobs", "Queue and planning changes"]],
 ]);
 
@@ -35,6 +38,16 @@ const FORBIDDEN_QUEUE_SERIALIZATION_PHRASES = new Map([
   ["docs/ai/PROMPT_QUEUE_PROTOCOL.md", ["A program may have zero or one READY prompt", "Do not claim a later `WAITING` prompt from that queue"]],
   ["docs/ai/DECISION_INTELLIGENCE_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Only one prompt per program may be READY"]],
+  ["docs/ai/CODEX_QUEUE_RUNNER.md", [
+    "Execute only the current READY prompt for the owning program",
+    "Do not run more than one queue prompt in the same session/commit",
+    "the prompt is not the current READY item for its owner program",
+    "set the prompt to IN_PROGRESS or create the local lock",
+  ]],
+  ["docs/ai/AGENTS_QUEUE_ADDENDUM.md", [
+    "Work one prompt per session/commit",
+    "set IN_PROGRESS or create the local lock",
+  ]],
 ]);
 
 const INVALID_LIVE_STATUS_RE = /^Status:\s*`?(TODO|OPEN|COMPLETE|COMPLETED)`?\s*$/gim;
@@ -95,7 +108,7 @@ function validate(root) {
 
     for (const phrase of FORBIDDEN_QUEUE_SERIALIZATION_PHRASES.get(relative) ?? []) {
       if (content.toLowerCase().includes(phrase.toLowerCase())) {
-        errors.push(`${relative}: contains stale program-wide queue serialization rule '${phrase}'`);
+        errors.push(`${relative}: contains stale/duplicated queue helper rule '${phrase}'`);
       }
     }
 
@@ -158,6 +171,13 @@ function runSelfTest() {
     const missingZeroReadyGuard = validate(root);
     if (!missingZeroReadyGuard.some((error) => error.includes("Zero-READY proof"))) {
       throw new Error("expected zero-READY recovery marker failure");
+    }
+
+    const runnerPath = path.join(root, "docs/ai/CODEX_QUEUE_RUNNER.md");
+    fs.appendFileSync(runnerPath, "\nExecute only the current READY prompt for the owning program.\n", "utf8");
+    const staleRunnerRule = validate(root);
+    if (!staleRunnerRule.some((error) => error.includes("stale/duplicated queue helper rule"))) {
+      throw new Error("expected stale queue helper rule failure");
     }
 
     console.log("agent instruction validator self-test: PASS");
