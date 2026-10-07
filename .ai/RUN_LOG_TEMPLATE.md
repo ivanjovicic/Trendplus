@@ -51,7 +51,7 @@ Use each exactly once:
 - `Next` must come from that post-close recovery, not from a pre-claim queue header or older run log. Use `- none` only when the Zero-READY proof is complete.
 - `Main commit SHA` is the implementation/delivery SHA that current `main` was freshly verified to contain; use `pending` until that proof exists.
 - `Evidence state` is separate from queue status and never creates a new queue status.
-- A delivered implementation SHA or synchronized evidence never releases another owner's active claim; queue ownership/takeover is governed only by `PROMPT_QUEUE_PROTOCOL.md`.
+- A delivered implementation SHA or synchronized evidence **does not release another owner's active claim**; queue ownership/takeover is governed only by `PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Queue completion-note backlink
 
