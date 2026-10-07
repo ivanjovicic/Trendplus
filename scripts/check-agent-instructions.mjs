@@ -29,6 +29,7 @@ const REQUIRED_SNIPPETS = new Map([
   ["docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md", ["Current READY", "primary/default", "Additional READY", "Parallel-safe"]],
   ["docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md", ["exact delivered SHA", "Main commit SHA", "Main verification", "RUN_LOG_TEMPLATE.md", "Post-close routing", "Zero-READY proof", "post-delivery", "do not grant queue ownership", "unblock action attempted"]],
   [".ai/RUN_LOG_TEMPLATE.md", ["What was done", "What was missed", "Risks", "Post-close routing recovery", "Zero-READY proof", "Next", "unblock attempt/result", "does not release another owner's active claim"]],
+  ["docs/ai/COMMON_FAILURES_AND_FIXES.md", ["Active claim mistaken as released", "Zero-READY declared before real unblock attempts", "Mandatory no-READY action ladder"]],
   ["docs/ai/VALIDATION_SELECTOR.md", ["React and analytics UI", ".NET API, application and infrastructure", "Workers, refresh and scheduled jobs", "Queue and planning changes"]],
 ]);
 
