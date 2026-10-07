@@ -79,7 +79,7 @@ Evidence state: synchronized
 
 ## Validation not run
 - Full frontend suite -> not run; mapped focused specs and guardrails were used.
-- Production build -> not run; the prompt's typecheck and analytics guardrail proof passed.
+- `npm run build` -> pass; production bundle completed with the existing Recharts chunk-size warning.
 - Browser/device smoke -> not required for this copy/navigation prompt; canonical-link, active-sidebar and legacy redirect behavior have focused route/component tests.
 
 ## Documentation impact
