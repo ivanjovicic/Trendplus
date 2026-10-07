@@ -32,7 +32,7 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 ## Current direction
 
-Owner routing update 2026-10-07: P-UI-46 operational/mobile lists are DONE on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`. Post-close recovery found no higher-priority runnable BCI/STAB/RQ/SQL/QDB/MT/GAI task and promoted/claimed P-UI-52 as the current UI owner. P-UI-50 remains blocked by an existing uncommitted edit to its Product Decision page. Exact recovery evidence is in `.ai/runs/2026-10-07-P-UI-46-evidence.md`.
+Owner routing update 2026-10-07: P-UI-46 operational/mobile lists are DONE on implementation SHA `02dddf8da4431e07059b62f1d8df2a462ef35be8`; P-UI-52 navigation/copy is DONE on implementation SHA `31b0a8d95906019163a135f3db66f89ffac8ea2d`. P-UI-50 remains blocked by an existing uncommitted edit to its Product Decision page. The required post-close recovery for P-UI-52 is being synchronized in `.ai/runs/2026-10-07-P-UI-52-evidence.md`.
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 
