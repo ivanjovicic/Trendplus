@@ -47,10 +47,11 @@ Use each exactly once:
 - `Documentation impact` says what durable owner docs changed, or why none were needed.
 - `What was missed` records unfinished scope/known omissions, or `- none known`.
 - `Risks` records residual correctness, CI, security, tenant, performance or delivery risk, or `- none known`.
-- `Post-close routing recovery` is mandatory for formal queue work after the implementation/closure reaches `main`. Record the post-delivery `origin/main` recovery-base SHA, completed/changed dependency IDs searched across the full active owner queue/addendum set, newly satisfied dependencies and promoted successor. If no successor is promoted, include the full **Zero-READY proof** required by `PROMPT_QUEUE_PROTOCOL.md`. For direct-user-request work use `- not applicable`.
+- `Post-close routing recovery` is mandatory for formal queue work after the implementation/closure reaches `main`. Record the post-delivery `origin/main` recovery-base SHA, completed/changed dependency IDs searched across the full active owner queue/addendum set, newly satisfied dependencies and promoted successor. If no successor is promoted, first run the protocol's **Mandatory no-READY action ladder**, then include the full **Zero-READY proof** with unblock attempt/result, safe/disjoint-split result, why no safe split exists and exact unblock event. For direct-user-request work use `- not applicable`.
 - `Next` must come from that post-close recovery, not from a pre-claim queue header or older run log. Use `- none` only when the Zero-READY proof is complete.
 - `Main commit SHA` is the implementation/delivery SHA that current `main` was freshly verified to contain; use `pending` until that proof exists.
 - `Evidence state` is separate from queue status and never creates a new queue status.
+- A delivered implementation SHA or synchronized evidence never releases another owner's active claim; queue ownership/takeover is governed only by `PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Queue completion-note backlink
 

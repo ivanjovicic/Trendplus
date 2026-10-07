@@ -37,6 +37,8 @@ Evidence synchronization is a separate field:
 Evidence state: synchronized | pending | fallback <reason>
 ```
 
+Delivery/evidence facts do **not** grant queue ownership. An implementation SHA on `main`, green validation or synchronized evidence does not release another owner's `IN_PROGRESS` claim; claim lifecycle and takeover remain exclusively governed by `PROMPT_QUEUE_PROTOCOL.md`.
+
 Rules:
 - use `DONE` only when required proof and delivery evidence are synchronized;
 - use `PARTIAL` when useful work exists but validation, delivery verification, run evidence or another completion requirement is still missing;
@@ -128,7 +130,7 @@ Before `DONE`, evidence must identify:
 - residual risk or `none known`;
 - next task/owner or `none`;
 - for formal queue work, **post-close routing recovery from the post-delivery `origin/main` SHA**;
-- when next is `none`, a durable **Zero-READY proof** listing active queue/addendum files scanned, plausible non-terminal candidates, blocker class/start-gate classification, safe-slice result and exact unblock event;
+- when next is `none`, a durable **Zero-READY proof** listing active queue/addendum files scanned, plausible non-terminal candidates, blocker class/start-gate classification, **unblock action attempted and result**, safe/disjoint-slice result, why no safe split exists and exact unblock event;
 - prompt defect/scope repair when one occurred.
 
 Missing required completion evidence means `PARTIAL` or `BLOCKED`, not a new status.
@@ -170,7 +172,7 @@ Before closure, verify:
 - scope repairs/prompt defects are recorded;
 - final status matches validation and delivery strength;
 - for queue tasks, any older `Next: none` was invalidated and recomputed after delivery;
-- the reported next step comes from the current **Post-close dependency cascade**; if it is `none`, the run contains a complete **Zero-READY proof** and does not rely on stale queue prose.
+- the reported next step comes from the current **Post-close dependency cascade**; if it is `none`, the run contains a complete **Zero-READY proof** after the protocol's Mandatory no-READY action ladder and does not rely on stale queue prose.
 
 ## Final response compact format
 
