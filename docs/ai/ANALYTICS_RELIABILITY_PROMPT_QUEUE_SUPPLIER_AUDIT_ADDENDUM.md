@@ -3,8 +3,8 @@
 Date: 2026-09-30
 Repo: ivanjovicic/Trendplus
 Source audit: docs/ai/SUPPLIER_ANALYTICS_DEEP_AUDIT_PROMPTS_2026-09-30.md
-Current READY prompt: none (primary RQ program pointer is RQ593; RQ595 is IN_PROGRESS in this addendum)
-Additional READY prompts: none; RQ595 (P1 Supplier Value / Negotiation Pack v1) is IN_PROGRESS. RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
+Current READY prompt: none (primary RQ program pointer is RQ593; RQ595 is PARTIAL in this addendum)
+Additional READY prompts: none; RQ595 (P1 Supplier Value / Negotiation Pack v1) is PARTIAL pending per-aging-bucket cost basis/coverage from the RQ593 Inventory contract. RQ524, RQ527, RQ528, RQ533, RQ534, RQ535 and RQ536 are DONE
 Owner claim 2026-10-07: refreshed `origin/main` to `cce7892aa497bf3276b7713b84d8d6d9099a009b`. RQ593 is the primary READY prompt, but its required Product Decision UI path has a pre-existing user-owned uncommitted P-UI-50 edit in the primary checkout (`ProductDecisionCenterPage.tsx`); that file is left untouched. RQ595 is explicitly parallel-safe with RQ593, its Supplier paths are clean, and no RQ595 lock, local/remote branch or open PR exists. Claimed RQ595 `READY -> IN_PROGRESS` on `codex/rq595-supplier-value`; local lock `.ai/task-locks/RQ595-codex.lock.md`.
 Canonical routing update 2026-10-02: `RQ487` is now READY in the main Analytics Reliability queue after current-main re-audit. Its repository-local baseline/query-bounds/cache-truth work no longer waits on provider logs; deployed/provider root-cause proof remains RQ454/STAB16. RQ530 stays PARTIAL until RQ487 reaches its equivalence/performance acceptance, then its authoritative periodized Supplier buying-metric follow-up may be reconsidered. This addendum still has no independent current READY prompt.
 Audit reconciliation 2026-10-03: RQ487 is DONE on current `main`, closing its repository-local baseline/equivalence acceptance. RQ530 remains PARTIAL because authoritative supplier-level periodized cover/sell-through, returns, margin trend, sales top/bottom, and PO/lead-time sources are still unavailable or unapproved. The RQ487 dependency is satisfied; further buyer-metric scope needs an approved source and contract, then a newly scoped prompt. Deployed Supplier 503/root-cause evidence remains with RQ454/STAB16.
@@ -1292,7 +1292,7 @@ RQ530 PARTIAL foundation is present; RQ487 and RQ576 are DONE. Fresh production 
 Completion note 2026-10-07: the single-selected-supplier evidence pack is implemented on the Supplier Overview, with period sales/margin/trend facts, inventory valuation coverage/as-of, 90+ aging units and item drilldown, descriptive pre/post evidence where available, preserved store/dataScope links, and explicit unavailable states. Focused frontend proofs, typecheck, analytics guardrails and production build pass. RQ595 remains PARTIAL because the current Inventory aging aggregate does not expose known-vs-estimated cost basis or valuation coverage per 90+ bucket; its amount is shown only as an explicitly incomplete estimate, never as known tied capital. Reassess this remaining acceptance after the RQ593 Inventory coverage contract is delivered. No BUY_MORE/BUY_LESS recommendation or supplier score was added.
 
 - Run log: `.ai/runs/2026-10-07-RQ595-evidence.md`
-- Evidence state: pending
-- Main commit SHA: pending
-- Main verification: pending
+- Evidence state: synchronized
+- Main commit SHA: `3d2797d2975401cb2df875191b200c6397f7e584`
+- Main verification: passed - `origin/main` contains the implementation SHA; current `origin/main` refresh and post-close recovery are recorded in the run log.
 
