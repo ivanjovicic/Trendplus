@@ -1,5 +1,7 @@
 # Zero-READY routing repair — 2026-10-07
 
+> **Historical routing snapshot.** This log records the point when P-UI-54 was created/promoted. P-UI-54 later completed; use `MASTER_ROADMAP.md` plus the current P-UI queue for live routing, not the READY statements preserved below.
+
 ## Context
 
 The synchronized P-UI-52 close-out correctly recorded a zero-READY state for its recovery SHA: P-UI-50 was blocked by an unresolved uncommitted edit on `ProductDecisionCenterPage.tsx`, while P-UI-38 was modeled as the final gate behind all migrations.
@@ -44,7 +46,7 @@ Unknown uncommitted workspace edits are fail-safe for that path only: agents mus
 - `MASTER_ROADMAP.md`
 - `docs/roadmaps/ANALYTICS_UI_PREMIUM_ROADMAP.md`
 
-## Current routing truth
+## Routing truth at repair time (historical)
 
 - **P-UI-54: READY** — claimable after a fresh collision check.
 - **P-UI-50: BLOCKED** — only while the unresolved Product Decision checkout edit remains active/unresolved.
