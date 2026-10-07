@@ -2892,7 +2892,7 @@ Owner claim 2026-10-07: RQ573 is DONE on current origin/main and its evidence co
 - Ownership transfer: none
 - Delivery mode: main-first
 - Main commit SHA: `1469077568badc6d1aaab5384f819281b4a4bbc6`
-- Main verification: passed - fresh fetch after implementation push showed `origin/main` at `1469077568badc6d1aaab5384f819281b4a4bbc6`; final `origin/main` `674b0eff7784a831f6062f6a5b9f311de9d6988f` contains that implementation SHA
+- Main verification: passed - fresh fetch plus `git merge-base --is-ancestor` confirms implementation SHA `1469077568badc6d1aaab5384f819281b4a4bbc6` is on `origin/main`
 - Missed: no local optimization was justified; supplier summary remains fail-closed because the fixture has no supplier 90-day dataset
 - Follow-up: STAB16 must compare deployed contributor latency with this local profile
 - Residual risk: local fixture is not production data; its product/inventory/data-quality source states are degraded and its supplier summary is unavailable
