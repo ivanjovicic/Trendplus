@@ -12,7 +12,7 @@ Purpose: planning/contracts and measurement preparation. Runtime work requires l
 
 | Program | Current READY | Execution class |
 |---|---|---|
-| PERF - Performance | none | `PERF18` PARTIAL: preload regression is fixed and guarded, but a browser fixture must still prove chart SVG rendering and SPA route-hop; `PERF19` DONE with local cold/warm HTTP and per-contributor evidence; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
+| PERF - Performance | none | `PERF18` DONE: preload regression is fixed and guarded; deterministic browser fixture proves no Recharts request on `/prodaja` and 13 SVG surfaces after SPA navigation; `PERF19` DONE with local cold/warm HTTP and per-contributor evidence; `PERF16` remains BLOCKED on `MT10` / shared-SaaS gate |
 | OBS - Observability | none | `OBS10` DONE; `OBS11` DONE |
 | SEC - Security Evolution | none | `SEC08` DONE; SEC05 remains WAITING on MT09 |
 
@@ -2787,7 +2787,7 @@ Admin API-key / deployment-secret rotation and emergency-access expectations are
 
 ## PERF18 - Reconcile the Recharts initial-preload regression with the measured bundle contract
 
-Status: PARTIAL
+Status: DONE
 Ready after: current-main production-build and browser/network baseline is recorded below; P-UI-24 is historical context, not a remaining start gate
 Priority: P1
 Type: frontend performance/runtime/tests
@@ -2806,21 +2806,21 @@ Commit suggestion: `perf(frontend): restore chart chunk route isolation`
 ### Completion note
 
 - Date: 2026-10-07
-- Status: PARTIAL
-- Completion: production entry no longer preloads Recharts on `/prodaja`; shared React dependencies are separated; the existing bundle budget rejects a seeded Recharts preload recurrence.
-- Changed files: `Klijent/clientapp/vite.config.ts`; `Klijent/clientapp/scripts/check-bundle-budget.mjs`; `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`; `docs/roadmaps/PERFORMANCE_ROADMAP.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-07-PERF18-evidence.md`.
-- Checks run: `npm run typecheck`; `npm run build`; `npm run check:bundle-budget -- --self-test`; `npm run check:bundle-budget`; `npm run test -- --run src/pages/__tests__/DailySalesStatsPage.spec.tsx` (5/5); all prompt-queue/planning/instruction validators; Puppeteer entry and chart-route network checks; `git diff --check`.
-- Checks not run: data-backed browser SVG render/SPA route-hop (fixture-free API requests fail locally; existing responsive harness crashes in its geometry collector).
+- Status: DONE
+- Completion: production entry no longer preloads Recharts on `/prodaja`; shared React dependencies are separated; the existing bundle budget rejects a seeded Recharts preload recurrence; a deterministic Puppeteer fixture proves the chart chunk loads after a real sidebar SPA hop and 13 SVG chart surfaces render without page errors.
+- Changed files: `Klijent/clientapp/vite.config.ts`; `Klijent/clientapp/scripts/check-bundle-budget.mjs`; `Klijent/clientapp/scripts/check-recharts-route-loading.mjs`; `Klijent/clientapp/package.json`; `docs/architecture/PERFORMANCE_FRONTEND_BUNDLE_BUDGET.md`; `docs/roadmaps/PERFORMANCE_ROADMAP.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-07-PERF18-evidence.md`.
+- Checks run: `npm run typecheck`; `npm run build`; `npm run check:bundle-budget -- --self-test`; `npm run check:bundle-budget`; `npm run check:recharts-route-loading` (PASS, 13 SVG surfaces after `/prodaja` SPA navigation); `npm run test:run -- src/pages/__tests__/DailySalesStatsPage.spec.tsx` (5/5); all prompt-queue/planning/instruction validators; Puppeteer entry and chart-route network checks; `node --check scripts/check-recharts-route-loading.mjs`; `git diff --check`.
+- Checks not run: none for PERF18 acceptance.
 - CI: Planning Governance run `37649069166` PASS on `42baa329`; Analytics Quality Gates run `37649069125` RED in `Run analytics tests` (153 pass / 6 fail across unrelated analytics UI specs; guardrails/build were skipped after test failure; no causal link to PERF18 established).
 - Run log: `.ai/runs/2026-10-07-PERF18-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: pending
-- Main verification: `origin/main` `42baa32987590ad44660afc72b4a3641baff576f` contains implementation SHA.
-- Missed: prove a Recharts SVG renders after an SPA hop from `/prodaja` using deterministic API fixtures.
-- Follow-up: resume PERF18 browser proof and synchronize evidence; do not claim DONE until the missing route-hop/chart-render acceptance passes.
-- Residual risk: local network evidence confirms correct asset isolation and route loading, but not a chart SVG render with data.
-- Next: PERF18 browser proof follow-up
+- Main verification: pending push and refreshed `origin/main` verification.
+- Missed: none in PERF18 acceptance.
+- Follow-up: none.
+- Residual risk: fixture is synthetic local browser evidence and does not claim production API correctness or data fidelity.
+- Next: none
 - Prompt defect / scope repair: circular `Ready after: P-UI-24 ...` prerequisite repaired; PERF18 now creates its own current-main baseline as step one.
 
 ### Problem

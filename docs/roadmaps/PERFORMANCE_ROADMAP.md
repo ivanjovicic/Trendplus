@@ -38,7 +38,7 @@ Budgets in that contract and `docs/ops/ANALYTICS_PERFORMANCE_BUDGETS.md` remain 
 
 No runtime optimization is accepted without a baseline and a before/after comparison.
 
-Routing correction 2026-10-07: the PERF19 status in the summary above is stale; PERF19 is DONE on main with local HTTP/contributor measurements. PERF18 is PARTIAL after fixing and guarding the Recharts entry-preload regression; its current browser-render/SPA-hop follow-up is recorded in `.ai/runs/2026-10-07-PERF18-evidence.md`.
+Routing correction 2026-10-07: the PERF19 status in the summary above is stale; PERF19 is DONE on main with local HTTP/contributor measurements. PERF18 is DONE: after fixing and guarding the Recharts entry-preload regression, a deterministic browser fixture confirms no Recharts request on `/prodaja` and 13 SVG chart surfaces after a sidebar SPA hop. Evidence: `.ai/runs/2026-10-07-PERF18-evidence.md`.
 
 ### PERF-19 - Decision Board composition regression
 

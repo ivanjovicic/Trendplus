@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "check:encoding": "node ./scripts/check-encoding.mjs",
     "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs",
+    "check:recharts-route-loading": "node ./scripts/check-recharts-route-loading.mjs",
     "check:analytics-chart-accessibility": "node ./scripts/check-analytics-chart-accessibility.mjs",
     "check:ui-ratchets": "node ./scripts/check-ui-ratchets.mjs",
     "check:analytics-guardrails:self-test": "node ./scripts/check-analytics-guardrails.mjs --self-test",

@@ -6,7 +6,7 @@ Delivery target: main
 Working branch / PR: codex/perf18-recharts-preload / none
 Main commit SHA: 42baa32987590ad44660afc72b4a3641baff576f
 Main verification: pass - refreshed `origin/main` `42baa32987590ad44660afc72b4a3641baff576f` contains the implementation SHA
-Evidence state: synchronized
+Evidence state: synchronized after browser-proof follow-up below
 Ownership transfer: none
 
 ## What was done
@@ -65,5 +65,14 @@ Ownership transfer: none
 - Successor: no different prompt promoted. The explicit next action is PERF18's own deterministic browser fixture proving chart SVG render after SPA route-hop. This is an authorized same-task follow-up, so no `Next: none` / Zero-READY conclusion is asserted.
 - The remaining active queue inventory considered: BCI parent/addendum; STAB; all RQ queue/addenda and active SQL queue; P-UI main/addenda; QDB; MT; GAI; DEX/RL/DT; PERF/OBS/SEC. No other READY candidate was promoted. Existing owners and blockers remain unchanged.
 
+## Browser-proof follow-up (2026-10-07)
+- Resumed the same PERF18 owner branch from refreshed `origin/main` `e0502a9d4c6e102c4a13b014c782ee9fba2492a0`; worktree was clean and no existing task lock was present.
+- Added `Klijent/clientapp/scripts/check-recharts-route-loading.mjs` plus `check:recharts-route-loading` npm script. The helper uses synthetic daily-sales/store/refresh fixtures, CORS preflight responses for the app's configured remote API origin, and the real `Operacije` sidebar link to perform the SPA navigation.
+- Production preview result: PASS. `/prodaja` requested no Recharts asset; after SPA navigation to `/analytics/daily-sales`, the Recharts asset loaded and 13 `.daily-sales-chart-wrap svg.recharts-surface` nodes rendered. No browser `pageerror` occurred.
+- The first fixture attempt omitted CORS response headers and correctly failed closed in the browser; adding explicit wildcard origin/method/header allowances made the deterministic fixture work without contacting the remote API. Unknown API routes return 503 fixture responses.
+- Fresh validation on the final implementation: `npm run build` PASS (2,732 modules; entry 326,002 bytes, Recharts 263,632 bytes); `npm run check:bundle-budget -- --self-test` PASS; `npm run check:bundle-budget` PASS; `npm run test:run -- src/pages/__tests__/DailySalesStatsPage.spec.tsx` PASS (5/5); route-loading helper PASS (13 SVG surfaces); `node --check scripts/check-recharts-route-loading.mjs` PASS.
+- Evidence limits: browser fixture is synthetic and proves route/chunk/render integration, not API/data semantics or deployed performance.
+- PERF18 status: DONE; no PERF18 acceptance item remains. Queue, master roadmap and performance roadmap synchronized. Commit/push verification pending.
+
 ## Next
-- Resume PERF18 with a deterministic API fixture and prove an SVG render after the SPA route-hop; then update acceptance and queue status.
+- None for PERF18.
