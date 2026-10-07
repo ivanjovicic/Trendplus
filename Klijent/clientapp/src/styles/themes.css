@@ -106,9 +106,9 @@
   --warning-border: var(--theme-color-rgba-251-191-36-0p45, rgba(251, 191, 36, 0.45));
   --error-soft: var(--theme-color-rgba-239-68-68-0p15, rgba(239, 68, 68, 0.15));
   --info-soft: var(--theme-color-rgba-59-130-246-0p12, rgba(59, 130, 246, 0.12));
-  --error-border: var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45))));
-  --neutral-soft: var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, var(--theme-color-rgba-140-164-220-0p14, rgba(140,164,220,0.14))));
-  --neutral-border: var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, var(--theme-color-rgba-140-164-220-0p22, rgba(140,164,220,0.22))));
+  --error-border: var(--theme-color-rgba-248-113-113-0p45, rgba(248, 113, 113, 0.45));
+  --neutral-soft: var(--theme-color-rgba-140-164-220-0p14, rgba(140,164,220,0.14));
+  --neutral-border: var(--theme-color-rgba-140-164-220-0p22, rgba(140,164,220,0.22));
   --color-bg: var(--surface-default);
   --color-surface: var(--surface-elevated);
   --color-surface-muted: var(--surface-darker);

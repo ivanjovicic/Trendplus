@@ -10,6 +10,7 @@
     "check:encoding": "node ./scripts/check-encoding.mjs",
     "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs",
     "check:analytics-chart-accessibility": "node ./scripts/check-analytics-chart-accessibility.mjs",
+    "check:ui-ratchets": "node ./scripts/check-ui-ratchets.mjs",
     "check:analytics-guardrails:self-test": "node ./scripts/check-analytics-guardrails.mjs --self-test",
     "check:analytics-guardrails": "npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck",
     "responsive:baseline": "node ./scripts/responsive_baseline.mjs",
