@@ -1219,6 +1219,7 @@ RQ521 and RQ526 DONE. RQ531 consumes this baseline for later owner-approved poli
 ## RQ595 - Supplier Value / Negotiation Pack v1 from already authoritative evidence
 
 Status: DONE
+Post-close review 2026-10-08: added the missing 3–5 negotiation facts (Do 3), stock as-of no longer falls back to response time, calendar dates fixed for Europe/Belgrade; see `.ai/runs/2026-10-08-recent-commits-review-evidence.md`.
 Ready after: RQ530 PARTIAL foundation delivered; RQ487 and RQ576 DONE (satisfied)
 Priority: P1
 Type: backend/frontend/product/tests

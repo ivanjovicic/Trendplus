@@ -18,6 +18,10 @@ Ovaj audit je ponovo proveravan protiv current-main koda, queue/evidence dokumen
 
 Ključne korekcije: `workersEnabled=false` važi za web proces i ne dokazuje da poseban worker servis ne postoji; QDB već ima SQL Server discovery/mapping/checkpoint put do `SourceSyncAppliedRows`, ali ne i dokazano canonical `Artikli/Prodaja` punjenje/onboarding; komercijalni pragovi i pricing su hipoteze; konkurentski pregled pokazuje da su size/color, zalihe, nivelacije i reporting široko dostupni, dok zatvoren lokalni recommendation→action→outcome loop ostaje diferencijaciona hipoteza, ne dokazana tržišna ekskluziva.
 
+## Status update (2026-10-08) — bez promene ocena
+
+Posle audita su na `main` isporučeni repo-lokalni popravci istinitosti: RQ593 (novac u Product Decision bez nule za nepoznato), RQ596 (pokrivenost vrednosti zaliha i ABC bez nepoznatih), RQ594 (akcije zaliha usidrene na poslednji horizont prodaje u izvoru) i RQ595 v1 (pregovarački paket za jednog dobavljača). To podiže **tačnost prikaza**, ali ne menja nijednu ocenu iznad: produkcija je i dalje na 05.08.2026, nijedna akcija nije izmerena, pa business outcome proof ostaje **0/10, UNPROVEN**, a „Prvi dokazani dinar“ ostaje sledeći milestone.
+
 ## Executive verdict
 
 1. **Trendplus danas ne može pouzdano da menja aktuelnu odluku vlasnika jer je potvrđeni prodajni horizont zastareo.** Poslednja potvrđena prodaja u produkciji je 05.08.2026. `refresh-status` 07.10. nema durable uspešan import/refresh i web proces prijavljuje `workersEnabled=false`; postojanje/zdravlje posebnog worker servisa je **UNPROVEN**, ne dokazano odsustvo. **VERIFIED** za zastarelost i durable evidence gap.
@@ -310,7 +314,7 @@ Uz ispravan trošak i datum ulaza: mrtva roba (0 prodaje N dana), spora roba, da
 **Već pokriveno — samo referencirati:** STAB16 (svežina/workeri/deploy), RQ454/RQ565/RQ566 (produkciono sravnjenje), RQ545 (Pre/Post live), RQ576 residual (trošak), RQ585 (weekly digest), RQ465 (pregovarački paket), RQ555/RQ556 (markdown izvor/težine), RQ559 (veličine), RL12 (kauzalni gate), RQ455 (customer acceptance).
 
 **Owner priority decision 2026-10-07 (primenjeno u canonical queue-u):**
-- RQ585 P3 → **P1**. Repo-zavisnosti `RQ570/573/574/576` su DONE; start gate ostaje production freshness unutar RQ583 SLA. Digest mora da radi i kada size/supplier family nije dostupna — bez inventovanja signala.
+- RQ585 P3 → **P1**. ~~Start gate ostaje production freshness unutar RQ583 SLA.~~ **CORRECTED 2026-10-08:** prema canonical queue-u RQ585 čeka RQ593/RQ594/RQ555 i gradi se na poslednjem pouzdanom horizontu; freshness odlučuje samo da li sme da piše „danas/ove nedelje“, nije start gate. Digest mora da radi i kada size/supplier family nije dostupna — bez inventovanja signala.
 - STAB16 ostaje P0, ali je to **jedini** P0; owner = Ivan (provider pristup), ne agenti.
 - Previsok prioritet u odnosu na vrednost: P-UI-38 (ratchet gate), P-UI-50, PERF18, RQ319/RQ320 (filter apply semantika), RQ18/RQ25–RQ38 (legacy, predlog OBSOLETE), RQ46/RQ50, RQ558, GAI03–GAI12, MT02–MT12, SEC05.
 - RQ589–RQ591 (DONE) kao primer: ne ponavljati sertifikaciju karantinovanih ruta.

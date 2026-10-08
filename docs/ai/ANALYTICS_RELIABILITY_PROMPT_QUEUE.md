@@ -30100,6 +30100,7 @@ STAB16 freshness restored, RQ545 live verified, RQ557 (DONE), RQ571 (DONE).
 ## RQ593 - Money unknown is not zero across Product Decision aggregates
 
 Status: DONE
+Post-close review 2026-10-08: older-API payload without coverage fields stays usable ("Pokrivenost nije dostupna"); see `.ai/runs/2026-10-08-recent-commits-review-evidence.md`.
 Ready after: prior page-path collision resolved on current `origin/main`; RQ596 DONE
 Priority: P1
 Type: backend/frontend/tests
@@ -30166,6 +30167,7 @@ Completed 2026-10-08: PDC monetary summaries now sum known eligible values only,
 ## RQ596 - Inventory money unknown is not zero across aggregates and ABC
 
 Status: DONE
+Post-close review 2026-10-08: coverage now counts only stocked rows (negative stock no longer subtracts value) and the top value SKU stays in ABC class A; see `.ai/runs/2026-10-08-recent-commits-review-evidence.md`.
 Ready after: none
 Priority: P1
 Type: backend/frontend/tests
@@ -30237,6 +30239,7 @@ Completed 2026-10-07 on implementation SHA `c2442acc436642871a4234592b0bd754120b
 ## RQ594 - Make Inventory actions source-horizon anchored and decision-semantic, including demand-aware transfers
 
 Status: DONE
+Post-close review 2026-10-08: dopuna requires configured minimum or observed sales (no dormant sold-out flood); signal window shows inclusive UTC dates; see `.ai/runs/2026-10-08-recent-commits-review-evidence.md`.
 Ready after: RQ593 DONE and RQ596 DONE (shared Inventory/Product Decision action contract; satisfied 2026-10-08)
 Priority: P1
 Type: backend/frontend/product/tests
