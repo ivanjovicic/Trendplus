@@ -23,6 +23,15 @@ public static class InventoryActionDecisionPolicy
             ? Math.Max((asOfUtc.Date - DateTime.SpecifyKind(lastReceiptAtUtc.Value, DateTimeKind.Utc).Date).Days, 0)
             : null;
 
+    /// <summary>
+    /// Replenishment needs either an owner-configured minimum (intent to keep the
+    /// article in assortment; a stockout censors sales, so zero sales is not proof of
+    /// no demand) or observed sales in the anchored window. A sold-out article with
+    /// minimum 0 and no sales is dormant assortment, not a reorder action.
+    /// </summary>
+    public static bool IsReplenishmentEligible(int quantity, int minimum, int soldUnits)
+        => quantity <= minimum && (minimum > 0 || soldUnits > 0);
+
     public static bool IsSlowStockActionEligible(int quantity, int minimum, int? receiptAgeDays, int soldUnits, int windowDays = 30)
         => receiptAgeDays is >= 60 and < 90
            && quantity >= Math.Max(minimum * 2, 8)

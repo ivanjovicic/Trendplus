@@ -806,6 +806,9 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.Contains(workflow.Items, item => item.ActionType == "clearance" && item.ArtikalId == 924);
         Assert.Contains(workflow.Items, item => item.ActionType == "markdown" && item.ArtikalId == 926);
         Assert.DoesNotContain(workflow.Items, item => item.ActionType == "clearance" && item.ArtikalId == 925);
+        Assert.Contains(workflow.Items, item => item.ActionType == "dopuna" && item.ArtikalId == 921);
+        Assert.DoesNotContain(workflow.Items, item => item.ActionType == "dopuna" && item.ArtikalId == 927);
+        Assert.Contains(workflow.Items, item => item.ActionType == "dopuna" && item.ArtikalId == 928);
     }
 
     private static void SeedInventoryTransferProbeData(IServiceProvider services)
@@ -820,7 +823,9 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             new Artikli { Id = 923, PLU = "TRANSFERPROBE-EQUAL", Naziv = "TransferProbe Equal destination", IDObjekat = 2, Kolicina = 1, MinimalnaKolicina = 6, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
             new Artikli { Id = 924, PLU = "TRANSFERPROBE-CLEARANCE", Naziv = "TransferProbe Clearance candidate", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
             new Artikli { Id = 925, PLU = "TRANSFERPROBE-NEW", Naziv = "TransferProbe Fresh receipt", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
-            new Artikli { Id = 926, PLU = "TRANSFERPROBE-MARKDOWN", Naziv = "TransferProbe Markdown candidate", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow });
+            new Artikli { Id = 926, PLU = "TRANSFERPROBE-MARKDOWN", Naziv = "TransferProbe Markdown candidate", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 927, PLU = "TRANSFERPROBE-DORMANT", Naziv = "TransferProbe Dormant sold out", IDObjekat = 1, Kolicina = 0, MinimalnaKolicina = 0, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 928, PLU = "TRANSFERPROBE-OLDMIN", Naziv = "TransferProbe Old minimum no demand", IDObjekat = 1, Kolicina = 0, MinimalnaKolicina = 4, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow });
         db.ProdajaZaglavlja.AddRange(
             new ProdajaZaglavlje { Id = 80, DatumProdaje = recentSaleDate, IDObjekat = 1, DataOrigin = "existing" },
             new ProdajaZaglavlje { Id = 81, DatumProdaje = recentSaleDate, IDObjekat = 2, DataOrigin = "existing" },
@@ -834,6 +839,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         db.DnevnikPromena.AddRange(
             new DnevnikPromena { Id = 8400, ArtikalId = 924, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddDays(-105), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" },
             new DnevnikPromena { Id = 8401, ArtikalId = 925, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddHours(-1), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" },
+            new DnevnikPromena { Id = 8403, ArtikalId = 928, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddDays(-200), Kolicina = 4, Iznos = 100m, DataOrigin = "existing" },
             new DnevnikPromena { Id = 8402, ArtikalId = 926, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddDays(-75), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" });
         db.SaveChanges();
     }

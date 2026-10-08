@@ -1179,13 +1179,13 @@ public static class InventoryEndpoints
         IReadOnlyDictionary<int, int> soldUnitsByArticle,
         IReadOnlyDictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle)
     {
-        var totalAggregate = InventoryValueCoverage.Aggregate(items.Select(item => item.EstimatedValue));
+        var totalAggregate = InventoryValueCoverage.Aggregate(items.Select(item => (item.Quantity, item.EstimatedValue)));
 
         var aging = items
             .GroupBy(x => new { x.AgingBucket, x.AgingLabel })
             .Select(g =>
             {
-                var value = InventoryValueCoverage.Aggregate(g.Select(item => item.EstimatedValue));
+                var value = InventoryValueCoverage.Aggregate(g.Select(item => (item.Quantity, item.EstimatedValue)));
                 return new InventoryAgingBucketDto(
                     g.Key.AgingBucket,
                     g.Key.AgingLabel,
@@ -1202,7 +1202,7 @@ public static class InventoryEndpoints
             .GroupBy(x => x.AbcClass)
             .Select(g =>
             {
-                var value = InventoryValueCoverage.Aggregate(g.Select(item => item.EstimatedValue));
+                var value = InventoryValueCoverage.Aggregate(g.Select(item => (item.Quantity, item.EstimatedValue)));
                 return new InventoryAbcBucketDto(
                     g.Key,
                     $"Klasa {g.Key}",
@@ -1320,7 +1320,7 @@ public static class InventoryEndpoints
                 var outOfStock = items.Count(item => item.Quantity <= 0);
                 var critical = items.Count(item => ResolveStockState(item.Quantity, item.Minimum) == "critical");
                 var healthy = items.Count(item => ResolveStockState(item.Quantity, item.Minimum) == "healthy");
-                var valueAggregate = InventoryValueCoverage.Aggregate(items.Select(item => item.EstimatedValue));
+                var valueAggregate = InventoryValueCoverage.Aggregate(items.Select(item => (item.Quantity, item.EstimatedValue)));
                 var stale = items.Count(item => item.DaysSinceMovement >= 90);
                 var healthyShare = totalSku == 0 ? 0 : Math.Round((decimal)healthy / totalSku * 100m, 1);
 
@@ -1409,9 +1409,16 @@ public static class InventoryEndpoints
         var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct, normalizedDataScope);
         var suggestions = new List<InventoryActionSuggestionDto>();
 
-        foreach (var item in items.Where(item => item.Quantity <= item.Minimum))
+        foreach (var item in items.Where(item => InventoryActionDecisionPolicy.IsReplenishmentEligible(
+            item.Quantity,
+            item.Minimum,
+            soldUnitsByArticle.GetValueOrDefault(item.Id))))
         {
             var soldUnits = soldUnitsByArticle.GetValueOrDefault(item.Id);
+            var stockState = item.Quantity <= 0 ? "Artikal je bez zalihe" : $"Artikal je ispod minimuma ({item.Quantity} od {item.Minimum} kom.)";
+            var demandEvidence = soldUnits > 0
+                ? $"prodato {soldUnits} kom. u 30 dana do {signalWindow.AsOfUtc:dd.MM.yyyy}."
+                : $"nema prodaje u 30 dana do {signalWindow.AsOfUtc:dd.MM.yyyy}, a minimum je postavljen na {item.Minimum} kom. Prazna zaliha može sakriti stvarnu potražnju.";
             var key = BuildSuggestionKey("dopuna", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
@@ -1419,9 +1426,7 @@ public static class InventoryEndpoints
                 "dopuna",
                 item.Quantity <= 0 ? "critical" : "high",
                 $"Dopuna za {item.Naziv}",
-                item.Quantity <= 0
-                    ? "Artikal je bez zalihe ili na nuli u lokaciji sa aktivnim minimumom."
-                    : $"Artikal je ispod minimuma; prodato {soldUnits} kom. u 30-dnevnom prozoru do {signalWindow.AsOfUtc:yyyy-MM-dd}.",
+                $"{stockState}; {demandEvidence}",
                 item,
                 item.StoreName,
                 null,
@@ -1430,7 +1435,7 @@ public static class InventoryEndpoints
                 soldUnitsByArticle,
                 movementWindowStatsByArticle,
                 BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item, asOfUtc: signalWindow.AsOfUtc, windowFromUtc: signalWindow.FromUtc, windowToExclusiveUtc: signalWindow.ToExclusiveUtc, horizonBasis: signalWindow.Basis),
-                ["replenishment_minimum_gap", soldUnits > 0 ? "sales_velocity_observed" : "no_sales_in_source_window"]));
+                ["replenishment_minimum_gap", soldUnits > 0 ? "sales_velocity_observed" : "configured_minimum_no_sales_in_source_window"]));
         }
 
         foreach (var item in items.Where(item => observedHorizonUtc.HasValue
@@ -1445,8 +1450,8 @@ public static class InventoryEndpoints
                 key,
                 "markdown",
                 item.AbcClass == "A" ? "high" : "medium",
-                $"Markdown predlog za {item.Naziv}",
-                $"Poslednji pouzdan prijem je pre {ageDays} dana; prodato {soldUnits} kom. u izvorno usidrenom 30-dnevnom prozoru{(coverDays.HasValue ? $", uz procenjeno pokriće {coverDays:0.#} dana" : ", bez izmerene prodajne brzine")} (do {signalWindow.AsOfUtc:yyyy-MM-dd}).",
+                $"Predlog sniženja za {item.Naziv}",
+                BuildSlowStockReason(ageDays, soldUnits, coverDays, signalWindow.AsOfUtc, clearance: false),
                 item,
                 item.StoreName,
                 null,
@@ -1470,8 +1475,8 @@ public static class InventoryEndpoints
                 key,
                 "clearance",
                 item.AbcClass == "A" ? "high" : "medium",
-                $"Clearance lista za {item.Naziv}",
-                $"Poslednji pouzdan prijem je pre {ageDays} dana; prodato {soldUnits} kom. u izvorno usidrenom 30-dnevnom prozoru{(coverDays.HasValue ? $", uz procenjeno pokriće {coverDays:0.#} dana" : ", bez izmerene prodajne brzine")}. Ovo je starost prijema, ne dokaz odsustva kretanja.",
+                $"Predlog rasprodaje za {item.Naziv}",
+                BuildSlowStockReason(ageDays, soldUnits, coverDays, signalWindow.AsOfUtc, clearance: true),
                 item,
                 item.StoreName,
                 null,
@@ -1668,6 +1673,18 @@ public static class InventoryEndpoints
             datasetContext,
             InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, datasetContext.AsOfUtc ?? DateTime.UtcNow),
             item.AgeBasis);
+    }
+
+    internal static string BuildSlowStockReason(int receiptAgeDays, int soldUnits, decimal? coverDays, DateTime asOfUtc, bool clearance)
+    {
+        var sales = soldUnits > 0
+            ? $"prodato {soldUnits} kom. u 30 dana do {asOfUtc:dd.MM.yyyy}"
+            : $"nema prodaje u 30 dana do {asOfUtc:dd.MM.yyyy}";
+        var cover = coverDays.HasValue
+            ? $"; trenutna zaliha pokriva oko {coverDays.Value.ToString("0.#", SerbianCulture)} dana prodaje"
+            : string.Empty;
+        var note = clearance ? " Starost se računa od poslednjeg prijema, ne od poslednje prodaje." : string.Empty;
+        return $"Poslednji pouzdan prijem bio je pre {receiptAgeDays} dana; {sales}{cover}.{note}";
     }
 
     private static InventoryActionDatasetContextDto BuildActionDatasetContext(

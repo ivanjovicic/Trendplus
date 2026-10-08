@@ -55,4 +55,15 @@ public sealed class InventoryActionDecisionPolicyTests
         Assert.False(InventoryActionDecisionPolicy.CanTransfer(1, "A", 2, "B", 4, 5, 15, 9, 7));
         Assert.False(InventoryActionDecisionPolicy.CanTransfer(1, null, 2, "B", 4, 5, 15, 8, 7));
     }
+
+    [Fact]
+    public void Replenishment_RequiresConfiguredMinimumOrObservedSales()
+    {
+        Assert.True(InventoryActionDecisionPolicy.IsReplenishmentEligible(0, 0, soldUnits: 3));
+        Assert.True(InventoryActionDecisionPolicy.IsReplenishmentEligible(0, 5, soldUnits: 0));
+        Assert.True(InventoryActionDecisionPolicy.IsReplenishmentEligible(2, 5, soldUnits: 0));
+        Assert.False(InventoryActionDecisionPolicy.IsReplenishmentEligible(0, 0, soldUnits: 0));
+        Assert.False(InventoryActionDecisionPolicy.IsReplenishmentEligible(-1, 0, soldUnits: 0));
+        Assert.False(InventoryActionDecisionPolicy.IsReplenishmentEligible(6, 5, soldUnits: 10));
+    }
 }

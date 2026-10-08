@@ -8,7 +8,7 @@ describe("ActionWorkflowPanel cost trust", () => {
       <ActionWorkflowPanel
         actionWorkflow={{
           generatedAtUtc: "2026-10-08T10:00:00Z",
-          asOfUtc: "2026-08-08T23:59:59Z",
+          asOfUtc: "2026-08-08T23:59:59.9999999Z",
           signalWindowFromUtc: "2026-07-10T00:00:00Z",
           signalWindowToExclusiveUtc: "2026-08-09T00:00:00Z",
           horizonBasis: "source_horizon",
@@ -24,7 +24,11 @@ describe("ActionWorkflowPanel cost trust", () => {
       />,
     );
 
-    expect(screen.getByTestId("inventory-action-horizon")).toHaveTextContent("poslednji izvorni horizont");
+    const horizon = screen.getByTestId("inventory-action-horizon");
+    // Inclusive business dates in UTC: the exclusive window end (9. 8.) and the local timezone must not shift the last day.
+    expect(horizon).toHaveTextContent("10. 7. 2026. – 8. 8. 2026.");
+    expect(horizon).toHaveTextContent("poslednjim danom prodaje u izvoru, ne sa današnjim datumom");
+    expect(horizon).not.toHaveTextContent("9. 8. 2026.");
   });
 
   it("labels missing forecast cost as unavailable instead of zero", () => {

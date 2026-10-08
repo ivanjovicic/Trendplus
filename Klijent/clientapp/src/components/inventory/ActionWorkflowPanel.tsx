@@ -1,5 +1,6 @@
 import { Archive, CheckCircle2, Clock3, GitCompareArrows, Tag, Truck, XCircle } from "lucide-react";
 import type { InventoryActionSuggestion, InventoryActionWorkflow } from "../../types/analytics";
+import { formatDate } from "../../utils/analyticsFormatters";
 import { formatCurrency, formatNumber, getActionStatusTone, getActionTypeTone, getPriorityTone, inventoryActionStatusLabel, inventoryActionTypeLabel, inventoryPriorityLabel } from "./inventoryUtils";
 
 type ActionWorkflowPanelProps = {
@@ -43,7 +44,7 @@ export function ActionWorkflowPanel({
       </div>
 
       {actionWorkflow?.asOfUtc ? <div className="mt-3 text-xs text-muted" data-testid="inventory-action-horizon">
-        Signalni prozor: {actionWorkflow.signalWindowFromUtc ? new Date(actionWorkflow.signalWindowFromUtc).toLocaleDateString("sr-RS") : "—"} – {actionWorkflow.signalWindowToExclusiveUtc ? new Date(actionWorkflow.signalWindowToExclusiveUtc).toLocaleDateString("sr-RS") : "—"} · stanje do {new Date(actionWorkflow.asOfUtc).toLocaleDateString("sr-RS")} · {actionWorkflow.horizonBasis === "source_horizon" ? "poslednji izvorni horizont" : "tekući izvor / trenutni datum"}
+        Prodaja za predloge: {formatDate(actionWorkflow.signalWindowFromUtc, "—")} – {formatDate(actionWorkflow.asOfUtc, "—")} · {actionWorkflow.horizonBasis === "source_horizon" ? "zaključno sa poslednjim danom prodaje u izvoru, ne sa današnjim datumom" : "zaključno sa današnjim danom"}
       </div> : null}
 
       <div className="mt-5 space-y-3">
