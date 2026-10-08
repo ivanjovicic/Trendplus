@@ -1030,21 +1030,28 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    ["Database:AutoMigrate"] = "false",
-                    ["StartupReadiness:GateApiTraffic"] = "false",
-                    ["PROCESS_TYPE"] = "web",
-                    ["Workers:Enabled"] = "false",
-                    ["AnalyticsCache:Provider"] = analyticsCacheProvider,
-                    ["AnalyticsDecisionBoardSectionTiming:Enabled"] = "true",
-                    ["Analytics:AllowLoopbackInProduction"] = "true",
-                    ["ConnectionStrings:DefaultConnection"] = connectionString,
-                    ["ConnectionStrings:AnalyticsConnection"] = connectionString,
-                    ["ConnectionStrings:OpenProductTrainingConnection"] = connectionString,
-                    ["DailySales:TimeZoneId"] = "Europe/Belgrade"
-                }));
+            var settings = new Dictionary<string, string?>
+            {
+                ["Database:AutoMigrate"] = "false",
+                ["StartupReadiness:GateApiTraffic"] = "false",
+                ["PROCESS_TYPE"] = "web",
+                ["Workers:Enabled"] = "false",
+                ["AnalyticsCache:Provider"] = analyticsCacheProvider,
+                ["AnalyticsDecisionBoardSectionTiming:Enabled"] = "true",
+                ["Analytics:AllowLoopbackInProduction"] = "true",
+                ["ConnectionStrings:DefaultConnection"] = connectionString,
+                ["ConnectionStrings:AnalyticsConnection"] = connectionString,
+                ["ConnectionStrings:OpenProductTrainingConnection"] = connectionString,
+                ["DailySales:TimeZoneId"] = "Europe/Belgrade"
+            };
+
+            // Program.cs reads cache provider, loopback policy and process type from builder.Configuration
+            // before WebApplicationFactory applies ConfigureAppConfiguration sources. UseSetting reaches that
+            // early configuration, so CI (ASPNETCORE_ENVIRONMENT=Testing) gets the same provider as local runs
+            // instead of silently resolving the non-development Redis/Hybrid default.
+            foreach (var (key, value) in settings)
+                builder.UseSetting(key, value);
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
 
             if (loggerProvider is not null)
                 builder.ConfigureLogging(logging =>
