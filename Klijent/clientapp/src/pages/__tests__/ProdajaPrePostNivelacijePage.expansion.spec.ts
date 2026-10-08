@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { reconcilePrePostExpandedVendorKey } from "../ProdajaPrePostNivelacijePage";
+import { decisionColumns, reconcilePrePostExpandedVendorKey } from "../ProdajaPrePostNivelacijePage";
+import { buildAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 
 describe("Pre/Post expanded vendor reconciliation", () => {
   it("keeps the expanded vendor when it remains in the refetched result", () => {
@@ -16,5 +17,40 @@ describe("Pre/Post expanded vendor reconciliation", () => {
 
   it("keeps an empty expansion empty", () => {
     expect(reconcilePrePostExpandedVendorKey(null, ["id:7"])).toBeNull();
+  });
+});
+
+describe("Pre/Post full-detail export projection", () => {
+  it("keeps split metrics unavailable when the vendor row has no comparable window", () => {
+    const row = {
+      vendorName: "Dobavljač",
+      hasComparableSalesWindow: false,
+      preRevenue: 1_000,
+      postRevenue: 1_200,
+      preQty: 10,
+      postQty: 12,
+      changeRevenue: 200,
+      changeQty: 2,
+      avgCoveragePre30: 0.8,
+      avgCoveragePost30: 0.7,
+    };
+    const snapshot = buildAnalyticsDetailSnapshot({
+      table: "nivelacije-pre-post",
+      recordId: "vendor:1",
+      title: row.vendorName,
+      columns: decisionColumns as never,
+      row: row as never,
+    });
+
+    expect(snapshot.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "hasComparableSalesWindow", value: "Ne" }),
+      expect.objectContaining({ key: "preRevenue", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "postRevenue", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "preQty", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "postQty", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "changeRevenue", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "changeQty", value: "Nije dostupno" }),
+      expect.objectContaining({ key: "avgCoveragePre30", value: "Nije dostupno" }),
+    ]));
   });
 });

@@ -880,6 +880,15 @@ describe("SupplierFootwearAnalyticsPage", () => {
     expect(saveSpy).toHaveBeenCalledWith(expect.objectContaining({
       recordId: "row:1",
     }));
+    const snapshot = saveSpy.mock.calls.at(-1)?.[0];
+    expect(snapshot?.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "preRevenue", value: "500 RSD" }),
+      expect.objectContaining({ key: "postRevenue", value: "900 RSD" }),
+      expect.objectContaining({ key: "preQty", value: "5" }),
+      expect.objectContaining({ key: "postQty", value: "6" }),
+      expect.objectContaining({ key: "avgCoveragePre30", value: "80,00%" }),
+      expect.objectContaining({ key: "hasComparableSalesWindow", value: "Da" }),
+    ]));
 
     saveSpy.mockRestore();
   });

@@ -5558,10 +5558,10 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 
 ### Owner export/detail recovery 2026-10-08
 
-- Re-entered `PARTIAL -> IN_PROGRESS` from fresh `origin/main` `d26b5dd2135be39727554758f37777a0f723d059` under the existing same-owner RQ140 claim; a focused review found a concrete export/detail omission on the Supplier and Shoe Type pages. No other RQ140 owner was active and the scope remains disjoint from Q83 raw SQL and STAB16 deployed proof.
-- Added observed and comparable revenue/quantity, impact/coverage, comparable cohort count and signal note fields to each existing decision projection; no formula, API, SQL or recommendation logic changed.
-- Focused premium page proof passed: 2 files / 78 tests. `npm run check:analytics-guardrails` passed encoding, self-test, baseline scan and TypeScript typecheck after updating the three existing Supplier exception line anchors shifted by the added fields (no exception added or removed).
-- This closes only the local Supplier/Shoe Type detail/export slice. Remaining all-route/report parity and STAB16-authorized deployed DB/schema/refresh/browser proof remain open; keep RQ140 PARTIAL.
+- Re-entered `PARTIAL -> IN_PROGRESS` from fresh `origin/main` `d26b5dd2135be39727554758f37777a0f723d059` under the existing same-owner RQ140 claim. A focused audit found a concrete full-detail/export omission on Supplier, Shoe Type, Color and Supplier Footwear, plus an unavailable-value trust mismatch on Vendor Pre/Post. No other RQ140 owner was active; raw SQL remains Q83-owned and deployed proof remains STAB16-owned.
+- Added observed and comparable revenue/quantity, impact/coverage, cohort and signal fields to the existing decision projections. Vendor Pre/Post full-detail export now uses the existing comparability gate for revenue, quantity and change values; no formula, API, SQL or recommendation logic changed.
+- Focused consumer proof passed: 5 files / 127 tests. `npm run check:analytics-guardrails` passed encoding, self-test, baseline scan and TypeScript typecheck after updating only six existing line anchors shifted by the added projection fields (three Supplier, three Supplier Footwear; no exception added or removed).
+- The local consumer audit found no other page source that consumes these split fields; exact STAB16-authorized deployed DB/schema/refresh/browser proof remains open, so keep RQ140 PARTIAL after final delivery.
 - Run log: `.ai/runs/2026-10-08-RQ140-evidence.md`; Evidence state: pending final-main verification and post-close dependency cascade.
 
 ### Routing correction

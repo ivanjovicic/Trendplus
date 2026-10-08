@@ -942,5 +942,8 @@ describe("ColorSalesStatsPage", () => {
     expect(snapshot?.fields.some((field) => field.key === "comparablePreQuantity" && field.value === "9 kom")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "comparablePostQuantity" && field.value === "3 kom")).toBe(true);
     expect(snapshot?.fields.some((field) => field.key === "prePostNivelacijaRevenueImpactPct" && field.value === "Nije dostupno")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "preNivelacijePromet" && field.value === "90.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "posleNivelacijePromet" && field.value === "30.000 RSD")).toBe(true);
+    expect(snapshot?.fields.some((field) => field.key === "prePostNivelacijaRevenueCoveragePct")).toBe(true);
   });
 });

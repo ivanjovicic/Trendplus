@@ -101,13 +101,31 @@ function rowHasComparableEvidence(row: VendorSalesNivelacijaVendorStat): boolean
 
 export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljač", dataType: "text" },
+  { key: "preRevenue", header: "Promet pre", dataType: "currency", getValue: (row) => comparableMetric(row.preRevenue, rowHasComparableEvidence(row)) },
   { key: "postRevenue", header: "Promet", dataType: "currency", getValue: (row) => comparableMetric(row.postRevenue, rowHasComparableEvidence(row)) },
+  { key: "preQty", header: "Količina pre", dataType: "number", getValue: (row) => comparableMetric(row.preQty, rowHasComparableEvidence(row)) },
+  { key: "postQty", header: "Količina posle", dataType: "number", getValue: (row) => comparableMetric(row.postQty, rowHasComparableEvidence(row)) },
+  { key: "changeRevenue", header: "Promena prometa", dataType: "currency", getValue: (row) => comparableMetric(row.changeRevenue, rowHasComparableEvidence(row)) },
+  { key: "changeQty", header: "Promena količine", dataType: "number", getValue: (row) => comparableMetric(row.changeQty, rowHasComparableEvidence(row)) },
+  { key: "hasComparableSalesWindow", header: "Uporedivi prodajni prozori", dataType: "text" },
+  { key: "avgCoveragePre30", header: "Pokriće prodaje pre %", dataType: "percent", getValue: (row) => {
+    const coverage = comparableMetric(row.avgCoveragePre30, rowHasComparableEvidence(row));
+    return coverage == null ? null : coverage * 100;
+  } },
+  { key: "avgCoveragePost30", header: "Pokriće prodaje posle %", dataType: "percent", getValue: (row) => {
+    const coverage = comparableMetric(row.avgCoveragePost30, rowHasComparableEvidence(row));
+    return coverage == null ? null : coverage * 100;
+  } },
+  { key: "comparableArticleCount", header: "Artikala u uporedivoj kohorti", dataType: "number" },
+  { key: "articleCount", header: "Artikala", dataType: "number" },
+  { key: "activeArticlesCount", header: "Aktivnih artikala", dataType: "number" },
   { key: "sharePct", header: "Udeo %", dataType: "percent" },
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "trendBaselineLabel", header: "Osnova trenda", dataType: "text" },
   { key: "status", header: "Efekat promene cene", dataType: "text" },
+  { key: "statusReason", header: "Razlog signala", dataType: "text" },
   { key: "confidencePct", header: "Poverenje %", dataType: "percent", getValue: (row) => row.recommendationAllowed ? row.confidencePct : null },
 ];
 

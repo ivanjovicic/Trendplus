@@ -290,10 +290,13 @@ const COMMAND_TOOLTIP_LABEL_STYLE = {
   color: "var(--dashboard-tooltip-label, var(--text-primary))",
 };
 
-const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
+export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "vendorName", header: "Dobavljač", dataType: "text" },
-  { key: "preRevenue", header: "Promet pre", dataType: "currency" },
-  { key: "postRevenue", header: "Promet posle", dataType: "currency" },
+  { key: "hasComparableSalesWindow", header: "Uporedivi prodajni prozori", dataType: "text" },
+  { key: "preRevenue", header: "Promet pre", dataType: "currency", getValue: (row) => trustedMetric(row.preRevenue, row) },
+  { key: "postRevenue", header: "Promet posle", dataType: "currency", getValue: (row) => trustedMetric(row.postRevenue, row) },
+  { key: "preQty", header: "Količina pre", dataType: "number", getValue: (row) => trustedMetric(row.preQty, row) },
+  { key: "postQty", header: "Količina posle", dataType: "number", getValue: (row) => trustedMetric(row.postQty, row) },
   {
     key: "absoluteChangeSharePct",
     header: "Udeo u apsolutnoj promeni %",
@@ -301,7 +304,16 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
     dataType: "percent",
     getValue: (row) => row.sharePctAvailable ? row.absoluteChangeSharePct : null,
   },
-  { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
+  { key: "changeRevenue", header: "Promena prometa", dataType: "currency", getValue: (row) => trustedMetric(row.changeRevenue, row) },
+  { key: "changeQty", header: "Promena količine", dataType: "number", getValue: (row) => trustedMetric(row.changeQty, row) },
+  { key: "avgCoveragePre30", header: "Pokriće prodaje pre %", dataType: "percent", getValue: (row) => {
+    const coverage = trustedMetric(row.avgCoveragePre30, row);
+    return coverage == null ? null : coverage * 100;
+  } },
+  { key: "avgCoveragePost30", header: "Pokriće prodaje posle %", dataType: "percent", getValue: (row) => {
+    const coverage = trustedMetric(row.avgCoveragePost30, row);
+    return coverage == null ? null : coverage * 100;
+  } },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
   { key: "trendBaselineLabel", header: "Osnova trenda", dataType: "text" },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
