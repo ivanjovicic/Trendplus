@@ -253,7 +253,7 @@ Vendor pre/post API supports `storeId` and `dataScope`, but the page does not ex
 
 ## RQ55 - Supplier hidden-unknown denominator semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ34/RQ46 or explicit owner unblocking (recorded below after current Supplier contract review)
 Priority: P1
 Type: frontend-ux/tests
@@ -303,7 +303,23 @@ Promoted and claimed after RQ56 delivery at `aaeed5168ec538a7c03ca06124049f4b707
 
 ### Completion 2026-10-08
 
-Preserved the backend declared-population positive-net-revenue denominator consistently across supplier row shares, top-five concentration and the concentration chart. When unknown suppliers are hidden while included in the denominator, the UI explains why visible shares can total under 100%; CSV/detail metadata records the denominator cohort and unknown-revenue share. Focused page tests, typecheck, guardrails, encoding and governance validators passed. Implementation SHA `739eb0c5f38e17dfcaaf19eebe66c550c14505a3` is verified on `origin/main`. Run log: `.ai/runs/2026-10-08-RQ55-evidence.md`; Evidence state: pending post-close routing synchronization.
+- Date: 2026-10-08
+- Status: DONE
+- Completion: preserved the backend declared-population positive-net-revenue denominator for supplier row shares, top-five concentration, chart and export metadata, with explicit hidden-unknown explanation.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`, focused page specs, guardrail baseline, owner queues and roadmap.
+- Contract/runtime behavior changed: frontend disclosure and export metadata only; backend denominator semantics remain authoritative.
+- Checks run: focused page tests 53/53; typecheck; analytics guardrails; encoding; prompt/instruction/planning governance; diff check. Exact commands and CI evidence are in the run log.
+- Checks not run: full frontend/backend suites and authenticated browser/API smoke.
+- Run log: `.ai/runs/2026-10-08-RQ55-evidence.md`
+- Evidence state: pending post-close routing synchronization
+- Delivery mode: direct-main
+- Main commit SHA: `739eb0c5f38e17dfcaaf19eebe66c550c14505a3`
+- Main verification: verified contained by refreshed `origin/main` `137ce06b7a93aae2fcbcb73f96e024b6f8572277`; post-close metadata delivery is separate.
+- Missed: authenticated live Supplier page/export smoke.
+- Follow-up: post-close recovery and current successor selection.
+- Residual risk: no authenticated live page/export proof; no Actions run was visible for the RQ55 implementation SHA at inspection.
+- Next: pending post-close recovery.
+- Prompt defect / scope repair: RQ34/RQ46 legacy Insight Studio/general export prerequisites were explicitly unblocked for this Supplier-only scope after current DTO/page-owned metadata review.
 
 ## RQ56 - Total cost fallback guardrail
 
