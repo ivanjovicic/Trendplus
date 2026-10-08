@@ -77,7 +77,7 @@
     {
       "file": "src/pages/PilotReadinessPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 488,
+      "line": 494,
       "reason": "Existing pilot-readiness count fallback requires a reviewed unavailable-value exception."
     },
     {
@@ -125,19 +125,19 @@
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 2044,
+      "line": 2068,
       "reason": "Existing supplier KPI fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 952,
+      "line": 954,
       "reason": "Supplier scope changes must clear stale rows and trust metadata before the next scope-bound request completes."
     },
     {
       "file": "src/pages/SupplierSalesStatsPage.tsx",
       "rule": "page_reduce_kpi",
-      "line": 640,
+      "line": 642,
       "reason": "Existing supplier aggregation predates the backend KPI ownership contract."
     },
     {
