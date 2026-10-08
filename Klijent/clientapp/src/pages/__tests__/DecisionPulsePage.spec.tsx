@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 import * as decisionPulseApi from "../../services/decisionPulseApi";
 import DecisionPulsePage from "../DecisionPulsePage";
 
@@ -92,6 +92,64 @@ describe("DecisionPulsePage", () => {
       "accepted",
       expect.objectContaining({ storeId: 4, dataScope: "imported" }),
     ));
+  });
+
+  it("forwards the shared period and scope from the URL to the feed request", async () => {
+    const getFeed = vi.spyOn(decisionPulseApi, "getDecisionPulse");
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-pulse?fromDate=2026-08-01&toDate=2026-08-20&storeId=4&supplierId=7&dataScope=imported"]}>
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getFeed).toHaveBeenCalledWith({
+      fromDate: "2026-08-01",
+      toDate: "2026-08-20",
+      storeId: 4,
+      supplierId: 7,
+      dataScope: "imported",
+    }));
+  });
+
+  it("clears old items on filter changes and ignores an older in-flight response", async () => {
+    let resolveFirst!: (value: Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>) => void;
+    let resolveSecond!: (value: Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>) => void;
+    const first = new Promise<Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>>((resolve) => { resolveFirst = resolve; });
+    const second = new Promise<Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>>((resolve) => { resolveSecond = resolve; });
+    const getFeed = vi.spyOn(decisionPulseApi, "getDecisionPulse").mockReturnValueOnce(first).mockReturnValueOnce(second);
+    function ChangePeriod() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate("?fromDate=2026-08-02&toDate=2026-08-20")}>Promeni period</button>;
+    }
+    const makeResponse = (id: string) => ({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: null,
+      periodToUtc: null,
+      tenantScope: "n/a_dedicated",
+      suppressedCount: 0,
+      items: [{
+        id, sourceType: "product", sourceKey: id, title: id, whySummary: "Provera", reasonCodes: [],
+        recommendationStatus: "WATCH", recommendationLabel: "Proveri", dataQualityStatus: "good",
+        inputFreshnessStatus: "fresh", deepLink: "/analytics/products", generatedAtUtc: "2026-08-20T12:00:00Z",
+        tenantScope: "n/a_dedicated",
+      }],
+      meta: { success: true },
+    }) as Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>;
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-pulse?fromDate=2026-08-01&toDate=2026-08-20"]}>
+        <ChangePeriod />
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(getFeed).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Promeni period" }));
+    await waitFor(() => expect(getFeed).toHaveBeenCalledTimes(2));
+    resolveSecond(makeResponse("new-period"));
+    expect(await screen.findByText("new-period")).toBeInTheDocument();
+    resolveFirst(makeResponse("old-period"));
+    await waitFor(() => expect(screen.queryByText("old-period")).not.toBeInTheDocument());
+    expect(screen.getByText("new-period")).toBeInTheDocument();
   });
 
   it("uses safe Serbian fallbacks for unknown trust and scope codes", async () => {

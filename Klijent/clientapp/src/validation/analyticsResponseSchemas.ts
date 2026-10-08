@@ -51,6 +51,8 @@ const analyticsContextDescriptorSchema = z.object({
   observedPeriodToUtc: validDate.nullable().optional(),
   requestedDataScope: z.string().nullable().optional(),
   effectiveDataScope: z.string().nullable().optional(),
+  notAppliedDimensions: z.array(z.string()).optional(),
+  suppressedSources: z.array(z.string()).optional(),
   dataScopeSource: z.string().nullable().optional(),
   populationKey: z.string().nullable().optional(),
   populationFilters: z.record(z.string(), z.string().nullable()).optional(),

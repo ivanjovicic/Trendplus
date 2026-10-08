@@ -50,6 +50,23 @@ public sealed class DecisionPulseService
         string? dataScope,
         CancellationToken ct)
     {
+        var requestedPeriodFromUtc = fromUtc;
+        var requestedPeriodToUtc = toUtc;
+        if (!TryNormalizeDataScope(dataScope, out var effectiveDataScope))
+        {
+            var invalidScope = DecisionPulseProjector.Project(
+                null,
+                sourceSucceeded: false,
+                failureCategory: "unsupported_data_scope",
+                failureMessage: "Izabrani opseg podataka nije podržan; pregled nije proširen na druge podatke.");
+            var invalidScopeResponse = ToResponse(
+                invalidScope, null, null, null, [], [], null, null, storeId: storeId, supplierId: supplierId,
+                requestedPeriodFromUtc: requestedPeriodFromUtc, requestedPeriodToUtc: requestedPeriodToUtc);
+            invalidScopeResponse.Meta.RequestedDataScope = dataScope;
+            invalidScopeResponse.Meta.EffectiveDataScope = null;
+            return invalidScopeResponse;
+        }
+
         string? defaultPeriodBasis = null;
         DateTime? resolvedObservedHorizonUtc = null;
         var currentness = "latest_known";
@@ -69,7 +86,7 @@ public sealed class DecisionPulseService
         if (!fromUtc.HasValue && !toUtc.HasValue)
         {
             var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
-                _trendDb, storeId, supplierId, dataScope, ct);
+                _trendDb, storeId, supplierId, effectiveDataScope, ct);
             if (defaultPeriod is null)
             {
                 var unavailable = DecisionPulseProjector.Project(
@@ -77,7 +94,9 @@ public sealed class DecisionPulseService
                     sourceSucceeded: false,
                     failureCategory: "source_horizon_unavailable",
                     failureMessage: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.");
-                return ToResponse(unavailable, null, null, null, [], [], "source_horizon_unavailable", null, currentness);
+                return ToResponse(unavailable, null, null, null, [], [], "source_horizon_unavailable", null, currentness,
+                    storeId, supplierId, effectiveDataScope, requestedPeriodFromUtc, requestedPeriodToUtc, false,
+                    suppressInventoryForRequestedPeriod: false, requestedDataScope: dataScope);
             }
 
             fromUtc = defaultPeriod.FromUtc;
@@ -86,14 +105,15 @@ public sealed class DecisionPulseService
             defaultPeriodBasis = "source_horizon";
         }
 
-        var periodTo = (toUtc ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
-        var periodFrom = (fromUtc ?? periodTo.Date.AddDays(-29)).Date;
+        var (periodFrom, periodTo) = NormalizePeriod(fromUtc, toUtc, DateTime.UtcNow);
         var candidates = new List<DecisionPulseCandidate>();
         var sourceFailures = new List<string>();
         var sourceFailureMessages = new List<string>();
         DateTime? generatedAtUtc = null;
         string? comparisonUnavailableReasonCode = null;
 
+        const bool inventoryPeriodNotApplied = true;
+        var suppressInventoryForRequestedPeriod = requestedPeriodFromUtc.HasValue || requestedPeriodToUtc.HasValue;
         try
         {
             var pdc = await CachedAnalyticsEndpoints.BuildProductDecisionCenterAsync(
@@ -103,7 +123,7 @@ public sealed class DecisionPulseService
                 storeId,
                 supplierId,
                 top: Math.Clamp(_options.MaxCandidates, 10, 500),
-                dataScope ?? string.Empty,
+                effectiveDataScope,
                 ct,
                 observedHorizonUtc: resolvedObservedHorizonUtc);
 
@@ -121,7 +141,7 @@ public sealed class DecisionPulseService
             _ = ex;
         }
 
-        try
+        if (!suppressInventoryForRequestedPeriod) try
         {
             var inventoryWorkflow = await InventoryEndpoints.GetInventoryActionWorkflowAsync(
                 _cache,
@@ -132,7 +152,7 @@ public sealed class DecisionPulseService
                 supplierId,
                 search: null,
                 ct,
-                dataScope);
+                effectiveDataScope);
 
             candidates.AddRange(
                 (inventoryWorkflow.Items ?? [])
@@ -163,7 +183,7 @@ public sealed class DecisionPulseService
                     excludeOosBeforeMarkdown: false,
                     supplierId,
                     storeId,
-                    dataScope,
+                    effectiveDataScope,
                     out var supplierFilters,
                     out var validationError))
             {
@@ -197,11 +217,11 @@ public sealed class DecisionPulseService
                 sourceSucceeded: false,
                 failureCategory: sourceFailures[0],
                 failureMessage: sourceFailureMessages.FirstOrDefault() ?? "Decision Pulse izvori nisu dostupni.");
-            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, dataScope);
+            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, effectiveDataScope, requestedPeriodFromUtc, requestedPeriodToUtc, inventoryPeriodNotApplied, suppressInventoryForRequestedPeriod, dataScope);
         }
 
         var successProjection = DecisionPulseProjector.Project(candidates, sourceSucceeded: true);
-        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, dataScope);
+        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, effectiveDataScope, requestedPeriodFromUtc, requestedPeriodToUtc, inventoryPeriodNotApplied, suppressInventoryForRequestedPeriod, dataScope);
     }
 
     public Task<DecisionPulseEmailResultDto> SendEmailAsync(
@@ -363,7 +383,39 @@ public sealed class DecisionPulseService
             dto.ExpectedImpactRsd,
             dto.PriorityEvidence);
 
-    private static DecisionPulseResponseDto ToResponse(
+    internal static (DateTime FromUtc, DateTime ToUtc) NormalizePeriod(
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        DateTime utcNow)
+    {
+        // Date-only filters use inclusive UTC calendar days; downstream Pulse sources receive these same bounds.
+        var to = (toUtc ?? utcNow).Date.AddDays(1).AddTicks(-1);
+        var from = (fromUtc ?? to.Date.AddDays(-29)).Date;
+        return (from, to);
+    }
+
+    internal static bool TryNormalizeDataScope(string? requestedScope, out string effectiveScope)
+    {
+        if (string.IsNullOrWhiteSpace(requestedScope))
+        {
+            effectiveScope = "all";
+            return true;
+        }
+
+        switch (requestedScope.Trim().ToLowerInvariant())
+        {
+            case "all":
+            case "existing":
+            case "imported":
+                effectiveScope = requestedScope.Trim().ToLowerInvariant();
+                return true;
+            default:
+                effectiveScope = string.Empty;
+                return false;
+        }
+    }
+
+    internal static DecisionPulseResponseDto ToResponse(
         DecisionPulseProjection projection,
         DateTime? periodFrom,
         DateTime? periodTo,
@@ -375,7 +427,12 @@ public sealed class DecisionPulseService
         string currentness = "latest_known",
         int? storeId = null,
         int? supplierId = null,
-        string? dataScope = null)
+        string? dataScope = null,
+        DateTime? requestedPeriodFromUtc = null,
+        DateTime? requestedPeriodToUtc = null,
+        bool inventoryPeriodNotApplied = false,
+        bool suppressInventoryForRequestedPeriod = false,
+        string? requestedDataScope = null)
     {
         var items = projection.Items.Select(item => new DecisionPulseItemDto(
             item.Id,
@@ -388,7 +445,7 @@ public sealed class DecisionPulseService
             item.RecommendationLabel,
             item.DataQualityStatus,
             item.InputFreshnessStatus,
-            AddContext(item.DeepLink, storeId, supplierId, dataScope),
+            AddContext(item.DeepLink, storeId, supplierId, dataScope, periodFrom, periodTo),
             item.GeneratedAtUtc,
             item.TenantScope,
             item.AsOfUtc,
@@ -398,6 +455,24 @@ public sealed class DecisionPulseService
 
         var meta = BuildResponseMeta(projection, generatedAtUtc, sourceFailures, sourceFailureMessages);
         meta.DefaultPeriodBasis = defaultPeriodBasis;
+        meta.RequestedPeriodFromUtc = requestedPeriodFromUtc;
+        meta.RequestedPeriodToUtc = requestedPeriodToUtc;
+        meta.EffectivePeriodFromUtc = periodFrom;
+        meta.EffectivePeriodToUtc = periodTo;
+        meta.RequestedDataScope = requestedDataScope ?? dataScope;
+        _ = TryNormalizeDataScope(dataScope, out var effectiveDataScope);
+        meta.EffectiveDataScope = effectiveDataScope;
+        meta.NotAppliedDimensions = inventoryPeriodNotApplied ? ["period:inventory"] : [];
+        meta.SuppressedSources = suppressInventoryForRequestedPeriod ? ["inventory"] : [];
+        if (inventoryPeriodNotApplied && meta.Success)
+        {
+            meta.IsPartial = true;
+            meta.WarningCode ??= "PULSE_FILTER_NOT_APPLIED";
+            meta.WarningMessage ??= suppressInventoryForRequestedPeriod
+                ? "Inventarni izvor ne podržava izabrani period i izostavljen je iz pregleda."
+                : "Inventarni izvor koristi sopstveni signalni period; izabrani period nije primenjen.";
+            meta.Message = string.Join(" ", new[] { meta.Message, meta.WarningMessage }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        }
         meta.ComparisonUnavailableReasonCode = comparisonUnavailableReasonCode;
 
         return new DecisionPulseResponseDto(
@@ -412,9 +487,17 @@ public sealed class DecisionPulseService
             projection.Items.Select(item => item.AsOfUtc).Where(value => value.HasValue).Max());
     }
 
-    private static string AddContext(string path, int? storeId, int? supplierId, string? dataScope)
+    private static string AddContext(
+        string path,
+        int? storeId,
+        int? supplierId,
+        string? dataScope,
+        DateTime? fromDate,
+        DateTime? toDate)
     {
         var query = new List<string>();
+        if (fromDate.HasValue && !path.Contains("fromDate=", StringComparison.OrdinalIgnoreCase)) query.Add($"fromDate={fromDate.Value:yyyy-MM-dd}");
+        if (toDate.HasValue && !path.Contains("toDate=", StringComparison.OrdinalIgnoreCase)) query.Add($"toDate={toDate.Value:yyyy-MM-dd}");
         if (storeId.HasValue && !path.Contains("storeId=", StringComparison.OrdinalIgnoreCase)) query.Add($"storeId={storeId.Value}");
         if (supplierId.HasValue && !path.Contains("supplierId=", StringComparison.OrdinalIgnoreCase)) query.Add($"supplierId={supplierId.Value}");
         if (!string.IsNullOrWhiteSpace(dataScope) && !path.Contains("dataScope=", StringComparison.OrdinalIgnoreCase)) query.Add($"dataScope={Uri.EscapeDataString(dataScope)}");

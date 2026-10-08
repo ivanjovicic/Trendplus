@@ -79,6 +79,14 @@ public sealed class DecisionPulseResponseMetaDto
     public string? EmptyReason { get; set; }
     public string? CorrelationId { get; set; }
     public string? DefaultPeriodBasis { get; set; }
+    public DateTime? RequestedPeriodFromUtc { get; set; }
+    public DateTime? RequestedPeriodToUtc { get; set; }
+    public DateTime? EffectivePeriodFromUtc { get; set; }
+    public DateTime? EffectivePeriodToUtc { get; set; }
+    public string? RequestedDataScope { get; set; }
+    public string? EffectiveDataScope { get; set; }
+    public string[] NotAppliedDimensions { get; set; } = [];
+    public string[] SuppressedSources { get; set; } = [];
     public string? ComparisonUnavailableReasonCode { get; set; }
     public string? Message { get; set; }
     public DateTime GeneratedAtUtc { get; set; } = DateTime.UtcNow;

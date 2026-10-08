@@ -111,6 +111,8 @@ export interface AnalyticsResponseMeta {
   effectivePeriodToUtc?: string | null;
   requestedDataScope?: string | null;
   effectiveDataScope?: string | null;
+  notAppliedDimensions?: string[];
+  suppressedSources?: string[];
   provenanceBasis?: string | null;
   attributionBasis?: string | null;
   attributionCoveragePct?: number | null;

@@ -21,6 +21,72 @@ namespace Api.Tests;
 public sealed class DecisionPulseServiceTests
 {
     [Fact]
+    public void NormalizePeriod_UsesInclusiveWholeDayBoundariesForRequestedDates()
+    {
+        var (from, to) = DecisionPulseService.NormalizePeriod(
+            new DateTime(2026, 8, 1, 14, 30, 0, DateTimeKind.Utc),
+            new DateTime(2026, 8, 20, 2, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), from);
+        Assert.Equal(new DateTime(2026, 8, 20, 0, 0, 0, DateTimeKind.Utc).AddDays(1).AddTicks(-1), to);
+    }
+
+    [Fact]
+    public async Task GetFeedAsync_RejectsUnknownScopeInsteadOfBroadeningToAll()
+    {
+        var (service, _) = CreateService([]);
+        var response = await service.GetFeedAsync(null, null, null, null, "private-scope-code", CancellationToken.None);
+
+        Assert.False(response.Meta.Success);
+        Assert.Equal("unsupported_data_scope", response.Meta.ErrorCode);
+        Assert.Equal("private-scope-code", response.Meta.RequestedDataScope);
+        Assert.Null(response.Meta.EffectiveDataScope);
+        Assert.Contains("nije proširen", response.Meta.ErrorMessage);
+    }
+
+    [Fact]
+    public void ToResponse_ReportsRequestedAndEffectiveFiltersAndUnsupportedInventoryPeriod()
+    {
+        var projection = new DecisionPulseProjection(
+            true,
+            null,
+            null,
+            Array.Empty<DecisionPulseItem>(),
+            0,
+            DecisionPulseProjector.DedicatedTenantScope);
+        var requestedFrom = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var requestedTo = new DateTime(2026, 8, 20, 0, 0, 0, DateTimeKind.Utc);
+        var effectiveTo = requestedTo.Date.AddDays(1).AddTicks(-1);
+
+        var response = DecisionPulseService.ToResponse(
+            projection,
+            requestedFrom,
+            effectiveTo,
+            null,
+            [],
+            [],
+            null,
+            null,
+            dataScope: "imported",
+            requestedPeriodFromUtc: requestedFrom,
+            requestedPeriodToUtc: requestedTo,
+            inventoryPeriodNotApplied: true,
+            suppressInventoryForRequestedPeriod: true);
+
+        Assert.Equal(requestedFrom, response.Meta.RequestedPeriodFromUtc);
+        Assert.Equal(requestedTo, response.Meta.RequestedPeriodToUtc);
+        Assert.Equal(requestedFrom, response.Meta.EffectivePeriodFromUtc);
+        Assert.Equal(effectiveTo, response.Meta.EffectivePeriodToUtc);
+        Assert.Equal("imported", response.Meta.RequestedDataScope);
+        Assert.Equal("imported", response.Meta.EffectiveDataScope);
+        Assert.Equal(["period:inventory"], response.Meta.NotAppliedDimensions);
+        Assert.Equal(["inventory"], response.Meta.SuppressedSources);
+        Assert.True(response.Meta.IsPartial);
+        Assert.Equal("PULSE_FILTER_NOT_APPLIED", response.Meta.WarningCode);
+    }
+
+    [Fact]
     public void BuildResponseMeta_MarksEmptyProjectionAsPartialWhenSomeSourcesFailed()
     {
         var projection = new DecisionPulseProjection(

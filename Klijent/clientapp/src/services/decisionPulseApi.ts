@@ -90,7 +90,7 @@ export async function getDecisionPulseDispositions(
 export async function recordDecisionPulseDisposition(
   item: DecisionPulseItem,
   disposition: DecisionPulseDisposition,
-  context?: { storeId?: number; supplierId?: number; dataScope?: string },
+  context?: { fromDate?: string; toDate?: string; storeId?: number; supplierId?: number; dataScope?: string },
 ): Promise<void> {
   const adminKey = ensureExportAdminKey("evidentiranje vlasničke odluke");
   if (!adminKey) throw new Error("Evidentiranje je otkazano.");
@@ -118,6 +118,8 @@ export async function recordDecisionPulseDisposition(
       inputFreshnessStatus: item.inputFreshnessStatus,
       metadataJson: JSON.stringify({
         source: "owner_decision_digest",
+        fromDate: context?.fromDate,
+        toDate: context?.toDate,
         asOfUtc: item.asOfUtc ?? null,
         evidenceBasis: item.evidenceBasis ?? "source_latest_known",
         disposition,

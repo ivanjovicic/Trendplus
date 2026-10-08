@@ -57,7 +57,7 @@ function downloadDigestCsv(
   feed: DecisionPulseResponse,
   dataScope: string | null,
 ) {
-  const columns = ["Odluka", "Izvor", "Zašto", "Preporučena akcija", "Kvalitet dokaza", "Svežina signala", "Prema stanju do (UTC)", "Osnova dokaza", "Očekivani uticaj (RSD)", "Period od (UTC)", "Period do (UTC)", "Pregled kreiran (UTC)", "Poslednje uspešno osveženje (UTC)", "Dostupnost izvora", "Opseg", "Obuhvat", "Izostavljeno", "Link"];
+  const columns = ["Odluka", "Izvor", "Zašto", "Preporučena akcija", "Kvalitet dokaza", "Svežina signala", "Prema stanju do (UTC)", "Osnova dokaza", "Očekivani uticaj (RSD)", "Traženi period od (UTC)", "Traženi period do (UTC)", "Efektivni period od (UTC)", "Efektivni period do (UTC)", "Pregled kreiran (UTC)", "Poslednje uspešno osveženje (UTC)", "Dostupnost izvora", "Neprimenjeni filteri", "Izostavljeni izvori", "Opseg", "Obuhvat", "Izostavljeno", "Link"];
   const rows = items.map((item) => [
     item.title,
     sourceLabel(item.sourceType),
@@ -68,11 +68,15 @@ function downloadDigestCsv(
     item.asOfUtc ?? "",
     evidenceBasisLabel(item.evidenceBasis),
     item.expectedImpactRsd == null ? "" : String(item.expectedImpactRsd),
-    feed.periodFromUtc ?? "",
-    feed.periodToUtc ?? "",
+    feed.meta.requestedPeriodFromUtc ?? "",
+    feed.meta.requestedPeriodToUtc ?? "",
+    feed.meta.effectivePeriodFromUtc ?? feed.periodFromUtc ?? "",
+    feed.meta.effectivePeriodToUtc ?? feed.periodToUtc ?? "",
     feed.generatedAtUtc,
     feed.meta.lastRefreshAtUtc ?? "",
     sourceAvailabilityLabel(feed),
+    feed.meta.notAppliedDimensions?.join("; ") ?? "",
+    feed.meta.suppressedSources?.join("; ") ?? "",
     scopeLabel(dataScope),
     tenantScopeLabel(feed.tenantScope),
     String(feed.suppressedCount),
@@ -118,9 +122,15 @@ export default function DecisionPulsePage() {
     setError(null);
 
     const params = new URLSearchParams(routeContext);
+    const fromDate = params.get("fromDate") ?? undefined;
+    const toDate = params.get("toDate") ?? undefined;
     const storeId = Number(params.get("storeId"));
     const supplierId = Number(params.get("supplierId"));
+    setFeed(null);
+    setDispositions({});
     getDecisionPulse({
+      ...(fromDate ? { fromDate } : {}),
+      ...(toDate ? { toDate } : {}),
       ...(Number.isInteger(storeId) && storeId > 0 ? { storeId } : {}),
       ...(Number.isInteger(supplierId) && supplierId > 0 ? { supplierId } : {}),
       dataScope: params.get("dataScope") ?? getDataScope(),
@@ -166,9 +176,13 @@ export default function DecisionPulsePage() {
     setDispositionError(null);
     try {
       const params = new URLSearchParams(routeContext);
+      const fromDate = params.get("fromDate") ?? undefined;
+      const toDate = params.get("toDate") ?? undefined;
       const storeId = Number(params.get("storeId"));
       const supplierId = Number(params.get("supplierId"));
       await recordDecisionPulseDisposition(item, disposition, {
+        ...(fromDate ? { fromDate } : {}),
+        ...(toDate ? { toDate } : {}),
         ...(Number.isInteger(storeId) && storeId > 0 ? { storeId } : {}),
         ...(Number.isInteger(supplierId) && supplierId > 0 ? { supplierId } : {}),
         dataScope: params.get("dataScope") ?? getDataScope(),
@@ -204,9 +218,15 @@ export default function DecisionPulsePage() {
       {feed && !loading ? (
         <section className="flex flex-wrap gap-x-5 gap-y-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs text-muted" aria-label="Poreklo pregleda odluka" data-testid="decision-pulse-feed-provenance">
           <span>Period prikaza: {formatDate(feed.periodFromUtc, "nije dostupan")} – {formatDate(feed.periodToUtc, "nije dostupan")}</span>
+          {feed.meta.requestedPeriodFromUtc || feed.meta.requestedPeriodToUtc ? (
+            <span>Traženi period: {formatDate(feed.meta.requestedPeriodFromUtc, "početak nije zadat")} – {formatDate(feed.meta.requestedPeriodToUtc, "kraj nije zadat")}</span>
+          ) : null}
           <span>Dostupnost izvora: {sourceAvailabilityLabel(feed)}</span>
           <span>Obuhvat: {tenantScopeLabel(feed.tenantScope)}</span>
           <span>Opseg podataka: {scopeLabel(activeDataScope)}</span>
+          {feed.meta.notAppliedDimensions?.includes("period:inventory") ? (
+            <span>Inventarni izvor: {feed.meta.suppressedSources?.includes("inventory") ? "izostavljen za izabrani period" : "koristi sopstveni signalni period"}</span>
+          ) : null}
           <span>Pregled kreiran: {formatDateTime(feed.generatedAtUtc, "nije dostupno")}</span>
           {feed.meta.lastRefreshAtUtc ? <span>Poslednje uspešno osveženje: {formatDateTime(feed.meta.lastRefreshAtUtc, "nije dostupno")}</span> : null}
           <span>Izostavljeno: {feed.suppressedCount}</span>
