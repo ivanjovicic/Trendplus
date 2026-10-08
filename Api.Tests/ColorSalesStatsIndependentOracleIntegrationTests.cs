@@ -80,8 +80,9 @@ public sealed class ColorSalesStatsIndependentOracleIntegrationTests : IClassFix
         var secondDayTotals = await OperationsAnalyticsRawFactOracle.QueryTotalsAsync(connection, septemberSecond);
         Assert.Equal(9, firstDayTotals.SaleLineCount); // ten fixture lines in the day, less the DUG receipt.
         Assert.Equal(1, secondDayTotals.SaleLineCount); // the other Sep 2 line is KOREKCIJA.
-        Assert.DoesNotContain(firstDayBuckets.Keys, key => key == ColorIdentityPolicy.Key("Siva"));
-        Assert.Contains(secondDayBuckets.Keys, key => key == ColorIdentityPolicy.Key("Siva"));
+        var boundaryBucket = secondDayBuckets[ColorIdentityPolicy.Key("Siva")];
+        Assert.Equal(1, boundaryBucket.Units);
+        Assert.Equal(120m, boundaryBucket.Revenue);
     }
 
     private static async Task<Dictionary<string, ColorBucket>> AssertEndpointMatchesOracleAsync(
