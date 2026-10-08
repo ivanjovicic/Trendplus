@@ -242,12 +242,15 @@ function sumPositiveRevenue(rows: readonly SupplierRevenueRow[]): number | null 
   return Number.isFinite(positiveRevenue) && positiveRevenue > 0 ? positiveRevenue : null;
 }
 
-export function calculateTopSupplierRevenueShare(rows: readonly SupplierRevenueRow[]): number | null {
+export function calculateTopSupplierRevenueShare(
+  rows: readonly SupplierRevenueRow[],
+  declaredPositiveRevenueDenominator: number | null = sumPositiveRevenue(rows),
+): number | null {
   if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return null;
 
   const positiveRevenue = rows.filter((row) => row.ukupanPromet > 0);
-  const positiveRevenueBase = sumPositiveRevenue(rows);
-  if (positiveRevenue.length === 0 || positiveRevenueBase == null) return null;
+  const positiveRevenueBase = finiteOrNull(declaredPositiveRevenueDenominator);
+  if (positiveRevenue.length === 0 || positiveRevenueBase == null || positiveRevenueBase <= 0) return null;
 
   const top5Revenue = [...positiveRevenue]
     .sort((a, b) => b.ukupanPromet - a.ukupanPromet)
@@ -259,11 +262,12 @@ export function calculateTopSupplierRevenueShare(rows: readonly SupplierRevenueR
 
 export function buildSupplierConcentrationData(
   rows: readonly SupplierRevenueRow[],
+  declaredPositiveRevenueDenominator: number | null = sumPositiveRevenue(rows),
 ): Array<{ name: string; sharePct: number }> {
   if (rows.length === 0 || rows.some((row) => !Number.isFinite(row.ukupanPromet))) return [];
 
-  const positiveRevenueBase = sumPositiveRevenue(rows);
-  if (positiveRevenueBase == null) return [];
+  const positiveRevenueBase = finiteOrNull(declaredPositiveRevenueDenominator);
+  if (positiveRevenueBase == null || positiveRevenueBase <= 0) return [];
 
   const ranked = rows
     .filter((row) => row.ukupanPromet > 0)
@@ -1099,6 +1103,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   }, [activeDataScope, activeFilters.storeId, activeSupplierId]);
 
   const decisionSuppliers = useMemo(() => buildDecisionSuppliers(data), [data]);
+  const declaredPositiveRevenueDenominator = useMemo(
+    () => finiteOrNull(data?.totals.positiveNetRevenueDenominator) ?? sumPositiveRevenue(decisionSuppliers),
+    [data?.totals.positiveNetRevenueDenominator, decisionSuppliers],
+  );
+  const shareDenominatorIncludesUnknown = data?.suppliers?.[0]?.sharePctIncludesUnknown !== false;
+  const shareDenominatorLabel = shareDenominatorIncludesUnknown
+    ? "Pozitivni neto promet svih dobavljača; uključuje nepoznate"
+    : "Pozitivni neto promet poznatih dobavljača; ne uključuje nepoznate";
 
   const sortedSuppliers = useMemo(() => {
     const rows = [...decisionSuppliers];
@@ -1312,8 +1324,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   );
 
   const top5SharePct = useMemo(
-    () => calculateTopSupplierRevenueShare(concentrationRows),
-    [concentrationRows]
+    () => calculateTopSupplierRevenueShare(concentrationRows, declaredPositiveRevenueDenominator),
+    [concentrationRows, declaredPositiveRevenueDenominator]
   );
 
   const totalMarginContribution = displayProjection.totalMarginContribution;
@@ -1336,8 +1348,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     : `Ceo odgovor (${recommendationReferenceCohort.supplierCount} dobavljača; ${recommendationReferenceCohort.includesUnknown ? "uključuje" : "ne uključuje"} nepoznate)`;
 
   const concentrationData = useMemo(
-    () => buildSupplierConcentrationData(concentrationRows),
-    [concentrationRows]
+    () => buildSupplierConcentrationData(concentrationRows, declaredPositiveRevenueDenominator),
+    [concentrationRows, declaredPositiveRevenueDenominator]
   );
 
   const comparisonData = useMemo(() => {
@@ -1549,6 +1561,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       { key: "shareBasis", label: "Udeo prometa — osnova", value: data?.suppliers?.[0]?.sharePctBasis ?? "positive_net_revenue" },
       { key: "shareDenominator", label: "Udeo prometa — imenilac", value: data?.suppliers?.[0]?.sharePctDenominatorBasis ?? "positive_net_revenue_declared_population" },
       { key: "shareIncludesUnknown", label: "Nepoznati u share imenicu", value: data?.suppliers?.[0]?.sharePctIncludesUnknown === false ? "ne" : "da" },
+      { key: "shareDenominatorCohort", label: "Skup share imenioca", value: shareDenominatorLabel },
+      { key: "hiddenUnknownRevenueShare", label: "Udeo nepoznatog prometa (ceo odgovor)", value: fmtPct(data?.dataQuality.unknownSupplierRevenueSharePct, 1) },
       { key: "shareDenominatorState", label: "Stanje share imenioca", value: data?.dataQuality.positiveNetRevenueDenominatorState ?? "unavailable_non_positive_net_revenue" },
       { key: "suppliers", label: `Dobavljača (${displayPopulationLabel})`, value: formatMetricDisplayValue({ value: displayProjection.displaySupplierCount, kind: "number", fallback: "Nije dostupno" }) },
       { key: "unknownSuppliers", label: `Nepoznato/N-A (${displayPopulationLabel})`, value: displayProjection.unknownSupplierCount },
@@ -1576,6 +1590,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       data?.dataQuality.revenueWithNivelacijaSplitSharePct,
       data?.generatedAt,
       data?.suppliers,
+      shareDenominatorLabel,
       data?.totals.prePostNivelacijaRevenueImpactPct,
       data?.totals.snapshotCostCoveragePct,
       data?.totals.isSnapshotActive,
@@ -2093,7 +2108,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <KpiExplainButton metricKey="supplierAverageMarginPct" ariaLabel="Kako je izračunata prosečna marža" />
               </article>
               <article className="supplier-decision-kpi analytics-kpi-card analytics-kpi-card--secondary analytics-kpi-card--tone-neutral" data-note="Koncentracija pozitivnog neto prometa na najjačim partnerima.">
-                <span>Udeo top 5 dobavljača <InfoTip text={`${SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE} Procenat pozitivnog neto prometa prikazane populacije koji dolazi od pet dobavljača sa najvećim pozitivnim prometom.`} /></span>
+                <span>Udeo top 5 dobavljača <InfoTip text={`${SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE} Procenat pozitivnog neto prometa (${shareDenominatorLabel.toLowerCase()}) koji dolazi od pet najvećih dobavljača. Kada su nepoznati dobavljači skriveni, njihova vrednost i dalje može biti deo imenioca.`} /></span>
                 <strong>{formatMetricDisplayValue({ value: top5SharePct, kind: "percent" })}</strong>
                 <KpiExplainButton metricKey="topSupplierRevenueShare" ariaLabel="Kako je izračunat udeo top 5 dobavljača" />
               </article>
@@ -2272,7 +2287,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("sharePct", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("sharePct")}
                         >
-                          Udeo pozitivnog prometa <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text="Koliki procenat pozitivnog neto prometa prikazane populacije čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / suma pozitivnog prometa prikazane populacije x 100. Negativan neto promet ostaje vidljiv u tabeli, ali nema pozitivan udeo." />
+                          Udeo pozitivnog prometa <span className="sort-indicator" aria-hidden="true">{sortMarker("sharePct", sortField, sortDir)}</span> <InfoTip text={`Koliki procenat pozitivnog neto prometa (${shareDenominatorLabel.toLowerCase()}) čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / deklarisani pozitivni neto promet × 100. Negativan neto promet ostaje vidljiv u tabeli, ali nema pozitivan udeo.`} />
                         </button>
                       </th>
                       <th aria-sort={sortAriaValue("marginContribution", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("marginContribution", sortField) ? " is-sorted" : ""}`}>
@@ -2535,7 +2550,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                   </strong>
                 </article>
                 <article>
-                  <span>Udeo pozitivnog prometa <InfoTip text="Koliki deo pozitivnog neto prometa prikazane populacije čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / suma pozitivnog prometa prikazane populacije x 100. Negativan neto promet nema pozitivan udeo." /></span>
+                  <span>Udeo pozitivnog prometa <InfoTip text={`Koliki deo pozitivnog neto prometa (${shareDenominatorLabel.toLowerCase()}) čini ovaj dobavljač. Formula: max(promet dobavljača, 0) / deklarisani pozitivni neto promet × 100. Negativan neto promet nema pozitivan udeo.`} /></span>
                   <strong>{fmtPct(selectedSupplier.sharePct, 1)}</strong>
                 </article>
                 <article>
@@ -2780,8 +2795,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           {/* Grafikoni objašnjavaju raspodelu; odluka (prioritetna lista) i detalj idu pre njih. */}
           <section className="supplier-decision-panels supplier-decision-panels--charts">
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">
-              <h2>Koncentracija prometa <InfoTip text="Grafikon prikazuje koliki udeo pozitivnog neto prometa prikazane populacije nose najveći dobavljači. Uključuje Nepoznato kada je prikazano; negativni redovi nisu deo pozitivne koncentracije." /></h2>
-              <p>Top udeo pozitivnog neto prometa za brzu procenu gde je biznis koncentrisan.</p>
+              <h2>Koncentracija prometa <InfoTip text={`Grafikon prikazuje udeo pozitivnog neto prometa najvećih dobavljača prema osnovi: ${shareDenominatorLabel.toLowerCase()}. Negativni redovi nisu deo pozitivne koncentracije.`} /></h2>
+              <p>Top udeo pozitivnog neto prometa prema deklarisanom imeniocu dobavljača.</p>
               {concentrationData.length > 0 ? (
                 <div ref={concentrationChart.containerRef} className="supplier-decision-chart-wrap" aria-busy={!concentrationChart.ready}>
                   {concentrationChart.ready ? <AnalyticsChartAccessibility title="Koncentracija prometa po dobavljaču" summary={describeChartProjection(concentrationData, "po dobavljačima", ['udeo pozitivnog neto prometa'])} tableTargetId="supplier-sales-chart-data">
@@ -2810,6 +2825,11 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
               ) : (
                 <div className="supplier-decision-empty">Nema podataka za grafikon koncentracije.</div>
               )}
+              {!includeUnknown && shareDenominatorIncludesUnknown && (data?.dataQuality.unknownSupplierRevenueSharePct ?? 0) > 0 ? (
+                <p className="supplier-decision-note" role="note" data-testid="supplier-hidden-unknown-denominator-note">
+                  Prikazuju se poznati dobavljači, ali udeli i koncentracija koriste {shareDenominatorLabel.toLowerCase()}; zato prikazani udeli mogu zbirno biti manji od 100%. Nepoznati dobavljači čine {fmtPct(data?.dataQuality.unknownSupplierRevenueSharePct, 1)} prometa.
+                </p>
+              ) : null}
             </article>
 
             <article className="supplier-decision-card supplier-decision-card--chart analytics-surface-panel">

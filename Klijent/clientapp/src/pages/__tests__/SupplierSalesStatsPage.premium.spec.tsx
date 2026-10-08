@@ -100,6 +100,15 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(buildSupplierConcentrationData(rows).some((row) => row.name === "Samo povraćaji")).toBe(false);
   });
 
+  it("keeps top-five and concentration percentages on the declared denominator when hidden unknowns remain in scope", () => {
+    const knownRows = [{ dobavljacNaziv: "Alfa", ukupanPromet: 10000 }];
+
+    expect(calculateTopSupplierRevenueShare(knownRows, 15000)).toBeCloseTo(66.6667, 3);
+    expect(buildSupplierConcentrationData(knownRows, 15000)).toEqual([
+      { name: "Alfa", sharePct: 66.67 },
+    ]);
+  });
+
   it("keeps a negative supplier visible but makes its derived share unavailable", () => {
     const projected = buildSupplierSalesDisplayProjection([
       { ukupanPromet: 100, isUnknown: false },
@@ -451,9 +460,14 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(toolbar).not.toHaveTextContent("Dobavljača (Svi dobavljači): 0");
   });
 
-  it("rebases visible totals and shares when unknown suppliers are hidden", async () => {
+  it("explains the declared-population denominator when unknown suppliers are hidden", async () => {
     const baseline = await getSupplierSalesStats();
-    const knownSupplier = baseline.suppliers[0]!;
+    const knownSupplier = {
+      ...baseline.suppliers[0]!,
+      sharePct: 66.6667,
+      sharePctDenominatorBasis: "positive_net_revenue_declared_population",
+      sharePctIncludesUnknown: true,
+    };
     const unknownSupplier = {
       ...knownSupplier,
       dobavljacId: null,
@@ -474,6 +488,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
       totals: {
         ...baseline.totals,
         ukupanPromet: 15000,
+        positiveNetRevenueDenominator: 15000,
         ukupnaKolicina: 7,
         ukupanMarzniDoprinos: 5000,
       },
@@ -493,6 +508,10 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(toolbar).toHaveTextContent("Prikazani skup: Poznati dobavljači (1)");
     expect(toolbar).toHaveTextContent("Dobavljača (Poznati dobavljači): 1");
     expect(toolbar).toHaveTextContent("Referentni skup preporuke: Ceo odgovor (2 dobavljača; uključuje nepoznate)");
+    expect(toolbar).toHaveTextContent("Skup share imenioca: Pozitivni neto promet svih dobavljača; uključuje nepoznate");
+    expect(toolbar).toHaveTextContent("Udeo nepoznatog prometa (ceo odgovor): 33,3%");
+    expect(screen.getByTestId("supplier-hidden-unknown-denominator-note")).toHaveTextContent("prikazani udeli mogu zbirno biti manji od 100%");
+    expect(screen.getAllByText("66,7%").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Alfa")).toBeInTheDocument();
     expect(screen.queryByText("Nepoznato")).not.toBeInTheDocument();
   });

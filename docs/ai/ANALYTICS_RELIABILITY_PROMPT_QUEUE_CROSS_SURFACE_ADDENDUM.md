@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ IN_PROGRESS: RQ56 (implementation delivered; close-out and post-close recovery active).
-Main queue RQ pointer: RQ56 IN_PROGRESS; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
+Current RQ IN_PROGRESS: RQ55 (Supplier hidden-unknown denominator semantics).
+Main queue RQ pointer: RQ55 IN_PROGRESS; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -17,8 +17,8 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ52 | DONE | color-local-recommendation-fallback | Remove or label Color frontend recommendation fallback |
 | RQ53 | DONE | color-shoetype-datascope-lineage | Pass/verify dataScope in Color and ShoeType pages |
 | RQ54 | DONE | vendor-nivelacija-scope-lineage | Add/verify dataScope/store lineage on Vendor pre/post page |
-| RQ55 | WAITING | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
-| RQ56 | IN_PROGRESS | total-cost-fallback-guardrail | Keep inconsistent implied cost unavailable |
+| RQ55 | IN_PROGRESS | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
+| RQ56 | DONE | total-cost-fallback-guardrail | Keep inconsistent implied cost unavailable |
 | RQ57 | DONE | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
 | RQ58 | DONE | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
 | RQ59 | DONE | inventory-signal-review-impact | Do not attach confirmed impact to weak signal-check actions |
@@ -253,14 +253,15 @@ Vendor pre/post API supports `storeId` and `dataScope`, but the page does not ex
 
 ## RQ55 - Supplier hidden-unknown denominator semantics
 
-Status: WAITING
-Ready after: RQ34/RQ46 or explicit unblocking
+Status: IN_PROGRESS
+Ready after: RQ34/RQ46 or explicit owner unblocking (recorded below after current Supplier contract review)
 Priority: P1
 Type: frontend-ux/tests
 Feature family: supplier-hidden-unknown-denominators
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ55-<agent>.lock.md`
+Owner: Analytics Reliability / Supplier Metrics
+Owned paths: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx` and its focused specs
+Local lock: `.ai/task-locks/RQ55-codex.lock.md`
 Commit suggestion: `fix(analytics): clarify supplier unknown denominator semantics`
 
 ### Why
@@ -293,6 +294,10 @@ When unknown suppliers are hidden, visible rows are known suppliers only, but de
 ### Acceptance
 
 - Users can understand why visible shares may not sum to 100%.
+
+### Owner claim 2026-10-08
+
+Promoted and claimed after RQ56 delivery at `aaeed5168ec538a7c03ca06124049f4b7073eee1`. Explicitly unblocked the RQ34/RQ46 prerequisites for this bounded Supplier-only prompt: the current Supplier response exposes `positiveNetRevenueDenominator`, `sharePctDenominatorBasis`, `sharePctIncludesUnknown`, and denominator state; this page already owns the filter, share, top-five/concentration and CSV metadata projection, so the unrelated legacy Insight Studio trust-type and general export columns are not start gates for the Supplier contract. The selected contract will preserve the backend declared-population denominator (including hidden unknowns) and make that basis visible in the Supplier page and its export. Collision review before claim found no matching RQ55 owner, lock, branch or open PR. Local lock `.ai/task-locks/RQ55-codex.lock.md`.
 
 ---
 
@@ -344,7 +349,7 @@ Refreshed post-close `origin/main` at `cc1825935c15d78f559fcce1c7abaf2d45b3d5d5`
 
 ### Completion 2026-10-08
 
-Removed the zero clamp from the Supplier legacy implied-cost fallback. Backend `totalCost` remains authoritative (including valid zero); legacy arithmetic is shown only when finite and nonnegative, otherwise cost remains unavailable. Focused regression coverage and evidence: `.ai/runs/2026-10-08-RQ56-evidence.md` (close-out pending post-close recovery). Implementation commit SHA pending main verification.
+Removed the zero clamp from the Supplier legacy implied-cost fallback. Backend `totalCost` remains authoritative (including valid zero); legacy arithmetic is shown only when finite and nonnegative, otherwise cost remains unavailable. Run log: `.ai/runs/2026-10-08-RQ56-evidence.md`; Evidence state: pending post-close cascade synchronization. Implementation SHA `aaeed5168ec538a7c03ca06124049f4b7073eee1` is verified on `origin/main`.
 
 ---
 
