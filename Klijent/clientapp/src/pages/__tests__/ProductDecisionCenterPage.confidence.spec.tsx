@@ -373,6 +373,21 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(screen.getByText("Kapital u sporoj zalihi").closest(".kpi-card")).toHaveTextContent("Pokrivenost nije dostupna");
   });
 
+  it("does not show zero decision counts before the payload arrives", async () => {
+    let resolveResponse: (value: unknown) => void = () => {};
+    getProductDecisionCenterMock.mockReturnValueOnce(new Promise((resolve) => { resolveResponse = resolve; }));
+    render(<ProductDecisionCenterPage />);
+
+    const replenishCard = screen.getByText("Za dopunu").closest(".kpi-card");
+    expect(replenishCard?.querySelector("strong")).toHaveTextContent("—");
+    expect(replenishCard?.querySelector("strong")).not.toHaveTextContent("0");
+
+    const response = buildResponse([makeRow({})], "good");
+    response.summary = { ...response.summary, replenishCount: 4 };
+    resolveResponse(response);
+    await waitFor(() => expect(replenishCard?.querySelector("strong")).toHaveTextContent("4"));
+  });
+
   it("renders the complete result progressively and keeps remaining rows reachable", async () => {
     const rows = Array.from({ length: 120 }, (_, index) => makeRow({
       productId: index + 101,

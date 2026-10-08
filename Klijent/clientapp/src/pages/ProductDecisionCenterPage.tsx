@@ -1185,14 +1185,14 @@ export default function ProductDecisionCenterPage() {
   const hideKpiChrome = hasBlockingError || showInsufficientState || showNoDataState || showFilteredOutState;
 
   const kpis = useMemo(() => ({
-    replenishCount: payload?.summary.replenishCount ?? 0,
-    boostCount: payload?.summary.highPotentialCount ?? 0,
-    markdownCount: payload?.summary.markdownCount ?? 0,
-    doNotOrderCount: payload?.summary.doNotOrderCount ?? 0,
-    fixDataCount: payload?.summary.badDataCount ?? 0,
-    actionableCount: payload?.summary.actionableCount ?? 0,
-    blockedCount: payload?.summary.blockedCount ?? 0,
-    insufficientEvidenceCount: payload?.summary.insufficientEvidenceCount ?? 0,
+    replenishCount: payload ? payload.summary.replenishCount ?? null : null,
+    boostCount: payload ? payload.summary.highPotentialCount ?? null : null,
+    markdownCount: payload ? payload.summary.markdownCount ?? null : null,
+    doNotOrderCount: payload ? payload.summary.doNotOrderCount ?? null : null,
+    fixDataCount: payload ? payload.summary.badDataCount ?? null : null,
+    actionableCount: payload ? payload.summary.actionableCount ?? null : null,
+    blockedCount: payload ? payload.summary.blockedCount ?? null : null,
+    insufficientEvidenceCount: payload ? payload.summary.insufficientEvidenceCount ?? null : null,
     lostSalesEstimate: payload ? payload.summary.lostSalesEstimate ?? null : null,
     lostSalesEstimateCoverage: describeMoneyCoverage(
       payload?.summary.lostSalesEstimateKnownRows,
@@ -1205,12 +1205,14 @@ export default function ProductDecisionCenterPage() {
       payload?.summary.slowStockCapitalUnknownRows,
       payload?.summary.slowStockCapitalCoveragePct,
     ),
-    stockCoverRiskCount: payload?.summary.stockCoverRiskCount ?? 0,
-    insufficientStockCoverageCount: payload?.summary.insufficientStockCoverageCount ?? 0,
-    lowCoverSkus: payload?.summary.lowCoverCount ?? 0,
-    slowStockSkus: payload?.summary.slowStockCount ?? 0,
-    goodSellThroughSkus: payload?.summary.goodSellThroughCount ?? 0,
+    stockCoverRiskCount: payload ? payload.summary.stockCoverRiskCount ?? null : null,
+    insufficientStockCoverageCount: payload ? payload.summary.insufficientStockCoverageCount ?? null : null,
+    lowCoverSkus: payload ? payload.summary.lowCoverCount ?? null : null,
+    slowStockSkus: payload ? payload.summary.slowStockCount ?? null : null,
+    goodSellThroughSkus: payload ? payload.summary.goodSellThroughCount ?? null : null,
   }), [payload]);
+  // Counts stay unknown until the payload arrives (no fake zero while loading); a missing field in a loaded payload is unavailable.
+  const kpiCountFallback = payload ? ANALYTICS_UNAVAILABLE_LABEL : "—";
 
   const trustQualitySummary = useMemo(() => {
     if (!rows.length) return undefined;
@@ -1583,27 +1585,27 @@ export default function ProductDecisionCenterPage() {
         <section className="product-decision-kpis" aria-label="KPI kartice">
         <article className="kpi-card">
           <span>Za dopunu</span>
-          <strong>{fmtNumber(kpis.replenishCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.replenishCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
         </article>
         <article className="kpi-card">
           <span>Za pojačanje</span>
-          <strong>{fmtNumber(kpis.boostCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.boostCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
         </article>
         <article className="kpi-card">
           <span>Za sniženje</span>
-          <strong>{fmtNumber(kpis.markdownCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.markdownCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
         </article>
         <article className="kpi-card">
           <span>Ne naručivati</span>
-          <strong>{fmtNumber(kpis.doNotOrderCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.doNotOrderCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
         </article>
         <article className="kpi-card">
           <span>Za ispravku podataka</span>
-          <strong>{fmtNumber(kpis.fixDataCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.fixDataCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
         </article>
         <article className="kpi-card">
@@ -1620,27 +1622,27 @@ export default function ProductDecisionCenterPage() {
         </article>
         <article className="kpi-card">
           <span>Rizik pokrivenosti</span>
-          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
         </article>
         <article className="kpi-card">
           <span>Nedovoljno podataka za pokrivenost</span>
-          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
         </article>
         <article className="kpi-card">
           <span>SKU sa niskom pokrivenošću</span>
-          <strong>{fmtNumber(kpis.lowCoverSkus, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.lowCoverSkus, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
         </article>
         <article className="kpi-card">
           <span>SKU sa sporim obrtom</span>
-          <strong>{fmtNumber(kpis.slowStockSkus, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.slowStockSkus, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
         </article>
         <article className="kpi-card">
           <span>SKU sa dobrom prodajnošću</span>
-          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, "0")}</strong>
+          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, kpiCountFallback)}</strong>
           <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrom prodajnošću" />
         </article>
         </section>

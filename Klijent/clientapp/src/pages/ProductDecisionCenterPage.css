@@ -59,7 +59,7 @@
 }
 
 .kpi-card span {
-  font-size: 0.7rem;
+  font-size: var(--font-size-label);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -69,6 +69,15 @@
 .kpi-card strong {
   font-size: 1.1rem;
   color: var(--text-primary);
+}
+
+/* Money-coverage caption under KPI values is read content: keep it at the shared body-scale token,
+   not the browser's shrunken <small> default. */
+.kpi-card small {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-title);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .product-decision-filters {
