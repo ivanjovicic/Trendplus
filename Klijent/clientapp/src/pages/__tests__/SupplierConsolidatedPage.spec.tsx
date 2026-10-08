@@ -471,7 +471,7 @@ describe("SupplierConsolidatedPage", () => {
 
     await waitFor(() => {
       expandTrustDetails();
-      expect(screen.getByText("Učitavanje pouzdanosti")).toBeInTheDocument();
+      expect(screen.getByTestId("analytics-trust-summary-readiness")).toHaveTextContent("Učitavanje pouzdanosti");
       expect(screen.getByText("Analitika maloprodajne prodaje po dobavljačima")).toBeInTheDocument();
       expect(screen.queryByText("Materijalizovani prikaz skorkarte dobavljača")).not.toBeInTheDocument();
     });

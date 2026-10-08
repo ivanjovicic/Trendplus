@@ -289,7 +289,7 @@ describe("ColorSalesStatsPage premium controls", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Sveže")).toBeInTheDocument();
+      expect(within(screen.getByTestId("analytics-trust-summary")).getByText("Sveže")).toBeInTheDocument();
     });
   });
 

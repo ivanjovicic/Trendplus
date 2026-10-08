@@ -8,6 +8,7 @@ const getDecisionBoardAggregateMock = vi.fn();
 
 vi.mock("../../services/analyticsApi", () => ({
   getDecisionBoardAggregate: (...args: unknown[]) => getDecisionBoardAggregateMock(...args),
+  getStores: vi.fn(async () => []),
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));

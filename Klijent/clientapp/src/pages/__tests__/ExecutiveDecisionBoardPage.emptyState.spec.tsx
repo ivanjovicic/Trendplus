@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import ExecutiveDecisionBoardPage from "../ExecutiveDecisionBoardPage";
 
@@ -6,6 +7,7 @@ const getDecisionBoardAggregateMock = vi.fn();
 
 vi.mock("../../services/analyticsApi", () => ({
   getDecisionBoardAggregate: (...args: unknown[]) => getDecisionBoardAggregateMock(...args),
+  getStores: vi.fn(async () => []),
 }));
 
 vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({ default: () => null }));
@@ -44,7 +46,11 @@ describe("ExecutiveDecisionBoardPage empty and error chrome", () => {
       },
     });
 
-    render(<ExecutiveDecisionBoardPage />);
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-board"]}>
+        <ExecutiveDecisionBoardPage />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByTestId("analytics-empty-state")).toHaveTextContent("Nema dovoljno signala za izvršni board");
     expect(document.querySelector(".decision-board-summary-grid")).toBeNull();
@@ -54,7 +60,11 @@ describe("ExecutiveDecisionBoardPage empty and error chrome", () => {
   it("renders shared error state without summary chrome when the aggregate load fails", async () => {
     getDecisionBoardAggregateMock.mockRejectedValueOnce(new Error("Board API down"));
 
-    render(<ExecutiveDecisionBoardPage />);
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-board"]}>
+        <ExecutiveDecisionBoardPage />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Izvršni board trenutno nije dostupan");
     expect(screen.getByText("Board API down")).toBeInTheDocument();

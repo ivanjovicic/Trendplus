@@ -86,7 +86,7 @@ describe("AnalyticsDashboard operational fallback", () => {
 
     const warnings = await screen.findAllByText(/Status zaliha je učitan iz operativne tabele Artikli/i);
     expect(warnings.length).toBeGreaterThan(0);
-    expect(screen.getByText("Postoje upozorenja")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-trust-summary-readiness")).toHaveTextContent("Postoje upozorenja");
     expect(screen.queryByText("Nema kritičnih count signala u ovom preseku.")).not.toBeInTheDocument();
   });
 
