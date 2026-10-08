@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ IN_PROGRESS prompt: RQ556 (P1, Pre-Nivelacija v9 evidence and shadow ranking only; no weight activation). Additional READY: RQ585 (P1, owner decision digest from the latest trustworthy horizon; freshness limits current-tense claims, not implementation). RQ555 is DONE on exact current-main SHA `02a539b156e322cdba57500ae32f2ce177a67eab`; current-main Analytics Quality Gates and Analytics Tests & Data Integrity both passed. RQ593, RQ596, RQ595 and RQ594 are DONE. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or latest-known-horizon product work.
+Current RQ IN_PROGRESS prompt: RQ585 (P1, owner decision digest from the latest trustworthy horizon; freshness limits current-tense claims, not implementation). RQ556 is DONE on exact `origin/main` SHA `4c66ebec83b9d9184f476489fdb99e014eb63cb0`; focused backend, frontend and PostgreSQL proof passed. RQ555 is DONE on exact current-main SHA `02a539b156e322cdba57500ae32f2ce177a67eab`; current-main Analytics Quality Gates and Analytics Tests & Data Integrity both passed. RQ593, RQ596, RQ595 and RQ594 are DONE. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize latest-known-horizon product work.
 Product value plan refinement 2026-10-08: RQ596 owns completed Inventory money/coverage; RQ595 consumes that per-aging-bucket contract. RQ593 and RQ594 are DONE; their former Product Decision/Inventory action path ownership is released. RQ555 is promoted READY after both sequential owners; RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
@@ -29539,7 +29539,7 @@ Owner completion 2026-10-05: RQ584 moved READY -> DONE after timestamp `toDate` 
 
 ## RQ585 - Owner decision digest on the latest trustworthy horizon
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: RQ593, RQ594 and RQ555 DONE
 Priority: P1
 Type: product/backend/frontend
@@ -29599,6 +29599,8 @@ RQ593, RQ594 and RQ555 DONE. Production freshness is a **currentness/acceptance 
 
 
 Owner claim 2026-10-05 after RQ557: fresh post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` scanned all 15 active owner queue/addendum files. RQ558 remains sample-gated; RQ559 remains source/policy-gated. RQ586 is dependency-complete and collision-safe (no matching lock, branch or open PR); RQ588 remains an independent READY lane. RQ586 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
+
+Owner claim 2026-10-08 after RQ556: refreshed `origin/main` to `5b5d750548a3c27c42bdd50a4c0743ec7859379d` and scanned all 12 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files plus the SQL queue. RQ593/RQ594/RQ555 are DONE; RQ558 remains sample-gated, RQ559 source/policy-gated, and RQ545/RQ565 remain deployed/provider-gated. No RQ585 lock, local/remote branch or open PR exists; the only open PRs are P-UI-52 documentation routing and do not overlap this feature family. Promoted RQ585 READY -> IN_PROGRESS as the primary P1 RQ successor. Local lock: `.ai/task-locks/RQ585-codex.lock.md`; branch: `codex/rq585-owner-decision-digest`.
 
 ## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
 
