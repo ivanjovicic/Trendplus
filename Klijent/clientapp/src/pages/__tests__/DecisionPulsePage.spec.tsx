@@ -111,7 +111,7 @@ describe("DecisionPulsePage", () => {
     }));
   });
 
-  it.each(["storeId=abc", "storeId=0", "storeId=-3", "storeId=2&storeId=3", "supplierId=bad", "supplierId=0"])(
+  it.each(["storeId=abc", "storeId=1.5", "storeId=2147483648", "storeId=2&storeId=3", "supplierId=bad", "supplierId=-x"])(
     "does not widen invalid URL filter %s to all records",
     async (query) => {
       const fetchFeed = vi.spyOn(decisionPulseApi, "getDecisionPulse");
@@ -121,6 +121,15 @@ describe("DecisionPulsePage", () => {
       expect(fetchFeed).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ["storeId=-598733481&supplierId=-2004188974", -598733481, -2004188974],
+    ["storeId=0&supplierId=0", 0, 0],
+  ])("preserves valid signed Access entity IDs: %s", async (query, storeId, supplierId) => {
+    const fetchFeed = vi.spyOn(decisionPulseApi, "getDecisionPulse");
+    render(<MemoryRouter initialEntries={["/analytics/decision-pulse?" + query]}><DecisionPulsePage /></MemoryRouter>);
+    await waitFor(() => expect(fetchFeed).toHaveBeenCalledWith(expect.objectContaining({ storeId, supplierId })));
+  });
 
   it("clears old items on filter changes and ignores an older in-flight response", async () => {
     let resolveFirst!: (value: Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>) => void;
