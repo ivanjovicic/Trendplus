@@ -59,7 +59,7 @@
     {
       "file": "src/pages/ExecutiveDecisionBoardPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1046,
+      "line": 1047,
       "reason": "Existing decision-board fallback requires a reviewed trust-contract exception."
     },
     {
@@ -71,7 +71,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 939,
+      "line": 949,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
