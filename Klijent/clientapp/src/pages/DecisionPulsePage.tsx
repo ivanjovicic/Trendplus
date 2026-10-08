@@ -133,15 +133,20 @@ export default function DecisionPulsePage() {
     const params = new URLSearchParams(routeContext);
     const fromDate = params.get("fromDate") ?? undefined;
     const toDate = params.get("toDate") ?? undefined;
-    const storeId = Number(params.get("storeId"));
-    const supplierId = Number(params.get("supplierId"));
+    const storeId = parsePulseFilterId(params, "storeId");
+    const supplierId = parsePulseFilterId(params, "supplierId");
     setFeed(null);
     setDispositions({});
+    if (storeId === null || supplierId === null) {
+      setLoading(false);
+      setError("Filter prodavnice ili dobavljača nije validan. Pregled nije proširen na sve podatke.");
+      return;
+    }
     getDecisionPulse({
       ...(fromDate ? { fromDate } : {}),
       ...(toDate ? { toDate } : {}),
-      ...(Number.isInteger(storeId) && storeId > 0 ? { storeId } : {}),
-      ...(Number.isInteger(supplierId) && supplierId > 0 ? { supplierId } : {}),
+      ...(storeId !== undefined ? { storeId } : {}),
+      ...(supplierId !== undefined ? { supplierId } : {}),
       dataScope: params.get("dataScope") ?? getDataScope(),
     })
       .then((response) => {
