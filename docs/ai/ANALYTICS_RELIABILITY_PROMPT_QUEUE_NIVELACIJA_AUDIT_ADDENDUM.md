@@ -1322,7 +1322,7 @@ RQ593 and RQ594 DONE. RQ537, RQ539, RQ548, RQ475, RQ487 and RQ571 are DONE. No f
 
 Claimed 2026-10-08 from post-close `origin/main` `e14578cfe64144bc1ad8bd2ecf2d3023d7897403` after dependency and collision scan. No local/remote RQ555 branch, matching lock or open PR existed; RQ594 delivered paths are Inventory-only and do not overlap this markdown-source feature family. Local lock: `.ai/task-locks/RQ555-codex.lock.md`; working branch: `main`.
 
-Implementation status 2026-10-08: local code and focused tests are complete; see `.ai/runs/2026-10-08-RQ555-evidence.md`. Exact-main CI is the remaining gate; do not move this prompt to DONE until it passes.
+Implementation status 2026-10-08: local code and focused tests are complete; see `.ai/runs/2026-10-08-RQ555-evidence.md`. Exact-main RQ453 certification passes on SHA `c8892a79`, including the 1/1 six-screen route proof with zero skips. The full backend suite still has the same PERF19 failure seen on the preceding SHA, and frontend analytics still has 5 files / 6 tests failing as before RQ555. Keep PARTIAL until these CI gates are green or explicitly dispositioned; do not waive them silently.
 
 ## RQ556 - Build Pre-Nivelacija v9 evidence fields and shadow ranking without activating new weights
 
