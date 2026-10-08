@@ -6,6 +6,7 @@ import {
   categoryColumns,
   changeBadge,
   lifecycleColumns,
+  INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL,
   reorderItemColumns,
   supplierV1Columns,
 } from "../InsightStudioPage";
@@ -106,5 +107,13 @@ describe("Insight Studio export trust context", () => {
     expect(buildInsightStudioExportTrustMetadata("Insight Studio")).toEqual([
       { key: "exportSource", label: "Displayed source", value: "Insight Studio" },
     ]);
+  });
+});
+
+
+describe("Insight Studio chart scope labels", () => {
+  it("distinguishes the top-eight category chart from its full table", () => {
+    expect(INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL).toContain("Top 8");
+    expect(INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL).toContain("tabela ispod prikazuje sve kategorije");
   });
 });

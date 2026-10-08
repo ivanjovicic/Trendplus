@@ -107,6 +107,7 @@ import {
 // ══════════════════════════════════════════════════════════════════
 
 type TabKey = "pregled" | "dobavljaci" | "kategorije" | "matrica" | "dnevna" | "abc" | "zalihe" | "nabavka";
+export const INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL = "Top 8 kategorija po prihodu koji prikazuje ovaj grafikon; tabela ispod prikazuje sve kategorije.";
 
 export function buildInsightStudioExportTrustMetadata(
   source: string,
@@ -968,6 +969,7 @@ function CategoryTab({
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div>
             <h4 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Prihod po kategoriji</h4>
+            <p className="mb-2 text-xs text-[var(--text-primary)]">{INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL}</p>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byCategory.slice(0, 8)} layout="vertical" barSize={18}>

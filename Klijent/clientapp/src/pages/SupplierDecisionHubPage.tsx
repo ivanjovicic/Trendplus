@@ -84,6 +84,7 @@ import "./SupplierDecisionHubPage.css";
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
 type SortDir = "asc" | "desc";
 type SortField = "supplierName" | "revenue" | "sharePct" | "preMarkdownMarginPct" | "qualityTrendPct" | "status";
+export const SUPPLIER_SCORECARD_CONCENTRATION_CHART_SCOPE_LABEL = "Grafikon prikazuje do 8 vode\u0107ih dobavlja\u010da po udelu i preostali udeo kao Ostali; tabela ispod prikazuje sve redove kohorte.";
 type DecisionStatus = CanonicalRecommendationStatus;
 
 type ActiveFilters = {
@@ -1608,7 +1609,9 @@ export default function SupplierDecisionHubPage({ embedded = false, sharedFilter
 
           <section className="sdh-decision-panels">
             <article className="sdh-decision-card">
-              <h2>Udeo dobavljača u skorkarti</h2><p>Prikazuje udeo prihoda u kohorti skorkarte, ne generičan promet iz taba Pregled.</p>
+              <h2>Udeo dobavljača u skorkarti</h2>
+              <p>Prikazuje udeo prihoda u kohorti skorkarte, ne generičan promet iz taba Pregled.</p>
+              <p>{SUPPLIER_SCORECARD_CONCENTRATION_CHART_SCOPE_LABEL}</p>
               {concentrationData.length > 0 ? (
                 <div className="sdh-decision-chart-wrap">
                   <AnalyticsChartAccessibility title="Udeo prihoda po dobavljaču" summary={describeChartProjection(concentrationData, "po dobavljačima", ['udeo prihoda'])} tableTargetId="supplier-decision-hub-chart-data">

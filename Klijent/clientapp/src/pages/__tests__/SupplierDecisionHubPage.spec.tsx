@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import SupplierDecisionHubPage, { buildSupplierActionSourceKey } from "../SupplierDecisionHubPage";
+import SupplierDecisionHubPage, { buildSupplierActionSourceKey, SUPPLIER_SCORECARD_CONCENTRATION_CHART_SCOPE_LABEL } from "../SupplierDecisionHubPage";
 
 vi.mock("../../utils/apiUrl", () => ({
   apiUrl: (path: string) => path,
@@ -160,6 +160,7 @@ describe("SupplierDecisionHubPage", () => {
     expect(screen.getByText(/meri Skorkarta/i)).toBeInTheDocument();
     expect(screen.getAllByText("Period").length).toBeGreaterThan(0);
     expect(await screen.findByText(/Udeo dobavljača u skorkarti/i)).toBeInTheDocument();
+    expect(screen.getByText(SUPPLIER_SCORECARD_CONCENTRATION_CHART_SCOPE_LABEL)).toBeInTheDocument();
     expect(screen.getAllByText(/Razmak pune cene i nivelacija/i).length).toBeGreaterThan(0);
     expect(await screen.findByTestId("supplier-decision-hub-data-table")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
