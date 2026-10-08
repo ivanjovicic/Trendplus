@@ -44,6 +44,8 @@ import {
   isAnalyticsMetaWarning,
   shouldShowAnalyticsEmptyState,
 } from "../utils/analyticsResponseMeta";
+import { getAnalyticsDecisionReadiness } from "../utils/analyticsDecisionReadiness";
+import { ANALYTICS_STATE_TAXONOMY } from "../utils/analyticsStateTaxonomy";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
 import {
   resolveSupplierFilterFallbackState,
@@ -55,6 +57,7 @@ import { recommendationReasonLabel } from "../utils/canonicalRecommendationSeman
 import type {
   AnalyticsActionDataQualityStatus,
   AnalyticsActionSourceType,
+  AnalyticsResponseMeta,
   ProductDecisionCenterItem,
   ProductDecisionAlternativeRecommendation,
   ProductDecisionCenterResponse,
@@ -672,6 +675,64 @@ function displayRecommendationLabel(row: ProductDecisionRow): string {
   return RECOMMENDATION_LABELS[row.recommendationStatus] ?? row.recommendationLabel;
 }
 
+/** Action-family KPI value when recommendations are blocked at page level. */
+export const PRODUCT_DECISION_BLOCKED_KPI_VALUE = "—";
+
+export type ProductDecisionActionFamilyKpi = {
+  value: string;
+  blocked: boolean;
+  reason: string | null;
+};
+
+/**
+ * Bind action-family KPIs to backend recommendation/readiness authority.
+ * Blocked families show "—" plus taxonomy reason; allowed families keep real zeros.
+ */
+export function formatProductDecisionActionFamilyKpi(
+  count: number | null | undefined,
+  meta: AnalyticsResponseMeta | null | undefined,
+  loadingFallback: string,
+): ProductDecisionActionFamilyKpi {
+  if (count == null) {
+    return { value: loadingFallback, blocked: false, reason: null };
+  }
+
+  const readiness = getAnalyticsDecisionReadiness(meta);
+  const explicitlyBlocked = meta?.recommendationAllowed === false
+    || readiness.recommendationAllowed === false
+    || readiness.state === "blocked";
+
+  // Legacy payloads without decisionReadiness stay countable; only explicit blocks hide zeros.
+  if (explicitlyBlocked) {
+    const taxonomy = ANALYTICS_STATE_TAXONOMY.blocked_by_readiness;
+    const reasonCode = readiness.reasonCodes?.[0];
+    const reason = reasonCode
+      ? `${taxonomy.title} ${reasonCode}`
+      : taxonomy.title;
+    return {
+      value: PRODUCT_DECISION_BLOCKED_KPI_VALUE,
+      blocked: true,
+      reason,
+    };
+  }
+
+  return {
+    value: fmtNumber(count, 0, ANALYTICS_UNAVAILABLE_LABEL),
+    blocked: false,
+    reason: null,
+  };
+}
+
+export function buildProductDecisionPopulationLine(payload: ProductDecisionCenterResponse | null): string | null {
+  if (!payload) return null;
+  const returned = payload.totalRows;
+  const analyzed = payload.analyzedRows;
+  if (analyzed != null) {
+    return `Prikazano ${returned} od ${analyzed} redova (backend ukupno pre limita).`;
+  }
+  return `Prikazano ${returned} redova; analizirana populacija nije prijavljena u ovom odgovoru.`;
+}
+
 function buildSourceKey(
   row: ProductDecisionRow,
   actionKind: string,
@@ -832,6 +893,7 @@ export default function ProductDecisionCenterPage() {
   const [sortField, setSortField] = useState<SortField>(initialUrlState.sortField);
   const [sortDir, setSortDir] = useState<SortDir>(initialUrlState.sortDir);
   const [visibleRowLimit, setVisibleRowLimit] = useState(PRODUCT_DECISION_INITIAL_RENDER_LIMIT);
+  const [showSecondaryKpis, setShowSecondaryKpis] = useState(false);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [timelineByProductId, setTimelineByProductId] = useState<Record<number, ProductDecisionTimelineFilterResponse | null>>({});
   const [timelineLoadingProductId, setTimelineLoadingProductId] = useState<number | null>(null);
@@ -1212,7 +1274,12 @@ export default function ProductDecisionCenterPage() {
     goodSellThroughSkus: payload ? payload.summary.goodSellThroughCount ?? null : null,
   }), [payload]);
   // Counts stay unknown until the payload arrives (no fake zero while loading); a missing field in a loaded payload is unavailable.
-  const kpiCountFallback = payload ? ANALYTICS_UNAVAILABLE_LABEL : "—";
+  const kpiCountFallback = payload ? ANALYTICS_UNAVAILABLE_LABEL : PRODUCT_DECISION_BLOCKED_KPI_VALUE;
+  const replenishKpi = formatProductDecisionActionFamilyKpi(kpis.replenishCount, responseMeta, kpiCountFallback);
+  const boostKpi = formatProductDecisionActionFamilyKpi(kpis.boostCount, responseMeta, kpiCountFallback);
+  const markdownKpi = formatProductDecisionActionFamilyKpi(kpis.markdownCount, responseMeta, kpiCountFallback);
+  const doNotOrderKpi = formatProductDecisionActionFamilyKpi(kpis.doNotOrderCount, responseMeta, kpiCountFallback);
+  const fixDataKpi = formatProductDecisionActionFamilyKpi(kpis.fixDataCount, responseMeta, kpiCountFallback);
 
   const trustQualitySummary = useMemo(() => {
     if (!rows.length) return undefined;
@@ -1250,10 +1317,16 @@ export default function ProductDecisionCenterPage() {
     { key: "filteredRows", label: "Prikazano redova", value: sortedRows.length },
   ], [payload?.analyzedRows, payload?.generatedAtUtc, payload?.ignoredRowsCount, payload?.totalRows, sortedRows.length]);
 
+  const populationLine = buildProductDecisionPopulationLine(payload);
   const populationSummary = payload
-    ? payload.analyzedRows != null
-      ? `Vraćeno ${payload.totalRows} redova; analizirano ${payload.analyzedRows}; ${payload.ignoredRowsCount != null ? `skriveno zbog limita ${payload.ignoredRowsCount}.` : "skriveni redovi nisu prijavljeni."} KPI brojači koriste vraćene redove, novčani KPI analiziranu populaciju, a dozvola za akciju dolazi iz backend-a.`
-      : `Vraćeno ${payload.totalRows} redova; analizirana populacija nije prijavljena u ovom odgovoru.`
+    ? [
+        populationLine,
+        payload.ignoredRowsCount != null ? `Skriveno zbog limita: ${payload.ignoredRowsCount}.` : null,
+        "KPI brojači koriste vraćene redove, novčani KPI analiziranu populaciju, a dozvola za akciju dolazi iz backend-a.",
+      ].filter(Boolean).join(" ")
+    : null;
+  const exportUnavailableReason = !loading && !hasBlockingError && sortedRows.length === 0
+    ? "Izvoz je trenutno nedostupan jer nema redova za trenutne filtere i period."
     : null;
 
   const actionabilitySummary = payload && typeof payload.summary.actionableCount === "number"
@@ -1571,82 +1644,20 @@ export default function ProductDecisionCenterPage() {
           <h1>Odluke o proizvodima</h1>
           <p>{PRODUCT_DECISION_PAGE_EXPLANATION}</p>
         </div>
-        <AnalyticsTableToolbar
-          tableKey="product-decision-center"
-          tableTitle="Odluke o proizvodima"
-          columns={TABLE_COLUMNS}
-          rows={sortedRows}
-          filters={tableFilters}
-          metadata={tableMetadata}
-        />
+        <div className="product-decision-header-actions">
+          <AnalyticsTableToolbar
+            tableKey="product-decision-center"
+            tableTitle="Odluke o proizvodima"
+            columns={TABLE_COLUMNS}
+            rows={sortedRows}
+            filters={tableFilters}
+            metadata={tableMetadata}
+          />
+          {exportUnavailableReason ? (
+            <p className="product-decision-export-reason" role="status">{exportUnavailableReason}</p>
+          ) : null}
+        </div>
       </header>
-
-      {!hideKpiChrome ? (
-        <section className="product-decision-kpis" aria-label="KPI kartice">
-        <article className="kpi-card">
-          <span>Za dopunu</span>
-          <strong>{fmtNumber(kpis.replenishCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
-        </article>
-        <article className="kpi-card">
-          <span>Za pojačanje</span>
-          <strong>{fmtNumber(kpis.boostCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
-        </article>
-        <article className="kpi-card">
-          <span>Za sniženje</span>
-          <strong>{fmtNumber(kpis.markdownCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
-        </article>
-        <article className="kpi-card">
-          <span>Ne naručivati</span>
-          <strong>{fmtNumber(kpis.doNotOrderCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
-        </article>
-        <article className="kpi-card">
-          <span>Za ispravku podataka</span>
-          <strong>{fmtNumber(kpis.fixDataCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
-        </article>
-        <article className="kpi-card">
-          <span>Procena izgubljene prodaje</span>
-          <strong>{fmtRsd(kpis.lostSalesEstimate, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
-          {payload ? <small>{kpis.lostSalesEstimateCoverage}</small> : null}
-          <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
-        </article>
-        <article className="kpi-card">
-          <span>Kapital u sporoj zalihi</span>
-          <strong>{fmtRsd(kpis.slowStockCapital, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
-          {payload ? <small>{kpis.slowStockCapitalCoverage}</small> : null}
-          <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
-        </article>
-        <article className="kpi-card">
-          <span>Rizik pokrivenosti</span>
-          <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
-        </article>
-        <article className="kpi-card">
-          <span>Nedovoljno podataka za pokrivenost</span>
-          <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa niskom pokrivenošću</span>
-          <strong>{fmtNumber(kpis.lowCoverSkus, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa sporim obrtom</span>
-          <strong>{fmtNumber(kpis.slowStockSkus, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
-        </article>
-        <article className="kpi-card">
-          <span>SKU sa dobrom prodajnošću</span>
-          <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, kpiCountFallback)}</strong>
-          <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrom prodajnošću" />
-        </article>
-        </section>
-      ) : null}
 
       <section className="product-decision-filters" aria-label="Filteri perioda i opsega">
         <div className="filter-grid">
@@ -1768,6 +1779,94 @@ export default function ProductDecisionCenterPage() {
           </label>
         </div>
       </section>
+      {!hideKpiChrome ? (
+        <section className="product-decision-kpis-wrap" aria-label="KPI pregled">
+          <div className="product-decision-kpis product-decision-kpis-primary" aria-label="KPI kartice">
+            <article className={`kpi-card${replenishKpi.blocked ? " kpi-card-blocked" : ""}`} data-testid="kpi-replenish">
+              <span>Za dopunu</span>
+              <strong>{replenishKpi.value}</strong>
+              {replenishKpi.reason ? <small data-testid="kpi-replenish-reason">{replenishKpi.reason}</small> : null}
+              <KpiExplainButton metricKey="replenishCount" ariaLabel="Kako je izračunat broj proizvoda za dopunu" />
+            </article>
+            <article className={`kpi-card${boostKpi.blocked ? " kpi-card-blocked" : ""}`} data-testid="kpi-boost">
+              <span>Za pojačanje</span>
+              <strong>{boostKpi.value}</strong>
+              {boostKpi.reason ? <small data-testid="kpi-boost-reason">{boostKpi.reason}</small> : null}
+              <KpiExplainButton metricKey="boostCount" ariaLabel="Kako je izračunat broj proizvoda za pojačanje" />
+            </article>
+            <article className={`kpi-card${markdownKpi.blocked ? " kpi-card-blocked" : ""}`} data-testid="kpi-markdown">
+              <span>Za sniženje</span>
+              <strong>{markdownKpi.value}</strong>
+              {markdownKpi.reason ? <small data-testid="kpi-markdown-reason">{markdownKpi.reason}</small> : null}
+              <KpiExplainButton metricKey="markdownCount" ariaLabel="Kako je izračunat broj proizvoda za sniženje" />
+            </article>
+            <article className={`kpi-card${doNotOrderKpi.blocked ? " kpi-card-blocked" : ""}`} data-testid="kpi-do-not-order">
+              <span>Ne naručivati</span>
+              <strong>{doNotOrderKpi.value}</strong>
+              {doNotOrderKpi.reason ? <small data-testid="kpi-do-not-order-reason">{doNotOrderKpi.reason}</small> : null}
+              <KpiExplainButton metricKey="doNotOrderCount" ariaLabel="Kako je izračunat broj proizvoda koje ne treba naručivati" />
+            </article>
+            <article className={`kpi-card${fixDataKpi.blocked ? " kpi-card-blocked" : ""}`} data-testid="kpi-fix-data">
+              <span>Za ispravku podataka</span>
+              <strong>{fixDataKpi.value}</strong>
+              {fixDataKpi.reason ? <small data-testid="kpi-fix-data-reason">{fixDataKpi.reason}</small> : null}
+              <KpiExplainButton metricKey="fixDataCount" ariaLabel="Kako je izračunat broj proizvoda za proveru podataka" />
+            </article>
+          </div>
+          <button
+            type="button"
+            className="product-decision-kpi-more-toggle"
+            aria-expanded={showSecondaryKpis}
+            aria-controls="product-decision-secondary-kpis"
+            onClick={() => setShowSecondaryKpis((current) => !current)}
+          >
+            {showSecondaryKpis ? "Sakrij dodatne signale" : "Prikaži dodatne signale"}
+          </button>
+          {showSecondaryKpis ? (
+            <div id="product-decision-secondary-kpis" className="product-decision-kpis product-decision-kpis-secondary" aria-label="Dodatni signali">
+              <article className="kpi-card">
+                <span>Procena izgubljene prodaje</span>
+                <strong>{fmtRsd(kpis.lostSalesEstimate, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
+                {payload ? <small>{kpis.lostSalesEstimateCoverage}</small> : null}
+                <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
+              </article>
+              <article className="kpi-card">
+                <span>Kapital u sporoj zalihi</span>
+                <strong>{fmtRsd(kpis.slowStockCapital, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
+                {payload ? <small>{kpis.slowStockCapitalCoverage}</small> : null}
+                <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
+              </article>
+              <article className="kpi-card">
+                <span>Rizik pokrivenosti</span>
+                <strong>{fmtNumber(kpis.stockCoverRiskCount, 0, kpiCountFallback)}</strong>
+                <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa rizičnom pokrivenošću zalihe" />
+              </article>
+              <article className="kpi-card">
+                <span>Nedovoljno podataka za pokrivenost</span>
+                <strong>{fmtNumber(kpis.insufficientStockCoverageCount, 0, kpiCountFallback)}</strong>
+                <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala bez dovoljno podataka za pokrivenost zalihe" />
+              </article>
+              <article className="kpi-card">
+                <span>SKU sa niskom pokrivenošću</span>
+                <strong>{fmtNumber(kpis.lowCoverSkus, 0, kpiCountFallback)}</strong>
+                <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa niskom pokrivenošću" />
+              </article>
+              <article className="kpi-card">
+                <span>SKU sa sporim obrtom</span>
+                <strong>{fmtNumber(kpis.slowStockSkus, 0, kpiCountFallback)}</strong>
+                <KpiExplainButton metricKey="stockCoverDays" ariaLabel="Kako je izračunat broj artikala sa sporim obrtom" />
+              </article>
+              <article className="kpi-card">
+                <span>SKU sa dobrom prodajnošću</span>
+                <strong>{fmtNumber(kpis.goodSellThroughSkus, 0, kpiCountFallback)}</strong>
+                <KpiExplainButton metricKey="sellThrough" ariaLabel="Kako je izračunat broj artikala sa dobrom prodajnošću" />
+              </article>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+
 
       {showMetaWarning ? (
         <div className="product-decision-message product-decision-message-info" role="status">
@@ -1946,7 +2045,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                         <td>
                           <span>{fmtNumber(row.currentStock, 0, "Nije dostupno")}</span>
-                          <small>min: {fmtNumber(row.minStock, 0, "Nije dostupno")} | gap: {fmtNumber(row.stockGap, 0, "Nije dostupan")}</small>
+                          <small>min: {fmtNumber(row.minStock, 0, "Nije dostupno")} | gap: {fmtNumber(row.stockGap, 0, "Nije dostupno")}</small>
                         </td>
                         <td>{fmtPct(row.trendPct, 1)}</td>
                         <td>
@@ -1987,6 +2086,8 @@ export default function ProductDecisionCenterPage() {
                           <button
                             type="button"
                             className="why-button"
+                            aria-expanded={expanded}
+                            aria-controls={`product-decision-why-${row.productId}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               toggleExpandedRow(row.productId);
@@ -2013,7 +2114,7 @@ export default function ProductDecisionCenterPage() {
                           ) : (
                             <button
                               type="button"
-                              className={`btn-add-to-queue${isQueued ? " added" : ""}`}
+                              className={`btn-add-to-queue product-decision-workflow-action${isQueued ? " added" : ""}`}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void addRowToCentralActions(row);
@@ -2037,7 +2138,7 @@ export default function ProductDecisionCenterPage() {
                         </td>
                       </tr>
                       {expanded ? (
-                        <tr className="reason-row">
+                        <tr className="reason-row" id={`product-decision-why-${row.productId}`}>
                           <td colSpan={13}>
                             <div className="reason-content reason-content-expanded">
                               <div className="reason-headline">
@@ -2408,7 +2509,7 @@ export default function ProductDecisionCenterPage() {
                                   <Link className="reason-link-btn" to={markdownHref}>Otvori kanonski signal u Prioritetima</Link>
                                 ) : <button
                                   type="button"
-                                  className={`btn-add-to-queue${isQueued ? " added" : ""}`}
+                                  className={`btn-add-to-queue product-decision-workflow-action${isQueued ? " added" : ""}`}
                                   disabled={isQueueBusy || isQueued}
                                   onClick={() => void addRowToCentralActions(row)}
                                   title={isQueued
@@ -2442,7 +2543,11 @@ export default function ProductDecisionCenterPage() {
           </table>
         </div>
         <div className="product-decision-render-summary">
-          <span role="status" aria-live="polite">Prikazano {visibleRows.length} od {sortedRows.length} redova.</span>
+          <span role="status" aria-live="polite">
+            {populationLine
+              ? `${populationLine} Lokalni prikaz: ${visibleRows.length} od ${sortedRows.length} filtriranih.`
+              : `Prikazano ${visibleRows.length} od ${sortedRows.length} redova.`}
+          </span>
           {visibleRows.length < sortedRows.length ? (
             <button
               type="button"

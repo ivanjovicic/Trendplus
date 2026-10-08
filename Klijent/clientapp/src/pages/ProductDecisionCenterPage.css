@@ -40,10 +40,61 @@
   max-width: 760px;
 }
 
+.product-decision-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.product-decision-export-reason {
+  margin: 0;
+  max-width: 22rem;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.product-decision-kpis-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .product-decision-kpis {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.7rem;
+}
+
+.product-decision-kpis-secondary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.product-decision-kpi-more-toggle {
+  align-self: flex-start;
+  min-height: 40px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.kpi-card-blocked strong {
+  color: var(--warning-text, var(--warning-strong, #92400e));
+}
+
+.product-decision-workflow-action {
+  border-radius: 12px;
+  min-height: 36px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.76rem;
 }
 
 .kpi-card {
@@ -293,12 +344,14 @@
 .why-button {
   margin-left: 0.4rem;
   border: 1px solid var(--border-default);
-  background: var(--surface-default);
-  color: var(--text-secondary);
-  border-radius: 999px;
-  padding: 0.12rem 0.48rem;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 0.2rem 0.55rem;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
 }
 
 .recommendation-warning-summary,
