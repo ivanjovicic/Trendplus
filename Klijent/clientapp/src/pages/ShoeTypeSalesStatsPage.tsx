@@ -44,6 +44,7 @@ import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
+import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -1041,6 +1042,24 @@ export default function ShoeTypeSalesStatsPage() {
     ],
   );
 
+  const applyFilters = () => {
+    if (invalidRange) {
+      return;
+    }
+
+    const range = resolvePresetFilterRange(periodPreset, fromDate, toDate);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+    const nextFilters = {
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      sezonaId,
+      storeId,
+    };
+    setActiveFilters(nextFilters);
+    setSearchParams((current) => writeShoeTypeUrlState(current, periodPreset, nextFilters), { replace: true });
+  };
+
   const controlBarFields = useMemo<AnalyticsControlBarField[]>(
     () => [
       {
@@ -1064,15 +1083,9 @@ export default function ShoeTypeSalesStatsPage() {
             type="date"
             value={fromDate}
             onChange={(event) => {
-              const newFrom = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setFromDate(newFrom);
-              if (newFrom.length === 10 && new Date(newFrom) <= new Date(toDate)) {
-                const nextFilters = { fromDate: newFrom, toDate, sezonaId: null, storeId };
-                setActiveFilters(nextFilters);
-                setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
-              }
+              setFromDate(event.target.value);
             }}
           />
         ),
@@ -1085,15 +1098,9 @@ export default function ShoeTypeSalesStatsPage() {
             type="date"
             value={toDate}
             onChange={(event) => {
-              const newTo = event.target.value;
               setPeriodPreset("custom");
               setSezonaId(null);
-              setToDate(newTo);
-              if (newTo.length === 10 && new Date(fromDate) <= new Date(newTo)) {
-                const nextFilters = { fromDate, toDate: newTo, sezonaId: null, storeId };
-                setActiveFilters(nextFilters);
-                setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
-              }
+              setToDate(event.target.value);
             }}
           />
         ),
@@ -1120,11 +1127,7 @@ export default function ShoeTypeSalesStatsPage() {
             disabled={storesLoadError != null || storesStale || storesScope !== dataScope}
             value={storesScope === dataScope && !storesStale ? storeId ?? "" : ""}
             onChange={(event) => {
-              const newStore = event.target.value ? Number(event.target.value) : null;
-              setStoreId(newStore);
-              const nextFilters = { fromDate, toDate, sezonaId, storeId: newStore };
-              setActiveFilters(nextFilters);
-              setSearchParams((current) => writeShoeTypeUrlState(current, periodPreset, nextFilters), { replace: true });
+              setStoreId(event.target.value ? Number(event.target.value) : null);
             }}
           >
             <option value="">Svi objekti</option>
@@ -1137,7 +1140,7 @@ export default function ShoeTypeSalesStatsPage() {
         ),
       },
     ],
-    [data?.sezone, dataScope, fromDate, periodPreset, sezonaId, storeId, stores, storesLoadError, storesScope, storesStale, toDate],
+    [data?.sezone, fromDate, periodPreset, sezonaId, storeId, stores, storesLoadError, storesScope, storesStale, toDate],
   );
 
   return (
@@ -1179,12 +1182,19 @@ export default function ShoeTypeSalesStatsPage() {
         description="Period, sezona i objekat ostaju ovde; prioritetna lista ispod ostaje fokusirana na tip obuće."
         chips={controlBarChips}
         primaryAction={{
-          key: "reset",
-          label: loading ? "Učitavanje..." : "Poništi filtere",
-          onClick: resetFilters,
+          key: "apply",
+          label: loading ? "Učitavanje..." : "Primeni filtere",
+          onClick: applyFilters,
           disabled: loading,
         }}
         secondaryActions={[
+          {
+            key: "reset",
+            label: "Poništi filtere",
+            onClick: resetFilters,
+            disabled: loading,
+            tone: "secondary",
+          },
           {
             key: "data-quality",
             label: "Kvalitet podataka",
