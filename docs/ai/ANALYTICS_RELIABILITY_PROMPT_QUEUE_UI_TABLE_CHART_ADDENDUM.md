@@ -533,14 +533,14 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 - Status: DONE
 - Completion: Insight Studio exports now include the available supplier/category cost-coverage and source-basis fields, lifecycle baseline, aging evidence, reorder profit-coverage fields, and API-provided ABC/lifecycle/Smart Reorder trust metadata. Every Insight Studio export carries its export origin; page date/tab filters remain attached through the existing toolbar path.
 - Changed files: `Klijent/clientapp/src/pages/InsightStudioPage.tsx`; `Klijent/clientapp/src/pages/__tests__/InsightStudioPage.spec.tsx`.
-- Checks: focused Insight Studio page spec 5/5; `npm run typecheck`; `git diff --check`.
+- Checks run: focused Insight Studio page spec 5/5; `npm run typecheck`; `git diff --check`.
 - Checks not run: production build and manual document download/visual inspection were not required for the focused column/metadata contract; current-main Actions run is recorded below.
 - Run log: `.ai/runs/2026-10-08-RQ46-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `853c37f3c5790ee1715d7d6749cf26205891a872`
 - Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA
-- Missed: no generated PDF/XLSX file was downloaded for visual inspection.
+- Follow-up: generated PDF/XLSX visual inspection is not yet certified; verify when the export artifact is available. No claim of downloaded-document proof.
 - Residual risk: current-main Analytics Quality Gates run `37825764812` was `in_progress` at inspection; it is residual risk, not a delivery gate.
 - Post-close routing: full 13-file RQ/SQL scan at post-delivery `origin/main` `853c37f3c5790ee1715d7d6749cf26205891a872`; RQ50 was dependency-complete and collision-safe, then promoted and claimed.
 
