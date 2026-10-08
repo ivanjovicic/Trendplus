@@ -12,27 +12,30 @@ Ownership transfer: none
 ## What was done
 - Changed the 013 compatibility script to create `povracaj_zaglavlje_mv` only when absent. It no longer drops an object with dependent views.
 - Extended the supplier schema PostgreSQL integration test to delete the 013 startup-history row before the second repair. This forces the script to execute again, modeling a changed script hash on an upgraded database where `povracaj_zaglavlje` already depends on the materialized view.
-- Asserted that the compatibility view remains present and the materialized view remains populated after the rerun.
+- Added a non-container SQL contract test asserting that 013 uses `CREATE MATERIALIZED VIEW IF NOT EXISTS` and contains no drop for this materialized view.
 - Opened PR #112. No production database was accessed or changed.
 
 ## Files changed
 - Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql
 - Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs
+- Api.Tests/SupplierDecisionSchemaSqlTests.cs
 - .ai/runs/2026-10-08-DIRECT-2BP01-evidence.md
 
 ## Validation run
-- Reviewed the initializer call order, SQL script, existing integration test, and startup SQL history/hash logic through the connected GitHub repository.
-- Checked combined status for head commit a7597cc243bd33dc80ff6a1b9cbb05e91087f326: Vercel is pending; no backend test check is currently reported.
+- `dotnet restore Api.Tests/Api.Tests.csproj --configfile NuGet.Config` -> pass (temporary NuGet cache/config on F:).
+- `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests` -> pass, 47 tests; this also built Domain, Application, Infrastructure, Workers, Api and Api.Tests.
+- `dotnet test Api.Tests/Api.Tests.csproj --no-build --no-restore --filter FullyQualifiedName~SupplierDecisionSchemaReadinessIntegrationTests` -> six passed, but the suite's fixture guard returned early because Docker is unavailable; this is not PostgreSQL behavioral proof.
+- Re-ran the integration class with `CI=true` to prevent the fixture guard from silently returning; all six failed during Testcontainers setup with “Docker is either not running or misconfigured,” before the test assertions.
+- GitHub combined status for the earlier PR head reported Vercel pending; no backend test status was reported.
 
 ## Validation not run
-- Focused .NET/Testcontainers integration test and backend build - local repository checkout failed because the system drive had no free space.
-- PostgreSQL repro - not run locally for the same environment limitation.
+- PostgreSQL behavioral assertions could not run because this environment has no Docker endpoint. No production database was accessed.
 
 ## Documentation impact
 - Added this run log as required for a non-trivial repository change.
 
 ## What was missed
-- Local executable validation remains outstanding; PR CI currently reports only a pending Vercel check.
+- The Testcontainers-backed rerun regression still needs execution in an environment with Docker.
 
 ## Risks
 - `CREATE MATERIALIZED VIEW IF NOT EXISTS` preserves dependent objects on re-execution but does not reconcile a future changed materialized-view definition. Such schema changes need an explicit dependency-aware, non-destructive migration.
@@ -41,4 +44,4 @@ Ownership transfer: none
 - not applicable
 
 ## Next
-- Run the focused PostgreSQL integration test and backend build in an environment with free disk space; review the PR checks before merging.
+- Review the final PR checks and run the PostgreSQL integration class in a Docker-enabled environment before merging.
