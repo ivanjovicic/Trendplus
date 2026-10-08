@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-50` IN_PROGRESS (claimed 2026-10-08 after RQ555/RQ594 released the Product Decision path; primary-checkout edit absent on current main). P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 is DONE or explicitly deferred.
+Current READY prompt: `P-UI-38` (promoted 2026-10-08 after P-UI-50 DONE). All named UI migrations including P-UI-50/P-UI-54 are DONE; P-UI-38 is the final whole-program responsive/theme/a11y gate.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -2462,8 +2462,8 @@ Article List has small pagination/input controls and a table without an explicit
 
 ## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
 
-Status: WAITING
-Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred, **and P-UI-54 is DONE**; this prompt is the final whole-program responsive/theme/a11y gate and remains WAITING while P-UI-50 is unresolved
+Status: READY
+Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred, **and P-UI-54 is DONE**; P-UI-50 is DONE (2026-10-08), so this final whole-program gate is dependency-complete
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
 Feature family: responsive-ui-regression-gates
@@ -3526,13 +3526,13 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ573, RQ574, P-UI-49 and RQ555 are DONE (RQ555 now owns the sequential Product Decision/action source path)
 Priority: P2
 Type: frontend/tests
 Feature family: product-decision-hierarchy
 Parallel-safe: no (`ProductDecisionCenterPage.tsx` is shared with RQ573/RQ574)
-Owner: cursor-cloud (workspace claim 2026-10-08)
+Owner: cursor-cloud
 Owned paths: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx/.css` and its specs
 Avoid paths: backend Product Decision endpoints and reasoning helpers (RQ573/RQ574)
 Commit suggestion: `feat(ui): honest Product Decision hierarchy when recommendations are blocked`
@@ -3601,27 +3601,27 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 - Branch: `cursor/p-ui-50-product-decision-hierarchy-7269`
 - Dependencies verified DONE: RQ573, RQ574, P-UI-49, RQ555, RQ594
 - Collision check: no open PR/lock/branch owns `ProductDecisionCenterPage.tsx`; working tree clean for owned paths
-- Local lock: `.ai/task-locks/P-UI-50-cursor.lock.md`
+- Local lock: `.ai/task-locks/P-UI-50-cursor.lock.md` (removed before delivery)
 
 ### Completion note
 
-- Date: 2026-10-07
-- Status: BLOCKED
-- Completion: Post-close recovery verified RQ573, RQ574 and P-UI-49 DONE. P-UI-50 was not claimed or implemented because `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` has an uncommitted change in the shared primary checkout; the edit's owner/intent is not recorded, so the owned path is not safe to take.
-- Changed files: Queue routing metadata only; no P-UI-50 product files changed.
-- Contract/runtime behavior changed: none.
-- Checks run: fresh main/dependency review; no matching P-UI-50/P-UI-51 branch, lock or open PR; confirmed the existing working-tree change directly touches P-UI-50's owned page path.
-- Checks not run: P-UI-50 implementation tests; the prompt remains unclaimed.
-- Run log: `.ai/runs/2026-10-07-P-UI-49-evidence.md`
+- Date: 2026-10-08
+- Status: DONE
+- Completion: Action-family KPIs honor explicit backend recommendation blocks with `—` + taxonomy reason; allowed zeros remain; secondary money/cover KPIs are disclosed; filters precede KPIs; `Zašto?` has ARIA expanded/controls; export empty reason is visible; backend population totals are shown.
+- Changed files: `ProductDecisionCenterPage.tsx/.css`, hierarchy + confidence specs, queue/roadmap metadata, `.ai/runs/2026-10-08-P-UI-50-evidence.md`.
+- Contract/runtime behavior changed: presentation-only; no backend recommendation formula change.
+- Checks run: focused Vitest 35/35; analytics guardrails + typecheck; prompt-queue validator; `git diff --check`.
+- Checks not run: full frontend suite, browser matrix, deployed proof.
+- Run log: `.ai/runs/2026-10-08-P-UI-50-evidence.md`
 - Evidence state: synchronized
-- Delivery mode: direct-main
-- Main commit SHA: `194df3081cd4013b4320e77ffe34329e01547ff6`
-- Main verification: passed - refreshed `origin/main` at `194df3081cd4013b4320e77ffe34329e01547ff6` contains the BLOCKED routing record and P-UI-49 delivery.
-- Missed: P-UI-50 remains unimplemented.
-- Follow-up: Re-evaluate the page path after the existing checkout edit is delivered or cleared; then promote to READY if collision-free.
-- Residual risk: Owner/intent for the existing uncommitted Product Decision page edit is unknown.
-- Next: P-UI-51 remains the primary READY, unclaimed prompt.
-- Prompt defect / scope repair: none.
+- Delivery mode: direct-main (branch/PR #113 transport)
+- Main commit SHA: `3aac4854685fc2a44d47e774049d10227ae13166`
+- Main verification: fresh `origin/main` tip `67deb8fb6acb6363d428c0ae3400cc24e8a27a32` contains the implementation SHA.
+- Missed: physical-device certification remains with P-UI-38.
+- Follow-up: P-UI-38 promoted READY as the final whole-program gate.
+- Residual risk: current-main Actions queued/in_progress on tip; unrelated AnalyticsActionConstants test drift remains from prior RQ131 classification.
+- Next: P-UI-38 READY
+- Prompt defect / scope repair: historical checkout-collision blocker cleared after RQ594 path release and clean current-main checkout.
 
 ---
 
