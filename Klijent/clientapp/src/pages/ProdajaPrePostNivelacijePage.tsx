@@ -883,13 +883,19 @@ export default function ProdajaPrePostNivelacijePage() {
     )
     : null;
   const loading = initialLoading || refetching;
-  useEffect(() => {
-    if (!data) return;
-    setExpandedVendorKey((current) => reconcilePrePostExpandedVendorKey(
-      current,
-      buildSupplierVendorKeys(data.vendorStats ?? []),
-    ));
-  }, [data]);
+  // Reconcile during render (React "adjust state on prop change" pattern), not in a passive effect:
+  // a click that lands between the data commit and a deferred effect flush would otherwise be wiped
+  // by the stale reconciliation, which is what made the detail-route spec flaky under CI load.
+  const [reconciledData, setReconciledData] = useState(data);
+  if (data !== reconciledData) {
+    setReconciledData(data);
+    if (data) {
+      setExpandedVendorKey((current) => reconcilePrePostExpandedVendorKey(
+        current,
+        buildSupplierVendorKeys(data.vendorStats ?? []),
+      ));
+    }
+  }
 
   const previousRevenueByVendorKey = useMemo(() => {
     const rows = previousData?.vendorStats ?? [];
