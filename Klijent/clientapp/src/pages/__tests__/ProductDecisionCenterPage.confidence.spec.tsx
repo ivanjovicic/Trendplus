@@ -353,6 +353,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(response);
     render(<ProductDecisionCenterPage />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "Prikaži dodatne signale" }));
     const lostSalesCard = screen.getByText("Procena izgubljene prodaje").closest(".kpi-card");
     const slowStockCard = screen.getByText("Kapital u sporoj zalihi").closest(".kpi-card");
     expect(lostSalesCard?.querySelector("strong")).toHaveTextContent("Nije dostupno");
@@ -367,6 +368,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     getProductDecisionCenterMock.mockResolvedValueOnce(response);
     render(<ProductDecisionCenterPage />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "Prikaži dodatne signale" }));
     const lostSalesCard = screen.getByText("Procena izgubljene prodaje").closest(".kpi-card");
     await waitFor(() => expect(lostSalesCard).toHaveTextContent("Pokrivenost nije dostupna"));
     expect(lostSalesCard).not.toHaveTextContent("0 poznatih");

@@ -2543,11 +2543,7 @@ export default function ProductDecisionCenterPage() {
           </table>
         </div>
         <div className="product-decision-render-summary">
-          <span role="status" aria-live="polite">
-            {populationLine
-              ? `${populationLine} Lokalni prikaz: ${visibleRows.length} od ${sortedRows.length} filtriranih.`
-              : `Prikazano ${visibleRows.length} od ${sortedRows.length} redova.`}
-          </span>
+          <span role="status" aria-live="polite">Prikazano {visibleRows.length} od {sortedRows.length} redova.</span>
           {visibleRows.length < sortedRows.length ? (
             <button
               type="button"

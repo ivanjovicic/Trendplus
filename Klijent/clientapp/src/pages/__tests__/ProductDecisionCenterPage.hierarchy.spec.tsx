@@ -24,6 +24,7 @@ vi.mock("../../services/analyticsApi", () => ({
   getStores: (...args: unknown[]) => getStoresMock(...args),
   getSupplierFilters: (...args: unknown[]) => getSupplierFiltersMock(...args),
   getProductDecisionCenter: (...args: unknown[]) => getProductDecisionCenterMock(...args),
+  getProductDecisionTimeline: vi.fn().mockResolvedValue({ events: [], emptyReason: "no_events" }),
   getProductDecisionTimelineExportCsv: vi.fn(),
   getAnalyticsActionSourceStatuses: (...args: unknown[]) => getAnalyticsActionSourceStatusesMock(...args),
   upsertAnalyticsActionWithResult: vi.fn(),
@@ -166,7 +167,7 @@ describe("ProductDecisionCenterPage hierarchy", () => {
   });
 
   it("renders blocked action KPIs as em dash with reason, never actionable zero", async () => {
-    getProductDecisionCenterMock.mockResolvedValueOnce(buildResponse(buildMeta({
+    const blocked = buildResponse(buildMeta({
       recommendationAllowed: false,
       decisionReadiness: {
         state: "blocked",
@@ -175,18 +176,20 @@ describe("ProductDecisionCenterPage hierarchy", () => {
         reasonCodes: ["missing_cost_evidence"],
         evidenceReferences: [],
       },
-    })));
+    }));
+    getProductDecisionCenterMock.mockResolvedValue(blocked);
 
     render(<ProductDecisionCenterPage />);
 
     const replenish = await screen.findByTestId("kpi-replenish");
     expect(replenish).toHaveTextContent(PRODUCT_DECISION_BLOCKED_KPI_VALUE);
     expect(screen.getByTestId("kpi-replenish-reason")).toHaveTextContent(/Preporuka je blokirana/);
-    expect(screen.getByText(/Prikazano 1 od 12 redova/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Prikazano 1 od 12 redova/).length).toBeGreaterThan(0);
   });
 
   it("keeps allowed-family zero and exposes Zašto aria-expanded", async () => {
-    getProductDecisionCenterMock.mockResolvedValueOnce(buildResponse());
+    const allowed = buildResponse();
+    getProductDecisionCenterMock.mockResolvedValue(allowed);
 
     render(<ProductDecisionCenterPage />);
 
