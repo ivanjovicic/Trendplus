@@ -12,6 +12,7 @@ import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import { fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 import { getDataScope } from "../utils/dataScope";
+import { parseEntityIdParam } from "../validation/entityId";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -106,10 +107,8 @@ function evidenceBasisLabel(value: string | null | undefined): string {
 function parsePulseFilterId(params: URLSearchParams, key: "storeId" | "supplierId"): number | null | undefined {
   const values = params.getAll(key);
   if (values.length === 0) return undefined;
-  const raw = values[0];
-  if (values.length !== 1 || !raw || raw[0] === "0" || !Array.from(raw).every((digit) => digit >= "0" && digit <= "9")) return null;
-  const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 2147483647 ? parsed : null;
+  // Access may use a real negative Int32 ID. Reuse the canonical entity identity parser.
+  return values.length === 1 ? parseEntityIdParam(values[0]) : null;
 }
 
 export default function DecisionPulsePage() {
