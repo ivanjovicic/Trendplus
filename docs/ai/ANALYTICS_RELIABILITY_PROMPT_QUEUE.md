@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `none` after full post-close recovery at `6f8dae6d87208ceca1de73ed792317e97c38206a`; RQ55/RQ56/RQ131 DONE and RQ130 OBSOLETE. See `.ai/runs/2026-10-08-RQ131-evidence.md`.
+Current RQ routing: `RQ597` is the primary READY prompt (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 still needs the Product Owner's period/scope decision; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
@@ -30367,3 +30367,13 @@ Completion note
 - Residual risk: aggregate analytics CI remains red on verified pre-existing/unrelated failures; the full backend suite and closure-SHA planning workflow remain in progress at last inspection.
 - Post-close routing: RQ555 promoted and claimed; full cascade is in `.ai/runs/2026-10-08-RQ594-evidence.md`.
 - Prompt defect / scope repair: updated the existing `decisionScore_assign` baseline line reference after the source moved; no new guardrail violation.
+
+## RQ597 - Color bucket-level oracle parity (routing mirror)
+
+Status: READY
+Priority: P2
+Type: backend-tests/integration
+Feature family: color-bucket-independent-oracle
+Parallel-safe: yes (test-only; distinct from RQ482 and BCI16 paths)
+Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`.
+Canonical acceptance compares every normalized Color endpoint bucket (count, signed units and revenue) with the independent raw-fact oracle on deterministic PostgreSQL fixture scopes. No runtime/product formula changes. See the canonical prompt for scope, test command, boundaries and handoff on a reproduced runtime mismatch.

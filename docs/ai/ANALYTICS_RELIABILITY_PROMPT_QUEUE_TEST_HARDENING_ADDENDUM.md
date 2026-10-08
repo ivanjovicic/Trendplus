@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none (`RQ100`-`RQ105` DONE)
-Status: owner-promoted READY pack complete; `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main — this addendum has no live READY work (2026-10-05 docs audit)
+Current READY prompt: `RQ597` (P2, Color endpoint bucket parity against the independent raw-fact oracle)
+Status: owner-promoted test-hardening follow-up; `RQ597` is READY from the 2026-10-05 adversarial audit residual. `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -17,8 +17,8 @@ Use with:
 
 ## Queue rules
 
-1. Keep later prompts `WAITING` until the current READY prompt is DONE.
-2. `RQ105` is DONE. No remaining RQ READY in this pack. `RQ96` and `RQ106` are DONE on main; do not treat this addendum header as a live executor pointer.
+1. `Current READY` is the primary/default pointer; independent test-only prompts may also be READY when their dependencies and paths are clear.
+2. `RQ105` is DONE. `RQ597` is the live READY prompt in this pack. `RQ96` and `RQ106` are DONE on main.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -32,6 +32,7 @@ Use with:
 | RQ102 | DONE | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | DONE | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
 | RQ104 | DONE | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
+| RQ597 | READY | color-bucket-independent-oracle | Compare every Color API bucket with the independent raw-fact oracle |
 
 ---
 
@@ -599,3 +600,76 @@ npm run check:analytics-guardrails
 - Residual risk: other analytics pages can still dump unknown codes via replaceAll("_"," ") if they reuse the old board helper pattern
 - Prompt defect / scope repair: none
 - Next: `RQ105` - Operational fallback must not look like trusted analytics meta
+
+---
+
+## RQ597 - Compare Color API buckets with the independent raw-fact oracle
+
+Status: READY
+Priority: P2
+Type: backend-tests/integration
+Feature family: color-bucket-independent-oracle
+Parallel-safe: yes (test-only; owns a new test file and does not change analytics runtime semantics)
+Owner: Analytics Reliability
+Ready after: current-main adversarial audit residual confirmed; shared fixture, endpoint and independent oracle exist
+Local lock: `.ai/task-locks/RQ597-<agent>.lock.md`
+Commit suggestion: `test(analytics): compare color buckets with raw-fact oracle`
+
+### Problem
+
+Color already has aggregate and cross-screen total checks, but no focused integration test compares every returned Color bucket with an independently computed raw-fact bucket. A dimension mapping or grouping error can therefore preserve grand totals while assigning units/revenue to the wrong color.
+
+### Evidence
+
+- `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md`, residual 9 and its follow-up list: cross-screen coverage checks totals; bucket-level Color oracle parity remains.
+- `Api.Tests/OperationsAnalyticsRawFactOracleIntegrationTests.cs` checks Color oracle bucket sums but does not call the Color endpoint.
+- `Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs` checks Color totals, not bucket-level API-vs-oracle equality.
+- `Infrastructure/Services/OperationsAnalyticsRawFactOracle.cs` provides `QueryColorBucketsAsync` with half-open time, store and dataScope filtering plus normalized color identity.
+- `Api/Endpoints/AllEndpoints.cs` maps `/api/analytics/color-sales-stats`.
+- `Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql` supplies deterministic PostgreSQL rows.
+
+### Scope
+
+- Add `Api.Tests/ColorSalesStatsIndependentOracleIntegrationTests.cs` using the existing disposable PostgreSQL fixture, route registration and shared seed fixture.
+- Compare endpoint buckets against `OperationsAnalyticsRawFactOracle.QueryColorBucketsAsync` by normalized bucket identity and assert per-bucket sale-line count, signed units and revenue.
+- Include representative all-scope, imported/existing, store-filter and unknown-color cases only where the existing fixture supports them; retain half-open boundary and DUG/KOREKCIJA exclusions as independent controls.
+- Update this addendum, the parent RQ routing mirror, `MASTER_ROADMAP.md`, and the run evidence when closing the prompt.
+
+### Do not touch
+
+- `Api/Endpoints/AllEndpoints.cs`, Color identity/formula policy, database objects or frontend behavior.
+- RQ139/RQ140 status or acceptance; this fills the named Color test residual only.
+- Product thresholds, recommendation ownership, or any production database.
+
+### Read first
+
+- `docs/ai/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` items 8-10 and follow-up list.
+- `Api.Tests/OperationsAnalyticsRawFactOracleIntegrationTests.cs`.
+- `Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs`.
+- `Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql`.
+- `Infrastructure/Services/OperationsAnalyticsRawFactOracle.cs` and the Color endpoint response shape.
+- `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `docs/ai/VALIDATION_SELECTOR.md`.
+
+### Do
+
+1. Reuse the existing Testcontainers fixture and seed data; do not create a new test host or hand-maintained expected aggregates when the independent oracle can derive them.
+2. Compare the complete normalized bucket sets, not only totals, and assert count, signed unit and revenue values for each bucket.
+3. Prove at least one changed filter changes membership as expected and that endpoint and oracle agree for the same scope.
+4. Keep an empty/unknown Color bucket distinct from a missing response or failed endpoint.
+5. If a mismatch exposes a runtime defect, record the minimal counterexample and route the fix to the owning runtime prompt; do not widen this test-only prompt silently.
+
+### Tests
+
+- `dotnet test Api.Tests/Api.Tests.csproj --filter "FullyQualifiedName~ColorSalesStatsIndependentOracleIntegrationTests"`
+- `git diff --check` and the repository queue/governance validators.
+- Run with PostgreSQL/Testcontainers enabled when Docker is available; report an unavailable container as not run, never as passing.
+
+### Acceptance
+
+- Deterministic PostgreSQL integration coverage compares every Color API bucket to the independent raw-fact oracle for the selected fixture scopes.
+- The assertions would fail if values move between buckets while the overall Color total stays constant.
+- No production/runtime behavior, business formula, migration or deployed database is changed.
+
+### Dependencies
+
+None. Existing endpoint, oracle, fixture and database test harness are already present. `RQ139` remains PARTIAL for its broader numeric-state/parity acceptance and is not a prerequisite for this isolated test slice.
