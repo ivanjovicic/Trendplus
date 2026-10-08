@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: RQ481 READY (P1; Decision Pulse shared applied-period/dataScope) after owner-delegated decision 2026-10-08; RQ319/RQ320 remain WAITING pending the post-RQ140 path release check; `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
+Current RQ routing: RQ481 IN_PROGRESS (P1; Decision Pulse shared applied-period/dataScope); RQ319 READY (P2; explicit Apply policy approved and shared pages released after RQ140 close); RQ320 remains WAITING behind RQ319. `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Owner-delegated queue unblock 2026-10-08: RQ481 WAITING -> READY; RQ319 explicit Apply choice approved but WAITING while RQ140 remains IN_PROGRESS on overlapping Shoe Type/Pre/Post surface; RQ320 WAITING after RQ319. Decision record `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md`; external STAB16/RQ592 acceptance gates unchanged.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 has the owner-delegated shared period/dataScope decision and is READY; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
@@ -18232,7 +18232,7 @@ Reproduction: set non-default filters on Color, copy URL, open new tab — defau
 
 ## RQ319 - Unify Operacije filter apply semantics (auto vs explicit Apply)
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: frontend/ux/tests
 Feature family: operations-filter-apply-consistency
@@ -18289,6 +18289,12 @@ Authority: user expressly delegated the product choice on 2026-10-08; recorded i
 - **Explicit Apply** for period/date ranges, store and multi-field analytical filters on sibling Operations screens. Keep draft separate from applied data; tab, sort, pagination and in-loaded-set search remain immediate. Align with `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` section 6.3.
 - The product-choice blocker is resolved. **Status stays WAITING** because RQ140 is currently IN_PROGRESS with shared Shoe Type/Pre/Post detail/export scope; do not overlap an active owner's page files without its explicit scoped release. After RQ140 closes/releases overlapping paths and a fresh collision check, promote RQ319 to READY.
 - RQ320 remains a sequential follow-up on the same controls/pages, not a parallel task.
+
+---
+
+### Post-close promotion 2026-10-08
+
+- Promoted `WAITING -> READY` after RQ140 closed PARTIAL and released its Shoe Type/Color/Pre-Post page ownership. Explicit Apply is approved. P-UI-51 is DONE and its remote branch is contained in current `main`; its only later shared-control CSS change is an independent coarse-pointer touch-target rule. No matching RQ319/P-UI-51 lock or open PR exists. RQ320 remains WAITING until RQ319 is DONE.
 
 ---
 
@@ -27041,7 +27047,7 @@ Users cannot mistake an incomplete Pulse feed for a complete no-action conclusio
 
 ## RQ481 - Bind Decision Pulse to shared period and data-scope lineage
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: decision-pulse-period-scope-lineage
@@ -27106,6 +27112,13 @@ Authority: user expressly instructed to decide and unblock Trendplus queue (2026
 - Display requested versus effective dates and source-scoped coverage; preserve partial/error/suppression/freshness metadata and backend decision authority. No new score policy or tenant inference. Applied period metadata always reflects the data used.
 - No RQ480/RQ482 collision (both DONE); open PRs #112 (SQL) and #116/#102/#103 (docs) do not own this Pulse page/service. Perform fresh lock/branch/PR check before claim.
 - Status promoted WAITING -> READY; priority P1; RQ481 is primary repo-local claimable work. Do not claim DONE before focused backend + frontend contract proof.
+
+---
+
+### Owner claim 2026-10-08
+
+- Refreshed post-close `origin/main` at `141ae8b2fbdeb35226c6b7c90932f2e25cb839bb`; RQ140 is PARTIAL and RQ481 is the highest-priority READY task in RQ. No local/remote RQ481 branch, matching lock or open PR exists. Open PRs #112, #102 and #103 are SQL/docs only. Claimed `READY -> IN_PROGRESS` on `codex/rq481-pulse-period-scope`; RQ319 was promoted independently to READY after its explicit decision and page-path release, but remains unclaimed because this workspace executes one task at a time.
+- Local lock: `.ai/task-locks/RQ481-codex.lock.md`.
 
 ---
 
