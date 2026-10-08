@@ -36,7 +36,12 @@ Ownership transfer: none
 - none known within BCI15 test-contract scope.
 
 ## Risks
-- Other unrelated backend failures may still exist in the broad suite; this slice only owns the constants cardinality drift proven red on current-main.
+- none known within the owned constants unit family after remote green proof.
+
+Remote CI classification (implementation SHA `e5e2f161`):
+- Analytics Tests & Data Integrity `37802633040` → **green** (Complete backend analytics suite success; RQ453 certification success)
+- Planning Governance `37802633036` → **green**
+- Closure tip `6b01bd14` Planning Governance `37802678749` → **green**
 
 ## Post-close routing recovery
 - Recovery base: `origin/main` SHA `e5e2f16114d443176ad0619b000cc70d62fd1c21` after BCI15 delivery.
