@@ -6364,7 +6364,7 @@ public static class CachedAnalyticsEndpoints
                 ScopeBreakdown = "article_origin=Artikli.DataOrigin;sale_origin=ProdajaZaglavlje.DataOrigin",
                 DecisionGrain = "article_size",
                 ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
-                Summary = BuildProductDecisionCenterSummary([], analyzedLostSalesEstimate: 0m, analyzedSlowStockCapital: 0m),
+                Summary = BuildProductDecisionCenterSummary([], []),
                 TotalRows = 0,
                 AnalyzedRows = 0,
                 IgnoredRowsCount = 0,
@@ -6464,8 +6464,6 @@ public static class CachedAnalyticsEndpoints
             ct);
 
         var rows = new List<ProductDecisionCenterRowDto>(articles.Count);
-        var totalLostSalesEstimate = 0m;
-        var totalSlowStockCapital = 0m;
 
         foreach (var article in articles)
         {
@@ -6650,9 +6648,6 @@ public static class CachedAnalyticsEndpoints
                 combinedReasonCodes.Add("opening_stock_unavailable");
             }
 
-            totalLostSalesEstimate += lostSalesEstimate ?? 0m;
-            totalSlowStockCapital += slowStockCapital ?? 0m;
-
             var row = new ProductDecisionCenterRowDto
             {
                 ProductId = article.ProductId,
@@ -6769,10 +6764,7 @@ public static class CachedAnalyticsEndpoints
             AnalyzedRows = rowWindow.AnalyzedRows,
             IgnoredRowsCount = rowWindow.IgnoredRowsCount,
             IgnoredRowsMeaning = rowWindow.IgnoredRowsMeaning,
-            Summary = BuildProductDecisionCenterSummary(
-                sortedRows,
-                analyzedLostSalesEstimate: totalLostSalesEstimate,
-                analyzedSlowStockCapital: totalSlowStockCapital),
+            Summary = BuildProductDecisionCenterSummary(sortedRows, rows),
             Rows = sortedRows,
             DecisionGrain = "article_size",
             ThresholdPolicy = BuildProductDecisionThresholdPolicyDto(thresholdPolicy),
@@ -6841,15 +6833,16 @@ public static class CachedAnalyticsEndpoints
     }
 
     /// <summary>
-    /// PDC summary contract:
-    /// count KPIs use returned/top rows; money totals use all analyzed rows.
-    /// Numeric behavior is unchanged; scopes make the denominator explicit.
+    /// PDC summary contract: count KPIs use returned/top rows; money totals use
+    /// all analyzed rows, summing known values only and retaining coverage.
     /// </summary>
     internal static ProductDecisionCenterSummaryDto BuildProductDecisionCenterSummary(
         IReadOnlyList<ProductDecisionCenterRowDto> returnedRows,
-        decimal analyzedLostSalesEstimate,
-        decimal analyzedSlowStockCapital) =>
-        new()
+        IReadOnlyList<ProductDecisionCenterRowDto> analyzedRows)
+    {
+        var lostSales = AggregateProductDecisionMoney(analyzedRows.Select(x => x.LostSalesEstimate));
+        var slowStock = AggregateProductDecisionMoney(analyzedRows.Select(x => x.SlowStockCapital));
+        return new ProductDecisionCenterSummaryDto
         {
             ReplenishCount = returnedRows.Count(x => x.RecommendationStatus == "REPLENISH"),
             MarkdownCount = returnedRows.Count(x => x.RecommendationStatus == "MARKDOWN"),
@@ -6864,11 +6857,32 @@ public static class CachedAnalyticsEndpoints
             LowCoverCount = returnedRows.Count(x => x.StockCoverStatus is "low_cover" or "low" or "out_of_stock_risk"),
             SlowStockCount = returnedRows.Count(x => x.StockCoverStatus is "slow_stock" or "slow" or "no_velocity"),
             GoodSellThroughCount = returnedRows.Count(x => string.Equals(x.SellThroughStatus, "good", StringComparison.OrdinalIgnoreCase)),
-            LostSalesEstimate = Math.Round(analyzedLostSalesEstimate, 2),
-            SlowStockCapital = Math.Round(analyzedSlowStockCapital, 2),
+            LostSalesEstimate = lostSales.Total.HasValue ? Math.Round(lostSales.Total.Value, 2) : null,
+            LostSalesEstimateKnownRows = lostSales.KnownRows,
+            LostSalesEstimateUnknownRows = lostSales.UnknownRows,
+            LostSalesEstimateCoveragePct = lostSales.CoveragePct,
+            SlowStockCapital = slowStock.Total.HasValue ? Math.Round(slowStock.Total.Value, 2) : null,
+            SlowStockCapitalKnownRows = slowStock.KnownRows,
+            SlowStockCapitalUnknownRows = slowStock.UnknownRows,
+            SlowStockCapitalCoveragePct = slowStock.CoveragePct,
             CountDenominatorScope = ProductDecisionDenominatorScope.ReturnedRows,
             MoneyDenominatorScope = ProductDecisionDenominatorScope.AnalyzedRows
         };
+    }
+
+    internal static ProductDecisionMoneyAggregate AggregateProductDecisionMoney(IEnumerable<decimal?> rowValues)
+    {
+        var values = rowValues.ToArray();
+        var knownValues = values.Where(value => value.HasValue).Select(value => value!.Value).ToArray();
+        var coveragePct = values.Length == 0
+            ? (decimal?)null
+            : (decimal)knownValues.Length / values.Length * 100m;
+        return new ProductDecisionMoneyAggregate(
+            Total: knownValues.Length == 0 ? null : knownValues.Sum(),
+            KnownRows: knownValues.Length,
+            UnknownRows: values.Length - knownValues.Length,
+            CoveragePct: coveragePct.HasValue ? Math.Round(coveragePct.Value, 2) : null);
+    }
 
     private static bool IsOperationalStockCoverRisk(string? status)
         => status is not null
@@ -9198,6 +9212,12 @@ public sealed record ProductDecisionCenterRowWindow(
     int IgnoredRowsCount,
     string IgnoredRowsMeaning);
 
+internal sealed record ProductDecisionMoneyAggregate(
+    decimal? Total,
+    int KnownRows,
+    int UnknownRows,
+    decimal? CoveragePct);
+
 public class ProductDecisionCenterSummaryDto
 {
     public int ReplenishCount { get; set; }
@@ -9216,9 +9236,16 @@ public class ProductDecisionCenterSummaryDto
     public int LowCoverCount { get; set; }
     public int SlowStockCount { get; set; }
     public int GoodSellThroughCount { get; set; }
-    /// <summary>Projected RSD demand over the 14-day PDC impact window, weighted by calendar-day velocity and stock shortfall ratio; not booked sales.</summary>
-    public decimal LostSalesEstimate { get; set; }
-    public decimal SlowStockCapital { get; set; }
+    /// <summary>Known-only projected RSD demand over the 14-day PDC impact window; null when no analyzed row has an eligible estimate. Not booked sales.</summary>
+    public decimal? LostSalesEstimate { get; set; }
+    public int LostSalesEstimateKnownRows { get; set; }
+    public int LostSalesEstimateUnknownRows { get; set; }
+    public decimal? LostSalesEstimateCoveragePct { get; set; }
+    /// <summary>Known-only slow-stock capital; null when no analyzed row has a known eligible value.</summary>
+    public decimal? SlowStockCapital { get; set; }
+    public int SlowStockCapitalKnownRows { get; set; }
+    public int SlowStockCapitalUnknownRows { get; set; }
+    public decimal? SlowStockCapitalCoveragePct { get; set; }
     /// <summary>Denominator for count KPIs. Current contract: <see cref="ProductDecisionDenominatorScope.ReturnedRows"/>.</summary>
     public string CountDenominatorScope { get; set; } = ProductDecisionDenominatorScope.ReturnedRows;
     /// <summary>Denominator for money totals. Current contract: <see cref="ProductDecisionDenominatorScope.AnalyzedRows"/>.</summary>

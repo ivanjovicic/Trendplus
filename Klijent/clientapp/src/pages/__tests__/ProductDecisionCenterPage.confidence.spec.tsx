@@ -259,7 +259,13 @@ function buildResponse(rows: Array<Record<string, unknown>>, dataQualityStatus: 
     rows,
     summary: {
       lostSalesEstimate: 25000,
+      lostSalesEstimateKnownRows: rows.length,
+      lostSalesEstimateUnknownRows: 0,
+      lostSalesEstimateCoveragePct: rows.length > 0 ? 100 : null,
       slowStockCapital: 0,
+      slowStockCapitalKnownRows: rows.length,
+      slowStockCapitalUnknownRows: 0,
+      slowStockCapitalCoveragePct: rows.length > 0 ? 100 : null,
     },
     totalRows: rows.length,
     generatedAtUtc: "2026-05-26T12:00:00Z",
@@ -332,6 +338,29 @@ beforeEach(() => {
 });
 
 describe("ProductDecisionCenterPage confidence contract", () => {
+  it("shows unknown financial totals as unavailable with explicit coverage", async () => {
+    const response = buildResponse([makeRow({ lostSalesEstimate: null, slowStockCapital: null })], "warning");
+    response.summary = {
+      lostSalesEstimate: null,
+      lostSalesEstimateKnownRows: 0,
+      lostSalesEstimateUnknownRows: 1,
+      lostSalesEstimateCoveragePct: 0,
+      slowStockCapital: null,
+      slowStockCapitalKnownRows: 0,
+      slowStockCapitalUnknownRows: 1,
+      slowStockCapitalCoveragePct: 0,
+    };
+    getProductDecisionCenterMock.mockResolvedValueOnce(response);
+    render(<ProductDecisionCenterPage />);
+
+    const lostSalesCard = screen.getByText("Procena izgubljene prodaje").closest(".kpi-card");
+    const slowStockCard = screen.getByText("Kapital u sporoj zalihi").closest(".kpi-card");
+    expect(lostSalesCard?.querySelector("strong")).toHaveTextContent("Nije dostupno");
+    await waitFor(() => expect(lostSalesCard).toHaveTextContent(/Pokrivenost: 0,0% · 0 poznatih \/ 1 bez vrednosti/));
+    expect(slowStockCard?.querySelector("strong")).toHaveTextContent("Nije dostupno");
+    expect(slowStockCard).toHaveTextContent(/Pokrivenost: 0,0% · 0 poznatih \/ 1 bez vrednosti/);
+  });
+
   it("renders the complete result progressively and keeps remaining rows reachable", async () => {
     const rows = Array.from({ length: 120 }, (_, index) => makeRow({
       productId: index + 101,

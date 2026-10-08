@@ -1319,11 +1319,23 @@ export const dashboardBootstrapResponseSchema = z.object({
   ...tier1MetaEnvelope,
 }).passthrough();
 
+export const productDecisionCenterSummarySchema = z.object({
+  lostSalesEstimate: nullableNumber,
+  lostSalesEstimateKnownRows: nonNegativeInteger,
+  lostSalesEstimateUnknownRows: nonNegativeInteger,
+  lostSalesEstimateCoveragePct: nullableNonNegativePercentage,
+  slowStockCapital: nullableNumber,
+  slowStockCapitalKnownRows: nonNegativeInteger,
+  slowStockCapitalUnknownRows: nonNegativeInteger,
+  slowStockCapitalCoveragePct: nullableNonNegativePercentage,
+}).passthrough();
+
 export const productDecisionCenterResponseSchema = z.object({
   generatedAtUtc: validDate,
   periodFromUtc: validDate,
   periodToUtc: validDate,
   totalRows: nonNegativeInteger,
+  summary: productDecisionCenterSummarySchema,
   rows: z.array(z.unknown()),
   ...tier1MetaEnvelope,
 }).passthrough();

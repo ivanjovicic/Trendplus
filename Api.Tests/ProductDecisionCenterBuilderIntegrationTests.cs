@@ -229,6 +229,10 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(1, response.Summary.BadDataCount);
         Assert.Equal(1_524.44m, response.Summary.LostSalesEstimate);
         Assert.Equal(0m, response.Summary.SlowStockCapital);
+        Assert.Equal(response.AnalyzedRows, response.Summary.LostSalesEstimateKnownRows + response.Summary.LostSalesEstimateUnknownRows);
+        Assert.Equal(response.AnalyzedRows, response.Summary.SlowStockCapitalKnownRows + response.Summary.SlowStockCapitalUnknownRows);
+        Assert.Equal(response.Rows.Count(row => row.LostSalesEstimate.HasValue), response.Summary.LostSalesEstimateKnownRows);
+        Assert.Equal(response.Rows.Count(row => row.SlowStockCapital.HasValue), response.Summary.SlowStockCapitalKnownRows);
         Assert.Equal(ProductDecisionDenominatorScope.ReturnedRows, response.Summary.CountDenominatorScope);
         Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, response.Summary.MoneyDenominatorScope);
         Assert.Equal(ProductDecisionDenominatorScope.HiddenByTopLimit, response.IgnoredRowsMeaning);
@@ -270,7 +274,12 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.Equal(0, response.Summary.ReplenishCount);
         Assert.Equal(1, response.Summary.BadDataCount);
         Assert.Equal(1_524.44m, response.Summary.LostSalesEstimate);
-        Assert.Equal(0m, response.Summary.SlowStockCapital);    }
+        Assert.Equal(0m, response.Summary.SlowStockCapital);
+        Assert.Equal(response.AnalyzedRows, response.Summary.LostSalesEstimateKnownRows + response.Summary.LostSalesEstimateUnknownRows);
+        Assert.Equal(response.AnalyzedRows, response.Summary.SlowStockCapitalKnownRows + response.Summary.SlowStockCapitalUnknownRows);
+        Assert.Equal(100m, response.Summary.LostSalesEstimateCoveragePct);
+        Assert.Equal(100m, response.Summary.SlowStockCapitalCoveragePct);
+    }
 
     [Fact]
     public async Task BuildProductDecisionCenter_SearchFiltersBeforeTopLimit()
@@ -332,7 +341,11 @@ public sealed class ProductDecisionCenterBuilderIntegrationTests
         Assert.NotEqual(default, response.GeneratedAtUtc);
         Assert.Null(response.Meta.LastRefreshAtUtc);
         Assert.Equal(0, response.Summary.ReplenishCount);
-        Assert.Equal(0m, response.Summary.LostSalesEstimate);
+        Assert.Null(response.Summary.LostSalesEstimate);
+        Assert.Null(response.Summary.LostSalesEstimateCoveragePct);
+        Assert.Equal(0, response.Summary.LostSalesEstimateUnknownRows);
+        Assert.Null(response.Summary.SlowStockCapital);
+        Assert.Null(response.Summary.SlowStockCapitalCoveragePct);
         Assert.DoesNotContain(response.Rows, row => row.RecommendationStatus == "REPLENISH");
         Assert.DoesNotContain(response.Rows, row => row.ExpectedImpactRsd == 0m);
     }

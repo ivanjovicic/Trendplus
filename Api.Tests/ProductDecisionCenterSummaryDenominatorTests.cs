@@ -19,11 +19,15 @@ public sealed class ProductDecisionCenterSummaryDenominatorTests
                 SlowStockCapital = 0m
             }
         };
+        var analyzedRows = new[]
+        {
+            new ProductDecisionCenterRowDto { LostSalesEstimate = 12_500.456m, SlowStockCapital = 8_000.1m },
+            new ProductDecisionCenterRowDto { LostSalesEstimate = null, SlowStockCapital = null }
+        };
 
         var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(
             returnedRows,
-            analyzedLostSalesEstimate: 12_500.456m,
-            analyzedSlowStockCapital: 8_000.1m);
+            analyzedRows);
 
         Assert.Equal(0, summary.ReplenishCount);
         Assert.Equal(0, summary.MarkdownCount);
@@ -31,6 +35,12 @@ public sealed class ProductDecisionCenterSummaryDenominatorTests
         Assert.Equal(1, summary.BadDataCount);
         Assert.Equal(12_500.46m, summary.LostSalesEstimate);
         Assert.Equal(8_000.1m, summary.SlowStockCapital);
+        Assert.Equal(1, summary.LostSalesEstimateKnownRows);
+        Assert.Equal(1, summary.LostSalesEstimateUnknownRows);
+        Assert.Equal(50m, summary.LostSalesEstimateCoveragePct);
+        Assert.Equal(1, summary.SlowStockCapitalKnownRows);
+        Assert.Equal(1, summary.SlowStockCapitalUnknownRows);
+        Assert.Equal(50m, summary.SlowStockCapitalCoveragePct);
         Assert.Equal(ProductDecisionDenominatorScope.ReturnedRows, summary.CountDenominatorScope);
         Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, summary.MoneyDenominatorScope);
     }
@@ -49,14 +59,19 @@ public sealed class ProductDecisionCenterSummaryDenominatorTests
             }
         };
 
-        var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(
-            returnedRows,
-            analyzedLostSalesEstimate: 0m,
-            analyzedSlowStockCapital: 0m);
+        var analyzedRows = new[]
+        {
+            new ProductDecisionCenterRowDto { LostSalesEstimate = null, SlowStockCapital = null }
+        };
+        var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(returnedRows, analyzedRows);
 
         Assert.Equal(1, summary.ReplenishCount);
-        Assert.Equal(0m, summary.LostSalesEstimate);
-        Assert.Equal(0m, summary.SlowStockCapital);
+        Assert.Null(summary.LostSalesEstimate);
+        Assert.Null(summary.SlowStockCapital);
+        Assert.Equal(0m, summary.LostSalesEstimateCoveragePct);
+        Assert.Equal(1, summary.LostSalesEstimateUnknownRows);
+        Assert.Equal(0m, summary.SlowStockCapitalCoveragePct);
+        Assert.Equal(1, summary.SlowStockCapitalUnknownRows);
         Assert.Equal(ProductDecisionDenominatorScope.AnalyzedRows, summary.MoneyDenominatorScope);
     }
 
@@ -124,10 +139,7 @@ public sealed class ProductDecisionCenterSummaryDenominatorTests
             }
         };
 
-        var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(
-            returnedRows,
-            analyzedLostSalesEstimate: 0m,
-            analyzedSlowStockCapital: 0m);
+        var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(returnedRows, returnedRows);
 
         Assert.Equal(2, summary.ActionableCount);
         Assert.Equal(2, summary.BlockedCount);
@@ -138,5 +150,40 @@ public sealed class ProductDecisionCenterSummaryDenominatorTests
         Assert.Equal(2, summary.LowCoverCount);
         Assert.Equal(1, summary.SlowStockCount);
         Assert.Equal(1, summary.GoodSellThroughCount);
+    }
+
+    [Fact]
+    public void AggregateProductDecisionMoney_PreservesMeasuredZeroAndLeavesEmptyPopulationUnavailable()
+    {
+        var measuredZero = CachedAnalyticsEndpoints.AggregateProductDecisionMoney([0m]);
+        Assert.Equal(0m, measuredZero.Total);
+        Assert.Equal(1, measuredZero.KnownRows);
+        Assert.Equal(0, measuredZero.UnknownRows);
+        Assert.Equal(100m, measuredZero.CoveragePct);
+
+        var empty = CachedAnalyticsEndpoints.AggregateProductDecisionMoney([]);
+        Assert.Null(empty.Total);
+        Assert.Equal(0, empty.KnownRows);
+        Assert.Equal(0, empty.UnknownRows);
+        Assert.Null(empty.CoveragePct);
+    }
+
+    [Fact]
+    public void BuildProductDecisionCenterSummary_AllUnknownValuesRemainUnavailable()
+    {
+        var rows = new[]
+        {
+            new ProductDecisionCenterRowDto { LostSalesEstimate = null, SlowStockCapital = null },
+            new ProductDecisionCenterRowDto { LostSalesEstimate = null, SlowStockCapital = null }
+        };
+
+        var summary = CachedAnalyticsEndpoints.BuildProductDecisionCenterSummary(rows, rows);
+
+        Assert.Null(summary.LostSalesEstimate);
+        Assert.Equal(0m, summary.LostSalesEstimateCoveragePct);
+        Assert.Equal(2, summary.LostSalesEstimateUnknownRows);
+        Assert.Null(summary.SlowStockCapital);
+        Assert.Equal(0m, summary.SlowStockCapitalCoveragePct);
+        Assert.Equal(2, summary.SlowStockCapitalUnknownRows);
     }
 }

@@ -815,8 +815,14 @@ export interface ProductDecisionCenterSummary {
   lowCoverCount?: number;
   slowStockCount?: number;
   goodSellThroughCount?: number;
-  lostSalesEstimate: number;
-  slowStockCapital: number;
+  lostSalesEstimate: number | null;
+  lostSalesEstimateKnownRows: number;
+  lostSalesEstimateUnknownRows: number;
+  lostSalesEstimateCoveragePct: number | null;
+  slowStockCapital: number | null;
+  slowStockCapitalKnownRows: number;
+  slowStockCapitalUnknownRows: number;
+  slowStockCapitalCoveragePct: number | null;
   /** Denominator for count KPIs. Current contract: returned_rows. */
   countDenominatorScope?: ProductDecisionDenominatorScope;
   /** Denominator for money totals. Current contract: analyzed_rows. */

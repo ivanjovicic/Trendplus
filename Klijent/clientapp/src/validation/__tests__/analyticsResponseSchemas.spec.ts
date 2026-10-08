@@ -5,6 +5,7 @@ import {
   dailySalesTableResponseSchema,
   inventoryInsightsResponseSchema,
   preNivelacijaPriorityResponseSchema,
+  productDecisionCenterSummarySchema,
   shoeTypeSalesStatsResponseSchema,
   supplierSalesStatsResponseSchema,
   vendorSalesNivelacijaResponseSchema,
@@ -180,6 +181,41 @@ describe("Inventory money coverage response contract", () => {
       topAgedItems: [],
       topCapitalLockedItems: [],
     }).success).toBe(true);
+  });
+});
+
+describe("Product Decision money coverage response contract", () => {
+  it("preserves unavailable totals and explicit mixed-population coverage", () => {
+    expect(productDecisionCenterSummarySchema.safeParse({
+      lostSalesEstimate: null,
+      lostSalesEstimateKnownRows: 0,
+      lostSalesEstimateUnknownRows: 2,
+      lostSalesEstimateCoveragePct: 0,
+      slowStockCapital: 125,
+      slowStockCapitalKnownRows: 1,
+      slowStockCapitalUnknownRows: 1,
+      slowStockCapitalCoveragePct: 50,
+    }).success).toBe(true);
+    expect(productDecisionCenterSummarySchema.safeParse({
+      lostSalesEstimate: 0,
+      lostSalesEstimateKnownRows: 1,
+      lostSalesEstimateUnknownRows: 0,
+      lostSalesEstimateCoveragePct: 100,
+      slowStockCapital: 0,
+      slowStockCapitalKnownRows: 1,
+      slowStockCapitalUnknownRows: 0,
+      slowStockCapitalCoveragePct: 100,
+    }).success).toBe(true);
+    expect(productDecisionCenterSummarySchema.safeParse({
+      lostSalesEstimate: 0,
+      lostSalesEstimateKnownRows: 0,
+      lostSalesEstimateUnknownRows: 1,
+      lostSalesEstimateCoveragePct: 0,
+      slowStockCapital: null,
+      slowStockCapitalKnownRows: 0,
+      slowStockCapitalUnknownRows: 1,
+      slowStockCapitalCoveragePct: 101,
+    }).success).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in the P-UI queue after P-UI-54 closure. P-UI-50 remains BLOCKED on the unresolved primary-checkout edit to its owned Product Decision path; P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 is cleared or explicitly deferred. Post-close recovery is recorded in `.ai/runs/2026-10-07-P-UI-54-evidence.md`.
+Current READY prompt: none in the P-UI queue. P-UI-50's prior uncommitted edit is no longer present on current main; it waits while RQ594 owns the shared Product Decision path. P-UI-38 remains WAITING as the final whole-program gate until P-UI-50 is cleared or explicitly deferred. Post-close recovery is recorded in `.ai/runs/2026-10-07-P-UI-54-evidence.md`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -58,7 +58,7 @@ Use with:
 | P-UI-47 | DONE | analytics-theme-token-contract | One theme-token source of truth; accessible status text; light-theme card fix; action tiers |
 | P-UI-48 | DONE | global-header-ops-safety | Ops toggles out of the business header; confirmation; skip link (after P-UI-40) |
 | P-UI-49 | DONE | analytics-state-taxonomy | Backend reason codes mapped into shared empty/error/loading states |
-| P-UI-50 | BLOCKED | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; copy (dependencies done; Product Decision page has uncommitted workspace edits) |
+| P-UI-50 | WAITING | product-decision-hierarchy | Blocked KPIs show "—" + reason; row disclosure ARIA; dependencies done; waits for RQ594 to release shared Product Decision page path |
 | P-UI-51 | DONE | decision-surface-controls | Board period/scope/URL state; unambiguous dates; history |
 | P-UI-52 | DONE | analytics-nav-ia-copy | Navigation labels/badges/canonical links and glossary sweep (after RQ553/RQ582) |
 | P-UI-53 | DONE | analytics-chart-accessibility | Screen-reader names/summaries/table alternatives for analytics charts (after P-UI-44 path release) |
@@ -3526,7 +3526,7 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
-Status: BLOCKED
+Status: WAITING
 Ready after: RQ573 and RQ574 are DONE (same page/contract) and P-UI-49 is DONE
 Priority: P2
 Type: frontend/tests
@@ -3587,6 +3587,7 @@ When the backend blocks recommendations, the KPI row still shows "Za dopunu 0 ·
 
 - The current blocker is **not a missing code dependency**: RQ573, RQ574 and P-UI-49 are DONE. It is only an unresolved uncommitted edit on `ProductDecisionCenterPage.tsx` observed in another/primary checkout.
 - Every idle-recovery pass must re-check whether that edit still exists before repeating `BLOCKED`. If it disappeared, was delivered to `main`, was explicitly handed off/released, or its owner is identified and no longer active, repair the status and promote P-UI-50 immediately after the normal collision check.
+- 2026-10-08 recheck: the exact path was clean in the synchronized current-main checkout. RQ593 completed its financial-coverage change; RQ594 is next on the shared Product Decision path, so keep P-UI-50 WAITING until that owner releases it.
 - If the agent can see the affected checkout, record the exact changed path(s), a bounded `git diff --stat`/diff summary and any discoverable owner/session/branch evidence. Never stash/reset/delete/overwrite unknown work to unblock the prompt.
 - If the edit remains unresolved, block only the owned Product Decision page/spec/CSS scope. The previously split disjoint UI-platform lane P-UI-54 is now DONE; do not resurrect it. Any further split requires a fresh non-duplicate scope and collision proof under the canonical Mandatory no-READY action ladder.
 - A future zero-READY statement must name the blocking path/owner evidence, the re-check performed, why P-UI-50 cannot be safely split further, and the exact event that permits promotion.

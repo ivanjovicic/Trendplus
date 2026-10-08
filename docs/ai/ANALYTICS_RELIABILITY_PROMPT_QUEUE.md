@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ READY prompt: none. RQ596 and RQ595 are DONE. RQ593 remains WAITING on the unresolved user-owned Product Decision page edit; its PDC-only slice remains authoritative. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or latest-known-horizon product work.
-Product value plan refinement 2026-10-07: freshness is a currentness/deployed-operations gate, not a global prerequisite for historical formula/product work. RQ596 owns Inventory money/coverage and RQ595 now consumes its per-aging-bucket contract. RQ593 is the PDC-only slice and waits on its exact page-path collision. RQ555 waits on RQ593; RQ594 waits on RQ593/RQ596. RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ596/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
+Current RQ IN_PROGRESS prompt: none. RQ593, RQ596 and RQ595 are DONE. RQ593 delivered Product Decision known-only monetary totals and explicit coverage on `main`; RQ594 is next for a fresh dependency/collision check. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or latest-known-horizon product work.
+Product value plan refinement 2026-10-08: RQ596 owns completed Inventory money/coverage; RQ595 consumes that per-aging-bucket contract. RQ593 now owns the disjoint Product Decision financial coverage slice after its prior page-path edit was resolved on current main. RQ555 waits on RQ593; RQ594 waits on RQ593; RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
 All-screen re-audit registration 2026-10-04: fresh `origin/main` `7de14c18` and production runtime `02f99158` were audited read-only (`docs/qa/ANALYTICS_REAUDIT_2026-10-04.md`, evidence `.ai/runs/2026-10-04-analytics-reaudit-evidence.md`). Registered `RQ570`-`RQ585`. Owner decisions were resolved on 2026-10-04: `RQ574` is promoted to READY; `RQ570`/`RQ576`/`RQ583` now wait only for `RQ569`; `RQ577` waits for the shared Dashboard/Product path after `RQ574`; `RQ582` waits for `RQ581`; `RQ556` store/non-footwear policy is moved into `RQ571` while its v9 weights remain owner-gated. Existing READY lanes `RQ578`, `RQ580`, `RQ581` and `RQ553` remain. Primary routing stays `RQ569`.
@@ -30099,8 +30099,8 @@ STAB16 freshness restored, RQ545 live verified, RQ557 (DONE), RQ571 (DONE).
 
 ## RQ593 - Money unknown is not zero across Product Decision aggregates
 
-Status: WAITING
-Ready after: release/resolve the existing user-owned edit on `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
+Status: DONE
+Ready after: prior page-path collision resolved on current `origin/main`; RQ596 DONE
 Priority: P1
 Type: backend/frontend/tests
 Feature family: financial-unknown-coverage
@@ -30153,7 +30153,13 @@ No Product Decision financial KPI silently treats missing money as 0. Partial ag
 
 ### Dependencies
 
-The existing user-owned page edit must be released/resolved before claiming this PDC-only slice. No fresh import, deployed runtime or owner pricing decision is required.
+The prior user-owned page edit is no longer present in the synchronized current-main checkout; the page path is now owned by this RQ593 claim. RQ596 is DONE, and no fresh import, deployed runtime or owner pricing decision is required.
+
+### Claim and completion
+
+Claimed 2026-10-08 from refreshed `origin/main` `4b740ab8ef1594eb2f8de167d52f618724bf3900`; branch `codex/rq593-pdc-money-coverage`. The page-path recheck found no active local edit in the current-main checkout, no matching local/remote RQ593 branch, no RQ593 lock and no matching open PR. The older `trendplus-main` checkout is 1,105 commits behind and was not used or modified. Local lock: `.ai/task-locks/RQ593-codex.lock.md`.
+
+Completed 2026-10-08: PDC monetary summaries now sum known eligible values only, expose known/unknown rows and coverage, keep empty/all-unknown totals unavailable, and preserve measured zero. Frontend response validation and KPI display carry the same contract. Focused backend suite: 29/29; Product Decision page/schema suite: 47/47; typecheck and analytics guardrails passed. Full evidence: `.ai/runs/2026-10-08-RQ593-evidence.md`.
 
 ---
 
