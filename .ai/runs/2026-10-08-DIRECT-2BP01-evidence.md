@@ -23,6 +23,7 @@ Ownership transfer: none
 
 ## Validation run
 - `dotnet restore Api.Tests/Api.Tests.csproj --configfile NuGet.Config` -> pass (temporary NuGet cache/config on F:).
+- `git diff --check origin/main...origin/fix/analytics-013-dependent-materialized-view` -> pass.
 - `dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter FullyQualifiedName~SupplierDecisionSchemaSqlTests` -> pass, 47 tests; this also built Domain, Application, Infrastructure, Workers, Api and Api.Tests.
 - `dotnet test Api.Tests/Api.Tests.csproj --no-build --no-restore --filter FullyQualifiedName~SupplierDecisionSchemaReadinessIntegrationTests` -> six passed, but the suite's fixture guard returned early because Docker is unavailable; this is not PostgreSQL behavioral proof.
 - Re-ran the integration class with `CI=true` to prevent the fixture guard from silently returning; all six failed during Testcontainers setup with “Docker is either not running or misconfigured,” before the test assertions.
