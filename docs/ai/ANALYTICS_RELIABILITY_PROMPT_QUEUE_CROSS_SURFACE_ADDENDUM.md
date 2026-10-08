@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: post-close recovery pending after RQ55 delivery.
-Main queue RQ pointer: post-close recovery pending; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
+Current RQ routing: none after the full RQ131 post-close Zero-READY recovery (base `6f8dae6d87208ceca1de73ed792317e97c38206a`; evidence synchronized on main at `268da64204c0d0499aa71a69725c0d6879916102`).
+Main queue RQ pointer: none; RQ55, RQ56 and RQ131 DONE, RQ130 OBSOLETE. Re-enter selection after an unblock event recorded in `.ai/runs/2026-10-08-RQ131-evidence.md`.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
