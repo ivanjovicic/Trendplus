@@ -44,7 +44,7 @@ Ownership transfer: none
 - Pre-existing unrelated backend test drift in `AnalyticsActionConstantsTests` (Unranked/Ignored counts) remains classified from RQ131 evidence.
 
 ## Post-close routing recovery
-- Recovery base SHA: post-delivery `origin/main` containing `67deb8fb6acb6363d428c0ae3400cc24e8a27a32` (after implementation tip push; closure docs land in a follow-up commit on this SHA's descendants).
+- Recovery base SHA: `7e91723d07fb394e1bf8568c6e8345e551060614` (`origin/main` after P-UI-50 closure sync).
 - Active queues scanned: P-UI queue/addendum, MASTER_ROADMAP program table, and prior RQ131 Zero-READY matrix for BCI/STAB/RQ/SQL/QDB/MT/GAI/DEX/RL/PERF/OBS/SEC.
 - Dependency cascade: P-UI-38's Ready-after set is satisfied (P-UI-31/35/36/39-53/54 DONE and P-UI-50 now DONE). Promoted P-UI-38 WAITING -> READY as Current READY. No other newly dependency-complete higher-priority runtime prompt found; STAB16 remains provider-gated; BCI/RQ/SQL Current READY remain none pending their external/owner gates.
 - Mandatory no-READY ladder not required: a READY successor exists (P-UI-38).
