@@ -88,6 +88,42 @@ function buildResponse(
 }
 
 describe("buildDecisionSuppliers", () => {
+  it("keeps inconsistent legacy implied cost unavailable instead of clamping it to zero", () => {
+    const rows = buildDecisionSuppliers(buildResponse([
+      buildSupplier({
+        totalCost: null,
+        revenueWithCost: 1000,
+        marginContribution: 1200,
+      }),
+    ]));
+
+    expect(rows[0]?.totalCost).toBeNull();
+  });
+
+  it("prefers backend total cost and preserves a valid zero", () => {
+    const rows = buildDecisionSuppliers(buildResponse([
+      buildSupplier({
+        totalCost: 0,
+        revenueWithCost: 1000,
+        marginContribution: 1200,
+      }),
+    ]));
+
+    expect(rows[0]?.totalCost).toBe(0);
+  });
+
+  it("keeps non-negative implied cost only as a legacy compatibility fallback", () => {
+    const rows = buildDecisionSuppliers(buildResponse([
+      buildSupplier({
+        totalCost: null,
+        revenueWithCost: 10000,
+        marginContribution: 4000,
+      }),
+    ]));
+
+    expect(rows[0]?.totalCost).toBe(6000);
+  });
+
   it("rebases display shares and totals to the visible supplier population", () => {
     const first = buildSupplier();
     const second = buildSupplier({

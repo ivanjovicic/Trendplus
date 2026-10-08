@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none
-Main queue READY prompt: none (RQ01–RQ13 DONE; owner pack RQ100-RQ105 DONE)
+Current RQ IN_PROGRESS: RQ56 (implementation delivered; close-out and post-close recovery active).
+Main queue RQ pointer: RQ56 IN_PROGRESS; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -18,7 +18,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ53 | DONE | color-shoetype-datascope-lineage | Pass/verify dataScope in Color and ShoeType pages |
 | RQ54 | DONE | vendor-nivelacija-scope-lineage | Add/verify dataScope/store lineage on Vendor pre/post page |
 | RQ55 | WAITING | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
-| RQ56 | WAITING | total-cost-fallback-guardrail | Do not clamp inconsistent implied cost to fake zero |
+| RQ56 | IN_PROGRESS | total-cost-fallback-guardrail | Keep inconsistent implied cost unavailable |
 | RQ57 | DONE | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
 | RQ58 | DONE | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
 | RQ59 | DONE | inventory-signal-review-impact | Do not attach confirmed impact to weak signal-check actions |
@@ -37,7 +37,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 
 ## RQ51 - Color insufficient_data must not become Zadrzi
 
-Status: DONE
+Status: IN_PROGRESS
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
@@ -298,14 +298,15 @@ When unknown suppliers are hidden, visible rows are known suppliers only, but de
 
 ## RQ56 - Total cost fallback guardrail
 
-Status: WAITING
-Ready after: RQ41/RQ42 or explicit unblocking
+Status: DONE
+Ready after: RQ41 and RQ42 DONE (verified on current main)
 Priority: P2
 Type: frontend-contract/tests
 Feature family: total-cost-fallback-guardrail
 Parallel-safe: yes
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ56-<agent>.lock.md`
+Owner: Analytics Reliability / Supplier Metrics
+Owned paths: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx` and its focused specs
+Local lock: `.ai/task-locks/RQ56-codex.lock.md`
 Commit suggestion: `fix(analytics): flag inconsistent implied cost fallback`
 
 ### Why
@@ -315,7 +316,6 @@ When backend `totalCost` is missing, UI uses `Math.max(0, revenueWithCost - marg
 ### Scope only
 
 - `SupplierSalesStatsPage.tsx`
-- `ShoeTypeSalesStatsPage.tsx`
 - frontend tests if available
 
 ### Do not touch
@@ -337,6 +337,14 @@ When backend `totalCost` is missing, UI uses `Math.max(0, revenueWithCost - marg
 ### Acceptance
 
 - Inconsistent implied cost is not hidden as zero.
+
+### Owner claim 2026-10-08
+
+Refreshed post-close `origin/main` at `cc1825935c15d78f559fcce1c7abaf2d45b3d5d5`; RQ41 and RQ42 are DONE. No matching RQ56 branch, task lock, open PR or active owner exists. Source review found the defective `Math.max(0, revenueWithCost - marginContribution)` fallback only in `SupplierSalesStatsPage.tsx`; Shoe Type already preserves nullable API `totalCost` directly, so the claim is narrowed to the Supplier path. Promoted RQ56 WAITING -> READY -> IN_PROGRESS. Local lock `.ai/task-locks/RQ56-codex.lock.md`.
+
+### Completion 2026-10-08
+
+Removed the zero clamp from the Supplier legacy implied-cost fallback. Backend `totalCost` remains authoritative (including valid zero); legacy arithmetic is shown only when finite and nonnegative, otherwise cost remains unavailable. Focused regression coverage and evidence: `.ai/runs/2026-10-08-RQ56-evidence.md` (close-out pending post-close recovery). Implementation commit SHA pending main verification.
 
 ---
 

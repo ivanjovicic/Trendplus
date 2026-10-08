@@ -647,8 +647,9 @@ export function buildDecisionSuppliers(data: SupplierSalesStatsResponse | null |
       ?? (positiveNetRevenueDenominator != null && Number.isFinite(supplier.ukupanPromet) && supplier.ukupanPromet > 0
         ? finiteOrNull((supplier.ukupanPromet / positiveNetRevenueDenominator) * 100)
         : null);
+    const legacyImpliedTotalCost = finiteOrNull(supplier.revenueWithCost - supplier.marginContribution);
     const totalCost = finiteOrNull(supplier.totalCost)
-      ?? finiteOrNull(Math.max(0, supplier.revenueWithCost - supplier.marginContribution));
+      ?? (legacyImpliedTotalCost != null && legacyImpliedTotalCost >= 0 ? legacyImpliedTotalCost : null);
     const shareOfMarginContribution = finiteOrNull(supplier.shareOfMarginContribution)
       ?? finiteOrNull(supplier.shareOfProfit)
       ?? (Number.isFinite(totalMarginContribution) && totalMarginContribution > 0 && Number.isFinite(supplier.marginContribution)
@@ -2260,7 +2261,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                           data-sort-dir={isSortActive("totalCost", sortField) ? sortDir : "none"}
                           onClick={() => handleSort("totalCost")}
                         >
-                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Zbir troška robe za ovaj red. Formula: zbir količina x nabavna cena za stavke sa istorijskim ili procenjenim troškom. Operativni troškovi nisu uključeni." />
+                          Nabavna vrednost <span className="sort-indicator" aria-hidden="true">{sortMarker("totalCost", sortField, sortDir)}</span> <InfoTip text="Prednost ima backend totalCost. Ako ga stariji odgovor nema, dozvoljena je kompatibilna izvedena vrednost revenueWithCost - marginContribution samo kada je nenegativna; negativan ili nekonzistentan rezultat ostaje nedostupan. Trošak obuhvata istorijske ili procenjene nabavne cene, ne i operativne troškove." />
                         </button>
                       </th>
                       <th aria-sort={sortAriaValue("sharePct", sortField, sortDir)} className={`analytics-data-table__numeric${isSortActive("sharePct", sortField) ? " is-sorted" : ""}`}>
