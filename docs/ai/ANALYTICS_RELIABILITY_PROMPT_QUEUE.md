@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: RQ319 DONE (P2; Operacije explicit Apply unified across Shoe Type/Color/Pre/Post) on `bbd636b0`; RQ320 READY (P2; draft vs active period state on Apply-required screens) after RQ319 promotion; RQ481 DONE (P1; Decision Pulse shared applied-period/dataScope) on `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`. `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
+Current RQ routing: RQ319 DONE (P2; Operacije explicit Apply unified across Shoe Type/Color/Pre/Post) on `bbd636b0`; RQ320 IN_PROGRESS (P2; draft vs active period state on Apply-required screens); RQ481 DONE (P1; Decision Pulse shared applied-period/dataScope) on `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`. `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Owner-delegated queue unblock 2026-10-08: RQ481 WAITING -> READY; RQ319 explicit Apply choice approved but WAITING while RQ140 remains IN_PROGRESS on overlapping Shoe Type/Pre/Post surface; RQ320 WAITING after RQ319. Decision record `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md`; external STAB16/RQ592 acceptance gates unchanged.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 has the owner-delegated shared period/dataScope decision and is READY; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
@@ -18312,7 +18312,7 @@ Authority: user expressly delegated the product choice on 2026-10-08; recorded i
 
 ## RQ320 - Show draft vs active period on Apply-required Operacije screens
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-draft-period-desync
@@ -18363,7 +18363,14 @@ Reproduction: change preset dates without Apply — inputs show new range, heade
 ### Owner-delegated UI trust decision 2026-10-08
 
 - Keep the trust header **bound to applied filters/results**; when draft differs, show a visible `Nije primenjeno` cue and offer Apply/Reset. Never relabel loaded data with draft dates.
-- Product policy approved (same decision record as RQ319), but RQ320 remains WAITING until RQ319 is DONE and the shared control/page paths are free.
+- Product policy approved (same decision record as RQ319). RQ319 is DONE, and the shared control/page paths are free; RQ320 is claimed IN_PROGRESS after the post-close recovery below.
+
+### Post-close promotion and claim 2026-10-08
+
+- Fresh post-close `origin/main` `3ae7eafe16aa89112c7e674d033578600ec3a75a` contains RQ319 DONE after merge `bbd636b0321dabce6eced43f9a39dc15f51821eb`; dependency RQ319 is satisfied and RQ320 was promoted `WAITING -> READY` by the synchronized post-close recovery.
+- Collision check: no local/remote RQ320 branch, matching lock, or open PR. RQ319's merged changes are limited to Shoe Type and its premium spec; P-UI-52 open PRs are docs-only. RQ140 has released the Color/Pre-Post paths; RQ481 owns Decision Pulse only.
+- Claimed `READY -> IN_PROGRESS` on `codex/rq320-draft-period-trust`; local lock `.ai/task-locks/RQ320-codex.lock.md`.
+- Run log: `.ai/runs/2026-10-08-RQ320-evidence.md`
 
 ---
 
@@ -27140,7 +27147,8 @@ Authority: user expressly instructed to decide and unblock Trendplus queue (2026
 - Proof: DecisionPulsePage + response-schema Vitest 34/34; `DecisionPulseServiceTests` 8/8; analytics encoding/guardrail/typecheck passed; diff check passed. The two current-main GitHub runs for `da1ff00ce0ad5fa2cacce7852a93889d1662e60e` were inspected and remain `in_progress` (`37821136254` Analytics Tests & Data Integrity; `37821136193` Analytics Quality Gates); neither was required to deliver.
 - No scoring, tenant inference, production mutation, schema migration, or provider/deployed freshness claim was added.
 - Run log: `.ai/runs/2026-10-08-RQ481-evidence.md`
-- Evidence state: pending post-close queue recovery.
+- Post-close recovery: initial base `395aa4853f9f0eef59c9bf2671f6e51dba65b76e` found active PR #118 on RQ319, so it was not claimed. Re-entered after fresh `origin/main` `3ae7eafe16aa89112c7e674d033578600ec3a75a` recorded RQ319 DONE and promoted RQ320; RQ320 is now claimed IN_PROGRESS on `codex/rq320-draft-period-trust`.
+- Evidence state: synchronized.
 
 ---
 

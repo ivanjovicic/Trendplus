@@ -73,6 +73,7 @@ import { readAnalyticsTableSort, writeAnalyticsTableSort } from "../utils/analyt
 import { compareNullableNumbers } from "../utils/nullableNumericSort";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 import { buildStoreOptionLabel, getDuplicateStoreNames } from "../utils/storeFilterPresentation";
+import { getUnappliedFilterDraftChip } from "../utils/analyticsFilterDraft";
 import "./ColorSalesStatsPage.css";
 
 type PeriodPreset = "30d" | "90d" | "180d" | "365d" | "custom";
@@ -852,6 +853,10 @@ export default function ColorSalesStatsPage() {
   }, [data?.lineage, stores]);
   const showBlockingError = Boolean(queryError && !data);
   const showStaleError = Boolean(staleWarning && data);
+  const unappliedDraftChip = getUnappliedFilterDraftChip(
+    { fromDate, toDate, sezonaId, storeId },
+    activeFilters,
+  );
 
   const colorDimensionNotPopulated = isDimensionNotPopulatedInSource(data?.dimensionCoverage);
 
@@ -877,6 +882,7 @@ export default function ColorSalesStatsPage() {
         value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
         tone: "neutral",
       },
+      ...(unappliedDraftChip ? [unappliedDraftChip] : []),
       {
         key: "rows",
         label: "Prikazano",
@@ -884,7 +890,7 @@ export default function ColorSalesStatsPage() {
         tone: sortedRows.length === 0 ? "warning" : "success",
       },
     ],
-    [activeFilters.fromDate, activeFilters.toDate, data?.colors?.length, dataScope, sortedRows.length],
+    [activeFilters.fromDate, activeFilters.toDate, data?.colors?.length, dataScope, unappliedDraftChip, sortedRows.length],
   );
 
   const openDetail = useCallback((row: DecisionColor) => {

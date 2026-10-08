@@ -457,6 +457,28 @@ describe("ColorSalesStatsPage", () => {
     expect(getColorSalesStats).toHaveBeenCalledTimes(1);
   });
 
+  it("marks draft filters as unapplied without relabeling the active trust period", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/color-sales-stats?periodPreset=custom&fromDate=2026-06-01&toDate=2026-06-30"]}>
+        <Routes>
+          <Route path="/analytics/color-sales-stats" element={<ColorSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Prioritetna lista boja");
+
+    const [fromInput] = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+    fireEvent.change(fromInput, { target: { value: "2026-06-02" } });
+
+    expect(screen.getByText("Nije primenjeno")).toBeInTheDocument();
+    expect(screen.getByText("2026-06-01 → 2026-06-30")).toBeInTheDocument();
+    expect(getColorSalesStats).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+    await waitFor(() => expect(getColorSalesStats).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Nije primenjeno")).not.toBeInTheDocument();
+  });
+
   it("applies season and store filters using backend query semantics", async () => {
     renderPage();
     await screen.findByText("Prioritetna lista boja");

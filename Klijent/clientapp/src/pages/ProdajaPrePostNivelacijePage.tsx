@@ -48,6 +48,7 @@ import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
 import { getSupplierOptionLabels, resolveNivelacijaErrorDetails } from "../utils/nivelacijaErrorPresentation";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
 import { analyticsMetricDescriptions } from "../utils/analyticsMetricDescriptions";
+import { getUnappliedFilterDraftChip } from "../utils/analyticsFilterDraft";
 import {
   getAnalyticsMetaMessage,
   isAnalyticsMetaInsufficient,
@@ -1413,6 +1414,10 @@ export default function ProdajaPrePostNivelacijePage() {
     ]
   );
 
+  const unappliedDraftChip = getUnappliedFilterDraftChip(
+    { fromDate, toDate, vendorId, category, storeId },
+    activeFilters,
+  );
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
       { key: "scope", label: "Opseg", value: dataScopeLabel(dataScope), tone: "info" },
@@ -1422,6 +1427,7 @@ export default function ProdajaPrePostNivelacijePage() {
         value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
         tone: "neutral",
       },
+      ...(unappliedDraftChip ? [unappliedDraftChip] : []),
       {
         key: "focus",
         label: "Fokus",
@@ -1457,6 +1463,12 @@ export default function ProdajaPrePostNivelacijePage() {
       decisionRows.length,
       focusFilter,
       focusedRows.length,
+      fromDate,
+      toDate,
+      vendorId,
+      category,
+      storeId,
+      unappliedDraftChip,
     ]
   );
 
