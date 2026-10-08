@@ -1546,7 +1546,7 @@ public static class InventoryEndpoints
                     key,
                     "transfer",
                     destination.Quantity <= 0 ? "critical" : "high",
-                    $"Transfer {source.StoreName} -> {destination.StoreName}",
+                    $"Transfer {source.StoreName} → {destination.StoreName}",
                     $"Isti artikal: {destinationDemand} kom. prodato u odredištu naspram {soldUnitsByArticle.GetValueOrDefault(source.Id)} u izvoru u zajedničkom 30-dnevnom prozoru; posle transfera izvor ostaje iznad minimuma i 7-dnevnog pokrića.",
                     destination,
                     source.StoreName,
