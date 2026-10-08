@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: RQ481 DONE (P1; Decision Pulse shared applied-period/dataScope) on `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`; RQ319 READY (P2; explicit Apply policy approved and shared pages released after RQ140 close); RQ320 remains WAITING behind RQ319. `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
+Current RQ routing: RQ319 DONE (P2; Operacije explicit Apply unified across Shoe Type/Color/Pre/Post) on `bbd636b0`; RQ320 READY (P2; draft vs active period state on Apply-required screens) after RQ319 promotion; RQ481 DONE (P1; Decision Pulse shared applied-period/dataScope) on `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`. `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Owner-delegated queue unblock 2026-10-08: RQ481 WAITING -> READY; RQ319 explicit Apply choice approved but WAITING while RQ140 remains IN_PROGRESS on overlapping Shoe Type/Pre/Post surface; RQ320 WAITING after RQ319. Decision record `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md`; external STAB16/RQ592 acceptance gates unchanged.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 has the owner-delegated shared period/dataScope decision and is READY; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
@@ -18232,7 +18232,9 @@ Reproduction: set non-default filters on Color, copy URL, open new tab — defau
 
 ## RQ319 - Unify Operacije filter apply semantics (auto vs explicit Apply)
 
-Status: READY
+Status: DONE
+Completed: 2026-10-08 by Cursor Cloud Agent
+Delivery: direct-main merge at `bbd636b0`
 Priority: P2
 Type: frontend/ux/tests
 Feature family: operations-filter-apply-consistency
@@ -18296,11 +18298,21 @@ Authority: user expressly delegated the product choice on 2026-10-08; recorded i
 
 - Promoted `WAITING -> READY` after RQ140 closed PARTIAL and released its Shoe Type/Color/Pre-Post page ownership. Explicit Apply is approved. P-UI-51 is DONE and its remote branch is contained in current `main`; its only later shared-control CSS change is an independent coarse-pointer touch-target rule. No matching RQ319/P-UI-51 lock or open PR exists. RQ320 remains WAITING until RQ319 is DONE.
 
+### Claim and completion 2026-10-08
+
+- Claimed READY (P2) on fresh `origin/main` `1c521f25` after RQ140 release and fresh collision checks.
+- Implemented: ShoeTypeSalesStatsPage converted from auto-apply to draft + explicit Apply per ANALYTICS_DESIGN_SYSTEM.md §6.3
+- Changed: Removed immediate `setActiveFilters` calls from date/store field onChange handlers; added `applyFilters()` function; changed primaryAction to "Primeni filtere"; moved Reset to secondary action
+- Verified: ColorSalesStatsPage and ProdajaPrePostNivelacijePage already implement explicit Apply (no changes needed; consistent)
+- Tests: Added 2 new interaction tests; all 43 ShoeType tests pass; 1911/1913 total tests pass
+- Evidence: `.ai/runs/2026-10-08-RQ319-evidence.md`; delivery merge at `bbd636b0` on main
+- Acceptance: All three Operacije screens (Shoe Type, Color, Pre/Post) now consistently require explicit Apply for date/period/store changes. Draft state is separate from applied data. Tab/sort/pagination remain immediate per design system.
+
 ---
 
 ## RQ320 - Show draft vs active period on Apply-required Operacije screens
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-draft-period-desync
