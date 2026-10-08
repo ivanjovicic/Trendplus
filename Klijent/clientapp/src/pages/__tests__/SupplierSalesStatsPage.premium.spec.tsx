@@ -11,6 +11,7 @@ import SupplierSalesStatsPage, {
 } from "../SupplierSalesStatsPage";
 import { getInventoryBalance, getInventoryInsights, getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
+import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import { fmtPct } from "../../utils/analyticsFormatters";
 
 const AnalyticsTrustHeaderMock = vi.hoisted(() =>
@@ -1201,6 +1202,13 @@ describe("SupplierSalesStatsPage premium controls", () => {
     fireEvent.click(within(reviewRow).getByRole("button", { name: "Detalji" }));
     expect(await screen.findByRole("heading", { level: 3, name: "Beta za pregled" })).toBeInTheDocument();
     expect(screen.getByText("Akcija blokirana:").parentElement).toHaveTextContent("Backend je blokirao izvrsenje preporuke");
+
+    fireEvent.click(screen.getByRole("button", { name: /Puni detalj/ }));
+    const snapshot = getAnalyticsDetailSnapshot("supplier-sales-stats", "2");
+    expect(snapshot?.fields.find((field) => field.key === "preNivelacijePromet")?.value).toBe("0 RSD");
+    expect(snapshot?.fields.find((field) => field.key === "posleNivelacijePromet")?.value).toBe("5.000 RSD");
+    expect(snapshot?.fields.find((field) => field.key === "comparablePreNivelacijePromet")?.value).toBe("Nije dostupno");
+    expect(snapshot?.fields.find((field) => field.key === "prePostNivelacijaRevenueImpactPct")?.value).toBe("Nije dostupno");
   });
 
   it("empty is not error when supplier sales returns no rows", async () => {

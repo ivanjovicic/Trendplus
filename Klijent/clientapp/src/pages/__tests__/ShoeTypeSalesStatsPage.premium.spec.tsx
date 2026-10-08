@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ShoeTypeSalesStatsPage from "../ShoeTypeSalesStatsPage";
 import { getStores } from "../../services/analyticsApi";
+import { getAnalyticsDetailSnapshot } from "../../services/analyticsTableState";
 import { getShoeTypeSalesStats } from "../../services/shoeTypeSalesStatsApi";
 import { resolveShoeTypeCoveragePct } from "../../utils/shoeTypeSalesCoverage";
 import { RECOMMENDATION_SIGNAL_UNAVAILABLE } from "../../utils/canonicalRecommendationSemantics";
@@ -945,6 +946,13 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(within(detailPanel!).getByText("Pre nivo količina").parentElement).toHaveTextContent(/9.*kom/);
     expect(within(detailPanel!).getByText("Posle nivo količina").parentElement).toHaveTextContent(/3.*kom/);
     expect(within(detailPanel!).getByText("Uticaj nivelacije na promet").parentElement).toHaveTextContent("Nije dostupno");
+
+    fireEvent.click(within(detailPanel!).getByRole("button", { name: "Otvori puni detalj" }));
+    const snapshot = getAnalyticsDetailSnapshot("shoe-type-sales-stats", "1");
+    expect(snapshot?.fields.find((field) => field.key === "preNivelacijePromet")?.value).toBe("90.000 RSD");
+    expect(snapshot?.fields.find((field) => field.key === "posleNivelacijePromet")?.value).toBe("30.000 RSD");
+    expect(snapshot?.fields.find((field) => field.key === "comparablePreRevenue")?.value).toBe("Nije dostupno");
+    expect(snapshot?.fields.find((field) => field.key === "prePostNivelacijaRevenueImpactPct")?.value).toBe("Nije dostupno");
   });
 
   it("keeps signed Ostali share visible in concentration chart", async () => {
