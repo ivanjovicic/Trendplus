@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum after RQ80 DONE
-Main queue primary READY prompt: RQ590; RQ74/RQ79/RQ80 are DONE in this addendum
+Main queue has no unclaimed READY prompt after RQ320's 2026-10-08 post-close scan; RQ46 is IN_PROGRESS in the UI/Table/Chart addendum. RQ74/RQ79/RQ80 are DONE in this addendum.
 
 Use with:
 

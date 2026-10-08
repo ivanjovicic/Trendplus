@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: none after the full RQ131 post-close Zero-READY recovery (base `6f8dae6d87208ceca1de73ed792317e97c38206a`; evidence synchronized on main at `268da64204c0d0499aa71a69725c0d6879916102`).
-Main queue RQ pointer: none; RQ55, RQ56 and RQ131 DONE, RQ130 OBSOLETE. Re-enter selection after an unblock event recorded in `.ai/runs/2026-10-08-RQ131-evidence.md`.
+Current RQ routing: RQ46 IN_PROGRESS in the UI/Table/Chart addendum after the RQ320 post-close recovery at `60f768b47693816372493d4e18ce390a54493fb8`; no Cross-Surface task is READY.
+Main queue RQ pointer: no unclaimed READY task; RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, RQ130 is OBSOLETE. Re-enter selection after a dependency or source-evidence unblock.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 

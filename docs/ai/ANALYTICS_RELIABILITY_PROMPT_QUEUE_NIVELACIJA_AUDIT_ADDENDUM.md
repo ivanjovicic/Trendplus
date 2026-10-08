@@ -47,8 +47,8 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-I2 | RQ552 | DONE |
 | NV-I3 | RQ553 | DONE |
 | NV-I4 | RQ554 | DONE |
-| NV-I5 | RQ555 | WAITING |
-| NV-E1 | RQ556 | WAITING |
+| NV-I5 | RQ555 | DONE |
+| NV-E1 | RQ556 | DONE |
 | NV-E2 | RQ557 | DONE |
 | NV-E3 | RQ558 | WAITING |
 | NV-E4 | RQ559 | WAITING |

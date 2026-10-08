@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum
+Current READY prompt: none; RQ46 is IN_PROGRESS after the RQ320 post-close recovery at `60f768b47693816372493d4e18ce390a54493fb8`.
 Main RQ queue has no READY prompt after RQ588 DONE; P-UI-48 is DONE after its focused CI regression-test correction; P-UI-41 is claimed after RQ576 released its Inventory path, and P-UI-45 is DONE on `a1a51aa0bd8987165a7f55073fa203c1367dfc14`; P-UI-49 is the next primary P-UI READY lane. RQ586 and RQ557 are DONE; RQ584 is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ48 is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
@@ -20,7 +20,7 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ43 | DONE | stale-report-preview | Harden stale browser report preview fallback |
 | RQ44 | DONE | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
 | RQ45 | DONE | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
-| RQ46 | WAITING | export-trust-metadata | Include trust metadata in exported analytics tables |
+| RQ46 | IN_PROGRESS | export-trust-metadata | Include trust metadata in exported analytics tables |
 | RQ47 | DONE | action-source-key-lineage | Include relevant filters in supplier action source keys |
 | RQ48 | DONE | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
 | RQ49 | DONE | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
@@ -473,14 +473,14 @@ KPI Snapshot backend supplies margin coverage, but frontend type/card hides it. 
 
 ## RQ46 - Export trust metadata preservation
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ34/RQ45 or explicit unblocking
 Priority: P1
 Type: frontend-report/tests
 Feature family: export-trust-metadata
 Parallel-safe: no
 Owner: unassigned
-Local lock: `.ai/task-locks/RQ46-<agent>.lock.md`
+Local lock: `.ai/task-locks/RQ46-codex.lock.md`
 Commit suggestion: `fix(analytics): preserve trust metadata in exports`
 
 ### Why
@@ -518,6 +518,13 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 - Supplier report CSV (`Klijent/clientapp/src/services/supplierDecisionReport.ts:622-634`, at `c5a1937f`): comma separator, no UTF-8 BOM, UTC date in the filename, and no filters, period, freshness, fallback or `recommendationAllowed` metadata in the file.
 - Pilot intake CSV (`components/analytics/PilotDataQualityIntakeReport.tsx:300`): the filename uses `toLocaleDateString("sr-RS")` → „pilot-intake-28. 9. 2026..csv“ (spaces, double dot); no BOM; no period/scope/refresh metadata. The filename/duplicate-row fixes are in `RQ462`; the trust metadata block stays here.
 - Evidence: `.ai/runs/2026-09-28-supplier-report-pilot-intake-audit-evidence.md`.
+
+### Owner promotion and claim 2026-10-08
+
+- After RQ320 closure, fresh `origin/main` `60f768b47693816372493d4e18ce390a54493fb8` showed RQ34/RQ45 dependencies satisfied and no higher-priority safe READY task. The whole active RQ/SQL queue was scanned; external STAB16/deployed gates remain separate.
+- No RQ46 lock, matching local/remote branch, or open PR exists. Open PR #112 is unrelated SQL; #102/#103 are docs-only P-UI-52. RQ50 is WAITING behind higher-priority data fixes and shares the Insight Studio page, so remains serialized behind this claim.
+- Promoted `WAITING -> READY -> IN_PROGRESS` and claimed `codex/rq46-export-trust-metadata`; local lock `.ai/task-locks/RQ46-codex.lock.md`.
+- Run log: `.ai/runs/2026-10-08-RQ46-evidence.md`.
 
 ---
 
