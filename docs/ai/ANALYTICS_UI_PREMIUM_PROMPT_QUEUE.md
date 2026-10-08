@@ -2581,7 +2581,7 @@ Additional acceptance for this residual scope:
 - Main verification: fresh `origin/main` contains the implementation SHA.
 - Missed: real-device Safari certification; live Puppeteer matrix for newly inventoried routes.
 - Follow-up: none in P-UI; Zero-READY across active programs until a documented unblock event.
-- Residual risk: tip Actions runs `37801506449` / `37801506993` were in_progress at close-out; pseudo-token inventory remains measured (141/7).
+- Residual risk: pseudo-token inventory remains measured (141/7). Remote CI on impl tip: Analytics Quality Gates `37801506449` green; Planning Governance `37801506993` green.
 - Next: none
 - Prompt defect / scope repair: consumed P-UI-54 ratchets rather than duplicating them; mass pseudo-token rewrite stayed out of scope per acceptance.
 

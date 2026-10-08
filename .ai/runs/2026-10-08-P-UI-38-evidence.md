@@ -58,8 +58,13 @@ Ownership transfer: none
 - Broader pseudo-token mass rewrite remains out of scope; inventory stays measured.
 
 ## Risks
-- Current-main Actions on tip `34899e5a`: Analytics Quality Gates `37801506449` and Planning Governance `37801506993` were `in_progress` at close-out (residual CI state, not treated as green proof).
 - Live fixture coverage for newly inventoried routes is not exercised by the CI self-test; a future live baseline run may surface route-specific fixture gaps.
+- Physical-device Safari certification remains unavailable hardware residual.
+
+Remote CI classification (implementation SHA `34899e5a`):
+- Analytics Quality Gates `37801506449` → **green** (frontend job includes new `Check UI program regression gates`)
+- Planning Governance `37801506993` → **green**
+- Closure tip `4c35592f` Planning Governance `37801730343` → **green**
 
 ## Post-close routing recovery
 - Recovery base after implementation delivery: `origin/main` SHA `34899e5a04b2543ab7bd6dc71caad077efe6ab29`.
