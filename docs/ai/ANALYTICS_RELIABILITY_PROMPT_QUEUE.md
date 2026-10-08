@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: RQ481 READY (P1; Decision Pulse shared applied-period/dataScope) after owner-delegated decision 2026-10-08; RQ319/RQ320 remain WAITING for RQ140 page-path release/serialization; `RQ140` is IN_PROGRESS for the bounded Supplier and Shoe Type detail/export projection recovery; exact-production freshness/database evidence and remaining all-route export/report certification stay open. STAB16 owns production access. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
+Current RQ routing: RQ481 READY (P1; Decision Pulse shared applied-period/dataScope) after owner-delegated decision 2026-10-08; RQ319/RQ320 remain WAITING pending the post-RQ140 path release check; `RQ140` is PARTIAL after local export/detail parity delivery; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Owner-delegated queue unblock 2026-10-08: RQ481 WAITING -> READY; RQ319 explicit Apply choice approved but WAITING while RQ140 remains IN_PROGRESS on overlapping Shoe Type/Pre/Post surface; RQ320 WAITING after RQ319. Decision record `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md`; external STAB16/RQ592 acceptance gates unchanged.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 has the owner-delegated shared period/dataScope decision and is READY; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
@@ -5468,7 +5468,7 @@ Do not edit the raw vendor nivelacija SQL/reader branch owned by `Q83`; consume 
 
 ## RQ140 - Prove pre/post nivelacija effects are comparable and not availability artifacts
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P0
 Type: backend/SQL/contract/frontend/tests
 Feature family: pre-post-nivelacija-causal-comparability
@@ -5562,7 +5562,8 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 - Added observed and comparable revenue/quantity, impact/coverage, cohort and signal fields to the existing decision projections. Vendor Pre/Post full-detail export now uses the existing comparability gate for revenue, quantity and change values; no formula, API, SQL or recommendation logic changed.
 - Focused consumer proof passed: 5 files / 127 tests. `npm run check:analytics-guardrails` passed encoding, self-test, baseline scan and TypeScript typecheck after updating only six existing line anchors shifted by the added projection fields (three Supplier, three Supplier Footwear; no exception added or removed).
 - The local consumer audit found no other page source that consumes these split fields; exact STAB16-authorized deployed DB/schema/refresh/browser proof remains open, so keep RQ140 PARTIAL after final delivery.
-- Run log: `.ai/runs/2026-10-08-RQ140-evidence.md`; Evidence state: pending final-main verification and post-close dependency cascade.
+- Implementation delivered to `main` in `3ebf57f803a92eaf3991cc6a3e71f5f56d60a012`; fresh `origin/main` contains the exact SHA. Main Actions at close: Analytics Quality Gates `37817765340` in progress; Planning Governance `37817765338` green.
+- Run log: `.ai/runs/2026-10-08-RQ140-evidence.md`; Evidence state: pending closure-commit verification and post-close dependency cascade.
 
 ### Routing correction
 
