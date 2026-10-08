@@ -13,6 +13,8 @@ import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import { fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 import { getDataScope } from "../utils/dataScope";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
+import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 
 function freshnessLabel(value: string | null | undefined): string {
   switch ((value ?? "").trim().toLowerCase()) {
@@ -240,30 +242,26 @@ export default function DecisionPulsePage() {
       ) : null}
 
       {error || metaFailed ? (
-        <div
-          className="rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]"
-          role="alert"
-        >
-          {error ?? metaMessage ?? "Izvor pregleda odluka nije pouzdan."}
-          <div className="mt-2 text-xs text-muted">Vrednosti se neće prikazati kao pouzdane dok izvor ne odgovori.</div>
-          <button
-            type="button"
-            className="mt-3 rounded-lg border border-current px-3 py-1.5 text-xs font-semibold"
-            onClick={() => setReloadToken((current) => current + 1)}
-            disabled={loading}
-          >
-            Pokušaj ponovo
-          </button>
-        </div>
+        <AnalyticsErrorState
+          title="Pregled odluka trenutno nije dostupan"
+          message={error ?? metaMessage ?? "Izvor pregleda odluka nije pouzdan."}
+          meta={feed?.meta}
+          onRetry={() => setReloadToken((current) => current + 1)}
+        />
       ) : loading ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
           Učitavam pregled odluka...
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          Nema odluka za prikaz. Prazan rezultat nije greška.
-          {metaMessage ? <div className="mt-2 text-xs">{metaMessage}</div> : null}
-        </div>
+        <AnalyticsEmptyState
+          title="Nema odluka za prikaz."
+          message="Prazan rezultat nije greška."
+          emptyReason={feed?.meta?.emptyReason}
+          meta={feed?.meta}
+          variant="no_data"
+          showDefaultLinks={false}
+          onRetry={() => setReloadToken((current) => current + 1)}
+        />
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
