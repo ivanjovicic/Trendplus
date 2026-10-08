@@ -1,5 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { buildMarginCoverageCopy, changeBadge } from "../InsightStudioPage";
+import {
+  agingColumns,
+  buildInsightStudioExportTrustMetadata,
+  buildMarginCoverageCopy,
+  categoryColumns,
+  changeBadge,
+  lifecycleColumns,
+  reorderItemColumns,
+  supplierV1Columns,
+} from "../InsightStudioPage";
 
 describe("changeBadge", () => {
   it("renders positive, negative, neutral and unknown changes distinctly", () => {
@@ -52,5 +61,50 @@ describe("buildMarginCoverageCopy", () => {
     expect(copy.subtext).toContain("91,2%");
     expect(copy.subtext).not.toContain("⚠");
     expect(copy.tooltip).toContain("Marža je pokrivena dovoljnim troškom.");
+  });
+});
+
+
+describe("Insight Studio export trust context", () => {
+  it("exports available coverage, source-basis, lifecycle and aging evidence fields", () => {
+    const keys = (columns: { key: string }[]) => columns.map(column => column.key);
+
+    expect(keys(supplierV1Columns)).toEqual(expect.arrayContaining([
+      "marginDataCoveragePct", "revenueWithCost", "systemBenchmarkAvailable", "systemMarginPct",
+    ]));
+    expect(keys(categoryColumns)).toEqual(expect.arrayContaining([
+      "marginDataCoveragePct", "revenueWithCost", "revenueBasis", "estimated", "velocityDenominatorBasis",
+    ]));
+    expect(keys(lifecycleColumns)).toContain("baselineStatus");
+    expect(keys(agingColumns)).toEqual(expect.arrayContaining([
+      "stockValue", "marginDataAvailable", "neverSold", "agingEvidenceStatus",
+    ]));
+    expect(keys(reorderItemColumns)).toEqual(expect.arrayContaining([
+      "marginDataCoveragePct", "revenueWithCost", "profitReliable", "costCoveragePct",
+    ]));
+  });
+
+  it("preserves only API-provided quality, freshness and warning metadata", () => {
+    const metadata = buildInsightStudioExportTrustMetadata("ABC classification API", {
+      success: true,
+      dataQualityStatus: "warning",
+      warningCode: "partial_cost_coverage",
+      warningMessage: "Some costs are unavailable",
+      dataFreshnessStatus: "stale",
+      isPartial: true,
+    });
+
+    expect(metadata).toEqual(expect.arrayContaining([
+      { key: "exportSource", label: "Displayed source", value: "ABC classification API" },
+      { key: "responseSuccess", label: "API response successful", value: true },
+      { key: "dataQualityStatus", label: "Data quality", value: "warning" },
+      { key: "dataFreshnessStatus", label: "Data freshness", value: "stale" },
+      { key: "isPartial", label: "Partial data", value: true },
+      { key: "warningCode", label: "Warning code", value: "partial_cost_coverage" },
+      { key: "warningMessage", label: "Warning", value: "Some costs are unavailable" },
+    ]));
+    expect(buildInsightStudioExportTrustMetadata("Insight Studio")).toEqual([
+      { key: "exportSource", label: "Displayed source", value: "Insight Studio" },
+    ]);
   });
 });

@@ -34,6 +34,7 @@ import {
   type CategoryStat,
   type DailyAnalysis,
   type GenderStat,
+  type InsightStudioTrustMeta,
   type KpiSnapshot,
   type ReorderItem,
   type ReorderPlan,
@@ -106,6 +107,24 @@ import {
 // ══════════════════════════════════════════════════════════════════
 
 type TabKey = "pregled" | "dobavljaci" | "kategorije" | "matrica" | "dnevna" | "abc" | "zalihe" | "nabavka";
+
+export function buildInsightStudioExportTrustMetadata(
+  source: string,
+  meta?: InsightStudioTrustMeta & { isPartial?: boolean; dataFreshnessStatus?: string | null; dataFreshnessReasonCode?: string | null } | null,
+): AnalyticsNamedValue[] {
+  const values: AnalyticsNamedValue[] = [{ key: "exportSource", label: "Displayed source", value: source }];
+  if (!meta) return values;
+  values.push({ key: "responseSuccess", label: "API response successful", value: meta.success });
+  if (meta.dataQualityStatus) values.push({ key: "dataQualityStatus", label: "Data quality", value: meta.dataQualityStatus });
+  if (meta.dataFreshnessStatus) values.push({ key: "dataFreshnessStatus", label: "Data freshness", value: meta.dataFreshnessStatus });
+  if (meta.dataFreshnessReasonCode) values.push({ key: "dataFreshnessReasonCode", label: "Freshness reason", value: meta.dataFreshnessReasonCode });
+  if (meta.isPartial != null) values.push({ key: "isPartial", label: "Partial data", value: meta.isPartial });
+  if (meta.emptyReason) values.push({ key: "emptyReason", label: "Empty result reason", value: meta.emptyReason });
+  if (meta.warningCode) values.push({ key: "warningCode", label: "Warning code", value: meta.warningCode });
+  if (meta.warningMessage) values.push({ key: "warningMessage", label: "Warning", value: meta.warningMessage });
+  return values;
+}
+
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: "pregled", label: "Pregled", icon: "🎯" },
@@ -197,24 +216,35 @@ const supplierV2Columns: AnalyticsTableColumn<SupplierScoreV2>[] = [
   { key: "compositeScore", header: "Score", dataType: "number" },
 ];
 
-const supplierV1Columns: AnalyticsTableColumn<SupplierScore>[] = [
+export const supplierV1Columns: AnalyticsTableColumn<SupplierScore>[] = [
   { key: "dobavljacId", header: "Dobavljač ID", dataType: "number" },
   { key: "dobavljacNaziv", header: "Dobavljač", dataType: "text" },
   { key: "totalRevenue", header: "Prihod", dataType: "currency" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
+  { key: "marginDataCoveragePct", header: "Pokriće troška %", dataType: "percent" },
+  { key: "revenueWithCost", header: "Prihod sa troškom", dataType: "currency" },
+  { key: "systemBenchmarkAvailable", header: "Benchmark dostupan", dataType: "text" },
+  { key: "systemMarginPct", header: "Sistemska marža %", dataType: "percent" },
   { key: "riskLevel", header: "Risk", dataType: "text" },
   { key: "compositeScore", header: "Score", dataType: "number" },
 ];
 
-const categoryColumns: AnalyticsTableColumn<CategoryStat>[] = [
+
+export const categoryColumns: AnalyticsTableColumn<CategoryStat>[] = [
   { key: "kategorija", header: "Kategorija", dataType: "text" },
   { key: "totalRevenue", header: "Prihod", dataType: "currency" },
   { key: "revShare", header: "Udeo %", dataType: "percent" },
   { key: "marginPct", header: "Marža %", dataType: "percent" },
+  { key: "marginDataCoveragePct", header: "Pokriće troška %", dataType: "percent" },
+  { key: "revenueWithCost", header: "Prihod sa troškom", dataType: "currency" },
   { key: "profitLift", header: "Lift", dataType: "percent" },
+  { key: "revenueBasis", header: "Osnova prihoda", dataType: "text" },
+  { key: "estimated", header: "Prihod procenjen", dataType: "text" },
+  { key: "velocityDenominatorBasis", header: "Osnova velocity", dataType: "text" },
   { key: "velocity", header: "Velocity", dataType: "number" },
   { key: "uniqueSKU", header: "SKU", dataType: "number" },
 ];
+
 
 const genderColumns: AnalyticsTableColumn<GenderStat>[] = [
   { key: "pol", header: "Pol", dataType: "text" },
@@ -246,25 +276,32 @@ const abcColumns: AnalyticsTableColumn<AbcItem>[] = [
   { key: "abcClass", header: "Klasa", dataType: "text" },
 ];
 
-const lifecycleColumns: AnalyticsTableColumn<LifecycleResult["items"][number]>[] = [
+export const lifecycleColumns: AnalyticsTableColumn<LifecycleResult["items"][number]>[] = [
   { key: "artikalId", header: "Artikal ID", dataType: "number" },
   { key: "naziv", header: "Artikal", dataType: "text" },
   { key: "kategorija", header: "Kategorija", dataType: "text" },
   { key: "totalUnits", header: "Prodato", dataType: "number" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "baselineStatus", header: "Osnova poređenja", dataType: "text" },
   { key: "currentStock", header: "Zaliha", dataType: "number" },
   { key: "stage", header: "Faza", dataType: "text" },
 ];
 
-const agingColumns: AnalyticsTableColumn<AgingItem>[] = [
+
+export const agingColumns: AnalyticsTableColumn<AgingItem>[] = [
   { key: "id", header: "Artikal ID", dataType: "number" },
   { key: "naziv", header: "Artikal", dataType: "text" },
   { key: "kategorija", header: "Kategorija", dataType: "text" },
   { key: "kolicina", header: "Zaliha", dataType: "number" },
+  { key: "stockValue", header: "Vrednost zalihe", dataType: "currency" },
+  { key: "marginDataAvailable", header: "Trošak dostupan", dataType: "text" },
+  { key: "neverSold", header: "Nikad nije prodato", dataType: "text" },
+  { key: "agingEvidenceStatus", header: "Osnova starosti", dataType: "text" },
   { key: "lastSaleDate", header: "Posl. prod.", dataType: "date" },
   { key: "daysWithoutSale", header: "Dana", dataType: "number" },
   { key: "agingCategory", header: "Status", dataType: "text" },
 ];
+
 
 const depletionColumns: AnalyticsTableColumn<DepletionResult["forecasts"][number]>[] = [
   { key: "artikalId", header: "Artikal ID", dataType: "number" },
@@ -278,7 +315,7 @@ const depletionColumns: AnalyticsTableColumn<DepletionResult["forecasts"][number
   { key: "severity", header: "Sev.", dataType: "text" },
 ];
 
-const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"][number] | ReorderItem>[] = [
+export const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"][number] | ReorderItem>[] = [
   { key: "artikalId", header: "Artikal ID", dataType: "number" },
   { key: "naziv", header: "Artikal", dataType: "text" },
   { key: "kategorija", header: "Kategorija", dataType: "text" },
@@ -287,8 +324,13 @@ const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"][numbe
   { key: "avgDailySales", header: "V/dan", dataType: "number" },
   { key: "doh", header: "DOH", dataType: "number" },
   { key: "recommendedQty", header: "Preporuka", dataType: "number" },
+  { key: "marginDataCoveragePct", header: "Pokriće troška %", dataType: "percent", getValue: row => "marginDataCoveragePct" in row ? row.marginDataCoveragePct : null },
+  { key: "revenueWithCost", header: "Prihod sa troškom", dataType: "currency", getValue: row => "revenueWithCost" in row ? row.revenueWithCost : null },
+  { key: "profitReliable", header: "Pouzdan profit", dataType: "text", getValue: row => "profitReliable" in row ? row.profitReliable : null },
+  { key: "costCoveragePct", header: "Pokriće nabavnog troška %", dataType: "percent", getValue: row => "costCoveragePct" in row ? row.costCoveragePct : null },
   { key: "urgency", header: "Hitnost", dataType: "text" },
 ];
+
 
 const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategoryPlan"][number]>[] = [
   { key: "kategorija", header: "Kategorija", dataType: "text" },
@@ -1382,11 +1424,11 @@ function DailyTab({
 // ══════════════════════════════════════════════════════════════════
 
 function AbcLifecycleTab({
-  abcData, abcLoading,
+  abcData, abcMeta, abcLoading,
   lifecycle, lifecycleLoading,
   analyticsContext,
 }: {
-  abcData: AbcItem[]; abcLoading: boolean;
+  abcData: AbcItem[]; abcMeta: InsightStudioTrustMeta | null; abcLoading: boolean;
   lifecycle: LifecycleResult | null; lifecycleLoading: boolean;
   analyticsContext: InsightAnalyticsContext;
 }) {
@@ -1403,7 +1445,7 @@ function AbcLifecycleTab({
 
       {subView === "abc" && (
         abcLoading ? <Skeleton rows={8} /> : !abcData.length ? <p className="text-[var(--text-primary)] text-sm">Nema podataka.</p> : (
-          <AbcContent data={abcData} showAll={showAll} setShowAll={setShowAll} analyticsContext={analyticsContext} />
+          <AbcContent data={abcData} showAll={showAll} setShowAll={setShowAll} analyticsContext={analyticsContext} exportTrustMetadata={buildInsightStudioExportTrustMetadata("ABC klasifikacija API", abcMeta)} />
         )
       )}
 
@@ -1416,7 +1458,7 @@ function AbcLifecycleTab({
   );
 }
 
-function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: AbcItem[]; showAll: boolean; setShowAll: (v: boolean) => void; analyticsContext: InsightAnalyticsContext }) {
+function AbcContent({ data, showAll, setShowAll, analyticsContext, exportTrustMetadata }: { data: AbcItem[]; showAll: boolean; setShowAll: (v: boolean) => void; analyticsContext: InsightAnalyticsContext; exportTrustMetadata: AnalyticsNamedValue[] }) {
   const revenueA = data.filter(x => x.abcClass === "A").reduce((s, x) => s + x.totalRevenue, 0);
   const revenueB = data.filter(x => x.abcClass === "B").reduce((s, x) => s + x.totalRevenue, 0);
   const revenueC = data.filter(x => x.abcClass === "C").reduce((s, x) => s + x.totalRevenue, 0);
@@ -1473,7 +1515,7 @@ function AbcContent({ data, showAll, setShowAll, analyticsContext }: { data: Abc
             columns={abcColumns}
             rows={displayed}
             filters={analyticsContext.filters}
-            metadata={analyticsContext.metadata}
+            metadata={[...analyticsContext.metadata, ...exportTrustMetadata]}
             defaultOrientation="landscape"
           />
         </div>
@@ -1533,7 +1575,7 @@ function LifecycleContent({ data, analyticsContext }: { data: LifecycleResult; a
             columns={lifecycleColumns}
             rows={data.items.slice(0, 30)}
             filters={analyticsContext.filters}
-            metadata={analyticsContext.metadata}
+            metadata={[...analyticsContext.metadata, ...buildInsightStudioExportTrustMetadata("Lifecycle API", data.meta)]}
             defaultOrientation="landscape"
           />
         </div>
@@ -1855,7 +1897,7 @@ function ReorderTab2({
                 columns={reorderItemColumns}
                 rows={displayed}
                 filters={analyticsContext.filters}
-                metadata={analyticsContext.metadata}
+                metadata={[...analyticsContext.metadata, ...buildInsightStudioExportTrustMetadata("Smart Reorder API", smartData?.meta)]}
                 defaultOrientation="landscape"
               />
             </div>
@@ -1915,7 +1957,7 @@ function ReorderTab2({
               columns={reorderCategoryColumns}
               rows={smartData!.byCategoryPlan}
               filters={analyticsContext.filters}
-              metadata={analyticsContext.metadata}
+              metadata={[...analyticsContext.metadata, ...buildInsightStudioExportTrustMetadata("Smart Reorder API", smartData?.meta)]}
               defaultOrientation="landscape"
             />
           </div>
@@ -1959,7 +2001,7 @@ function ReorderTab2({
               columns={reorderSupplierColumns}
               rows={smartData!.bySupplierPlan}
               filters={analyticsContext.filters}
-              metadata={analyticsContext.metadata}
+              metadata={[...analyticsContext.metadata, ...buildInsightStudioExportTrustMetadata("Smart Reorder API", smartData?.meta)]}
               defaultOrientation="landscape"
             />
           </div>
@@ -2025,6 +2067,7 @@ export default function InsightStudioPage() {
   const [daily, setDaily] = useState<DailyAnalysis | null>(null);
   const [dailyLoading, setDailyLoading] = useState(false);
   const [abcData, setAbcData] = useState<AbcItem[]>([]);
+  const [abcMeta, setAbcMeta] = useState<InsightStudioTrustMeta | null>(null);
   const [abcLoading, setAbcLoading] = useState(false);
   const [agingItems, setAgingItems] = useState<AgingItem[]>([]);
   const [agingSummary, setAgingSummary] = useState<{ totalSKU: number; critical: number; warning: number; watch: number; active: number; criticalStockValue: number } | undefined>();
@@ -2061,6 +2104,7 @@ export default function InsightStudioPage() {
   const [basketAffinity, setBasketAffinity] = useState<BasketAffinity | null>(null);
 
   const analyticsMetadata = useMemo<AnalyticsNamedValue[]>(() => [
+    { key: "exportOrigin", label: "Izvor izvoza", value: "Insight Studio" },
     { key: "dailyDate", label: "Dnevna analiza", value: dailyDate },
     { key: "supplierCountV2", label: "Dobavljači v2", value: supplierV2.length },
     { key: "supplierCountV1", label: "Dobavljači v1", value: suppliers.length },
@@ -2206,7 +2250,7 @@ export default function InsightStudioPage() {
     if (tab === "abc") {
       setAbcLoading(true);
       setLifecycleLoading(true);
-      getAbcClassification(fromDate, toDate).then(d => setAbcData(d.items)).catch(() => {}).finally(() => setAbcLoading(false));
+      getAbcClassification(fromDate, toDate).then(d => { setAbcData(d.items); setAbcMeta(d.meta ?? null); }).catch(() => {}).finally(() => setAbcLoading(false));
       getProductLifecycle(fromDate, toDate).then(d => setLifecycle(d)).catch(() => {}).finally(() => setLifecycleLoading(false));
     }
     if (tab === "zalihe") {
@@ -2389,7 +2433,7 @@ export default function InsightStudioPage() {
             selectedDate={dailyDate} heatmap={heatmap} heatmapLoading={heatmapLoading} />
         )}
         {activeTab === "abc" && (
-          <AbcLifecycleTab abcData={abcData} abcLoading={abcLoading} lifecycle={lifecycle} lifecycleLoading={lifecycleLoading} analyticsContext={analyticsContext} />
+          <AbcLifecycleTab abcData={abcData} abcMeta={abcMeta} abcLoading={abcLoading} lifecycle={lifecycle} lifecycleLoading={lifecycleLoading} analyticsContext={analyticsContext} />
         )}
         {activeTab === "zalihe" && (
           <StockTab agingItems={agingItems} agingLoading={agingLoading} agingSummary={agingSummary}
