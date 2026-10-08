@@ -68,6 +68,10 @@ jobs:
         working-directory: Klijent/clientapp
         run: npm run check:analytics-guardrails
 
+      - name: Check UI program regression gates
+        working-directory: Klijent/clientapp
+        run: npm run check:ui-program-gates
+
       - name: Build clientapp
         working-directory: Klijent/clientapp
         run: npm run build

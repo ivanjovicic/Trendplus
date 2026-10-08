@@ -6,7 +6,8 @@ import path from "node:path";
 const base = process.cwd();
 const srcDir = path.join(base, "src");
 const tailwindPath = path.join(srcDir, "tailwind.css");
-const excludedProductionPaths = new Set(["pages/ProductDecisionCenterPage.tsx", "pages/ProductDecisionCenterPage.css"]);
+// P-UI-38: Product Decision is included in the whole-program ratchet after P-UI-50.
+const excludedProductionPaths = new Set();
 const auditedFixedColorPaths = [
   "styles/interactionTokens.ts",
   "components/inventory/SKUDetailModal.tsx",

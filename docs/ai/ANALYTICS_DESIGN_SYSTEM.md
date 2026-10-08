@@ -166,10 +166,17 @@ Sirovi enum-i (`n/a_dedicated`, `warning`, `stale`) se nikad ne prikazuju direkt
 Prati responsive P-UI program i meri najmanje 320/360/375/390/768/1024/1280; 1024 mora uključiti landscape/small-laptop shell sa sidebar stanjem. Bez root overflow-a, tabele imaju prioritet/sticky ključne kolone gde je dokazano potrebno, a filteri koriste bounded responsive obrazac. Chromium emulacija nije dokaz iOS/iPadOS pariteta: pre oznake "real-device certified" potreban je ručni iPhone Safari + iPad Safari prolaz iz vizuelnog regresionog protokola.
 
 ## 11. Teme
-Šest tema (Tamna, Svetla, Meka siva, Neon Light, Neon Dark, Visok kontrast) moraju da prođu matricu iz audita §5. Nova tema se dodaje kroz kanonski theme-token izvor definisan P-UI-47 i mora da prođe test kontrasta; ne uvoditi novi paralelni izvor vrednosti u page CSS-u ili Tailwind root blokovima.
+Šest tema (Tamna / `inventory-dark`, Svetla, Meka siva, Neon Light, Neon Dark, Visok kontrast) moraju da prođu matricu iz audita §5. Nova tema se dodaje kroz kanonski theme-token izvor definisan P-UI-47 i mora da prođe test kontrasta; ne uvoditi novi paralelni izvor vrednosti u page CSS-u ili Tailwind root blokovima.
+
+### 11.1 `inventory-dark` (legacy/compatibility)
+- **Odluka (P-UI-38):** `inventory-dark` ostaje **podržana kompatibilna/legacy** selektabilna tema. Sačuvana preferenca se ne briše i ne remapiše tiho.
+- Delí dark semantiku sa `[data-theme="dark"]` / runtime `neon-dark` paletom u `themes.css`.
+- Poznati ostatak: jedna `--text-on-primary` boja ne može istovremeno da pokrije svetle status fill-ove i primary action; `ThemeContext.tokens.spec.ts` eksplicitno izuzima `inventory-dark` od tog para. Detalji: `docs/qa/UI_THEME_AUDIT_2026-10-06.md`.
+- Gate: `npm run check:ui-ratchets` zahteva eksplicitan `[data-theme="inventory-dark"]` selektor.
 
 ## 12. Usklađenost i gate-ovi
 - `check-analytics-guardrails` čuva poslovnu istinu.
-- P-UI-38 ratchet čuva ovaj dokument: hex/paleta/inline boje, tekst ispod 12px, statusna boja kao tekst, klikabilni ne-semantički elementi, responsive invariants i chart-a11y contract iz P-UI-53. Baseline brojevi smeju samo da padaju.
+- P-UI-38 composite gate `npm run check:ui-program-gates` spaja: `check:ui-ratchets` (uključujući Product Decision), `check:analytics-chart-accessibility`, `responsive_baseline --self-test`, theme contrast/token Vitest i reduced-motion carousel dokaz.
+- Baseline/ratchet brojevi smeju samo da padaju; pseudo-token inventar ostaje meren, ne masovno prepisivan.
 - Svaki prompt koji menja analitički UI navodi koji deo ovog dokumenta primenjuje.
 - Automated gate i physical-device proof su odvojene stvari: CI ne sme da glumi Safari dokaz, a release evidence ne sme da tvrdi real-device paritet bez ručnog iPhone/iPad prolaza.

@@ -22,6 +22,11 @@ const ROUTES = [
   { id: "pre_nivelacija", path: "/analytics/pre-nivelacija-prioriteti", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true, pui43Selector: ".pnp-decision-kpis", pui43TabletGrid: true, pui43DesktopFold: true },
   { id: "products", path: "/analytics/products", readySelector: ".product-decision-table", captureSelector: ".product-decision-table-wrap", pui43Selector: ".product-decision-kpis", pui43MobileKpi: true, pui43DesktopFold: true },
   { id: "actions", path: "/analytics/actions", readySelector: ".aaq-filters" },
+  { id: "data_quality", path: "/analytics/data-quality", readySelector: ".data-quality-page", pui39Overflow: true },
+  { id: "decision_board", path: "/analytics/decision-board", readySelector: ".analytics-control-bar, [data-testid='analytics-control-bar']", pui43DesktopFold: true },
+  { id: "decision_pulse", path: "/analytics/decision-pulse", readySelector: "[data-testid='decision-pulse-feed-provenance'], .decision-pulse-page" },
+  { id: "pilot_readiness", path: "/analytics/pilot-readiness", readySelector: ".pilot-readiness-page" },
+  { id: "supplier_report", path: "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&scope=all", readySelector: ".supplier-decision-report-page" },
   { id: "articles", path: "/artikli/lista", readySelector: '[data-testid="article-list-table"]' },
   { id: "nivelacija_pre_post", path: "/analytics/nivelacije-pre-post", readySelector: '[data-testid="analytics-control-bar"]', pui39Overflow: true },
   { id: "operational_suppliers", path: "/dobavljaci", readySelector: 'input[aria-label="Pretraži dobavljače"]', pui46Supplier: true, pui46ActionMenu: 'summary[aria-label^="Akcije za"]', pui46MobileActionMenu: 'summary[aria-label^="Akcije na mobilnom prikazu"]' },
@@ -32,6 +37,20 @@ const ROUTES = [
   { id: "operational_logs", path: "/logs", readySelector: '[aria-label="Tabela logova"]' },
   { id: "operational_configuration", path: "/admin/configuration?panel=workers", readySelector: ".wp-table-scroll", pui46ActionMenu: 'summary[aria-label^="Akcije za"]' },
   { id: "operational_transfers", path: "/transfers", readySelector: ".form-page" },
+];
+
+/** Routes the 2026-10-04 re-audit required in the final P-UI-38 gate inventory. */
+export const PUI38_REQUIRED_ROUTE_PATHS = [
+  "/analytics/shoe-type-sales-stats",
+  "/analytics/pre-nivelacija-prioriteti",
+  "/analytics/data-quality",
+  "/analytics/decision-board",
+  "/analytics/decision-pulse",
+  "/analytics/pilot-readiness",
+  "/analytics/reports/pilot-intake",
+  "/analytics/supplier/report",
+  "/logs",
+  "/analytics/products",
 ];
 
 const THEMES = ["light", "soft-gray", "dark"];
@@ -133,6 +152,25 @@ export function assertPui42TouchTargets(metrics) {
   return true;
 }
 
+export function assertDialogViewportContainment(dialog) {
+  if (!dialog?.withinViewport) {
+    throw new Error(`dialog escapes viewport: ${JSON.stringify(dialog ?? null)}`);
+  }
+  if (dialog.footerReachable === false) {
+    throw new Error(`dialog footer is not reachable inside the viewport: ${JSON.stringify(dialog)}`);
+  }
+  return true;
+}
+
+export function assertMobileFormFontFloor(metrics) {
+  const undersized = (metrics.controls ?? []).filter((control) =>
+    control.kind === "text-entry" && control.fontSizePx < 16);
+  if (undersized.length > 0) {
+    throw new Error(`mobile form font floor below 16px: ${undersized.slice(0, 8).map((control) => `${control.selector} ${control.fontSizePx}px`).join("; ")}`);
+  }
+  return true;
+}
+
 export function evaluateGeometry(documentMetrics, viewportWidth) {
   return {
     viewportWidth,
@@ -164,6 +202,16 @@ function runSelfTest() {
     throw new Error("responsive baseline theme selection did not retain the light, soft-gray and dark mappings");
   }
 
+  if (PUI39_LONG_STORE_OPTION.length < 60) {
+    throw new Error("P-UI-39 long store option fixture must be at least 60 characters");
+  }
+
+  const missingRequiredRoutes = PUI38_REQUIRED_ROUTE_PATHS.filter((requiredPath) =>
+    !ROUTES.some((route) => route.path === requiredPath || route.path.startsWith(`${requiredPath}?`)));
+  if (missingRequiredRoutes.length > 0) {
+    throw new Error(`P-UI-38 required routes missing from responsive inventory: ${missingRequiredRoutes.join(", ")}`);
+  }
+
   const intentionalOverflow = {
     viewportWidth: 320,
     windowInnerWidth: 320,
@@ -190,6 +238,21 @@ function runSelfTest() {
     throw new Error("intentional overflow fixture did not fail the geometry assertion");
   }
 
+  let innerWidthFailedAsExpected = false;
+  try {
+    assertNoRootOverflow({
+      ...intentionalOverflow,
+      scrollWidth: 320,
+      bodyScrollWidth: 320,
+      windowInnerWidth: 360,
+    });
+  } catch (error) {
+    innerWidthFailedAsExpected = /root horizontal overflow/.test(String(error));
+  }
+  if (!innerWidthFailedAsExpected) {
+    throw new Error("intentional window.innerWidth mismatch fixture did not fail the geometry assertion");
+  }
+
   let shellFailedAsExpected = false;
   try {
     assertPui40Shell({ viewportWidth: 1024, header: { height: 89 }, main: { width: 899 } });
@@ -211,10 +274,32 @@ function runSelfTest() {
     throw new Error("intentional P-UI-42 touch target fixture did not fail as expected");
   }
 
+  assertDialogViewportContainment({ withinViewport: true, footerReachable: true });
+  let dialogFailedAsExpected = false;
+  try {
+    assertDialogViewportContainment({ withinViewport: false, footerReachable: true });
+  } catch (error) {
+    dialogFailedAsExpected = /dialog escapes viewport/.test(String(error));
+  }
+  if (!dialogFailedAsExpected) {
+    throw new Error("intentional dialog viewport fixture did not fail as expected");
+  }
+
+  assertMobileFormFontFloor({ controls: [{ selector: "input", kind: "text-entry", fontSizePx: 16 }] });
+  let fontFloorFailedAsExpected = false;
+  try {
+    assertMobileFormFontFloor({ controls: [{ selector: "input", kind: "text-entry", fontSizePx: 15 }] });
+  } catch (error) {
+    fontFloorFailedAsExpected = /mobile form font floor below 16px/.test(String(error));
+  }
+  if (!fontFloorFailedAsExpected) {
+    throw new Error("intentional mobile form font-floor fixture did not fail as expected");
+  }
+
   return {
     name: "intentional-overflow-fixture",
     status: "PASS",
-    detail: "overflow and P-UI-40/P-UI-42 regression fixtures failed as expected and were caught by the self-test",
+    detail: "overflow, innerWidth, dialog, font-floor and P-UI-40/P-UI-42 regression fixtures failed as expected and were caught by the self-test",
   };
 }
 
@@ -1365,6 +1450,7 @@ async function run(options) {
                   footerReachable: Boolean(footerRect && footerRect.bottom <= window.innerHeight),
                 };
               });
+              assertDialogViewportContainment(statusDialog);
               interactionStep = "confirm-status-update";
               await page.evaluate(() => {
                 const button = [...document.querySelectorAll(".modal-content button")]
@@ -1380,6 +1466,7 @@ async function run(options) {
                 const footer = dialog.querySelector(".modal-footer")?.getBoundingClientRect();
                 return { withinViewport: dialog.getBoundingClientRect().top >= 0 && dialog.getBoundingClientRect().bottom <= window.innerHeight, footerReachable: Boolean(footer && footer.bottom <= window.innerHeight) };
               });
+              assertDialogViewportContainment(outcomeDialog);
               interactionStep = "close-outcome-dialog";
               await page.keyboard.press("Escape");
               interaction = { filtered: true, statusUpdatedAtFixtureBoundary: true, statusDialog, outcomeDialog, keyboardClose: true };

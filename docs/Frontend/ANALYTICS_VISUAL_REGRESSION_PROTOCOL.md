@@ -171,14 +171,30 @@ The committed runner `Klijent/clientapp/scripts/responsive_baseline.mjs`:
 - includes an intentional overflow self-test that must fail the geometry assertion;
 - keeps Chromium emulation separate from real iOS/iPad Safari evidence.
 
+## P-UI-38 program regression gates
+
+Deterministic CI/local composite (no customer data, no real-device claim):
+
+```powershell
+cd Klijent/clientapp
+npm run check:ui-program-gates
+```
+
+This runs UI ratchets (Product Decision included), chart accessibility, responsive self-test negative fixtures, theme token/contrast Vitest, and carousel reduced-motion coverage. Full Puppeteer `responsive:baseline` remains optional browser evidence and is not required for the static CI gate.
+
+### Physical-device certification (release evidence, not CI)
+
+Before labeling a release **"real-device certified"**, record one iPhone Safari and one iPad Safari manual pass using this protocol's viewport/theme checklist. Chromium / Puppeteer / Android emulation does **not** prove iOS/iPadOS Safari parity (virtual keyboard, zoom, safe-area). If hardware is unavailable, state that limitation explicitly in the run evidence instead of inferring parity.
+
 ## Related docs
 
 - `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md` (P-UI-05 recommendation)
 - `docs/Frontend/ROUTING_AND_SMOKE_TEST_STANDARDS.md`
 - `docs/qa/ANALYTICS_UI_VISUAL_REVIEW_EVIDENCE_TEMPLATE.md`
 - `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
+- `docs/ai/ANALYTICS_DESIGN_SYSTEM.md` (§11.1 inventory-dark, §12 gates)
 
 
 ## 2026-10-01 responsive audit integration
 
-`P-UI-24` is the canonical follow-up for turning this manual protocol into measured 320/375/768/1024/1280 browser evidence. It must reuse Puppeteer unless a concrete tool gap is proven. Chromium emulation does not count as real iOS Safari proof; real-device zoom/virtual-keyboard claims remain separate evidence.
+`P-UI-24` established measured 320/375/768/1024/1280 browser evidence. `P-UI-38` turns the stable invariants into `check:ui-program-gates`. Chromium emulation does not count as real iOS Safari proof; real-device zoom/virtual-keyboard claims remain separate evidence.

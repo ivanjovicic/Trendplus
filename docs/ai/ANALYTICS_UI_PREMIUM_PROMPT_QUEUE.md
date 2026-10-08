@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-38` (promoted 2026-10-08 after P-UI-50 DONE). All named UI migrations including P-UI-50/P-UI-54 are DONE; P-UI-38 is the final whole-program responsive/theme/a11y gate.
+Current READY prompt: `P-UI-38` (IN_PROGRESS; claimed 2026-10-08 by cursor on `cursor/p-ui-38-responsive-ui-regression-gates-7269` after P-UI-50 DONE). All named UI migrations including P-UI-50/P-UI-54 are DONE; P-UI-38 is the final whole-program responsive/theme/a11y gate.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -46,7 +46,7 @@ Use with:
 | P-UI-35 | DONE | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | DONE | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
-| P-UI-38 | READY | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
+| P-UI-38 | IN_PROGRESS | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
@@ -2462,13 +2462,13 @@ Article List has small pagination/input controls and a table without an explicit
 
 ## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
 
-Status: READY
+Status: IN_PROGRESS
 Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred, **and P-UI-54 is DONE**; P-UI-50 is DONE (2026-10-08), so this final whole-program gate is dependency-complete
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
 Feature family: responsive-ui-regression-gates
 Parallel-safe: no
-Owner: unassigned
+Owner: cursor / workspace cursor-cloud `cursor/p-ui-38-responsive-ui-regression-gates-7269` (claimed 2026-10-08)
 Commit suggestion: `test(ui): enforce responsive regression contracts`
 
 ### Problem

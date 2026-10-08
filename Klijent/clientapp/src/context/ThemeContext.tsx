@@ -346,7 +346,7 @@ const THEMES: Record<ThemeName, Theme> = {
   "inventory-dark": {
     name: "inventory-dark",
     displayName: "Tamna",
-    description: "Optimizovana za dugotrajno citanje tabela",
+    description: "Legacy/compatibility tamna tema (sačuvana preferenca; deli dark paletu)",
     cssVars: withBaseVars({
       "--surface-default": "var(--theme-color-0f1318, #0f1318)",
       "--surface-light": "var(--theme-color-10141c, #10141c)",

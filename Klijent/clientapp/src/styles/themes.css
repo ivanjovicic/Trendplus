@@ -206,7 +206,15 @@
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Legacy theme name shares the inventory-dark semantic palette. */
+/*
+ * inventory-dark decision (P-UI-38):
+ * Supported as a compatibility/legacy selectable theme alias. Persisted
+ * preference values must not be removed or silently remapped. It shares the
+ * dark semantic palette with [data-theme="dark"] / neon-dark runtime values.
+ * Known residual: one on-primary colour cannot serve both bright status fills
+ * and the primary action (tracked in docs/qa/UI_THEME_AUDIT_2026-10-06.md);
+ * ThemeContext.tokens.spec.ts documents the inventory-dark exception.
+ */
 [data-theme="inventory-dark"],
 [data-theme="dark"] {
   --surface-default: var(--theme-color-0f1318, #0f1318);
