@@ -8,17 +8,34 @@ public sealed record InventoryValueAggregate(
 
 public static class InventoryValueCoverage
 {
-    public static InventoryValueAggregate Aggregate(IEnumerable<decimal?> values)
+    /// <summary>
+    /// Known-only stock value aggregate with the same population as the Inventory
+    /// balance valuation: only positive on-hand rows carry capital. Zero or negative
+    /// stock rows are measured "no capital" and must not inflate value coverage;
+    /// positive rows without a known value stay unknown instead of becoming 0.
+    /// </summary>
+    public static InventoryValueAggregate Aggregate(IEnumerable<(int Quantity, decimal? Value)> rows)
     {
-        var materialized = values.ToArray();
-        var known = materialized.Where(value => value.HasValue).Select(value => value!.Value).ToArray();
+        var stocked = rows.Where(row => row.Quantity > 0).ToArray();
+        if (stocked.Length == 0)
+        {
+            return new InventoryValueAggregate(0m, 0, 0, 100m);
+        }
+
+        var known = stocked.Where(row => row.Value.HasValue).Select(row => row.Value!.Value).ToArray();
         return new InventoryValueAggregate(
             known.Length == 0 ? null : known.Sum(),
             known.Length,
-            materialized.Length - known.Length,
-            materialized.Length == 0 ? 100m : Math.Round((decimal)known.Length / materialized.Length * 100m, 1));
+            stocked.Length - known.Length,
+            Math.Round((decimal)known.Length / stocked.Length * 100m, 1));
     }
 
+    /// <summary>
+    /// Pareto ABC over known positive values. An item's class is decided by the
+    /// cumulative share of the items ranked before it, so the largest value is
+    /// always A (a single-SKU population is not C). Unknown values stay N/A and
+    /// zero/negative values are C.
+    /// </summary>
     public static string[] ClassifyAbc(IReadOnlyList<(decimal? Value, string Name)> values)
     {
         var result = Enumerable.Repeat("N/A", values.Count).ToArray();
@@ -26,30 +43,31 @@ public static class InventoryValueCoverage
             .Select((entry, index) => (entry, index))
             .Where(item => item.entry.Value.HasValue)
             .ToArray();
-        var total = known.Sum(item => item.entry.Value!.Value);
         if (known.Length == 0)
         {
             return result;
         }
 
-        if (total <= 0)
+        foreach (var item in known)
         {
-            foreach (var item in known)
-            {
-                result[item.index] = "C";
-            }
+            result[item.index] = "C";
+        }
 
+        var positive = known.Where(item => item.entry.Value!.Value > 0m).ToArray();
+        var total = positive.Sum(item => item.entry.Value!.Value);
+        if (total <= 0m)
+        {
             return result;
         }
 
-        var running = 0m;
-        foreach (var item in known
+        var runningBefore = 0m;
+        foreach (var item in positive
             .OrderByDescending(item => item.entry.Value!.Value)
             .ThenBy(item => item.entry.Name, StringComparer.CurrentCulture))
         {
-            running += item.entry.Value!.Value;
-            var share = running / total;
-            result[item.index] = share <= 0.80m ? "A" : share <= 0.95m ? "B" : "C";
+            var shareBefore = runningBefore / total;
+            result[item.index] = shareBefore < 0.80m ? "A" : shareBefore < 0.95m ? "B" : "C";
+            runningBefore += item.entry.Value!.Value;
         }
 
         return result;
