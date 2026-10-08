@@ -1795,6 +1795,12 @@ export interface InventoryActionSuggestion {
   estimatedValueBasis?: "current_stock_value" | "suggested_action_cost" | null;
   costMissing?: boolean | null;
   daysSinceMovement: number | null;
+  signalConfidencePct?: number | null;
+  recommendationAllowed?: boolean | null;
+  signalDataQualityStatus?: string | null;
+  signalReasonCodes?: string[] | null;
+  receiptAgeDays?: number | null;
+  receiptAgeBasis?: string | null;
   note?: string | null;
   updatedAtUtc?: string | null;
   datasetContext?: InventoryActionDatasetContext | null;
@@ -1809,6 +1815,10 @@ export interface InventoryActionDatasetContext {
   sizeCode?: string | null;
   fromStoreId?: number | null;
   toStoreId?: number | null;
+  asOfUtc?: string | null;
+  signalWindowFromUtc?: string | null;
+  signalWindowToExclusiveUtc?: string | null;
+  horizonBasis?: string | null;
 }
 
 export interface InventoryActionWorkflow {
@@ -1818,6 +1828,10 @@ export interface InventoryActionWorkflow {
   deferredCount: number;
   closedCount: number;
   items: InventoryActionSuggestion[];
+  asOfUtc?: string | null;
+  signalWindowFromUtc?: string | null;
+  signalWindowToExclusiveUtc?: string | null;
+  horizonBasis?: string | null;
   meta?: AnalyticsResponseMeta | null;
 }
 

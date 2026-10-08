@@ -4,6 +4,7 @@ using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Application.Inventory.Models;
+using Api.Services;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
@@ -740,6 +741,15 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             ct: CancellationToken.None,
             dataScope: "existing");
 
+        Assert.Equal("source_horizon", existingWorkflow.HorizonBasis);
+        var expectedExistingHorizon = await ObservedSalesHorizonResolver.ResolveAsync(
+            trendDb,
+            storeId: null,
+            supplierId: null,
+            dataScope: "existing",
+            CancellationToken.None);
+        Assert.Equal(expectedExistingHorizon?.Date, existingWorkflow.AsOfUtc?.Date);
+
         var existingBoard = DecisionBoardEndpoints.BuildDecisionBoardResponse(
             generatedAtUtc: DateTime.UtcNow,
             periodFromUtc: null,
@@ -765,6 +775,67 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             .ToArray();
         Assert.Single(existingInventoryCards);
         Assert.Contains("Existing", existingInventoryCards[0].Title, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InventoryActionWorkflow_TransfersOnlyToMateriallyStrongerDemandAndKeepsUnknownCostNull()
+    {
+        await using var factory = CreateFactory();
+        SeedInventoryTransferProbeData(factory.Services);
+
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var workflow = await InventoryEndpoints.GetInventoryActionWorkflowAsync(
+            services.GetRequiredService<IAnalyticsCacheService>(),
+            services.GetRequiredService<TrendplusDbContext>(),
+            services.GetRequiredService<AnalyticsDbContext>(),
+            new NoopInventoryActionDecisionService(),
+            storeId: null,
+            supplierId: null,
+            search: "TransferProbe",
+            ct: CancellationToken.None,
+            dataScope: "existing");
+
+        var transfer = Assert.Single(workflow.Items.Where(item => item.ActionType == "transfer"));
+        Assert.Equal("Prodavnica 1", transfer.FromStoreName);
+        Assert.Equal("Prodavnica 2", transfer.ToStoreName);
+        Assert.Equal(5, transfer.SuggestedQty);
+        Assert.Null(transfer.EstimatedValue);
+        Assert.Equal("source_horizon", transfer.DatasetContext?.HorizonBasis);
+        Assert.Contains("destination_demand_materially_stronger", transfer.SignalReasonCodes!);
+        Assert.Contains(workflow.Items, item => item.ActionType == "clearance" && item.ArtikalId == 924);
+        Assert.Contains(workflow.Items, item => item.ActionType == "markdown" && item.ArtikalId == 926);
+        Assert.DoesNotContain(workflow.Items, item => item.ActionType == "clearance" && item.ArtikalId == 925);
+    }
+
+    private static void SeedInventoryTransferProbeData(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+        var recentSaleDate = DateTime.UtcNow.Date.AddDays(-1).AddHours(12);
+        db.Artikli.AddRange(
+            new Artikli { Id = 920, PLU = "TRANSFERPROBE-STRONG", Naziv = "TransferProbe Strong source", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 921, PLU = "TRANSFERPROBE-STRONG", Naziv = "TransferProbe Strong destination", IDObjekat = 2, Kolicina = 1, MinimalnaKolicina = 6, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 922, PLU = "TRANSFERPROBE-EQUAL", Naziv = "TransferProbe Equal source", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 923, PLU = "TRANSFERPROBE-EQUAL", Naziv = "TransferProbe Equal destination", IDObjekat = 2, Kolicina = 1, MinimalnaKolicina = 6, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 924, PLU = "TRANSFERPROBE-CLEARANCE", Naziv = "TransferProbe Clearance candidate", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 925, PLU = "TRANSFERPROBE-NEW", Naziv = "TransferProbe Fresh receipt", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow },
+            new Artikli { Id = 926, PLU = "TRANSFERPROBE-MARKDOWN", Naziv = "TransferProbe Markdown candidate", IDObjekat = 1, Kolicina = 20, MinimalnaKolicina = 5, NabavnaCena = 25m, DataOrigin = "existing", UpdatedAt = DateTime.UtcNow });
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje { Id = 80, DatumProdaje = recentSaleDate, IDObjekat = 1, DataOrigin = "existing" },
+            new ProdajaZaglavlje { Id = 81, DatumProdaje = recentSaleDate, IDObjekat = 2, DataOrigin = "existing" },
+            new ProdajaZaglavlje { Id = 82, DatumProdaje = recentSaleDate, IDObjekat = 1, DataOrigin = "existing" },
+            new ProdajaZaglavlje { Id = 83, DatumProdaje = recentSaleDate, IDObjekat = 2, DataOrigin = "existing" });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka { Id = 80, IdProdaja = 80, IdArtikal = 920, Kolicina = 4, Cena = 0m },
+            new ProdajaStavka { Id = 81, IdProdaja = 81, IdArtikal = 921, Kolicina = 8, Cena = 0m },
+            new ProdajaStavka { Id = 82, IdProdaja = 82, IdArtikal = 922, Kolicina = 4, Cena = 0m },
+            new ProdajaStavka { Id = 83, IdProdaja = 83, IdArtikal = 923, Kolicina = 4, Cena = 0m });
+        db.DnevnikPromena.AddRange(
+            new DnevnikPromena { Id = 8400, ArtikalId = 924, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddDays(-105), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" },
+            new DnevnikPromena { Id = 8401, ArtikalId = 925, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddHours(-1), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" },
+            new DnevnikPromena { Id = 8402, ArtikalId = 926, IDObjekat = 1, TipPromene = TipPromeneConstants.UlazRobe, Datum = recentSaleDate.AddDays(-75), Kolicina = 20, Iznos = 500m, DataOrigin = "existing" });
+        db.SaveChanges();
     }
 
     [Fact]

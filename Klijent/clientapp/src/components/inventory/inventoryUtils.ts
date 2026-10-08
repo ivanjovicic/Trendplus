@@ -477,7 +477,7 @@ export function buildInventoryWorkflowCentralQueueMetadata(
     suggestionKey: item.suggestionKey,
     sourceKeySchemaVersion: inventoryActionSourceKeySchemaVersion(item.suggestionKey),
     legacySourceKey: inventoryActionSourceKeySchemaVersion(item.suggestionKey) === "legacy" ? item.suggestionKey : null,
-    datasetContext: item.datasetContext ?? context,
+    datasetContext: buildInventoryWorkflowQueueDatasetContext(item, context),
     actionType: item.actionType,
     suggestedQty: item.suggestedQty,
     forecastDemandQty: item.forecastDemandQty ?? item.suggestedQty,
@@ -928,4 +928,19 @@ export function resolveInventorySignalPanelMessage(
   legacyWarning?: string | null,
 ): string | null {
   return getAnalyticsMetaMessage(meta) ?? formatInventorySnapshotWarning(legacyWarning);
+}
+
+function buildInventoryWorkflowQueueDatasetContext(
+  item: InventoryActionSuggestion,
+  context: InventoryActionDatasetContext,
+): Record<string, unknown> {
+  return {
+    ...(item.datasetContext ?? context),
+    signalConfidencePct: item.signalConfidencePct,
+    recommendationAllowed: item.recommendationAllowed,
+    signalDataQualityStatus: item.signalDataQualityStatus,
+    signalReasonCodes: item.signalReasonCodes,
+    receiptAgeDays: item.receiptAgeDays,
+    receiptAgeBasis: item.receiptAgeBasis,
+  };
 }

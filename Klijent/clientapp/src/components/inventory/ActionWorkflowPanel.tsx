@@ -42,6 +42,10 @@ export function ActionWorkflowPanel({
         <div className="rounded-2xl border border-border bg-surface p-3"><div className="text-xs uppercase tracking-[0.18em] text-warning">Zatvoreno</div><div className="mt-2 text-xl font-semibold text-foreground">{formatNumber(actionWorkflow?.closedCount ?? 0)}</div></div>
       </div>
 
+      {actionWorkflow?.asOfUtc ? <div className="mt-3 text-xs text-muted" data-testid="inventory-action-horizon">
+        Signalni prozor: {actionWorkflow.signalWindowFromUtc ? new Date(actionWorkflow.signalWindowFromUtc).toLocaleDateString("sr-RS") : "—"} – {actionWorkflow.signalWindowToExclusiveUtc ? new Date(actionWorkflow.signalWindowToExclusiveUtc).toLocaleDateString("sr-RS") : "—"} · stanje do {new Date(actionWorkflow.asOfUtc).toLocaleDateString("sr-RS")} · {actionWorkflow.horizonBasis === "source_horizon" ? "poslednji izvorni horizont" : "tekući izvor / trenutni datum"}
+      </div> : null}
+
       <div className="mt-5 space-y-3">
         {operationsLoading && workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Učitavam predloge akcija...</div> : workflowItems.length === 0 ? <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">Za trenutne filtere nema otvorenih predloga akcije.</div> : workflowItems.map((item) => (
           <div key={item.suggestionKey} className="rounded-2xl border border-border bg-surface p-4">
@@ -59,6 +63,7 @@ export function ActionWorkflowPanel({
                 <div className="mt-1 text-sm leading-6 text-muted">{item.reason}</div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                   <span>Artikal: {item.naziv}</span>
+                  {item.receiptAgeDays != null && item.receiptAgeBasis === "last_inbound_receipt" ? <span>Starost poslednjeg pouzdanog prijema: {formatNumber(item.receiptAgeDays)} dana</span> : null}
                   {item.fromStoreName ? <span>Iz: {item.fromStoreName}</span> : null}
                   {item.toStoreName ? <span>U: {item.toStoreName}</span> : null}
                   {item.forecastDemandQty != null

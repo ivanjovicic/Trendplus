@@ -3,6 +3,30 @@ import { describe, expect, it, vi } from "vitest";
 import { ActionWorkflowPanel } from "./ActionWorkflowPanel";
 
 describe("ActionWorkflowPanel cost trust", () => {
+  it("shows the source-anchored signal window and its basis", () => {
+    render(
+      <ActionWorkflowPanel
+        actionWorkflow={{
+          generatedAtUtc: "2026-10-08T10:00:00Z",
+          asOfUtc: "2026-08-08T23:59:59Z",
+          signalWindowFromUtc: "2026-07-10T00:00:00Z",
+          signalWindowToExclusiveUtc: "2026-08-09T00:00:00Z",
+          horizonBasis: "source_horizon",
+          pendingCount: 0,
+          approvedCount: 0,
+          deferredCount: 0,
+          closedCount: 0,
+          items: [],
+        }}
+        operationsLoading={false}
+        workflowBusyKey={null}
+        onUpdateWorkflowStatus={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("inventory-action-horizon")).toHaveTextContent("poslednji izvorni horizont");
+  });
+
   it("labels missing forecast cost as unavailable instead of zero", () => {
     render(
       <ActionWorkflowPanel

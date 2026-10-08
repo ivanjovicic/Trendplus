@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ IN_PROGRESS prompt: none. RQ593, RQ596 and RQ595 are DONE. RQ593 delivered Product Decision known-only monetary totals and explicit coverage on `main`; RQ594 is next for a fresh dependency/collision check. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or latest-known-horizon product work.
+Current RQ IN_PROGRESS prompt: RQ594 (P1, Inventory action source-horizon and decision-truth correction). RQ593, RQ596 and RQ595 are DONE. RQ594 was rechecked against `origin/main` `06cd3071`; there is no matching branch, lock or open PR. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize repository-local formula, historical-analysis or latest-known-horizon product work.
 Product value plan refinement 2026-10-08: RQ596 owns completed Inventory money/coverage; RQ595 consumes that per-aging-bucket contract. RQ593 now owns the disjoint Product Decision financial coverage slice after its prior page-path edit was resolved on current main. RQ555 waits on RQ593; RQ594 waits on RQ593; RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
@@ -30236,8 +30236,8 @@ Completed 2026-10-07 on implementation SHA `c2442acc436642871a4234592b0bd754120b
 
 ## RQ594 - Make Inventory actions source-horizon anchored and decision-semantic, including demand-aware transfers
 
-Status: WAITING
-Ready after: RQ593 DONE and RQ596 DONE (shared Inventory/Product Decision action contract)
+Status: IN_PROGRESS
+Ready after: RQ593 DONE and RQ596 DONE (shared Inventory/Product Decision action contract; satisfied 2026-10-08)
 Priority: P1
 Type: backend/frontend/product/tests
 Feature family: inventory-action-decision-truth
@@ -30300,3 +30300,9 @@ Inventory actions answer "šta da uradim sa ovom zalihom i zašto" from the late
 ### Dependencies
 
 RQ593 and RQ596 DONE. No fresh import is required for implementation or deterministic proof; freshness only decides whether the resulting action set may be called current.
+
+### Claim
+
+Claimed 2026-10-08 from refreshed `origin/main` `06cd30711ce2ff8a43ae31fb080aaedac5cb14c7`; branch `codex/rq594-inventory-actions`. Verified no matching local/remote RQ594 branch, lock or open PR. Open PRs #102/#103 are P-UI-52 documentation-only and do not own RQ594 paths. Dependencies RQ593 and RQ596 are DONE. Local lock: `.ai/task-locks/RQ594-codex.lock.md`.
+
+Implementation progress 2026-10-08: the action window is source-horizon anchored and scope/receipt-population filtered; markdown/clearance separate trusted receipt age from anchored velocity/cover; transfers require materially stronger same-window demand plus reliable store identity and safe post-transfer cover. DTO, visible workflow horizon and central-queue evidence are additive; action keys/statuses remain stable. Focused API/unit/integration proof 11/11 and Decision Board projection proof 55/55 passed; frontend workflow/source-key proof 11/11; analytics guardrails report 0 new violations and typecheck passed. Evidence: `.ai/runs/2026-10-08-RQ594-evidence.md`. Keep IN_PROGRESS pending final commit/CI verification.

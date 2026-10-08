@@ -169,7 +169,11 @@ public sealed record InventoryActionDatasetContextDto(
     int? StoreId,
     string? SizeCode,
     int? FromStoreId,
-    int? ToStoreId
+    int? ToStoreId,
+    DateTime? AsOfUtc = null,
+    DateTime? SignalWindowFromUtc = null,
+    DateTime? SignalWindowToExclusiveUtc = null,
+    string? HorizonBasis = null
 );
 
 public sealed record InventoryActionSuggestionDto(
@@ -195,7 +199,9 @@ public sealed record InventoryActionSuggestionDto(
     IReadOnlyList<string>? SignalReasonCodes = null,
     bool CostMissing = false,
     string EstimatedValueBasis = "current_stock_value",
-    InventoryActionDatasetContextDto? DatasetContext = null
+    InventoryActionDatasetContextDto? DatasetContext = null,
+    int? ReceiptAgeDays = null,
+    string? ReceiptAgeBasis = null
 );
 
 public sealed record InventoryActionWorkflowDto(
@@ -205,7 +211,11 @@ public sealed record InventoryActionWorkflowDto(
     int DeferredCount,
     int ClosedCount,
     IReadOnlyList<InventoryActionSuggestionDto> Items,
-    AnalyticsResponseMetaDto? Meta = null
+    AnalyticsResponseMetaDto? Meta = null,
+    DateTime? AsOfUtc = null,
+    DateTime? SignalWindowFromUtc = null,
+    DateTime? SignalWindowToExclusiveUtc = null,
+    string? HorizonBasis = null
 );
 
 public sealed class InventoryActionDecisionRequestDto

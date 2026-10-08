@@ -67,4 +67,41 @@ describe("Inventory action source-key contract", () => {
       legacySourceKey: legacyKey,
     });
   });
+
+  it("preserves source-horizon and decision evidence in central queue metadata", () => {
+    const metadata = buildInventoryWorkflowCentralQueueMetadata({
+      suggestionKey: "inventory|v2|kind=clearance",
+      actionType: "clearance",
+      priority: "medium",
+      label: "Clearance",
+      reason: "Old stock with low velocity",
+      status: "pending",
+      artikalId: 501,
+      plu: "SKU-501",
+      naziv: "Test",
+      suggestedQty: 4,
+      estimatedValue: null,
+      costMissing: true,
+      daysSinceMovement: 95,
+      signalReasonCodes: ["reliable_receipt_age", "low_sales_velocity", "stock_cover_slow"],
+      datasetContext: {
+        dataScope: "all",
+        periodFrom: "rolling-30d",
+        periodTo: "rolling-30d",
+        asOfUtc: "2026-08-08T23:59:59Z",
+        signalWindowFromUtc: "2026-07-10T00:00:00Z",
+        signalWindowToExclusiveUtc: "2026-08-09T00:00:00Z",
+        horizonBasis: "source_horizon",
+      },
+    });
+
+    expect(metadata).toMatchObject({
+      datasetContext: {
+        horizonBasis: "source_horizon",
+        asOfUtc: "2026-08-08T23:59:59Z",
+        signalReasonCodes: ["reliable_receipt_age", "low_sales_velocity", "stock_cover_slow"],
+      },
+      inventoryExposureRsd: null,
+    });
+  });
 });

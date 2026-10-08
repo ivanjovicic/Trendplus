@@ -385,7 +385,8 @@ public static class InventoryEndpoints
                     aging.Label,
                     "C",
                     valuation.ValuationBasis,
-                    aging.AgeBasis)
+                    aging.AgeBasis,
+                    lastReceiptAt)
             })
             .Single();
 
@@ -1013,7 +1014,8 @@ public static class InventoryEndpoints
                     aging.Label,
                     "C",
                     valuation.ValuationBasis,
-                    aging.AgeBasis);
+                    aging.AgeBasis,
+                    lastReceiptAt);
             })
             .ToList();
 
@@ -1073,7 +1075,8 @@ public static class InventoryEndpoints
         int? storeId,
         DateTime fromUtc,
         DateTime toExclusiveUtc,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
         if (articleIds.Length == 0)
         {
@@ -1082,6 +1085,8 @@ public static class InventoryEndpoints
 
         var grouped = await (
             from pz in db.ProdajaZaglavlja.AsNoTracking()
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(dataScope))
             join ps in db.ProdajaStavke.AsNoTracking() on pz.Id equals ps.IdProdaja
             where articleIds.Contains(ps.IdArtikal)
                   && pz.DatumProdaje >= fromUtc
@@ -1122,7 +1127,8 @@ public static class InventoryEndpoints
         int? storeId,
         DateTime fromUtc,
         DateTime toExclusiveUtc,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? dataScope = null)
     {
         if (articleIds.Length == 0)
         {
@@ -1140,6 +1146,9 @@ public static class InventoryEndpoints
                     && batch.Contains(x.ArtikalId.Value)
                     && x.Datum >= fromUtc
                     && x.Datum < toExclusiveUtc
+                    && (SalesDataScopePolicy.Normalize(dataScope) == "all"
+                        || (SalesDataScopePolicy.Normalize(dataScope) == "imported" && x.DataOrigin == "access")
+                        || (SalesDataScopePolicy.Normalize(dataScope) == "existing" && (x.DataOrigin == "existing" || x.DataOrigin == null || x.DataOrigin == "")))
                     && (!storeId.HasValue || x.StoreId == storeId.Value))
                 .GroupBy(x => x.ArtikalId!.Value)
                 .Select(g => new
@@ -1199,7 +1208,7 @@ public static class InventoryEndpoints
                     $"Klasa {g.Key}",
                     g.Count(),
                     value.Value is null ? null : Math.Round(value.Value.Value, 2),
-                    g.Key == "N/A" || totalAggregate.Value is null ? 0 : Math.Round(value.Value!.Value / totalAggregate.Value.Value * 100m, 1),
+                    g.Key == "N/A" || totalAggregate.Value is null or <= 0m ? 0 : Math.Round(value.Value!.Value / totalAggregate.Value.Value * 100m, 1),
                     value.CoveragePct,
                     value.UnknownRows);
             })
@@ -1391,14 +1400,18 @@ public static class InventoryEndpoints
         var normalizedDataScope = NormalizeDataScope(dataScope);
         const string actionSignalWindow = "rolling-30d";
         const string snapshotGeneration = InventoryActionSourceKey.UnknownContext;
+        var nowUtc = DateTime.UtcNow;
+        var observedHorizonUtc = await ObservedSalesHorizonResolver.ResolveAsync(db, storeId, supplierId, normalizedDataScope, ct);
+        var signalWindow = InventoryActionDecisionPolicy.ResolveSignalWindow(nowUtc, observedHorizonUtc);
         var decisions = await actionDecisionService.ListAsync(ct);
         var articleIds = items.Select(item => item.Id).ToArray();
-        var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, 30, ct);
-        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, 30, ct);
+        var soldUnitsByArticle = await LoadSoldUnitsByArticleAsync(db, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct, normalizedDataScope);
+        var movementWindowStatsByArticle = await LoadInventorySignalWindowStatsAsync(analyticsDb, articleIds, storeId, signalWindow.FromUtc, signalWindow.ToExclusiveUtc, ct, normalizedDataScope);
         var suggestions = new List<InventoryActionSuggestionDto>();
 
-        foreach (var item in items.Where(item => item.Quantity <= item.Minimum && item.DaysSinceMovement <= 60))
+        foreach (var item in items.Where(item => item.Quantity <= item.Minimum))
         {
+            var soldUnits = soldUnitsByArticle.GetValueOrDefault(item.Id);
             var key = BuildSuggestionKey("dopuna", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
@@ -1408,7 +1421,7 @@ public static class InventoryEndpoints
                 $"Dopuna za {item.Naziv}",
                 item.Quantity <= 0
                     ? "Artikal je bez zalihe ili na nuli u lokaciji sa aktivnim minimumom."
-                    : "Artikal je ispod minimuma i jos uvek pokazuje aktivno kretanje.",
+                    : $"Artikal je ispod minimuma; prodato {soldUnits} kom. u 30-dnevnom prozoru do {signalWindow.AsOfUtc:yyyy-MM-dd}.",
                 item,
                 item.StoreName,
                 null,
@@ -1416,11 +1429,16 @@ public static class InventoryEndpoints
                 item.EstimatedValue,
                 soldUnitsByArticle,
                 movementWindowStatsByArticle,
-                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item, asOfUtc: signalWindow.AsOfUtc, windowFromUtc: signalWindow.FromUtc, windowToExclusiveUtc: signalWindow.ToExclusiveUtc, horizonBasis: signalWindow.Basis),
+                ["replenishment_minimum_gap", soldUnits > 0 ? "sales_velocity_observed" : "no_sales_in_source_window"]));
         }
 
-        foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum * 2, 8) && item.DaysSinceMovement >= 60 && item.DaysSinceMovement < 90))
+        foreach (var item in items.Where(item => observedHorizonUtc.HasValue
+            && InventoryActionDecisionPolicy.IsSlowStockActionEligible(item.Quantity, item.Minimum, InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, signalWindow.AsOfUtc), soldUnitsByArticle.GetValueOrDefault(item.Id))))
         {
+            var ageDays = InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, signalWindow.AsOfUtc)!.Value;
+            var soldUnits = soldUnitsByArticle.GetValueOrDefault(item.Id);
+            var coverDays = soldUnits == 0 ? (decimal?)null : Math.Round(item.Quantity * 30m / soldUnits, 1);
             var key = BuildSuggestionKey("markdown", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
@@ -1428,7 +1446,7 @@ public static class InventoryEndpoints
                 "markdown",
                 item.AbcClass == "A" ? "high" : "medium",
                 $"Markdown predlog za {item.Naziv}",
-                "Zaliha je visoka u odnosu na minimum, a aging ulazi u zonu sporog obrta.",
+                $"Poslednji pouzdan prijem je pre {ageDays} dana; prodato {soldUnits} kom. u izvorno usidrenom 30-dnevnom prozoru{(coverDays.HasValue ? $", uz procenjeno pokriće {coverDays:0.#} dana" : ", bez izmerene prodajne brzine")} (do {signalWindow.AsOfUtc:yyyy-MM-dd}).",
                 item,
                 item.StoreName,
                 null,
@@ -1436,11 +1454,16 @@ public static class InventoryEndpoints
                 item.EstimatedValue,
                 soldUnitsByArticle,
                 movementWindowStatsByArticle,
-                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item, asOfUtc: signalWindow.AsOfUtc, windowFromUtc: signalWindow.FromUtc, windowToExclusiveUtc: signalWindow.ToExclusiveUtc, horizonBasis: signalWindow.Basis),
+                ["reliable_receipt_age", soldUnits == 0 ? "no_sales_in_source_window" : "low_sales_velocity", "stock_cover_slow"]));
         }
 
-        foreach (var item in items.Where(item => item.Quantity >= Math.Max(item.Minimum, 3) && item.DaysSinceMovement >= 90))
+        foreach (var item in items.Where(item => observedHorizonUtc.HasValue
+            && InventoryActionDecisionPolicy.IsClearanceEligible(item.Quantity, item.Minimum, InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, signalWindow.AsOfUtc), soldUnitsByArticle.GetValueOrDefault(item.Id))))
         {
+            var ageDays = InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, signalWindow.AsOfUtc)!.Value;
+            var soldUnits = soldUnitsByArticle.GetValueOrDefault(item.Id);
+            var coverDays = soldUnits == 0 ? (decimal?)null : Math.Round(item.Quantity * 30m / soldUnits, 1);
             var key = BuildSuggestionKey("clearance", item, item.StoreId, null, normalizedDataScope, actionSignalWindow, snapshotGeneration);
             suggestions.Add(ToSuggestion(
                 decisions,
@@ -1448,7 +1471,7 @@ public static class InventoryEndpoints
                 "clearance",
                 item.AbcClass == "A" ? "high" : "medium",
                 $"Clearance lista za {item.Naziv}",
-                "Artikal je 90+ dana bez kretanja i vezuje kapital koji treba osloboditi.",
+                $"Poslednji pouzdan prijem je pre {ageDays} dana; prodato {soldUnits} kom. u izvorno usidrenom 30-dnevnom prozoru{(coverDays.HasValue ? $", uz procenjeno pokriće {coverDays:0.#} dana" : ", bez izmerene prodajne brzine")}. Ovo je starost prijema, ne dokaz odsustva kretanja.",
                 item,
                 item.StoreName,
                 null,
@@ -1456,7 +1479,8 @@ public static class InventoryEndpoints
                 item.EstimatedValue,
                 soldUnitsByArticle,
                 movementWindowStatsByArticle,
-                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item)));
+                BuildActionDatasetContext(normalizedDataScope, actionSignalWindow, snapshotGeneration, item, asOfUtc: signalWindow.AsOfUtc, windowFromUtc: signalWindow.FromUtc, windowToExclusiveUtc: signalWindow.ToExclusiveUtc, horizonBasis: signalWindow.Basis),
+                ["reliable_receipt_age", soldUnits == 0 ? "no_sales_in_source_window" : "low_sales_velocity", "stock_cover_slow", "clearance_candidate"]));
         }
 
         foreach (var group in items.Where(item => item.StoreId.HasValue).GroupBy(NormalizeSkuKey))
@@ -1472,17 +1496,35 @@ public static class InventoryEndpoints
 
             foreach (var destination in destinations)
             {
-                var source = sources.FirstOrDefault(candidate => candidate.StoreId != destination.StoreId);
-                if (source is null || !source.StoreId.HasValue || !destination.StoreId.HasValue)
+                var destinationDemand = soldUnitsByArticle.GetValueOrDefault(destination.Id);
+                var destinationNeed = Math.Max(destination.Minimum - destination.Quantity, 0);
+                InventoryDatasetItem? source = null;
+                var qty = 0;
+                foreach (var candidate in sources)
                 {
-                    continue;
+                    var candidateDemand = soldUnitsByArticle.GetValueOrDefault(candidate.Id);
+                    var candidateSafeCover = InventoryActionDecisionPolicy.SafeSourceMinimum(candidate.Minimum, candidateDemand);
+                    var candidateQty = Math.Min(Math.Max(candidate.Quantity - candidateSafeCover, 0), destinationNeed);
+                    if (!InventoryActionDecisionPolicy.CanTransfer(
+                        candidate.StoreId,
+                        candidate.StoreName,
+                        destination.StoreId,
+                        destination.StoreName,
+                        candidateDemand,
+                        destinationDemand,
+                        candidate.Quantity,
+                        candidateQty,
+                        candidateSafeCover))
+                    {
+                        continue;
+                    }
+
+                    source = candidate;
+                    qty = candidateQty;
+                    break;
                 }
 
-                var safeSourceCover = Math.Max(source.Minimum, 1);
-                var sourceExcess = Math.Max(source.Quantity - safeSourceCover, 0);
-                var destinationNeed = Math.Max(destination.Minimum - destination.Quantity, 0);
-                var qty = Math.Min(sourceExcess, destinationNeed);
-                if (qty <= 0)
+                if (source is null || !source.StoreId.HasValue || !destination.StoreId.HasValue)
                 {
                     continue;
                 }
@@ -1500,7 +1542,7 @@ public static class InventoryEndpoints
                     "transfer",
                     destination.Quantity <= 0 ? "critical" : "high",
                     $"Transfer {source.StoreName} -> {destination.StoreName}",
-                    "Jedna lokacija ima siguran visak, dok druga pada ispod minimuma za isti SKU.",
+                    $"Isti SKU: {destinationDemand} kom. prodato u odredištu naspram {soldUnitsByArticle.GetValueOrDefault(source.Id)} u izvoru u zajedničkom 30-dnevnom prozoru; posle transfera izvor ostaje iznad minimuma i 7-dnevnog pokrića.",
                     destination,
                     source.StoreName,
                     destination.StoreName,
@@ -1514,7 +1556,12 @@ public static class InventoryEndpoints
                         snapshotGeneration,
                         destination,
                         source.StoreId,
-                        destination.StoreId)));
+                        destination.StoreId,
+                        asOfUtc: signalWindow.AsOfUtc,
+                        windowFromUtc: signalWindow.FromUtc,
+                        windowToExclusiveUtc: signalWindow.ToExclusiveUtc,
+                        horizonBasis: signalWindow.Basis),
+                    ["destination_demand_materially_stronger", "source_safe_cover_preserved", "reliable_store_identity"]));
             }
         }
 
@@ -1533,7 +1580,11 @@ public static class InventoryEndpoints
             distinctSuggestions.Count(item => item.Status == "approved"),
             distinctSuggestions.Count(item => item.Status == "deferred"),
             distinctSuggestions.Count(item => item.Status == "closed"),
-            distinctSuggestions);
+            distinctSuggestions,
+            AsOfUtc: signalWindow.AsOfUtc,
+            SignalWindowFromUtc: signalWindow.FromUtc,
+            SignalWindowToExclusiveUtc: signalWindow.ToExclusiveUtc,
+            HorizonBasis: signalWindow.Basis);
     }
 
     private static string NormalizeDataScope(string? rawScope)
@@ -1582,7 +1633,8 @@ public static class InventoryEndpoints
         decimal? estimatedValue,
         Dictionary<int, int> soldUnitsByArticle,
         Dictionary<int, InventorySignalWindowStats> movementWindowStatsByArticle,
-        InventoryActionDatasetContextDto datasetContext)
+        InventoryActionDatasetContextDto datasetContext,
+        IReadOnlyList<string>? actionReasonCodes = null)
     {
         decisions.TryGetValue(key, out var decision);
         var signalEvidence = ComputeInventorySignalEvidence(item,
@@ -1610,10 +1662,12 @@ public static class InventoryEndpoints
             signalEvidence.SignalConfidencePct,
             signalEvidence.RecommendationAllowed,
             signalEvidence.DataQualityStatus,
-            signalEvidence.ReasonCodes,
+            signalEvidence.ReasonCodes.Concat(actionReasonCodes ?? []).Distinct(StringComparer.Ordinal).ToList(),
             item.CostMissing,
             actionType == "transfer" ? "suggested_action_cost" : "current_stock_value",
-            datasetContext);
+            datasetContext,
+            InventoryActionDecisionPolicy.ResolveReceiptAgeDays(item.LastRealReceiptAtUtc, datasetContext.AsOfUtc ?? DateTime.UtcNow),
+            item.AgeBasis);
     }
 
     private static InventoryActionDatasetContextDto BuildActionDatasetContext(
@@ -1623,7 +1677,11 @@ public static class InventoryEndpoints
         InventoryDatasetItem item,
         int? fromStoreId = null,
         int? toStoreId = null,
-        string? sizeCode = null)
+        string? sizeCode = null,
+        DateTime? asOfUtc = null,
+        DateTime? windowFromUtc = null,
+        DateTime? windowToExclusiveUtc = null,
+        string? horizonBasis = null)
         => new(
             dataScope,
             signalWindow,
@@ -1632,7 +1690,11 @@ public static class InventoryEndpoints
             item.StoreId,
             sizeCode,
             fromStoreId,
-            toStoreId);
+            toStoreId,
+            asOfUtc,
+            windowFromUtc,
+            windowToExclusiveUtc,
+            horizonBasis);
 
     private sealed record InventorySignalEvidenceSnapshot(
         decimal? StockCoverDays,
@@ -2241,5 +2303,6 @@ public static class InventoryEndpoints
         string AgingLabel,
         string AbcClass,
         string ValuationBasis = InventoryValuationBases.Unknown,
-        string AgeBasis = InventoryAgeBases.Unknown);
+        string AgeBasis = InventoryAgeBases.Unknown,
+        DateTime? LastRealReceiptAtUtc = null);
 }
