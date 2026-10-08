@@ -3,7 +3,8 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: RQ140 PARTIAL (P0; local export/report parity matrix verified; exact deployment remains with STAB16) after RQ50 DONE on implementation SHA `5f6154409d5d38d4a83ddffbde9fcddcce67b1a2`; RQ46 DONE (P1; Insight Studio export trust metadata) at `853c37f3c5790ee1715d7d6749cf26205891a872`; RQ319 DONE (P2; Operacije explicit Apply unified across Shoe Type/Color/Pre/Post) on `bbd636b0`; RQ320 DONE (P2; unapplied draft cue on Color and Pre/Post) on `d8ae1f816637d87b751e9c196521bc37ac1dbe1e`; RQ481 DONE (P1; Decision Pulse shared applied-period/dataScope) on `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`. RQ140's repository-local parity slice is complete; exact-deployment freshness/database/browser proof remains under STAB16. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
-Current READY prompt: post-close routing recovery pending after the latest PARTIAL closure; no READY conclusion is recorded yet.
+Current READY prompt: none after the full post-close RQ/SQL recovery.
+Zero-READY proof: `.ai/runs/2026-10-08-RQ140-evidence.md`.
 Owner-delegated queue unblock 2026-10-08: RQ481 WAITING -> READY; RQ319 explicit Apply choice approved but WAITING while RQ140 remains IN_PROGRESS on overlapping Shoe Type/Pre/Post surface; RQ320 WAITING after RQ319. Decision record `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md`; external STAB16/RQ592 acceptance gates unchanged.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 has the owner-delegated shared period/dataScope decision and is READY; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
@@ -1714,7 +1715,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | OBSOLETE | trend-model-evaluation-contract | Excluded: standalone Trend Models evaluation is outside the current analytics-surface scope |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
-| RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local contract code and focused multi-surface proof are synchronized; remaining complete export/report matrix and exact-production freshness/database evidence remain open (STAB16 owns production access) |
+| RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local contract and five-page export/report parity matrix are verified; exact-production freshness/database/browser evidence remains open under STAB16 |
 | RQ141 | DONE | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | OBSOLETE | forecast-trend-measured-evaluation | Excluded: standalone forecast/Trend Models evaluation is deferred |
 | RQ143 | DONE | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
@@ -5595,12 +5596,12 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 
 ### 2026-10-08 resumed local proof
 
-- Status: PARTIAL; the focused repository-local route/client checks pass, but the entire route-by-route export/report matrix and exact deployed-data/browser evidence remain unproven.
+- Historical state at that resumption: the focused repository-local route/client checks passed, while the entire route-by-route export/report matrix and exact deployed-data/browser evidence remained unproven. The local parity matrix was completed in the later section `RQ140 local parity matrix close — 2026-10-08` below.
 - Checks: 20 focused Vitest files, 227/227 tests; `AnalyticsNivelacijaSplitPolicyTests` + `SupplierDecisionSchemaSqlTests`, 58/58; `npm run check:analytics-guardrails` (encoding, guardrail self-test, guardrail scan and TypeScript typecheck) all pass.
 - No product code changed in this resumption; it records verified coverage for the already-delivered RQ140 implementation.
 - Run log: `.ai/runs/2026-10-08-RQ140-evidence.md`.
 - Exact production/live residual: STAB16 must provide approved read-only database access, effective provider configuration/startup logs, exact deployment identity and refresh/browser evidence. Do not claim current price-effect causality from these local tests.
-- Remaining local proof: complete export/report parity for every pre/post consumer. Do not mark RQ140 DONE until both this and the STAB16 final evidence are closed.
+- Remaining local proof: none identified in the five-page matrix completed below. Do not mark RQ140 DONE until STAB16's exact deployment/freshness/browser evidence is closed.
 
 ---
 
