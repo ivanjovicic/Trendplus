@@ -182,6 +182,22 @@ function supplierReport(overrides: Partial<SupplierDecisionDurableReport> = {}):
 }
 
 describe("Pilot readiness edge-state mapping", () => {
+  it("describes product decision counts in Serbian, not backend action codes", () => {
+    const card = findCard(payload({
+      productDecisionCenter: product({
+        totalRows: 12,
+        analyzedRows: 12,
+        summary: { ...product().summary, replenishCount: 3, markdownCount: 2, highPotentialCount: 1 },
+        rows: Array.from({ length: 12 }, () => ({}) as ProductDecisionCenterResponse["rows"][number]),
+      }),
+    }), "products");
+
+    expect(card.reason).toContain("za dopunu 3");
+    expect(card.reason).toContain("za sniženje 2");
+    expect(card.reason).toContain("za pojačanje 1");
+    expect(card.reason).not.toMatch(/replenish|markdown|high-potential/i);
+  });
+
   it("blocks data quality when issues actively block recommendations", () => {
     const report = intake({
       readinessStatus: "warning",

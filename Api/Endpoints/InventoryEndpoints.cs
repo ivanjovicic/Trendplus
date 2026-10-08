@@ -1376,7 +1376,7 @@ public static class InventoryEndpoints
             ? "Nema dovoljno podataka za poređenje lokacija."
             : worstStore is null || bestStore is null
                 ? $"Prikazane su {stores.Count} lokacije za poređenje."
-                : $"Najveci operativni pritisak je u lokaciji {worstStore.StoreName}, dok {bestStore.StoreName} trenutno ima najbolji udeo zdravih SKU.";
+                : $"Najveći operativni pritisak je u lokaciji {worstStore.StoreName}, dok {bestStore.StoreName} trenutno ima najveći udeo artikala sa zdravom zalihom.";
 
         return new InventoryStoreComparisonDto(
             DateTime.UtcNow,
@@ -1547,7 +1547,7 @@ public static class InventoryEndpoints
                     "transfer",
                     destination.Quantity <= 0 ? "critical" : "high",
                     $"Transfer {source.StoreName} -> {destination.StoreName}",
-                    $"Isti SKU: {destinationDemand} kom. prodato u odredištu naspram {soldUnitsByArticle.GetValueOrDefault(source.Id)} u izvoru u zajedničkom 30-dnevnom prozoru; posle transfera izvor ostaje iznad minimuma i 7-dnevnog pokrića.",
+                    $"Isti artikal: {destinationDemand} kom. prodato u odredištu naspram {soldUnitsByArticle.GetValueOrDefault(source.Id)} u izvoru u zajedničkom 30-dnevnom prozoru; posle transfera izvor ostaje iznad minimuma i 7-dnevnog pokrića.",
                     destination,
                     source.StoreName,
                     destination.StoreName,

@@ -64,7 +64,7 @@ describe("AnalyticsRefreshStatusBanner", () => {
   it("shows unknown state when status is missing", () => {
     renderBanner(null);
     expect(screen.getByText("Status osvežavanja nije dostupan.")).toBeInTheDocument();
-    expect(screen.getByText("Otvori worker panel")).toBeInTheDocument();
+    expect(screen.getByText("Otvori status osvežavanja")).toBeInTheDocument();
   });
 
   it("shows fresh badge, last successful import, and observed sales horizon", () => {

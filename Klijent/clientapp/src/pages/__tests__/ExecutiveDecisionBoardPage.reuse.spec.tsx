@@ -88,7 +88,8 @@ describe("ExecutiveDecisionBoardPage reuse runtime", () => {
     expect(await screen.findByText("Upozorenja")).toBeInTheDocument();
     expect(screen.getByText("Razlozi")).toBeInTheDocument();
     expect(screen.getByText("Nedostaje nabavna cena")).toBeInTheDocument();
-    expect(screen.getByText("replenish needed")).toBeInTheDocument();
+    expect(screen.getByText("Potrebna dopuna")).toBeInTheDocument();
+    expect(screen.queryByText(/replenish/i)).not.toBeInTheDocument();
     expect(screen.getByText("Preporuka")).toBeInTheDocument();
     expect(screen.getByText("Blokirana")).toBeInTheDocument();
     expect(screen.getByText("Izvor pouzdanosti")).toBeInTheDocument();

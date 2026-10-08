@@ -1,4 +1,5 @@
 import { formatPercent, formatSellThroughRatio, formatStockCoverDays } from "./inventoryUtils";
+import { reasonCodeChipLabel } from "../../utils/reasonCodeLabels";
 
 type InventoryExplainabilitySnapshotProps = {
   title?: string;
@@ -121,7 +122,7 @@ export function InventoryExplainabilitySnapshot({
         <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-primary)]">Šifarnici razloga</div>
         <div className="mt-2 flex flex-wrap gap-2">
           {hasReasonCodes ? (
-            reasonPreview.map((reason, index) => renderPill(reason, "neutral", `${reason}-${index}`))
+            reasonPreview.map((reason, index) => renderPill(reasonCodeChipLabel(reason), "neutral", `${reason}-${index}`))
           ) : (
             <span className="text-sm text-[var(--text-primary)]">{normalizedDataQuality === "insufficient_data" ? "Nedovoljno podataka" : "Nema dodatnih razloga"}</span>
           )}

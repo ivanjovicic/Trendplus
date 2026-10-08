@@ -186,7 +186,7 @@ function buildDataQualityCard(intakeReport: PilotDataQualityIntakeReport | null,
       reason: "Nije stigao pilot intake niti health kvaliteta podataka, pa kvalitet podataka ne možemo da potvrdimo.",
       actionLabel: "Otvori Kvalitet podataka",
       href: "/analytics/data-quality",
-      meta: "Izvor: intake i health kvaliteta podataka",
+      meta: "Izvor: prijem podataka i provera kvaliteta",
     };
   }
 
@@ -243,9 +243,9 @@ function buildRefreshCard(refreshStatus: AnalyticsRefreshStatus | null): Readine
       title: "Svežina analytics podataka",
       status: "unknown",
       reason: "Status osvežavanja nije dostupan, pa ne možemo da potvrdimo svežinu signala.",
-      actionLabel: "Otvori worker panel",
+      actionLabel: "Otvori status osvežavanja",
       href: "/admin/configuration?panel=workers",
-      meta: "Izvor: refresh status",
+      meta: "Izvor: status osvežavanja",
     };
   }
 
@@ -279,7 +279,7 @@ function buildRefreshCard(refreshStatus: AnalyticsRefreshStatus | null): Readine
         : !hasAttemptHistory && !refreshStatus.isRunning
           ? "Nema zabeleženog uspešnog osvežavanja niti pokušaja u istoriji; svežina podataka nije potvrđena."
           : `Stanje osvežavanja nije potvrđeno. Poslednji uspešan refresh: ${formatDateTime(refreshStatus.lastSuccessfulRefreshAtUtc, "-")}.`,
-    actionLabel: "Otvori worker panel",
+    actionLabel: "Otvori status osvežavanja",
     href: "/admin/configuration?panel=workers",
     meta: refreshStatus.workerWarning
       ?? refreshStatus.workerProcessWarning
@@ -297,7 +297,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
       reason: "Dashboard bootstrap nije dostupan, pa prodajni pregled ne možemo da potvrdimo.",
       actionLabel: "Otvori Trendplus pregled",
       href: "/analytics",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -314,7 +314,7 @@ function buildSalesCard(bootstrap: AnalyticsDashboardBootstrap | null): Readines
       reason: "Bootstrap je stigao, ali nema potvrđenih prodajnih signala za pregled prodaje.",
       actionLabel: "Otvori Trendplus pregled",
       href: "/analytics",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -337,10 +337,10 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
       index: "04",
       title: "Odluke o proizvodima dostupne",
       status: "unknown",
-      reason: "Product Decision Center nije dostupan, pa odluke o proizvodima ne možemo da potvrdimo.",
+      reason: "Odluke o proizvodima nisu dostupne, pa ih ne možemo da potvrdimo.",
       actionLabel: "Otvori Odluke o proizvodima",
       href: "/analytics/products",
-      meta: "Izvor: product decision center",
+      meta: "Izvor: odluke o proizvodima",
     };
   }
 
@@ -357,8 +357,8 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
     title: "Odluke o proizvodima dostupne",
     status: isBlocked ? "blocked" : isWarning ? "warning" : "ready",
     reason: rows > 0
-      ? `Nađeno je ${formatLoadCount(rows)} redova; replenish ${formatLoadCount(productDecisionCenter.summary.replenishCount)}, markdown ${formatLoadCount(productDecisionCenter.summary.markdownCount)} i high-potential ${formatLoadCount(productDecisionCenter.summary.highPotentialCount)}.`
-      : meta?.emptyReason ?? metaMessage ?? "Product Decision Center je stigao bez redova za trenutni opseg.",
+      ? `Nađeno je ${formatLoadCount(rows)} redova: za dopunu ${formatLoadCount(productDecisionCenter.summary.replenishCount)}, za sniženje ${formatLoadCount(productDecisionCenter.summary.markdownCount)}, za pojačanje ${formatLoadCount(productDecisionCenter.summary.highPotentialCount)}.`
+      : meta?.emptyReason ?? metaMessage ?? "Odluke o proizvodima nisu vratile nijedan red za trenutni opseg.",
     actionLabel: "Otvori Odluke o proizvodima",
     href: "/analytics/products",
     meta: `Problematični redovi: ${formatLoadCount(productDecisionCenter.summary.badDataCount)} · procena izgubljene prodaje: ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}${describePartialMoneyCoverage(productDecisionCenter.summary.lostSalesEstimateUnknownRows, productDecisionCenter.summary.lostSalesEstimateCoveragePct)}`,
@@ -381,7 +381,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
       reason: "Dashboard bootstrap nije dostupan, pa ne možemo da potvrdimo dobavljačke signale.",
       actionLabel: "Otvori Pregled dobavljača",
       href: "/analytics/supplier",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -400,7 +400,7 @@ function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): Readi
       reason: "Bootstrap je stigao, ali ne postoji potvrđen dobavljački signal za pregled dobavljača.",
       actionLabel: "Otvori Pregled dobavljača",
       href: "/analytics/supplier",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -428,7 +428,7 @@ function buildInventoryCard(bootstrap: AnalyticsDashboardBootstrap | null): Read
       reason: "Dashboard bootstrap nije dostupan, pa ne možemo da potvrdimo inventory rizike.",
       actionLabel: "Otvori Zalihe i dopuna",
       href: "/analytics/inventory",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -449,7 +449,7 @@ function buildInventoryCard(bootstrap: AnalyticsDashboardBootstrap | null): Read
       reason: "Bootstrap ne sadrži potvrđen inventory signal, pa lager rizici nisu proverljivi.",
       actionLabel: "Otvori Zalihe i dopuna",
       href: "/analytics/inventory",
-      meta: "Izvor: dashboard bootstrap",
+      meta: "Izvor: početni podaci kontrolne table",
     };
   }
 
@@ -480,7 +480,7 @@ function buildActionsCard(
       reason: "Red akcija nije dostupan, pa ne možemo da potvrdimo kreirane ili aktivne akcije.",
       actionLabel: "Otvori Centralne akcije",
       href: "/analytics/actions",
-      meta: "Izvor: action counts i outcome summary",
+      meta: "Izvor: broj akcija i pregled ishoda",
     };
   }
 
@@ -526,7 +526,7 @@ function buildReportsCard(
       reason: "Nijedan report endpoint nije stigao, pa readiness izveštaja ne možemo da potvrdimo.",
       actionLabel: "Otvori pilot izveštaj",
       href: "/analytics/reports/pilot-intake",
-      meta: "Izvor: pilot i supplier report",
+      meta: "Izvor: pilot izveštaj i izveštaj o dobavljačima",
     };
   }
 
@@ -687,7 +687,7 @@ export default function PilotReadinessPage() {
       { key: "refreshStatus", request: getAnalyticsRefreshStatus(), assign: (value) => { nextPayload.refreshStatus = value as AnalyticsRefreshStatus; }, fallback: "Status osvežavanja nije dostupan." },
       { key: "dataQualityHealth", request: getAnalyticsDataQualityHealth(), assign: (value) => { nextPayload.dataQualityHealth = value as AnalyticsDataQualityHealth; }, fallback: "Health kvaliteta podataka nije dostupan." },
       { key: "intakeReport", request: getPilotDataQualityIntakeReport({}), assign: (value) => { nextPayload.intakeReport = value as PilotDataQualityIntakeReport; }, fallback: "Pilot intake report nije dostupan." },
-      { key: "productDecisionCenter", request: getProductDecisionCenter({ top: 100 }), assign: (value) => { nextPayload.productDecisionCenter = value as ProductDecisionCenterResponse; }, fallback: "Product Decision Center nije dostupan." },
+      { key: "productDecisionCenter", request: getProductDecisionCenter({ top: 100 }), assign: (value) => { nextPayload.productDecisionCenter = value as ProductDecisionCenterResponse; }, fallback: "Odluke o proizvodima nisu dostupne." },
       { key: "actionCounts", request: getAnalyticsActionCounts(), assign: (value) => { nextPayload.actionCounts = value as AnalyticsActionCounts; }, fallback: "Action counts nisu dostupni." },
       { key: "actionOutcomeSummary", request: getAnalyticsActionOutcomeSummary(), assign: (value) => { nextPayload.actionOutcomeSummary = value as AnalyticsActionOutcomeSummaryResponse; }, fallback: "Action outcome summary nije dostupan." },
       { key: "pilotReport", request: getPilotIntakeDurableReport({}), assign: (value) => { nextPayload.pilotReport = value as PilotIntakeDurableReport; }, fallback: "Pilot report nije dostupan." },
@@ -846,13 +846,13 @@ export default function PilotReadinessPage() {
           errorCode={globalError.errorCode ?? undefined}
           correlationId={globalError.correlationId ?? undefined}
           suggestions={[
-            "Proverite da li worker i refresh status odgovaraju.",
+            "Proverite da li pozadinska obrada i status osvežavanja odgovaraju.",
             "Otvorte Kvalitet podataka i proverite import.",
             "Pokušajte ponovo nakon osvežavanja.",
           ]}
           onRetry={() => setReloadTick((value) => value + 1)}
           helpHref="/admin/configuration?panel=workers"
-          helpLabel="Otvori worker panel"
+          helpLabel="Otvori status osvežavanja"
         />
       ) : null}
 
@@ -862,14 +862,14 @@ export default function PilotReadinessPage() {
           title="Nema potvrđenih readiness signala"
           message="Stranica je učitana, ali nijedan signalni izvor nije potvrdio da je pilot spreman."
           reasons={[
-            "Proverite refresh status i worker panel.",
+            "Proverite status osvežavanja i panel pozadinske obrade.",
             "Otvorite Kvalitet podataka i potvrdite da import radi.",
             "Ponovo proverite readiness nakon što se bootstrap i report endpointi vrate.",
           ]}
           actions={[
             { label: "Ponovo proveri", onClick: () => setReloadTick((value) => value + 1) },
             { label: "Otvori Kvalitet podataka", href: "/analytics/data-quality" },
-            { label: "Otvori worker panel", href: "/admin/configuration?panel=workers" },
+            { label: "Otvori status osvežavanja", href: "/admin/configuration?panel=workers" },
           ]}
           dataQualityHref="/analytics/data-quality"
           refreshStatusHref="/admin/configuration?panel=workers"

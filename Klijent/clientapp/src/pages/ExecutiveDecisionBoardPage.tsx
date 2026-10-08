@@ -5,6 +5,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsControlBar, { type AnalyticsControlBarField } from "../components/analytics/AnalyticsControlBar";
 import { buildRowFromInsightItem, stockCoverStatusLabel } from "../components/inventory/inventoryUtils";
+import { reasonCodeChipLabel } from "../utils/reasonCodeLabels";
 import type { InventoryRow } from "../components/inventory/types";
 import { buildInventorySignalActionSpec } from "./InventoryPage";
 import {
@@ -346,7 +347,7 @@ function boardCodeLabel(code: string): string {
   if (normalized === "insufficient_signal") return "Nedovoljan signal";
   if (normalized === "freshness") return "Zastareli podaci";
   if (normalized === "small_measured_sample") return "Mali uzorak ishoda";
-  return code.replaceAll("_", " ");
+  return reasonCodeChipLabel(normalized);
 }
 
 const BOARD_CODE_NOISE = new Set([
@@ -871,8 +872,8 @@ function buildBlockerCards(
       measuredImpactRsd: null,
       realizationRatio: null,
       riskIfIgnored: "Board ne treba da izgleda sveže dok worker ne vrati poslednji uspešan refresh.",
-      recommendedNextAction: "Proveri worker panel i pokreni osvežavanje ako je bezbedno.",
-      actionCta: "Otvori worker panel",
+      recommendedNextAction: "Proveri status osvežavanja i pokreni osvežavanje ako je bezbedno.",
+      actionCta: "Otvori status osvežavanja",
       sourceLink: "/analytics/pilot-readiness",
       actionHref: "/admin/configuration?panel=workers",
       alreadyInAction: false,
@@ -1560,13 +1561,13 @@ export default function ExecutiveDecisionBoardPage() {
           errorCode={globalError.errorCode ?? undefined}
           correlationId={globalError.correlationId ?? undefined}
           suggestions={[
-            "Proveri status osvežavanja i worker panel.",
+            "Proveri status osvežavanja i pozadinsku obradu.",
             "Otvori kvalitet podataka i pilot readiness.",
             "Pokušaj ponovo kada se izvori vrate.",
           ]}
           onRetry={() => setReloadTick((value) => value + 1)}
           helpHref="/admin/configuration?panel=workers"
-          helpLabel="Otvori worker panel"
+          helpLabel="Otvori status osvežavanja"
         />
       ) : null}
 

@@ -72,7 +72,7 @@ function safeWorkerWarning(value: string | null | undefined): string | null {
   if (!normalized) return null;
   if (normalized.includes("worker nije aktivan")) return "Worker nije aktivan u ovom procesu. Automatsko osvežavanje nije aktivno.";
   if (normalized.includes("worker nije registrovan")) return "Automatsko osvežavanje radnika nije aktivno u ovom procesu.";
-  return "Automatsko osvežavanje nije potvrđeno. Proverite worker panel.";
+  return "Automatsko osvežavanje nije potvrđeno. Proverite status osvežavanja.";
 }
 
 function normalizeDurationSeconds(value: number | null | undefined): number | null {
@@ -114,9 +114,9 @@ export default function AnalyticsRefreshStatusBanner({
       <section className="analytics-refresh-banner analytics-refresh-banner-unknown" aria-live="polite">
         <div className="arb-main">
           <strong>Status osvežavanja nije dostupan.</strong>
-          {error ? <span>Detalji greške nisu dostupni. Proverite worker panel.</span> : null}
+          {error ? <span>Detalji greške nisu dostupni. Proverite status osvežavanja.</span> : null}
         </div>
-        <Link to={adminHref} className="arb-link">Otvori worker panel</Link>
+        <Link to={adminHref} className="arb-link">Otvori status osvežavanja</Link>
       </section>
     );
   }
@@ -243,9 +243,9 @@ export default function AnalyticsRefreshStatusBanner({
             <span>{failedJobs.map((job) => analyticsJobLabel(job.key)).join(", ")}</span>
           </div>
         ) : null}
-        {error ? <div className="arb-row arb-warning"><strong>Upozorenje:</strong><span>Osvežavanje statusa nije moguće potvrditi. Proverite worker panel.</span></div> : null}
+        {error ? <div className="arb-row arb-warning"><strong>Upozorenje:</strong><span>Osvežavanje statusa nije moguće potvrditi. Proverite status osvežavanja.</span></div> : null}
       </div>
-      <Link to={adminHref} className="arb-link">Otvori worker panel</Link>
+      <Link to={adminHref} className="arb-link">Otvori status osvežavanja</Link>
     </section>
   );
 }

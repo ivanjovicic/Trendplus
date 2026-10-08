@@ -138,7 +138,8 @@ describe("SKUDetailModal placeholder context", () => {
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
     expect(screen.getByText("Rizik rasprodaje")).toBeInTheDocument();
-    expect(screen.getByText("replenish_needed")).toBeInTheDocument();
+    expect(screen.getByText("Potrebna dopuna")).toBeInTheDocument();
+    expect(screen.queryByText("replenish_needed")).not.toBeInTheDocument();
   });
 });
 

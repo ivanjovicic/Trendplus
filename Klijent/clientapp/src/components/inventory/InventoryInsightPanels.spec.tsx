@@ -172,7 +172,8 @@ describe("InventoryInsightPanels", () => {
     expect(screen.getByRole("region", { name: "Snimak" })).toBeInTheDocument();
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getByText("Dozvoljena")).toBeInTheDocument();
-    expect(screen.getByText("replenish_needed")).toBeInTheDocument();
+    expect(screen.getByText("Potrebna dopuna")).toBeInTheDocument();
+    expect(screen.queryByText("replenish_needed")).not.toBeInTheDocument();
   });
 
   it("keeps insight detail unit cost unavailable when backend cost evidence is missing", () => {
