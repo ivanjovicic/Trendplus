@@ -199,6 +199,16 @@ describe("analytics API contract requests", () => {
           periodFromUtc: "2026-06-01T00:00:00Z",
           periodToUtc: "2026-07-01T00:00:00Z",
           totalRows: 0,
+          summary: {
+            lostSalesEstimate: null,
+            lostSalesEstimateKnownRows: 0,
+            lostSalesEstimateUnknownRows: 0,
+            lostSalesEstimateCoveragePct: null,
+            slowStockCapital: null,
+            slowStockCapitalKnownRows: 0,
+            slowStockCapitalUnknownRows: 0,
+            slowStockCapitalCoveragePct: null,
+          },
           rows: [],
           meta: { success: true, dataQualityStatus: "insufficient_data" },
         }));
