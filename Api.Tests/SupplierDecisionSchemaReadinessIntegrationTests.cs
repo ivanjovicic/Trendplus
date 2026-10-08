@@ -62,6 +62,20 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
             services,
             configuration,
             NullLogger.Instance);
+
+        // Simulate a changed startup SQL hash, which forces 013 to run again on
+        // an upgraded installation that already has its dependent compatibility view.
+        await using (var historyConnection = new NpgsqlConnection(connectionString))
+        {
+            await historyConnection.OpenAsync();
+            await ExecuteAsync(
+                historyConnection,
+                """
+                DELETE FROM "__StartupSqlScriptHistory"
+                WHERE "ScriptPath" = 'Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql';
+                """);
+        }
+
         await DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync(
             services,
             configuration,
@@ -80,6 +94,8 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.False(await ColumnExistsAsync(connection, "vw_supplier_markdown_dependency_90d", "change_percent_revenue"));
         Assert.True(await RelationExistsAsync(connection, "mv_supplier_decision_score_cache_90d"));
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_recommendations"));
+        Assert.True(await RelationExistsAsync(connection, "povracaj_zaglavlje"));
+        Assert.True(await IsPopulatedMaterializedViewAsync(connection, "povracaj_zaglavlje_mv"));
 
         foreach (var column in new[]
         {
