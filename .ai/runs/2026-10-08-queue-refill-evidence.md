@@ -3,10 +3,10 @@ Queue: direct-user-request
 Date: 2026-10-08
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: `codex/queue-refill-2026-10-08`
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Working branch / PR: direct-main delivery from `codex/queue-refill-2026-10-08`
+Main commit SHA: `95012e8ce576758ea2df72a0524b750989b1c5a5`
+Main verification: fresh `git fetch origin main` returned `95012e8ce576758ea2df72a0524b750989b1c5a5`; `git merge-base --is-ancestor 95012e8c FETCH_HEAD` passed.
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -29,6 +29,7 @@ Ownership transfer: none
 - `git -c core.whitespace=cr-at-eol diff --check` -> pass.
 - GitHub Planning Governance run `37799782027` -> completed success on SHA `8bfd480dc2fbcc8c2ac9cb4c33335e9b9b58e707`.
 - GitHub Analytics Tests & Data Integrity run `37802633040` -> completed success on BCI15 SHA `e5e2f16114d443176ad0619b000cc70d62fd1c21`.
+
 ## Validation not run
 - PostgreSQL integration test for RQ597: not run; this task registers the prompt and does not implement its tests.
 - Recommendation-engine tests for BCI16: not run; this task registers the prompt and does not implement its cleanup.
@@ -43,11 +44,14 @@ Ownership transfer: none
 ## Risks
 - Testcontainers availability and any runtime mismatch discovered by RQ597 remain unverified until that prompt runs.
 - BCI16 does not assert that the complete backend CI suite is green.
+- No Actions run was returned for implementation SHA `95012e8c` at inspection.
 
 ## Post-close routing recovery
-- Pending fresh `origin/main` refresh and dependency/path recheck after delivery.
-- Newly READY tasks: BCI16, RQ597.
-- Existing active/blocked statuses to preserve: RQ482 DONE; STAB16 BLOCKED; RQ139/RQ140 PARTIAL; MT02 and QDB07 remain gated.
+- Recovery base: fresh `origin/main` `95012e8ce576758ea2df72a0524b750989b1c5a5` (contains implementation commit `95012e8c`).
+- Current BCI/RQ READY entries and roadmap pointers were verified by `node scripts/check-prompt-queues.mjs` (719 tasks); BCI16 and RQ597 are READY and dependencies are satisfied.
+- RQ597 collision review: no matching remote branch or open PR; open PRs #102/#103 are P-UI-52 documentation-only, and #112 is the separate PostgreSQL fix PR. RQ482 is DONE.
+- Existing active/blocked statuses to preserve: STAB16 BLOCKED; RQ139/RQ140 PARTIAL; MT02 and QDB07 remain gated.
+- Newly READY tasks: BCI16 and RQ597; no `Next: none` conclusion applies.
 
 ## Next
-- BCI16 (P2) and RQ597 (P2) are independently READY; follow global priority and collision checks.
+- BCI16 (P2) is the primary BCI READY task; RQ597 (P2) is the primary RQ READY task. They are independent and may be claimed separately after normal collision checks.
