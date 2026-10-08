@@ -52,6 +52,23 @@ public sealed class DecisionPulseService
     {
         var requestedPeriodFromUtc = fromUtc;
         var requestedPeriodToUtc = toUtc;
+        // Invalid store/supplier IDs must never widen a narrowed feed to all records.
+        if (storeId is <= 0 || supplierId is <= 0)
+        {
+            var invalidFilter = DecisionPulseProjector.Project(
+                null, sourceSucceeded: false,
+                failureCategory: "invalid_filter_id",
+                failureMessage: "Filter prodavnice ili dobavljača nije validan; pregled nije proširen na sve podatke.");
+            var response = ToResponse(
+                invalidFilter, null, null, null, [], [], null, null,
+                storeId: storeId, supplierId: supplierId,
+                requestedPeriodFromUtc: requestedPeriodFromUtc,
+                requestedPeriodToUtc: requestedPeriodToUtc,
+                requestedDataScope: dataScope);
+            response.Meta.EffectiveDataScope = null;
+            return response;
+        }
+
         if (!TryNormalizeDataScope(dataScope, out var effectiveDataScope))
         {
             var invalidScope = DecisionPulseProjector.Project(
