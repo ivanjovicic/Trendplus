@@ -481,7 +481,15 @@ export default function InventoryPage() {
     : `za prodavnicu ${selectedStoreName ?? formatEntityFallbackLabel("store", selectedStoreId)}`;
   const mountedRef = useRef(true);
 
+  // URL writes from the state→URL effect commit as router transitions. Under load a stale write can
+  // land after the user already typed; applying that echo back to state would wipe the newer input.
+  // Track our own pending writes and ignore their echoes; external navigations still apply.
+  const pendingUrlWritesRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
+    const urlKey = searchParams.toString();
+    if (pendingUrlWritesRef.current.delete(urlKey)) return;
+    pendingUrlWritesRef.current.clear();
     const nextSearch = searchParams.get("search") ?? "";
     const nextStore = parseEntityIdParam(searchParams.get("storeId"));
     const nextSupplier = parseEntityIdParam(searchParams.get("supplierId"));
@@ -534,7 +542,9 @@ export default function InventoryPage() {
       setOrDelete("fromDate", periodFrom);
       setOrDelete("toDate", periodTo);
       setOrDelete("alertSeverity", alertSeverityFilter || null);
-      return next.toString() === current.toString() ? current : next;
+      if (next.toString() === current.toString()) return current;
+      pendingUrlWritesRef.current.add(next.toString());
+      return next;
     }, { replace: true });
   }, [alertSeverityFilter, compareStoreIds, pageNumber, pageSize, periodFrom, periodPreset, periodTo, searchInput, selectedStoreId, selectedSupplierId, setSearchParams, sortBy]);
 

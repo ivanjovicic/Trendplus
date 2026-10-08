@@ -313,10 +313,12 @@ describe("InventoryPage queue status sync", () => {
     getInventoryListMock.mockResolvedValue(emptyInventoryList);
     fireEvent.change(searchbox, { target: { value: "nema rezultata" } });
 
+    // Wait for the request that actually carries the search (not just any refetch), then for its empty state.
     await waitFor(() => {
-      expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(1);
-      expect(screen.getByTestId("analytics-empty-retry")).toBeInTheDocument();
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ search: "nema rezultata" }));
     }, { timeout: 8000 });
+    expect(await screen.findByTestId("analytics-empty-retry", undefined, { timeout: 8000 })).toBeInTheDocument();
+    expect(searchbox).toHaveValue("nema rezultata");
 
     getInventoryListMock.mockResolvedValue({
       items: [row502],
