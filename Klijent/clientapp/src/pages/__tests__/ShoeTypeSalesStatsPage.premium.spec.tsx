@@ -1144,4 +1144,82 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     });
     expect(screen.queryByText("Stari tip")).not.toBeInTheDocument();
   });
+
+  it("requires explicit Apply button to apply date/period/store filter changes", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("shoe-type-sales-stats-data-table");
+    expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(1);
+    const initialCall = vi.mocked(getShoeTypeSalesStats).mock.calls[0];
+
+    // Change date in draft without applying
+    const fromInput = screen.getByLabelText("Od") as HTMLInputElement;
+    fireEvent.change(fromInput, { target: { value: "2026-02-01" } });
+
+    // API should not be called yet (still using old date)
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats)).toHaveBeenCalledTimes(1);
+    });
+    expect(fromInput.value).toBe("2026-02-01");
+
+    // Click Apply button
+    const applyButton = screen.getByRole("button", { name: "Primeni filtere" });
+    fireEvent.click(applyButton);
+
+    // Now API should be called with new date
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats)).toHaveBeenCalledTimes(2);
+    });
+    const newCall = vi.mocked(getShoeTypeSalesStats).mock.calls[1];
+    expect((newCall[0] as unknown as Record<string, unknown>).fromDate).not.toEqual((initialCall[0] as unknown as Record<string, unknown>).fromDate);
+  });
+
+  it("applies store filter only after explicit Apply click", async () => {
+    vi.mocked(getStores).mockResolvedValue([
+      { storeId: 1, storeName: "Beograd", area: "", dupeCount: 0 },
+      { storeId: 2, storeName: "Novi Sad", area: "", dupeCount: 0 },
+    ]);
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats)).toHaveBeenCalledWith(
+        expect.objectContaining({ storeId: null }),
+      );
+    });
+
+    // Change store filter
+    const storeSelect = screen.getByLabelText("Objekat") as HTMLSelectElement;
+    fireEvent.change(storeSelect, { target: { value: "1" } });
+
+    // API should not be called with new store yet
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats)).toHaveBeenCalledTimes(1);
+    });
+
+    // Click Apply
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+
+    // Now API should be called with new store
+    await waitFor(() => {
+      expect(vi.mocked(getShoeTypeSalesStats)).toHaveBeenCalledWith(
+        expect.objectContaining({ storeId: 1 }),
+      );
+    });
+  });
 });
