@@ -1328,7 +1328,7 @@ Post-close promotion 2026-10-08: after refreshing exact `origin/main` and scanni
 
 ## RQ556 - Build Pre-Nivelacija v9 evidence fields and shadow ranking without activating new weights
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ555 DONE
 Priority: P1
 Type: backend/frontend/product/tests
@@ -1390,6 +1390,8 @@ The owner can compare current ranking with a more decision-relevant cover/age/se
 RQ555 DONE. RQ537, RQ539, RQ548 and RQ571 are DONE. Final activation/weight approval is a separate owner decision after the shadow comparison; it is not a start gate for this prompt.
 
 Claim 2026-10-08: RQ555 is DONE on current `origin/main` `02a539b156e322cdba57500ae32f2ce177a67eab`; no matching RQ556 lock, branch or open PR existed during the post-close collision scan. Promoted RQ556 WAITING -> READY -> IN_PROGRESS as the primary RQ successor. The scope remains evidence fields and non-authoritative shadow-v9 comparison only; no canonical weights or actions change. Local lock: `.ai/task-locks/RQ556-codex.lock.md`; working branch: `codex/rq556-prenivelacija-v9-shadow`.
+
+Completion 2026-10-08: RQ556 is DONE on exact implementation SHA `4c66ebec83b9d9184f476489fdb99e014eb63cb0`, verified on `origin/main`. Added versioned shadow-v9 evidence for weeks of cover, weeks to season end, receipt-age basis, unavailable sell-through denominator, cover gap and score; comparison includes Spearman correlation, top-N overlap and largest rank movements. The experimental panel is labelled and the existing v10 recommendation/action ordering remains authoritative. Focused backend tests 4/4, PostgreSQL oracle 1/1, frontend tests 70/70, typecheck, analytics guardrails, production build, governance validators and `git diff --check` passed. Current-main Analytics Tests & Data Integrity run `37757628372` is `in_progress`; Analytics Quality Gates run `37757628325` is `queued` on this SHA and are residual risks, not completion gates. Evidence: `.ai/runs/2026-10-08-RQ556-evidence.md`.
 
 ## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
