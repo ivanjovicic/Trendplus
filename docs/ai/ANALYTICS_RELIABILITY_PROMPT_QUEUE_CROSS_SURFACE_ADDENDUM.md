@@ -1115,7 +1115,7 @@ Supplier, ShoeType, and Color recommendation builders compute an average known-m
 
 ## RQ130 - Stop vendor pre/post recommendations from treating missing known-margin baseline as `0`
 
-Status: WAITING
+Status: OBSOLETE
 Ready after: `RQ128` is `DONE` or the owner explicitly promotes the vendor recommendation fake-zero lane
 Priority: P1
 Type: backend/tests
@@ -1179,12 +1179,18 @@ Vendor pre/post recommendation inputs still compute an average known-margin base
 - `RQ127` DONE.
 - `RQ128` stays the current higher-priority live-evidence gate; this prompt remains a later WAITING backend follow-up unless the owner explicitly promotes it.
 
+### Routing repair 2026-10-08
+
+- Status: OBSOLETE; the exact fake-zero path described by this prompt is no longer present on current main. `AllEndpoints.cs` now uses `VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate`, which does not pass an average-margin benchmark into the old recommendation engine, and the emitted vendor effect always sets `RecommendationAllowed: false`.
+- The owner already limits vendor pre/post outputs to descriptive, non-actionable effects. Broad comparability semantics remain under `RQ140` and raw SQL remains under `Q83`.
+- Run log: `.ai/runs/2026-10-08-RQ130-evidence.md`; Evidence state: pending post-close recovery.
+
 ---
 
 ## RQ131 - Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces
 
 Status: WAITING
-Ready after: `RQ130` is `DONE` or the owner explicitly promotes the vendor semantic-parity lane
+Ready after: `RQ130` is `DONE` or `OBSOLETE` with the documented non-actionable effect contract; the owner may explicitly promote the remaining Q70 semantic-parity lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: vendor-nivelacija-zero-baseline-semantic-parity
@@ -1195,19 +1201,19 @@ Commit suggestion: `fix(analytics): label vendor zero-baseline semantics`
 
 ### Problem
 
-Q70 already added additive zero-baseline semantic fields to `vw_vendor_sales_nivelacija`, but the endpoint DTOs and frontend contracts still expose only legacy numeric `changePercent` values. A new-baseline or no-baseline vendor can therefore still look like an ordinary `+100%` or `0%` trend on pre/post surfaces even though the backend SQL now knows the baseline semantics are special.
+Q70 baseline evidence is partly projected for article rows, but the vendor aggregate and the main pre/post table still expose/render legacy `changePercent` without the baseline state and reason. Supplier Footwear reads the article semantic percentage but does not explain a new or unavailable baseline. Users therefore cannot distinguish a measured zero from a no-baseline state across the vendor pre/post surfaces.
 
 ### Evidence
 
-- `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` and `docs/qa/ANALYTICS_SQL_QUERY_AUDIT.md` record that Q70 added `has_qty_baseline`, `qty_baseline_reason`, `change_percent_qty_semantic`, `has_revenue_baseline`, `revenue_baseline_reason`, and `change_percent_revenue_semantic` so downstream consumers can distinguish zero-baseline uplift from ordinary percent change.
-- `Api/Models/VendorSalesNivelacijaModels.cs` still exposes only `ChangePercent` on the vendor/article/totals/category/price-direction DTOs and does not carry baseline flags or semantic-reason fields.
-- `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts` still types only legacy `changePercent` fields and omits the additive Q70 semantic baseline vocabulary.
-- `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx` and `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx` format raw trend percentages from `changePercent`, so the surfaces cannot explain when a shown percentage actually means “new baseline” or “baseline unavailable”.
-
+- `Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql` emits the Q70 baseline flags, reason codes and semantic percentages.
+- `Api/Endpoints/AllEndpoints.cs`, `Api/Models/VendorSalesNivelacijaModels.cs`, and `vendorSalesNivelacijaApi.ts` already map these fields for article rows; those existing fields should be reused.
+- Vendor aggregate, totals, category and price-direction contracts still expose `ChangePercent` / comparability without corresponding aggregate baseline reason fields.
+- `ProdajaPrePostNivelacijePage.tsx` uses `trustedMetric(item.changePercent, item)` for vendor trend; `SupplierFootwearAnalyticsPage.tsx` uses the semantic article percentage but ignores `hasRevenueBaseline` and `revenueBaselineReason`.
+- Q70 reason vocabulary distinguishes missing pre-window, new-baseline uplift and no-baseline flat cases. A semantic zero is valid only when the declared baseline is present; unknown remains unavailable.
 ### Scope
 
-- vendor nivelacija endpoint read-model/DTO mapping in `Api/Endpoints/AllEndpoints.cs` and `Api/Models/VendorSalesNivelacijaModels.cs`;
-- the shared frontend service contract in `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`;
+- vendor aggregate/totals/category/price-direction baseline metadata in `Api/Endpoints/AllEndpoints.cs` and `Api/Models/VendorSalesNivelacijaModels.cs`; article-level Q70 fields already on the contract are reused;
+- the shared frontend service contract in `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`, limited to missing aggregate fields;
 - the smallest consumer-surface updates and nearest tests for `ProdajaPrePostNivelacijePage.tsx` and the shared secondary vendor consumer if it still renders the same raw trend values;
 - no SQL view rewrite, no percent-math change, and no unrelated supplier/shoe/color redesign.
 
@@ -1220,6 +1226,12 @@ Q70 already added additive zero-baseline semantic fields to `vw_vendor_sales_niv
 - `Klijent/clientapp/src/services/vendorSalesNivelacijaApi.ts`;
 - `Klijent/clientapp/src/pages/ProdajaPrePostNivelacijePage.tsx`;
 - `Klijent/clientapp/src/pages/SupplierFootwearAnalyticsPage.tsx`.
+
+### Scope repair 2026-10-08
+
+- Reuse the already-delivered article baseline fields and Q70 reason vocabulary; do not re-add or rename them.
+- Keep `RQ140` as owner of broad pre/post comparability/effect policy and `Q83` as raw SQL owner. This prompt only projects existing Q70 baseline state through vendor aggregates and explains those states in the two existing consumers.
+- Owner promotion is authorized by the user's request to claim and execute the next safe queue prompt; this is repository-local presentation of an existing backend contract and does not choose a new business threshold.
 
 ### Do
 
