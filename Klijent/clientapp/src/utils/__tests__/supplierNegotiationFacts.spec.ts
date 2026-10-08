@@ -21,7 +21,7 @@ describe("buildSupplierNegotiationFacts", () => {
     const facts = buildSupplierNegotiationFacts(known);
     expect(facts).toHaveLength(5);
     expect(facts[1]).toMatch(/Maržni doprinos .*poznata za 80,0% prometa/);
-    expect(facts[2]).toMatch(/Promet -12,5% u odnosu na prethodni period/);
+    expect(facts[2]).toMatch(/Promena prometa u odnosu na prethodni period iste dužine: -12,5%/);
     expect(facts[3]).toMatch(/delimično: pokrivenost 75,0%/);
     expect(facts[4]).toMatch(/starije od 90 dana .*delimično: pokrivenost 50,0%/);
   });

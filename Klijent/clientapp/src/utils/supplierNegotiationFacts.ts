@@ -40,7 +40,7 @@ export function buildSupplierNegotiationFacts(input: SupplierNegotiationFactInpu
   }
 
   if (isKnown(input.revenueTrendPct)) {
-    facts.push(`Promet ${fmtSignedPct(input.revenueTrendPct, 1)} u odnosu na prethodni period iste dužine.`);
+    facts.push(`Promena prometa u odnosu na prethodni period iste dužine: ${fmtSignedPct(input.revenueTrendPct, 1)}.`);
   }
 
   if (isKnown(input.inventoryValue)) {
