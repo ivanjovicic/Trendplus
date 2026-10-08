@@ -1,5 +1,12 @@
 # Trendplus Master Roadmap
 
+Owner-delegated product decisions 2026-10-08 (repository-local queue unblock):
+- **RQ481 P1: READY** — Decision Pulse uses shared *applied* period/dataScope with explicit requested/effective and per-source unsupported-dimension transparency; preserve backend fail-closed/partial trust. The prior owner-choice gate is satisfied. See `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md` and RQ481 in canonical RQ queue.
+- **RQ319 P2: WAITING for RQ140 overlap release** — explicit Apply for period/store/multi-field filters is approved, replacing the formerly unresolved product choice; do not take over an active RQ140 page owner.
+- **RQ320 P2: WAITING for RQ319 DONE** — draft inputs show `Nije primenjeno`, while the trust header always describes applied data.
+- **STAB16/RQ592 unchanged:** fresh provider/worker/currentness and prospective outcome proof still require actual evidence. The repository-local RQ481 work does not require fabricated production freshness.
+
+
 Owner product-priority refinement 2026-10-07:
 - **Two lanes run in parallel.** STAB16 remains operational P0 for deployed currentness/import/worker truth, but it is **not a global start gate** for repository-local formula correctness, historical analysis or latest-known-horizon decision work.
 - **RQ593 (P1) is DONE** — Product Decision totals now preserve unknown monetary evidence and expose coverage. Evidence: `.ai/runs/2026-10-08-RQ593-evidence.md`.
