@@ -1254,7 +1254,7 @@ Owner claim 2026-10-03: RQ545 repo-local backend error states are already delive
 
 ## RQ555 - Use Pre-Nivelacija as the one canonical retail markdown action source
 
-Status: PARTIAL
+Status: DONE
 Ready after: RQ593 DONE and RQ594 DONE (sequential Product Decision/action path owners; verify path release on current main)
 Priority: P1
 Type: backend/frontend/product/tests
@@ -1322,11 +1322,13 @@ RQ593 and RQ594 DONE. RQ537, RQ539, RQ548, RQ475, RQ487 and RQ571 are DONE. No f
 
 Claimed 2026-10-08 from post-close `origin/main` `e14578cfe64144bc1ad8bd2ecf2d3023d7897403` after dependency and collision scan. No local/remote RQ555 branch, matching lock or open PR existed; RQ594 delivered paths are Inventory-only and do not overlap this markdown-source feature family. Local lock: `.ai/task-locks/RQ555-codex.lock.md`; working branch: `main`.
 
-Implementation status 2026-10-08: local code and focused tests are complete; see `.ai/runs/2026-10-08-RQ555-evidence.md`. Exact-main RQ453 certification passes on SHA `c8892a79`, including the 1/1 six-screen route proof with zero skips. The full backend suite still has the same PERF19 failure seen on the preceding SHA, and frontend analytics still has 5 files / 6 tests failing as before RQ555. Keep PARTIAL until these CI gates are green or explicitly dispositioned; do not waive them silently.
+Completion note 2026-10-08: RQ555 is DONE. Implementation and focused local proof are recorded in `.ai/runs/2026-10-08-RQ555-evidence.md`. Current-main Analytics Quality Gates run `37753907167` and Analytics Tests & Data Integrity run `37753907161` both succeeded on exact SHA `02a539b156e322cdba57500ae32f2ce177a67eab`; frontend analytics tests, guardrails, build, full backend suite, migrations/bootstrap smoke and the RQ453 certification job all passed. The earlier red runs `37745341848`/`37745341868` were on ancestor `d1dc0a0780397e304d5b16c8affdfb2d7d21f526` and are superseded by these later green current-main runs. No deployed proof is required by RQ555 acceptance.
+
+Post-close promotion 2026-10-08: after refreshing exact `origin/main` and scanning the active RQ/addendum set, RQ556 is promoted from WAITING to READY and claimed as the primary direct successor. Its only start dependency, RQ555, is DONE; final v9 activation remains explicitly outside this shadow-only prompt. Local lock: `.ai/task-locks/RQ556-codex.lock.md`; working branch: `codex/rq556-prenivelacija-v9-shadow`.
 
 ## RQ556 - Build Pre-Nivelacija v9 evidence fields and shadow ranking without activating new weights
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: RQ555 DONE
 Priority: P1
 Type: backend/frontend/product/tests
@@ -1386,6 +1388,8 @@ The owner can compare current ranking with a more decision-relevant cover/age/se
 ### Dependencies
 
 RQ555 DONE. RQ537, RQ539, RQ548 and RQ571 are DONE. Final activation/weight approval is a separate owner decision after the shadow comparison; it is not a start gate for this prompt.
+
+Claim 2026-10-08: RQ555 is DONE on current `origin/main` `02a539b156e322cdba57500ae32f2ce177a67eab`; no matching RQ556 lock, branch or open PR existed during the post-close collision scan. Promoted RQ556 WAITING -> READY -> IN_PROGRESS as the primary RQ successor. The scope remains evidence fields and non-authoritative shadow-v9 comparison only; no canonical weights or actions change. Local lock: `.ai/task-locks/RQ556-codex.lock.md`; working branch: `codex/rq556-prenivelacija-v9-shadow`.
 
 ## RQ557 - NV-E2 - Descriptive markdown outcome ledger with fail-closed stock evidence
 
