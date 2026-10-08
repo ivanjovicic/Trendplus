@@ -361,8 +361,14 @@ function buildProductsCard(productDecisionCenter: ProductDecisionCenterResponse 
       : meta?.emptyReason ?? metaMessage ?? "Product Decision Center je stigao bez redova za trenutni opseg.",
     actionLabel: "Otvori Odluke o proizvodima",
     href: "/analytics/products",
-    meta: `Problematični redovi: ${formatLoadCount(productDecisionCenter.summary.badDataCount)} · procena izgubljene prodaje: ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}`,
+    meta: `Problematični redovi: ${formatLoadCount(productDecisionCenter.summary.badDataCount)} · procena izgubljene prodaje: ${fmtRsd(productDecisionCenter.summary.lostSalesEstimate, 0, "-")}${describePartialMoneyCoverage(productDecisionCenter.summary.lostSalesEstimateUnknownRows, productDecisionCenter.summary.lostSalesEstimateCoveragePct)}`,
   };
+}
+
+function describePartialMoneyCoverage(unknownRows?: number | null, coveragePct?: number | null): string {
+  if (unknownRows == null) return " (pokrivenost nije dostupna)";
+  if (unknownRows === 0) return "";
+  return ` (delimično: pokrivenost ${fmtPct(coveragePct, 1, "-")}, ${formatLoadCount(unknownRows)} redova bez vrednosti)`;
 }
 
 function buildSupplierCard(bootstrap: AnalyticsDashboardBootstrap | null): ReadinessCard {

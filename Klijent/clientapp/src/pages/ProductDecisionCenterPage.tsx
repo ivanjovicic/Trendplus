@@ -809,6 +809,13 @@ export function buildProductQueueSpec(row: ProductDecisionRow): {
   };
 }
 
+function describeMoneyCoverage(knownRows?: number | null, unknownRows?: number | null, coveragePct?: number | null): string {
+  if (knownRows == null || unknownRows == null) {
+    return "Pokrivenost nije dostupna";
+  }
+  return `Pokrivenost: ${fmtPct(coveragePct, 1, ANALYTICS_UNAVAILABLE_LABEL)} · ${knownRows} poznatih / ${unknownRows} bez vrednosti`;
+}
+
 export default function ProductDecisionCenterPage() {
   const initialRange = useMemo(() => defaultPeriodRange(), []);
   const initialUrlState = useMemo(() => readProductDecisionUrlState(initialRange), [initialRange]);
@@ -1187,13 +1194,17 @@ export default function ProductDecisionCenterPage() {
     blockedCount: payload?.summary.blockedCount ?? 0,
     insufficientEvidenceCount: payload?.summary.insufficientEvidenceCount ?? 0,
     lostSalesEstimate: payload ? payload.summary.lostSalesEstimate ?? null : null,
-    lostSalesEstimateKnownRows: payload?.summary.lostSalesEstimateKnownRows ?? 0,
-    lostSalesEstimateUnknownRows: payload?.summary.lostSalesEstimateUnknownRows ?? 0,
-    lostSalesEstimateCoveragePct: payload?.summary.lostSalesEstimateCoveragePct ?? null,
+    lostSalesEstimateCoverage: describeMoneyCoverage(
+      payload?.summary.lostSalesEstimateKnownRows,
+      payload?.summary.lostSalesEstimateUnknownRows,
+      payload?.summary.lostSalesEstimateCoveragePct,
+    ),
     slowStockCapital: payload ? payload.summary.slowStockCapital ?? null : null,
-    slowStockCapitalKnownRows: payload?.summary.slowStockCapitalKnownRows ?? 0,
-    slowStockCapitalUnknownRows: payload?.summary.slowStockCapitalUnknownRows ?? 0,
-    slowStockCapitalCoveragePct: payload?.summary.slowStockCapitalCoveragePct ?? null,
+    slowStockCapitalCoverage: describeMoneyCoverage(
+      payload?.summary.slowStockCapitalKnownRows,
+      payload?.summary.slowStockCapitalUnknownRows,
+      payload?.summary.slowStockCapitalCoveragePct,
+    ),
     stockCoverRiskCount: payload?.summary.stockCoverRiskCount ?? 0,
     insufficientStockCoverageCount: payload?.summary.insufficientStockCoverageCount ?? 0,
     lowCoverSkus: payload?.summary.lowCoverCount ?? 0,
@@ -1598,13 +1609,13 @@ export default function ProductDecisionCenterPage() {
         <article className="kpi-card">
           <span>Procena izgubljene prodaje</span>
           <strong>{fmtRsd(kpis.lostSalesEstimate, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
-          <small>Pokrivenost: {fmtPct(kpis.lostSalesEstimateCoveragePct, 1, ANALYTICS_UNAVAILABLE_LABEL)} · {kpis.lostSalesEstimateKnownRows} poznatih / {kpis.lostSalesEstimateUnknownRows} bez vrednosti</small>
+          {payload ? <small>{kpis.lostSalesEstimateCoverage}</small> : null}
           <KpiExplainButton metricKey="lostSalesEstimate" ariaLabel="Kako je izračunata procena izgubljene prodaje" />
         </article>
         <article className="kpi-card">
           <span>Kapital u sporoj zalihi</span>
           <strong>{fmtRsd(kpis.slowStockCapital, 0, ANALYTICS_UNAVAILABLE_LABEL)}</strong>
-          <small>Pokrivenost: {fmtPct(kpis.slowStockCapitalCoveragePct, 1, ANALYTICS_UNAVAILABLE_LABEL)} · {kpis.slowStockCapitalKnownRows} poznatih / {kpis.slowStockCapitalUnknownRows} bez vrednosti</small>
+          {payload ? <small>{kpis.slowStockCapitalCoverage}</small> : null}
           <KpiExplainButton metricKey="slowStockCapital" ariaLabel="Kako je izračunat kapital u sporoj zalihi" />
         </article>
         <article className="kpi-card">

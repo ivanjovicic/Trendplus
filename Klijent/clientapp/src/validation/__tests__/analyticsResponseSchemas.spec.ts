@@ -216,6 +216,11 @@ describe("Product Decision money coverage response contract", () => {
       slowStockCapitalUnknownRows: 1,
       slowStockCapitalCoveragePct: 101,
     }).success).toBe(false);
+    // An API deployed before the coverage contract must not break the page.
+    expect(productDecisionCenterSummarySchema.safeParse({
+      lostSalesEstimate: 1200,
+      slowStockCapital: 300,
+    }).success).toBe(true);
   });
 });
 

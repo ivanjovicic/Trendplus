@@ -1328,15 +1328,18 @@ export const dashboardBootstrapResponseSchema = z.object({
   ...tier1MetaEnvelope,
 }).passthrough();
 
+// Coverage fields are optional so a frontend deployed ahead of the API (manual Render
+// deploy) still renders; a missing coverage contract is shown as "coverage unavailable",
+// never as 0 known / 0 unknown rows.
 export const productDecisionCenterSummarySchema = z.object({
   lostSalesEstimate: nullableNumber,
-  lostSalesEstimateKnownRows: nonNegativeInteger,
-  lostSalesEstimateUnknownRows: nonNegativeInteger,
-  lostSalesEstimateCoveragePct: nullableNonNegativePercentage,
+  lostSalesEstimateKnownRows: nonNegativeInteger.optional(),
+  lostSalesEstimateUnknownRows: nonNegativeInteger.optional(),
+  lostSalesEstimateCoveragePct: nullableNonNegativePercentage.optional(),
   slowStockCapital: nullableNumber,
-  slowStockCapitalKnownRows: nonNegativeInteger,
-  slowStockCapitalUnknownRows: nonNegativeInteger,
-  slowStockCapitalCoveragePct: nullableNonNegativePercentage,
+  slowStockCapitalKnownRows: nonNegativeInteger.optional(),
+  slowStockCapitalUnknownRows: nonNegativeInteger.optional(),
+  slowStockCapitalCoveragePct: nullableNonNegativePercentage.optional(),
 }).passthrough();
 
 export const productDecisionCenterResponseSchema = z.object({

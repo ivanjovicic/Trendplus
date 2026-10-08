@@ -361,6 +361,18 @@ describe("ProductDecisionCenterPage confidence contract", () => {
     expect(slowStockCard).toHaveTextContent(/Pokrivenost: 0,0% · 0 poznatih \/ 1 bez vrednosti/);
   });
 
+  it("shows coverage as unavailable, not as zero rows, when the API predates the coverage contract", async () => {
+    const response = buildResponse([makeRow({})], "warning");
+    response.summary = { lostSalesEstimate: 1200, slowStockCapital: 300 };
+    getProductDecisionCenterMock.mockResolvedValueOnce(response);
+    render(<ProductDecisionCenterPage />);
+
+    const lostSalesCard = screen.getByText("Procena izgubljene prodaje").closest(".kpi-card");
+    await waitFor(() => expect(lostSalesCard).toHaveTextContent("Pokrivenost nije dostupna"));
+    expect(lostSalesCard).not.toHaveTextContent("0 poznatih");
+    expect(screen.getByText("Kapital u sporoj zalihi").closest(".kpi-card")).toHaveTextContent("Pokrivenost nije dostupna");
+  });
+
   it("renders the complete result progressively and keeps remaining rows reachable", async () => {
     const rows = Array.from({ length: 120 }, (_, index) => makeRow({
       productId: index + 101,
