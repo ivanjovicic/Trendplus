@@ -156,7 +156,7 @@ public sealed class DecisionPulseProjectorTests
 
         Assert.Single(projection.Items);
         Assert.Equal("supplier", projection.Items[0].SourceType);
-        Assert.Equal($"{DecisionPulseProjector.SupplierDeepLink}&supplierId=12", projection.Items[0].DeepLink);
+        Assert.Equal("/analytics/supplier-decision-hub?tab=scorecard&supplierId=12", projection.Items[0].DeepLink);
         Assert.Equal("BOOST", projection.Items[0].RecommendationStatus);
         Assert.Contains("širenje", projection.Items[0].WhySummary, StringComparison.OrdinalIgnoreCase);
     }

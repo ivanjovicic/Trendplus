@@ -1618,6 +1618,10 @@ export const decisionPulseResponseSchema = z.object({
   generatedAtUtc: validDate,
   periodFromUtc: validDate.nullable(),
   periodToUtc: validDate.nullable(),
+  tenantScope: z.string().min(1),
+  suppressedCount: nonNegativeInteger,
   items: z.array(z.unknown()),
   meta: analyticsResponseMetaSchema,
+  currentness: z.enum(["current", "latest_known"]).optional(),
+  asOfUtc: validDate.nullable().optional(),
 }).passthrough();

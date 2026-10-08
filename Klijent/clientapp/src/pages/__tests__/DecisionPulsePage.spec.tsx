@@ -35,6 +35,9 @@ describe("DecisionPulsePage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Puls odluka" })).toBeInTheDocument();
     expect(await screen.findByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Dostupnost izvora: Izvori su dostupni");
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Obuhvat: Podaci dostupni u ovoj bazi");
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Izostavljeno: 2");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText(/0 RSD/i)).not.toBeInTheDocument();
   });
@@ -76,6 +79,8 @@ describe("DecisionPulsePage", () => {
 
     expect(await screen.findByTestId("decision-pulse-currentness")).toHaveTextContent("Pregled odluka prema stanju do");
     expect(screen.getByText("Očekivani uticaj: nije dostupan")).toBeInTheDocument();
+    expect(screen.getByText("Izvor: Odluka o proizvodu")).toBeInTheDocument();
+    expect(screen.getByText("Svežina signala: Zastarelo")).toBeInTheDocument();
     expect(screen.getByText("Osnova: Period Product Decision signala")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Otvori odluku" })).toHaveAttribute(
       "href",
@@ -87,6 +92,42 @@ describe("DecisionPulsePage", () => {
       "accepted",
       expect.objectContaining({ storeId: 4, dataScope: "imported" }),
     ));
+  });
+
+  it("uses safe Serbian fallbacks for unknown trust and scope codes", async () => {
+    vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: null,
+      periodToUtc: null,
+      tenantScope: "private-tenant-code",
+      suppressedCount: 0,
+      items: [{
+        id: "product:unknown",
+        sourceType: "internal-source-code",
+        sourceKey: "1",
+        title: "Proveri izvor",
+        whySummary: "Poreklo signala traži proveru.",
+        reasonCodes: [],
+        recommendationStatus: "WATCH",
+        recommendationLabel: "Proveri",
+        dataQualityStatus: "vendor-quality-code",
+        inputFreshnessStatus: "vendor-freshness-code",
+        deepLink: "/analytics/products",
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        tenantScope: "private-tenant-code",
+      }],
+      meta: { success: true },
+    });
+
+    render(<MemoryRouter initialEntries={["/analytics/decision-pulse?dataScope=private-scope-code"]}><DecisionPulsePage /></MemoryRouter>);
+
+    expect(await screen.findByText("Izvor: Analitika")).toBeInTheDocument();
+    expect(screen.getByText("Kvalitet dokaza: Nedovoljno podataka")).toBeInTheDocument();
+    expect(screen.getByText("Svežina signala: Nije potvrđeno")).toBeInTheDocument();
+    const provenance = screen.getByTestId("decision-pulse-feed-provenance");
+    expect(provenance).toHaveTextContent("Obuhvat: Obuhvat nije potvrđen");
+    expect(provenance).toHaveTextContent("Opseg podataka: Opseg nije potvrđen");
+    expect(provenance).not.toHaveTextContent(/private-tenant-code|private-scope-code/);
   });
 
   it("does not render raw metadata when the source fails", async () => {
@@ -127,7 +168,7 @@ describe("DecisionPulsePage", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Decision Pulse nije dostupan.");
+    expect(alert).toHaveTextContent("Pregled odluka trenutno nije dostupan.");
     expect(alert).not.toHaveTextContent(/HTTP 500|NpgsqlException|Database\.Query/i);
   });
 
@@ -193,9 +234,11 @@ describe("DecisionPulsePage", () => {
     );
 
     expect(await screen.findByTestId("decision-pulse-partial-warning")).toHaveTextContent("Supplier decision hub nije dostupan.");
-    expect(screen.getByTestId("decision-pulse-partial-warning")).toHaveTextContent("Potisnuto kandidata: 124");
+    expect(screen.getByTestId("decision-pulse-partial-warning")).toHaveTextContent("delimično dostupan");
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Dostupnost izvora: Izvori su delimično dostupni");
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Izostavljeno: 124");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ponovo učitaj Decision Pulse" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ponovo učitaj pregled" }));
 
     await waitFor(() => expect(getDecisionPulse).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.queryByTestId("decision-pulse-partial-warning")).not.toBeInTheDocument());
@@ -239,7 +282,29 @@ describe("DecisionPulsePage", () => {
     );
 
     expect(await screen.findByTestId("decision-pulse-partial-warning")).toBeInTheDocument();
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Izostavljeno: 3");
     expect(screen.getByRole("heading", { name: "Dobavljač zahteva proveru" })).toBeInTheDocument();
     expect(screen.getByText("Izvor je delimično dostupan.")).toBeInTheDocument();
+  });
+
+  it("offers retry when the feed request fails", async () => {
+    const getDecisionPulse = vi.spyOn(decisionPulseApi, "getDecisionPulse")
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce({
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        periodFromUtc: null,
+        periodToUtc: null,
+        tenantScope: "n/a_dedicated",
+        suppressedCount: 0,
+        items: [],
+        meta: { success: true, emptyReason: "no_pulse_items" },
+      });
+
+    render(<MemoryRouter><DecisionPulsePage /></MemoryRouter>);
+
+    expect(await screen.findByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+    await waitFor(() => expect(getDecisionPulse).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
   });
 });

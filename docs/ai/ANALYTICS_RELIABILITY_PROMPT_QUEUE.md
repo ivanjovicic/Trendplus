@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ IN_PROGRESS prompt: RQ585 (P1, owner decision digest from the latest trustworthy horizon; freshness limits current-tense claims, not implementation). RQ556 is DONE on exact `origin/main` SHA `4c66ebec83b9d9184f476489fdb99e014eb63cb0`; focused backend, frontend and PostgreSQL proof passed. RQ555 is DONE on exact current-main SHA `02a539b156e322cdba57500ae32f2ce177a67eab`; current-main Analytics Quality Gates and Analytics Tests & Data Integrity both passed. RQ593, RQ596, RQ595 and RQ594 are DONE. Freshness/STAB16 remains operational P0 for current-production claims, but it does not serialize latest-known-horizon product work.
+Current RQ IN_PROGRESS prompt: RQ482 (P2, Decision Pulse source provenance, user-facing labels and Supplier evidence links). RQ585 is DONE on implementation SHA `739815e36f9ca88850d73b49a487294a5904a810`; latest-known horizons, honest currentness, up to 10 evidence-backed decisions, contextual source links, CSV and owner disposition are delivered. Freshness/STAB16 remains operational P0 for current-production claims, but does not serialize repository-local work.
 Product value plan refinement 2026-10-08: RQ596 owns completed Inventory money/coverage; RQ595 consumes that per-aging-bucket contract. RQ593 and RQ594 are DONE; their former Product Decision/Inventory action path ownership is released. RQ555 is promoted READY after both sequential owners; RQ556 follows RQ555 as shadow-only v9 evidence, and RQ585 follows RQ593/RQ594/RQ555 without a freshness start gate. RQ592 remains freshness/live-PrePost gated because it is prospective outcome proof. STAB16 remains operational P0 without serializing these repository-local lanes.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
@@ -27059,7 +27059,7 @@ Decision Pulse is either demonstrably aligned with shared period/scope filters o
 
 ## RQ482 - Align Decision Pulse source provenance, labels and Supplier deep links
 
-Status: WAITING
+Status: IN_PROGRESS
 Priority: P2
 Type: backend/frontend/contract/tests
 Feature family: decision-pulse-source-provenance-links
@@ -27113,6 +27113,8 @@ Every Pulse item opens the evidence surface that owns its decision, users see un
 
 - Coordinate with `RQ480`/`RQ481` because warning and period metadata may share the page contract.
 - Do not duplicate `RQ475` scorecard readiness or `RQ476` Supplier share semantics.
+
+Owner claim 2026-10-08 after RQ585: fresh post-close `origin/main` `739815e36f9ca88850d73b49a487294a5904a810`; RQ480 is DONE, and RQ585 has delivered item-level as-of/evidence basis, Serbian digest copy, context-preserving links and CSV. RQ481 stays WAITING because the product owner has not selected shared global period filters versus an independent default; RQ482's source/link/label/provenance scope can proceed without choosing that contract. No active Decision Pulse owner, matching RQ482 lock/branch or open PR exists. Promoted RQ482 WAITING -> READY -> IN_PROGRESS. Local lock `.ai/task-locks/RQ482-codex.lock.md`.
 
 ### Addendum 2026-10-04 (UX/UI audit; no status or scope change)
 
@@ -29539,7 +29541,7 @@ Owner completion 2026-10-05: RQ584 moved READY -> DONE after timestamp `toDate` 
 
 ## RQ585 - Owner decision digest on the latest trustworthy horizon
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ593, RQ594 and RQ555 DONE
 Priority: P1
 Type: product/backend/frontend
@@ -29601,6 +29603,25 @@ RQ593, RQ594 and RQ555 DONE. Production freshness is a **currentness/acceptance 
 Owner claim 2026-10-05 after RQ557: fresh post-close recovery at `origin/main` `facb3a011bbaa75b7daa27a78a9f4ba4173a345c` scanned all 15 active owner queue/addendum files. RQ558 remains sample-gated; RQ559 remains source/policy-gated. RQ586 is dependency-complete and collision-safe (no matching lock, branch or open PR); RQ588 remains an independent READY lane. RQ586 moved READY -> IN_PROGRESS. Local lock: `.ai/task-locks/RQ586-codex.lock.md`.
 
 Owner claim 2026-10-08 after RQ556: refreshed `origin/main` to `5b5d750548a3c27c42bdd50a4c0743ec7859379d` and scanned all 12 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files plus the SQL queue. RQ593/RQ594/RQ555 are DONE; RQ558 remains sample-gated, RQ559 source/policy-gated, and RQ545/RQ565 remain deployed/provider-gated. No RQ585 lock, local/remote branch or open PR exists; the only open PRs are P-UI-52 documentation routing and do not overlap this feature family. Promoted RQ585 READY -> IN_PROGRESS as the primary P1 RQ successor. Local lock: `.ai/task-locks/RQ585-codex.lock.md`; branch: `codex/rq585-owner-decision-digest`.
+
+### Completion note
+
+- Date: 2026-10-08
+- Status: DONE
+- Completion: Decision Pulse now composes at most 10 eligible Product Decision, inventory and supplier decisions from their certified evidence; retains each source horizon and evidence basis; ranks only by source priority/available certified impact; labels stale horizons as-of; preserves source scope/context in links and CSV; and records accepted/deferred/rejected/ignored disposition through the existing protected action ledger.
+- Changed files: Decision Pulse API/service/projector/contracts, Analytics Actions status/count/timeline contract, UI/service/types/schema and focused tests; queue, active routing summaries, roadmap and `.ai/runs/2026-10-08-RQ585-evidence.md`.
+- Checks run: focused backend Decision Pulse/action tests (15/15 plus DecisionPulseServiceTests 5/5); DecisionPulse UI tests (7/7); Analytics Actions UI tests (13/13, serial); TypeScript no-emit check; Vite production build; analytics guardrails and self-test; encoding check; prompt queue, agent instruction and planning architecture validators; `git -c core.whitespace=cr-at-eol diff --check`.
+- Checks not run: full backend/frontend suites, live browser/admin-key disposition flow and deployed source freshness; those were not required for repository-local acceptance. Exact-main Analytics Quality Gates `37762906059` and Analytics Tests & Data Integrity `37762905963` were `in_progress` at inspection.
+- Run log: `.ai/runs/2026-10-08-RQ585-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `739815e36f9ca88850d73b49a487294a5904a810`
+- Main verification: fresh fetch at post-close recovery base `739815e36f9ca88850d73b49a487294a5904a810`; implementation SHA is contained in `origin/main`.
+- Missed: no owner review cycle was run; four consecutive reviews remain an adoption target, not an implementation gate. No live admin-key write was exercised.
+- Follow-up: RQ482 promoted and claimed as the next collision-safe Decision Pulse lane.
+- Residual risk: exact-main Actions runs listed above were still in progress; currentness still depends on the existing refresh-status contract, and unavailable source impact remains null.
+- Post-close routing: full 12-file active RQ queue/addendum set plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md` scanned at recovery base `739815e36f9ca88850d73b49a487294a5904a810`; RQ585 and completed dependencies were searched across the set. RQ18 remains WAITING because the Advanced addendum explicitly retains it for traceability under completed RQ591, with re-exposure gated on freshness/horizon, oracle/golden and identity/provenance certification. RQ481 remains owner-decision-gated; RQ472 needs journal-authority approval; RQ545/RQ565 and RQ592 retain deployed/provider gates; RQ137/RQ139 remain PARTIAL with broad parity work explicitly missed in their evidence; RQ140 remains tied to Q83 live-schema evidence. RQ482 is a collision-safe P2 successor after RQ480 and RQ585 released the shared page path; promoted RQ482 WAITING -> READY -> IN_PROGRESS.
+- Prompt defect / scope repair: stale WAITING candidates were reconciled against their documented replacements and owner gates; RQ18 was not promoted because its explicit RQ591 re-exposure gate remains in force.
 
 ## RQ586 - Move `DailySales:TimeZoneId` out of the Serilog `WriteTo` array so Daily Sales shifts use Belgrade time
 

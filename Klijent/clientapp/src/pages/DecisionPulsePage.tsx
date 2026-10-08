@@ -10,19 +10,70 @@ import {
 } from "../services/decisionPulseApi";
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
-import { fmtRsd, formatDate } from "../utils/analyticsFormatters";
+import { fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 import { getDataScope } from "../utils/dataScope";
+import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 
-function downloadDigestCsv(items: DecisionPulseResponse["items"]) {
-  const columns = ["Odluka", "Izvor", "Zašto", "Preporučena akcija", "Prema stanju do (UTC)", "Osnova dokaza", "Očekivani uticaj (RSD)", "Link"];
+function freshnessLabel(value: string | null | undefined): string {
+  switch ((value ?? "").trim().toLowerCase()) {
+    case "fresh": return "Sveže";
+    case "stale": return "Zastarelo";
+    case "critical": return "Kritično";
+    default: return "Nije potvrđeno";
+  }
+}
+
+function sourceLabel(value: string): string {
+  switch (value.trim().toLowerCase()) {
+    case "product": return "Odluka o proizvodu";
+    case "inventory": return "Zalihe";
+    case "supplier": return "Odluka o dobavljaču";
+    default: return "Analitika";
+  }
+}
+
+function scopeLabel(value: string | null | undefined): string {
+  switch ((value ?? "").trim().toLowerCase()) {
+    case "all": return "Svi podaci";
+    case "existing": return "Postojeći artikli";
+    case "imported": return "Uvezeni podaci";
+    default: return "Opseg nije potvrđen";
+  }
+}
+
+function tenantScopeLabel(value: string | null | undefined): string {
+  return value === "n/a_dedicated" ? "Podaci dostupni u ovoj bazi" : "Obuhvat nije potvrđen";
+}
+
+function sourceAvailabilityLabel(feed: DecisionPulseResponse): string {
+  if (!feed.meta.success) return "Izvori nisu dostupni";
+  return feed.meta.isPartial ? "Izvori su delimično dostupni" : "Izvori su dostupni";
+}
+
+function downloadDigestCsv(
+  items: DecisionPulseResponse["items"],
+  feed: DecisionPulseResponse,
+  dataScope: string | null,
+) {
+  const columns = ["Odluka", "Izvor", "Zašto", "Preporučena akcija", "Kvalitet dokaza", "Svežina signala", "Prema stanju do (UTC)", "Osnova dokaza", "Očekivani uticaj (RSD)", "Period od (UTC)", "Period do (UTC)", "Pregled kreiran (UTC)", "Poslednje uspešno osveženje (UTC)", "Dostupnost izvora", "Opseg", "Obuhvat", "Izostavljeno", "Link"];
   const rows = items.map((item) => [
     item.title,
-    item.sourceType,
+    sourceLabel(item.sourceType),
     item.whySummary,
     item.recommendationLabel,
+    dataQualityStatusLabel(item.dataQualityStatus),
+    freshnessLabel(item.inputFreshnessStatus),
     item.asOfUtc ?? "",
     evidenceBasisLabel(item.evidenceBasis),
     item.expectedImpactRsd == null ? "" : String(item.expectedImpactRsd),
+    feed.periodFromUtc ?? "",
+    feed.periodToUtc ?? "",
+    feed.generatedAtUtc,
+    feed.meta.lastRefreshAtUtc ?? "",
+    sourceAvailabilityLabel(feed),
+    scopeLabel(dataScope),
+    tenantScopeLabel(feed.tenantScope),
+    String(feed.suppressedCount),
     new URL(item.deepLink, window.location.origin).toString(),
   ]);
   const csv = [columns, ...rows]
@@ -49,6 +100,8 @@ function evidenceBasisLabel(value: string | null | undefined): string {
 export default function DecisionPulsePage() {
   const [searchParams] = useSearchParams();
   const routeContext = searchParams.toString();
+  const routeParams = new URLSearchParams(routeContext);
+  const activeDataScope = routeParams.get("dataScope") ?? getDataScope();
   const [feed, setFeed] = useState<DecisionPulseResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +138,7 @@ export default function DecisionPulsePage() {
             getSafeAnalyticsErrorMessage(
               err instanceof Error ? err.message : null,
               null,
-              "Decision Pulse nije dostupan.",
+              "Pregled odluka trenutno nije dostupan.",
             ),
           );
         }
@@ -140,11 +193,23 @@ export default function DecisionPulsePage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Puls odluka</h1>
             <p className="text-sm text-muted">
-              Najviše 10 dozvoljenih odluka iz Product Decision, zaliha i dobavljača, uz izvor dokaza.
+              Najviše 10 dozvoljenih odluka o proizvodima, zalihama i dobavljačima, uz izvor dokaza.
             </p>
           </div>
         </div>
       </header>
+
+      {feed && !loading ? (
+        <section className="flex flex-wrap gap-x-5 gap-y-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs text-muted" aria-label="Poreklo pregleda odluka" data-testid="decision-pulse-feed-provenance">
+          <span>Period prikaza: {formatDate(feed.periodFromUtc, "nije dostupan")} – {formatDate(feed.periodToUtc, "nije dostupan")}</span>
+          <span>Dostupnost izvora: {sourceAvailabilityLabel(feed)}</span>
+          <span>Obuhvat: {tenantScopeLabel(feed.tenantScope)}</span>
+          <span>Opseg podataka: {scopeLabel(activeDataScope)}</span>
+          <span>Pregled kreiran: {formatDateTime(feed.generatedAtUtc, "nije dostupno")}</span>
+          {feed.meta.lastRefreshAtUtc ? <span>Poslednje uspešno osveženje: {formatDateTime(feed.meta.lastRefreshAtUtc, "nije dostupno")}</span> : null}
+          <span>Izostavljeno: {feed.suppressedCount}</span>
+        </section>
+      ) : null}
 
       {!error && !metaFailed && metaPartial ? (
         <div
@@ -152,10 +217,10 @@ export default function DecisionPulsePage() {
           role="alert"
           data-testid="decision-pulse-partial-warning"
         >
-          <div className="font-semibold">Decision Pulse je delimično dostupan</div>
+          <div className="font-semibold">Pregled odluka je delimično dostupan</div>
           <div className="mt-1">{metaMessage ?? "Jedan ili više Pulse izvora trenutno nisu dostupni."}</div>
           <div className="mt-1 text-xs">
-            Potisnuto kandidata: {feed?.suppressedCount ?? 0}. Prikazani podaci mogu biti nepotpuni.
+            Izostavljeno kandidata: {feed?.suppressedCount}. Prikazani podaci mogu biti nepotpuni.
           </div>
           <button
             type="button"
@@ -163,7 +228,7 @@ export default function DecisionPulsePage() {
             onClick={() => setReloadToken((current) => current + 1)}
             disabled={loading}
           >
-            Ponovo učitaj Decision Pulse
+            Ponovo učitaj pregled
           </button>
         </div>
       ) : null}
@@ -179,16 +244,24 @@ export default function DecisionPulsePage() {
           className="rounded-2xl border border-[var(--error)] bg-[var(--surface-elevated)] px-4 py-8 text-center text-sm text-[var(--error)]"
           role="alert"
         >
-          {error ?? metaMessage ?? "Pulse izvor nije pouzdan."}
-          <div className="mt-2 text-xs text-muted">KPI nule se ne prikazuju kao validan alert.</div>
+          {error ?? metaMessage ?? "Izvor pregleda odluka nije pouzdan."}
+          <div className="mt-2 text-xs text-muted">Vrednosti se neće prikazati kao pouzdane dok izvor ne odgovori.</div>
+          <button
+            type="button"
+            className="mt-3 rounded-lg border border-current px-3 py-1.5 text-xs font-semibold"
+            onClick={() => setReloadToken((current) => current + 1)}
+            disabled={loading}
+          >
+            Pokušaj ponovo
+          </button>
         </div>
       ) : loading ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          Učitavam Decision Pulse...
+          Učitavam pregled odluka...
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          Nema actionable Pulse stavki. Prazan rezultat nije greška.
+          Nema odluka za prikaz. Prazan rezultat nije greška.
           {metaMessage ? <div className="mt-2 text-xs">{metaMessage}</div> : null}
         </div>
       ) : (
@@ -202,7 +275,7 @@ export default function DecisionPulsePage() {
             <button
               type="button"
               className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground"
-              onClick={() => downloadDigestCsv(items)}
+              onClick={() => feed && downloadDigestCsv(items, feed, activeDataScope)}
             >
               Preuzmi CSV
             </button>
@@ -221,6 +294,9 @@ export default function DecisionPulsePage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted">
                 <span className="rounded-full border border-border px-2 py-0.5">
+                  Izvor: {sourceLabel(item.sourceType)}
+                </span>
+                <span className="rounded-full border border-border px-2 py-0.5">
                   Prema stanju do: {formatDate(item.asOfUtc, "datum nije dostupan")}
                 </span>
                 <span className="rounded-full border border-border px-2 py-0.5">
@@ -228,6 +304,12 @@ export default function DecisionPulsePage() {
                 </span>
                 <span className="rounded-full border border-border px-2 py-0.5">
                   Osnova: {evidenceBasisLabel(item.evidenceBasis)}
+                </span>
+                <span className="rounded-full border border-border px-2 py-0.5">
+                  Kvalitet dokaza: {dataQualityStatusLabel(item.dataQualityStatus)}
+                </span>
+                <span className="rounded-full border border-border px-2 py-0.5">
+                  Svežina signala: {freshnessLabel(item.inputFreshnessStatus)}
                 </span>
               </div>
               <div className="mt-3">

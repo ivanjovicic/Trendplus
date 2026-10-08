@@ -59,7 +59,7 @@ public static class DecisionPulseProjector
     public const string DedicatedTenantScope = "n/a_dedicated";
     public const string ProductDeepLink = "/analytics/products";
     public const string InventoryDeepLink = "/analytics/inventory";
-    public const string SupplierDeepLink = "/analytics/supplier?tab=overview";
+    public const string SupplierDeepLink = "/analytics/supplier-decision-hub?tab=scorecard";
     public const string SourceTypeProduct = "product";
     public const string SourceTypeInventory = "inventory";
     public const string SourceTypeSupplier = "supplier";
