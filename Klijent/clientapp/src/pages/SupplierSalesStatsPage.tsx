@@ -37,7 +37,8 @@ import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../se
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { dataScopeLabel, getDataScope, normalizeDataScope, type DataScope } from "../utils/dataScope";
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTooltipStyle";
-import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
+import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate, formatDateTime } from "../utils/analyticsFormatters";
+import { buildSupplierNegotiationFacts } from "../utils/supplierNegotiationFacts";
 import { toCalendarDate, toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { SUPPLIER_OVERVIEW_TOTAL_REVENUE_LABEL, SUPPLIER_TOP5_SHARE_OVERVIEW_NOTE } from "../utils/supplierMetricSemantics";
 import { SUPPLIER_BUYING_UNAVAILABLE_METRIC_LINES } from "../utils/supplierBuyingValueEvidence";
@@ -359,7 +360,8 @@ function formatEffectivePeriodLabel(fromDate?: string | null, toDate?: string | 
 
 function formatCalendarDate(value: string): string {
   const [year, month, day] = value.split("-").map(Number);
-  return formatDate(new Date(year, month - 1, day));
+  // formatDate renders in UTC; a local-midnight Date would show the previous day east of UTC (Belgrade).
+  return formatDate(new Date(Date.UTC(year, month - 1, day)));
 }
 
 /**
@@ -1203,10 +1205,9 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     };
   }, [activeDataScope, activeFilters.fromDate, activeFilters.storeId, activeFilters.toDate, focusedSupplier]);
 
+  // Response generation time is not evidence of stock currency; only a recorded refresh is shown.
   const inventoryAsOf = buyingEvidence.balance?.meta?.lastRefreshAtUtc
-    ?? buyingEvidence.balance?.meta?.generatedAtUtc
     ?? buyingEvidence.insights?.meta?.lastRefreshAtUtc
-    ?? buyingEvidence.insights?.meta?.generatedAtUtc
     ?? null;
   const inventoryValuationBasisLabel = buyingEvidence.balance?.valuationBasis === "known_cost_only"
     ? "Poznata nabavna cena"
@@ -1233,6 +1234,29 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         : null,
     };
   }, [buyingEvidence.insights?.aging]);
+
+  const negotiationPeriodLabel = useMemo(() => {
+    const from = toCalendarDate(data?.fromDate) ?? activeFilters.fromDate;
+    const to = toInclusiveCalendarDate(data?.toDate) ?? activeFilters.toDate;
+    return /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
+      ? `${formatCalendarDate(from)} – ${formatCalendarDate(to)}`
+      : `${from} – ${to}`;
+  }, [activeFilters.fromDate, activeFilters.toDate, data?.fromDate, data?.toDate]);
+
+  const negotiationFacts = useMemo(() => focusedSupplier ? buildSupplierNegotiationFacts({
+    revenue: focusedSupplier.ukupanPromet,
+    units: focusedSupplier.ukupnaKolicina,
+    marginContribution: focusedSupplier.marginContribution,
+    marginPct: focusedSupplier.marginPct,
+    marginCoveragePct: focusedSupplier.marginDataCoveragePct,
+    revenueTrendPct: focusedSupplier.popRevenueChangePct,
+    inventoryValue: buyingEvidence.balance?.estimatedInventoryValue,
+    inventoryUnits: buyingEvidence.balance?.totalOnHand,
+    inventoryValueCoveragePct: buyingEvidence.balance?.valueCoveragePct,
+    agedValue: agedInventory?.estimateValue,
+    agedUnits: agedInventory?.units,
+    agedValueCoveragePct: agedInventory?.valueCoveragePct,
+  }) : [], [agedInventory, buyingEvidence.balance, focusedSupplier]);
 
   const selectedFootwearRows = useMemo(
     () => [...(selectedSupplier?.footwearBreakdown ?? [])]
@@ -2827,23 +2851,31 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
                 <div>
                   <h2 id="supplier-negotiation-value-title">Vrednost i rizik za pregovor · {focusedSupplier.dobavljacNaziv}</h2>
                   <p>
-                    Prodaja i marža: {data?.fromDate ?? activeFilters.fromDate}–{data?.toDate ?? activeFilters.toDate}; objekat {data?.storeId ?? activeFilters.storeId ?? "svi"}; scope {dataScopeLabel(normalizeDataScope(data?.dataScope ?? activeDataScope))}. Zaliha je zaseban trenutni/presek poslednje poznate evidencije, ne prodaja u periodu.
+                    Prodaja i marža za period {negotiationPeriodLabel}. Zaliha je stanje sa poslednjeg poznatog preseka, a ne prodaja u tom periodu.
                   </p>
                 </div>
-                <InfoTip text="Sažetak prikazuje postojeće prodajne i inventarske izvore. Nema izvedenog BUY_MORE/BUY_LESS saveta, narudžbine, roka isporuke ni kauzalnog zaključka." />
+                <InfoTip text="Sažetak prikazuje postojeće podatke o prodaji i zalihama. Ne daje savet da se poruči više ili manje, ne procenjuje rok isporuke i ne tvrdi uzrok promene." />
               </div>
               <dl className="supplier-negotiation-value-context">
                 <div><dt>Objekat</dt><dd>{activeFilters.storeId == null ? "Svi objekti" : stores.find((store) => store.storeId === activeFilters.storeId)?.storeName ?? `Objekat ${activeFilters.storeId}`}</dd></div>
-                <div><dt>Data scope</dt><dd>{dataScopeLabel(activeDataScope)}</dd></div>
-                <div><dt>As-of zalihe</dt><dd>{inventoryAsOf && Number.isFinite(Date.parse(inventoryAsOf)) ? new Date(inventoryAsOf).toLocaleString("sr-RS") : "Nije dostupno"}</dd></div>
+                <div><dt>Opseg podataka</dt><dd>{dataScopeLabel(normalizeDataScope(data?.dataScope ?? activeDataScope))}</dd></div>
+                <div><dt>Zalihe osvežene</dt><dd>{inventoryAsOf && Number.isFinite(Date.parse(inventoryAsOf)) ? formatDateTime(inventoryAsOf) : "Datum osvežavanja nije zabeležen"}</dd></div>
                 <div><dt>Osnova zalihe</dt><dd>{inventoryValuationBasisLabel}</dd></div>
               </dl>
               <div className="supplier-buying-value-grid supplier-negotiation-value-grid">
                 <article className="supplier-buying-value-card"><span>Prodaja u periodu · promet / količina</span><strong>{fmtRsd(focusedSupplier.ukupanPromet)} · {fmtQty(focusedSupplier.ukupnaKolicina)}</strong></article>
                 <article className="supplier-buying-value-card"><span>Zarada na robi · doprinos / ponderisana marža</span><strong>{fmtRsd(focusedSupplier.marginContribution)} · {fmtSignedPct(focusedSupplier.marginPct, 1)}</strong><small>Troškovno pokriće: {fmtPct(focusedSupplier.marginDataCoveragePct, 1)} · istorijski trošak: {fmtPct(focusedSupplier.historicalCostCoveragePct, 1)} · procenjeni trošak: {fmtPct(focusedSupplier.estimatedCostCoveragePct ?? focusedSupplier.fallbackCostCoveragePct, 1)}</small></article>
                 <article className="supplier-buying-value-card"><span>Trend prema prethodnom periodu · promet / količina</span><strong>{describePopMetric(focusedSupplier).label} · {describePopUnitsMetric(focusedSupplier).label}</strong></article>
-                <article className="supplier-buying-value-card"><span>Zaliha na preseku · jedinice / poznata vrednost</span><strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })} · {formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? null, kind: "currency" })}</strong><small>Coverage vrednosti: {fmtPct(buyingEvidence.balance?.valueCoveragePct, 1)} · nepoznate jedinice: {formatMetricDisplayValue({ value: buyingEvidence.balance?.unknownValueUnits ?? null, kind: "number" })}</small></article>
-                <article className="supplier-buying-value-card"><span>Artikli 90+ dana · jedinice / poznata procena</span><strong>{agedInventory ? `${fmtQty(agedInventory.units)} · ${fmtRsd(agedInventory.estimateValue)}` : "Nije dostupno"}</strong><small>{agedInventory ? `${agedInventory.items} artikala; pokrivenost poznatom vrednošću ${fmtPct(agedInventory.valueCoveragePct, 1)} (${agedInventory.unknownValueRows ?? "nepoznat broj"} bez vrednosti). Ovo nije potvrđena puna vrednost kapitala.` : "Nema potvrđenog 90+ aging bucket-a u izvoru."}</small></article>
+                <article className="supplier-buying-value-card"><span>Zaliha na preseku · jedinice / poznata vrednost</span><strong>{formatMetricDisplayValue({ value: buyingEvidence.balance?.totalOnHand ?? null, kind: "number" })} · {formatMetricDisplayValue({ value: buyingEvidence.balance?.estimatedInventoryValue ?? null, kind: "currency" })}</strong><small>Pokrivenost vrednosti: {fmtPct(buyingEvidence.balance?.valueCoveragePct, 1)} · jedinice bez vrednosti: {formatMetricDisplayValue({ value: buyingEvidence.balance?.unknownValueUnits ?? null, kind: "number" })}</small></article>
+                <article className="supplier-buying-value-card"><span>Artikli 90+ dana · jedinice / poznata procena</span><strong>{agedInventory ? `${fmtQty(agedInventory.units)} · ${fmtRsd(agedInventory.estimateValue)}` : "Nije dostupno"}</strong><small>{agedInventory ? `${agedInventory.items} artikala; pokrivenost poznatom vrednošću ${fmtPct(agedInventory.valueCoveragePct, 1)} (${agedInventory.unknownValueRows ?? "nepoznat broj"} bez vrednosti). Ovo nije potvrđena puna vrednost kapitala.` : "Nema potvrđene grupe artikala starijih od 90 dana."}</small></article>
+              </div>
+              <div className="supplier-negotiation-facts" data-testid="supplier-negotiation-facts">
+                <h3>Činjenice za pregovor</h3>
+                {negotiationFacts.length > 0 ? (
+                  <ul>
+                    {negotiationFacts.map((fact) => <li key={fact}>{fact}</li>)}
+                  </ul>
+                ) : <p>Nema dovoljno potvrđenih podataka za činjenice o ovom dobavljaču.</p>}
               </div>
               {buyingEvidence.insights?.topAgedItems.length ? (
                 <div className="supplier-negotiation-aged-items">

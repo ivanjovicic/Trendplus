@@ -11,7 +11,7 @@ import SupplierSalesStatsPage, {
 } from "../SupplierSalesStatsPage";
 import { getInventoryBalance, getInventoryInsights, getStores } from "../../services/analyticsApi";
 import { getSupplierSalesStats } from "../../services/supplierSalesStatsApi";
-import { fmtPct, formatDate } from "../../utils/analyticsFormatters";
+import { fmtPct } from "../../utils/analyticsFormatters";
 
 const AnalyticsTrustHeaderMock = vi.hoisted(() =>
   vi.fn((props: { title: string }) => <div data-testid="analytics-trust-header">{props.title}</div>)
@@ -384,8 +384,13 @@ describe("SupplierSalesStatsPage premium controls", () => {
     const panel = await screen.findByTestId("supplier-negotiation-value-panel");
     expect(within(panel).getByRole("heading", { name: /Vrednost i rizik za pregovor · Alfa/ })).toBeInTheDocument();
     expect(within(panel).getAllByRole("article")).toHaveLength(5);
-    expect(within(panel).getByText(/Prodaja i marža: 2026-06-01–2026-06-30/)).toBeInTheDocument();
-    expect(within(panel).getByText(/Coverage vrednosti: 75,0%/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Prodaja i marža za period 1\. 6\. 2026\. – 30\. 6\. 2026\./)).toBeInTheDocument();
+    expect(within(panel).getByText(/Pokrivenost vrednosti: 75,0%/)).toBeInTheDocument();
+    const facts = within(within(panel).getByTestId("supplier-negotiation-facts")).getAllByRole("listitem");
+    expect(facts.length).toBeGreaterThanOrEqual(3);
+    expect(facts.length).toBeLessThanOrEqual(5);
+    expect(facts.map((fact) => fact.textContent).join(" ")).toMatch(/starije od 90 dana .*delimično: pokrivenost 50,0%/);
+    expect(within(panel).queryByText(/Data scope|As-of|Coverage|BUY_/)).not.toBeInTheDocument();
     expect(within(panel).getByText("Poznata nabavna cena")).toBeInTheDocument();
     expect(within(panel).getByText(/istorijski trošak: 100,0% · procenjeni trošak: 0,0%/)).toBeInTheDocument();
     expect(within(panel).getByText(/pokrivenost poznatom vrednošću 50,0% \(1 bez vrednosti\)/)).toBeInTheDocument();
@@ -780,7 +785,8 @@ describe("SupplierSalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    const analyzedLabel = `${formatDate(new Date(2026, 5, 1))} - ${formatDate(new Date(2026, 5, 30))}`;
+    // Fixed calendar text: must not shift to 31. 5. east of UTC (Europe/Belgrade).
+    const analyzedLabel = "1. 6. 2026. - 30. 6. 2026.";
     await waitFor(() => {
       expect(onTrustMetadataChange).toHaveBeenCalledWith(expect.objectContaining({
         periodFrom: "2026-06-01",
@@ -804,7 +810,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
     })).toEqual({
       periodFrom: "2026-06-01",
       periodTo: "2026-06-30",
-      effectivePeriodLabel: `${formatDate(new Date(2026, 5, 1))} - ${formatDate(new Date(2026, 5, 30))}`,
+      effectivePeriodLabel: "1. 6. 2026. - 30. 6. 2026.",
     });
     expect(buildSupplierEmbeddedPeriod({
       responseFromDate: null,
