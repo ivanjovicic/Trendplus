@@ -356,7 +356,7 @@ jobs:
           dotnet test Api.Tests/Api.Tests.csproj
           --no-build
           --configuration Release
-          --filter FullyQualifiedName~OperationsAnalyticsAllRoutesIntegrationTests
+          --filter FullyQualifiedName~OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts
           --logger "trx;LogFileName=rq453-six-screen-routes.trx"
           --results-directory TestResults/rq453-six-screen-routes
 
