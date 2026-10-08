@@ -224,6 +224,7 @@ public sealed class AnalyticsActionItemService
             Deferred: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Deferred)?.Count ?? 0,
             Rejected: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Rejected)?.Count ?? 0,
             Done: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Done)?.Count ?? 0,
+            Ignored: items.FirstOrDefault(x => x.Status == AnalyticsActionConstants.Statuses.Ignored)?.Count ?? 0,
             P1Open: p1Open,
             ExcludedFixtureCount: excludedFixtureCount
         );
@@ -670,7 +671,7 @@ public sealed class AnalyticsActionItemService
         // Only terminal statuses are considered resolved.
         // rejected/done => resolved timestamp is set.
         // new/accepted/deferred => action is open (reopened) and resolved timestamp is cleared.
-        if (newStatus is AnalyticsActionConstants.Statuses.Rejected or AnalyticsActionConstants.Statuses.Done)
+        if (newStatus is AnalyticsActionConstants.Statuses.Rejected or AnalyticsActionConstants.Statuses.Done or AnalyticsActionConstants.Statuses.Ignored)
         {
             item.ResolvedAtUtc ??= now;
         }
@@ -1515,6 +1516,7 @@ public sealed record AnalyticsActionCountsDto(
     int Deferred,
     int Rejected,
     int Done,
+    int Ignored,
     int P1Open,
     int ExcludedFixtureCount = 0
 );

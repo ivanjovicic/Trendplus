@@ -35,8 +35,9 @@ public static class AnalyticsActionConstants
         public const string P1 = "P1";
         public const string P2 = "P2";
         public const string P3 = "P3";
+        public const string Unranked = "UNRANKED";
 
-        public static readonly string[] AllValues = { P1, P2, P3 };
+        public static readonly string[] AllValues = { P1, P2, P3, Unranked };
     }
 
     // ── Statuses ────────────────────────────────────────────────────────────
@@ -52,8 +53,9 @@ public static class AnalyticsActionConstants
         public const string Deferred = "deferred";
         public const string Rejected = "rejected";
         public const string Done = "done";
+        public const string Ignored = "ignored";
 
-        public static readonly string[] AllValues = { New, Accepted, Deferred, Rejected, Done };
+        public static readonly string[] AllValues = { New, Accepted, Deferred, Rejected, Done, Ignored };
 
         /// <summary>
         /// Statuses that indicate an action is still open (not resolved).
@@ -63,7 +65,7 @@ public static class AnalyticsActionConstants
         /// <summary>
         /// Statuses that indicate an action is closed/resolved.
         /// </summary>
-        public static readonly string[] ClosedStatuses = { Rejected, Done };
+        public static readonly string[] ClosedStatuses = { Rejected, Done, Ignored };
     }
 
     // ── Outcome Statuses ──────────────────────────────────────────────────

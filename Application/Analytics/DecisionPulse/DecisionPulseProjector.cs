@@ -16,7 +16,11 @@ public sealed record DecisionPulseCandidate(
     string InputFreshnessStatus,
     bool RecommendationAllowed,
     string DeepLink,
-    DateTime? GeneratedAtUtc);
+    DateTime? GeneratedAtUtc,
+    DateTime? AsOfUtc = null,
+    string EvidenceBasis = "source_latest_known",
+    decimal? ExpectedImpactRsd = null,
+    string? PriorityEvidence = null);
 
 public sealed record DecisionPulseItem(
     string Id,
@@ -31,7 +35,11 @@ public sealed record DecisionPulseItem(
     string InputFreshnessStatus,
     string DeepLink,
     DateTime? GeneratedAtUtc,
-    string TenantScope);
+    string TenantScope,
+    DateTime? AsOfUtc = null,
+    string EvidenceBasis = "source_latest_known",
+    decimal? ExpectedImpactRsd = null,
+    string? PriorityEvidence = null);
 
 public sealed record DecisionPulseProjection(
     bool SourceSucceeded,
@@ -47,6 +55,7 @@ public sealed record DecisionPulseProjection(
 /// </summary>
 public static class DecisionPulseProjector
 {
+    public const int MaxDigestItems = 10;
     public const string DedicatedTenantScope = "n/a_dedicated";
     public const string ProductDeepLink = "/analytics/products";
     public const string InventoryDeepLink = "/analytics/inventory";
@@ -71,19 +80,10 @@ public static class DecisionPulseProjector
         "FIX_DATA"
     };
 
-    private static readonly HashSet<string> StaleFreshness = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> AllowedDataQuality = new(StringComparer.OrdinalIgnoreCase)
     {
-        "stale",
-        "critical",
-        "unknown"
-    };
-
-    private static readonly HashSet<string> BadDataQuality = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "insufficient_data",
-        "error",
-        "failed",
-        "critical"
+        "good",
+        "warning"
     };
 
     public static DecisionPulseProjection Project(
@@ -117,11 +117,18 @@ public static class DecisionPulseProjector
             items.Add(item!);
         }
 
+        var rankedItems = items
+            .OrderByDescending(item => PriorityRank(item.PriorityEvidence))
+            .ThenByDescending(item => item.ExpectedImpactRsd.HasValue)
+            .ThenByDescending(item => item.ExpectedImpactRsd)
+            .ToArray();
+        suppressed += Math.Max(0, rankedItems.Length - MaxDigestItems);
+
         return new DecisionPulseProjection(
             true,
             null,
             null,
-            items,
+            rankedItems.Take(MaxDigestItems).ToArray(),
             suppressed,
             DedicatedTenantScope);
     }
@@ -139,13 +146,7 @@ public static class DecisionPulseProjector
         if (!ActionableStatuses.Contains(candidate.RecommendationStatus ?? string.Empty))
             return false;
 
-        if (StaleFreshness.Contains(candidate.InputFreshnessStatus ?? string.Empty))
-            return false;
-
-        if (!string.Equals(candidate.InputFreshnessStatus, "fresh", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        if (BadDataQuality.Contains(candidate.DataQualityStatus ?? string.Empty))
+        if (!AllowedDataQuality.Contains(candidate.DataQualityStatus ?? string.Empty))
             return false;
 
         var why = (candidate.WhySummary ?? string.Empty).Trim();
@@ -169,11 +170,24 @@ public static class DecisionPulseProjector
                 ? (candidate.RecommendationStatus?.Trim() ?? string.Empty)
                 : candidate.RecommendationLabel.Trim(),
             candidate.DataQualityStatus?.Trim() ?? "good",
-            "fresh",
+            candidate.InputFreshnessStatus?.Trim() ?? "unknown",
             deepLink,
             candidate.GeneratedAtUtc,
-            DedicatedTenantScope);
+            DedicatedTenantScope,
+            candidate.AsOfUtc,
+            string.IsNullOrWhiteSpace(candidate.EvidenceBasis) ? "source_latest_known" : candidate.EvidenceBasis.Trim(),
+            candidate.ExpectedImpactRsd,
+            candidate.PriorityEvidence);
 
         return true;
     }
+
+    private static int PriorityRank(string? priority)
+        => (priority ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "p1" or "urgent" or "high" => 3,
+            "p2" or "medium" => 2,
+            "p3" or "low" => 1,
+            _ => 0
+        };
 }

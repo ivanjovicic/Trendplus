@@ -20,6 +20,7 @@ public sealed class DecisionPulseService
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
     private readonly DecisionPulseOptions _options;
+    private readonly Api.Services.AnalyticsRefreshStatusService? _refreshStatusService;
 
     public DecisionPulseService(
         ITrendplusDbContext trendDb,
@@ -28,7 +29,8 @@ public sealed class DecisionPulseService
         IInventoryActionDecisionService inventoryActionDecisionService,
         IEmailService emailService,
         IConfiguration configuration,
-        IOptions<DecisionPulseOptions> options)
+        IOptions<DecisionPulseOptions> options,
+        Api.Services.AnalyticsRefreshStatusService? refreshStatusService = null)
     {
         _trendDb = trendDb;
         _analyticsDb = analyticsDb;
@@ -37,6 +39,7 @@ public sealed class DecisionPulseService
         _emailService = emailService;
         _configuration = configuration;
         _options = options.Value;
+        _refreshStatusService = refreshStatusService;
     }
 
     public async Task<DecisionPulseResponseDto> GetFeedAsync(
@@ -49,6 +52,20 @@ public sealed class DecisionPulseService
     {
         string? defaultPeriodBasis = null;
         DateTime? resolvedObservedHorizonUtc = null;
+        var currentness = "latest_known";
+        if (_refreshStatusService is not null)
+        {
+            try
+            {
+                var refreshStatus = await _refreshStatusService.GetStatusAsync(ct);
+                if (string.Equals(refreshStatus.DataFreshnessStatus, "fresh", StringComparison.OrdinalIgnoreCase))
+                    currentness = "current";
+            }
+            catch
+            {
+                currentness = "latest_known";
+            }
+        }
         if (!fromUtc.HasValue && !toUtc.HasValue)
         {
             var defaultPeriod = await ObservedSalesHorizonResolver.ResolveDefaultPeriodAsync(
@@ -60,7 +77,7 @@ public sealed class DecisionPulseService
                     sourceSucceeded: false,
                     failureCategory: "source_horizon_unavailable",
                     failureMessage: "Nema opaženog poslovnog datuma prodaje za izabrani opseg.");
-                return ToResponse(unavailable, null, null, null, [], [], "source_horizon_unavailable", null);
+                return ToResponse(unavailable, null, null, null, [], [], "source_horizon_unavailable", null, currentness);
             }
 
             fromUtc = defaultPeriod.FromUtc;
@@ -90,7 +107,10 @@ public sealed class DecisionPulseService
                 ct,
                 observedHorizonUtc: resolvedObservedHorizonUtc);
 
-            candidates.AddRange((pdc.Rows ?? []).Select(MapProductCandidate));
+            candidates.AddRange((pdc.Rows ?? []).Select(row => MapProductCandidate(
+                row,
+                pdc.Meta?.ObservedPeriodToUtc ?? resolvedObservedHorizonUtc,
+                "product_decision_period")));
             generatedAtUtc = MaxGeneratedAt(generatedAtUtc, pdc.GeneratedAtUtc);
             comparisonUnavailableReasonCode = pdc.Meta?.ComparisonUnavailableReasonCode;
         }
@@ -111,11 +131,16 @@ public sealed class DecisionPulseService
                 storeId,
                 supplierId,
                 search: null,
-                ct);
+                ct,
+                dataScope);
 
             candidates.AddRange(
                 (inventoryWorkflow.Items ?? [])
-                    .Select(item => MapInventoryCandidate(item, inventoryWorkflow.GeneratedAtUtc)));
+                    .Select(item => MapInventoryCandidate(
+                        item,
+                        inventoryWorkflow.GeneratedAtUtc,
+                        inventoryWorkflow.AsOfUtc,
+                        inventoryWorkflow.HorizonBasis ?? "inventory_signal_window")));
             generatedAtUtc = MaxGeneratedAt(generatedAtUtc, inventoryWorkflow.GeneratedAtUtc);
         }
         catch (Exception ex)
@@ -172,11 +197,11 @@ public sealed class DecisionPulseService
                 sourceSucceeded: false,
                 failureCategory: sourceFailures[0],
                 failureMessage: sourceFailureMessages.FirstOrDefault() ?? "Decision Pulse izvori nisu dostupni.");
-            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode);
+            return ToResponse(projection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, dataScope);
         }
 
         var successProjection = DecisionPulseProjector.Project(candidates, sourceSucceeded: true);
-        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode);
+        return ToResponse(successProjection, periodFrom, periodTo, generatedAtUtc, sourceFailures, sourceFailureMessages, defaultPeriodBasis, comparisonUnavailableReasonCode, currentness, storeId, supplierId, dataScope);
     }
 
     public Task<DecisionPulseEmailResultDto> SendEmailAsync(
@@ -237,7 +262,10 @@ public sealed class DecisionPulseService
             feed.Items.Count);
     }
 
-    internal static DecisionPulseCandidate MapProductCandidate(ProductDecisionCenterRowDto row)
+    internal static DecisionPulseCandidate MapProductCandidate(
+        ProductDecisionCenterRowDto row,
+        DateTime? asOfUtc = null,
+        string evidenceBasis = "product_decision_period")
         => new(
             string.IsNullOrWhiteSpace(row.RecommendationId)
                 ? $"product:{row.ProductId}"
@@ -253,11 +281,16 @@ public sealed class DecisionPulseService
             row.InputFreshnessStatus,
             row.RecommendationAllowed,
             DecisionPulseProjector.ProductDeepLink,
-            null);
+            null,
+            asOfUtc,
+            evidenceBasis,
+            row.RecommendationAllowed ? row.ExpectedImpactRsd : null);
 
     internal static DecisionPulseCandidate MapInventoryCandidate(
         InventoryActionSuggestionDto item,
-        DateTime generatedAtUtc)
+        DateTime generatedAtUtc,
+        DateTime? asOfUtc = null,
+        string evidenceBasis = "inventory_signal_window")
         => new(
             $"inventory:{item.SuggestionKey}",
             DecisionPulseProjector.SourceTypeInventory,
@@ -268,15 +301,19 @@ public sealed class DecisionPulseService
             NormalizeInventoryPulseStatus(item.ActionType),
             item.Label,
             item.SignalDataQualityStatus ?? "insufficient_data",
-            "fresh",
+            "unknown",
             item.RecommendationAllowed ?? false,
             DecisionPulseProjector.InventoryDeepLink,
-            item.UpdatedAtUtc ?? generatedAtUtc);
+            item.UpdatedAtUtc ?? generatedAtUtc,
+            asOfUtc,
+            evidenceBasis,
+            null,
+            item.Priority);
 
     internal static IEnumerable<DecisionPulseCandidate> MapSupplierCandidates(SummaryResponse summary)
     {
         var trust = summary.TrustMetadata;
-        var generatedAtUtc = trust?.LastRefreshAtUtc ?? DateTime.UtcNow;
+        var generatedAtUtc = trust?.LastRefreshAtUtc;
 
         return summary.TopGrowSuppliers
             .Concat(summary.TopRiskSuppliers)
@@ -288,7 +325,7 @@ public sealed class DecisionPulseService
     internal static DecisionPulseCandidate MapSupplierCandidate(
         SummarySupplierItem item,
         ScorecardTrustMetadata? trust,
-        DateTime generatedAtUtc)
+        DateTime? generatedAtUtc)
         => new(
             $"supplier:{item.SupplierId}:{item.RecommendationCode}",
             DecisionPulseProjector.SourceTypeSupplier,
@@ -299,10 +336,12 @@ public sealed class DecisionPulseService
             NormalizeSupplierPulseStatus(item.RecommendationCode),
             ResolveSupplierRecommendationLabel(item.RecommendationCode),
             item.DataQualityStatus,
-            "fresh",
+            "unknown",
             trust?.RecommendationAllowed ?? false,
-            DecisionPulseProjector.SupplierDeepLink,
-            trust?.LastRefreshAtUtc ?? generatedAtUtc);
+            $"{DecisionPulseProjector.SupplierDeepLink}&supplierId={item.SupplierId}",
+            trust?.LastRefreshAtUtc ?? generatedAtUtc,
+            trust?.EffectiveTo,
+            trust?.ProvenanceBasis ?? "supplier_scorecard_effective_period");
 
     internal static DecisionPulseItem MapItem(DecisionPulseItemDto dto)
         => new(
@@ -318,7 +357,11 @@ public sealed class DecisionPulseService
             dto.InputFreshnessStatus,
             dto.DeepLink,
             dto.GeneratedAtUtc,
-            dto.TenantScope);
+            dto.TenantScope,
+            dto.AsOfUtc,
+            dto.EvidenceBasis,
+            dto.ExpectedImpactRsd,
+            dto.PriorityEvidence);
 
     private static DecisionPulseResponseDto ToResponse(
         DecisionPulseProjection projection,
@@ -328,7 +371,11 @@ public sealed class DecisionPulseService
         IReadOnlyList<string> sourceFailures,
         IReadOnlyList<string> sourceFailureMessages,
         string? defaultPeriodBasis,
-        string? comparisonUnavailableReasonCode)
+        string? comparisonUnavailableReasonCode,
+        string currentness = "latest_known",
+        int? storeId = null,
+        int? supplierId = null,
+        string? dataScope = null)
     {
         var items = projection.Items.Select(item => new DecisionPulseItemDto(
             item.Id,
@@ -341,9 +388,13 @@ public sealed class DecisionPulseService
             item.RecommendationLabel,
             item.DataQualityStatus,
             item.InputFreshnessStatus,
-            item.DeepLink,
+            AddContext(item.DeepLink, storeId, supplierId, dataScope),
             item.GeneratedAtUtc,
-            item.TenantScope)).ToArray();
+            item.TenantScope,
+            item.AsOfUtc,
+            item.EvidenceBasis,
+            item.ExpectedImpactRsd,
+            item.PriorityEvidence)).ToArray();
 
         var meta = BuildResponseMeta(projection, generatedAtUtc, sourceFailures, sourceFailureMessages);
         meta.DefaultPeriodBasis = defaultPeriodBasis;
@@ -356,7 +407,18 @@ public sealed class DecisionPulseService
             projection.TenantScope,
             projection.SuppressedCount,
             items,
-            meta);
+            meta,
+            currentness,
+            projection.Items.Select(item => item.AsOfUtc).Where(value => value.HasValue).Max());
+    }
+
+    private static string AddContext(string path, int? storeId, int? supplierId, string? dataScope)
+    {
+        var query = new List<string>();
+        if (storeId.HasValue && !path.Contains("storeId=", StringComparison.OrdinalIgnoreCase)) query.Add($"storeId={storeId.Value}");
+        if (supplierId.HasValue && !path.Contains("supplierId=", StringComparison.OrdinalIgnoreCase)) query.Add($"supplierId={supplierId.Value}");
+        if (!string.IsNullOrWhiteSpace(dataScope) && !path.Contains("dataScope=", StringComparison.OrdinalIgnoreCase)) query.Add($"dataScope={Uri.EscapeDataString(dataScope)}");
+        return query.Count == 0 ? path : $"{path}{(path.Contains('?') ? '&' : '?')}{string.Join('&', query)}";
     }
 
     private static string? FormatValidationError(Dictionary<string, string[]>? validationError)
@@ -394,7 +456,7 @@ public sealed class DecisionPulseService
         if (projection.Items.Count == 0)
         {
             var message = projection.SuppressedCount > 0
-                ? $"Nema actionable Pulse stavki posle potiskivanja {projection.SuppressedCount} kandidata zbog stale/empty/insufficient dokaza."
+                ? $"Nema stavki za prikaz posle izostavljanja {projection.SuppressedCount} kandidata zbog nepouzdanih dokaza ili ograničenja pregleda na 10."
                 : "Nema Decision Pulse izuzetaka za period.";
 
             if (sourceFailures.Count == 0)
@@ -419,8 +481,12 @@ public sealed class DecisionPulseService
             return meta;
         }
 
+        var dataQualityStatus = projection.Items.Any(item =>
+            string.Equals(item.DataQualityStatus, "warning", StringComparison.OrdinalIgnoreCase))
+            ? "warning"
+            : "good";
         return DecisionPulseResponseMetaFactory.Success(
-            "good",
+            dataQualityStatus,
             generatedAtUtc,
             isPartial: projection.SuppressedCount > 0 || sourceFailures.Count > 0,
             warningCode: projection.SuppressedCount > 0
@@ -429,7 +495,7 @@ public sealed class DecisionPulseService
                     ? "PULSE_PARTIAL"
                     : null,
             warningMessage: projection.SuppressedCount > 0
-                ? $"Potisnuto {projection.SuppressedCount} stavki zbog stale/empty/insufficient dokaza."
+                ? $"Izostavljeno {projection.SuppressedCount} kandidata zbog nepouzdanih dokaza ili ograničenja pregleda na 10."
                 : sourceFailures.Count > 0
                     ? $"Neki Decision Pulse izvori nisu dostupni ({string.Join(", ", sourceFailures)})."
                     : null);

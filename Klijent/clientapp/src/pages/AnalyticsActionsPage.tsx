@@ -50,6 +50,7 @@ const STATUS_LABELS: Record<AnalyticsActionStatus, string> = {
   deferred: "Odloženo",
   rejected: "Odbijeno",
   done: "Završeno",
+  ignored: "Ignorisano",
 };
 
 const STATUS_CSS: Record<AnalyticsActionStatus, string> = {
@@ -58,12 +59,14 @@ const STATUS_CSS: Record<AnalyticsActionStatus, string> = {
   deferred: "badge-status badge-deferred",
   rejected: "badge-status badge-rejected",
   done: "badge-status badge-done",
+  ignored: "badge-status badge-rejected",
 };
 
 const PRIORITY_CSS: Record<AnalyticsActionPriority, string> = {
   P1: "badge-priority p1",
   P2: "badge-priority p2",
   P3: "badge-priority p3",
+  UNRANKED: "badge-priority",
 };
 
 const DATA_QUALITY_LABELS: Record<AnalyticsActionDataQualityStatus, string> = {
@@ -953,6 +956,10 @@ export default function AnalyticsActionsPage() {
             <span className="kpi-value">{counts.rejected}</span>
             <span className="kpi-label">Odbijeno</span>
           </div>
+          <div className="aaq-kpi-card kpi-rejected">
+            <span className="kpi-value">{counts.ignored ?? "–"}</span>
+            <span className="kpi-label">Ignorisano</span>
+          </div>
           <div className="aaq-kpi-card kpi-p1">
             <span className="kpi-value kpi-p1-val">{counts.p1Open}</span>
             <span className="kpi-label">P1 otvoreno</span>
@@ -1238,6 +1245,7 @@ export default function AnalyticsActionsPage() {
           <option value="P1">P1</option>
           <option value="P2">P2</option>
           <option value="P3">P3</option>
+          <option value="UNRANKED">Nerangirano</option>
         </select>
         <select
           value={filters.sourceType ?? ""}
@@ -1341,7 +1349,7 @@ export default function AnalyticsActionsPage() {
                     <Fragment key={item.id}>
                       <tr className={`aaq-row status-${item.status}`}>
                         <td>
-                          <span className={PRIORITY_CSS[item.priority]}>{item.priority}</span>
+                          <span className={PRIORITY_CSS[item.priority]}>{item.priority === "UNRANKED" ? "Nerangirano" : item.priority}</span>
                         </td>
                         <td>
                           <span className="source-label">{SOURCE_LABELS[item.sourceType] ?? item.sourceType}</span>

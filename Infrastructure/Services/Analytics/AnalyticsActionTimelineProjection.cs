@@ -11,6 +11,7 @@ public static class AnalyticsActionTimelineProjection
     private const string EventActionAccepted = "action_accepted";
     private const string EventActionRejected = "action_rejected";
     private const string EventActionExecuted = "action_executed";
+    private const string EventActionIgnored = "action_ignored";
     private const string EventOutcomeMeasured = "outcome_measured";
     private const string EventOutcomeNotMeasured = "outcome_not_measured";
 
@@ -71,6 +72,7 @@ public static class AnalyticsActionTimelineProjection
         var acceptedNotes = new List<AnalyticsActionNote>();
         var rejectedNotes = new List<AnalyticsActionNote>();
         var executedNotes = new List<AnalyticsActionNote>();
+        var ignoredNotes = new List<AnalyticsActionNote>();
 
         foreach (var note in orderedNotes)
         {
@@ -90,6 +92,10 @@ public static class AnalyticsActionTimelineProjection
             else if (string.Equals(note.StatusTo, AnalyticsActionConstants.Statuses.Done, StringComparison.OrdinalIgnoreCase))
             {
                 executedNotes.Add(note);
+            }
+            else if (string.Equals(note.StatusTo, AnalyticsActionConstants.Statuses.Ignored, StringComparison.OrdinalIgnoreCase))
+            {
+                ignoredNotes.Add(note);
             }
         }
 
@@ -111,6 +117,11 @@ public static class AnalyticsActionTimelineProjection
             {
                 events.Add(CreateWorkflowEvent(EventActionRejected, note.CreatedAtUtc, note, sourceRecommendationId, correlationId, correlationIdDerivation));
             }
+        }
+
+        foreach (var note in ignoredNotes)
+        {
+            events.Add(CreateWorkflowEvent(EventActionIgnored, note.CreatedAtUtc, note, sourceRecommendationId, correlationId, correlationIdDerivation));
         }
 
         if (executedNotes.Count > 0)
@@ -305,6 +316,11 @@ public static class AnalyticsActionTimelineProjection
         if (string.Equals(workflowStatus, AnalyticsActionConstants.Statuses.Rejected, StringComparison.OrdinalIgnoreCase))
         {
             return AnalyticsActionConstants.Statuses.Rejected;
+        }
+
+        if (string.Equals(workflowStatus, AnalyticsActionConstants.Statuses.Ignored, StringComparison.OrdinalIgnoreCase))
+        {
+            return AnalyticsActionConstants.Statuses.Ignored;
         }
 
         return AnalyticsActionConstants.OutcomeStatuses.Pending;

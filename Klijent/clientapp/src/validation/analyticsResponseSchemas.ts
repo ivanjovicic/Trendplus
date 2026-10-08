@@ -1580,6 +1580,7 @@ export const analyticsActionCountsResponseSchema = z.object({
   deferred: nonNegativeInteger,
   rejected: nonNegativeInteger,
   done: nonNegativeInteger,
+  ignored: nonNegativeInteger.optional(),
   p1Open: nonNegativeInteger,
   ...tier1MetaEnvelope,
 }).passthrough();

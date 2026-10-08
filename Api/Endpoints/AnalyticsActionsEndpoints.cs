@@ -110,7 +110,7 @@ public static class AnalyticsActionsEndpoints
                 return Results.BadRequest($"dataQualityStatus must be one of: {string.Join(", ", AnalyticsActionConstants.DataQualityStatuses.AllValues)}");
 
             var counts = await svc.GetCountsAsync(createdFrom, createdTo, sourceType, priority, normalizedDataQualityStatus, ct);
-            var totalCount = counts.New + counts.Accepted + counts.Deferred + counts.Rejected + counts.Done;
+            var totalCount = counts.New + counts.Accepted + counts.Deferred + counts.Rejected + counts.Done + counts.Ignored;
             return Results.Ok(new
             {
                 counts.New,
@@ -118,6 +118,7 @@ public static class AnalyticsActionsEndpoints
                 counts.Deferred,
                 counts.Rejected,
                 counts.Done,
+                counts.Ignored,
                 counts.P1Open,
                 counts.ExcludedFixtureCount,
                 meta = BuildActionsMeta(

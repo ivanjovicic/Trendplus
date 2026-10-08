@@ -63,7 +63,11 @@ public sealed record DecisionPulseItemDto(
     string InputFreshnessStatus,
     string DeepLink,
     DateTime? GeneratedAtUtc,
-    string TenantScope);
+    string TenantScope,
+    DateTime? AsOfUtc = null,
+    string EvidenceBasis = "source_latest_known",
+    decimal? ExpectedImpactRsd = null,
+    string? PriorityEvidence = null);
 
 public sealed class DecisionPulseResponseMetaDto
 {
@@ -141,7 +145,9 @@ public sealed record DecisionPulseResponseDto(
     string TenantScope,
     int SuppressedCount,
     IReadOnlyList<DecisionPulseItemDto> Items,
-    DecisionPulseResponseMetaDto Meta);
+    DecisionPulseResponseMetaDto Meta,
+    string Currentness = "latest_known",
+    DateTime? AsOfUtc = null);
 
 public sealed record DecisionPulseEmailResultDto(
     bool Sent,

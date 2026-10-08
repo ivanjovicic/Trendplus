@@ -1906,9 +1906,10 @@ export type AnalyticsActionStatus =
   | "accepted"
   | "deferred"
   | "rejected"
-  | "done";
+  | "done"
+  | "ignored";
 
-export type AnalyticsActionPriority = "P1" | "P2" | "P3";
+export type AnalyticsActionPriority = "P1" | "P2" | "P3" | "UNRANKED";
 
 export type AnalyticsActionDataQualityStatus =
   | "good"
@@ -2083,6 +2084,7 @@ export interface AnalyticsActionCounts {
   deferred: number;
   rejected: number;
   done: number;
+  ignored?: number;
   p1Open: number;
   meta?: AnalyticsResponseMeta | null;
 }

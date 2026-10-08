@@ -1,4 +1,5 @@
 using Application.Analytics.DecisionPulse;
+using Application.Analytics;
 using Api.Services.Analytics;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
@@ -8,6 +9,14 @@ namespace Api.Tests;
 
 public sealed class DecisionPulseProjectorTests
 {
+    [Fact]
+    public void DispositionAndUnrankedLedgerValues_AreSupportedWithoutAddingImpactEvidence()
+    {
+        Assert.True(AnalyticsActionConstants.IsValidPriority(AnalyticsActionConstants.Priorities.Unranked));
+        Assert.True(AnalyticsActionConstants.IsValidStatus(AnalyticsActionConstants.Statuses.Ignored));
+        Assert.Contains(AnalyticsActionConstants.Statuses.Ignored, AnalyticsActionConstants.Statuses.ClosedStatuses);
+    }
+
     [Fact]
     public void Project_IncludesFreshActionableProductDecision_WithWhyAndDeepLink()
     {
@@ -147,7 +156,7 @@ public sealed class DecisionPulseProjectorTests
 
         Assert.Single(projection.Items);
         Assert.Equal("supplier", projection.Items[0].SourceType);
-        Assert.Equal(DecisionPulseProjector.SupplierDeepLink, projection.Items[0].DeepLink);
+        Assert.Equal($"{DecisionPulseProjector.SupplierDeepLink}&supplierId=12", projection.Items[0].DeepLink);
         Assert.Equal("BOOST", projection.Items[0].RecommendationStatus);
         Assert.Contains("širenje", projection.Items[0].WhySummary, StringComparison.OrdinalIgnoreCase);
     }
@@ -179,7 +188,7 @@ public sealed class DecisionPulseProjectorTests
     }
 
     [Fact]
-    public void Project_SuppressesStaleInsufficientBlockedAndEmptyWhy()
+    public void Project_KeepsHistoricalStaleDecisionButSuppressesBlockedAndUntrustworthyItems()
     {
         var projection = DecisionPulseProjector.Project(
         [
@@ -192,8 +201,41 @@ public sealed class DecisionPulseProjectorTests
         sourceSucceeded: true);
 
         Assert.True(projection.SourceSucceeded);
+        Assert.Single(projection.Items);
+        Assert.Equal("stale", projection.Items[0].InputFreshnessStatus);
+        Assert.Equal(4, projection.SuppressedCount);
+    }
+
+    [Fact]
+    public void Project_RanksOnlyCertifiedPriorityAndExpectedImpact_AndLimitsDigestToTen()
+    {
+        var candidates = Enumerable.Range(1, 12)
+            .Select(index => Candidate("REPLENISH", "Evidence-backed reason", "fresh", true, "good") with
+            {
+                Id = $"rec-{index}",
+                ExpectedImpactRsd = index == 12 ? null : index * 100m,
+                PriorityEvidence = index == 11 ? "P1" : null,
+                AsOfUtc = DateTime.UtcNow.AddDays(-index)
+            });
+
+        var projection = DecisionPulseProjector.Project(candidates, sourceSucceeded: true);
+
+        Assert.Equal(10, projection.Items.Count);
+        Assert.Equal(2, projection.SuppressedCount);
+        Assert.Equal("rec-11", projection.Items[0].Id);
+        Assert.Equal(1000m, projection.Items[1].ExpectedImpactRsd);
+        Assert.DoesNotContain(projection.Items, item => item.ExpectedImpactRsd == 0m);
+    }
+
+    [Fact]
+    public void Project_SuppressesUnknownDataQualityInsteadOfTreatingItAsGood()
+    {
+        var projection = DecisionPulseProjector.Project(
+            [Candidate("REPLENISH", "Evidence-backed reason", "unknown", true, "unknown")],
+            sourceSucceeded: true);
+
         Assert.Empty(projection.Items);
-        Assert.Equal(5, projection.SuppressedCount);
+        Assert.Equal(1, projection.SuppressedCount);
     }
 
     [Fact]

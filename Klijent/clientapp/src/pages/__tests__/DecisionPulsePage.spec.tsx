@@ -39,6 +39,56 @@ describe("DecisionPulsePage", () => {
     expect(screen.queryByText(/0 RSD/i)).not.toBeInTheDocument();
   });
 
+  it("labels a stale digest by its observed horizon and keeps unknown impact unavailable", async () => {
+    vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: null,
+      periodToUtc: null,
+      tenantScope: "n/a_dedicated",
+      suppressedCount: 0,
+      currentness: "latest_known",
+      asOfUtc: "2026-08-05T00:00:00Z",
+      items: [{
+        id: "product:1",
+        sourceType: "product",
+        sourceKey: "1",
+        title: "Proveri artikl",
+        whySummary: "Poslednji pouzdan signal traži proveru.",
+        reasonCodes: [],
+        recommendationStatus: "WATCH",
+        recommendationLabel: "Proveri",
+        dataQualityStatus: "good",
+        inputFreshnessStatus: "stale",
+        deepLink: "/analytics/products?storeId=4&dataScope=imported",
+        generatedAtUtc: "2026-08-20T12:00:00Z",
+        tenantScope: "n/a_dedicated",
+        asOfUtc: "2026-08-05T00:00:00Z",
+        evidenceBasis: "product_decision_period",
+        expectedImpactRsd: null,
+        priorityEvidence: null,
+      }],
+      meta: { success: true },
+    });
+    vi.spyOn(decisionPulseApi, "getDecisionPulseDispositions").mockResolvedValue({});
+    const saveDisposition = vi.spyOn(decisionPulseApi, "recordDecisionPulseDisposition").mockResolvedValue();
+
+    render(<MemoryRouter initialEntries={["/analytics/decision-pulse?storeId=4&dataScope=imported"]}><DecisionPulsePage /></MemoryRouter>);
+
+    expect(await screen.findByTestId("decision-pulse-currentness")).toHaveTextContent("Pregled odluka prema stanju do");
+    expect(screen.getByText("Očekivani uticaj: nije dostupan")).toBeInTheDocument();
+    expect(screen.getByText("Osnova: Period Product Decision signala")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otvori odluku" })).toHaveAttribute(
+      "href",
+      "/analytics/products?storeId=4&dataScope=imported",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Prihvaćeno" }));
+    await waitFor(() => expect(saveDisposition).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "product:1", expectedImpactRsd: null }),
+      "accepted",
+      expect.objectContaining({ storeId: 4, dataScope: "imported" }),
+    ));
+  });
+
   it("does not render raw metadata when the source fails", async () => {
     vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
       generatedAtUtc: "2026-08-20T12:00:00Z",

@@ -130,6 +130,11 @@ public static class RecommendationLifecycleSemantics
             return LifecycleStates.Rejected;
         }
 
+        if (string.Equals(status, AnalyticsActionConstants.Statuses.Ignored, StringComparison.OrdinalIgnoreCase))
+        {
+            return LifecycleStates.Ignored;
+        }
+
         if (string.Equals(status, AnalyticsActionConstants.Statuses.Accepted, StringComparison.OrdinalIgnoreCase)
             || string.Equals(status, AnalyticsActionConstants.Statuses.Deferred, StringComparison.OrdinalIgnoreCase))
         {

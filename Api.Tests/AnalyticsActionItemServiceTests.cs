@@ -15,6 +15,7 @@ public class AnalyticsActionItemServiceTests
     [Theory]
     [InlineData(AnalyticsActionConstants.Statuses.Rejected)]
     [InlineData(AnalyticsActionConstants.Statuses.Done)]
+    [InlineData(AnalyticsActionConstants.Statuses.Ignored)]
     public async Task UpdateStatusAsync_ClosedStatuses_SetResolvedAtUtc(string closedStatus)
     {
         await using var db = CreateDbContext(nameof(UpdateStatusAsync_ClosedStatuses_SetResolvedAtUtc) + closedStatus);
@@ -25,6 +26,23 @@ public class AnalyticsActionItemServiceTests
 
         Assert.NotNull(updated);
         Assert.NotNull(updated!.ResolvedAtUtc);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_PreservesUnrankedDispositionWithoutInventingImpact()
+    {
+        await using var db = CreateDbContext(nameof(UpsertAsync_PreservesUnrankedDispositionWithoutInventingImpact));
+        var service = CreateService(db);
+        var request = CreateRequest("product", "digest-product-1") with
+        {
+            Priority = AnalyticsActionConstants.Priorities.Unranked,
+            ExpectedImpactRsd = null,
+        };
+
+        var created = await service.UpsertAsync(request, userId: "owner");
+
+        Assert.Equal(AnalyticsActionConstants.Priorities.Unranked, created.Priority);
+        Assert.Null(created.ExpectedImpactRsd);
     }
 
     [Theory]
