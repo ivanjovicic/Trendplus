@@ -479,7 +479,7 @@ Priority: P1
 Type: frontend-report/tests
 Feature family: export-trust-metadata
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ46-codex.lock.md`
 Commit suggestion: `fix(analytics): preserve trust metadata in exports`
 
@@ -525,6 +525,24 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 - No RQ46 lock, matching local/remote branch, or open PR exists. Open PR #112 is unrelated SQL; #102/#103 are docs-only P-UI-52. RQ50 is WAITING behind higher-priority data fixes and shares the Insight Studio page, so remains serialized behind this claim.
 - Promoted `WAITING -> READY -> IN_PROGRESS` and claimed `codex/rq46-export-trust-metadata`; local lock `.ai/task-locks/RQ46-codex.lock.md`.
 - Run log: `.ai/runs/2026-10-08-RQ46-evidence.md`.
+
+
+### Completion note
+
+- Date: 2026-10-08
+- Status: DONE
+- Completion: Insight Studio exports now include the available supplier/category cost-coverage and source-basis fields, lifecycle baseline, aging evidence, reorder profit-coverage fields, and API-provided ABC/lifecycle/Smart Reorder trust metadata. Every Insight Studio export carries its export origin; page date/tab filters remain attached through the existing toolbar path.
+- Changed files: `Klijent/clientapp/src/pages/InsightStudioPage.tsx`; `Klijent/clientapp/src/pages/__tests__/InsightStudioPage.spec.tsx`.
+- Checks: focused Insight Studio page spec 5/5; `npm run typecheck`; `git diff --check`.
+- Checks not run: production build and manual document download/visual inspection were not required for the focused column/metadata contract; current-main Actions run is recorded below.
+- Run log: `.ai/runs/2026-10-08-RQ46-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `853c37f3c5790ee1715d7d6749cf26205891a872`
+- Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA
+- Missed: no generated PDF/XLSX file was downloaded for visual inspection.
+- Residual risk: current-main Analytics Quality Gates run `37825764812` was `in_progress` at inspection; it is residual risk, not a delivery gate.
+- Post-close routing: full 13-file RQ/SQL scan at post-delivery `origin/main` `853c37f3c5790ee1715d7d6749cf26205891a872`; RQ50 was dependency-complete and collision-safe, then promoted and claimed.
 
 ---
 
@@ -689,13 +707,13 @@ Owner completion 2026-10-05: RQ49 acceptance is satisfied by the RQ591 reorder s
 
 ## RQ50 - Chart top-N semantics
 
-Status: WAITING
-Ready after: higher-priority data fixes
+Status: IN_PROGRESS
+Ready after: RQ46 DONE and full post-close RQ recovery; explicit owner claim
 Priority: P2
 Type: frontend-ux/tests
 Feature family: chart-topn-semantics
 Parallel-safe: yes
-Owner: unassigned
+Owner: Codex
 Local lock: `.ai/task-locks/RQ50-<agent>.lock.md`
 Commit suggestion: `fix(analytics): label chart top n semantics`
 
@@ -727,3 +745,5 @@ Several charts show top 8/top N rows while adjacent tables may contain all rows.
 ### Acceptance
 
 - Top-N charts cannot be mistaken for full totals.
+
+Owner claim 2026-10-08 after RQ46 closure: refreshed post-delivery `origin/main` at `853c37f3c5790ee1715d7d6749cf26205891a872` and scanned the complete 13-file active RQ/SQL set. The former broad “higher-priority data fixes” gate was rechecked: current P0/P1 candidates remain external-evidence/owner gated or have no newly reproduced bounded repository defect; RQ319/RQ320/RQ46 are DONE. No matching RQ50 lock or branch was found and open PR #119 is on the unrelated Decision Pulse store/supplier filter path. RQ50 moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ50-codex.lock.md`.
