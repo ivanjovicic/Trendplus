@@ -72,6 +72,12 @@ jobs:
         working-directory: Klijent/clientapp
         run: npm run build
 
+      - name: Check bundle budget and route-lazy charts
+        working-directory: Klijent/clientapp
+        run: |
+          npm run check:bundle-budget -- --self-test
+          npm run check:bundle-budget
+
   pos-ui-supply-chain:
     name: POS UI dependency audit and build
     runs-on: ubuntu-latest
