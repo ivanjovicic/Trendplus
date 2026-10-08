@@ -469,12 +469,12 @@ None. This is a test-quality repair with repository-local source of truth and no
 - Checks run: focused direct-engine suite 16/16; Analytics Tests & Data Integrity run `37809103182` passed on implementation SHA `eb37682fad6d72eb9d4576048305202bd9bdc53d`, including the full backend test step; six agent/queue/planning governance checks and `git diff --check` passed.
 - Checks not run: local unfiltered backend suite (the current-main Actions workflow ran and passed it).
 - Run log: `.ai/runs/2026-10-08-BCI16-evidence.md`
-- Evidence state: pending post-close recovery synchronization.
+- Evidence state: synchronized.
 - Delivery mode: direct-main.
 - Main commit SHA: `eb37682fad6d72eb9d4576048305202bd9bdc53d`.
 - Main verification: freshly fetched `origin/main` contains implementation SHA `eb37682fad6d72eb9d4576048305202bd9bdc53d`.
 - Missed: local unfiltered backend suite; current-main Actions ran the full backend suite successfully.
-- Follow-up: pending post-close recovery scan.
+- Follow-up: RQ597 claimed IN_PROGRESS after post-close collision and dependency checks.
 - Residual risk: none known; no production code or test exclusions changed.
-- Post-close routing: pending fresh recovery after this terminal transition reaches `main`.
+- Post-close routing: fresh `origin/main` `5c570b3a082742c17ebc935bb8f5cd6c2d6c9e22` scan found no BCI16 dependents and claimed RQ597 as the sole READY collision-safe successor; details are in the run log.
 - Prompt defect / scope repair: none.

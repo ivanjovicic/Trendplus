@@ -605,15 +605,17 @@ npm run check:analytics-guardrails
 
 ## RQ597 - Compare Color API buckets with the independent raw-fact oracle
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend-tests/integration
 Feature family: color-bucket-independent-oracle
 Parallel-safe: yes (test-only; owns a new test file and does not change analytics runtime semantics)
 Owner: Analytics Reliability
 Ready after: current-main adversarial audit residual confirmed; shared fixture, endpoint and independent oracle exist
-Local lock: `.ai/task-locks/RQ597-<agent>.lock.md`
+Local lock: `.ai/task-locks/RQ597-codex.lock.md`
 Commit suggestion: `test(analytics): compare color buckets with raw-fact oracle`
+
+Claimed 2026-10-08 from refreshed `origin/main` `5c570b3a082742c17ebc935bb8f5cd6c2d6c9e22`. The task is dependency-complete, is the only current RQ READY prompt, and has no matching branch, lock or open PR; its new test-file path is disjoint from BCI16 and RQ482. Local lock: `.ai/task-locks/RQ597-codex.lock.md`.
 
 ### Problem
 
