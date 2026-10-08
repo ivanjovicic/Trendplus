@@ -12,6 +12,7 @@ import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsMetaMessage } from "../utils/analyticsResponseMeta";
 import { fmtRsd, formatDate, formatDateTime } from "../utils/analyticsFormatters";
 import { getDataScope } from "../utils/dataScope";
+import { parseEntityIdParam } from "../validation/entityId";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
@@ -103,6 +104,13 @@ function evidenceBasisLabel(value: string | null | undefined): string {
   }
 }
 
+function parsePulseFilterId(params: URLSearchParams, key: "storeId" | "supplierId"): number | null | undefined {
+  const values = params.getAll(key);
+  if (values.length === 0) return undefined;
+  // Access may use a real negative Int32 ID. Reuse the canonical entity identity parser.
+  return values.length === 1 ? parseEntityIdParam(values[0]) : null;
+}
+
 export default function DecisionPulsePage() {
   const [searchParams] = useSearchParams();
   const routeContext = searchParams.toString();
@@ -124,15 +132,20 @@ export default function DecisionPulsePage() {
     const params = new URLSearchParams(routeContext);
     const fromDate = params.get("fromDate") ?? undefined;
     const toDate = params.get("toDate") ?? undefined;
-    const storeId = Number(params.get("storeId"));
-    const supplierId = Number(params.get("supplierId"));
+    const storeId = parsePulseFilterId(params, "storeId");
+    const supplierId = parsePulseFilterId(params, "supplierId");
     setFeed(null);
     setDispositions({});
+    if (storeId === null || supplierId === null) {
+      setLoading(false);
+      setError("Filter prodavnice ili dobavljača nije validan. Pregled nije proširen na sve podatke.");
+      return;
+    }
     getDecisionPulse({
       ...(fromDate ? { fromDate } : {}),
       ...(toDate ? { toDate } : {}),
-      ...(Number.isInteger(storeId) && storeId > 0 ? { storeId } : {}),
-      ...(Number.isInteger(supplierId) && supplierId > 0 ? { supplierId } : {}),
+      ...(storeId !== undefined ? { storeId } : {}),
+      ...(supplierId !== undefined ? { supplierId } : {}),
       dataScope: params.get("dataScope") ?? getDataScope(),
     })
       .then((response) => {
@@ -178,13 +191,14 @@ export default function DecisionPulsePage() {
       const params = new URLSearchParams(routeContext);
       const fromDate = params.get("fromDate") ?? undefined;
       const toDate = params.get("toDate") ?? undefined;
-      const storeId = Number(params.get("storeId"));
-      const supplierId = Number(params.get("supplierId"));
+      const storeId = parsePulseFilterId(params, "storeId");
+      const supplierId = parsePulseFilterId(params, "supplierId");
+      if (storeId === null || supplierId === null) throw new Error("Filter prodavnice ili dobavljača nije validan.");
       await recordDecisionPulseDisposition(item, disposition, {
         ...(fromDate ? { fromDate } : {}),
         ...(toDate ? { toDate } : {}),
-        ...(Number.isInteger(storeId) && storeId > 0 ? { storeId } : {}),
-        ...(Number.isInteger(supplierId) && supplierId > 0 ? { supplierId } : {}),
+        ...(storeId !== undefined ? { storeId } : {}),
+        ...(supplierId !== undefined ? { supplierId } : {}),
         dataScope: params.get("dataScope") ?? getDataScope(),
       });
       setDispositions((current) => ({ ...current, [item.id]: disposition }));
