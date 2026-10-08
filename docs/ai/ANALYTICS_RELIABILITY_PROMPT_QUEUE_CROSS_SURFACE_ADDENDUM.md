@@ -30,8 +30,8 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ125 | DONE | stats-trust-meta-freshness | Add backend-owned trust/freshness metadata to supplier/shoe/color stats pages |
 | RQ126 | DONE | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
 | RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
-| RQ130 | WAITING | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
-| RQ131 | WAITING | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
+| RQ130 | OBSOLETE | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
+| RQ131 | IN_PROGRESS | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
 
 ---
 
@@ -1183,21 +1183,25 @@ Vendor pre/post recommendation inputs still compute an average known-margin base
 
 - Status: OBSOLETE; the exact fake-zero path described by this prompt is no longer present on current main. `AllEndpoints.cs` now uses `VendorSalesNivelacijaPriceChangeEffectPolicy.Evaluate`, which does not pass an average-margin benchmark into the old recommendation engine, and the emitted vendor effect always sets `RecommendationAllowed: false`.
 - The owner already limits vendor pre/post outputs to descriptive, non-actionable effects. Broad comparability semantics remain under `RQ140` and raw SQL remains under `Q83`.
-- Run log: `.ai/runs/2026-10-08-RQ130-evidence.md`; Evidence state: pending post-close recovery.
+- Run log: `.ai/runs/2026-10-08-RQ130-evidence.md`; Evidence state: synchronized.
 
 ---
 
 ## RQ131 - Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces
 
-Status: WAITING
+Status: IN_PROGRESS
 Ready after: `RQ130` is `DONE` or `OBSOLETE` with the documented non-actionable effect contract; the owner may explicitly promote the remaining Q70 semantic-parity lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: vendor-nivelacija-zero-baseline-semantic-parity
 Parallel-safe: no
-Owner: unassigned
-Local lock: `.ai/task-locks/RQ131-<agent>.lock.md`
+Owner: Analytics Reliability / Codex
+Local lock: `.ai/task-locks/RQ131-codex.lock.md`
 Commit suggestion: `fix(analytics): label vendor zero-baseline semantics`
+
+### Owner promotion and claim 2026-10-08
+
+Following RQ55 terminal delivery and RQ130 stale-prompt reconciliation, this remaining P1 repository-local semantic-parity slice is explicitly owner-promoted per the user's request to claim and execute the next safe prompt. Q70, RQ62 and RQ63 are DONE. Collision review found no RQ131/RQ140 branch or open PR and no matching local lock; the RQ140 split keeps its broad effect/comparability acceptance separate. Local lock: `.ai/task-locks/RQ131-codex.lock.md`.
 
 ### Problem
 
