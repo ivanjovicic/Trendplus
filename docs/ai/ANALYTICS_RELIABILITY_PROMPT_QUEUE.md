@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: no READY prompt; `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
+Current RQ routing: no READY prompt; `RQ140` is PARTIAL after repository-local pre/post route/response/client proof; exact-production freshness/database evidence and remaining all-route export/report certification stay open. STAB16 owns production access. `RQ597` is DONE (Color bucket-level endpoint/oracle regression); RQ482 is DONE. RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585 and RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE. RQ597 is registered from residual 9 in `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` and is detailed in the Test Hardening addendum.
 Product value plan refinement 2026-10-08: RQ593, RQ594, RQ595, RQ596, RQ555, RQ556 and RQ585 are DONE. RQ481 still needs the Product Owner's period/scope decision; RQ592 remains freshness/live-PrePost gated; STAB16 remains operational P0 without serializing repository-local work.
 Next-wave audit registration 2026-10-04: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` (base `origin/main` `f1437ed8`, live runtime `02f99158`) built a coverage map before registering: two new repository-local gaps were registered at that pass: READY `RQ587` (P1, expose the effective startup database-initialization outcome without treating readiness as schema certification) and READY `RQ588` (P3, EF migration discovery guard for four attribute-less migration classes). The live ready+missing-object combination is strong evidence that the effective runtime did not follow the expected strict initialization path, but it does **not** by itself prove which setting/path is responsible: AutoMigrate disabled, FailFast disabled with initializer errors allowed to complete, a different effective runtime/connection/config path, or post-readiness schema drift remain distinguishable hypotheses until provider config/startup logs are inspected. Repairs: `RQ479` gained its missing `Ready after`/paths, was narrowed to a repository-local read guard and promoted WAITING -> READY (P1 -> P2); `RQ586` is P1 -> P3 because all live rows use the `legacy_access_wall_clock` basis where the time zone is intentionally not applied. Addenda: RQ545, RQ565, RQ573, RQ578, STAB16, P-UI-49. Primary READY remains RQ569.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` added READY `RQ586` (repo-local `DailySales:TimeZoneId` config root cause) and UX addenda to RQ319, RQ320, RQ482, RQ570, RQ572, RQ573, RQ576, RQ578, RQ582 and RQ583 without status or scope change. Presentation work is registered as P-UI-47-P-UI-53 in `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`; target design system `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`. Primary READY remains RQ569.
@@ -1712,7 +1712,7 @@ Historical `DONE` entries remain as audit evidence and are not claimable. Only `
 | RQ137 | PARTIAL | analytics-period-lineage-parity | Align requested, effective and observed period truth across dashboard, pilot readiness and supplier reports |
 | RQ138 | OBSOLETE | trend-model-evaluation-contract | Excluded: standalone Trend Models evaluation is outside the current analytics-surface scope |
 | RQ139 | PARTIAL | analytics-denominator-null-zero-contract | Core trend/Data Quality false-zero fixes are delivered; derived intelligence, full pre/post contract and cross-surface parity still require follow-up |
-| RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local comparability and recommendation gates are hardened; live database/refresh/browser proof remains with STAB16 |
+| RQ140 | PARTIAL | pre-post-nivelacija-causal-comparability | Local contract code and focused multi-surface proof are synchronized; remaining complete export/report matrix and exact-production freshness/database evidence remain open (STAB16 owns production access) |
 | RQ141 | DONE | analytics-lineage-scope-cache-refresh-parity | Map every analytics route to period, scope, source, schema, cache and refresh truth |
 | RQ142 | OBSOLETE | forecast-trend-measured-evaluation | Excluded: standalone forecast/Trend Models evaluation is deferred |
 | RQ143 | DONE | backend-decision-ranking-ownership | Remove frontend decision/ranking invention and make actionability backend-owned end to end |
@@ -5559,6 +5559,22 @@ Pre/post nivelacija screens expose revenue, units, margin and impact signals, bu
 
 - Date: 2026-09-05
 - The prompt was already locally executed and has a synchronized `PARTIAL` completion note above. The stale per-prompt `READY` marker was corrected to `PARTIAL`; no later `WAITING` prompt was promoted because `RQ139` and `STAB16` gates are not complete.
+
+### 2026-10-08 idle-recovery scope repair and claim
+
+- The historical status remains `PARTIAL` for the full production acceptance. Current-main review confirms the repository-local split semantics are already implemented, but the named route/page/export/report parity proof is still a repository-local acceptance item and can run without production access.
+- Re-entered `RQ140` as the same-owner local proof slice after `Q83` completion. No current lock, branch or open PR owns its pre/post paths. `RQ139` remains PARTIAL, but its delivered null/unknown vocabulary is already consumed by RQ140 and its broad remaining route inventory is not a start gate for this slice.
+- Scope repair preserves the full acceptance: this run may close only as `PARTIAL` if repository-local proof is complete; exact deployed database/freshness/browser proof remains a named STAB16 residual and is not claimed locally.
+- Local lock: `.ai/task-locks/RQ140-codex.lock.md`; branch: `codex/rq140-prepost-local-parity`.
+
+### 2026-10-08 resumed local proof
+
+- Status: PARTIAL; the focused repository-local route/client checks pass, but the entire route-by-route export/report matrix and exact deployed-data/browser evidence remain unproven.
+- Checks: 20 focused Vitest files, 227/227 tests; `AnalyticsNivelacijaSplitPolicyTests` + `SupplierDecisionSchemaSqlTests`, 58/58; `npm run check:analytics-guardrails` (encoding, guardrail self-test, guardrail scan and TypeScript typecheck) all pass.
+- No product code changed in this resumption; it records verified coverage for the already-delivered RQ140 implementation.
+- Run log: `.ai/runs/2026-10-08-RQ140-evidence.md`.
+- Exact production/live residual: STAB16 must provide approved read-only database access, effective provider configuration/startup logs, exact deployment identity and refresh/browser evidence. Do not claim current price-effect causality from these local tests.
+- Remaining local proof: complete export/report parity for every pre/post consumer. Do not mark RQ140 DONE until both this and the STAB16 final evidence are closed.
 
 ---
 
