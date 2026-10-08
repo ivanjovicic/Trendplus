@@ -62,6 +62,20 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
             services,
             configuration,
             NullLogger.Instance);
+
+        // Simulate a changed startup SQL hash, which forces 013 to run again on
+        // an upgraded installation that already has its dependent compatibility view.
+        await using (var historyConnection = new NpgsqlConnection(connectionString))
+        {
+            await historyConnection.OpenAsync();
+            await ExecuteAsync(
+                historyConnection,
+                """
+                DELETE FROM "__StartupSqlScriptHistory"
+                WHERE "ScriptPath" = 'Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql';
+                """);
+        }
+
         await DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync(
             services,
             configuration,
@@ -80,6 +94,21 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.False(await ColumnExistsAsync(connection, "vw_supplier_markdown_dependency_90d", "change_percent_revenue"));
         Assert.True(await RelationExistsAsync(connection, "mv_supplier_decision_score_cache_90d"));
         Assert.True(await RelationExistsAsync(connection, "vw_supplier_recommendations"));
+        Assert.True(await RelationExistsAsync(connection, "povracaj_zaglavlje"));
+        Assert.True(await IsPopulatedMaterializedViewAsync(connection, "povracaj_zaglavlje_mv"));
+        var returnHeaderColumns = new[]
+        {
+            "id:integer",
+            "broj_zapisnika:text",
+            "datum_povracaja:timestamp with time zone",
+            "id_dobavljac:integer",
+            "razlog_povracaja:text",
+            "status:text",
+            "ukupan_iznos:numeric(18,2)",
+            "data_origin:text"
+        };
+        Assert.Equal(returnHeaderColumns, await GetRelationColumnContractAsync(connection, "povracaj_zaglavlje_mv"));
+        Assert.Equal(returnHeaderColumns, await GetRelationColumnContractAsync(connection, "povracaj_zaglavlje"));
 
         foreach (var column in new[]
         {
@@ -580,6 +609,36 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
             );
             """,
             ("relationName", relationName));
+    }
+
+    private static async Task<string[]> GetRelationColumnContractAsync(
+        NpgsqlConnection connection,
+        string relationName)
+    {
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT a.attname || ':' || format_type(a.atttypid, a.atttypmod)
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a ON a.attrelid = c.oid
+            WHERE n.nspname = 'public'
+              AND c.relname = @relationName
+              AND c.relkind IN ('v', 'm')
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+            ORDER BY a.attnum;
+            """,
+            connection);
+        command.Parameters.AddWithValue("relationName", relationName);
+
+        var columns = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            columns.Add(reader.GetString(0));
+        }
+
+        return columns.ToArray();
     }
 
     private static async Task<bool> CanRefreshConcurrentlyAsync(

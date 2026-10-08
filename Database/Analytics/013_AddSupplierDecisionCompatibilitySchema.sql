@@ -154,10 +154,10 @@ SELECT
     imf."DataOrigin" AS "DataOrigin"
 FROM "InventoryMovementFacts" imf;
 
--- Materialized view za povracaj_zaglavlje
-DROP MATERIALIZED VIEW IF EXISTS povracaj_zaglavlje_mv;
-
-CREATE MATERIALIZED VIEW povracaj_zaglavlje_mv AS
+-- Materialized view za povracaj_zaglavlje. Keep it in place when this
+-- compatibility script is re-applied: povracaj_zaglavlje and downstream
+-- analytics objects may depend on it, and PostgreSQL correctly rejects a drop.
+CREATE MATERIALIZED VIEW IF NOT EXISTS povracaj_zaglavlje_mv AS
 SELECT
     rf."ReturnId" AS id,
     COALESCE(MAX(rf."BrojZapisnika"), rf."ReturnId"::text) AS broj_zapisnika,

@@ -21,6 +21,22 @@ public sealed class SupplierDecisionSchemaSqlTests
     }
 
     [Fact]
+    public void SupplierReturnCompatibilitySchemaRerunPreservesDependentMaterializedView()
+    {
+        var sql = ReadRepoFile("Database/Analytics/013_AddSupplierDecisionCompatibilitySchema.sql");
+
+        Assert.Contains("CREATE MATERIALIZED VIEW IF NOT EXISTS povracaj_zaglavlje_mv AS", sql);
+        Assert.DoesNotContain(
+            "DROP MATERIALIZED VIEW IF EXISTS povracaj_zaglavlje_mv",
+            sql,
+            StringComparison.OrdinalIgnoreCase);
+        AssertInOrder(
+            sql,
+            "CREATE MATERIALIZED VIEW IF NOT EXISTS povracaj_zaglavlje_mv AS",
+            "CREATE OR REPLACE VIEW povracaj_zaglavlje AS");
+    }
+
+    [Fact]
     public void SupplierDecisionMarkdownCacheIndexUsesPostgresExpressionIndexSyntax()
     {
         var sql = ReadRepoFile("Database/Migrations/018_AddSupplierDecisionHubViews.sql");
