@@ -111,6 +111,17 @@ describe("DecisionPulsePage", () => {
     }));
   });
 
+  it.each(["storeId=abc", "storeId=0", "storeId=-3", "storeId=2&storeId=3", "supplierId=bad", "supplierId=0"])(
+    "does not widen invalid URL filter %s to all records",
+    async (query) => {
+      const fetchFeed = vi.spyOn(decisionPulseApi, "getDecisionPulse");
+      render(<MemoryRouter initialEntries={["/analytics/decision-pulse?" + query]}><DecisionPulsePage /></MemoryRouter>);
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Pregled nije proširen");
+      expect(fetchFeed).not.toHaveBeenCalled();
+    },
+  );
+
   it("clears old items on filter changes and ignores an older in-flight response", async () => {
     let resolveFirst!: (value: Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>) => void;
     let resolveSecond!: (value: Awaited<ReturnType<typeof decisionPulseApi.getDecisionPulse>>) => void;
