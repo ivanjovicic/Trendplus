@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ597` (P2, Color endpoint bucket parity against the independent raw-fact oracle)
-Status: owner-promoted test-hardening follow-up; `RQ597` is READY from the 2026-10-05 adversarial audit residual. `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main.
+Current READY prompt: none; `RQ597` is DONE (Color endpoint bucket parity against the independent raw-fact oracle)
+Status: owner-promoted test-hardening follow-up; `RQ597` was READY from the 2026-10-05 adversarial audit residual and is now DONE. `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -18,7 +18,7 @@ Use with:
 ## Queue rules
 
 1. `Current READY` is the primary/default pointer; independent test-only prompts may also be READY when their dependencies and paths are clear.
-2. `RQ105` is DONE. `RQ597` is the live READY prompt in this pack. `RQ96` and `RQ106` are DONE on main.
+2. `RQ105` is DONE. `RQ597` is DONE on main. `RQ96` and `RQ106` are DONE on main.
 3. Do not mix SQL rewrites, premium chrome, or tenant/auth work into these tasks.
 4. Prefer extending an existing test class over a new host.
 5. If a test fails because the product contract is genuinely ambiguous, stop as `BLOCKED`/`PARTIAL`. Do not invent business truth to make the assertion pass.
@@ -32,7 +32,7 @@ Use with:
 | RQ102 | DONE | analytics-sales-period-empty-scope | Sales summary/daily-sales period, empty, and filter isolation |
 | RQ103 | DONE | analytics-action-outcome-learning | Action outcome not-measured and learning-eligibility lock-in |
 | RQ104 | DONE | analytics-frontend-backend-truth | Core decision pages display backend fields and hide KPI zeros on error |
-| RQ597 | READY | color-bucket-independent-oracle | Compare every Color API bucket with the independent raw-fact oracle |
+| RQ597 | DONE | color-bucket-independent-oracle | Compare every Color API bucket with the independent raw-fact oracle |
 
 ---
 
@@ -605,17 +605,17 @@ npm run check:analytics-guardrails
 
 ## RQ597 - Compare Color API buckets with the independent raw-fact oracle
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend-tests/integration
 Feature family: color-bucket-independent-oracle
 Parallel-safe: yes (test-only; owns a new test file and does not change analytics runtime semantics)
 Owner: Analytics Reliability
 Ready after: current-main adversarial audit residual confirmed; shared fixture, endpoint and independent oracle exist
-Local lock: `.ai/task-locks/RQ597-codex.lock.md`
+Local lock: removed after done close
 Commit suggestion: `test(analytics): compare color buckets with raw-fact oracle`
 
-Claimed 2026-10-08 from refreshed `origin/main` `5c570b3a082742c17ebc935bb8f5cd6c2d6c9e22`. The task is dependency-complete, is the only current RQ READY prompt, and has no matching branch, lock or open PR; its new test-file path is disjoint from BCI16 and RQ482. Local lock: `.ai/task-locks/RQ597-codex.lock.md`.
+Claimed 2026-10-08 from refreshed `origin/main` `5c570b3a082742c17ebc935bb8f5cd6c2d6c9e22`; at claim time it was the only current RQ READY prompt, with no matching branch, lock or open PR, and its new test-file path was disjoint from BCI16 and RQ482.
 
 ### Problem
 
@@ -675,3 +675,22 @@ Color already has aggregate and cross-screen total checks, but no focused integr
 ### Dependencies
 
 None. Existing endpoint, oracle, fixture and database test harness are already present. `RQ139` remains PARTIAL for its broader numeric-state/parity acceptance and is not a prerequisite for this isolated test slice.
+
+### Completion note
+
+- Date: 2026-10-08
+- Status: DONE
+- Completion: added two Testcontainers-backed integration tests comparing all normalized Color endpoint bucket identities, signed units and revenue against the independent raw-fact oracle across all/imported/existing-store scopes and separate Sep 1/Sep 2 boundary/receipt-exclusion windows.
+- Changed files: `Api.Tests/ColorSalesStatsIndependentOracleIntegrationTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-08-RQ597-evidence.md`.
+- Checks run: `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore` passed (0 errors); Analytics Tests & Data Integrity run `37812228770` passed on `56923cf8feb930e16b4757b8bdb6f2765cdf6768` (full backend 1936 total, 1894 passed, 42 skipped, 0 failed; both RQ597 tests passed); governance validators and CRLF-aware `git diff --check` passed.
+- Checks not run: local filtered integration command was not run because the local Docker daemon did not respond and no test connection string was configured; the exact two tests executed successfully in the Actions Testcontainers environment.
+- Run log: `.ai/runs/2026-10-08-RQ597-evidence.md`
+- Evidence state: pending post-close recovery synchronization.
+- Delivery mode: direct-main.
+- Main commit SHA: `56923cf8feb930e16b4757b8bdb6f2765cdf6768`.
+- Main verification: freshly fetched `origin/main` contains implementation SHA `56923cf8feb930e16b4757b8bdb6f2765cdf6768`.
+- Missed: local integration execution only; remote disposable-PostgreSQL proof passed.
+- Follow-up: pending post-close recovery scan.
+- Residual risk: none known; no production/runtime behavior or API contract changed.
+- Post-close routing: pending fresh recovery after this terminal transition reaches `main`.
+- Prompt defect / scope repair: removed the impossible per-bucket API sale-line-count assertion because the API does not expose that field; oracle counts remain explicit fixture/scope controls.
