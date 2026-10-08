@@ -3,8 +3,8 @@
 Owner product-priority refinement 2026-10-07:
 - **Two lanes run in parallel.** STAB16 remains operational P0 for deployed currentness/import/worker truth, but it is **not a global start gate** for repository-local formula correctness, historical analysis or latest-known-horizon decision work.
 - **RQ593 (P1) is DONE** — Product Decision totals now preserve unknown monetary evidence and expose coverage. Evidence: `.ai/runs/2026-10-08-RQ593-evidence.md`.
-- **Primary RQ IN_PROGRESS: RQ594 (P1)** — anchor the existing Inventory action workflow to its source horizon; separate receipt age from sales recency; make transfer decisions demand-backed and preserve nullable capital. No new transfer subsystem.
-- **RQ555 (P1)** owner decision is resolved: Pre-Nivelacija is the canonical retail markdown action source. It follows the Product Decision path owner RQ594.
+- **Primary RQ READY: RQ555 (P1)** — owner decision is resolved: Pre-Nivelacija is the canonical retail markdown action source. Verify path/claim collisions after RQ594 close-out, then claim.
+- **RQ594 (P1) is DONE** — Inventory actions use observed source horizons, distinguish receipt age from velocity, and make transfers demand-backed while preserving nullable capital. Evidence: `.ai/runs/2026-10-08-RQ594-evidence.md`; implementation SHA `7f98549292d3d09f71166c0a12c9f7c7bab2670c`.
 - **RQ556 (P1)** follows RQ555 as shadow-v9 evidence/ranking comparison. Final activation/weights remain an owner decision, but evidence-field/shadow work is no longer blocked by that decision.
 - **RQ585 (P1)** follows RQ593/RQ596/RQ594/RQ555 and may run on the latest trustworthy horizon. Freshness controls whether it may say "current/this week", not whether the product can be built.
 - **RQ592 (P1)** remains freshness + live-Pre/Post gated because it is a prospective current-production outcome experiment; it does not gate historical/product work.
