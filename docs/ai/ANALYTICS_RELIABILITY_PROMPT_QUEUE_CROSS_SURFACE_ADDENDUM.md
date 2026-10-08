@@ -1273,4 +1273,4 @@ Q70 baseline evidence is partly projected for article rows, but the vendor aggre
 - Aggregate contracts now carry Q70 revenue/quantity baseline flags, reasons and semantic percentages. Both vendor pre/post consumers hide a percent when the backend explicitly says its baseline is absent and explain the reason; legacy responses without the new fields remain compatible.
 - Added backend aggregation, API-schema, utility and page-level regressions for a healthy zero, no-baseline uplift and legacy response compatibility. Recommendation actionability and Q70 SQL remain unchanged.
 - Focused backend suite passed 59/59; focused frontend suites passed 108/108. Analytics guardrails, typecheck and production build passed.
-- Run log: `.ai/runs/2026-10-08-RQ131-evidence.md`; Evidence state: pending post-close routing recovery.
+- Run log: `.ai/runs/2026-10-08-RQ131-evidence.md`; Evidence state: synchronized.
