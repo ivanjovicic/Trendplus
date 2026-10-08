@@ -30376,4 +30376,4 @@ Type: backend-tests/integration
 Feature family: color-bucket-independent-oracle
 Parallel-safe: yes (test-only; distinct from RQ482 and BCI16 paths)
 Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`.
-Canonical acceptance compares every normalized Color endpoint bucket (count, signed units and revenue) with the independent raw-fact oracle on deterministic PostgreSQL fixture scopes. No runtime/product formula changes. See the canonical prompt for scope, test command, boundaries and handoff on a reproduced runtime mismatch.
+Canonical acceptance compares every normalized Color endpoint bucket identity, signed units and revenue with the independent raw-fact oracle on deterministic PostgreSQL fixture scopes; the endpoint exposes no per-bucket sale-line count, so oracle counts are fixture/scope controls only. No runtime/product formula changes. See the canonical prompt for scope, test command, boundaries and handoff on a reproduced runtime mismatch.

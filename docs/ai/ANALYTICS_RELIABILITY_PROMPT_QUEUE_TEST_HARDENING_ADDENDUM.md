@@ -633,7 +633,7 @@ Color already has aggregate and cross-screen total checks, but no focused integr
 ### Scope
 
 - Add `Api.Tests/ColorSalesStatsIndependentOracleIntegrationTests.cs` using the existing disposable PostgreSQL fixture, route registration and shared seed fixture.
-- Compare endpoint buckets against `OperationsAnalyticsRawFactOracle.QueryColorBucketsAsync` by normalized bucket identity and assert per-bucket sale-line count, signed units and revenue.
+- Compare the complete endpoint bucket set against `OperationsAnalyticsRawFactOracle.QueryColorBucketsAsync` by normalized bucket identity and assert each bucket's signed units and revenue. The Color API does not expose per-bucket sale-line count; assert oracle line counts as independent fixture/scope controls rather than inventing or adding a production response field.
 - Include representative all-scope, imported/existing, store-filter and unknown-color cases only where the existing fixture supports them; retain half-open boundary and DUG/KOREKCIJA exclusions as independent controls.
 - Update this addendum, the parent RQ routing mirror, `MASTER_ROADMAP.md`, and the run evidence when closing the prompt.
 
@@ -655,7 +655,7 @@ Color already has aggregate and cross-screen total checks, but no focused integr
 ### Do
 
 1. Reuse the existing Testcontainers fixture and seed data; do not create a new test host or hand-maintained expected aggregates when the independent oracle can derive them.
-2. Compare the complete normalized bucket sets, not only totals, and assert count, signed unit and revenue values for each bucket.
+2. Compare the complete normalized bucket sets, not only totals, and assert signed units and revenue for each endpoint bucket. Validate sale-line counts through oracle fixture/scope controls only because the endpoint response does not expose that value.
 3. Prove at least one changed filter changes membership as expected and that endpoint and oracle agree for the same scope.
 4. Keep an empty/unknown Color bucket distinct from a missing response or failed endpoint.
 5. If a mismatch exposes a runtime defect, record the minimal counterexample and route the fix to the owning runtime prompt; do not widen this test-only prompt silently.
@@ -668,7 +668,7 @@ Color already has aggregate and cross-screen total checks, but no focused integr
 
 ### Acceptance
 
-- Deterministic PostgreSQL integration coverage compares every Color API bucket to the independent raw-fact oracle for the selected fixture scopes.
+- Deterministic PostgreSQL integration coverage compares every Color API bucket identity, signed units and revenue to the independent raw-fact oracle for the selected fixture scopes; oracle sale-line counts remain explicit scope/population controls.
 - The assertions would fail if values move between buckets while the overall Color total stays constant.
 - No production/runtime behavior, business formula, migration or deployed database is changed.
 
