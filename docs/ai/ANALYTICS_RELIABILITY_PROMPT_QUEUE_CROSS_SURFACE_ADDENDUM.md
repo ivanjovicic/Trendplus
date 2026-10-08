@@ -31,7 +31,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ126 | DONE | daily-sales-trust-meta-contract | Add authoritative trust metadata to Daily Sales instead of placeholder trust header values |
 | RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 | RQ130 | OBSOLETE | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
-| RQ131 | IN_PROGRESS | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
+| RQ131 | DONE | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
 
 ---
 
@@ -1189,14 +1189,14 @@ Vendor pre/post recommendation inputs still compute an average known-margin base
 
 ## RQ131 - Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: `RQ130` is `DONE` or `OBSOLETE` with the documented non-actionable effect contract; the owner may explicitly promote the remaining Q70 semantic-parity lane
 Priority: P1
 Type: backend-frontend-contract/tests
 Feature family: vendor-nivelacija-zero-baseline-semantic-parity
 Parallel-safe: no
 Owner: Analytics Reliability / Codex
-Local lock: `.ai/task-locks/RQ131-codex.lock.md`
+Claim-time local lock: `.ai/task-locks/RQ131-codex.lock.md`
 Commit suggestion: `fix(analytics): label vendor zero-baseline semantics`
 
 ### Owner promotion and claim 2026-10-08
@@ -1266,3 +1266,11 @@ Q70 baseline evidence is partly projected for article rows, but the vendor aggre
 - `Q70` DONE.
 - `RQ62` and `RQ63` DONE.
 - `RQ130` DONE or explicit owner promotion if only additive contract/surface parity is selected.
+
+### Completion 2026-10-08
+
+- Delivered implementation SHA `c2e35ae522d123d72c7cebff98e3191e5346ac6a` on `main`.
+- Aggregate contracts now carry Q70 revenue/quantity baseline flags, reasons and semantic percentages. Both vendor pre/post consumers hide a percent when the backend explicitly says its baseline is absent and explain the reason; legacy responses without the new fields remain compatible.
+- Added backend aggregation, API-schema, utility and page-level regressions for a healthy zero, no-baseline uplift and legacy response compatibility. Recommendation actionability and Q70 SQL remain unchanged.
+- Focused backend suite passed 59/59; focused frontend suites passed 108/108. Analytics guardrails, typecheck and production build passed.
+- Run log: `.ai/runs/2026-10-08-RQ131-evidence.md`; Evidence state: pending post-close routing recovery.
