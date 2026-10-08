@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ IN_PROGRESS: RQ55 (Supplier hidden-unknown denominator semantics).
-Main queue RQ pointer: RQ55 IN_PROGRESS; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
+Current RQ routing: post-close recovery pending after RQ55 delivery.
+Main queue RQ pointer: post-close recovery pending; RQ01–RQ13 and owner pack RQ100-RQ105 DONE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -17,7 +17,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ52 | DONE | color-local-recommendation-fallback | Remove or label Color frontend recommendation fallback |
 | RQ53 | DONE | color-shoetype-datascope-lineage | Pass/verify dataScope in Color and ShoeType pages |
 | RQ54 | DONE | vendor-nivelacija-scope-lineage | Add/verify dataScope/store lineage on Vendor pre/post page |
-| RQ55 | IN_PROGRESS | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
+| RQ55 | DONE | supplier-hidden-unknown-denominators | Clarify denominators when unknown suppliers are hidden |
 | RQ56 | DONE | total-cost-fallback-guardrail | Keep inconsistent implied cost unavailable |
 | RQ57 | DONE | inventory-risk-global-sort | Make inventory OOS/overstock sort global or clearly page-local |
 | RQ58 | DONE | inventory-screen-csv-order | Make CSV ekran match displayed risk-sorted rows |
@@ -37,7 +37,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 
 ## RQ51 - Color insufficient_data must not become Zadrzi
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ01 or explicit reprioritization
 Priority: P0
 Type: frontend-contract/tests
@@ -300,6 +300,10 @@ When unknown suppliers are hidden, visible rows are known suppliers only, but de
 Promoted and claimed after RQ56 delivery at `aaeed5168ec538a7c03ca06124049f4b7073eee1`. Explicitly unblocked the RQ34/RQ46 prerequisites for this bounded Supplier-only prompt: the current Supplier response exposes `positiveNetRevenueDenominator`, `sharePctDenominatorBasis`, `sharePctIncludesUnknown`, and denominator state; this page already owns the filter, share, top-five/concentration and CSV metadata projection, so the unrelated legacy Insight Studio trust-type and general export columns are not start gates for the Supplier contract. The selected contract will preserve the backend declared-population denominator (including hidden unknowns) and make that basis visible in the Supplier page and its export. Collision review before claim found no matching RQ55 owner, lock, branch or open PR. Local lock `.ai/task-locks/RQ55-codex.lock.md`.
 
 ---
+
+### Completion 2026-10-08
+
+Preserved the backend declared-population positive-net-revenue denominator consistently across supplier row shares, top-five concentration and the concentration chart. When unknown suppliers are hidden while included in the denominator, the UI explains why visible shares can total under 100%; CSV/detail metadata records the denominator cohort and unknown-revenue share. Focused page tests, typecheck, guardrails, encoding and governance validators passed. Implementation SHA `739eb0c5f38e17dfcaaf19eebe66c550c14505a3` is verified on `origin/main`. Run log: `.ai/runs/2026-10-08-RQ55-evidence.md`; Evidence state: pending post-close routing synchronization.
 
 ## RQ56 - Total cost fallback guardrail
 
