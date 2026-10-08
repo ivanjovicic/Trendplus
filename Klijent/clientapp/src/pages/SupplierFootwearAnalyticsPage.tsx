@@ -40,7 +40,7 @@ import { formatMetricDisplayValue, normalizeMetricNumber } from "../utils/analyt
 import { getSafeAnalyticsErrorMessage } from "../utils/analyticsErrorMessages";
 import { getAnalyticsFailureCode } from "../utils/analyticsStateTaxonomy";
 import { AnalyticsMetaError, getAnalyticsMetaContextMessage, getAnalyticsMetaMessage, isAnalyticsMetaInsufficient, isAnalyticsMetaWarning, shouldShowAnalyticsEmptyState } from "../utils/analyticsResponseMeta";
-import { comparablePrePostMetric, hasComparablePrePostEvidence } from "../utils/prePostNivelacijaTrust";
+import { baselineAwareRevenueChangePercent, comparablePrePostMetric, hasComparablePrePostEvidence, revenueBaselineLabel } from "../utils/prePostNivelacijaTrust";
 import {
   resolvePreviousPeriodComparison,
   resolveSupplierPeriodGrowthPct,
@@ -71,6 +71,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   vendorRowKey: string;
   sharePct: number | null;
   trendPct: number | null;
+  trendBaselineLabel: string | null;
   topFootwearType: string;
   topFootwearTypeSharePct: number | null;
   avgElasticity: number | null;
@@ -105,6 +106,7 @@ export const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   { key: "topFootwearType", header: "Glavni tip", dataType: "text" },
   { key: "topFootwearTypeSharePct", header: "Udeo tipa %", dataType: "percent" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "trendBaselineLabel", header: "Osnova trenda", dataType: "text" },
   { key: "status", header: "Efekat promene cene", dataType: "text" },
   { key: "confidencePct", header: "Poverenje %", dataType: "percent", getValue: (row) => row.recommendationAllowed ? row.confidencePct : null },
 ];
@@ -556,7 +558,7 @@ export default function SupplierFootwearAnalyticsPage({
       const hasComparableEvidence = rowHasComparableEvidence(item);
       const postRevenue = comparableMetric(item.postRevenue, hasComparableEvidence);
       const sharePct = postRevenue != null && totalRevenue > 0 ? (postRevenue / totalRevenue) * 100 : null;
-      const trendPct = comparableMetric(item.semanticChangePercentRevenue ?? item.changePercent, hasComparableEvidence);
+      const trendPct = comparableMetric(baselineAwareRevenueChangePercent(item), hasComparableEvidence);
       const recommendationAllowed = recommendation.recommendationAllowed === true;
 
       const typeInsightsAvailable = data?.typeInsightsAuthoritative === true && item.typeInsightsAuthoritative === true;
@@ -569,6 +571,7 @@ export default function SupplierFootwearAnalyticsPage({
         vendorRowKey,
         sharePct,
         trendPct,
+        trendBaselineLabel: revenueBaselineLabel(item),
         topFootwearType,
         topFootwearTypeSharePct,
         avgElasticity,
@@ -1140,7 +1143,7 @@ export default function SupplierFootwearAnalyticsPage({
                             <td className="align-right">{fmtRsd(comparableMetric(row.postRevenue, rowHasComparableEvidence(row)))}</td>
                             <td className="align-right">{formatMetricDisplayValue({ value: row.sharePct, kind: "percent", digits: 2 })}</td>
                             <td><strong>{row.topFootwearType}</strong><div className="sf-mini-note">{formatMetricDisplayValue({ value: row.topFootwearTypeSharePct, kind: "percent" })} udela kod dobavljača</div></td>
-                            <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
+                            <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}{row.trendBaselineLabel ? <div className="sf-mini-note" title={row.trendBaselineLabel}>{row.trendBaselineLabel}</div> : null}</td>
                             <td>
                               <div className="sf-status-stack">
                                 <span className={statusClass(row.status)} title={buildStatusTooltip(row)} aria-label={buildStatusTooltip(row)}>{statusDisplayLabel(row.status, row.statusLabel)}</span>

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   comparablePrePostMetric,
   comparablePrePostTotal,
+  baselineAwareRevenueChangePercent,
   hasComparablePrePostEvidence,
+  revenueBaselineLabel,
   resolvePostRevenueSharePercent,
 } from "../prePostNivelacijaTrust";
 
@@ -56,5 +58,23 @@ describe("prePostNivelacijaTrust", () => {
       hasComparableSalesWindow: true,
       postRevenueSharePercent: 0,
     })).toBe(0);
+  });
+
+  it("keeps a proven zero trend and hides uplift without a revenue baseline", () => {
+    expect(baselineAwareRevenueChangePercent({ hasRevenueBaseline: true, changePercent: 0 })).toBe(0);
+    expect(baselineAwareRevenueChangePercent({
+      hasRevenueBaseline: false,
+      revenueBaselineReason: "no_pre_revenue_baseline_uplift",
+      changePercent: 100,
+    })).toBeNull();
+    expect(revenueBaselineLabel({
+      hasRevenueBaseline: false,
+      revenueBaselineReason: "no_pre_revenue_baseline_uplift",
+    })).toBe("Nova osnova; procenat promene nije uporediv");
+  });
+
+  it("preserves legacy trend values for responses without baseline metadata", () => {
+    expect(baselineAwareRevenueChangePercent({ changePercent: 12.5 })).toBe(12.5);
+    expect(revenueBaselineLabel({ changePercent: 12.5 })).toBeNull();
   });
 });

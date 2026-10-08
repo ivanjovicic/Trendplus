@@ -43,6 +43,10 @@ export interface VendorSalesNivelacijaVendorStat {
     changeQty: number;
     changeRevenue: number;
     changePercent: number | null;
+    hasRevenueBaseline?: boolean;
+    revenueBaselineReason?: string | null;
+    hasQtyBaseline?: boolean;
+    qtyBaselineReason?: string | null;
     absoluteChangeRevenue: number;
     changeSharePercent: number;
     postRevenueSharePercent: number;
@@ -123,6 +127,12 @@ export interface VendorSalesNivelacijaTotals {
     changeQty: number;
     changeRevenue: number;
     changePercent: number | null;
+    hasRevenueBaseline?: boolean;
+    revenueBaselineReason?: string | null;
+    hasQtyBaseline?: boolean;
+    qtyBaselineReason?: string | null;
+    semanticChangePercentRevenue?: number | null;
+    semanticChangePercentQty?: number | null;
     vendorsCount: number;
     articlesCount: number;
     activeArticlesCount: number;
@@ -179,6 +189,12 @@ export interface VendorSalesNivelacijaCategoryStat {
     changeQty: number;
     changeRevenue: number;
     changePercent: number | null;
+    hasRevenueBaseline?: boolean;
+    revenueBaselineReason?: string | null;
+    hasQtyBaseline?: boolean;
+    qtyBaselineReason?: string | null;
+    semanticChangePercentRevenue?: number | null;
+    semanticChangePercentQty?: number | null;
     hasComparableSalesWindow?: boolean;
     comparableArticleCount?: number;
     postRevenueSharePercent?: number | null;
@@ -192,6 +208,9 @@ export interface VendorSalesNivelacijaPriceDirectionStat {
     avgPriceChangePercent: number | null;
     changeRevenue: number;
     changePercent: number | null;
+    hasRevenueBaseline?: boolean;
+    revenueBaselineReason?: string | null;
+    semanticChangePercentRevenue?: number | null;
     hasComparableSalesWindow?: boolean;
     comparableArticleCount?: number;
 }

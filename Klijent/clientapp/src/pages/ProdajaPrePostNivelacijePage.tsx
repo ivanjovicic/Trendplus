@@ -76,6 +76,8 @@ import {
   comparablePrePostMetric,
   comparablePrePostTotal,
   hasComparablePrePostEvidence,
+  baselineAwareRevenueChangePercent,
+  revenueBaselineLabel,
   resolvePostRevenueSharePercent,
 } from "../utils/prePostNivelacijaTrust";
 import {
@@ -205,6 +207,7 @@ type DecisionVendor = VendorSalesNivelacijaVendorStat & {
   sharePctAvailable: boolean;
   postSharePct: number | null;
   trendPct: number | null;
+  trendBaselineLabel: string | null;
   reliabilityPct: number | null;
   reliabilityAvailable: boolean;
   avgCoveragePost30Available: boolean;
@@ -300,6 +303,7 @@ const decisionColumns: AnalyticsTableColumn<DecisionVendor>[] = [
   },
   { key: "changeRevenue", header: "Promena prometa", dataType: "currency" },
   { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "trendBaselineLabel", header: "Osnova trenda", dataType: "text" },
   { key: "reliabilityPct", header: RECOMMENDATION_RELIABILITY_LABEL, dataType: "percent" },
   { key: "confidencePct", header: RECOMMENDATION_CONFIDENCE_LABEL, dataType: "percent" },
   { key: "volatilityLabel", header: "Poređenje sa prethodnim periodom", dataType: "text" },
@@ -933,7 +937,7 @@ export default function ProdajaPrePostNivelacijePage() {
       const sharePct = absoluteChangeSharePct;
       const trustedPostRevenue = trustedMetric(item.postRevenue, item);
       const postSharePct = resolvePostRevenueSharePercent(item);
-      const trendPct = trustedMetric(item.changePercent, item);
+      const trendPct = trustedMetric(baselineAwareRevenueChangePercent(item), item);
       const avgSalesActivityRatePost30Pct = item.avgSalesActivityRatePost30Pct
         ?? (item.avgCoveragePost30 != null ? item.avgCoveragePost30 * 100 : null);
       const avgSalesActiveDaysPost30 = item.avgSalesActiveDaysPost30
@@ -953,6 +957,7 @@ export default function ProdajaPrePostNivelacijePage() {
         sharePctAvailable,
         postSharePct,
         trendPct,
+        trendBaselineLabel: revenueBaselineLabel(item),
         reliabilityPct: normalizedReliabilityPct,
         reliabilityAvailable: recommendationReliabilityPct != null,
         avgSalesActivityRatePost30Pct,
@@ -1894,7 +1899,7 @@ export default function ProdajaPrePostNivelacijePage() {
               </p>
               <div className="ppn-stat-pair">
                 <strong>{leadingCategory ? fmtRsd(leadingCategory.changeRevenue) : "Nije dostupno"}</strong>
-                {leadingCategory ? <span>{fmtSignedPct(leadingCategory.changePercent, 1)}</span> : null}
+                {leadingCategory ? <span>{fmtSignedPct(baselineAwareRevenueChangePercent(leadingCategory), 1)}{revenueBaselineLabel(leadingCategory) ? ` · ${revenueBaselineLabel(leadingCategory)}` : ""}</span> : null}
               </div>
             </article>
 
@@ -2112,7 +2117,10 @@ export default function ProdajaPrePostNivelacijePage() {
                             <td className="align-right">{fmtRsd(trustedMetric(row.postRevenue, row))}</td>
                             <td className="align-right">{row.sharePctAvailable ? fmtPct(row.sharePct, 2) : "Nije dostupno"}</td>
                             <td className={`align-right ${trendClass(trustedMetric(row.changeRevenue, row))}`}>{fmtSignedChangeRsd(trustedMetric(row.changeRevenue, row))}</td>
-                            <td className={`align-right ${trendClass(row.trendPct)}`}>{fmtSignedPct(row.trendPct, 2)}</td>
+                            <td className={`align-right ${trendClass(row.trendPct)}`}>
+                              {fmtSignedPct(row.trendPct, 2)}
+                              {row.trendBaselineLabel ? <div className="sf-mini-note" title={row.trendBaselineLabel}>{row.trendBaselineLabel}</div> : null}
+                            </td>
                             <td className="align-center">
                               <span className={volatilityClass(row.volatilityTone)} title={fmtSignedPct(row.volatilityPct, 1)}>
                                 {row.volatilityLabel}

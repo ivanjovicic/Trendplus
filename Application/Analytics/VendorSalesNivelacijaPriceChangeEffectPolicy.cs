@@ -35,6 +35,37 @@ public static class VendorSalesNivelacijaPriceChangeEffectPolicy
         bool RecommendationAllowed,
         IReadOnlyList<string> ReasonCodes);
 
+    public sealed record BaselineEvidenceSummary(bool HasBaseline, string? Reason);
+
+    public static BaselineEvidenceSummary SummarizeBaselineEvidence(
+        IEnumerable<(bool HasBaseline, string? Reason)> evidence)
+    {
+        ArgumentNullException.ThrowIfNull(evidence);
+
+        var rows = evidence.ToArray();
+        if (rows.Length == 0)
+        {
+            return new BaselineEvidenceSummary(false, "missing_comparable_rows");
+        }
+
+        if (rows.All(row => row.HasBaseline))
+        {
+            return new BaselineEvidenceSummary(true, null);
+        }
+
+        var missingReasons = rows
+            .Where(row => !row.HasBaseline)
+            .Select(row => row.Reason)
+            .Where(reason => !string.IsNullOrWhiteSpace(reason))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var hasMixedPopulation = rows.Any(row => row.HasBaseline) || missingReasons.Length != 1;
+        return new BaselineEvidenceSummary(
+            false,
+            hasMixedPopulation ? "mixed_baseline_evidence" : missingReasons[0]);
+    }
+
     public static decimal? ComputeSemanticChangePercent(decimal preRevenue, decimal postRevenue)
     {
         if (preRevenue <= 0m)

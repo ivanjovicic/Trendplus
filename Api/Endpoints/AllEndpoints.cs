@@ -4634,7 +4634,7 @@ public static class AllEndpoints
                             QtyBaselineReason = qtyBaselineReason,
                             HasRevenueBaseline = hasRevenueBaseline,
                             RevenueBaselineReason = revenueBaselineReason,
-                            SemanticChangePercentRevenue = semanticChangePercentRevenue ?? changePercentRevenue,
+                            SemanticChangePercentRevenue = semanticChangePercentRevenue,
                             SemanticChangePercentQty = semanticChangePercentQty,
                             IsPostWindowMature = isPostWindowMature,
                             PostWindowDaysElapsed = postWindowDaysElapsed,
@@ -4735,6 +4735,16 @@ public static class AllEndpoints
                 static decimal? SemanticChangePercent(decimal pre, decimal post)
                     => VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeSemanticChangePercent(pre, post);
 
+                static VendorSalesNivelacijaPriceChangeEffectPolicy.BaselineEvidenceSummary SummarizeRevenueBaseline(
+                    IEnumerable<VendorSalesNivelacijaArticleStatDto> rows)
+                    => VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence(
+                        rows.Select(row => (row.HasRevenueBaseline, row.RevenueBaselineReason)));
+
+                static VendorSalesNivelacijaPriceChangeEffectPolicy.BaselineEvidenceSummary SummarizeQtyBaseline(
+                    IEnumerable<VendorSalesNivelacijaArticleStatDto> rows)
+                    => VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence(
+                        rows.Select(row => (row.HasQtyBaseline, row.QtyBaselineReason)));
+
                 static decimal? AverageKnownCoverage(IEnumerable<decimal?> values)
                 {
                     var known = values
@@ -4804,6 +4814,16 @@ public static class AllEndpoints
                     ChangeRevenue = totalChangeRevenue,
                     ChangePercent = VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(
                         matureComparableRows.Count, totalPreRevenue, totalPostRevenue),
+                    HasRevenueBaseline = SummarizeRevenueBaseline(matureComparableRows).HasBaseline,
+                    RevenueBaselineReason = SummarizeRevenueBaseline(matureComparableRows).Reason,
+                    HasQtyBaseline = SummarizeQtyBaseline(matureComparableRows).HasBaseline,
+                    QtyBaselineReason = SummarizeQtyBaseline(matureComparableRows).Reason,
+                    SemanticChangePercentRevenue = SummarizeRevenueBaseline(matureComparableRows).HasBaseline
+                        ? SemanticChangePercent(totalPreRevenue, totalPostRevenue)
+                        : null,
+                    SemanticChangePercentQty = SummarizeQtyBaseline(matureComparableRows).HasBaseline
+                        ? SemanticChangePercent(totalPreQty, totalPostQty)
+                        : null,
                     VendorsCount = vendorsCount,
                     ArticlesCount = articlesCount,
                     ActiveArticlesCount = activeArticlesCount,
@@ -4919,7 +4939,16 @@ public static class AllEndpoints
                                 ChangeQty = changeQty,
                                 ChangeRevenue = changeRevenue,
                                 ChangePercent = semanticChangePercent,
-                                SemanticChangePercentRevenue = semanticChangePercent,
+                                HasRevenueBaseline = SummarizeRevenueBaseline(matureComparable).HasBaseline,
+                                RevenueBaselineReason = SummarizeRevenueBaseline(matureComparable).Reason,
+                                HasQtyBaseline = SummarizeQtyBaseline(matureComparable).HasBaseline,
+                                QtyBaselineReason = SummarizeQtyBaseline(matureComparable).Reason,
+                                SemanticChangePercentRevenue = SummarizeRevenueBaseline(matureComparable).HasBaseline
+                                    ? semanticChangePercent
+                                    : null,
+                                SemanticChangePercentQty = SummarizeQtyBaseline(matureComparable).HasBaseline
+                                    ? SemanticChangePercent(preQty, postQty)
+                                    : null,
                                 AbsoluteChangeRevenue = Math.Abs(changeRevenue),
                                 ChangeSharePercent = 0m,
                                 PostRevenueSharePercent = 0m,
@@ -5060,6 +5089,16 @@ public static class AllEndpoints
                             ChangeQty = aggregate.ChangeQty,
                             ChangeRevenue = aggregate.ChangeRevenue,
                             ChangePercent = aggregate.ChangePercent,
+                            HasRevenueBaseline = SummarizeRevenueBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).HasBaseline,
+                            RevenueBaselineReason = SummarizeRevenueBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).Reason,
+                            HasQtyBaseline = SummarizeQtyBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).HasBaseline,
+                            QtyBaselineReason = SummarizeQtyBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).Reason,
+                            SemanticChangePercentRevenue = SummarizeRevenueBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).HasBaseline
+                                ? aggregate.ChangePercent
+                                : null,
+                            SemanticChangePercentQty = SummarizeQtyBaseline(matureComparableRows.Where(x => string.Equals(x.Category, aggregate.Category, StringComparison.OrdinalIgnoreCase))).HasBaseline
+                                ? SemanticChangePercent(aggregate.PreQty, aggregate.PostQty)
+                                : null,
                             HasComparableSalesWindow = true,
                             ComparableArticleCount = aggregate.ComparableArticleCount,
                             PostRevenueSharePercent = aggregate.PostRevenueSharePercent,
@@ -5093,6 +5132,11 @@ public static class AllEndpoints
                                 AvgPriceChangePercent = avgPct,
                                 ChangeRevenue = postRev - preRev,
                                 ChangePercent = SemanticChangePercent(preRev, postRev),
+                                HasRevenueBaseline = SummarizeRevenueBaseline(comparable).HasBaseline,
+                                RevenueBaselineReason = SummarizeRevenueBaseline(comparable).Reason,
+                                SemanticChangePercentRevenue = SummarizeRevenueBaseline(comparable).HasBaseline
+                                    ? SemanticChangePercent(preRev, postRev)
+                                    : null,
                                 HasComparableSalesWindow = comparable.Count > 0,
                                 ComparableArticleCount = comparable.Select(x => x.Sku).Distinct(StringComparer.Ordinal).Count()
                             };

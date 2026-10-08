@@ -21,6 +21,28 @@ public sealed class VendorSalesNivelacijaPriceChangeEffectPolicyTests
     }
 
     [Fact]
+    public void SummarizeBaselineEvidence_PreservesTrueZeroAndDistinctUnknownReasons()
+    {
+        var valid = VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence([
+            (true, (string?)null),
+            (true, (string?)null)
+        ]);
+        var noBaseline = VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence([
+            (false, (string?)"no_pre_revenue_baseline_uplift"),
+            (false, (string?)"no_pre_revenue_baseline_uplift")
+        ]);
+        var mixed = VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence([
+            (true, (string?)null),
+            (false, (string?)"no_pre_revenue_baseline_uplift")
+        ]);
+
+        Assert.Equal(new(false, "missing_comparable_rows"), VendorSalesNivelacijaPriceChangeEffectPolicy.SummarizeBaselineEvidence([]));
+        Assert.Equal(new(true, null), valid);
+        Assert.Equal(new(false, "no_pre_revenue_baseline_uplift"), noBaseline);
+        Assert.Equal(new(false, "mixed_baseline_evidence"), mixed);
+    }
+
+    [Fact]
     public void ComputeCohortChangePercent_IsUnknownWithoutMatureComparableRows()
     {
         Assert.Null(VendorSalesNivelacijaPriceChangeEffectPolicy.ComputeCohortChangePercent(0, 0m, 0m));

@@ -85,6 +85,12 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal? ChangePercent { get; set; }
+    public bool HasRevenueBaseline { get; set; }
+    public string? RevenueBaselineReason { get; set; }
+    public bool HasQtyBaseline { get; set; }
+    public string? QtyBaselineReason { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
+    public decimal? SemanticChangePercentQty { get; set; }
     public decimal AbsoluteChangeRevenue { get; set; }
     public decimal ChangeSharePercent { get; set; }
     public decimal PostRevenueSharePercent { get; set; }
@@ -101,8 +107,6 @@ public sealed class VendorSalesNivelacijaVendorStatDto
     public double? ReliabilityPct { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
-    public decimal? SemanticChangePercentRevenue { get; set; }
-    public decimal? SemanticChangePercentQty { get; set; }
     public string? PrimaryFootwearType { get; set; }
     public decimal? PrimaryFootwearTypeSharePercent { get; set; }
     public decimal? PrimaryFootwearTypeAvgElasticity { get; set; }
@@ -121,6 +125,12 @@ public sealed class VendorSalesNivelacijaTotalsDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal? ChangePercent { get; set; }
+    public bool HasRevenueBaseline { get; set; }
+    public string? RevenueBaselineReason { get; set; }
+    public bool HasQtyBaseline { get; set; }
+    public string? QtyBaselineReason { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
+    public decimal? SemanticChangePercentQty { get; set; }
     public int VendorsCount { get; set; }
     public int ArticlesCount { get; set; }
     public int ActiveArticlesCount { get; set; }
@@ -180,6 +190,12 @@ public sealed class VendorSalesNivelacijaCategoryStatDto
     public int ChangeQty { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal? ChangePercent { get; set; }
+    public bool HasRevenueBaseline { get; set; }
+    public string? RevenueBaselineReason { get; set; }
+    public bool HasQtyBaseline { get; set; }
+    public string? QtyBaselineReason { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
+    public decimal? SemanticChangePercentQty { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
     public decimal? PostRevenueSharePercent { get; set; }
@@ -194,6 +210,9 @@ public sealed class VendorSalesNivelacijaPriceDirectionStatDto
     public decimal? AvgPriceChangePercent { get; set; }
     public decimal ChangeRevenue { get; set; }
     public decimal? ChangePercent { get; set; }
+    public bool HasRevenueBaseline { get; set; }
+    public string? RevenueBaselineReason { get; set; }
+    public decimal? SemanticChangePercentRevenue { get; set; }
     public bool HasComparableSalesWindow { get; set; }
     public int ComparableArticleCount { get; set; }
 }

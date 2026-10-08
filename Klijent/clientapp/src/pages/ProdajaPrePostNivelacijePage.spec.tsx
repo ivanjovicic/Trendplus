@@ -621,6 +621,29 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(within(didArticle as HTMLElement).queryByText(/999/)).not.toBeInTheDocument();
   });
 
+  it("explains a new baseline and suppresses a non-comparable vendor trend", async () => {
+    vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
+      vendorStats: [vendor({
+        preRevenue: 0,
+        postRevenue: 1200,
+        changeRevenue: 1200,
+        changePercent: 100,
+        hasRevenueBaseline: false,
+        revenueBaselineReason: "no_pre_revenue_baseline_uplift",
+      })],
+    }));
+
+    renderPage();
+
+    const vendorLabel = (await screen.findAllByText("Vendor A")).find((element) => element.tagName === "STRONG");
+    const vendorRow = vendorLabel?.closest("tr");
+    expect(vendorRow).not.toBeNull();
+    const trendCell = within(vendorRow as HTMLElement).getAllByRole("cell")[4];
+    expect(trendCell).toHaveTextContent("Nova osnova; procenat promene nije uporediv");
+    expect(trendCell).toHaveTextContent("Nije dostupno");
+    expect(trendCell).not.toHaveTextContent(/100,00\s*%/);
+  });
+
   it("presents an unavailable control group in business copy and hides support detail by default", async () => {
     vi.mocked(getVendorSalesNivelacija).mockResolvedValue(response({
       metricsStatus: "No DiD data (view missing)",

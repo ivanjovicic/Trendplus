@@ -1011,6 +1011,8 @@ describe("SupplierFootwearAnalyticsPage", () => {
         changeRevenue: 1_200,
         changePercent: null,
         semanticChangePercentRevenue: null,
+        hasRevenueBaseline: false,
+        revenueBaselineReason: "no_pre_revenue_baseline_uplift",
         hasComparableSalesWindow: true,
         recommendation: {
           ...baseVendor.recommendation!,
@@ -1034,6 +1036,7 @@ describe("SupplierFootwearAnalyticsPage", () => {
     const trendCell = within(vendorRow!).getAllByRole("cell")[4];
     expect(trendCell).toHaveTextContent("Nije dostupno");
     expect(trendCell.textContent).not.toMatch(/0[,.]00\s*%/);
+    expect(trendCell).toHaveTextContent("Nova osnova; procenat promene nije uporediv");
   });
 
   it("renders assortment price-change effect labels instead of Supplier overview PoP copy", async () => {
