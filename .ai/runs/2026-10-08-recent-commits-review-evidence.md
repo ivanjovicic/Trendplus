@@ -20,3 +20,5 @@ Base: `upstream/main` `dde6e017`. Box-only review; RQ555 (IN_PROGRESS, other own
 
 - PERF19 Decision Board HTTP composition test (added before range, `14690775`) fails in CI "Analytics Tests & Data Integrity" but passes locally in isolation; environment/order dependent — not fixed here.
 - Executive Decision Board reuse spec asserts raw English code text; Pilot Readiness reason line contains English action words; transfer reason still says "SKU".
+
+Follow-up: all "Reported only" items above were resolved in `.ai/runs/2026-10-08-ci-green-followup-evidence.md`.
