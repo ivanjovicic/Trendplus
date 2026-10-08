@@ -3,7 +3,7 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main RQ queue has no unclaimed READY prompt after RQ320 closure; RQ46 is IN_PROGRESS in the UI/Table/Chart addendum. P-UI-01..P-UI-54 are DONE and the P-UI queue has no READY prompt. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
+Main RQ queue has no unclaimed READY prompt after RQ50 closure; RQ46 and RQ50 are DONE in the UI/Table/Chart addendum. P-UI-01..P-UI-54 are DONE and the P-UI queue has no READY prompt. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend trust certification (replacement for RQ18) is DONE on main; RQ589 Advanced/V2 backend certification is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -18,7 +18,7 @@ Purpose: preserve the original Advanced/V2 acceptance records and their traceabi
 | RQ15 | OBSOLETE | basket-affinity-denominator | Replaced by RQ577: basket affinity is gated until receipt grain is proven |
 | RQ16 | OBSOLETE | lifecycle-zero-baseline | Replaced by completed RQ589 null-baseline lifecycle contract |
 | RQ17 | OBSOLETE | smart-reorder-cost-trust | Replaced by completed RQ589 nullable missing-cost profit contract |
-| RQ18 | WAITING | v2-frontend-trust-types | Expose backend cost/margin coverage metadata in TS types |
+| RQ18 | OBSOLETE | v2-frontend-trust-types | Replaced by completed RQ591 frontend trust/type acceptance |
 | RQ19 | OBSOLETE | weekly-changelog-oos-semantics | Replaced by completed RQ589 current-snapshot OOS scope contract |
 | RQ20 | OBSOLETE | weekly-changelog-zero-baseline | Replaced by completed RQ589 null comparison-baseline contract |
 | RQ21 | OBSOLETE | outcome-not-measured-semantics | Replaced by completed RQ81/RQ86/RQ93 measured-evidence contract |
@@ -32,7 +32,7 @@ Purpose: preserve the original Advanced/V2 acceptance records and their traceabi
 - `RQ21` and `RQ22` are OBSOLETE because completed action-outcome owners `RQ81`, `RQ84`, `RQ86` and `RQ93` cover their acceptance, with named regression tests on the individual prompts.
 - `RQ14` and `RQ15` remain OBSOLETE only because `RQ577` explicitly suppresses the unsupported receipt-grain measures.
 - `RQ591` is the named frontend trust/derived-metric certification owner for `RQ18` (V2 metadata types); its frontend scope is grouped with legacy type/derived-metric work in the main queue.
-- `RQ18` remains WAITING in this addendum for traceability; replacement acceptance is satisfied by completed `RQ591` on main. Re-exposure still requires freshness/horizon, oracle/golden and identity/provenance certification.
+- `RQ18` is OBSOLETE because its frontend trust/type acceptance is satisfied by completed `RQ591` on main. Any future re-exposure for freshness/horizon, oracle/golden and identity/provenance certification is a separate prompt with those gates.
 
 ---
 
@@ -281,7 +281,8 @@ Smart reorder sets `reorderCost=0` when unit cost is missing, then calculates `e
 
 ## RQ18 - Advanced/V2 frontend trust metadata types
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - frontend trust/type acceptance; any future re-exposure requires separate freshness/horizon, oracle/golden and identity/provenance certification.
 Ready after: RQ17 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests

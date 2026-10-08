@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; RQ46 is IN_PROGRESS after the RQ320 post-close recovery at `60f768b47693816372493d4e18ce390a54493fb8`.
-Main RQ queue has no READY prompt after RQ588 DONE; P-UI-48 is DONE after its focused CI regression-test correction; P-UI-41 is claimed after RQ576 released its Inventory path, and P-UI-45 is DONE on `a1a51aa0bd8987165a7f55073fa203c1367dfc14`; P-UI-49 is the next primary P-UI READY lane. RQ586 and RQ557 are DONE; RQ584 is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ48 is DONE on main.
+Current READY prompt: none; RQ50 is DONE after the RQ46 post-close recovery at `853c37f3c5790ee1715d7d6749cf26205891a872`.
+P-UI-01..P-UI-54 are DONE and the P-UI queue has no READY prompt. Main RQ queue has no READY prompt; RQ50 is DONE after RQ46 recovery. RQ586 and RQ557 are DONE; RQ584 is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ48 is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -20,11 +20,11 @@ Purpose: add reliability prompts for analytics UI tables, charts, detail snapsho
 | RQ43 | DONE | stale-report-preview | Harden stale browser report preview fallback |
 | RQ44 | DONE | change-badge-baseline | Stop showing zero/no-baseline changes as positive up signal |
 | RQ45 | DONE | kpi-margin-coverage-ui | Show margin coverage on KPI margin card |
-| RQ46 | IN_PROGRESS | export-trust-metadata | Include trust metadata in exported analytics tables |
+| RQ46 | DONE | export-trust-metadata | Include trust metadata in exported analytics tables |
 | RQ47 | DONE | action-source-key-lineage | Include relevant filters in supplier action source keys |
 | RQ48 | DONE | action-duplicate-pagination | Avoid first-page-only duplicate guard for action queue |
 | RQ49 | DONE | reorder-value-field-drift | Fix legacy/derived totalReorderValue semantic drift |
-| RQ50 | WAITING | chart-topn-semantics | Label top-N charts and rest/tail behavior explicitly |
+| RQ50 | DONE | chart-topn-semantics | Label top-N charts and rest/tail behavior explicitly |
 
 ---
 
@@ -473,7 +473,7 @@ KPI Snapshot backend supplies margin coverage, but frontend type/card hides it. 
 
 ## RQ46 - Export trust metadata preservation
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ34/RQ45 or explicit unblocking
 Priority: P1
 Type: frontend-report/tests
@@ -544,6 +544,7 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 - Follow-up: verify generated PDF/XLSX visual output when artifacts are available; no claim of downloaded-document proof.
 - Residual risk: current-main Analytics Quality Gates run `37825764812` was `in_progress` at inspection; it is residual risk, not a delivery gate.
 - Post-close routing: full 13-file RQ/SQL scan at post-delivery `origin/main` `853c37f3c5790ee1715d7d6749cf26205891a872`; RQ50 was dependency-complete and collision-safe, then promoted and claimed.
+- Follow-up: complete RQ50 top-N chart-scope labels; its status is now DONE with implementation and recovery evidence in `.ai/runs/2026-10-08-RQ50-evidence.md`.
 
 ---
 
@@ -708,7 +709,7 @@ Owner completion 2026-10-05: RQ49 acceptance is satisfied by the RQ591 reorder s
 
 ## RQ50 - Chart top-N semantics
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: RQ46 DONE and full post-close RQ recovery; explicit owner claim
 Priority: P2
 Type: frontend-ux/tests
@@ -748,3 +749,5 @@ Several charts show top 8/top N rows while adjacent tables may contain all rows.
 - Top-N charts cannot be mistaken for full totals.
 
 Owner claim 2026-10-08 after RQ46 closure: refreshed post-delivery `origin/main` at `853c37f3c5790ee1715d7d6749cf26205891a872` and scanned the complete 13-file active RQ/SQL set. The former broad “higher-priority data fixes” gate was rechecked: current P0/P1 candidates remain external-evidence/owner gated or have no newly reproduced bounded repository defect; RQ319/RQ320/RQ46 are DONE. No matching RQ50 lock or branch was found and open PR #119 is on the unrelated Decision Pulse store/supplier filter path. RQ50 moved `WAITING -> READY -> IN_PROGRESS`; local lock `.ai/task-locks/RQ50-codex.lock.md`.
+
+Owner completion 2026-10-08: RQ50 is DONE on implementation SHA `5f6154409d5d38d4a83ddffbde9fcddcce67b1a2`. Insight Studio states that the revenue chart shows the top 8 categories while its table contains all categories; Supplier Decision Hub explains that its concentration chart shows up to 8 leading suppliers plus the residual “Ostali” share and that the table provides the full list. Existing ordering, shares and formulas are unchanged. Focused proof: `InsightStudioPage.spec.tsx` and `SupplierDecisionHubPage.spec.tsx` (25 tests), `npm run typecheck`, and `git diff --check`. Run log: `.ai/runs/2026-10-08-RQ50-evidence.md`.

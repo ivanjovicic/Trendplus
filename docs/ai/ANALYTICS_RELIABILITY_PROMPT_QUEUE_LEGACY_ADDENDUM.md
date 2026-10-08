@@ -3,42 +3,43 @@
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
 Current READY prompt: none in this addendum
-Main RQ queue has no unclaimed READY prompt after RQ320 closure; RQ46 is IN_PROGRESS in the UI/Table/Chart addendum. P-UI-01..P-UI-54 are DONE and the P-UI queue has no READY prompt. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend certification for RQ34-RQ38 is DONE on main; RQ590 backend certification for RQ25-RQ33 is DONE on main.
+Main RQ queue has no unclaimed READY prompt after RQ50 closure; RQ46 and RQ50 are DONE in the UI/Table/Chart addendum. P-UI-01..P-UI-54 are DONE and the P-UI queue has no READY prompt. `RQ586` and `RQ557` are DONE; `RQ584` is DONE in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`; RQ591 frontend replacement acceptance for RQ34-RQ38 is DONE on main; RQ590 backend replacement acceptance for RQ25-RQ33 is DONE on main.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
-Purpose: preserve the original legacy Advanced and frontend-derived acceptance records. They stay WAITING under their original gates; active certification ownership is consolidated into `RQ590` and `RQ591` in the main queue.
+Purpose: preserve the original legacy Advanced and frontend-derived acceptance records. Their replacement acceptance is complete under `RQ590` and `RQ591` in the main queue; future re-exposure requires new prompts with current gates.
 
 ## Status summary
 
 | Task | Status | Feature family | Purpose |
 |---|---|---|---|
-| RQ25 | WAITING | legacy-date-boundaries | Fix date-only toDate exclusion in legacy Advanced analytics |
-| RQ26 | WAITING | kpi-period-overlap | Prevent KPI current/previous period boundary overlap |
-| RQ27 | WAITING | legacy-margin-fallback | Remove hard-coded 35% margin fallback from score logic |
-| RQ28 | WAITING | abc-empty-meta | Add no-data meta to ABC empty/zero-revenue results |
-| RQ29 | WAITING | aging-never-sold | Stop treating UpdatedAt as last sale for never-sold products |
-| RQ30 | WAITING | daily-zscore-baseline | Exclude target day from daily outlier baseline |
-| RQ31 | WAITING | daily-target-no-data | Distinguish missing target day from normal zero-sales day |
-| RQ32 | WAITING | category-mixed-denominator | Clarify category velocity stock/sales denominator |
-| RQ33 | WAITING | reorder-value-semantics | Clarify reorder value as revenue vs procurement cost |
-| RQ34 | WAITING | legacy-frontend-trust-types | Expose legacy backend trust metadata in frontend types |
-| RQ35 | WAITING | derived-approx-revenue | Label frontend-derived approximate revenue as estimated |
-| RQ36 | WAITING | derived-margin-fake-zero | Stop defaulting missing derived margin to zero |
-| RQ37 | WAITING | derived-stock-value-cost | Stop valuing stock with net selling price when cost is missing |
-| RQ38 | WAITING | derived-smart-reorder-cost | Prevent derived smart reorder missing-cost profit inflation |
+| RQ25 | OBSOLETE | legacy-date-boundaries | Replaced by completed RQ590 backend acceptance |
+| RQ26 | OBSOLETE | kpi-period-overlap | Replaced by completed RQ590 backend acceptance |
+| RQ27 | OBSOLETE | legacy-margin-fallback | Replaced by completed RQ590 backend acceptance |
+| RQ28 | OBSOLETE | abc-empty-meta | Replaced by completed RQ590 backend acceptance |
+| RQ29 | OBSOLETE | aging-never-sold | Replaced by completed RQ590 backend acceptance |
+| RQ30 | OBSOLETE | daily-zscore-baseline | Replaced by completed RQ590 backend acceptance |
+| RQ31 | OBSOLETE | daily-target-no-data | Replaced by completed RQ590 backend acceptance |
+| RQ32 | OBSOLETE | category-mixed-denominator | Replaced by completed RQ590 backend acceptance |
+| RQ33 | OBSOLETE | reorder-value-semantics | Replaced by completed RQ590 backend acceptance |
+| RQ34 | OBSOLETE | legacy-frontend-trust-types | Replaced by completed RQ591 frontend acceptance |
+| RQ35 | OBSOLETE | derived-approx-revenue | Replaced by completed RQ591 frontend acceptance |
+| RQ36 | OBSOLETE | derived-margin-fake-zero | Replaced by completed RQ591 frontend acceptance |
+| RQ37 | OBSOLETE | derived-stock-value-cost | Replaced by completed RQ591 frontend acceptance |
+| RQ38 | OBSOLETE | derived-smart-reorder-cost | Replaced by completed RQ591 frontend acceptance |
 
 ## Legacy Advanced consolidation map (2026-10-05)
 
 - `RQ590` is the named legacy Advanced backend certification owner for `RQ25`-`RQ33`; each original acceptance remains traceable in this addendum.
 - `RQ591` is the named frontend trust/derived-metric certification owner for `RQ34`-`RQ38`, grouped with V2 metadata types in the main queue.
-- These mappings do not change legacy status. Do not mark a mapped prompt OBSOLETE until its replacement acceptance is met or its surface is explicitly retired. Re-exposure requires freshness/horizon, oracle/golden and identity/provenance certification.
+- Replacement acceptance is met: mark `RQ25`-`RQ33` OBSOLETE with `RQ590` as replacement and `RQ34`-`RQ38` OBSOLETE with `RQ591` as replacement. Re-exposure requires a new prompt with freshness/horizon, oracle/golden and identity/provenance certification.
 
 ---
 
 ## RQ25 - Legacy Advanced date boundary correctness
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ01 DONE or explicit reprioritization
 Priority: P0
 Type: backend/tests
@@ -85,7 +86,8 @@ Legacy Advanced endpoints parse `toDate` as an exact UTC instant and query `<= t
 
 ## RQ26 - KPI snapshot current/previous period overlap
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ01 DONE or explicit reprioritization
 Priority: P0
 Type: backend/tests
@@ -130,7 +132,8 @@ KPI snapshot current period includes `from`, and previous period also includes `
 
 ## RQ27 - Legacy margin fallback trust contract
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25/RQ26 DONE or explicit unblocking
 Priority: P0
 Type: backend/tests
@@ -175,7 +178,8 @@ Supplier and category intelligence use a hard-coded 35% margin fallback when sys
 
 ## RQ28 - ABC empty/no-revenue meta
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25 DONE or explicit unblocking
 Priority: P1
 Type: backend-contract/tests
@@ -219,7 +223,8 @@ ABC classification returns zero counts when there are no sales or total revenue 
 
 ## RQ29 - Aging stock never-sold handling
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25 DONE or explicit unblocking
 Priority: P0
 Type: backend/tests
@@ -264,7 +269,8 @@ Aging stock falls back to article `UpdatedAt` when no last sale exists. Recently
 
 ## RQ30 - Daily analysis z-score baseline
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25 DONE or explicit unblocking
 Priority: P1
 Type: backend/tests
@@ -307,7 +313,8 @@ Daily analysis calculates mean/stddev including the target day being evaluated, 
 
 ## RQ31 - Daily analysis target no-data contract
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ30 DONE or explicit unblocking
 Priority: P1
 Type: backend-contract/tests
@@ -351,7 +358,8 @@ If target day is missing, daily analysis can return zero revenue, zero units and
 
 ## RQ32 - Category intelligence mixed denominator contract
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25/RQ27 DONE or explicit unblocking
 Priority: P1
 Type: backend-contract/docs/tests
@@ -394,7 +402,8 @@ Category intelligence mixes period sales with current all-catalog average stock.
 
 ## RQ33 - Legacy reorder value semantics
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ590 DONE - replacement acceptance is complete.
 Ready after: RQ25 DONE or explicit unblocking
 Priority: P1
 Type: backend-contract/tests
@@ -441,7 +450,8 @@ Legacy reorder summary uses selling price for `totalReorderValue`. If the UI rea
 
 ## RQ34 - Legacy frontend trust metadata types
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - replacement acceptance is complete.
 Ready after: RQ27/RQ33 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -484,7 +494,8 @@ Legacy backend returns margin/cost coverage fields, but frontend TypeScript type
 
 ## RQ35 - Derived approximate revenue labeling
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - replacement acceptance is complete.
 Ready after: RQ34 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -527,7 +538,8 @@ Derived category intelligence uses velocity × 30 × price but emits `totalReven
 
 ## RQ36 - Derived margin fake-zero guardrail
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - replacement acceptance is complete.
 Ready after: RQ35 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -570,7 +582,8 @@ Derived analytics uses `marginPct ?? 0`. Missing margin evidence becomes 0% marg
 
 ## RQ37 - Derived stock value cost vs selling price
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - replacement acceptance is complete.
 Ready after: RQ36 DONE or explicit unblocking
 Priority: P1
 Type: frontend-contract/tests
@@ -613,7 +626,8 @@ Derived aging stock falls back to net selling price when cost is missing. Stock 
 
 ## RQ38 - Derived smart reorder missing-cost profit
 
-Status: WAITING
+Status: OBSOLETE
+Replacement: RQ591 DONE - replacement acceptance is complete.
 Ready after: RQ36 DONE or RQ17 DONE
 Priority: P0
 Type: frontend-contract/tests
