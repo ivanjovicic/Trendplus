@@ -6,6 +6,7 @@ import PreNivelacijaPriorityPage from "../PreNivelacijaPriorityPage";
 import { decisionColumns } from "../preNivelacijaDecision";
 import { PreNivelacijaApiError } from "../../services/preNivelacijaApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
+import * as analyticsApi from "../../services/analyticsApi";
 
 vi.mock("recharts", () => ({
   BarChart: ({
@@ -447,6 +448,61 @@ describe("PreNivelacijaPriorityPage", () => {
     vi.clearAllMocks();
     localStorage.clear();
     getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse(query));
+  });
+
+  it("creates an idempotent SKU-store markdown action from the canonical queue and keeps shareable context", async () => {
+    const response = makeResponse([makeCandidate()]);
+    response.queues.likelyMarkdownSoon = [{
+      artikalId: 101,
+      sku: "SKU-101",
+      storeId: 17,
+      storeName: "Objekat 17",
+      supplierName: "Dobavljac A",
+      preNivelacijaScore: 86,
+      priorityBand: "high",
+      owner: "Nedodeljeno",
+      status: "Nedodeljeno",
+      dueDateUtc: "2026-06-22T00:00:00Z",
+      recommendationAllowed: true,
+      recommendationStatus: "review",
+      recommendationLabel: "Pregled",
+      recommendationSummary: "Razmotri signal.",
+      confidencePct: 80,
+      reliabilityPct: 75,
+      dataQualityStatus: "good",
+      reasonCodes: ["old_stock"],
+    }];
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(response);
+    const upsertSpy = vi.spyOn(analyticsApi, "upsertAnalyticsActionWithResult").mockResolvedValue({} as never);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?storeId=17&dataScope=imported&artikalId=101&asOfUtc=2026-06-01T00%3A00%3A00Z"]}>
+        <LocationProbe />
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("pre-nivelacija-prioriteti-data-table")).toBeInTheDocument();
+    expect(getPreNivelacijaPrioritetiMock).toHaveBeenCalledWith(expect.objectContaining({ artikalId: 101, storeId: 17, dataScope: "imported" }));
+    expect(screen.getByTestId("location-search")).toHaveTextContent("asOfUtc=2026-06-01T00%3A00%3A00Z");
+    fireEvent.click(await screen.findByRole("button", { name: "Dodaj u akcije" }));
+
+    await waitFor(() => expect(upsertSpy).toHaveBeenCalledTimes(1));
+    const input = upsertSpy.mock.calls[0][0];
+    expect(input.sourceType).toBe("nivelacija");
+    expect(input.sourceKey).toContain("SKU-101");
+    expect(input.sourceKey).toContain("17");
+    expect(input.periodToUtc).toBe("2026-06-01T00:00:00Z");
+    expect(input.actionUrl).toContain("artikalId=101");
+    expect(input.actionUrl).toContain("storeId=17");
+    expect(input.actionUrl).toContain("dataScope=imported");
+    expect(JSON.parse(input.metadataJson ?? "{}")).toMatchObject({
+      source: "pre_nivelacija_likely_markdown_queue",
+      recommendationAllowed: true,
+      reasonCodes: ["old_stock"],
+      formulaVersion: "1.0",
+      dataScope: "imported",
+    });
   });
 
   it("keeps the high-priority band stable even when the recommendation is insufficient_data", async () => {

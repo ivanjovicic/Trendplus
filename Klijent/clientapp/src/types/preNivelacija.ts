@@ -155,6 +155,14 @@ export interface PreNivelacijaQueueItem {
   owner: string;
   status: string;
   dueDateUtc: string;
+  recommendationAllowed: boolean;
+  recommendationStatus: string;
+  recommendationLabel: string;
+  recommendationSummary: string;
+  confidencePct: number;
+  reliabilityPct: number | null;
+  dataQualityStatus: string;
+  reasonCodes: string[];
 }
 
 export interface PreNivelacijaNewStockQueueItem {
@@ -188,6 +196,7 @@ export interface PreNivelacijaQueues {
   monitorTotal?: number | null;
   likelyMarkdownSoon: PreNivelacijaQueueItem[];
   likelyMarkdownSoonTotal?: number | null;
+  likelyMarkdownUnavailableReason?: "recommendation_not_allowed" | "no_candidates_in_scope" | string | null;
 }
 
 export interface PreNivelacijaCleanupItem {

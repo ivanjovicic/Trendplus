@@ -1079,7 +1079,7 @@ export default function ProductDecisionCenterPage() {
   }, [dataScope, fromDate, recommendationFilter, dataQualityFilter, search, serverSearch, sortField, sortDir, storeId, supplierId, toDate]);
 
   const actionStatusLookupItems = useMemo(() => {
-    const candidates = filteredRows.map((row) => {
+    const candidates = filteredRows.filter((row) => row.recommendationStatus?.toUpperCase() !== "MARKDOWN").map((row) => {
       const queueSpec = buildProductQueueSpec(row);
       return {
         sourceType: queueSpec.sourceType,
@@ -1377,6 +1377,7 @@ export default function ProductDecisionCenterPage() {
   }, []);
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
+    if (row.recommendationStatus?.toUpperCase() === "MARKDOWN") return;
     const queueSpec = buildProductQueueSpec(row);
     const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
     const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
@@ -1904,6 +1905,14 @@ export default function ProductDecisionCenterPage() {
                   const decisionTreeItems: ProductDecisionDecisionTreeNode[] = whyPanel.decisionTree ?? [];
                   const supplierUrl = row.supplierId != null ? buildSupplierDecisionUrl(row.supplierId) : null;
                   const inventoryUrl = (row.productId > 0 || row.sku) ? buildInventoryDecisionUrl(row) : null;
+                  const isMarkdownSignal = row.recommendationStatus?.toUpperCase() === "MARKDOWN";
+                  const markdownParams = new URLSearchParams({
+                    artikalId: String(row.productId),
+                    dataScope,
+                  });
+                  if (storeId != null) markdownParams.set("storeId", String(storeId));
+                  if (responseMeta?.observedPeriodToUtc) markdownParams.set("asOfUtc", responseMeta.observedPeriodToUtc);
+                  const markdownHref = `/analytics/pre-nivelacija-prioriteti?${markdownParams.toString()}`;
 
                   return (
                     <Fragment key={`${row.productId}:${row.recommendationStatus}`}>
@@ -1984,28 +1993,34 @@ export default function ProductDecisionCenterPage() {
                           {expectedImpactRsd == null && !decisionBlocked ? (
                             <small className="recommendation-warning-summary">Upozorenje: nedostaje ulaz za procenu uticaja.</small>
                           ) : null}
-                          <button
-                            type="button"
-                            className={`btn-add-to-queue${isQueued ? " added" : ""}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void addRowToCentralActions(row);
-                            }}
-                            disabled={isQueueBusy || isQueued}
-                            title={isQueued
-                              ? "Akcija je već u centralnom redu."
-                              : actionStatusKnown
-                                ? "Dodaj u centralni red akcija"
-                                : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
-                          >
-                            {isQueueBusy
-                              ? "Dodavanje..."
-                              : isQueued
-                                ? "U akcijama"
-                                : queueSpec.recommendationStatus === "SIGNAL_REVIEW"
-                                  ? "Dodaj u proveru"
-                                  : "Dodaj u akcije"}
-                          </button>
+                          {isMarkdownSignal ? (
+                            <Link className="btn-add-to-queue" to={markdownHref} onClick={(event) => event.stopPropagation()}>
+                              Otvori kanonski signal u Prioritetima
+                            </Link>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`btn-add-to-queue${isQueued ? " added" : ""}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void addRowToCentralActions(row);
+                              }}
+                              disabled={isQueueBusy || isQueued}
+                              title={isQueued
+                                ? "Akcija je već u centralnom redu."
+                                : actionStatusKnown
+                                  ? "Dodaj u centralni red akcija"
+                                  : "Dodaj u centralni red akcija. Status postojećih akcija trenutno nije dostupan."}
+                            >
+                              {isQueueBusy
+                                ? "Dodavanje..."
+                                : isQueued
+                                  ? "U akcijama"
+                                  : queueSpec.recommendationStatus === "SIGNAL_REVIEW"
+                                    ? "Dodaj u proveru"
+                                    : "Dodaj u akcije"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                       {expanded ? (
@@ -2376,7 +2391,9 @@ export default function ProductDecisionCenterPage() {
                               </div>
 
                               <div className="reason-actions">
-                                <button
+                                {isMarkdownSignal ? (
+                                  <Link className="reason-link-btn" to={markdownHref}>Otvori kanonski signal u Prioritetima</Link>
+                                ) : <button
                                   type="button"
                                   className={`btn-add-to-queue${isQueued ? " added" : ""}`}
                                   disabled={isQueueBusy || isQueued}
@@ -2394,7 +2411,7 @@ export default function ProductDecisionCenterPage() {
                                       : queueSpec.recommendationStatus === "SIGNAL_REVIEW"
                                         ? "Dodaj u proveru"
                                         : "Dodaj u akcije"}
-                                </button>
+                                </button>}
                                 {supplierUrl ? <Link className="reason-link-btn" to={supplierUrl}>Otvori dobavljača</Link> : null}
                                 {inventoryUrl ? <Link className="reason-link-btn" to={inventoryUrl}>Otvori zalihe</Link> : null}
                                 <span>

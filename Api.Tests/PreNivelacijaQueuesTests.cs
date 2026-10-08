@@ -37,6 +37,20 @@ public sealed class PreNivelacijaQueuesTests
         Assert.Equal(30, queues.Monitor.Count);
         Assert.Equal(31, queues.LikelyMarkdownSoonTotal);
         Assert.Equal(30, queues.LikelyMarkdownSoon.Count);
+        Assert.Null(queues.LikelyMarkdownUnavailableReason);
+    }
+
+    [Fact]
+    public void BuildQueues_ExplainsWhenMarkdownSignalsAreBlockedOrAbsent()
+    {
+        var blocked = PreNivelacijaPriorityEndpoints.BuildQueues(
+            [CreateCandidate(1, "high", recommendationAllowed: false, daysSinceLastSale: 90)],
+            DateTime.UtcNow);
+        var empty = PreNivelacijaPriorityEndpoints.BuildQueues([], DateTime.UtcNow);
+
+        Assert.Empty(blocked.LikelyMarkdownSoon);
+        Assert.Equal("recommendation_not_allowed", blocked.LikelyMarkdownUnavailableReason);
+        Assert.Equal("no_candidates_in_scope", empty.LikelyMarkdownUnavailableReason);
     }
 
     private static PreNivelacijaSkuCandidateDto CreateCandidate(

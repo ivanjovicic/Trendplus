@@ -20,6 +20,7 @@ import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import InfoTip from "../components/ui/InfoTip";
 import { buildAnalyticsDetailSnapshot, saveAnalyticsDetailSnapshot } from "../services/analyticsTableState";
 import { getPreNivelacijaPrioriteti, PreNivelacijaApiError } from "../services/preNivelacijaApi";
+import { upsertAnalyticsActionWithResult } from "../services/analyticsApi";
 import type { AnalyticsNamedValue } from "../types/analyticsTable";
 import { PRE_NIVELACIJA_SALES_WINDOW_DAYS, type PreNivelacijaPriorityResponse } from "../types/preNivelacija";
 import { decisionColumns, type DecisionCandidate, type DecisionStatus, type FiniteNumber, type NormalizedScenario } from "./preNivelacijaDecision";
@@ -210,6 +211,8 @@ function buildPreNivelacijaSearchParams(
   dataScope: DataScope,
   sortField: SortField = DEFAULT_SORT_FIELD,
   sortDir: SortDir = defaultSortDir(sortField),
+  articleId?: number | null,
+  asOfUtc?: string | null,
 ): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.supplierId != null) params.set("supplierId", String(filters.supplierId));
@@ -221,7 +224,20 @@ function buildPreNivelacijaSearchParams(
   if (focus !== "all") params.set("focus", focus);
   if (page > 1) params.set("page", String(page));
   params.set("dataScope", dataScope);
+  if (articleId != null && articleId > 0) params.set("artikalId", String(articleId));
+  if (asOfUtc?.trim()) params.set("asOfUtc", asOfUtc.trim());
   return writeAnalyticsTableSort(params, sortField, sortDir, SORT_DEFAULTS);
+}
+
+function buildMarkdownActionSourceKey(
+  item: PreNivelacijaPriorityResponse["queues"]["likelyMarkdownSoon"][number],
+  salesWindowToUtc: string,
+  dataScope: DataScope,
+  formulaVersion: string,
+): string {
+  return [item.artikalId, item.sku.trim(), item.storeId, salesWindowToUtc, dataScope, formulaVersion]
+    .map((value) => encodeURIComponent(String(value)))
+    .join("|");
 }
 
 const STATUS_PRIORITY: Record<DecisionStatus, number> = {
@@ -537,6 +553,8 @@ export default function PreNivelacijaPriorityPage() {
   }), [searchParams]);
   const queryFocus = parseFocusFilter(searchParams.get("focus"));
   const queryPage = parseBoundedInteger(searchParams.get("page"), 1, 1, Number.MAX_SAFE_INTEGER);
+  const queryArticleId = parseEntityIdParam(searchParams.get("artikalId"));
+  const queryAsOfUtc = searchParams.get("asOfUtc");
   const { field: querySortField, dir: querySortDir } = readAnalyticsTableSort(searchParams, SORT_FIELDS, DEFAULT_SORT_FIELD, defaultSortDir);
 
   const [supplierId, setSupplierId] = useState<number | null>(queryFilters.supplierId);
@@ -551,6 +569,9 @@ export default function PreNivelacijaPriorityPage() {
   const [sortField, setSortField] = useState<SortField>(querySortField);
   const [sortDir, setSortDir] = useState<SortDir>(querySortDir);
   const [expandedArtikalId, setExpandedArtikalId] = useState<string | null>(null);
+  const [markdownActionBusyKey, setMarkdownActionBusyKey] = useState<string | null>(null);
+  const [markdownActionKeys, setMarkdownActionKeys] = useState<Set<string>>(new Set());
+  const [markdownActionMessage, setMarkdownActionMessage] = useState<string | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusFilter>(queryFocus);
   const [dataScope, setDataScopeValue] = useState<DataScope>(() => queryDataScope);
   const dataScopeRef = useRef<DataScope>(queryDataScope);
@@ -577,10 +598,12 @@ export default function PreNivelacijaPriorityPage() {
       queryDataScope,
       querySortField,
       querySortDir,
+      queryArticleId,
+      queryAsOfUtc,
     );
     if (canonicalParams.toString() === searchParams.toString()) return;
     setSearchParams(canonicalParams, { replace: true });
-  }, [queryDataScope, queryFilters, queryFocus, queryPage, querySortDir, querySortField, searchParams, setSearchParams]);
+  }, [queryArticleId, queryAsOfUtc, queryDataScope, queryFilters, queryFocus, queryPage, querySortDir, querySortField, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (dataScopeRef.current === queryDataScope) return;
@@ -610,6 +633,7 @@ export default function PreNivelacijaPriorityPage() {
     seasonId: activeFilters.seasonId ?? undefined,
     footwearTypeId: activeFilters.footwearTypeId ?? undefined,
     storeId: activeFilters.storeId ?? undefined,
+    artikalId: queryArticleId ?? undefined,
     minScore: activeFilters.minScore,
     noSaleDaysMin: activeFilters.noSaleDaysMin,
     page,
@@ -617,7 +641,7 @@ export default function PreNivelacijaPriorityPage() {
     focus: focusFilter !== "all" ? focusFilter : undefined,
     dataScope,
     signal,
-  }), [activeFilters, dataScope, focusFilter, page]);
+  }), [activeFilters, dataScope, focusFilter, page, queryArticleId]);
   const {
     data,
     initialLoading,
@@ -1040,13 +1064,87 @@ export default function PreNivelacijaPriorityPage() {
     setSortField(field);
     setSortDir(nextSortDir);
     setSearchParams(
-      buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, field, nextSortDir),
+      buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, field, nextSortDir, queryArticleId, queryAsOfUtc),
       { replace: true },
     );
   };
 
   const syncQueryState = (filters: ActiveFilters, focus: FocusFilter, nextPage: number) => {
-    setSearchParams(buildPreNivelacijaSearchParams(filters, focus, nextPage, dataScope, sortField, sortDir), { replace: true });
+    setSearchParams(buildPreNivelacijaSearchParams(filters, focus, nextPage, dataScope, sortField, sortDir, queryArticleId, queryAsOfUtc), { replace: true });
+  };
+
+  const addMarkdownQueueItem = async (item: PreNivelacijaPriorityResponse["queues"]["likelyMarkdownSoon"][number]) => {
+    const salesWindowToUtc = data?.evidenceWindow?.salesWindowToUtc;
+    const formulaVersion = data?.formulaVersion;
+    if (!item.recommendationAllowed || !item.storeId || !item.sku.trim() || !salesWindowToUtc || !formulaVersion) {
+      setMarkdownActionMessage("Akcija nije dodata: preporuka, SKU/prodavnica ili izvorni period nisu potvrđeni.");
+      return;
+    }
+    const sourceKey = buildMarkdownActionSourceKey(item, salesWindowToUtc, dataScope, formulaVersion);
+    if (markdownActionKeys.has(sourceKey) || markdownActionBusyKey === sourceKey) return;
+
+    const actionParams = buildPreNivelacijaSearchParams(
+      activeFilters,
+      focusFilter,
+      page,
+      dataScope,
+      sortField,
+      sortDir,
+      item.artikalId,
+      data?.meta?.observedPeriodToUtc ?? data?.evidenceWindow?.anchorDateUtc,
+    );
+    actionParams.set("storeId", String(item.storeId));
+    actionParams.set("artikalId", String(item.artikalId));
+    setMarkdownActionBusyKey(sourceKey);
+    setMarkdownActionMessage(null);
+    try {
+      await upsertAnalyticsActionWithResult({
+        sourceType: "nivelacija",
+        sourceKey,
+        sourceId: item.artikalId,
+        title: `Razmotri sniženje: ${item.sku}`,
+        description: item.recommendationSummary || item.recommendationLabel,
+        recommendationStatus: "MARKDOWN",
+        priority: item.priorityBand.toLowerCase() === "high" ? "P1" : item.priorityBand.toLowerCase() === "medium" ? "P2" : "P3",
+        dataQualityStatus: item.dataQualityStatus === "good" || item.dataQualityStatus === "warning" || item.dataQualityStatus === "critical"
+          ? item.dataQualityStatus
+          : "insufficient_data",
+        actionUrl: `/analytics/pre-nivelacija-prioriteti?${actionParams.toString()}`,
+        recommendationType: item.recommendationStatus,
+        reasonCodes: item.reasonCodes,
+        decisionReason: item.recommendationSummary,
+        generatedAtUtc: data?.generatedAtUtc,
+        periodFromUtc: data?.evidenceWindow?.salesWindowFromUtc,
+        periodToUtc: salesWindowToUtc,
+        metadataJson: JSON.stringify({
+          source: "pre_nivelacija_likely_markdown_queue",
+          artikalId: item.artikalId,
+          sku: item.sku,
+          storeId: item.storeId,
+          storeName: item.storeName,
+          supplierName: item.supplierName,
+          sourceHorizonToUtc: salesWindowToUtc,
+          anchorDateUtc: data?.evidenceWindow?.anchorDateUtc,
+          formulaVersion,
+          dataScope,
+          recommendationAllowed: item.recommendationAllowed,
+          recommendationStatus: item.recommendationStatus,
+          priorityBand: item.priorityBand,
+          recommendationLabel: item.recommendationLabel,
+          reasonCodes: item.reasonCodes,
+          confidencePct: item.confidencePct,
+          reliabilityPct: item.reliabilityPct,
+          dataQualityStatus: item.dataQualityStatus,
+          asOfUtc: data?.meta?.observedPeriodToUtc ?? data?.evidenceWindow?.anchorDateUtc ?? null,
+        }),
+      });
+      setMarkdownActionKeys((current) => new Set(current).add(sourceKey));
+      setMarkdownActionMessage(`Akcija za ${item.sku} je u centralnom redu.`);
+    } catch {
+      setMarkdownActionMessage(`Akciju za ${item.sku} nije bilo moguće dodati. Pokušajte ponovo.`);
+    } finally {
+      setMarkdownActionBusyKey(null);
+    }
   };
 
   const handleApplyFilters = () => {
@@ -1267,7 +1365,7 @@ export default function PreNivelacijaPriorityPage() {
       })
     );
 
-    const detailParams = buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, sortField, sortDir);
+    const detailParams = buildPreNivelacijaSearchParams(activeFilters, focusFilter, page, dataScope, sortField, sortDir, queryArticleId, queryAsOfUtc);
     navigate(`/analitika/pre-nivelacija-prioriteti/${row.artikalId}?${detailParams.toString()}`, {
       state: { backgroundLocation: location },
     });
@@ -1837,19 +1935,48 @@ export default function PreNivelacijaPriorityPage() {
                 <article className="pnp-queue-panel pnp-queue-panel--reduce">
                   <h3>{formatQueueHeading("Verovatni markdown signal", data.queues.likelyMarkdownSoon.length, data.queues.likelyMarkdownSoonTotal)}</h3>
                   {data.queues.likelyMarkdownSoon.length === 0 ? (
-                    <p className="pnp-queue-empty">Nema SKU u ovom redu.</p>
+                    <p className="pnp-queue-empty">
+                      {data.queues.likelyMarkdownUnavailableReason === "recommendation_not_allowed"
+                        ? "Signali postoje, ali preporuka nije dozvoljena na osnovu trenutno raspoloživih dokaza."
+                        : data.queues.likelyMarkdownUnavailableReason === "no_candidates_in_scope"
+                          ? "Nema podobnih markdown kandidata u izabranom obuhvatu."
+                          : "Nema SKU u ovom redu."}
+                    </p>
                   ) : (
-                    data.queues.likelyMarkdownSoon.map((item) => (
+                    data.queues.likelyMarkdownSoon.map((item) => {
+                      const sourceKey = buildMarkdownActionSourceKey(
+                        item,
+                        data.evidenceWindow.salesWindowToUtc,
+                        dataScope,
+                        data.formulaVersion,
+                      );
+                      return (
                       <div key={`${item.artikalId}-${item.storeId ?? "missing"}`} className="pnp-queue-item">
                         <div>
                           <div className="pnp-queue-item-sku">{item.sku}</div>
                           <div className="pnp-queue-item-supplier">{item.supplierName}</div>
                           <div className="pnp-queue-item-supplier">{item.storeName}{item.storeId != null ? ` (ID ${item.storeId})` : ""}</div>
                         </div>
-                        <span className="pnp-decision-status status-reduce">{priorityBandLabel(item.priorityBand)}</span>
+                        <div>
+                          <span className="pnp-decision-status status-reduce">{priorityBandLabel(item.priorityBand)}</span>
+                          <button
+                            type="button"
+                            className="btn-add-to-queue"
+                            disabled={!item.recommendationAllowed || item.storeId == null || markdownActionBusyKey != null || markdownActionKeys.has(sourceKey)}
+                            onClick={() => void addMarkdownQueueItem(item)}
+                          >
+                            {markdownActionBusyKey === sourceKey
+                              ? "Dodavanje..."
+                              : markdownActionKeys.has(sourceKey)
+                                ? "U akcijama"
+                                : item.recommendationAllowed && item.storeId != null ? "Dodaj u akcije" : "Nedostaje dozvola ili prodavnica"}
+                          </button>
+                        </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
+                  {markdownActionMessage ? <p role="status">{markdownActionMessage}</p> : null}
                 </article>
                 {(data.queues.legacyCleanup?.length ?? 0) > 0 ? (
                   <article className="pnp-queue-panel pnp-queue-panel--keep">

@@ -161,6 +161,7 @@ public sealed class PreNivelacijaQueuesDto
     public int MonitorTotal { get; set; }
     public List<PreNivelacijaQueueItemDto> LikelyMarkdownSoon { get; set; } = [];
     public int LikelyMarkdownSoonTotal { get; set; }
+    public string? LikelyMarkdownUnavailableReason { get; set; }
 }
 
 public sealed class PreNivelacijaCleanupItemDto
@@ -211,6 +212,14 @@ public sealed class PreNivelacijaQueueItemDto
     public string Owner { get; set; } = "Nedodeljeno";
     public string Status { get; set; } = "Nedodeljeno";
     public DateTime DueDateUtc { get; set; }
+    public bool RecommendationAllowed { get; set; }
+    public string RecommendationStatus { get; set; } = "insufficient_data";
+    public string RecommendationLabel { get; set; } = "Nedovoljno podataka";
+    public string RecommendationSummary { get; set; } = string.Empty;
+    public double ConfidencePct { get; set; }
+    public double? ReliabilityPct { get; set; }
+    public string DataQualityStatus { get; set; } = "critical";
+    public string[] ReasonCodes { get; set; } = [];
 }
 
 public sealed class PreNivelacijaAlertDto

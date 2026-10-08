@@ -81,6 +81,7 @@ public static class PreNivelacijaPriorityEndpoints
             int? seasonId = null,
             int? footwearTypeId = null,
             int? storeId = null,
+            int? artikalId = null,
             int? stockMin = null,
             int? stockMax = null,
             int? noSaleDaysMin = null,
@@ -812,7 +813,7 @@ public static class PreNivelacijaPriorityEndpoints
                 ct);
 
             var response = BuildResponse(
-                MaterializeFacetFilteredEntry(baseEntry, supplierId, seasonId, footwearTypeId, storeId),
+                MaterializeFacetFilteredEntry(baseEntry, supplierId, seasonId, footwearTypeId, storeId, artikalId),
                 page,
                 pageSize,
                 focus,
@@ -1546,12 +1547,15 @@ public static class PreNivelacijaPriorityEndpoints
         int? supplierId,
         int? seasonId,
         int? footwearTypeId,
-        int? storeId = null)
+        int? storeId = null,
+        int? artikalId = null)
     {
         var universe = universeEntry.FacetUniverseCandidates.Count > 0
             ? universeEntry.FacetUniverseCandidates
             : universeEntry.Candidates;
-        var filtered = ApplyDimensionFilters(universe, supplierId, seasonId, footwearTypeId, storeId);
+        var filtered = ApplyDimensionFilters(universe, supplierId, seasonId, footwearTypeId, storeId)
+            .Where(x => artikalId == null || x.ArtikalId == artikalId.Value)
+            .ToList();
         var filteredNewStock = ApplyNewStockDimensionFilters(
             universeEntry.NewStockCandidates,
             supplierId,
@@ -1733,9 +1737,11 @@ public static class PreNivelacijaPriorityEndpoints
         var monitor = candidates
             .Where(x => x.PriorityBand == "medium" && x.Recommendation.RecommendationAllowed)
             .ToList();
-        var likelyMarkdownSoon = candidates
-            .Where(x => x.Recommendation.RecommendationAllowed
-                && (x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m))
+        var markdownSignalCandidates = candidates
+            .Where(x => x.DaysSinceLastSale >= 60 || x.MarkdownEvents >= 2 || x.AvgMarkdownPct >= 25m)
+            .ToList();
+        var likelyMarkdownSoon = markdownSignalCandidates
+            .Where(x => x.Recommendation.RecommendationAllowed)
             .OrderByDescending(x => x.DaysSinceLastSale)
             .ThenByDescending(x => x.StockUnits)
             .ToList();
@@ -1762,7 +1768,12 @@ public static class PreNivelacijaPriorityEndpoints
             LikelyMarkdownSoon = likelyMarkdownSoon
                 .Take(30)
                 .Select(x => ToQueueItem(x, nowUtc.AddDays(3)))
-                .ToList()
+                .ToList(),
+            LikelyMarkdownUnavailableReason = likelyMarkdownSoon.Count > 0
+                ? null
+                : markdownSignalCandidates.Count > 0
+                    ? "recommendation_not_allowed"
+                    : "no_candidates_in_scope"
         };
     }
 
@@ -2007,7 +2018,15 @@ public static class PreNivelacijaPriorityEndpoints
             PriorityBand = sku.PriorityBand,
             Owner = "Nedodeljeno",
             Status = status ?? "Nedodeljeno",
-            DueDateUtc = dueDateUtc
+            DueDateUtc = dueDateUtc,
+            RecommendationAllowed = sku.Recommendation.RecommendationAllowed,
+            RecommendationStatus = sku.Recommendation.Status,
+            RecommendationLabel = sku.Recommendation.Label,
+            RecommendationSummary = sku.Recommendation.Summary,
+            ConfidencePct = sku.Recommendation.ConfidencePct,
+            ReliabilityPct = sku.Recommendation.ReliabilityPct,
+            DataQualityStatus = sku.Recommendation.DataQualityStatus,
+            ReasonCodes = sku.Recommendation.ReasonCodes.ToArray()
         };
     }
 

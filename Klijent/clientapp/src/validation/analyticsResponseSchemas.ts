@@ -1064,6 +1064,14 @@ const preNivelacijaQueueItemSchema = z.object({
   owner: z.string().trim().min(1),
   status: z.string().trim().min(1),
   dueDateUtc: validDate,
+  recommendationAllowed: z.boolean().optional(),
+  recommendationStatus: z.string().optional(),
+  recommendationLabel: z.string().optional(),
+  recommendationSummary: z.string().optional(),
+  confidencePct: finiteNumber.optional(),
+  reliabilityPct: nullableNumber.optional(),
+  dataQualityStatus: z.string().optional(),
+  reasonCodes: z.array(z.string()).optional(),
 }).passthrough();
 
 const preNivelacijaNewStockQueueItemSchema = z.object({
@@ -1181,6 +1189,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
     monitorTotal: nonNegativeInteger.optional().nullable(),
     likelyMarkdownSoon: z.array(preNivelacijaQueueItemSchema),
     likelyMarkdownSoonTotal: nonNegativeInteger.optional().nullable(),
+    likelyMarkdownUnavailableReason: z.string().nullable().optional(),
   }).passthrough(),
   alerts: z.array(preNivelacijaAlertSchema),
   page: nonNegativeInteger,

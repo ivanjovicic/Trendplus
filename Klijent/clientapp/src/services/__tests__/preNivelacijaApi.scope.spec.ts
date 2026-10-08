@@ -95,6 +95,17 @@ describe("pre-nivelacija API scope contract", () => {
     expect(requestUrl.searchParams.get("storeId")).toBe("17");
   });
 
+  it("keeps the exact article filter for SKU-level decision deep links", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getPreNivelacijaPrioriteti({ artikalId: 101, storeId: 17 });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]), "http://localhost");
+    expect(requestUrl.searchParams.get("artikalId")).toBe("101");
+    expect(requestUrl.searchParams.get("storeId")).toBe("17");
+  });
+
   it("uses the explicit scope for the request even when ambient storage differs", async () => {
     localStorage.setItem(getDataScopeStorageKey(), "existing");
     const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));

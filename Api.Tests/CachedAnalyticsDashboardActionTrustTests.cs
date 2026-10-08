@@ -7,6 +7,25 @@ namespace Api.Tests;
 public sealed class CachedAnalyticsDashboardActionTrustTests
 {
     [Fact]
+    public void BuildDashboardDecisionActions_DoesNotCreateCompetingMarkdownAggregateAction()
+    {
+        var snapshot = new ProductDecisionCenterResponseDto
+        {
+            Rows =
+            [
+                new ProductDecisionCenterRowDto { RecommendationStatus = "MARKDOWN", ConfidencePct = 90, RecommendationAllowed = true },
+                new ProductDecisionCenterRowDto { RecommendationStatus = "MARKDOWN", ConfidencePct = 95, RecommendationAllowed = true }
+            ]
+        };
+
+        var actions = CachedAnalyticsEndpoints.BuildDashboardDecisionActions(
+            snapshot, null, DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, null, null);
+
+        Assert.DoesNotContain(actions, action => action.RecommendationStatus == "MARKDOWN");
+        Assert.DoesNotContain(actions, action => action.SourceType == "nivelacija");
+    }
+
+    [Fact]
     public void BuildDashboardDecisionActions_PreservesActionableBlockedAndLegacyTrustStates()
     {
         var fromDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);

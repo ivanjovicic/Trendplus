@@ -4551,23 +4551,6 @@ public static class CachedAnalyticsEndpoints
             TryAddDecisionActionFromRows(
                 actions,
                 rows,
-                recommendationStatus: "MARKDOWN",
-                minRows: 2,
-                minConfidence: 55,
-                priority: "P1",
-                title: "Snizi artikle sa starom zalihom i slabom prodajom",
-                impactTemplate: "Ubrzanje obrta na sporoj zalihi vrednoj oko {0} RSD.",
-                sourceType: "nivelacija",
-                actionPath: "/analytics/pre-nivelacija-prioriteti",
-                actionTypeKey: "markdown",
-                fromDate: fromDate,
-                toDate: toDate,
-                storeId: storeId,
-                supplierId: supplierId);
-
-            TryAddDecisionActionFromRows(
-                actions,
-                rows,
                 recommendationStatus: "BOOST",
                 minRows: 1,
                 minConfidence: 60,
@@ -4841,7 +4824,7 @@ public static class CachedAnalyticsEndpoints
                 Sku = row.Sku,
                 ProductName = row.ProductName,
                 SupplierName = row.SupplierName,
-                Link = BuildDashboardActionLink("/analytics/pre-nivelacija-prioriteti", fromDate, toDate, storeId, supplierId)
+                Link = BuildPreNivelacijaMarkdownLink(row.ProductId, storeId, supplierId)
             });
         }
 
@@ -5148,6 +5131,14 @@ public static class CachedAnalyticsEndpoints
         if (supplierId.HasValue) query.Add($"supplierId={supplierId.Value}");
 
         return query.Count == 0 ? basePath : $"{basePath}?{string.Join("&", query)}";
+    }
+
+    private static string BuildPreNivelacijaMarkdownLink(int productId, int? storeId, int? supplierId)
+    {
+        var query = new List<string> { $"artikalId={productId}" };
+        if (storeId.HasValue) query.Add($"storeId={storeId.Value}");
+        if (supplierId.HasValue) query.Add($"supplierId={supplierId.Value}");
+        return $"/analytics/pre-nivelacija-prioriteti?{string.Join("&", query)}";
     }
 
     private static string MapLegacyAdvancedActionLink(
