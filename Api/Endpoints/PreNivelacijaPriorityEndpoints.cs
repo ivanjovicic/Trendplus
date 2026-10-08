@@ -678,6 +678,13 @@ public static class PreNivelacijaPriorityEndpoints
                                 ? DateTime.SpecifyKind(firstReceiptDate.Value, DateTimeKind.Utc)
                                 : null,
                             DaysSinceReceipt = daysSinceReceipt,
+                            ShadowV9 = PreNivelacijaV9ShadowService.BuildEvidence(
+                                a.StockUnits,
+                                units180,
+                                daysSinceReceipt,
+                                receiptEvidenceStatus,
+                                seasons.TryGetValue(a.SeasonId ?? 0, out var seasonEvidence) ? seasonEvidence.DatumDo : null,
+                                anchorDateUtc),
                             ReceiptEvidenceStatus = receiptEvidenceStatus,
                             StockAgeStatus = stockAgeStatus,
                             MarkdownEvents = markdownEvents,
@@ -779,6 +786,7 @@ public static class PreNivelacijaPriorityEndpoints
                         .ThenByDescending(x => x.DecisionScore)
                         .ThenByDescending(x => x.StockUnits)
                         .ToList();
+                    PreNivelacijaV9ShadowService.AssignRanks(allCandidates);
 
                     // Cache stores the facet universe (non-facet filters only). Dimension filters and
                     // summary/leaderboard projection happen after cache read.
@@ -1450,6 +1458,7 @@ public static class PreNivelacijaPriorityEndpoints
             SupplierActionShare = BuildSupplierActionShareProjection(baseEntry.SupplierLeaderboard),
             FilterFacets = filterFacets ?? BuildFilterFacets(baseEntry.Candidates, null, null, null),
             Candidates = pagedCandidates,
+            ShadowV9Comparison = PreNivelacijaV9ShadowService.BuildComparison(filteredCandidates),
             Queues = baseEntry.Queues,
             Alerts = baseEntry.Alerts,
             Page = page,

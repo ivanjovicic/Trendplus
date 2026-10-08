@@ -986,6 +986,48 @@ const preNivelacijaRecommendationSchema = z.object({
   reasonCodes: z.array(preNivelacijaReasonCodeSchema),
 }).passthrough();
 
+const preNivelacijaShadowEvidenceSchema = z.object({
+  version: z.string().trim().min(1),
+  weeksOfCover: nullableNonNegativeNumber,
+  weeksToSeasonEnd: nullableNumber,
+  ageDays: nullableNonNegativeInteger,
+  ageBasis: z.enum(["first_receipt", "first_positive_sale_fallback", "unavailable"]),
+  sellThroughSinceReceipt: nullableNumber,
+  sellThroughUnavailableReason: z.string().nullable(),
+  coverGap: nullableNumber,
+  score: nullableNonNegativePercentage,
+  rank: nullableNonNegativeInteger,
+  reasonCodes: z.array(preNivelacijaReasonCodeSchema),
+}).passthrough();
+
+const preNivelacijaShadowComparisonSchema = z.object({
+  version: z.string().trim().min(1),
+  methodology: z.string().trim().min(1),
+  coverGapWeight: nonNegativeNumber,
+  ageWeight: nonNegativeNumber,
+  coverGapSaturationWeeks: nonNegativeNumber,
+  ageSaturationDays: nonNegativeInteger,
+  label: z.string().trim().min(1),
+  rowsCompared: nonNegativeInteger,
+  spearmanRankCorrelation: nullableNumber,
+  topN: nonNegativeInteger,
+  topNOverlapCount: nonNegativeInteger,
+  rowsWithRankMovement: nonNegativeInteger,
+  largestMovements: z.array(z.object({
+    artikalId: entityId,
+    storeId: nullableEntityId,
+    sku: z.string(),
+    canonicalRank: nonNegativeInteger,
+    shadowRank: nonNegativeInteger,
+    rankMovement: finiteNumber.int(),
+    shadowScore: nonNegativePercentage,
+    weeksOfCover: nullableNonNegativeNumber,
+    weeksToSeasonEnd: nullableNumber,
+    ageDays: nullableNonNegativeInteger,
+    ageBasis: z.string(),
+  }).passthrough()),
+}).passthrough();
+
 const preNivelacijaCandidateSchema = z.object({
   artikalId: entityId,
   sku: z.string().trim().min(1),
@@ -1007,6 +1049,8 @@ const preNivelacijaCandidateSchema = z.object({
   salesHistoryStatus: z.enum(["never_sold", "no_sale_in_window", "sold"]).optional(),
   firstReceiptDateUtc: validDate.nullable().optional(),
   daysSinceReceipt: nullableNonNegativeInteger.optional(),
+  canonicalRank: nonNegativeInteger.optional(),
+  shadowV9: preNivelacijaShadowEvidenceSchema.optional(),
   receiptEvidenceStatus: z.enum(["received", "first_sale_fallback", "unknown"]).optional(),
   stockAgeStatus: z.enum(["new_stock", "established", "unknown"]).optional(),
   markdownEvents: nonNegativeInteger,
@@ -1217,6 +1261,7 @@ export const preNivelacijaPriorityResponseSchema = z.object({
     candidatesWithoutSalesInWindow: nonNegativeInteger,
     suppliersWithUnavailablePreviousWeekDenominator: nonNegativeInteger,
   }).nullable(),
+  shadowV9Comparison: preNivelacijaShadowComparisonSchema.optional(),
   meta: optionalMeta,
 }).passthrough();
 

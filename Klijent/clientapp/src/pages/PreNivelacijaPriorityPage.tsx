@@ -1564,6 +1564,32 @@ export default function PreNivelacijaPriorityPage() {
               )}
             </article>
 
+            <article className="pnp-decision-card analytics-surface-panel pnp-shadow-comparison" aria-label="Eksperimentalno poređenje rangiranja">
+              <h2>Eksperimentalno poređenje rangiranja</h2>
+              <p className="pnp-shadow-disclaimer">{data?.shadowV9Comparison?.label ?? "Shadow v9 nije dostupan."} Kanonska preporuka i redosled akcija i dalje koriste aktivni v10.</p>
+              {data?.shadowV9Comparison ? (
+                <>
+                  <p>{data.shadowV9Comparison.methodology}</p>
+                  <div className="pnp-shadow-metrics">
+                    <span>Poređeno redova: <strong>{fmtNumber(data.shadowV9Comparison.rowsCompared, 0)}</strong></span>
+                    <span>Korelacija rangova: <strong>{data.shadowV9Comparison.spearmanRankCorrelation == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : fmtNumber(data.shadowV9Comparison.spearmanRankCorrelation, 2)}</strong></span>
+                    <span>Presek Top {data.shadowV9Comparison.topN}: <strong>{data.shadowV9Comparison.topN === 0 ? RECOMMENDATION_SIGNAL_UNAVAILABLE : `${data.shadowV9Comparison.topNOverlapCount} od ${data.shadowV9Comparison.topN}`}</strong></span>
+                    <span>Promenjen rang: <strong>{fmtNumber(data.shadowV9Comparison.rowsWithRankMovement, 0)}</strong></span>
+                  </div>
+                  {data.shadowV9Comparison.largestMovements.length > 0 ? (
+                    <ul className="pnp-shadow-movers" aria-label="Najveća pomeranja shadow ranga">
+                      {data.shadowV9Comparison.largestMovements.slice(0, 5).map((movement) => (
+                        <li key={`${movement.artikalId}-${movement.storeId ?? "missing"}`}>
+                          <span>{movement.sku} · {movement.storeId == null ? "Objekat nije dostupan" : `Objekat ${movement.storeId}`}</span>
+                          <strong>v10 #{movement.canonicalRank} → shadow #{movement.shadowRank} ({movement.rankMovement > 0 ? "+" : ""}{movement.rankMovement})</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : null}
+            </article>
+
             <article className="pnp-decision-card analytics-surface-panel">
               <div className="pnp-decision-table-head">
                 <div>
@@ -1774,6 +1800,27 @@ export default function PreNivelacijaPriorityPage() {
                 <article>
                   <span>Istorija prodaje</span>
                   <strong>{salesHistoryLabel(selectedRow.salesHistoryStatus, selectedRow.daysSinceLastSale)}</strong>
+                </article>
+                <article>
+                  <span>Pokriće zalihe po prodaji</span>
+                  <strong>{selectedRow.shadowV9?.weeksOfCover == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : `${fmtNumber(selectedRow.shadowV9.weeksOfCover, 1)} ned.`}</strong>
+                </article>
+                <article>
+                  <span>Do kraja sezone</span>
+                  <strong>{selectedRow.shadowV9?.weeksToSeasonEnd == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : `${fmtNumber(selectedRow.shadowV9.weeksToSeasonEnd, 1)} ned.`}</strong>
+                </article>
+                <article>
+                  <span>Starost za shadow v9</span>
+                  <strong>
+                    {selectedRow.shadowV9?.ageDays == null
+                      ? RECOMMENDATION_SIGNAL_UNAVAILABLE
+                      : `${fmtNumber(selectedRow.shadowV9.ageDays, 0)} dana · ${selectedRow.shadowV9.ageBasis === "first_receipt" ? "prvi prijem" : "prva pozitivna prodaja (rezervni dokaz)"}`}
+                  </strong>
+                </article>
+                <article>
+                  <span>Eksperimentalni shadow v9</span>
+                  <strong>{selectedRow.shadowV9?.score == null ? RECOMMENDATION_SIGNAL_UNAVAILABLE : `${fmtNumber(selectedRow.shadowV9.score, 1)} / 100 · rang #${selectedRow.shadowV9.rank ?? "—"}`}</strong>
+                  <small>{selectedRow.shadowV9?.sellThroughUnavailableReason === "opening_stock_and_inbound_history_unavailable" ? "Sell-through od prijema nije dostupan: nema početne zalihe i istorije prijema." : "Ne menja aktivnu preporuku ni redosled akcije."}</small>
                 </article>
                 <article>
                   <span>Bruto marža</span>

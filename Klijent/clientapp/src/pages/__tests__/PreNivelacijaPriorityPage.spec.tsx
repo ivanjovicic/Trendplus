@@ -115,6 +115,20 @@ function makeCandidate(overrides: Record<string, unknown> = {}) {
     salesHistoryStatus: "sold",
     firstReceiptDateUtc: "2026-01-01T00:00:00Z",
     daysSinceReceipt: 90,
+    canonicalRank: 1,
+    shadowV9: {
+      version: "pre_nivelacija_v9_shadow_v1",
+      weeksOfCover: 12.9,
+      weeksToSeasonEnd: 8,
+      ageDays: 90,
+      ageBasis: "first_receipt",
+      sellThroughSinceReceipt: null,
+      sellThroughUnavailableReason: "opening_stock_and_inbound_history_unavailable",
+      coverGap: 4.9,
+      score: 64.2,
+      rank: 2,
+      reasonCodes: ["sell_through_denominator_unavailable"],
+    },
     receiptEvidenceStatus: "received",
     stockAgeStatus: "established",
     markdownEvents: 1,
@@ -337,6 +351,33 @@ function makeResponse(candidates = [makeCandidate(), makeCandidate({
     supplierLeaderboard,
     supplierActionShare: buildSupplierActionShareFromLeaderboard(supplierLeaderboard),
     candidates,
+    shadowV9Comparison: {
+      version: "pre_nivelacija_v9_shadow_v1",
+      methodology: "Shadow score = normalized cover gap (70%) + receipt-age risk (30%). Experimental only.",
+      coverGapWeight: 0.7,
+      ageWeight: 0.3,
+      coverGapSaturationWeeks: 12,
+      ageSaturationDays: 180,
+      label: "Eksperimentalno poređenje; nije aktivna preporuka.",
+      rowsCompared: candidates.length,
+      spearmanRankCorrelation: 0.75,
+      topN: Math.min(10, candidates.length),
+      topNOverlapCount: candidates.length,
+      rowsWithRankMovement: 1,
+      largestMovements: [{
+        artikalId: 101,
+        storeId: 17,
+        sku: "SKU-101",
+        canonicalRank: 1,
+        shadowRank: 2,
+        rankMovement: -1,
+        shadowScore: 64.2,
+        weeksOfCover: 12.9,
+        weeksToSeasonEnd: 8,
+        ageDays: 90,
+        ageBasis: "first_receipt",
+      }],
+    },
     filterFacets: buildFilterFacetsFromCandidates(candidates),
     queues: {
       highlightNow: [
@@ -448,6 +489,37 @@ describe("PreNivelacijaPriorityPage", () => {
     vi.clearAllMocks();
     localStorage.clear();
     getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse(query));
+  });
+
+  it("labels v9 comparison experimental and keeps the active v10 recommendation authoritative", async () => {
+    getPreNivelacijaPrioritetiMock.mockResolvedValueOnce(makeResponse([makeCandidate({
+      recommendation: {
+        status: "review",
+        label: "Pregled",
+        summary: "Aktivni v10 signal zahteva ručnu proveru.",
+        confidencePct: 58,
+        reliabilityPct: 64,
+        dataQualityStatus: "warning",
+        recommendationAllowed: true,
+        reasonCodes: ["thin_sample"],
+      },
+    })]));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Eksperimentalno poređenje rangiranja" })).toBeInTheDocument();
+    expect(screen.getByText(/nije aktivna preporuka/i)).toBeInTheDocument();
+    expect(screen.getByText(/aktivni v10/i)).toBeInTheDocument();
+    expect(screen.queryByText("Pojačaj sniženje")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
+    expect(screen.getAllByText("Aktivni v10 signal zahteva ručnu proveru.").length).toBeGreaterThan(0);
+    expect(screen.getByText("Eksperimentalni shadow v9")).toBeInTheDocument();
+    expect(screen.getByText(/Sell-through od prijema nije dostupan/)).toBeInTheDocument();
   });
 
   it("creates an idempotent SKU-store markdown action from the canonical queue and keeps shareable context", async () => {

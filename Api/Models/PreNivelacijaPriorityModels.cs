@@ -20,6 +20,7 @@ public sealed class PreNivelacijaPriorityResponseDto
     public int TotalCandidates { get; set; }
     public bool RecommendationAllowed { get; set; }
     public PreNivelacijaEvidenceWindowDto EvidenceWindow { get; set; } = new();
+    public PreNivelacijaShadowComparisonDto ShadowV9Comparison { get; set; } = new();
     public AnalyticsResponseMetaDto? Meta { get; set; }
 }
 
@@ -253,6 +254,8 @@ public sealed class PreNivelacijaSkuCandidateDto
     public string SalesHistoryStatus { get; set; } = "unknown";
     public DateTime? FirstReceiptDateUtc { get; set; }
     public int? DaysSinceReceipt { get; set; }
+    public int CanonicalRank { get; set; }
+    public PreNivelacijaShadowV9EvidenceDto ShadowV9 { get; set; } = new();
     public string ReceiptEvidenceStatus { get; set; } = "unknown";
     public string StockAgeStatus { get; set; } = "unknown";
     public int MarkdownEvents { get; set; }
@@ -285,6 +288,53 @@ public sealed class PreNivelacijaSkuCandidateDto
     /// <summary>Cached sales window inputs used to rebuild supplier WoW after facet filtering.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public int UnitsPrev7 { get; set; }
+}
+
+public sealed class PreNivelacijaShadowV9EvidenceDto
+{
+    public string Version { get; set; } = "pre_nivelacija_v9_shadow_v1";
+    public decimal? WeeksOfCover { get; set; }
+    public decimal? WeeksToSeasonEnd { get; set; }
+    public int? AgeDays { get; set; }
+    public string AgeBasis { get; set; } = "unavailable";
+    public decimal? SellThroughSinceReceipt { get; set; }
+    public string? SellThroughUnavailableReason { get; set; }
+    public decimal? CoverGap { get; set; }
+    public decimal? Score { get; set; }
+    public int? Rank { get; set; }
+    public IReadOnlyList<string> ReasonCodes { get; set; } = [];
+}
+
+public sealed class PreNivelacijaShadowComparisonDto
+{
+    public string Version { get; set; } = "pre_nivelacija_v9_shadow_v1";
+    public string Methodology { get; set; } = string.Empty;
+    public decimal CoverGapWeight { get; set; }
+    public decimal AgeWeight { get; set; }
+    public decimal CoverGapSaturationWeeks { get; set; }
+    public int AgeSaturationDays { get; set; }
+    public string Label { get; set; } = "Eksperimentalno poređenje; nije aktivna preporuka";
+    public int RowsCompared { get; set; }
+    public decimal? SpearmanRankCorrelation { get; set; }
+    public int TopN { get; set; }
+    public int TopNOverlapCount { get; set; }
+    public int RowsWithRankMovement { get; set; }
+    public IReadOnlyList<PreNivelacijaShadowRankMovementDto> LargestMovements { get; set; } = [];
+}
+
+public sealed class PreNivelacijaShadowRankMovementDto
+{
+    public int ArtikalId { get; set; }
+    public int? StoreId { get; set; }
+    public string Sku { get; set; } = string.Empty;
+    public int CanonicalRank { get; set; }
+    public int ShadowRank { get; set; }
+    public int RankMovement { get; set; }
+    public decimal ShadowScore { get; set; }
+    public decimal? WeeksOfCover { get; set; }
+    public decimal? WeeksToSeasonEnd { get; set; }
+    public int? AgeDays { get; set; }
+    public string AgeBasis { get; set; } = "unavailable";
 }
 
 public sealed class PreNivelacijaRecommendationDto

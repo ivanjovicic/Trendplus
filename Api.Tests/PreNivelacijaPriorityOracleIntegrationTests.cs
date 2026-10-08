@@ -50,6 +50,37 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         AssertScoringAndScenarioOracle(all.RootElement, allOracle);
         Assert.Equal(8, all.RootElement.GetProperty("summary").GetProperty("candidatesCount").GetInt32());
         Assert.Equal(8, all.RootElement.GetProperty("totalCandidates").GetInt32());
+        var shadowComparison = all.RootElement.GetProperty("shadowV9Comparison");
+        Assert.Equal("pre_nivelacija_v9_shadow_v1", shadowComparison.GetProperty("version").GetString());
+        Assert.InRange(shadowComparison.GetProperty("rowsCompared").GetInt32(), 1, 8);
+        Assert.False(string.IsNullOrWhiteSpace(shadowComparison.GetProperty("methodology").GetString()));
+        var shadowCandidate = all.RootElement.GetProperty("candidates").EnumerateArray()
+            .Single(item => item.GetProperty("artikalId").GetInt32() == 101);
+        var shadowEvidence = shadowCandidate.GetProperty("shadowV9");
+        Assert.Equal("pre_nivelacija_v9_shadow_v1", shadowEvidence.GetProperty("version").GetString());
+        var candidateAge = shadowCandidate.GetProperty("daysSinceReceipt");
+        if (candidateAge.ValueKind == JsonValueKind.Number)
+        {
+            Assert.Equal(candidateAge.GetInt32(), shadowEvidence.GetProperty("ageDays").GetInt32());
+            Assert.Equal(shadowCandidate.GetProperty("receiptEvidenceStatus").GetString() == "received"
+                    ? "first_receipt"
+                    : "first_positive_sale_fallback",
+                shadowEvidence.GetProperty("ageBasis").GetString());
+        }
+        else
+        {
+            Assert.Equal(JsonValueKind.Null, shadowEvidence.GetProperty("ageDays").ValueKind);
+            Assert.Equal("unavailable", shadowEvidence.GetProperty("ageBasis").GetString());
+        }
+        if (shadowCandidate.GetProperty("units180").GetInt32() > 0)
+            Assert.True(shadowEvidence.GetProperty("weeksOfCover").GetDecimal() >= 0m);
+        else
+            Assert.Equal(JsonValueKind.Null, shadowEvidence.GetProperty("weeksOfCover").ValueKind);
+        Assert.True(shadowCandidate.GetProperty("canonicalRank").GetInt32() > 0);
+        Assert.True(shadowEvidence.GetProperty("rank").GetInt32() > 0);
+        Assert.True(shadowEvidence.GetProperty("sellThroughSinceReceipt").ValueKind == JsonValueKind.Null);
+        Assert.Equal("opening_stock_and_inbound_history_unavailable",
+            shadowEvidence.GetProperty("sellThroughUnavailableReason").GetString());
         Assert.Equal(2, all.RootElement.GetProperty("evidenceWindow").GetProperty("candidatesWithReturns").GetInt32());
         Assert.Equal("certified_retail_excludes_trimmed_case_insensitive_dug_korekcija",
             all.RootElement.GetProperty("evidenceWindow").GetProperty("receiptPopulationPolicy").GetString());

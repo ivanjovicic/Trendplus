@@ -106,6 +106,32 @@ describe("pre-nivelacija API scope contract", () => {
     expect(requestUrl.searchParams.get("storeId")).toBe("17");
   });
 
+  it("accepts the additive shadow-v9 comparison contract", async () => {
+    const body = JSON.parse(responseBody) as Record<string, unknown>;
+    body.shadowV9Comparison = {
+      version: "pre_nivelacija_v9_shadow_v1",
+      methodology: "Experimental cover-gap and age comparison.",
+      coverGapWeight: 0.7,
+      ageWeight: 0.3,
+      coverGapSaturationWeeks: 12,
+      ageSaturationDays: 180,
+      label: "Eksperimentalno poređenje; nije aktivna preporuka.",
+      rowsCompared: 2,
+      spearmanRankCorrelation: 0.5,
+      topN: 2,
+      topNOverlapCount: 1,
+      rowsWithRankMovement: 1,
+      largestMovements: [],
+    };
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getPreNivelacijaPrioriteti({});
+
+    expect(result.shadowV9Comparison?.version).toBe("pre_nivelacija_v9_shadow_v1");
+    expect(result.shadowV9Comparison?.topNOverlapCount).toBe(1);
+  });
+
   it("uses the explicit scope for the request even when ambient storage differs", async () => {
     localStorage.setItem(getDataScopeStorageKey(), "existing");
     const fetchMock = vi.fn(() => Promise.resolve(new Response(responseBody, { status: 200 })));

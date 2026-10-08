@@ -28,6 +28,50 @@ export interface PreNivelacijaModelEvidence {
   scenarioDisclaimer: string;
 }
 
+export interface PreNivelacijaShadowV9Evidence {
+  version: string;
+  weeksOfCover: number | null;
+  weeksToSeasonEnd: number | null;
+  ageDays: number | null;
+  ageBasis: "first_receipt" | "first_positive_sale_fallback" | "unavailable" | string;
+  sellThroughSinceReceipt: number | null;
+  sellThroughUnavailableReason: string | null;
+  coverGap: number | null;
+  score: number | null;
+  rank: number | null;
+  reasonCodes: string[];
+}
+
+export interface PreNivelacijaShadowRankMovement {
+  artikalId: number;
+  storeId: number | null;
+  sku: string;
+  canonicalRank: number;
+  shadowRank: number;
+  rankMovement: number;
+  shadowScore: number;
+  weeksOfCover: number | null;
+  weeksToSeasonEnd: number | null;
+  ageDays: number | null;
+  ageBasis: string;
+}
+
+export interface PreNivelacijaShadowComparison {
+  version: string;
+  methodology: string;
+  coverGapWeight: number;
+  ageWeight: number;
+  coverGapSaturationWeeks: number;
+  ageSaturationDays: number;
+  label: string;
+  rowsCompared: number;
+  spearmanRankCorrelation: number | null;
+  topN: number;
+  topNOverlapCount: number;
+  rowsWithRankMovement: number;
+  largestMovements: PreNivelacijaShadowRankMovement[];
+}
+
 export interface PreNivelacijaRecommendation {
   status: "increase_focus" | "maintain" | "review" | "do_not_trust" | "insufficient_data";
   label: string;
@@ -60,6 +104,8 @@ export interface PreNivelacijaSkuCandidate {
   salesHistoryStatus?: "never_sold" | "no_sale_in_window" | "sold" | string;
   firstReceiptDateUtc?: string | null;
   daysSinceReceipt?: number | null;
+  canonicalRank?: number;
+  shadowV9?: PreNivelacijaShadowV9Evidence;
   receiptEvidenceStatus?: "received" | "first_sale_fallback" | "unknown" | string;
   stockAgeStatus?: "new_stock" | "established" | "unknown" | string;
   markdownEvents: number;
@@ -274,5 +320,6 @@ export interface PreNivelacijaPriorityResponse {
   totalCandidates: number;
   recommendationAllowed: boolean;
   evidenceWindow: PreNivelacijaEvidenceWindow;
+  shadowV9Comparison?: PreNivelacijaShadowComparison;
   meta?: AnalyticsResponseMeta | null;
 }
