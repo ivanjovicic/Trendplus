@@ -3527,7 +3527,7 @@ Commit suggestion: `feat(ui): shared analytics state taxonomy from backend reaso
 ## P-UI-50 - Product Decision information hierarchy: blocked KPIs, row disclosure and copy
 
 Status: WAITING
-Ready after: RQ573 and RQ574 are DONE (same page/contract) and P-UI-49 is DONE
+Ready after: RQ573, RQ574, P-UI-49 and RQ555 are DONE (RQ555 now owns the sequential Product Decision/action source path)
 Priority: P2
 Type: frontend/tests
 Feature family: product-decision-hierarchy
