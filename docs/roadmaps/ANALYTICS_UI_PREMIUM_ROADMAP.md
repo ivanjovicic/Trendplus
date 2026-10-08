@@ -1,6 +1,6 @@
 # Trendplus Analytics UI Premium Roadmap
 
-Updated: 2026-10-07
+Updated: 2026-10-08
 Status: existing UI program routing companion; implementation remains owned by the existing queue
 Owner queue: `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md`
 Evidence/audit: `docs/qa/ANALYTICS_UI_PREMIUM_AUDIT.md`
@@ -32,7 +32,9 @@ This is a navigation and presentation rule, not permission to invent a Product 3
 
 ## Current direction
 
-Owner routing update 2026-10-07: P-UI-46 and P-UI-52 are DONE, and the disjoint P-UI-54 regression/theme/a11y ratchet split is also **DONE** and consumed by P-UI-38. Current P-UI READY is none: P-UI-50 remains BLOCKED only by the unresolved primary-checkout edit on its Product Decision path, and P-UI-38 remains WAITING as final whole-program closure until P-UI-50 is completed or explicitly deferred. Re-run the canonical Mandatory no-READY action ladder on fresh `origin/main`; do not resurrect P-UI-54 from its historical split note.
+Owner routing update 2026-10-08: P-UI-38 is **DONE** on `34899e5a04b2543ab7bd6dc71caad077efe6ab29`. P-UI-01..P-UI-54 are terminal; Current P-UI READY is **none**. Composite gate `npm run check:ui-program-gates` owns CI regression coverage; physical iPhone/iPad Safari remains release residual evidence. Full Zero-READY proof: `.ai/runs/2026-10-08-P-UI-38-evidence.md`.
+
+Historical routing note 2026-10-07: P-UI-46 and P-UI-52 are DONE, and the disjoint P-UI-54 regression/theme/a11y ratchet split is also **DONE** and consumed by P-UI-38. At that time Current P-UI READY was none while P-UI-50 remained BLOCKED by an unresolved Product Decision checkout edit and P-UI-38 remained WAITING. That blocker was later cleared; do not resurrect P-UI-54 from its historical split note.
 
 The existing program has already established shared visual-regression, global command/header, information architecture, control-bar and table-system foundations.
 

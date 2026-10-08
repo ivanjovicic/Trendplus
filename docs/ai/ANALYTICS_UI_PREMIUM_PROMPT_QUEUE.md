@@ -2,7 +2,7 @@
 
 Date: 2026-07-01
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `P-UI-38` (IN_PROGRESS; claimed 2026-10-08 by cursor on `cursor/p-ui-38-responsive-ui-regression-gates-7269` after P-UI-50 DONE). All named UI migrations including P-UI-50/P-UI-54 are DONE; P-UI-38 is the final whole-program responsive/theme/a11y gate.
+Current READY prompt: none (P-UI-38 DONE 2026-10-08 on `34899e5a04b2543ab7bd6dc71caad077efe6ab29`; all named UI migrations P-UI-01..P-UI-54 are DONE). Post-close Zero-READY proof: `.ai/runs/2026-10-08-P-UI-38-evidence.md`.
 Responsive re-audit registration 2026-10-04: `P-UI-39`..`P-UI-46` registered from `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` (live Chromium viewport evidence + current-main code, second-pass verified); dated addenda on P-UI-31, P-UI-35, P-UI-36, P-UI-38 and RQ582.
 Owner decision (Ivan, 2026-10-04 21:36): the seasonal carousel is shown only on the home page `/`. Recorded in `P-UI-45` (scope, Do, Tests, Acceptance); the open question in `docs/qa/RESPONSIVE_REAUDIT_2026-10-04.md` is closed.
 UX/UI audit registration 2026-10-04: `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md` registered P-UI-47-P-UI-53 against the new canonical `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`, after deduplication against P-UI-39-P-UI-46. P-UI-47 (theme tokens/contrast) and P-UI-49 (state taxonomy) are additional READY lanes. P-UI-48 waits for P-UI-40, P-UI-50 for RQ573+RQ574+P-UI-49, P-UI-51 for RQ570+P-UI-39, P-UI-52 for RQ553. The trust-strip desktop budget extends P-UI-43; the live Inventory overflow confirms P-UI-41. P-UI remains a supplemental lane.
@@ -46,7 +46,7 @@ Use with:
 | P-UI-35 | DONE | nivelacija-responsive | Pre/Post and Pre-Nivelacija responsive migration |
 | P-UI-36 | DONE | supplier-segment-responsive | Supplier Hub, Shoe Type and Color responsive migration |
 | P-UI-37 | DONE | responsive-long-tail | Article List and bounded long-tail responsive cleanup |
-| P-UI-38 | IN_PROGRESS | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
+| P-UI-38 | DONE | responsive-ui-regression-gates | Responsive regression gates and bounded CSS hygiene |
 | P-UI-39 | DONE | analytics-control-bar-overflow | Shared control bar overflow-safe by default (phone viewport inflation, 1024 overflow) |
 | P-UI-40 | DONE | app-shell-small-laptop | Single-row header and sidebar rail at 1024–1279px |
 | P-UI-41 | DONE | report-inventory-intrinsic-overflow | Pilot intake tables and Inventory panels contained on phones |
@@ -2462,13 +2462,13 @@ Article List has small pagination/input controls and a table without an explicit
 
 ## P-UI-38 - Turn proven responsive invariants into regression gates and remove bounded CSS debt
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: all non-gate UI migrations `P-UI-31`, `P-UI-35`, `P-UI-36` and `P-UI-39`..`P-UI-53` are DONE or explicitly deferred, **and P-UI-54 is DONE**; P-UI-50 is DONE (2026-10-08), so this final whole-program gate is dependency-complete
 Priority: P2
 Type: frontend/tests/tooling/css-hygiene
 Feature family: responsive-ui-regression-gates
 Parallel-safe: no
-Owner: cursor / workspace cursor-cloud `cursor/p-ui-38-responsive-ui-regression-gates-7269` (claimed 2026-10-08)
+Owner: cursor / workspace cursor-cloud `cursor/p-ui-38-responsive-ui-regression-gates-7269` (claimed 2026-10-08; closed 2026-10-08)
 Commit suggestion: `test(ui): enforce responsive regression contracts`
 
 ### Problem
@@ -2564,6 +2564,26 @@ Additional acceptance for this residual scope:
 2. `inventory-dark` has a documented supported/legacy decision and no known serious contrast regression on its audited surfaces.
 3. A seeded missing semantic Tailwind mapping and a seeded fixed-white-on-theme-surface regression fail deterministically.
 4. The result is a bounded, reviewable diff; a mass formatting/search-replace sweep of ~thousands of fallbacks is explicitly out of scope.
+
+### Completion note
+
+- Date: 2026-10-08
+- Status: DONE
+- Completion: Whole-program UI regression gate landed. Product Decision is included in `check:ui-ratchets`; responsive route inventory + negative self-tests cover re-audit invariants; composite `check:ui-program-gates` is CI-wired; `inventory-dark` is documented as legacy/compatibility; physical-device Safari is explicit release residual (hardware unavailable here).
+- Changed files: `check-ui-ratchets.mjs`, `responsive_baseline.mjs`, `package.json`, `analytics-quality-gates.yml`, `themes.css`, `ThemeContext.tsx`, design-system/visual-protocol docs, queue/roadmap/MASTER, `.ai/runs/2026-10-08-P-UI-38-evidence.md`.
+- Contract/runtime behavior changed: tooling/docs only; no analytics business semantics change.
+- Checks run: `check:ui-program-gates`; chart accessibility; analytics guardrails + typecheck; encoding; `git diff --check`.
+- Checks not run: full live `responsive:baseline` browser matrix; physical iPhone/iPad Safari.
+- Run log: `.ai/runs/2026-10-08-P-UI-38-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: branch/PR #114 transport then fast-forward to `main`
+- Main commit SHA: `34899e5a04b2543ab7bd6dc71caad077efe6ab29`
+- Main verification: fresh `origin/main` contains the implementation SHA.
+- Missed: real-device Safari certification; live Puppeteer matrix for newly inventoried routes.
+- Follow-up: none in P-UI; Zero-READY across active programs until a documented unblock event.
+- Residual risk: tip Actions runs `37801506449` / `37801506993` were in_progress at close-out; pseudo-token inventory remains measured (141/7).
+- Next: none
+- Prompt defect / scope repair: consumed P-UI-54 ratchets rather than duplicating them; mass pseudo-token rewrite stayed out of scope per acceptance.
 
 ## Responsive re-audit registration 2026-10-04
 
