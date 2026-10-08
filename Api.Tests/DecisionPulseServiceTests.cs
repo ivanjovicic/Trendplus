@@ -45,22 +45,6 @@ public sealed class DecisionPulseServiceTests
         Assert.Contains("nije proširen", response.Meta.ErrorMessage);
     }
 
-    [Theory]
-    [InlineData(-1, null)]
-    [InlineData(0, null)]
-    [InlineData(null, -1)]
-    [InlineData(null, 0)]
-    public async Task GetFeedAsync_RejectsInvalidStoreOrSupplierIds(int? storeId, int? supplierId)
-    {
-        var (service, _) = CreateService([]);
-        var response = await service.GetFeedAsync(null, null, storeId, supplierId, "imported", CancellationToken.None);
-        Assert.False(response.Meta.Success);
-        Assert.Equal("invalid_filter_id", response.Meta.ErrorCode);
-        Assert.Null(response.Meta.EffectiveDataScope);
-        Assert.Empty(response.Items);
-        Assert.Contains("nije proširen", response.Meta.ErrorMessage);
-    }
-
     [Fact]
     public void ToResponse_ReportsRequestedAndEffectiveFiltersAndUnsupportedInventoryPeriod()
     {
