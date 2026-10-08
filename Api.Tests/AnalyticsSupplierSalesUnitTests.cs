@@ -257,57 +257,6 @@ public class AnalyticsSupplierSalesUnitTests
         }
     }
 
-    public class DecisionRecommendationEngineInputTests
-    {
-        [Fact(DisplayName = "Recommendation engine inputs: all must be finite")]
-        public void AllInputsFinite_NoInfinityOrNaN()
-        {
-            // Simulate typical recommendation inputs
-            decimal sharePct = 25.50m;           // Supplier share of market
-            decimal shareOfProfit = 15.75m;      // Profit contribution
-            decimal popRevenueChangePct = 50.00m; // Revenue change %
-            decimal confidencePct = 85.00m;      // Confidence in calculation
-            decimal reliabilityPct = 92.50m;     // Data quality reliability
-
-            // Decimal can't be Infinity/NaN, but verify reasonable bounds
-            Assert.True(sharePct >= 0m && sharePct <= 100m, "Share % must be in reasonable range");
-            Assert.True(shareOfProfit >= 0m && shareOfProfit <= 100m, "Share of profit must be in reasonable range");
-            Assert.True(confidencePct >= 0m && confidencePct <= 100m, "Confidence % must be in reasonable range");
-            Assert.True(reliabilityPct >= 0m && reliabilityPct <= 100m, "Reliability % must be in reasonable range");
-        }
-
-        [Theory(DisplayName = "Recommendation reliability percentage must be in [0, 100]")]
-        [InlineData(0)]
-        [InlineData(50)]
-        [InlineData(100)]
-        public void ReliabilityPct_BoundedBetweenZeroAnd100(decimal reliabilityPct)
-        {
-            Assert.True(reliabilityPct >= 0m && reliabilityPct <= 100m,
-                $"Reliability {reliabilityPct} must be in [0, 100]");
-        }
-
-        [Fact(DisplayName = "Recommendation confidence percentage bounded")]
-        public void ConfidencePct_BoundedCorrectly()
-        {
-            decimal lowConfidence = 25m;
-            decimal highConfidence = 95m;
-
-            Assert.True(lowConfidence >= 0 && lowConfidence <= 100);
-            Assert.True(highConfidence >= 0 && highConfidence <= 100);
-        }
-
-        [Theory(DisplayName = "Recommendation status values are known enum")]
-        [InlineData("Monitor")]
-        [InlineData("Watch")]
-        [InlineData("Review")]
-        [InlineData("New Supplier")]
-        public void RecommendationStatus_IsValidEnum(string status)
-        {
-            var validStatuses = new[] { "Monitor", "Watch", "Review", "New Supplier" };
-            Assert.Contains(status, validStatuses);
-        }
-    }
-
     /// <summary>
     /// Placeholder for future: tests for data scope filtering (existing vs imported vs all).
     /// These require database context and are better suited as integration tests.
