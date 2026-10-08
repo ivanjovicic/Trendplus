@@ -103,6 +103,15 @@ function evidenceBasisLabel(value: string | null | undefined): string {
   }
 }
 
+function parsePulseFilterId(params: URLSearchParams, key: "storeId" | "supplierId"): number | null | undefined {
+  const values = params.getAll(key);
+  if (values.length === 0) return undefined;
+  const raw = values[0];
+  if (values.length !== 1 || !raw || raw[0] === "0" || !Array.from(raw).every((digit) => digit >= "0" && digit <= "9")) return null;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 2147483647 ? parsed : null;
+}
+
 export default function DecisionPulsePage() {
   const [searchParams] = useSearchParams();
   const routeContext = searchParams.toString();
