@@ -26,7 +26,8 @@ public class AnalyticsActionConstantsTests
         Assert.Contains("P1", priorities);
         Assert.Contains("P2", priorities);
         Assert.Contains("P3", priorities);
-        Assert.Equal(3, priorities.Length);
+        Assert.Contains(AnalyticsActionConstants.Priorities.Unranked, priorities);
+        Assert.Equal(4, priorities.Length);
     }
 
     [Fact]
@@ -38,7 +39,8 @@ public class AnalyticsActionConstantsTests
         Assert.Contains("deferred", statuses);
         Assert.Contains("rejected", statuses);
         Assert.Contains("done", statuses);
-        Assert.Equal(5, statuses.Length);
+        Assert.Contains(AnalyticsActionConstants.Statuses.Ignored, statuses);
+        Assert.Equal(6, statuses.Length);
     }
 
         [Fact]
@@ -59,6 +61,8 @@ public class AnalyticsActionConstantsTests
         Assert.Contains("deferred", openStatuses);
         Assert.DoesNotContain("rejected", openStatuses);
         Assert.DoesNotContain("done", openStatuses);
+        Assert.DoesNotContain(AnalyticsActionConstants.Statuses.Ignored, openStatuses);
+        Assert.Contains(AnalyticsActionConstants.Statuses.Ignored, AnalyticsActionConstants.Statuses.ClosedStatuses);
     }
 
     [Fact]
@@ -95,6 +99,7 @@ public class AnalyticsActionConstantsTests
     [Theory]
     [InlineData("P1", true)]
     [InlineData("P2", true)]
+    [InlineData("UNRANKED", true)]
     [InlineData("P4", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
@@ -107,6 +112,7 @@ public class AnalyticsActionConstantsTests
     [Theory]
     [InlineData("new", true)]
     [InlineData("done", true)]
+    [InlineData("ignored", true)]
     [InlineData("unknown", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
