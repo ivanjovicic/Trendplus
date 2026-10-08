@@ -1,10 +1,12 @@
 # Trendplus Master Roadmap
 
 Owner-delegated product decisions 2026-10-08 (repository-local queue unblock):
-- **RQ481 P1: IN_PROGRESS** — Decision Pulse uses shared *applied* period/dataScope with explicit requested/effective and per-source unsupported-dimension transparency; preserve backend fail-closed/partial trust. The prior owner-choice gate is satisfied. See `docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md` and RQ481 in canonical RQ queue.
+- **RQ481 P1: DONE** — Decision Pulse uses shared *applied* period/dataScope with explicit requested/effective and unsupported inventory-period transparency; unknown scopes fail closed. Delivered as `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`; see RQ481 in the canonical RQ queue.
 - **RQ319 P2: READY** — explicit Apply for period/store/multi-field filters is approved; RQ140 closed and released the shared page paths. Keep RQ320 sequential behind RQ319.
 - **RQ320 P2: WAITING for RQ319 DONE** — draft inputs show `Nije primenjeno`, while the trust header always describes applied data.
 - **STAB16/RQ592 unchanged:** fresh provider/worker/currentness and prospective outcome proof still require actual evidence. The repository-local RQ481 work does not require fabricated production freshness.
+
+Owner completion 2026-10-08: RQ481 is DONE on implementation SHA `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`, directly delivered to `main`. Decision Pulse now carries URL filters into source requests, exposes requested/effective period/scope metadata, and suppresses inventory candidates for explicit periods the source cannot honor. Unknown data scopes fail closed. Focused frontend proof 34/34, backend proof 8/8, typecheck and analytics guardrails pass. Current-main Analytics Tests & Data Integrity (`37821136254`) and Analytics Quality Gates (`37821136193`) were in progress when inspected. RQ319 remains the next READY task pending the required fresh post-close cascade.
 
 
 Owner product-priority refinement 2026-10-07:
