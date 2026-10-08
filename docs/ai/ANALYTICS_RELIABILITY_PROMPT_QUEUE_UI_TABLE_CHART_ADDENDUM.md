@@ -540,7 +540,8 @@ Analytics exports are built from visible column definitions. Hidden trust fields
 - Delivery mode: direct-main
 - Main commit SHA: `853c37f3c5790ee1715d7d6749cf26205891a872`
 - Main verification: fresh fetch confirmed `origin/main` contains the implementation SHA
-- Follow-up: generated PDF/XLSX visual inspection is not yet certified; verify when the export artifact is available. No claim of downloaded-document proof.
+- Missed: generated PDF/XLSX files were not downloaded for visual inspection.
+- Follow-up: verify generated PDF/XLSX visual output when artifacts are available; no claim of downloaded-document proof.
 - Residual risk: current-main Analytics Quality Gates run `37825764812` was `in_progress` at inspection; it is residual risk, not a delivery gate.
 - Post-close routing: full 13-file RQ/SQL scan at post-delivery `origin/main` `853c37f3c5790ee1715d7d6749cf26205891a872`; RQ50 was dependency-complete and collision-safe, then promoted and claimed.
 
