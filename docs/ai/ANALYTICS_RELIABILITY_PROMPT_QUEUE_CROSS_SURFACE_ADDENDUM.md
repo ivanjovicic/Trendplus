@@ -1302,7 +1302,7 @@ Commit suggestion: `docs(analytics): audit action eligibility and value evidence
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `146cc2ac22cd8db47a60ce4e2b80700cc2e8e648`
-- Main verification: fresh `origin/main` contains the implementation SHA as an ancestor; routing synchronization follows in the closure commit
+- Main verification: fresh `origin/main` contains implementation SHA `146cc2ac22cd8db47a60ce4e2b80700cc2e8e648` and closure/routing-sync SHA `a9d88cb7df8a6c05a9a837478957b182b0de43e0` as ancestors
 - Missed: none within the repository-local audit; measured business value and production authority remain open
 - Follow-up: none; existing owners are listed in the matrix
 - Residual risk: no current production/outcome proof was invented or inferred
