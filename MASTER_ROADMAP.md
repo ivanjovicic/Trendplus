@@ -1,5 +1,7 @@
 # Trendplus Master Roadmap
 
+Owner queue recovery 2026-10-09 (Cursor; recovery base `fb82f8cf6f082ab1cf9987ad745f8612583bf224`): independent Mandatory no-READY ladder after the same-day Codex Zero-READY finalize. Reconfirmed 0 READY / 0 IN_PROGRESS across BCI/STAB/RQ/SQL/P-UI/QDB/MT/GAI/PERF/OBS/SEC/DEX/RL/DT; PARTIAL/WAITING candidates remain external, owner-decision or release gated. No prompt claimed. Durable proof: `.ai/runs/2026-10-09-queue-recovery-cursor-evidence.md`.
+
 Owner-delegated product decisions 2026-10-08 (repository-local queue unblock):
 - **RQ481 P1: DONE** — Decision Pulse uses shared *applied* period/dataScope with explicit requested/effective and unsupported inventory-period transparency; unknown scopes fail closed. Delivered as `da1ff00ce0ad5fa2cacce7852a93889d1662e60e`; see RQ481 in the canonical RQ queue.
 - **RQ319 P2: DONE** — explicit Apply unified across Shoe Type/Color/Pre/Post on `bbd636b0321dabce6eced43f9a39dc15f51821eb`.
