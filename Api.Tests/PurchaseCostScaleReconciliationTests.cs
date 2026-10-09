@@ -37,16 +37,31 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
     [Fact(DisplayName = "RQ601 report attributes source, inbound and master-backfill costs")]
     public async Task Report_AttributesCostOriginsWithoutTurningUnknownIntoZero()
     {
-        if (!_fixture.IsAvailable)
+        var configuredPostgres = Environment.GetEnvironmentVariable("RQ601_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(configuredPostgres) && !_fixture.IsAvailable)
         {
             return;
         }
 
         var databaseName = $"rq601_{Guid.NewGuid():N}";
-        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(databaseName);
-        Assert.NotNull(connectionString);
+        var adminBuilder = new NpgsqlConnectionStringBuilder(
+            string.IsNullOrWhiteSpace(configuredPostgres) ? _fixture.AdminConnectionString : configuredPostgres)
+        {
+            Database = "postgres",
+            Pooling = false
+        };
+        var databaseBuilder = new NpgsqlConnectionStringBuilder(adminBuilder.ConnectionString) { Database = databaseName };
 
-        await using var connection = new NpgsqlConnection(connectionString);
+        await using (var admin = new NpgsqlConnection(adminBuilder.ConnectionString))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\";", admin);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        try
+        {
+        await using var connection = new NpgsqlConnection(databaseBuilder.ConnectionString);
         await connection.OpenAsync();
         await ExecuteAsync(connection, """
             CREATE TABLE "Artikli" (
@@ -128,6 +143,14 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
         Assert.Null(rows[3]["latest_sale_line_cost"]);
         Assert.Equal("unknown", rows[3]["sale_line_cost_origin"]);
         Assert.Null(rows[3]["stock_value_sale_line"]);
+        }
+        finally
+        {
+            await using var admin = new NpgsqlConnection(adminBuilder.ConnectionString);
+            await admin.OpenAsync();
+            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{databaseName}\" WITH (FORCE);", admin);
+            await drop.ExecuteNonQueryAsync();
+        }
     }
 
     internal static string LoadReportQuery()

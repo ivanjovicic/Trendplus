@@ -83,6 +83,8 @@ latest_sale AS (
     FROM sale_ranked
     WHERE row_number = 1
 )
+SELECT report.*
+FROM (
 SELECT
     m.article_id,
     m.plu,
@@ -154,9 +156,11 @@ SELECT
 FROM master m
 LEFT JOIN latest_inbound i ON i.article_id = m.article_id
 LEFT JOIN latest_sale s ON s.article_id = m.article_id
+ ) report
 ORDER BY
-    COALESCE(stock_value_inbound, stock_value_sale_line, stock_value_master_rsd, stock_value_master_legacy, 0) DESC,
-    m.article_id;
+    COALESCE(report.stock_value_inbound, report.stock_value_sale_line,
+             report.stock_value_master_rsd, report.stock_value_master_legacy, 0) DESC,
+    report.article_id;
 -- RQ601_REPORT_QUERY_END
 
 -- For a supplier-level summary, export the report rows and group by supplier_id:
