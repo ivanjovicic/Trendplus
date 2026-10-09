@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping). RQ602 is PARTIAL after delivery of the pre-registration kit, read-only query and synthetic PostgreSQL oracle; it awaits a dry-run on a genuine historical import. RQ601 is IN_PROGRESS for a bounded CI-discovered PostgreSQL query correction; its genuine 20-item owner sample remains open. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping). RQ602 is PARTIAL after delivery of the pre-registration kit, read-only query and synthetic PostgreSQL oracle; it awaits a dry-run on a genuine historical import. RQ601 is PARTIAL after its CI-discovered PostgreSQL query correction was delivered and passed the disposable PostgreSQL oracle; its genuine 20-item owner sample remains open. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30508,7 +30508,7 @@ Canonical acceptance compares every normalized Color endpoint bucket identity, s
 
 ## RQ601 - Purchase-cost scale reconciliation before inventory capital is shown in RSD
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P1
 Type: data-quality/backend/tests/owner-evidence
 Feature family: purchase-cost-scale-reconciliation
@@ -30530,7 +30530,7 @@ Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost s
 - Claimed 2026-10-09 from fresh `origin/main` `cb0e7f3a50fa5167559cf09cc51e885ffef74912` after inspecting main Actions run `37979017062`.
 - The single failing test was this prompt's PostgreSQL oracle; PostgreSQL error `42703` identified an `ORDER BY` reference to output aliases not available at that query level. This is a confirmed same-owner SQL defect, separate from the still-open source-sample verdict.
 - Re-entry is limited to the read-only RQ601 query and its PostgreSQL test; no import mapping, cost precedence, production values or business verdict changes.
-- Local correction lock: `.ai/task-locks/RQ601-codex.lock.md`.
+- Correction re-entry closed 2026-10-09 after the SQL oracle passed 2/2 on a disposable local PostgreSQL instance and correction SHA `6a142bf20bde606da0b52c853f670fcbc5563619` was verified on `origin/main`.
 
 ### Completion note — repository-local diagnostic phase
 
@@ -30541,13 +30541,13 @@ Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost s
 - Checks run: initial static contract test passed 1/1. Follow-up correction validation on a disposable local PostgreSQL cluster passed RQ601 contract + SQL fixture 2/2. The query error reproduced remotely on run `37979017062` and is corrected in this re-entry.
 - Checks not run: historical/production DB execution and the 20 original kalkulacija values; no authorized DB/source sample was available and no value was fabricated.
 - Run log: `.ai/runs/2026-10-09-RQ601-evidence.md`
-- Evidence state: pending correction delivery; genuine source sample remains unproved
+- Evidence state: synchronized; genuine source sample remains unproved
 - Delivery mode: direct-main
-- Main commit SHA: `ce7893ca24d1fe56307c7a28251a780d06e68342` (implementation delivery)
-- Main verification: initial query at `ce7893ca24d1fe56307c7a28251a780d06e68342` was contained in `origin/main`; CI run `37979017062` exposed its alias error. Correction delivery verification pending.
+- Main commit SHA: `6a142bf20bde606da0b52c853f670fcbc5563619` (query correction)
+- Main verification: fresh `origin/main` contains correction SHA `6a142bf20bde606da0b52c853f670fcbc5563619`.
 - Missed: per-supplier ratio distribution, backfill share, approved-basis stock total and final `correct`/`defective with cause` verdict.
 - Follow-up: correction fixes the reproducible SQL error; owner still supplies 20 traceable kalkulacija lines for the bounded comparison and any sample-proven fix. RQ602 is PARTIAL; RQ603 remains the independent READY lane.
-- Residual risk: inventory-capital RSD remains provisional/not-certified; no import mapping or cost precedence was changed. Main CI's corrected rerun is pending.
+- Residual risk: inventory-capital RSD remains provisional/not-certified; no import mapping or cost precedence was changed. Main Actions run `37981076471` on the correction SHA was queued at last inspection; the earlier red run `37979017062` was traced to and fixed by this query correction.
 - Prompt defect / scope repair: none; the owner decision explicitly permits steps 1-3 and forbids a definitive verdict before the sample.
 
 ### Problem
@@ -30630,7 +30630,7 @@ RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE
 - Missed: genuine imported nivelacija cohort output, actual coverage/data gaps, owner-confirmed matches and source-cost basis.
 - Follow-up: run the query on a permitted historical import and append its horizon, cohort coverage and gaps; then synchronize the RQ592 pre-registration before any prospective action.
 - Residual risk: bundled dataset is marked demo-only; no current or pilot business result is claimed. RQ601 cost basis remains provisional.
-- Post-close routing: pending full active RQ/SQL cascade after delivery.
+- Post-close routing: full active RQ/SQL cascade from current `origin/main` is recorded in `.ai/runs/2026-10-09-RQ601-evidence.md`; RQ603 is the next eligible prompt.
 - Prompt defect / scope repair: none; synthetic fixture output is not substituted for the historical import acceptance.
 
 ### Evidence
