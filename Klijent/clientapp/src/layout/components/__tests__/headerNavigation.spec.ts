@@ -20,6 +20,6 @@ describe("headerNavigation", () => {
 
     expect(commands.some((entry) => entry.label === "Pilot spremnost")).toBe(true);
     expect(commands.some((entry) => entry.to === "/analytics/decision-board")).toBe(true);
-    expect(commands.find((entry) => entry.label === "Pilot spremnost")?.groupLabel).toBe("Pregled");
+    expect(commands.find((entry) => entry.label === "Pilot spremnost")?.groupLabel).toBe("Dodatne analize");
   });
 });

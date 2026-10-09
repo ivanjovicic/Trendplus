@@ -4,6 +4,8 @@ Trendplus is a retail analytics and decision-support system built on .NET and Po
 
 **Current product status (2026-10-07):** internal pilot / decision-support, **not outcome-proven optimization**. Production freshness and deployed schema/worker evidence are the primary release blockers. The canonical pilot ingestion path is Access-based. The QDB connector program also proves SQL Server discovery, mapping preview and checkpointed application into `SourceSyncAppliedRows` staging, but that is **not yet equivalent to a repeatable SQL Server -> canonical Artikli/Prodaja -> analytics customer onboarding path**.
 
+The primary Analytics menu focuses on eight decision screens: business overview, inventory, supplier sales, footwear type sales, markdown priorities, pre/post markdown, actions and recommendations, and data quality. Pilot readiness, executive/product decision views, supplier scoring, daily/color analysis and reports remain available under the collapsible **Dodatne analize** group. This navigation grouping preserves existing routes and does not claim that any screen is production-certified or business-validated.
+
 This README is primarily a developer/ops guide. Product strategy and current business-value evidence live in `docs/product/PRODUCT_VISION.md`, `docs/roadmaps/BUSINESS_ROADMAP.md` and the dated product audit under `docs/product/`.
 
 —

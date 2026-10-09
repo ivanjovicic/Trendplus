@@ -7,26 +7,23 @@ import Sidebar from "../Sidebar";
 describe("Sidebar", () => {
   it("renders the analytics IA labels and keeps the active route visible", () => {
     render(
-      <MemoryRouter initialEntries={["/analytics/products"]}>
+      <MemoryRouter initialEntries={["/analytics/inventory"]}>
         <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByRole("button", { name: /Pregled/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /Glavne odluke/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Skupi meni" })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Odluke/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Operacije/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Kvalitet podataka/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Izveštaji/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toBeInTheDocument();
     expect(screen.getByText("Backoffice")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Backoffice" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Odluke o proizvodima" })).toHaveAttribute(
-      "href",
-      "/analytics/products",
-    );
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: /Dodatne analize/i }));
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Odluke o proizvodima" })).toHaveAttribute("href", "/analytics/products");
   });
 
-  it("opens Operacije and marks only the canonical supplier page active", () => {
+  it("opens the primary group and marks only the canonical supplier page active", () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier?tab=assortment&legacySource=operations-supplier-footwear"]}>
         <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
@@ -37,11 +34,12 @@ describe("Sidebar", () => {
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier");
     expect(activeLinks[0]).toHaveTextContent("Prodaja po dobavljačima");
-    expect(screen.getByRole("button", { name: /Operacije/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Glavne odluke/i })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: /Dodatne analize/i }));
     expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute("href", "/analytics/daily-sales");
   });
 
-  it("opens Odluke and marks the scorecard query link active", () => {
+  it("opens Dodatne analize and marks the scorecard query link active", () => {
     render(
       <MemoryRouter initialEntries={["/analytics/supplier?tab=scorecard"]}>
         <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
@@ -51,8 +49,8 @@ describe("Sidebar", () => {
     const activeLinks = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
     expect(activeLinks).toHaveLength(1);
     expect(activeLinks[0]).toHaveAttribute("href", "/analytics/supplier?tab=scorecard");
-    expect(activeLinks[0]).toHaveTextContent("Prodaja po dobavljačima");
-    expect(screen.getByRole("button", { name: /Odluke/i })).toHaveAttribute("aria-expanded", "true");
+    expect(activeLinks[0]).toHaveTextContent("Ocena dobavljača");
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("exposes the expanded state of the desktop sidebar rail toggle", () => {
@@ -88,23 +86,18 @@ describe("Sidebar", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Prodaja po dobavljačima" })).toHaveAttribute(
       "href",
       "/analytics/supplier",
     );
-    expect(screen.getByRole("link", { name: "Prodaja po dobavljačima" })).toHaveAttribute("href", "/analytics/supplier");
     expect(screen.queryByRole("link", { name: /Dobavljači i tipovi obuće/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po tipu obuće/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Prodaja po boji artikla/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Prodaja po smenama/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Dodatne analize/i }));
+    expect(screen.getByRole("link", { name: "Ocena dobavljača" })).toHaveAttribute("href", "/analytics/supplier?tab=scorecard");
     expect(screen.getByRole("link", { name: /Prodaja po boji artikla/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute(
-      "href",
-      "/analytics/daily-sales",
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Odluke/i }));
-    expect(
-      screen.getAllByRole("link", { name: /Prodaja po dobavljačima/ })
-        .some((link) => link.getAttribute("href") === "/analytics/supplier?tab=scorecard"),
-    ).toBe(true);
+    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute("href", "/analytics/daily-sales");
     expect(screen.queryByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pre\/Posle nivelacije/ })).toBeInTheDocument();
   });
@@ -117,10 +110,10 @@ describe("Sidebar", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: /Backoffice/i });
-    expect(within(dialog).getByRole("button", { name: /Operacije/i })).toHaveAttribute("aria-expanded", "true");
+    expect(within(dialog).getByRole("button", { name: /Glavne odluke/i })).toHaveAttribute("aria-expanded", "true");
     expect(dialog.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
-    expect(screen.getAllByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveLength(2);
-    expect(within(dialog).getByRole("link", { name: /Prodaja po dobavljačima/ })).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "Prodaja po dobavljačima" })).toHaveLength(2);
+    expect(within(dialog).getByRole("link", { name: "Prodaja po dobavljačima" })).toHaveAttribute(
       "href",
       "/analytics/supplier",
     );

@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping). RQ602 is PARTIAL after delivery of the pre-registration kit, read-only query and synthetic PostgreSQL oracle; it awaits a dry-run on a genuine historical import. RQ601 is PARTIAL after its CI-discovered PostgreSQL query correction was delivered and passed the disposable PostgreSQL oracle; its genuine 20-item owner sample remains open. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ603` (P2, now claimed IN_PROGRESS for owner-approved analytics navigation grouping). RQ602 is PARTIAL after delivery of the pre-registration kit, read-only query and synthetic PostgreSQL oracle; it awaits a dry-run on a genuine historical import. RQ601 is PARTIAL after its CI-discovered PostgreSQL query correction was delivered and passed the disposable PostgreSQL oracle; its genuine 20-item owner sample remains open. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30671,8 +30671,8 @@ None (historical data and fixtures). Uses RQ601's verdict for the cost basis whe
 
 ## RQ603 - Reduce primary analytics navigation to source-supported decision screens
 
-Status: READY
-Ready after: owner decision recorded in `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`; fresh collision check on post-close `origin/main` `ce7893ca24d1fe56307c7a28251a780d06e68342` found no RQ603 lock, branch or open PR.
+Status: IN_PROGRESS
+Ready after: satisfied by the owner decision in `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`; fresh collision check on post-close `origin/main` `bf9ad664784996af687f099a5a0084250910c64f` found no RQ603 lock, branch, open PR or owned-path edits.
 Priority: P2
 Type: frontend/product/tests
 Feature family: analytics-primary-navigation-reduction
@@ -30717,8 +30717,8 @@ Navigation entries and labels only; every route stays reachable by URL and from 
 ### Claim note
 
 - Owner decision supersedes RQ507 and is recorded in `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`.
-- Promoted WAITING -> READY on 2026-10-09 after fresh `origin/main` `ce7893ca24d1fe56307c7a28251a780d06e68342`; no matching RQ603 lock, local/remote branch, open PR or changed nav paths were found in this workspace.
-- Not claimed by this workspace; RQ602 is the active P1 claim and this task remains a disjoint UI lane.
+- Promoted WAITING -> READY by the recorded owner-decision recovery; revalidated from post-close `origin/main` `bf9ad664784996af687f099a5a0084250910c64f` on 2026-10-09.
+- Claimed READY -> IN_PROGRESS by Codex on 2026-10-09 after finding no RQ603 lock, local/remote branch, open PR or edits to `navConfig.ts`, nav specs or README across registered worktrees. Local lock: `.ai/task-locks/RQ603-codex.lock.md`.
 
 ### Dependencies
 

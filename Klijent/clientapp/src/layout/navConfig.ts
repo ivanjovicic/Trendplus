@@ -107,51 +107,41 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "analytics-executive",
+    id: "analytics-overview",
     label: "Analitika",
     sidebarLabel: "Pregled",
-    icon: Sparkles,
+    icon: BarChart3,
     items: [
       { to: "/analytics", label: "Pregled poslovanja", icon: BarChart3 },
-      {
-        to: "/analytics/pilot-readiness",
-        label: "Pilot spremnost",
-        icon: ListChecks,
-      },
-      {
-        to: "/analytics/decision-board",
-        label: "Izvršni board odluka",
-        icon: Sparkles,
-      },
     ],
   },
   {
-    id: "analytics-decisions",
+    id: "analytics-primary",
     label: "Analitika",
-    sidebarLabel: "Odluke",
-    icon: Microscope,
-    items: [
-      { to: "/analytics/products", label: "Odluke o proizvodima", icon: Sparkles },
-      { to: "/analytics/actions", label: "Akcije i preporuke", icon: ClipboardList },
-      { to: "/analytics/decision-pulse", label: "Puls odluka", icon: AlertTriangle },
-      {
-        to: "/analytics/supplier?tab=scorecard",
-        label: "Prodaja po dobavljačima",
-        icon: Microscope,
-      },
-    ],
-  },
-  {
-    id: "analytics-operations",
-    label: "Analitika",
-    sidebarLabel: "Operacije",
-    icon: Boxes,
+    sidebarLabel: "Glavne odluke",
+    icon: Sparkles,
     items: [
       { to: "/analytics/inventory", label: "Analitika zaliha", icon: Boxes },
       { to: "/analytics/supplier", label: "Prodaja po dobavljačima", icon: Microscope },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
-      { to: "/analytics/daily-sales", label: "Prodaja po smenama", icon: CalendarDays },
+      { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },
       { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
+      { to: "/analytics/actions", label: "Akcije i preporuke", icon: ClipboardList },
+      { to: "/analytics/data-quality", label: "Kvalitet podataka", icon: AlertTriangle },
+    ],
+  },
+  {
+    id: "analytics-additional",
+    label: "Analitika",
+    sidebarLabel: "Dodatne analize",
+    icon: BookOpen,
+    items: [
+      { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
+      { to: "/analytics/decision-board", label: "Izvršni pregled odluka", icon: Sparkles },
+      { to: "/analytics/products", label: "Odluke o proizvodima", icon: ShoppingCart },
+      { to: "/analytics/decision-pulse", label: "Puls odluka", icon: AlertTriangle },
+      { to: "/analytics/supplier?tab=scorecard", label: "Ocena dobavljača", icon: Microscope },
+      { to: "/analytics/daily-sales", label: "Prodaja po smenama", icon: CalendarDays },
       {
         to: "/analytics/color-sales-stats",
         label: "Prodaja po boji artikla",
@@ -163,31 +153,9 @@ export const NAV_GROUPS: NavGroup[] = [
         },
       },
       {
-        to: "/analytics/pre-nivelacija-prioriteti",
-        label: "Prioriteti nivelacije",
-        icon: Sparkles,
-      },
-    ],
-  },
-  {
-    id: "analytics-data-quality",
-    label: "Analitika",
-    sidebarLabel: "Kvalitet podataka",
-    icon: AlertTriangle,
-    items: [
-      { to: "/analytics/data-quality", label: "Pregled zdravlja podataka", icon: AlertTriangle },
-    ],
-  },
-  {
-    id: "analytics-reports-legacy",
-    label: "Analitika",
-    sidebarLabel: "Izveštaji",
-    icon: BookOpen,
-    items: [
-      {
         to: "/analytics/supplier/report",
-        label: "Trendplus izveštaj dobavljača",
-        icon: ClipboardList,
+        label: "Izveštaj dobavljača",
+        icon: Wrench,
         badge: { label: "Izveštaj", tone: "info", title: "Dokumentarni izveštaj za dobavljače" },
       },
       {
