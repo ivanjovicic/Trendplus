@@ -518,8 +518,8 @@ describe("PreNivelacijaPriorityPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Detalji" }));
     expect(screen.getAllByText("Aktivni v10 signal zahteva ručnu proveru.").length).toBeGreaterThan(0);
-    expect(screen.getByText("Eksperimentalni shadow v9")).toBeInTheDocument();
-    expect(screen.getByText(/Sell-through od prijema nije dostupan/)).toBeInTheDocument();
+    expect(screen.getByText("Eksperimentalni skor v9")).toBeInTheDocument();
+    expect(screen.getByText(/Stopa rasprodaje od prijema nije dostupna/)).toBeInTheDocument();
   });
 
   it("creates an idempotent SKU-store markdown action from the canonical queue and keeps shareable context", async () => {

@@ -14,7 +14,7 @@ public static class PreNivelacijaV9ShadowService
     public const decimal CoverGapSaturationWeeks = 12m;
     public const int AgeSaturationDays = 180;
     public const int ComparisonTopN = 10;
-    public const string Methodology = "Shadow score = normalized positive cover gap (70%) + receipt-age risk (30%); weights are renormalized across observed signals. It is experimental and cannot change canonical v10 recommendations or actions.";
+    public const string Methodology = "Eksperimentalni skor v9 = normalizovan višak pokrića zalihe u odnosu na kraj sezone (70%) + rizik starosti od prijema (30%); težine se preraspodeljuju na signale koji postoje. Skor je eksperimentalan i ne menja aktivne v10 preporuke ni akcije.";
 
     public static PreNivelacijaShadowV9EvidenceDto BuildEvidence(
         int stockUnits,
