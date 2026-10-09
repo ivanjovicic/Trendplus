@@ -350,7 +350,7 @@ export const reorderItemColumns: AnalyticsTableColumn<SmartReorderResult["items"
 const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategoryPlan"][number]>[] = [
   { key: "kategorija", header: "Kategorija", dataType: "text" },
   { key: "totalItems", header: "Artikala", dataType: "number" },
-  { key: "criticalCount", header: "Kriticno", dataType: "number" },
+  { key: "criticalCount", header: "Kritično", dataType: "number" },
   { key: "urgentCount", header: "Hitno", dataType: "number" },
   { key: "totalReorderCost", header: "Trošak nabavke", dataType: "currency" },
   { key: "expectedRevenue", header: "Očekivani prihod", dataType: "currency" },
@@ -360,7 +360,7 @@ const reorderCategoryColumns: AnalyticsTableColumn<SmartReorderResult["byCategor
 const reorderSupplierColumns: AnalyticsTableColumn<SmartReorderResult["bySupplierPlan"][number]>[] = [
   { key: "dobavljac", header: "Dobavljač", dataType: "text" },
   { key: "totalItems", header: "Artikala", dataType: "number" },
-  { key: "criticalCount", header: "Kriticno", dataType: "number" },
+  { key: "criticalCount", header: "Kritično", dataType: "number" },
   { key: "totalReorderCost", header: "Trošak nabavke", dataType: "currency" },
   { key: "avgReorderProbability", header: "Avg prob. reordering", dataType: "percent" },
 ];
