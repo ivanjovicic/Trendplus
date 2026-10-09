@@ -64,6 +64,10 @@ vi.mock("../pages/ExecutiveDecisionBoardPage", () => ({
   default: () => <div data-testid="route-analytics-decision-board">decision-board</div>,
 }));
 
+vi.mock("../pages/DecisionPulsePage", () => ({
+  default: () => <div data-testid="route-analytics-decision-pulse">decision-pulse</div>,
+}));
+
 vi.mock("../pages/SupplierDecisionReportPage", () => ({
   default: () => <div data-testid="route-analytics-supplier-report">supplier-report</div>,
 }));
@@ -88,6 +92,7 @@ const testIdByPath: Record<string, string> = {
   "/analytics/data-quality": "route-analytics-data-quality",
   "/analytics/actions": "route-analytics-actions",
   "/analytics/decision-board": "route-analytics-decision-board",
+  "/analytics/decision-pulse": "route-analytics-decision-pulse",
   "/analytics/supplier/report?fromDate=2026-06-01&toDate=2026-06-30&scope=all": "route-analytics-supplier-report",
   "/analytics/reports/pilot-intake?fromDate=2026-06-01&toDate=2026-06-30&scope=all": "route-analytics-pilot-intake-report",
 };
