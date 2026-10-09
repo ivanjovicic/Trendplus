@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: RQ46 IN_PROGRESS in the UI/Table/Chart addendum after the RQ320 post-close recovery at `60f768b47693816372493d4e18ce390a54493fb8`; no Cross-Surface task is READY.
-Main queue RQ pointer: no unclaimed READY task; RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, RQ130 is OBSOLETE. Re-enter selection after a dependency or source-evidence unblock.
+Current RQ routing: `RQ600` is READY for the owner-requested action-eligibility/value contract audit; `RQ598` is independently IN_PROGRESS in the Test Hardening addendum.
+Main queue RQ pointer: `RQ598` IN_PROGRESS; additional READY `RQ600`. RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, and RQ130 is OBSOLETE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -32,6 +32,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 | RQ130 | OBSOLETE | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
 | RQ131 | DONE | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
+| RQ600 | READY | analytics-action-eligibility-value-contract | Audit action eligibility, evidence and measured-value instrumentation |
 
 ---
 
@@ -1274,3 +1275,65 @@ Q70 baseline evidence is partly projected for article rows, but the vendor aggre
 - Added backend aggregation, API-schema, utility and page-level regressions for a healthy zero, no-baseline uplift and legacy response compatibility. Recommendation actionability and Q70 SQL remain unchanged.
 - Focused backend suite passed 59/59; focused frontend suites passed 108/108. Analytics guardrails, typecheck and production build passed.
 - Run log: `.ai/runs/2026-10-08-RQ131-evidence.md`; Evidence state: synchronized.
+
+---
+
+## RQ600 - Actionable analytics value and eligibility acceptance matrix
+
+Status: READY
+Ready after: none
+Priority: P1
+Type: planning/test-contract-audit
+Feature family: analytics-action-eligibility-value-contract
+Parallel-safe: yes after path partitioning; RQ600 owns this addendum plus its value matrix/evidence, while RQ598 owns the Test Hardening addendum plus its regression audit/report/evidence
+Owner: Analytics Reliability with product review
+Local lock: `.ai/task-locks/RQ600-<agent>.lock.md`
+Commit suggestion: `docs(analytics): audit action eligibility and value evidence`
+
+### Problem
+
+Existing action surfaces need one reviewed matrix showing whether each action is backed by the right grain, source, freshness, cost coverage, reason codes and visible evidence. Historical report confidence must remain distinct from eligibility for current replenishment, transfer or markdown decisions, and observed action counts must not be presented as measured business value.
+
+### Evidence
+
+- `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` authorizes this planning/test-contract audit.
+- RQ530/RQ531/RQ559/RQ585/RQ592, STAB16 and QDB07 already own named policy, evidence, production and connector gates that must not be duplicated.
+- Product Decision, Inventory, pre/post markdown and Supplier surfaces already expose partial trust, quality and recommendation contracts that require cross-surface reconciliation rather than a new scoring model.
+
+### Scope
+
+- Product Decision, Inventory, pre/post markdown and Supplier decision surfaces.
+- Existing trust, quality, recommendation-eligibility and value-roadmap contracts.
+- A compact documentation matrix and at most two non-duplicate follow-up code prompts only when a proven contract defect exists.
+- No release activation, recommendation activation, production configuration or invented ROI.
+
+### Read first
+
+- `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md`
+- RQ530, RQ531, RQ559, RQ585 and RQ592 prompts/evidence
+- STAB16 and QDB07 prompt/evidence
+- current Product Decision, Inventory, pre/post and Supplier trust/eligibility contracts
+
+### Do
+
+1. Audit each existing action for metric grain, source/coverage, freshness, cost known/unknown state, reason codes and user-visible evidence link.
+2. Separate historical-report confidence from current action eligibility; stale evidence may remain usable historically while being ineligible for fresh-action claims.
+3. Record business decision, displayed KPI, source, denominator, exclusions, shipped/partial/gated status, economic-benefit hypothesis, instrumentation required for measured impact and blocker owner.
+4. Reconcile existing queue owners and propose at most two non-duplicate code tasks only for proven contract defects.
+
+### Tests
+
+- Verify every matrix reference against current source/contracts and owner prompts.
+- Run live queue/planning governance validators and `git diff --check`.
+- Run focused executable checks only if a newly reproduced contract defect requires a separately registered follow-up.
+
+### Acceptance
+
+- A reviewed contract matrix has exact file references, explicit owner decisions and non-overlapping next tasks.
+- Historical evidence and current-action eligibility stay distinct.
+- No ROI, causal impact, supplier authority or release state is invented.
+- Post-close routing is recomputed from fresh `origin/main`.
+
+### Dependencies
+
+None for the audit. Product/release changes remain gated by their existing RQ530/RQ531/RQ559/RQ585/RQ592, STAB16 and QDB07 owners.

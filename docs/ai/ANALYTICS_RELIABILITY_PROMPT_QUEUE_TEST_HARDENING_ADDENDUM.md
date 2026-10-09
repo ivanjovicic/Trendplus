@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none; `RQ597` is DONE (Color endpoint bucket parity against the independent raw-fact oracle)
-Status: owner-promoted test-hardening follow-up; `RQ597` was READY from the 2026-10-05 adversarial audit residual and is now DONE. `RQ96`/`RQ106`/`RQ97`/`RQ98` are DONE on main.
+Current READY prompt: `RQ598` (IN_PROGRESS; claimed by Codex for the regression-gap inventory); `RQ597` is DONE.
+Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
 
@@ -694,3 +694,67 @@ None. Existing endpoint, oracle, fixture and database test harness are already p
 - Residual risk: none known; no production/runtime behavior or API contract changed.
 - Post-close routing: pending fresh recovery after this terminal transition reaches `main`.
 - Prompt defect / scope repair: removed the impossible per-bucket API sale-line-count assertion because the API does not expose that field; oracle counts remain explicit fixture/scope controls.
+
+---
+
+## RQ598 - Analytics regression gap inventory and targeted test proposals
+
+Status: IN_PROGRESS
+Ready after: none
+Priority: P1
+Type: audit/backend-tests/frontend-tests
+Feature family: analytics-regression-gap-inventory
+Parallel-safe: yes after path partitioning; RQ598 owns this addendum plus its regression audit/report/evidence, while RQ600 owns the Cross-Surface addendum plus its value matrix
+Owner: Analytics Reliability / Codex
+Local lock: `.ai/task-locks/RQ598-codex.lock.md`
+Commit suggestion: `test(analytics): close verified regression gaps`
+
+### Problem
+
+Current analytics coverage is extensive, but the repository still needs a current source-to-test inventory that distinguishes real blind spots from equivalent existing proof. Missing named tests must not be treated as defects, and new tests must be added only for deterministic gaps that can be proved from current code and independent fixtures/oracles.
+
+### Evidence
+
+- `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` authorizes this audit-only prompt.
+- `RQ597`, `BCI16` and the repository-local slice of `RQ140` are DONE and must be searched before declaring a gap.
+- Existing backend suites, raw-fact oracles, contract tests and frontend analytics specs cover overlapping parts of Daily, Supplier, Shoe Type, Color, Supplier Footwear, Inventory, Pre/Post, Pre-Nivelacija, shift and action surfaces.
+
+### Scope
+
+- Map each named shipped metric/route to source, aggregation grain, approved formula/policy, test ID and independent-oracle presence.
+- Include export/query consistency and the adversarial cases named by the owner plan.
+- Add at most three deterministic independent tests only for VERIFIED_GAP observations that are demonstrably uncovered.
+- Production/runtime code changes require a separately registered narrow defect prompt and are not part of RQ598.
+
+### Read first
+
+- `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md`
+- `docs/ai/ANALYTICS_TEST_STRATEGY.md`
+- `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md`
+- RQ597, BCI16 and RQ140 prompts/evidence
+- the nearest current backend, PostgreSQL-oracle, contract and frontend tests for every mapped surface
+
+### Do
+
+1. Reconcile fresh `origin/main`, all current RQ statuses and active ownership before auditing.
+2. Build a source-to-test matrix for Daily, Supplier, Shoe Type, Color, Supplier Footwear, Inventory, Pre/Post, Pre-Nivelacija, shift and selected action screens.
+3. Check unknown ID/display name, previous-only categories, negative/zero margins, missing costs, returns/adjustments, date/store filters, empty/missing/error/stale states, applied/draft filters, top-N scope, rounding and denominators.
+4. Classify every observation as VERIFIED_GAP, COVERED or NEEDS_AUTHORITY with exact file/line evidence and risk.
+5. Add no more than three deterministic independent tests for VERIFIED_GAP cases. If no reproducible gaps remain, close without speculative follow-ups.
+
+### Tests
+
+- Run the smallest focused tests selected by any VERIFIED_GAP additions.
+- Run the live queue/planning governance validators and `git diff --check`.
+- Record current-main CI state when a relevant run is available; never treat queued/skipped work as passing.
+
+### Acceptance
+
+- A durable source-to-test matrix covers all named surfaces and adversarial cases.
+- Every observation is classified with exact repository evidence and no duplicate test proposal.
+- At most three demonstrated gaps receive deterministic independent tests; production behavior remains unchanged.
+- Canonical owner status/evidence and post-close routing are synchronized from fresh post-delivery `origin/main`.
+
+### Dependencies
+
+None. STAB16 retains production certification/freshness ownership and does not block this repository-local audit.
