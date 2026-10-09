@@ -20,6 +20,7 @@ Evidence state: pending (final main SHA recorded by the pushing agent)
 2. RQ320 gap: Shoe Type had no `Nije primenjeno` cue after becoming Apply-required. Added the shared chip.
 3. RQ481 UX/semantics: every successful Pulse response is marked partial with `PULSE_FILTER_NOT_APPLIED`; the page showed the source-outage alert ("delimično dostupan", "podaci mogu biti nepotpuni", retry) and "Izvori su delimično dostupni" although all sources answered. Now a neutral note explains the inventory period; genuine partial/suppressed responses keep the alert. CSV exports Serbian labels instead of `period:inventory`/`inventory`. 11px text raised to 12px.
 4. RQ46: Insight Studio export metadata used English labels and raw true/false/status codes; now Serbian labels, Da/Ne, shared quality labels. "Kriticno" diacritics fixed in the shared quality label and Insight Studio columns; chart scope label rephrased.
+6. Full Vitest found `AppAnalyticsRoutes.spec.tsx` red on gh/main: `/analytics/decision-pulse` is a registered core smoke route without a test-id mapping/mock. CI misses it because Analytics Quality Gates runs only `npm run test:analytics`. Mapping added.
 5. RQ556: experimental v9 methodology string was English in the UI; copy translated ("shadow", "Sell-through" removed). Missing `SeasonId` was looked up as season 0 (Access IDs can be 0); now skipped.
 
 ## Branch decisions (none merged)
@@ -39,7 +40,7 @@ Evidence state: pending (final main SHA recorded by the pushing agent)
 
 ## Validation run
 
-- Vitest focused: Shoe Type (6 files, 74), DecisionPulsePage 21, InsightStudioPage 6, PreNivelacijaPriorityPage 59, AnalyticsDashboard.operationalFallback 2 -> pass. Full suite: see final note below.
+- Vitest focused: Shoe Type (6 files, 74), DecisionPulsePage 21, InsightStudioPage 6, PreNivelacijaPriorityPage 59, AnalyticsDashboard.operationalFallback 2 -> pass. Full suite: 241 files / 1934 tests; the only 2 failures were the pre-existing route-smoke gap (item 6), now fixed (21/21).
 - `npm run check:analytics-guardrails` (encoding, guardrail self-test, 39 known / 0 new, typecheck) -> pass; `check:ui-ratchets` -> pass; eslint on touched files -> no new errors versus gh/main (pre-existing errors unchanged).
 - `dotnet test --filter DecisionPulse|PreNivelacija` with Testcontainers (CI=true) -> 98/98 pass.
 - `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs`, `git diff --check` -> pass.
