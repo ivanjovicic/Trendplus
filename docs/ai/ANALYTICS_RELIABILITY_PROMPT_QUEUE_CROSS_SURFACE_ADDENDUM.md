@@ -1296,7 +1296,7 @@ Commit suggestion: `docs(analytics): audit action eligibility and value evidence
 - Status: DONE
 - Completion: Reviewed Product Decision, Inventory, pre/post markdown and Supplier action eligibility/value contracts; added the exact-file matrix and reconciled existing owners. No new runtime defect or duplicate follow-up task was found.
 - Changed files: `docs/qa/ANALYTICS_ACTION_ELIGIBILITY_VALUE_MATRIX_2026-10-09.md`, this addendum, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ600-evidence.md`
-- Checks run: `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks run: `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `git diff --check`; current-main Planning Governance runs `37928821823` and `37928761015` -> success
 - Checks not run: runtime builds/tests - docs-only audit with no product-code change; production certification and business validation - remain with STAB16/QDB07/RQ592/RL12/RQ557 owners
 - Run log: `.ai/runs/2026-10-09-RQ600-evidence.md`
 - Evidence state: synchronized
