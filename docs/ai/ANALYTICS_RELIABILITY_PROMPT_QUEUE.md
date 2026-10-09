@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ602` (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ601` is PARTIAL after its repository-local diagnostic phase and waits for the genuine 20-item owner calculation sample; `RQ603` (P2) has an owner decision and awaits a fresh collision check before promotion. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping); RQ602 is IN_PROGRESS (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ601` is PARTIAL after its repository-local diagnostic phase and waits for the genuine 20-item owner calculation sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30531,13 +30531,13 @@ Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost s
 - Status: PARTIAL
 - Completion: delivered a read-only cross-source reconciliation query, isolated PostgreSQL fixture proof, owner-readable QA report and 20-row worksheet. Missing/unknown costs remain null and source sale-line, master backfill and reliable inbound origins are distinct.
 - Changed files: `tools/purchase-cost-scale-reconciliation.sql`, `Api.Tests/PurchaseCostScaleReconciliationTests.cs`, `docs/qa/PURCHASE_COST_SCALE_RECONCILIATION_2026-10-09.md`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ601-evidence.md`.
-- Checks run: focused RQ601 contract/integration test commands returned exit 0; queue/governance validators and diff check are recorded in the run log.
+- Checks run: RQ601 static contract test passed 1/1. The PostgreSQL test runner reported 1/1 but the fixture returned early because Docker is unavailable; do not count this as SQL execution proof. Queue/governance validators and `git diff --check` passed.
 - Checks not run: historical/production DB execution and the 20 original kalkulacija values; no authorized DB/source sample was available and no value was fabricated.
 - Run log: `.ai/runs/2026-10-09-RQ601-evidence.md`
-- Evidence state: pending main delivery synchronization
+- Evidence state: synchronized after main delivery; PostgreSQL execution and genuine source sample remain unproved
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `ce7893ca24d1fe56307c7a28251a780d06e68342` (implementation delivery)
+- Main verification: PASS; refreshed `origin/main` at `ce7893ca24d1fe56307c7a28251a780d06e68342` contains the implementation commit.
 - Missed: per-supplier ratio distribution, backfill share, approved-basis stock total and final `correct`/`defective with cause` verdict.
 - Follow-up: owner supplies 20 traceable kalkulacija lines; resume RQ601 only for the bounded comparison and any sample-proven fix. RQ602 is the next independent READY prompt.
 - Residual risk: inventory-capital RSD remains provisional/not-certified; no import mapping or cost precedence was changed.
@@ -30586,7 +30586,7 @@ None for steps 1-3 (historical data and fixtures suffice). Step 4 needs the owne
 
 ## RQ602 - RQ592 readiness: pre-registration kit and reproducible measurement dry-run on historical data
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: product/evidence/tests
 Feature family: markdown-outcome-pilot-readiness
@@ -30599,6 +30599,13 @@ Commit suggestion: `feat(analytics): add markdown pilot pre-registration and mea
 ### Problem
 
 RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE since 2026-10-09). When freshness returns, RQ592 still needs a cohort-selection rule, a matched comparison rule and a documented, reproducible query for pairs sold, realized gross margin RSD and remaining stock — none exists in the repository. Building and dry-running them now removes weeks from the critical path and exposes data gaps (missing cost, missing store, missing price history) before the real pilot starts.
+
+### Claim note
+
+- Claimed 2026-10-09 from fresh `origin/main` `ce7893ca24d1fe56307c7a28251a780d06e68342` after the RQ601 post-close cascade and exact output-path/lock/branch/PR checks.
+- Workspace: `codex/rq598-regression-gap-audit`; delivery target remains `main`.
+- Local lock: `.ai/task-locks/RQ602-codex.lock.md`.
+- Historical evidence is limited to repository-owned deterministic fixtures unless an authorized historical import is available; synthetic fixture output will not be described as a real-import dry-run or pilot result.
 
 ### Evidence
 
@@ -30638,8 +30645,8 @@ None (historical data and fixtures). Uses RQ601's verdict for the cost basis whe
 
 ## RQ603 - Reduce primary analytics navigation to source-supported decision screens
 
-Status: WAITING
-Ready after: owner decision on which screens leave the primary navigation (this would revise the RQ507 decision that kept Color and Daily in the sidebar)
+Status: READY
+Ready after: owner decision recorded in `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`; fresh collision check on post-close `origin/main` `ce7893ca24d1fe56307c7a28251a780d06e68342` found no RQ603 lock, branch or open PR.
 Priority: P2
 Type: frontend/product/tests
 Feature family: analytics-primary-navigation-reduction
@@ -30669,19 +30676,24 @@ Navigation entries and labels only; every route stays reachable by URL and from 
 
 ### Do
 
-1. Apply the owner-approved list: move unsupported/secondary screens into a collapsed "Dodatne analize" group or show them only when the backend reports the dimension as populated (no frontend guessing).
+1. Apply the exact owner-approved eight primary entries and nine secondary entries from `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md` in a collapsed "Dodatne analize" group. Use static grouping; do not add a backend dimension-coverage gate or infer population in the frontend.
 2. Give the two supplier entries distinct, glossary-aligned labels or merge them.
 3. Update README so it only promotes supported screens.
 
 ### Tests
 
-- Nav spec: primary group count and labels; no duplicate labels; legacy URLs still resolve.
-- Dimension-gated entry is hidden for `not_populated` and shown for `populated` coverage.
+- Nav specs: exact eight primary destinations/labels; distinct supplier labels; secondary links retained; legacy URLs and permissions remain stable; collapsed group is keyboard-accessible and discoverable.
 
 ### Acceptance
 
 - Primary analytics navigation lists only owner-approved, source-supported decision screens; no duplicate labels; no route removed.
 
+### Claim note
+
+- Owner decision supersedes RQ507 and is recorded in `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`.
+- Promoted WAITING -> READY on 2026-10-09 after fresh `origin/main` `ce7893ca24d1fe56307c7a28251a780d06e68342`; no matching RQ603 lock, local/remote branch, open PR or changed nav paths were found in this workspace.
+- Not claimed by this workspace; RQ602 is the active P1 claim and this task remains a disjoint UI lane.
+
 ### Dependencies
 
-Owner decision (revises RQ507). No STAB16 dependency.
+Owner decision satisfied; no STAB16 dependency.
