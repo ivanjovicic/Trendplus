@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ600` is READY in the Cross-Surface addendum; `RQ598` is DONE and `RQ597` is DONE.
+Current READY prompt: none in this addendum; `RQ598` is DONE here and `RQ600` is READY in the Cross-Surface addendum.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
