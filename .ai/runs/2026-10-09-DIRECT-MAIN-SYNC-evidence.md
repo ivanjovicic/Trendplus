@@ -25,10 +25,10 @@ Ownership transfer: none
 - Compared every local branch tip to `HEAD` -> pass; 20 local branches checked, 0 with commits outside `main`.
 - `git status --short --branch` -> tracked `main` clean; existing untracked artifact/temp directories remain untouched.
 - Confirmed the preserved draft is recoverable as `stash@{0}` (5 files; 252 insertions, 33 deletions).
+- `gh run list --commit 95527315dbaf1c8b79549d9fa67ee6b8b1eba947 --limit 10` -> pass; no Actions runs were returned for the documentation-only evidence commit.
 
 ## Validation not run
 - Application tests/build -> not run; this synchronization introduced no code delta beyond the already-delivered `origin/main` tree.
-- GitHub Actions -> not inspected; no new product-code delivery was made by this synchronization.
 
 ## Documentation impact
 - Added this direct-request evidence record; no owner policy, queue, or roadmap documents changed.
