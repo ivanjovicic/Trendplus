@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping); RQ602 is IN_PROGRESS (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ601` is PARTIAL after its repository-local diagnostic phase and waits for the genuine 20-item owner calculation sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ603` (P2, owner-approved analytics navigation grouping). RQ602 is PARTIAL after delivery of the pre-registration kit, read-only query and synthetic PostgreSQL oracle; it awaits a dry-run on a genuine historical import. RQ601 is PARTIAL pending the genuine 20-item owner calculation sample and its PostgreSQL execution proof. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30586,7 +30586,7 @@ None for steps 1-3 (historical data and fixtures suffice). Step 4 needs the owne
 
 ## RQ602 - RQ592 readiness: pre-registration kit and reproducible measurement dry-run on historical data
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P1
 Type: product/evidence/tests
 Feature family: markdown-outcome-pilot-readiness
@@ -30606,6 +30606,25 @@ RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE
 - Workspace: `codex/rq598-regression-gap-audit`; delivery target remains `main`.
 - Local lock: `.ai/task-locks/RQ602-codex.lock.md`.
 - Historical evidence is limited to repository-owned deterministic fixtures unless an authorized historical import is available; synthetic fixture output will not be described as a real-import dry-run or pilot result.
+
+### Completion note
+
+- Date: 2026-10-09
+- Status: PARTIAL
+- Completion: pre-registration template, read-only measurement SQL and independent PostgreSQL oracle are implemented. Focused test passed 2/2 on a disposable local PostgreSQL cluster.
+- Changed files: `docs/product/MARKDOWN_PILOT_PREREGISTRATION_TEMPLATE.md`, `tools/markdown-pilot-measurement.sql`, `Api.Tests/MarkdownPilotMeasurementTests.cs`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ602-evidence.md`.
+- Checks run: focused PostgreSQL fixture and contract tests, changed test-project build, instruction/queue/planning validators and `git diff --check` passed.
+- Checks not run: real historical import dry-run, full backend suite, production/business validation and pilot execution.
+- Run log: `.ai/runs/2026-10-09-RQ602-evidence.md`
+- Evidence state: pending main delivery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: genuine imported nivelacija cohort output, actual coverage/data gaps, owner-confirmed matches and source-cost basis.
+- Follow-up: run the query on a permitted historical import and append its horizon, cohort coverage and gaps; then synchronize the RQ592 pre-registration before any prospective action.
+- Residual risk: bundled dataset is marked demo-only; no current or pilot business result is claimed. RQ601 cost basis remains provisional.
+- Post-close routing: pending full active RQ/SQL cascade after delivery.
+- Prompt defect / scope repair: none; synthetic fixture output is not substituted for the historical import acceptance.
 
 ### Evidence
 
