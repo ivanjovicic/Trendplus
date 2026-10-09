@@ -19,8 +19,8 @@ vi.mock("recharts", () => ({
 }));
 
 vi.mock("../components/analytics/AnalyticsTableToolbar", () => ({
-  default: ({ tableKey, rows }: { tableKey: string; rows: unknown[] }) => (
-    <div data-testid="analytics-toolbar">
+  default: ({ tableKey, rows }: { tableKey: string; rows: Array<{ tipObuceNaziv?: string }> }) => (
+    <div data-testid="analytics-toolbar" data-row-names={rows.map((row) => row.tipObuceNaziv ?? "").join(",")}>
       {tableKey}: {rows.length} rows
     </div>
   ),
@@ -166,6 +166,26 @@ describe("ShoeTypeSalesStatsPage dataScope lineage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("opseg: Postojeći");
     });
+  });
+
+  it("exports the complete backend row set with the same shoe-type identities", async () => {
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response({
+      shoeTypes: [
+        shoeType({ tipObuceId: 1, tipObuceNaziv: "Patike", ukupanPromet: 120000 }),
+        shoeType({ tipObuceId: 2, tipObuceNaziv: "Čizme", ukupanPromet: 90000 }),
+      ],
+      totals: {
+        ...response().totals,
+        brojTipovaObuce: 2,
+        ukupanPromet: 210000,
+      },
+    }));
+
+    renderPage();
+
+    const toolbar = await screen.findByTestId("analytics-toolbar");
+    expect(toolbar).toHaveTextContent("shoe-type-sales-stats: 2 rows");
+    expect(toolbar).toHaveAttribute("data-row-names", "Patike,Čizme");
   });
 
   it("drops an unverified URL store filter when store discovery fails", async () => {

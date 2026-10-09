@@ -57,6 +57,18 @@ vi.mock("../../components/analytics/AnalyticsTrustHeader", () => ({
   ),
 }));
 
+vi.mock("../../components/analytics/AnalyticsTableToolbar", () => ({
+  default: ({ tableKey, rows }: { tableKey: string; rows: Array<{ date?: string }> }) => (
+    <output
+      data-testid="analytics-toolbar"
+      data-table-key={tableKey}
+      data-row-dates={rows.map((row) => row.date ?? "").join(",")}
+    >
+      {tableKey}: {rows.length} rows
+    </output>
+  ),
+}));
+
 vi.mock("../../components/ui/InfoTip", () => ({
   default: ({ text }: { text: string }) => <span data-testid="info-tip">{text}</span>,
 }));
@@ -379,6 +391,7 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(15);
     expect(screen.getByText("Strana 1 od 3")).toBeInTheDocument();
     expect(screen.getByText("Prikazano 1–14 od 30 dana")).toBeInTheDocument();
+    expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("daily-sales-stats: 30 rows");
 
     const revenueHeader = within(table).getByRole("columnheader", { name: /Prihod dana/i });
     fireEvent.click(within(revenueHeader).getByRole("button", { name: /Prihod dana/i }));
@@ -395,6 +408,11 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(within(table).getAllByRole("row")[1].textContent).not.toBe(firstPageDate);
     expect(screen.getByRole("region", { name: "Ključni pokazatelji prodaje po smenama" }).textContent).toBe(primaryKpis);
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-order", chartOrder);
+    expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("daily-sales-stats: 30 rows");
+    expect(screen.getByTestId("analytics-toolbar")).toHaveAttribute(
+      "data-row-dates",
+      [...dateRows].reverse().map((row) => row.date).join(","),
+    );
 
     fireEvent.change(screen.getByRole("combobox", { name: "Redova po strani" }), { target: { value: "30" } });
     await waitFor(() => {

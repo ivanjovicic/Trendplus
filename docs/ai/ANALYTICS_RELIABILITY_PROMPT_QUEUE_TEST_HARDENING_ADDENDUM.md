@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: `RQ598` (IN_PROGRESS; claimed by Codex for the regression-gap inventory); `RQ597` is DONE.
+Current READY prompt: `RQ600` is READY in the Cross-Surface addendum; `RQ598` is DONE and `RQ597` is DONE.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
@@ -699,14 +699,14 @@ None. Existing endpoint, oracle, fixture and database test harness are already p
 
 ## RQ598 - Analytics regression gap inventory and targeted test proposals
 
-Status: IN_PROGRESS
+Status: DONE
 Ready after: none
 Priority: P1
 Type: audit/backend-tests/frontend-tests
 Feature family: analytics-regression-gap-inventory
 Parallel-safe: yes after path partitioning; RQ598 owns this addendum plus its regression audit/report/evidence, while RQ600 owns the Cross-Surface addendum plus its value matrix
 Owner: Analytics Reliability / Codex
-Local lock: `.ai/task-locks/RQ598-codex.lock.md`
+Local lock: `.ai/task-locks/RQ598-codex.lock.md` (released on closure)
 Commit suggestion: `test(analytics): close verified regression gaps`
 
 ### Problem
@@ -754,6 +754,25 @@ Current analytics coverage is extensive, but the repository still needs a curren
 - Every observation is classified with exact repository evidence and no duplicate test proposal.
 - At most three demonstrated gaps receive deterministic independent tests; production behavior remains unchanged.
 - Canonical owner status/evidence and post-close routing are synchronized from fresh post-delivery `origin/main`.
+
+### Completion note
+
+- Date: 2026-10-09
+- Status: DONE
+- Completion: source-to-test inventory completed; two deterministic frontend export/query identity gaps closed; no runtime or formula change
+- Changed files: `docs/qa/ANALYTICS_REGRESSION_GAP_INVENTORY_2026-10-09.md`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`; `Klijent/clientapp/src/pages/ShoeTypeSalesStatsPage.spec.tsx`; `.ai/runs/2026-10-09-RQ598-evidence.md`
+- Checks run: focused Daily/Shoe Type specs 29/29; `npm run typecheck`; queue/planning validators; final `git diff --check`
+- Checks not run: full frontend/backend suites (narrow audit scope); production certification/read-only validation (STAB16 authority)
+- Run log: `.ai/runs/2026-10-09-RQ598-evidence.md`
+- Evidence state: pending final delivery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending fresh post-delivery `origin/main` verification
+- Missed: production freshness, certification and business sign-off remain open
+- Follow-up: RQ600 remains READY for the independent action-eligibility/value-contract audit
+- Residual risk: remote CI and production/business validation remain open; no repository-local regression was found beyond the two closed test gaps
+- Post-close routing: pending fresh recovery after this terminal transition reaches `main`
+- Prompt defect / scope repair: none; RQ599 promotion condition was not met
 
 ### Dependencies
 
