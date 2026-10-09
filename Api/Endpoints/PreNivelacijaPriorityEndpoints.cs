@@ -683,7 +683,7 @@ public static class PreNivelacijaPriorityEndpoints
                                 units180,
                                 daysSinceReceipt,
                                 receiptEvidenceStatus,
-                                seasons.TryGetValue(a.SeasonId ?? 0, out var seasonEvidence) ? seasonEvidence.DatumDo : null,
+                                a.SeasonId.HasValue && seasons.TryGetValue(a.SeasonId.Value, out var seasonEvidence) ? seasonEvidence.DatumDo : null,
                                 anchorDateUtc),
                             ReceiptEvidenceStatus = receiptEvidenceStatus,
                             StockAgeStatus = stockAgeStatus,
