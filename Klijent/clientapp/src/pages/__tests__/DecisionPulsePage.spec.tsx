@@ -323,6 +323,72 @@ describe("DecisionPulsePage", () => {
     expect(screen.getByText(/Prazan rezultat nije greška/i)).toBeInTheDocument();
   });
 
+  it("separates an unsupported inventory period from a genuinely partial source outage", async () => {
+    vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: "2026-07-01T00:00:00Z",
+      periodToUtc: "2026-07-30T23:59:59Z",
+      tenantScope: "n/a_dedicated",
+      suppressedCount: 0,
+      items: [],
+      meta: {
+        success: true,
+        isPartial: true,
+        emptyReason: "no_pulse_items",
+        warningCode: "PULSE_FILTER_NOT_APPLIED",
+        warningMessage: "Inventarni izvor koristi sopstveni signalni period; izabrani period nije primenjen.",
+        notAppliedDimensions: ["period:inventory"],
+        suppressedSources: [],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+
+    const note = await screen.findByTestId("decision-pulse-filter-not-applied");
+    expect(note).toHaveAttribute("role", "status");
+    expect(note).toHaveTextContent("Inventarni izvor koristi sopstveni signalni period");
+    expect(screen.queryByTestId("decision-pulse-partial-warning")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ponovo učitaj pregled" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent(
+      "Dostupnost izvora: Izvori su dostupni; zalihe koriste sopstveni period signala",
+    );
+  });
+
+  it("keeps the partial warning when suppression and an unsupported period coexist", async () => {
+    vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
+      generatedAtUtc: "2026-08-20T12:00:00Z",
+      periodFromUtc: "2026-07-01T00:00:00Z",
+      periodToUtc: "2026-07-30T23:59:59Z",
+      tenantScope: "n/a_dedicated",
+      suppressedCount: 3,
+      items: [],
+      meta: {
+        success: true,
+        isPartial: true,
+        emptyReason: "no_pulse_items",
+        warningCode: "PULSE_PARTIAL",
+        warningMessage: "Supplier decision hub nije dostupan.",
+        notAppliedDimensions: ["period:inventory"],
+        suppressedSources: ["inventory"],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <DecisionPulsePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("decision-pulse-partial-warning")).toHaveTextContent("Supplier decision hub nije dostupan.");
+    expect(screen.getByTestId("decision-pulse-filter-not-applied")).toHaveTextContent("Period nije primenjen na zalihe");
+    expect(screen.getByTestId("decision-pulse-filter-not-applied")).toHaveTextContent("Odluke o zalihama nisu prikazane");
+    expect(screen.getByTestId("decision-pulse-feed-provenance")).toHaveTextContent("Dostupnost izvora: Izvori su delimično dostupni");
+  });
+
   it("keeps populated items visible while showing the partial warning", async () => {
     vi.spyOn(decisionPulseApi, "getDecisionPulse").mockResolvedValue({
       generatedAtUtc: "2026-08-20T12:00:00Z",

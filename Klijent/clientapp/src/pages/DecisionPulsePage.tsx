@@ -48,9 +48,29 @@ function tenantScopeLabel(value: string | null | undefined): string {
   return value === "n/a_dedicated" ? "Podaci dostupni u ovoj bazi" : "Obuhvat nije potvrđen";
 }
 
+const PULSE_FILTER_NOT_APPLIED = "PULSE_FILTER_NOT_APPLIED";
+
+/** True when every source answered and the only partial cause is an unsupported filter dimension. */
+function isFilterNotAppliedOnly(feed: DecisionPulseResponse | null | undefined): boolean {
+  return feed?.meta?.success === true && feed.meta.warningCode === PULSE_FILTER_NOT_APPLIED;
+}
+
 function sourceAvailabilityLabel(feed: DecisionPulseResponse): string {
   if (!feed.meta.success) return "Izvori nisu dostupni";
+  if (isFilterNotAppliedOnly(feed)) {
+    return feed.meta.suppressedSources?.includes("inventory")
+      ? "Izvori su dostupni; zalihe su izostavljene za izabrani period"
+      : "Izvori su dostupni; zalihe koriste sopstveni period signala";
+  }
   return feed.meta.isPartial ? "Izvori su delimično dostupni" : "Izvori su dostupni";
+}
+
+function notAppliedDimensionLabel(value: string): string {
+  return value === "period:inventory" ? "Period nije primenjen na zalihe" : value;
+}
+
+function suppressedSourceLabel(value: string): string {
+  return value === "inventory" ? "Zalihe" : value;
 }
 
 function downloadDigestCsv(
@@ -76,8 +96,8 @@ function downloadDigestCsv(
     feed.generatedAtUtc,
     feed.meta.lastRefreshAtUtc ?? "",
     sourceAvailabilityLabel(feed),
-    feed.meta.notAppliedDimensions?.join("; ") ?? "",
-    feed.meta.suppressedSources?.join("; ") ?? "",
+    feed.meta.notAppliedDimensions?.map(notAppliedDimensionLabel).join("; ") ?? "",
+    feed.meta.suppressedSources?.map(suppressedSourceLabel).join("; ") ?? "",
     scopeLabel(dataScope),
     tenantScopeLabel(feed.tenantScope),
     String(feed.suppressedCount),
@@ -178,7 +198,9 @@ export default function DecisionPulsePage() {
   }, [reloadToken, routeContext]);
 
   const metaFailed = feed?.meta?.success === false;
-  const metaPartial = !metaFailed && (
+  const filterNotAppliedOnly = isFilterNotAppliedOnly(feed);
+  const showFilterNotApplied = feed?.meta?.success === true && (feed.meta.notAppliedDimensions?.length ?? 0) > 0;
+  const metaPartial = !metaFailed && !filterNotAppliedOnly && (
     feed?.meta?.isPartial === true || Boolean(feed?.meta?.warningCode)
   );
   const items = feed?.items ?? [];
@@ -245,6 +267,26 @@ export default function DecisionPulsePage() {
           {feed.meta.lastRefreshAtUtc ? <span>Poslednje uspešno osveženje: {formatDateTime(feed.meta.lastRefreshAtUtc, "nije dostupno")}</span> : null}
           <span>Izostavljeno: {feed.suppressedCount}</span>
         </section>
+      ) : null}
+
+      {!error && !metaFailed && showFilterNotApplied ? (
+        <div
+          className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-[var(--text-primary)]"
+          role="status"
+          data-testid="decision-pulse-filter-not-applied"
+        >
+          <div className="font-semibold">Izabrani period nije primenjen na sve izvore</div>
+          <div className="mt-1">
+            {filterNotAppliedOnly && feed?.meta?.warningMessage
+              ? feed.meta.warningMessage
+              : feed?.meta?.notAppliedDimensions?.map(notAppliedDimensionLabel).join("; ")}
+          </div>
+          <div className="mt-1 text-xs text-muted">
+            {feed?.meta?.suppressedSources?.includes("inventory")
+              ? "Odluke o zalihama nisu prikazane jer ne mogu da poštuju izabrani period."
+              : "Odluke o zalihama koriste sopstveni prozor signala; ostali izvori koriste prikazani period."}
+          </div>
+        </div>
       ) : null}
 
       {!error && !metaFailed && metaPartial ? (
@@ -320,11 +362,11 @@ export default function DecisionPulsePage() {
                   <h2 className="text-sm font-semibold text-foreground">{item.title}</h2>
                   <p className="mt-1 text-sm text-muted">{item.whySummary}</p>
                 </div>
-                <div className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted">
+                <div className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted">
                   {item.recommendationLabel}
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
                 <span className="rounded-full border border-border px-2 py-0.5">
                   Izvor: {sourceLabel(item.sourceType)}
                 </span>
@@ -370,7 +412,7 @@ export default function DecisionPulsePage() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[11px] text-muted">Čuvanje koristi postojeću admin zaštitu. Stavke bez izvornog prioriteta ostaju nerangirane, a evidentiranje nije merenje ishoda.</p>
+                <p className="mt-2 text-xs text-muted">Čuvanje koristi postojeću admin zaštitu. Stavke bez izvornog prioriteta ostaju nerangirane, a evidentiranje nije merenje ishoda.</p>
               </fieldset>
             </article>
           ))}
