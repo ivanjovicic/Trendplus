@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum; `RQ598` is DONE here and `RQ600` is READY in the Cross-Surface addendum.
+Current READY prompt: none in this addendum; `RQ598` and independently registered `RQ600` are DONE in their respective addenda.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
@@ -769,9 +769,9 @@ Current analytics coverage is extensive, but the repository still needs a curren
 - Main commit SHA: `4f765418177ba8042093ab83a867f276ab97c3da`
 - Main verification: freshly fetched `origin/main` resolves to `4f765418177ba8042093ab83a867f276ab97c3da` and contains the implementation commit
 - Missed: production freshness, certification and business sign-off remain open
-- Follow-up: RQ600 remains READY for the independent action-eligibility/value-contract audit
+- Follow-up: RQ600 completed the independent action-eligibility/value-contract audit; no duplicate follow-up task was created
 - Residual risk: remote CI and production/business validation remain open; no repository-local regression was found beyond the two closed test gaps
-- Post-close routing: RQ600 remains READY after the full 13-file RQ/SQL dependency cascade; no additional promotion required
+- Post-close routing: RQ600 was the independent successor and is DONE after the full 13-file RQ/SQL dependency cascade; no additional promotion required
 - Prompt defect / scope repair: none; RQ599 promotion condition was not met
 
 ### Dependencies

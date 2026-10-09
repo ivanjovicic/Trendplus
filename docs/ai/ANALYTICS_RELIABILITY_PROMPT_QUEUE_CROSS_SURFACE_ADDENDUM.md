@@ -1301,12 +1301,12 @@ Commit suggestion: `docs(analytics): audit action eligibility and value evidence
 - Run log: `.ai/runs/2026-10-09-RQ600-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending until direct-main push and fresh verification
-- Main verification: pending until direct-main push and fresh verification
+- Main commit SHA: `146cc2ac22cd8db47a60ce4e2b80700cc2e8e648`
+- Main verification: fresh `origin/main` contains the implementation SHA as an ancestor; routing synchronization follows in the closure commit
 - Missed: none within the repository-local audit; measured business value and production authority remain open
 - Follow-up: none; existing owners are listed in the matrix
 - Residual risk: no current production/outcome proof was invented or inferred
-- Post-close routing: recompute from fresh `origin/main` in the run log
+- Post-close routing: Zero-READY proof and full 13-file active RQ/SQL scan are recorded in `.ai/runs/2026-10-09-RQ600-evidence.md`
 - Prompt defect / scope repair: parent queue pointer was stale after RQ598 closure and was repaired to register RQ600; no acceptance change
 
 ### Problem
