@@ -703,12 +703,12 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 - Run log: `.ai/runs/2026-10-09-RQ545-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending until direct-main push and fresh verification
-- Main verification: pending until direct-main push and fresh verification
+- Main commit SHA: `52bf83e28830179d637107f03eede5c866f346c0`
+- Main verification: fresh `origin/main` contains `52bf83e28830179d637107f03eede5c866f346c0`
 - Missed: exact provider-side relation/schema/privilege classification was not needed because the deployed endpoint served data; worker/freshness proof remains open
 - Follow-up: STAB16 for dedicated worker, durable successful refresh history, provider configuration/logs and read-only database reconciliation
 - Residual risk: production `/api/analytics/refresh-status` still reports `lastSuccessfulRefreshAtUtc=null`, `dataFreshnessStatus=unknown`, `processType=web`, `workersEnabled=false` and no durable successful run
-- Post-close routing: recompute from fresh `origin/main` in the run log
+- Post-close routing: fresh active RQ/SQL cascade and RQ592/STAB16 dependency recheck are recorded in `.ai/runs/2026-10-09-RQ545-evidence.md`
 - Prompt defect / scope repair: no scope expansion; this closure consumes only the prompt's stated “serves data or names exact missing object” acceptance
 
 ---
