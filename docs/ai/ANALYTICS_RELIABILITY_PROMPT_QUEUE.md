@@ -3,7 +3,8 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none in this file; `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ601` (P1, purchase-cost scale reconciliation); additional parallel-safe READY lane `RQ602` (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ603` (P2) is WAITING on an owner navigation decision. `RQ598` and `RQ600` are DONE in their respective addenda.
+Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
 Owner completion 2026-10-09: RQ600 delivered the cross-surface action eligibility/value matrix directly to `main`; historical report confidence remains distinct from current action eligibility and no ROI, release or production-validation claim was added. Run log: `.ai/runs/2026-10-09-RQ600-evidence.md`.
@@ -18252,6 +18253,7 @@ Reproduction: set non-default filters on Color, copy URL, open new tab — defau
 ## RQ319 - Unify Operacije filter apply semantics (auto vs explicit Apply)
 
 Status: DONE
+Post-close review 2026-10-09: Shoe Type period preset and season still applied immediately (and carried a dirty store draft with them); both now edit only the draft, matching Color/Pre-Post. See `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Completed: 2026-10-08 by Cursor Cloud Agent
 Delivery: direct-main merge at `bbd636b0`
 Priority: P2
@@ -18332,6 +18334,7 @@ Authority: user expressly delegated the product choice on 2026-10-08; recorded i
 ## RQ320 - Show draft vs active period on Apply-required Operacije screens
 
 Status: DONE
+Post-close review 2026-10-09: Shoe Type became Apply-required in RQ319 but had no `Nije primenjeno` cue; the shared draft chip is now shown there too. See `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Priority: P2
 Type: frontend/trust/tests
 Feature family: operations-draft-period-desync
@@ -27093,6 +27096,7 @@ Users cannot mistake an incomplete Pulse feed for a complete no-action conclusio
 ## RQ481 - Bind Decision Pulse to shared period and data-scope lineage
 
 Status: DONE
+Post-close review 2026-10-09: a successful feed whose only warning is `PULSE_FILTER_NOT_APPLIED` no longer renders the source-outage alert and retry; the page shows a neutral not-applied note and the CSV uses Serbian labels instead of raw codes. Backend contract unchanged. See `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Priority: P1
 Type: backend/frontend/contract/tests
 Feature family: decision-pulse-period-scope-lineage
@@ -30219,6 +30223,7 @@ Addendum 2026-10-05 (gap review after harden): FE margin-pressure copy now uses 
 
 Status: WAITING
 Ready after: STAB16 has restored/proven production freshness inside the RQ583 SLA and RQ545 live Pre/Post contract is verified on the deployed SHA
+Dependency update 2026-10-09: RQ545 is DONE (`.ai/runs/2026-10-09-RQ545-evidence.md`), so STAB16 freshness is the only remaining start gate. Repository-local preparation (pre-registration template, measurement query and historical dry-run) is registered as RQ602 and does not wait for STAB16.
 Priority: P1
 Type: product/pilot/evidence
 Feature family: markdown-outcome-pilot
@@ -30498,3 +30503,160 @@ Feature family: color-bucket-independent-oracle
 Parallel-safe: yes (test-only; distinct from RQ482 and BCI16 paths)
 Full prompt: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`.
 Canonical acceptance compares every normalized Color endpoint bucket identity, signed units and revenue with the independent raw-fact oracle on deterministic PostgreSQL fixture scopes; the endpoint exposes no per-bucket sale-line count, so oracle counts are fixture/scope controls only. No runtime/product formula changes. See the canonical prompt for scope, test command, boundaries and handoff on a reproduced runtime mismatch.
+
+---
+
+## RQ601 - Purchase-cost scale reconciliation before inventory capital is shown in RSD
+
+Status: READY
+Priority: P1
+Type: data-quality/backend/tests/owner-evidence
+Feature family: purchase-cost-scale-reconciliation
+Parallel-safe: yes (read-only reconciliation report and tests; no valuation formula change until the owner sample is recorded)
+Owner: Analytics Reliability / Inventory + Product owner (Ivan) for the source sample
+Owned paths: new reconciliation script/report under `tools/` or `Api.Tests/` fixtures, `docs/qa/PURCHASE_COST_SCALE_RECONCILIATION_<date>.md`, `.ai/runs/<date>-RQ601-evidence.md`
+Avoid paths: `Api/Services/AccessImportService.cs` mapping and `Api/Services/AnalyticsCostSnapshotService.cs` precedence until step 4; Product Decision/Supplier scoring; production data mutation
+Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost sources`
+
+### Problem
+
+The product audit's next-milestone plan (item 2, "ispravna nabavna cena i datum ulaza -> zalihe u RSD") has no executable owner. RQ576 stopped using master `Artikli.NabavnaCena` for inventory totals, but master cost is still the fallback in the canonical cost precedence (`sale line -> NabavnaCenaDin -> NabavnaCena`) and in `AnalyticsCostSnapshotService`, which backfills missing Access sale-line cost from the master row. The 2026-10-04 re-audit showed master cost ~245 RSD against ~3,000-4,600 RSD sale-line cost for the same suppliers (≈26 RSD/pair stock value). If the master scale is wrong, every fallback margin, slow-stock capital and supplier capital figure inherits the error, and "koliko para stoji u robi 120+ dana" cannot be trusted.
+
+### Evidence
+
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` RQ576 Problem/Evidence (article 21644: master 245 RSD, retail 5,700 -> 3,990 RSD).
+- `Api/Services/AnalyticsCostSnapshotService.cs` (Access sale lines with `NabavnaCena == null` resolve from `NabavnaCenaDin`, then `NabavnaCena`).
+- `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` §8 risk 2, §12 item 2, §20 North Star 2.
+
+### Scope
+
+Measure and explain the relationship between cost sources; do not change formulas, thresholds or import mapping before the owner sample proves the correct scale.
+
+### Read first
+
+- RQ576 and its completion note; RQ464/RQ473 cost precedence; `Application/Analytics/InventoryValuationSupport.cs`
+- `Api/Services/AccessImportService.cs` cost aliases (`nabavnacena`, `nabavnacenadin`, sale-line aliases)
+
+### Do
+
+1. Build a deterministic, read-only reconciliation query/report that, per article (optionally store), lists: master `NabavnaCena`, master `NabavnaCenaDin`, latest reliable inbound unit cost, latest positive sale-line unit cost and its origin (source vs backfilled), retail price, and the ratios between them.
+2. Summarize on the historical import (no fresh import required): ratio distribution per supplier, share of sale lines whose cost came from a master backfill, and stock value under each basis with coverage.
+3. Produce an owner worksheet of 20 articles (mixed suppliers, high stock value) with a blank "kalkulacija nabavna cena" column. The owner fills it from the source system; record the filled sample in the QA doc.
+4. Only after the sample is recorded: if a scale defect is proven (e.g. wrong field, currency or unit), register/implement the bounded mapping or precedence fix in this prompt with before/after evidence; if the master cost is correct, record that and close.
+
+### Tests
+
+- PostgreSQL fixture with master 245 / sale-line 3,000 / inbound 2,900 proves the report attributes each value to its source and flags master-backfilled sale lines.
+- Report never turns missing cost into 0; unknown rows are counted.
+- Validators, `git diff --check`.
+
+### Acceptance
+
+- Owner-readable reconciliation doc with the 20-article sample and a stated verdict (master scale correct / defective with cause).
+- Stock value from the approved basis is within ±5% of the owner sample total, or the residual is explained; no RSD capital claim before this.
+
+### Dependencies
+
+None for steps 1-3 (historical data and fixtures suffice). Step 4 needs the owner-filled sample. Independent of STAB16; a fresh import is only needed to claim current capital.
+
+## RQ602 - RQ592 readiness: pre-registration kit and reproducible measurement dry-run on historical data
+
+Status: READY
+Priority: P1
+Type: product/evidence/tests
+Feature family: markdown-outcome-pilot-readiness
+Parallel-safe: yes (new read-only measurement query, template and fixture tests; no Actions schema, scoring or Pre/Post SQL change)
+Owner: Analytics Reliability + Product owner (Ivan)
+Owned paths: `docs/product/MARKDOWN_PILOT_PREREGISTRATION_TEMPLATE.md`, a read-only measurement query/script with its PostgreSQL fixture test, `.ai/runs/<date>-RQ602-evidence.md`
+Avoid paths: Pre-Nivelacija scoring/weights (`RQ556`), causal model (`RQ558`/`RL12`), Pre/Post views, Analytics Actions schema; RQ592 evidence file (owned by RQ592)
+Commit suggestion: `feat(analytics): add markdown pilot pre-registration and measurement dry-run`
+
+### Problem
+
+RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE since 2026-10-09). When freshness returns, RQ592 still needs a cohort-selection rule, a matched comparison rule and a documented, reproducible query for pairs sold, realized gross margin RSD and remaining stock — none exists in the repository. Building and dry-running them now removes weeks from the critical path and exposes data gaps (missing cost, missing store, missing price history) before the real pilot starts.
+
+### Evidence
+
+- RQ592 Scope steps 1-4 and Acceptance ("every number reproducible from a documented query over production facts").
+- `docs/qa/ANALYTICS_ACTION_ELIGIBILITY_VALUE_MATRIX_2026-10-09.md` (RQ600): outcome instrumentation exists, business value unproven.
+- `.ai/runs/2026-10-09-RQ545-evidence.md` (RQ545 DONE; STAB16 still BLOCKED).
+
+### Scope
+
+Template + read-only measurement on historical data; it must not create Actions, claim an outcome or use the words "efekat"/"uplift".
+
+### Read first
+
+- RQ592, RQ557 (descriptive markdown ledger), RQ571 (retail store scope), RQ601 (cost basis), RQ600 matrix
+- `Api/Services/VendorSalesNivelacijaOutcomeLedgerService.cs`, `Infrastructure/Services/Analytics/AnalyticsActionItemService.cs`
+
+### Do
+
+1. Write the pre-registration template: cohort rule (20-30 SKU×store from Pre-Nivelacija prioriteti, retail scope), comparison rule (not-marked-down SKUs matched by supplier, shoe type, store, age band), 4-week pre and post windows, metrics, exclusions and the limitation section.
+2. Implement one read-only measurement query/script that, for a list of SKU×store×date actions, returns per action and in total: pairs sold pre/post, realized gross margin RSD from historical cost (unknown cost counted, never 0), remaining stock, and the same for the matched comparison group.
+3. Dry-run it on a historical nivelacija cohort from the existing import and record the output and the data gaps found, clearly labelled "istorijska proba, nije pilot".
+
+### Tests
+
+- PostgreSQL fixture: treated vs comparison SKUs, DUG/KOREKCIJA lines, a return, a missing-cost line and a window boundary — query output equals an independent hand-computed oracle.
+- Unknown cost and unmatched comparison are explicit in the output.
+- Validators, `git diff --check`.
+
+### Acceptance
+
+- Template and query merged; historical dry-run evidence lists coverage gaps and owner decisions needed before RQ592 starts.
+- RQ592 can start the day STAB16 restores freshness without new code.
+
+### Dependencies
+
+None (historical data and fixtures). Uses RQ601's verdict for the cost basis when available; until then label margin as "po trenutnoj osnovi troška".
+
+## RQ603 - Reduce primary analytics navigation to source-supported decision screens
+
+Status: WAITING
+Ready after: owner decision on which screens leave the primary navigation (this would revise the RQ507 decision that kept Color and Daily in the sidebar)
+Priority: P2
+Type: frontend/product/tests
+Feature family: analytics-primary-navigation-reduction
+Parallel-safe: no (`Klijent/clientapp/src/layout/navConfig.ts`)
+Owner: Analytics Frontend / Product owner
+Owned paths: `Klijent/clientapp/src/layout/navConfig.ts`, nav specs, README product section
+Avoid paths: route definitions/redirects (legacy URLs must keep working), page logic, backend dimension-coverage contract
+Commit suggestion: `feat(ui): focus primary analytics navigation on supported decisions`
+
+### Problem
+
+The primary sidebar has 16 analytics entries, including two items both labelled "Prodaja po dobavljačima" (`/analytics/supplier?tab=scorecard` and `/analytics/supplier`), and screens whose source dimension is 100% unknown in the live re-audit (color, shift/payment/hour). The product audit recommends at most ~8 primary routes and a weekly "šta da uradim" entry; the owner has not yet chosen which screens leave the primary navigation.
+
+### Evidence
+
+- `Klijent/clientapp/src/layout/navConfig.ts` (current groups and duplicate label).
+- `docs/qa/ANALYTICS_REAUDIT_2026-10-04.md` (100% unknown color/category/payment/hour) and `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` §11 and §12 item 6.
+- RQ507 owner decision (2026-09-29) kept Shoe Type, Color, Daily and Pre/Post in the sidebar.
+
+### Scope
+
+Navigation entries and labels only; every route stays reachable by URL and from contextual links.
+
+### Read first
+
+- RQ507, P-UI-52 completion note, `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`, backend `dimensionCoverage` contract used by Color/Daily pages
+
+### Do
+
+1. Apply the owner-approved list: move unsupported/secondary screens into a collapsed "Dodatne analize" group or show them only when the backend reports the dimension as populated (no frontend guessing).
+2. Give the two supplier entries distinct, glossary-aligned labels or merge them.
+3. Update README so it only promotes supported screens.
+
+### Tests
+
+- Nav spec: primary group count and labels; no duplicate labels; legacy URLs still resolve.
+- Dimension-gated entry is hidden for `not_populated` and shown for `populated` coverage.
+
+### Acceptance
+
+- Primary analytics navigation lists only owner-approved, source-supported decision screens; no duplicate labels; no route removed.
+
+### Dependencies
+
+Owner decision (revises RQ507). No STAB16 dependency.

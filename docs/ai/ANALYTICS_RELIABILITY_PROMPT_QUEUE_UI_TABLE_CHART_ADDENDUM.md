@@ -474,6 +474,7 @@ KPI Snapshot backend supplies margin coverage, but frontend type/card hides it. 
 ## RQ46 - Export trust metadata preservation
 
 Status: DONE
+Post-close review 2026-10-09: the added Insight Studio export metadata used English labels and raw booleans/codes; labels are now Serbian, booleans are Da/Ne and quality/freshness use the shared labels. See `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Ready after: RQ34/RQ45 or explicit unblocking
 Priority: P1
 Type: frontend-report/tests
