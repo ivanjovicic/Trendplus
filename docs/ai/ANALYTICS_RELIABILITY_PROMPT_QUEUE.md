@@ -30623,14 +30623,14 @@ RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE
 - Checks run: focused PostgreSQL fixture and contract tests, changed test-project build, instruction/queue/planning validators and `git diff --check` passed.
 - Checks not run: real historical import dry-run, full backend suite, production/business validation and pilot execution.
 - Run log: `.ai/runs/2026-10-09-RQ602-evidence.md`
-- Evidence state: pending main delivery synchronization
+- Evidence state: synchronized; the implementation commit is contained in current `origin/main`.
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `cb0e7f3a50fa5167559cf09cc51e885ffef74912`
+- Main verification: fresh `origin/main` `357d61daa207e5a99e77880d96275ae5752e1011` contains the implementation SHA.
 - Missed: genuine imported nivelacija cohort output, actual coverage/data gaps, owner-confirmed matches and source-cost basis.
 - Follow-up: run the query on a permitted historical import and append its horizon, cohort coverage and gaps; then synchronize the RQ592 pre-registration before any prospective action.
 - Residual risk: bundled dataset is marked demo-only; no current or pilot business result is claimed. RQ601 cost basis remains provisional.
-- Post-close routing: full active RQ/SQL cascade from current `origin/main` is recorded in `.ai/runs/2026-10-09-RQ601-evidence.md`; RQ603 is the next eligible prompt.
+- Post-close routing: RQ603 is DONE; the fresh full active RQ/SQL recovery found no newly runnable successor. Current RQ READY is none; zero-READY proof and blocker matrix: `.ai/runs/2026-10-09-RQ603-evidence.md`.
 - Prompt defect / scope repair: none; synthetic fixture output is not substituted for the historical import acceptance.
 
 ### Evidence
