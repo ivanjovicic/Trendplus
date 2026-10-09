@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ601` (P1, purchase-cost scale reconciliation); additional parallel-safe READY lane `RQ602` (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ603` (P2) is WAITING on an owner navigation decision. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: `RQ602` (P1, RQ592 pre-registration kit and historical measurement dry-run). `RQ601` is PARTIAL after its repository-local diagnostic phase and waits for the genuine 20-item owner calculation sample; `RQ603` (P2) has an owner decision and awaits a fresh collision check before promotion. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30508,7 +30508,7 @@ Canonical acceptance compares every normalized Color endpoint bucket identity, s
 
 ## RQ601 - Purchase-cost scale reconciliation before inventory capital is shown in RSD
 
-Status: READY
+Status: PARTIAL
 Priority: P1
 Type: data-quality/backend/tests/owner-evidence
 Feature family: purchase-cost-scale-reconciliation
@@ -30517,6 +30517,31 @@ Owner: Analytics Reliability / Inventory + Product owner (Ivan) for the source s
 Owned paths: new reconciliation script/report under `tools/` or `Api.Tests/` fixtures, `docs/qa/PURCHASE_COST_SCALE_RECONCILIATION_<date>.md`, `.ai/runs/<date>-RQ601-evidence.md`
 Avoid paths: `Api/Services/AccessImportService.cs` mapping and `Api/Services/AnalyticsCostSnapshotService.cs` precedence until step 4; Product Decision/Supplier scoring; production data mutation
 Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost sources`
+
+### Claim note
+
+- Claimed 2026-10-09 from fresh `origin/main` `d29a6afecf56cfbdaf2de2a97633edc19867d822` after checking the current RQ601/RQ602/RQ603 routing and local/remote collision state.
+- This run owns only the repository-local diagnostic phase (steps 1-3): read-only reconciliation, deterministic fixture proof and a 20-item worksheet with the owner-calculation column intentionally blank.
+- No import mapping, cost precedence, production data or RSD capital claim will be changed before the genuine owner-filled sample is recorded.
+- Local lock: `.ai/task-locks/RQ601-codex.lock.md`.
+
+### Completion note — repository-local diagnostic phase
+
+- Date: 2026-10-09
+- Status: PARTIAL
+- Completion: delivered a read-only cross-source reconciliation query, isolated PostgreSQL fixture proof, owner-readable QA report and 20-row worksheet. Missing/unknown costs remain null and source sale-line, master backfill and reliable inbound origins are distinct.
+- Changed files: `tools/purchase-cost-scale-reconciliation.sql`, `Api.Tests/PurchaseCostScaleReconciliationTests.cs`, `docs/qa/PURCHASE_COST_SCALE_RECONCILIATION_2026-10-09.md`, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ601-evidence.md`.
+- Checks run: focused RQ601 contract/integration test commands returned exit 0; queue/governance validators and diff check are recorded in the run log.
+- Checks not run: historical/production DB execution and the 20 original kalkulacija values; no authorized DB/source sample was available and no value was fabricated.
+- Run log: `.ai/runs/2026-10-09-RQ601-evidence.md`
+- Evidence state: pending main delivery synchronization
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: per-supplier ratio distribution, backfill share, approved-basis stock total and final `correct`/`defective with cause` verdict.
+- Follow-up: owner supplies 20 traceable kalkulacija lines; resume RQ601 only for the bounded comparison and any sample-proven fix. RQ602 is the next independent READY prompt.
+- Residual risk: inventory-capital RSD remains provisional/not-certified; no import mapping or cost precedence was changed.
+- Prompt defect / scope repair: none; the owner decision explicitly permits steps 1-3 and forbids a definitive verdict before the sample.
 
 ### Problem
 
