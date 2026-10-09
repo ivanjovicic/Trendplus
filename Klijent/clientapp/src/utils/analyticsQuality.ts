@@ -14,7 +14,7 @@ export function dataQualityStatusLabel(value: string | null | undefined): string
   const tone = normalizeDataQualityStatus(value);
   if (tone === "good") return "Dobro";
   if (tone === "warning") return "Oprez";
-  if (tone === "critical") return "Kriticno / ne veruj";
+  if (tone === "critical") return "Kritično / ne veruj";
   return "Nedovoljno podataka";
 }
 

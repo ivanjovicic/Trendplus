@@ -91,6 +91,7 @@ import {
 } from "../services/analyticsIntelligenceDerived";
 import type { AnalyticsNamedValue, AnalyticsTableColumn } from "../types/analyticsTable";
 import { ANALYTICS_UNAVAILABLE_LABEL } from "../utils/analyticsConstants";
+import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import { fmtNumber, fmtPct, fmtRsd } from "../utils/analyticsFormatters";
 import {
   isEstimatedCategoryRevenue,
@@ -107,22 +108,35 @@ import {
 // ══════════════════════════════════════════════════════════════════
 
 type TabKey = "pregled" | "dobavljaci" | "kategorije" | "matrica" | "dnevna" | "abc" | "zalihe" | "nabavka";
-export const INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL = "Top 8 kategorija po prihodu koji prikazuje ovaj grafikon; tabela ispod prikazuje sve kategorije.";
+export const INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL = "Grafikon prikazuje 8 kategorija sa najvećim prihodom; tabela ispod prikazuje sve kategorije.";
+
+function exportYesNo(value: boolean): string {
+  return value ? "Da" : "Ne";
+}
+
+function exportFreshnessLabel(value: string): string {
+  switch (value.toLowerCase()) {
+    case "fresh": return "Sveži podaci";
+    case "stale": return "Zastareli podaci";
+    case "unknown": return "Svežina nije potvrđena";
+    default: return value;
+  }
+}
 
 export function buildInsightStudioExportTrustMetadata(
   source: string,
   meta?: InsightStudioTrustMeta & { isPartial?: boolean; dataFreshnessStatus?: string | null; dataFreshnessReasonCode?: string | null } | null,
 ): AnalyticsNamedValue[] {
-  const values: AnalyticsNamedValue[] = [{ key: "exportSource", label: "Displayed source", value: source }];
+  const values: AnalyticsNamedValue[] = [{ key: "exportSource", label: "Prikazani izvor", value: source }];
   if (!meta) return values;
-  values.push({ key: "responseSuccess", label: "API response successful", value: meta.success });
-  if (meta.dataQualityStatus) values.push({ key: "dataQualityStatus", label: "Data quality", value: meta.dataQualityStatus });
-  if (meta.dataFreshnessStatus) values.push({ key: "dataFreshnessStatus", label: "Data freshness", value: meta.dataFreshnessStatus });
-  if (meta.dataFreshnessReasonCode) values.push({ key: "dataFreshnessReasonCode", label: "Freshness reason", value: meta.dataFreshnessReasonCode });
-  if (meta.isPartial != null) values.push({ key: "isPartial", label: "Partial data", value: meta.isPartial });
-  if (meta.emptyReason) values.push({ key: "emptyReason", label: "Empty result reason", value: meta.emptyReason });
-  if (meta.warningCode) values.push({ key: "warningCode", label: "Warning code", value: meta.warningCode });
-  if (meta.warningMessage) values.push({ key: "warningMessage", label: "Warning", value: meta.warningMessage });
+  values.push({ key: "responseSuccess", label: "API odgovor uspešan", value: exportYesNo(meta.success) });
+  if (meta.dataQualityStatus) values.push({ key: "dataQualityStatus", label: "Kvalitet podataka", value: dataQualityStatusLabel(meta.dataQualityStatus) });
+  if (meta.dataFreshnessStatus) values.push({ key: "dataFreshnessStatus", label: "Svežina podataka", value: exportFreshnessLabel(meta.dataFreshnessStatus) });
+  if (meta.dataFreshnessReasonCode) values.push({ key: "dataFreshnessReasonCode", label: "Razlog svežine (kod)", value: meta.dataFreshnessReasonCode });
+  if (meta.isPartial != null) values.push({ key: "isPartial", label: "Delimični podaci", value: exportYesNo(meta.isPartial) });
+  if (meta.emptyReason) values.push({ key: "emptyReason", label: "Razlog praznog rezultata (kod)", value: meta.emptyReason });
+  if (meta.warningCode) values.push({ key: "warningCode", label: "Upozorenje (kod)", value: meta.warningCode });
+  if (meta.warningMessage) values.push({ key: "warningMessage", label: "Upozorenje", value: meta.warningMessage });
   return values;
 }
 
@@ -241,7 +255,7 @@ export const categoryColumns: AnalyticsTableColumn<CategoryStat>[] = [
   { key: "profitLift", header: "Lift", dataType: "percent" },
   { key: "revenueBasis", header: "Osnova prihoda", dataType: "text" },
   { key: "estimated", header: "Prihod procenjen", dataType: "text" },
-  { key: "velocityDenominatorBasis", header: "Osnova velocity", dataType: "text" },
+  { key: "velocityDenominatorBasis", header: "Osnova brzine prodaje", dataType: "text" },
   { key: "velocity", header: "Velocity", dataType: "number" },
   { key: "uniqueSKU", header: "SKU", dataType: "number" },
 ];

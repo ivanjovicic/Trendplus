@@ -198,7 +198,7 @@ describe("AnalyticsDashboard operational fallback", () => {
     expect(screen.getByText("Sigurnost: 82%")).toBeInTheDocument();
     expect(screen.getByText("Pouzdanost: 74%")).toBeInTheDocument();
     expect(screen.getByText("Kvalitet podataka: Dobro")).toBeInTheDocument();
-    expect(screen.getByText("Kvalitet podataka: Kriticno / ne veruj")).toBeInTheDocument();
+    expect(screen.getByText("Kvalitet podataka: Kritično / ne veruj")).toBeInTheDocument();
     expect(screen.getByText("Kvalitet podataka: Nedovoljno podataka")).toBeInTheDocument();
     expect(screen.getByText("Legacy dashboard action bez trust payloada.")).toBeInTheDocument();
   });

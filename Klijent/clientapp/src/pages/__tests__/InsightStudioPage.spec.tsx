@@ -85,7 +85,7 @@ describe("Insight Studio export trust context", () => {
     ]));
   });
 
-  it("preserves only API-provided quality, freshness and warning metadata", () => {
+  it("preserves only API-provided quality, freshness and warning metadata with Serbian labels", () => {
     const metadata = buildInsightStudioExportTrustMetadata("ABC classification API", {
       success: true,
       dataQualityStatus: "warning",
@@ -96,16 +96,21 @@ describe("Insight Studio export trust context", () => {
     });
 
     expect(metadata).toEqual(expect.arrayContaining([
-      { key: "exportSource", label: "Displayed source", value: "ABC classification API" },
-      { key: "responseSuccess", label: "API response successful", value: true },
-      { key: "dataQualityStatus", label: "Data quality", value: "warning" },
-      { key: "dataFreshnessStatus", label: "Data freshness", value: "stale" },
-      { key: "isPartial", label: "Partial data", value: true },
-      { key: "warningCode", label: "Warning code", value: "partial_cost_coverage" },
-      { key: "warningMessage", label: "Warning", value: "Some costs are unavailable" },
+      { key: "exportSource", label: "Prikazani izvor", value: "ABC classification API" },
+      { key: "responseSuccess", label: "API odgovor uspešan", value: "Da" },
+      { key: "dataQualityStatus", label: "Kvalitet podataka", value: "Oprez" },
+      { key: "dataFreshnessStatus", label: "Svežina podataka", value: "Zastareli podaci" },
+      { key: "isPartial", label: "Delimični podaci", value: "Da" },
+      { key: "warningCode", label: "Upozorenje (kod)", value: "partial_cost_coverage" },
+      { key: "warningMessage", label: "Upozorenje", value: "Some costs are unavailable" },
+    ]));
+    expect(metadata.every((entry) => !/Displayed|response|Partial|Warning|freshness/i.test(entry.label))).toBe(true);
+    expect(buildInsightStudioExportTrustMetadata("Insight Studio", { success: false, isPartial: false })).toEqual(expect.arrayContaining([
+      { key: "responseSuccess", label: "API odgovor uspešan", value: "Ne" },
+      { key: "isPartial", label: "Delimični podaci", value: "Ne" },
     ]));
     expect(buildInsightStudioExportTrustMetadata("Insight Studio")).toEqual([
-      { key: "exportSource", label: "Displayed source", value: "Insight Studio" },
+      { key: "exportSource", label: "Prikazani izvor", value: "Insight Studio" },
     ]);
   });
 });
@@ -113,7 +118,7 @@ describe("Insight Studio export trust context", () => {
 
 describe("Insight Studio chart scope labels", () => {
   it("distinguishes the top-eight category chart from its full table", () => {
-    expect(INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL).toContain("Top 8");
+    expect(INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL).toContain("8 kategorija sa najvećim prihodom");
     expect(INSIGHT_STUDIO_CATEGORY_CHART_SCOPE_LABEL).toContain("tabela ispod prikazuje sve kategorije");
   });
 });
