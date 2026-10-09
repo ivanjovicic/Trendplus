@@ -764,14 +764,14 @@ Current analytics coverage is extensive, but the repository still needs a curren
 - Checks run: focused Daily/Shoe Type specs 29/29; `npm run typecheck`; queue/planning validators; final `git diff --check`
 - Checks not run: full frontend/backend suites (narrow audit scope); production certification/read-only validation (STAB16 authority)
 - Run log: `.ai/runs/2026-10-09-RQ598-evidence.md`
-- Evidence state: pending final delivery synchronization
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending fresh post-delivery `origin/main` verification
+- Main commit SHA: `4f765418177ba8042093ab83a867f276ab97c3da`
+- Main verification: freshly fetched `origin/main` resolves to `4f765418177ba8042093ab83a867f276ab97c3da` and contains the implementation commit
 - Missed: production freshness, certification and business sign-off remain open
 - Follow-up: RQ600 remains READY for the independent action-eligibility/value-contract audit
 - Residual risk: remote CI and production/business validation remain open; no repository-local regression was found beyond the two closed test gaps
-- Post-close routing: pending fresh recovery after this terminal transition reaches `main`
+- Post-close routing: RQ600 remains READY after the full 13-file RQ/SQL dependency cascade; no additional promotion required
 - Prompt defect / scope repair: none; RQ599 promotion condition was not met
 
 ### Dependencies

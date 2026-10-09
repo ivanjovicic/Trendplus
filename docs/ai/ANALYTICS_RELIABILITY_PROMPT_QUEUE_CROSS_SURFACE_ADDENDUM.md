@@ -2,7 +2,7 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `RQ600` is READY for the owner-requested action-eligibility/value contract audit; `RQ598` is independently IN_PROGRESS in the Test Hardening addendum.
+Current RQ routing: `RQ600` is READY for the owner-requested action-eligibility/value contract audit; `RQ598` is independently DONE in the Test Hardening addendum.
 Main queue RQ pointer: `RQ598` DONE; additional READY `RQ600`. RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, and RQ130 is OBSOLETE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
