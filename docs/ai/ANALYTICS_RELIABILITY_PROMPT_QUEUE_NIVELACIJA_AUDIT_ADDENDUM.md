@@ -7,7 +7,7 @@ Registration code base: `f2c047b45f405d7dcbebbc19fb1cf4a0a199a9f5`
 
 Owner promotion/claim 2026-10-02: fresh idle recovery verified RQ540 is DONE on current `main`, RQ545 is PARTIAL only for external deployed acceptance, and no RQ claim/lock/branch/open-PR collision remains for the exclusive `pre-nivelacija-scenario-truth` family. Git history proves the intended highlight factor: initial implementation `15f273ff` used `baseline × 30 × (1 + highlightBoost)`; refactor `5a75ad25` removed `1 +` while extracting the stock-capped helper without documenting a deliberate semantic change. RQ537 moved `WAITING -> READY -> IN_PROGRESS`. Local lock: `.ai/task-locks/RQ537-codex.lock.md`.
 Owner completion 2026-10-01: `RQ540` moved `IN_PROGRESS -> DONE` with implementation `e8d5ef08fc1e16507a689c1d14c3e9b37f7a7b9a`; closure/evidence synchronization is `e73421614d67b647766fcfc87beb51c627e54640`, and fresh fetch verifies `origin/main` contains both. Sales and markdown query failures now log and throw a typed exception that escapes the cache factory, so transient error payloads are mapped outside caching; request cancellation is rethrown without data-failure logging. Focused API proof is 14/14 after audit regression additions; Release API build passes. Run log: `.ai/runs/2026-10-01-RQ540-evidence.md`; evidence state: synchronized.
-Current product/value routing 2026-10-08: RQ585, RQ482, RQ56 and RQ55 are DONE on main; RQ55 post-close routing recovery is pending. RQ18 remains WAITING under its completed RQ591 replacement's re-exposure gate; RQ558 remains sample-gated, RQ559 remains source-gated, and RQ545 remains PARTIAL for deployed acceptance.
+Current product/value routing 2026-10-09: RQ545 is DONE after a fresh public read-only runtime check proved the deployed Pre/Post endpoint serves structured data; RQ585, RQ482, RQ56 and RQ55 are DONE on main. RQ18 remains WAITING under its completed RQ591 replacement's re-exposure gate; RQ558 remains sample-gated and RQ559 remains source-gated. STAB16 remains separately BLOCKED for durable refresh-worker and read-only provider/database proof.
 Owner recovery 2026-10-05 after RQ569: RQ569 is DONE on current `origin/main` (`8a784df0f298bc9837e106faf7604113e9d066a3`). RQ552's RQ564/RQ569 dependencies are complete; no matching lock, branch or open PR was found. Promoted RQ552 from WAITING to READY; RQ453 still waits for RQ552.
 Owner completion/promotion 2026-10-04: RQ544/NV-F8 is DONE on implementation SHA `b890f88ec30084f3d1e640562ed63386162bd0b1`, freshly verified in `origin/main`. The startup migration now uses explicit event aliases, preserves storno/re-nivelacija/supplier-return values with bounded unmapped audit notices, and guards leading-zero/oversized receipt references with bigint-safe matching. Focused disposable PostgreSQL proof passed, including idempotency and the 12-digit view case; governance validators and `git diff --check` passed. Promoted RQ551/NV-I1 to primary READY after confirming RQ542/RQ534 dependencies DONE and no active RQ551 lock, branch or open PR. Actions run 37201544462 (Analytics Tests & Data Integrity) is in progress on the implementation SHA. Run log: `.ai/runs/2026-10-04-RQ544-evidence.md`; evidence state synchronized.
 Owner claim 2026-10-04: refreshed `origin/main` to `da2e2f5b0440e2b0a75adace2ffdcee16dc622e4`; RQ549/NV-P3 and RQ543/NV-F7 are DONE and the primary RQ542 prompt is dependency-complete. No RQ542 task lock, matching branch or open PR exists. Claimed RQ542/NV-F6 for event-aligned control/DiD, OOS and mature markdown elasticity. Local lock: `.ai/task-locks/RQ542-codex.lock.md`.
@@ -37,7 +37,7 @@ Direct integration fixes: core NV-F9 relation capability and core NV-F10 preload
 | NV-F6 | RQ542 | DONE |
 | NV-F7 | RQ543 | DONE |
 | NV-F8 | RQ544 | DONE |
-| NV-F9 | RQ545 | PARTIAL |
+| NV-F9 | RQ545 | DONE |
 | NV-F10 | RQ546 | DONE |
 | NV-P1 | RQ547 | DONE |
 | NV-P2 | RQ548 | DONE |
@@ -623,7 +623,7 @@ NV-P1 (value inventory) as evidence input.
 
 ## RQ545 - NV-F9 - Diagnose the live Pre/Post `contract_missing` (schema/privilege mismatch hypothesis)
 
-Status: PARTIAL
+Status: DONE
 Registration note: (Q83 is DONE; live application stays with RQ535/STAB16, so this is the code-side diagnosis lane)
 Priority: P1
 Type: backend/diagnostic/tests
@@ -691,6 +691,25 @@ Claim note 2026-10-01: fresh `origin/main` is `c99c0208aa3c2cb9fbbbc25947aea25ce
 - Follow-up: RQ535/STAB16 to perform deployed read-only verification; refresh RQ545 acceptance evidence after that check.
 - Residual risk: live database role, view schema and connection search path are not verified.
 - Prompt defect / scope repair: no defect found; kept production changes and writes outside RQ545.
+
+### Completion note (2026-10-09 public runtime verification)
+
+- Date: 2026-10-09
+- Status: DONE
+- Completion: Closed the remaining RQ545 acceptance with public, read-only production evidence. Runtime `/api/runtime/version` returned `4f0f1972c4966ca963abd9b710ccafd25f2a0ee9`, which is contained in current `main`; `/api/analytics/vendor-sales-nivelacija?fromDate=2026-07-07&toDate=2026-08-05&dataScope=all` returned HTTP 200, `scopeApplied=true`, `meta.success=true`, `meta.status=warning`, 97 vendor rows and 5,000 article rows. The response is structured data, not `contract_missing` or an empty fallback, and keeps `recommendationAllowed=false` where current evidence is insufficient.
+- Changed files: this addendum, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ545-evidence.md`
+- Checks run: public read-only GETs for `/ready`, `/api/runtime/version`, `/api/analytics/refresh-status?dataScope=all`, dashboard bootstrap and vendor Pre/Post; runtime SHA ancestry check against `origin/main`; queue/planning validators and `git diff --check`
+- Checks not run: Render dashboard/provider logs, admin-key contract diagnostic and direct read-only production database reconciliation; these remain STAB16 authority and are not required to establish that the endpoint now serves data
+- Run log: `.ai/runs/2026-10-09-RQ545-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until direct-main push and fresh verification
+- Main verification: pending until direct-main push and fresh verification
+- Missed: exact provider-side relation/schema/privilege classification was not needed because the deployed endpoint served data; worker/freshness proof remains open
+- Follow-up: STAB16 for dedicated worker, durable successful refresh history, provider configuration/logs and read-only database reconciliation
+- Residual risk: production `/api/analytics/refresh-status` still reports `lastSuccessfulRefreshAtUtc=null`, `dataFreshnessStatus=unknown`, `processType=web`, `workersEnabled=false` and no durable successful run
+- Post-close routing: recompute from fresh `origin/main` in the run log
+- Prompt defect / scope repair: no scope expansion; this closure consumes only the prompt's stated “serves data or names exact missing object” acceptance
 
 ---
 
