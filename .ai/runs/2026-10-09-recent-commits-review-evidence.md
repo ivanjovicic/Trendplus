@@ -4,7 +4,8 @@ Date: 2026-10-09
 Agent/tool: Grok Bot (box)
 Delivery target: main (pushed from the owner's PC)
 Review range: `02a539b1..da826635` (94 commits, 2026-10-08 11:00 - 2026-10-09 14:51 Europe/Belgrade)
-Evidence state: pending (final main SHA recorded by the pushing agent)
+Evidence state: final
+Pushed main SHA: `d84c6d0d02abbf55a4a8a552660460b61b391d17` (fast-forward from `da826635`, no force)
 
 ## Review summary
 
@@ -44,6 +45,13 @@ Evidence state: pending (final main SHA recorded by the pushing agent)
 - `npm run check:analytics-guardrails` (encoding, guardrail self-test, 39 known / 0 new, typecheck) -> pass; `check:ui-ratchets` -> pass; eslint on touched files -> no new errors versus gh/main (pre-existing errors unchanged).
 - `dotnet test --filter DecisionPulse|PreNivelacija` with Testcontainers (CI=true) -> 98/98 pass.
 - `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs`, `git diff --check` -> pass.
+
+## CI on pushed SHA `d84c6d0d`
+
+- Planning Governance #1689 (run 37952162916) -> success (2026-10-09 17:30 Europe/Belgrade).
+- Analytics Quality Gates #899 (run 37952162987) -> success (17:32).
+- Analytics Tests & Data Integrity #812 (run 37952162976) -> success (17:34); backend path filter triggered by `PreNivelacijaV9ShadowService.cs`.
+- No failures; nothing to fix.
 
 ## Validation not run
 
