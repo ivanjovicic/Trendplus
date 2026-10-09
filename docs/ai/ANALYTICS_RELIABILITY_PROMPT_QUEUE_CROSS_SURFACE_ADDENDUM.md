@@ -2,8 +2,8 @@
 
 Date: 2026-06-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `RQ600` is READY for the owner-requested action-eligibility/value contract audit; `RQ598` is independently DONE in the Test Hardening addendum.
-Main queue RQ pointer: `RQ598` DONE; additional READY `RQ600`. RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, and RQ130 is OBSOLETE.
+Current RQ routing: `RQ600` is DONE for the owner-requested action-eligibility/value contract audit; `RQ598` is independently DONE in the Test Hardening addendum.
+Main queue RQ pointer: `RQ600` DONE; no additional READY prompt in this addendum. RQ319, RQ320, RQ481, RQ55, RQ56 and RQ131 are DONE, and RQ130 is OBSOLETE.
 
 Use this queue with `docs/ai/PROMPT_QUEUE_PROTOCOL.md`.
 
@@ -32,7 +32,7 @@ Purpose: add reliability prompts for cross-surface analytics inconsistencies: su
 | RQ127 | DONE | stats-margin-baseline-unavailable | Stop supplier/shoe/color recommendation inputs from treating missing known-margin baseline as `0` |
 | RQ130 | OBSOLETE | vendor-nivelacija-recommendation-baseline-unavailable | Stop vendor pre/post recommendations from treating missing known-margin baseline as `0` |
 | RQ131 | DONE | vendor-nivelacija-zero-baseline-semantic-parity | Consume Q70 zero-baseline semantic fields on vendor pre/post surfaces |
-| RQ600 | READY | analytics-action-eligibility-value-contract | Audit action eligibility, evidence and measured-value instrumentation |
+| RQ600 | DONE | analytics-action-eligibility-value-contract | Audit action eligibility, evidence and measured-value instrumentation |
 
 ---
 
@@ -1280,7 +1280,7 @@ Q70 baseline evidence is partly projected for article rows, but the vendor aggre
 
 ## RQ600 - Actionable analytics value and eligibility acceptance matrix
 
-Status: READY
+Status: DONE
 Ready after: none
 Priority: P1
 Type: planning/test-contract-audit
@@ -1289,6 +1289,25 @@ Parallel-safe: yes after path partitioning; RQ600 owns this addendum plus its va
 Owner: Analytics Reliability with product review
 Local lock: `.ai/task-locks/RQ600-<agent>.lock.md`
 Commit suggestion: `docs(analytics): audit action eligibility and value evidence`
+
+### Completion note
+
+- Date: 2026-10-09
+- Status: DONE
+- Completion: Reviewed Product Decision, Inventory, pre/post markdown and Supplier action eligibility/value contracts; added the exact-file matrix and reconciled existing owners. No new runtime defect or duplicate follow-up task was found.
+- Changed files: `docs/qa/ANALYTICS_ACTION_ELIGIBILITY_VALUE_MATRIX_2026-10-09.md`, this addendum, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-09-RQ600-evidence.md`
+- Checks run: `node scripts/check-prompt-queues.mjs --self-test`; `node scripts/check-prompt-queues.mjs`; `node scripts/check-planning-architecture.mjs --self-test`; `node scripts/check-planning-architecture.mjs`; `git diff --check`
+- Checks not run: runtime builds/tests - docs-only audit with no product-code change; production certification and business validation - remain with STAB16/QDB07/RQ592/RL12/RQ557 owners
+- Run log: `.ai/runs/2026-10-09-RQ600-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until direct-main push and fresh verification
+- Main verification: pending until direct-main push and fresh verification
+- Missed: none within the repository-local audit; measured business value and production authority remain open
+- Follow-up: none; existing owners are listed in the matrix
+- Residual risk: no current production/outcome proof was invented or inferred
+- Post-close routing: recompute from fresh `origin/main` in the run log
+- Prompt defect / scope repair: parent queue pointer was stale after RQ598 closure and was repaired to register RQ600; no acceptance change
 
 ### Problem
 
