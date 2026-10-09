@@ -1222,4 +1222,39 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
       );
     });
   });
+
+  it("keeps period preset and store drafts unapplied until Primeni filtere and flags the draft", async () => {
+    vi.mocked(getStores).mockResolvedValue([
+      { storeId: 1, storeName: "Beograd", area: "", dupeCount: 0 },
+      { storeId: 2, storeName: "Novi Sad", area: "", dupeCount: 0 },
+    ]);
+    vi.mocked(getShoeTypeSalesStats).mockResolvedValue(response());
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/shoe-type-sales-stats"]}>
+        <Routes>
+          <Route path="/analytics/shoe-type-sales-stats" element={<ShoeTypeSalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId("shoe-type-sales-stats-data-table");
+    await waitFor(() => expect(screen.getByLabelText("Objekat")).not.toBeDisabled());
+    expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Nije primenjeno")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Objekat"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Period"), { target: { value: "90d" } });
+
+    // A preset change must not silently apply itself or the dirty store draft.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Nije primenjeno")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Primeni filtere" }));
+
+    await waitFor(() => expect(getShoeTypeSalesStats).toHaveBeenCalledTimes(2));
+    expect(getShoeTypeSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({ storeId: 2 }));
+    await waitFor(() => expect(screen.queryByText("Nije primenjeno")).not.toBeInTheDocument());
+  });
 });

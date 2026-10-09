@@ -45,6 +45,7 @@ import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_LABEL_STYLE } from "../utils/chartTo
 import { fmtPct, fmtQty, fmtRsd, fmtSignedPct, getPresetRange, formatDate } from "../utils/analyticsFormatters";
 import { toInclusiveCalendarDate, toUtcDateOnlyExclusive } from "../utils/analyticsDateRanges";
 import { resolvePresetFilterRange } from "../utils/analyticsPeriodPresets";
+import { getUnappliedFilterDraftChip } from "../utils/analyticsFilterDraft";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -945,6 +946,7 @@ export default function ShoeTypeSalesStatsPage() {
     });
   }, [activeFilters.fromDate, activeFilters.sezonaId, activeFilters.storeId, activeFilters.toDate, dataScope, location, navigate, toolbarFilters]);
 
+  // RQ319/RQ320: period preset and season edit only the draft; "Primeni filtere" applies the whole draft once.
   const applyPreset = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
     if (preset === "custom") return;
@@ -952,9 +954,6 @@ export default function ShoeTypeSalesStatsPage() {
     setSezonaId(null);
     setFromDate(range.fromDate);
     setToDate(range.toDate);
-    const nextFilters = { fromDate: range.fromDate, toDate: range.toDate, sezonaId: null, storeId };
-    setActiveFilters(nextFilters);
-    setSearchParams((current) => writeShoeTypeUrlState(current, preset, nextFilters), { replace: true });
   };
 
   const handleSeasonChange = (value: string) => {
@@ -962,27 +961,12 @@ export default function ShoeTypeSalesStatsPage() {
     setSezonaId(parsed);
     setPeriodPreset("custom");
 
-    if (parsed == null) {
-      const nextFilters = { fromDate, toDate, sezonaId: null, storeId };
-      setActiveFilters(nextFilters);
-      setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
-      return;
-    }
+    if (parsed == null) return;
 
     const selected = data?.sezone.find((item) => item.id === parsed);
-    if (!selected) {
-      const nextFilters = { fromDate, toDate, sezonaId: parsed, storeId };
-      setActiveFilters(nextFilters);
-      setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
-      return;
-    }
-    const newFrom = toDateOnly(selected.datumOd);
-    const newTo = toDateOnly(selected.datumDo);
-    setFromDate(newFrom);
-    setToDate(newTo);
-    const nextFilters = { fromDate: newFrom, toDate: newTo, sezonaId: parsed, storeId };
-    setActiveFilters(nextFilters);
-    setSearchParams((current) => writeShoeTypeUrlState(current, "custom", nextFilters), { replace: true });
+    if (!selected) return;
+    setFromDate(toDateOnly(selected.datumOd));
+    setToDate(toDateOnly(selected.datumDo));
   };
 
   const resetFilters = () => {
@@ -1011,6 +995,10 @@ export default function ShoeTypeSalesStatsPage() {
     setSearchParams((current) => writeAnalyticsTableSort(current, field, nextDir), { replace: true });
   };
 
+  const unappliedDraftChip = getUnappliedFilterDraftChip(
+    { fromDate, toDate, sezonaId, storeId },
+    activeFilters,
+  );
   const controlBarChips = useMemo<AnalyticsControlBarChip[]>(
     () => [
       {
@@ -1025,6 +1013,7 @@ export default function ShoeTypeSalesStatsPage() {
         value: `${activeFilters.fromDate} → ${activeFilters.toDate}`,
         tone: "neutral",
       },
+      ...(unappliedDraftChip ? [unappliedDraftChip] : []),
       {
         key: "rows",
         label: "Prikazano",
@@ -1039,6 +1028,7 @@ export default function ShoeTypeSalesStatsPage() {
       dataScope,
       decisionRows.length,
       sortedRows.length,
+      unappliedDraftChip,
     ],
   );
 
