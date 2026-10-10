@@ -28,8 +28,10 @@ namespace Application.Analytics.Queries.GetInventoryStatus
                 query = query.Where(x => x.Timestamp >= request.FromDate.Value);
             if (request.ToDate.HasValue)
                 query = query.Where(x => x.Timestamp <= request.ToDate.Value);
-            if (normalizedDataScope != "all")
-                query = query.Where(x => x.DataOrigin == normalizedDataScope);
+            if (normalizedDataScope == "imported")
+                query = query.Where(x => x.DataOrigin == "access");
+            else if (normalizedDataScope == "existing")
+                query = query.Where(x => x.DataOrigin == "existing" || x.DataOrigin == null || x.DataOrigin == "");
 
             if (request.StoreId.HasValue || request.SupplierId.HasValue)
             {

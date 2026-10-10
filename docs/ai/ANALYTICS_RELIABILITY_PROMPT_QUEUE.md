@@ -5,8 +5,8 @@ Repo: `ivanjovicic/Trendplus`
 Owner claim 2026-10-10: fresh `origin/main` `ae47987225fcdf3f80e306ea67d05f66e93c3972` found no active RQ605/RQ606 lock, branch, PR or competing owner. RQ605 moved `READY -> IN_PROGRESS`; RQ606 was narrowed and promoted `WAITING -> READY -> IN_PROGRESS` for the repository-local transfer-idempotency slice. The exact batch-23 MDB row audit remains a separate historical certification residual and is not claimed complete.
 Owner delivery 2026-10-10: RQ605 moved `IN_PROGRESS -> DONE` after the canonical operational PostgreSQL oracle, scope-aware cache/comparison regression tests, corrected RQ604 source-line identity audit and Release build passed. RQ606 moved `IN_PROGRESS -> PARTIAL`: the repository-local transfer identity/idempotency slice is delivered and proven on the synthetic MDB/PostgreSQL fixture, while the exact batch-23 MDB 244/20 row certification remains open because the original source is unavailable. Locks were released before delivery; no duplicate prompt was registered.
 Final RQ605 regression follow-up 2026-10-10: the focused recheck found and repaired the remaining inclusive-upper-bound, stale-cache-namespace and missing-article-master gaps in the same RQ605 owner scope. The real PostgreSQL certification now exercises date boundaries, UTC/date-only normalization, imported/existing/all, signed returns, DUG exclusion, missing article masters, store/supplier filters and cache hit/miss with `1/1` executed and `0` skipped; the focused endpoint/cache/daily suite is `67/67`. No successor was registered because this is RQ605 close-out, not a new owner/path.
-Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is DONE for the post-Access fact-population/cache contract gap; `RQ606` is PARTIAL for the delivered repository-local Access transfer event-identity/reimport fix with historical MDB certification pending. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none in this owner queue after the RQ605 close; RQ606 remains PARTIAL and is not re-promoted without the original MDB or an explicitly approved historical-certification handoff. RQ605 is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is DONE for the post-Access fact-population/cache contract gap; `RQ606` is PARTIAL for the delivered repository-local Access transfer event-identity/reimport fix with historical MDB certification pending; `RQ607` is IN_PROGRESS for the narrowly scoped InventoryStatus Access-origin population fix and PostgreSQL certification. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
+Current READY prompt: none in this owner queue after the RQ605 close; RQ607 is the separately registered direct-user P0 implementation in progress, while RQ606 remains PARTIAL and is not re-promoted without the original MDB or an explicitly approved historical-certification handoff. RQ605 is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30943,6 +30943,73 @@ Exact batch-23 MDB restoration is a residual acceptance gate for the historical 
 - Residual risk: the synthetic fixture proves the repository-local identity algorithm and real PostgreSQL rollback path, not the unavailable batch-23 source population; the mandatory RQ606 tests now fail rather than skip when PostgreSQL is unavailable.
 - Post-close routing: no duplicate prompt registered; keep this prompt PARTIAL and do not promote a historical repair/import task without the source artifact and explicit approval.
 - Prompt defect / scope repair: status was narrowed from the original combined historical/implementation request to the safe repository-local slice, as authorized by the prompt; no RQ604 identity-writer scope was reopened.
+
+## RQ607 - InventoryStatus imported scope must use Access snapshot origin
+
+Status: IN_PROGRESS
+Claim: Codex / current workspace, 2026-10-10; direct-user-request registration; local lock `.ai/task-locks/RQ607-codex.lock.md`
+Priority: P0
+Type: backend/analytics/inventory/tests
+Feature family: inventory-status-scope
+Parallel-safe: no (`GetInventoryStatusHandler.cs` and cached InventoryStatus fallback/cache contract); independent of RQ605 sales consumers and RQ606 Access movement identity.
+Owner: Analytics Backend
+Owned paths: `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs`, the existing InventoryStatus fallback in `Api/Endpoints/CachedAnalyticsEndpoints.cs`, focused `Api.Tests` PostgreSQL proof, read-only `tools/` SQL evidence, `.ai/runs/<date>-RQ607-evidence.md`
+Avoid paths: inventory formulas, historical data repair, Access import, production/local business-data mutation and unrelated queue-owned files.
+Commit suggestion: `fix(analytics): map imported inventory status to access snapshots`
+
+### Problem
+
+InventoryStatus filters `ProductsDim.DataOrigin` by the UI scope literal. `imported` therefore searches for `DataOrigin = 'imported'`, while Access snapshot rows use `DataOrigin = 'access'`. The local database has 12,422 Access articles and 3,566 on-hand units, but the imported InventoryStatus response is falsely empty. The same mapping defect exists in the operational fallback and its NULL quantity handling must not turn unknown stock into measured OOS.
+
+### Evidence
+
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs:24-83`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs:534-640,5082-5135`
+- `Api/Services/SalesDataScopePolicy.cs` and `Application/Analytics/InventoryStockEvidence.cs`
+- Local read-only PostgreSQL evidence: Access article/snapshot population is non-empty while the imported InventoryStatus API returns zero SKU/units.
+- RQ204, RQ414 and RQ576 are DONE; RQ605 owns legacy sales consumers, so none owns this current InventoryStatus scope path.
+
+### Scope
+
+Normalize the requested scope once and explicitly map `imported -> access`, `existing -> existing/null/empty`, and `all -> no origin predicate` for both the analytics snapshot and operational fallback. Preserve snapshot-versus-current-state semantics, low-stock policy, measured-zero semantics, cache identity and all existing inventory formulas.
+
+### Read first
+
+- `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs`
+- `Api/Endpoints/CachedAnalyticsEndpoints.cs`
+- `Api/Services/SalesDataScopePolicy.cs`
+- `Application/Analytics/InventoryStockEvidence.cs`
+- `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`
+- `Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`
+- `Api.Tests/Rq605LegacySalesPostgresIntegrationTests.cs` and `Api.Tests/PostgresContainerFixture` owner tests
+
+### Do
+
+1. Apply the canonical scope normalization and explicit Access/existing origin predicates to the snapshot query and fallback; keep NULL/blank existing semantics consistent with the operational contract.
+2. Preserve store, supplier and period filters, and distinguish snapshot `ProductsDim` counts from current `Artikli` low-stock evidence.
+3. Keep positive on-hand aggregation, exact measured-zero OOS and NULL-as-unknown behavior unchanged; do not alter availability or capital formulas.
+4. Prove cache miss/hit isolation for imported/existing/all and existing store/supplier/period key dimensions; do not reuse stale pre-fix entries.
+5. Add only read-only SQL evidence and no production import, data repair or cache/database cleanup.
+
+### Tests
+
+- A mandatory real PostgreSQL/Testcontainers integration test must fail when PostgreSQL is unavailable, not return or skip.
+- Seed imported Access, existing, NULL/blank-origin, demo and missing-master rows with NULL, zero, positive and negative quantities; verify imported/existing/all, store/supplier and period combinations against an independent SQL oracle.
+- Verify distinct same-SKU rows across stores, snapshot versus operational population, empty versus measured-zero, `TotalSkuCount`, `TotalOnHand`, `LowStockCount` and `OutOfStockCount`.
+- Verify InventoryStatus cache miss/hit and scope/filter changes cannot return another request's payload; TRX must report executed > 0, failed = 0 and skipped = 0.
+- Run the focused regression suite and Release backend build.
+
+### Acceptance
+
+- `imported` returns the Access snapshot population instead of a false empty result, with all four KPI fields consistent with the independent PostgreSQL oracle.
+- existing/all and store/supplier/period combinations preserve their existing contract; NULL quantity is not measured zero and negative quantity is not silently counted as on-hand.
+- Cache entries are isolated by normalized scope and filters, including cache hit/miss; no stale semantic namespace is reachable.
+- No production or local business data, formula, historical stock or Access source is changed.
+- Queue evidence records exact executed/failed/skipped counts, final `origin/main` SHA and remote CI classification.
+
+### Dependencies
+
+No external dependency. RQ204, RQ414 and RQ576 remain closed owners; RQ605/RQ606 remain separate. This direct-user registration is the first free RQ ID after RQ606 and is not a duplicate of those prompts.
 
 ## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
 

@@ -107,6 +107,50 @@ public sealed class CachedAnalyticsOperationalFallbackTests
     }
 
     [Fact]
+    public async Task InventoryStatus_OperationalFallbackMapsImportedToAccessAndKeepsNullUnknown()
+    {
+        await using var factory = CreateFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Artikli.AddRange(
+                new Artikli
+                {
+                    Id = 104,
+                    Naziv = "Imported fallback article",
+                    IDObjekat = 1,
+                    IDDobavljac = 1,
+                    Kolicina = 4,
+                    MinimalnaKolicina = 0,
+                    DataOrigin = "access",
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new Artikli
+                {
+                    Id = 105,
+                    Naziv = "Imported unknown fallback article",
+                    IDObjekat = 1,
+                    IDDobavljac = 1,
+                    Kolicina = null,
+                    MinimalnaKolicina = 0,
+                    DataOrigin = "access",
+                    UpdatedAt = DateTime.UtcNow
+                });
+            db.SaveChanges();
+        }
+
+        var root = await GetJsonAsync(
+            factory,
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2&dataScope=imported&storeId=1&supplierId=1");
+
+        Assert.Equal(2, root.GetProperty("totalSkuCount").GetInt32());
+        Assert.Equal(4, root.GetProperty("totalOnHand").GetInt32());
+        Assert.Equal(0, root.GetProperty("lowStockCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("outOfStockCount").GetInt32());
+        Assert.True(root.GetProperty("usedOperationalFallback").GetBoolean());
+    }
+
+    [Fact]
     public async Task DashboardBootstrap_AfterRefreshInvalidation_RebuildsFreshSummary()
     {
         await using var factory = CreateFactory();

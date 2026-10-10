@@ -582,16 +582,18 @@ public static class CachedAnalyticsEndpoints
                                     && (!storeId.HasValue || a.IDObjekat == storeId.Value)
                                     && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
 
-                            if (normalizedDataScope != "all")
-                                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == normalizedDataScope);
+                            if (normalizedDataScope == "imported")
+                                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == "access");
+                            else if (normalizedDataScope == "existing")
+                                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
 
                             var inventoryData = await inventoryQuery
                                 .GroupBy(a => 1)
                                 .Select(g => new
                                 {
                                     TotalSku = g.Count(),
-                                    TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
-                                    OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
+                                    TotalOnHand = g.Sum(x => x.Kolicina > 0 ? x.Kolicina : (int?)0) ?? 0,
+                                    OutOfStock = g.Count(x => x.Kolicina == 0),
                                     LowStock = g.Count(x =>
                                         x.Kolicina != null
                                         && x.Kolicina > 0
@@ -5111,17 +5113,24 @@ public static class CachedAnalyticsEndpoints
                     && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
 
             var normalizedDataScope = NormalizeDataScope(dataScope);
-            if (normalizedDataScope != "all")
-                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == normalizedDataScope);
+            if (normalizedDataScope == "imported")
+                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == "access");
+            else if (normalizedDataScope == "existing")
+                inventoryQuery = inventoryQuery.Where(a => a.DataOrigin == "existing" || a.DataOrigin == null || a.DataOrigin == "");
 
             var inventoryData = await inventoryQuery
                 .GroupBy(a => 1)
                 .Select(g => new
                 {
                     TotalSku = g.Count(),
-                    TotalOnHand = g.Sum(x => (int?)x.Kolicina) ?? 0,
-                    OutOfStock = g.Count(x => (x.Kolicina ?? 0) == 0),
-                    LowStock = g.Count(x => (x.Kolicina ?? 0) > 0 && (x.Kolicina ?? 0) <= lowStockThreshold)
+                    TotalOnHand = g.Sum(x => x.Kolicina > 0 ? x.Kolicina : (int?)0) ?? 0,
+                    OutOfStock = g.Count(x => x.Kolicina == 0),
+                    LowStock = g.Count(x =>
+                        x.Kolicina != null
+                        && x.Kolicina > 0
+                        && (
+                            (x.MinimalnaKolicina != null && x.MinimalnaKolicina > 0 && x.Kolicina <= x.MinimalnaKolicina)
+                            || ((x.MinimalnaKolicina == null || x.MinimalnaKolicina <= 0) && x.Kolicina <= lowStockThreshold)))
                 })
                 .SingleOrDefaultAsync(ct);
 
