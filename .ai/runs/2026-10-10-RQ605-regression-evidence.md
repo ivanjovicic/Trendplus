@@ -4,9 +4,9 @@ Date: 2026-10-10
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / no PR
-Main commit SHA: pending
-Main verification: pending final push verification
-Evidence state: pending
+Main commit SHA: 408275c73ce8b5838f38355442d23b0e0d6f67a1
+Main verification: passed - fresh fetch shows HEAD == origin/main == 408275c73ce8b5838f38355442d23b0e0d6f67a1 and the implementation commit is present
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -50,6 +50,8 @@ Pre-existing untracked paths `.codex-remote-attachments/`, `Klijent/clientapp/%T
   -> pass, `0 warnings / 0 errors`.
 - PostgreSQL read-only performance comparison on the local `trendplus` database for `2026-01-01 <= datum_prodaje < 2026-08-06`, using `EXPLAIN (ANALYZE, BUFFERS)`: warm repeat old inner-`Artikli` path `9.290 ms`, new left-join/no-master-loss path `7.807 ms`; no measured regression in the representative population query. No data was changed.
 - `git diff --check` -> pass.
+- `node scripts/check-prompt-queues.mjs` -> pass (`727` tasks).
+- `node scripts/check-agent-instructions.mjs` -> pass (`18` canonical files).
 
 ## Validation not run
 
@@ -72,7 +74,7 @@ Pre-existing untracked paths `.codex-remote-attachments/`, `Klijent/clientapp/%T
 
 - The full solution build still needs a rerun after freeing local disk space; this is an environment/tooling residual, not a backend compile or focused-test failure.
 - Old cache entries remain stored but are unreachable through the new RQ605 semantic namespaces; no destructive cache deletion was performed.
-- The final main SHA and evidence synchronization are pending the delivery commit and post-push fetch.
+- The final documentation-sync commit may advance `HEAD` beyond the implementation SHA; the implementation SHA above is the code delivery proof and remains an ancestor of `origin/main`.
 
 ## Post-close routing recovery
 
@@ -84,5 +86,5 @@ Pre-existing untracked paths `.codex-remote-attachments/`, `Klijent/clientapp/%T
 
 ## Next
 
-- After push, refresh `origin/main`, record the final SHA here and in the existing RQ605 completion note/roadmap, then leave RQ605 DONE with no duplicate successor.
+- RQ605 remains DONE with no duplicate successor; implementation delivery and fresh `origin/main` verification are complete.
 - Rerun the full solution Release build only after the local disk-space/tooling condition is repaired.
