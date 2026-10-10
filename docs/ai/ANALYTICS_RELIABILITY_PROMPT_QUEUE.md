@@ -30839,8 +30839,8 @@ None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. 
 - PostgreSQL proof: `Rq605LegacySalesPostgresIntegrationTests` `1/1` executed, `1 passed`, `0 failed`, `0 skipped`; TRX `notExecuted=0`. Focused cached/canonical daily/cache-key proof `67/67`, `0 failed`, `0 skipped`.
 - Backend Release build: `Api/Api.csproj` `0 warnings / 0 errors`. Full solution build was attempted but the frontend Vite step stopped on local `ENOSPC`; this is recorded as environment residual, not a code failure.
 - Changed files additionally include `Infrastructure/Services/Caching/IAnalyticsCacheService.cs`, `Api.Tests/AnalyticsScreenCacheKeyContractTests.cs`, `Api/Services/DailySalesStatsService.cs` and the new run log `.ai/runs/2026-10-10-RQ605-regression-evidence.md`.
-- Main commit SHA: `408275c73ce8b5838f38355442d23b0e0d6f67a1` (implementation delivery).
-- Main verification: fresh fetch passed; `HEAD == origin/main == 408275c73ce8b5838f38355442d23b0e0d6f67a1` and the implementation commit is an ancestor.
+- Main commit SHA: `81c39545b9e22d3ffc5a732c257416a1957e31ae` (final evidence-synchronized main SHA; implementation `408275c73ce8b5838f38355442d23b0e0d6f67a1` is an ancestor).
+- Main verification: fresh fetch passed; `HEAD == origin/main == 81c39545b9e22d3ffc5a732c257416a1957e31ae`.
 - Evidence state: synchronized; durable evidence: `.ai/runs/2026-10-10-RQ605-regression-evidence.md`.
 - No production data, DEMO data, cache contents or formulas were mutated. RQ606 remains PARTIAL only for its unavailable historical MDB evidence.
 
