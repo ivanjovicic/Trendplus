@@ -30823,8 +30823,8 @@ None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. 
 - Run log: `.ai/runs/2026-10-10-RQ605-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending until push and fresh `origin/main` verification
-- Main verification: pending until push and fresh fetch
+- Main commit SHA: `7a23c6d5b0a5a0c3248363c25ee58e91676190d9`
+- Main verification: fresh fetch passed; `HEAD == origin/main` and implementation SHA is an ancestor
 - Missed: none within RQ605 repository scope; exact batch-23 MDB certification remains RQ606's explicit residual and is not an RQ605 acceptance item.
 - Follow-up: keep RQ606 PARTIAL; do not delete DEMO/RQ407/import-fix data or mutate production without a separate approved repair plan.
 - Residual risk: analytical consumers outside these legacy summary/daily/comparison paths (including `analytics_intel` and installed materialized/view dependents) retain their existing separate certification boundary.
@@ -30903,8 +30903,8 @@ Exact batch-23 MDB restoration is a residual acceptance gate for the historical 
 - Run log: `.ai/runs/2026-10-10-RQ606-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending until push and fresh `origin/main` verification
-- Main verification: pending until push and fresh fetch
+- Main commit SHA: `7a23c6d5b0a5a0c3248363c25ee58e91676190d9`
+- Main verification: fresh fetch passed; `HEAD == origin/main` and implementation SHA is an ancestor
 - Missed: exact outcomes for 244 skipped `tblProdaja` rows, 20 affected receipts and 168 skipped journal rows remain unresolved without the original MDB.
 - Follow-up: restore the original byte-preserving MDB or explicitly hand off historical certification; then run the existing read-only reconciliation before any repair decision.
 - Residual risk: the synthetic fixture proves the repository-local identity algorithm, not the unavailable batch-23 source population.
