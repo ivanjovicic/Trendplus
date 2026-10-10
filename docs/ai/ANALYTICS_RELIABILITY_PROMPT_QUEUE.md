@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is newly registered for the post-Access fact-population/cache contract gap. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
+Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is READY for the post-Access fact-population/cache contract gap; `RQ606` is WAITING for the exact batch-23 MDB and owns the separate Access transfer event-identity/reimport gap. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
 Current READY prompt: `RQ605` is READY and unclaimed after the read-only Access #23 fact audit; it is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
@@ -30808,6 +30808,67 @@ Run validators and `git diff --check`; do not change global SQL timeout or analy
 ### Dependencies
 
 None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. This prompt is registered READY but is not claimed by this audit.
+
+## RQ606 - Preserve Access movement event identity during transfer re-import
+
+Status: WAITING
+Ready after: the exact batch-23 MDB (or an owner-approved byte-preserving archive) is restored and a disposable PostgreSQL/MDB regression fixture can be run without mutating the source file or production data.
+Priority: P1
+Type: backend/import/data-integrity/tests
+Feature family: access-event-identity-and-reimport
+Parallel-safe: no (`Api/Services/AccessImportService.cs` and Access import integration tests); parallel with RQ605's analytics consumer work, not with RQ604's SalesLineFacts writers.
+Owner: Import/Access
+Owned paths: `Api/Services/AccessImportService.cs`, focused Access/MDB/PostgreSQL integration tests, `tools/access-import-23-mdb-event-reconciliation.sql`, `.ai/runs/<date>-RQ606-evidence.md`
+Avoid paths: analytical formulas, `SalesLineFacts` key/migration/writers owned by RQ604, legacy fact/cache consumers owned by RQ605, production data, source-MDB mutation and document-ID unique indexes.
+Commit suggestion: `fix(import): key transfer re-imports by source event identity`
+
+### Problem
+
+`ImportPrenosRobeAsync` currently skips an entire transfer pair when the composite multiset key `(TipPromene, ArtikalId, Datum, Iznos)` already exists. The key does not include `SourceTableKey`, `SourceRowId`, source document identity or store endpoints. Two legitimate Access transfer events can therefore collide and the second event can disappear on re-import. The same source ID may legitimately expand to many article rows, and each source transfer must remain both an outgoing and incoming event.
+
+The batch #23 target confirms the identity distinction: 8,962 source transfer rows became 8,962 outgoing plus 8,962 incoming rows across 1,186 source event/document IDs. The exact MDB is currently unavailable, so this prompt must not be claimed or closed from target-only evidence.
+
+### Evidence
+
+- `docs/qa/ACCESS_IMPORT_23_MDB_EVENT_RECONCILIATION_2026-10-10.md`
+- `tools/access-import-23-mdb-event-reconciliation.sql`
+- `Api/Services/AccessImportService.cs:6105-6143`
+- Batch #23 summary: `prenos_robe` 8,962 source/accepted rows and 17,924 expanded target rows.
+- Queue check found no existing RQ prompt owning this Access transfer re-import identity path; RQ604 owns SalesLineFacts identity, while RQ605 owns legacy analytics consumers.
+
+### Scope
+
+Change only Access movement identity and re-import idempotency. Keep document identity separate from line/event identity; preserve repeated products and transfer direction. Do not change analytical formulas, global SQL timeout, existing rollback/transaction policy or business values.
+
+### Do
+
+1. Use `(SourceTableKey, SourceRowId, source line/article identity, direction)` as the primary idempotency lookup for transfer rows.
+2. Preserve both outgoing and incoming rows for every source transfer and never collapse different source IDs merely because their values match.
+3. Keep a bounded legacy composite fallback only for rows with no usable source identity, including endpoints/document number where available.
+4. Preserve the current no-import-date rule and existing retry/rollback semantics.
+
+### Tests
+
+Use a real PostgreSQL integration fixture plus a read-only MDB fixture:
+
+- two transfer source rows with identical article, timestamp and amount but different source IDs/store endpoints survive two imports as two outgoing/two incoming pairs;
+- one source transfer with repeated article rows preserves the multiset and both directions;
+- a repeated import is idempotent by source identity;
+- cancellation/rollback leaves no partial transfer pair and a retry restores the complete pair;
+- the 16 repeated receipt-number groups remain separate by source event/document identity;
+- the 244 invalid-date sale-line rows remain skipped rather than receiving import time;
+- no unique document-ID index is introduced.
+
+### Acceptance
+
+- Exact batch-23 MDB rows are reconciled and each previously skipped row has a documented justified/fixable/missing-information outcome.
+- PostgreSQL proves no legitimate transfer event is lost or duplicated over two imports, including equal-valued events and repeated article lines.
+- Existing Access atomicity, cancellation, retry and terminal-status tests remain green.
+- No source MDB, production database or analytical formula is changed by the test run.
+
+### Dependencies
+
+Exact batch-23 MDB restoration is a start gate for the requested row-by-row audit. RQ604 and RQ605 remain separate owners and must not be reopened.
 
 ## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
 
