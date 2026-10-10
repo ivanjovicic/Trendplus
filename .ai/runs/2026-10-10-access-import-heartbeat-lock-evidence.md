@@ -6,9 +6,9 @@ Date: 2026-10-10
 Agent/tool: Codex desktop
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending commit and origin/main refresh
-Evidence state: pending
+Main commit SHA: 59090c0b96b4f7ecb8f94cd00d07aca2056b31e4
+Main verification: fresh fetch confirms origin/main == 59090c0b96b4f7ecb8f94cd00d07aca2056b31e4; implementation SHA is an ancestor of current main
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -32,6 +32,8 @@ Ownership transfer: none
 ## Validation run
 
 - `git fetch origin main` -> pass; local `main` and `origin/main` were both `ecda09b2fec80d374128cbe8ff80b91545288c15` before implementation.
+- `git push origin main` -> pass; implementation commit `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4` delivered to `main`.
+- Fresh `git fetch origin main` + `git rev-parse` + ancestor check -> pass; `origin/main` resolved to `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4`.
 - `dotnet build Api.Tests/Api.Tests.csproj -c Release --no-restore --verbosity minimal` -> pass; 0 errors, existing warning baseline.
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~AccessImportHeartbeatPostgresIntegrationTests|FullyQualifiedName~AccessImportJobQueueTests|FullyQualifiedName~AccessImportExecutionStrategyTests|FullyQualifiedName~AccessImportCancellationTests|FullyQualifiedName~AccessImportRetryAtomicityTests"` -> pass, 16/16. PostgreSQL Testcontainers was available.
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~AccessImportServiceTests|FullyQualifiedName~AccessImportEnqueueTests|FullyQualifiedName~OperationsAnalyticsPostImportProbeTests|FullyQualifiedName~OperationsAnalyticsIntegrityFamilyTests"` -> pass, 61/61.
@@ -63,4 +65,4 @@ Ownership transfer: none
 
 ## Next
 
-- Verify the delivered implementation SHA is present on fresh `origin/main` after commit/push.
+- None; implementation SHA `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4` is verified on `origin/main`.
