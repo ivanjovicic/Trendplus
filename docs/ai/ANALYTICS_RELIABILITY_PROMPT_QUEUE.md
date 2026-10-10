@@ -30906,7 +30906,7 @@ Exact batch-23 MDB restoration is a residual acceptance gate for the historical 
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `99a7487bc34b63fab6ecf107681ff4b4e2022647`
-- Main verification: fresh post-push fetch passed; `HEAD == origin/main == 99a7487bc34b63fab6ecf107681ff4b4e2022647` and the delivered commit is an ancestor
+- Main verification: final post-push fetch passed; `HEAD == origin/main == 33deb5c87a2b4ba04bfbdac51246f117c6d9429a`, with implementation `99a7487bc34b63fab6ecf107681ff4b4e2022647` as an ancestor
 - Missed: exact outcomes for 244 skipped `tblProdaja` rows, 20 affected receipts and 168 skipped journal rows remain unresolved without the original MDB.
 - Follow-up: restore the original byte-preserving MDB or explicitly hand off historical certification; then run the existing read-only reconciliation before any repair decision.
 - Residual risk: the synthetic fixture proves the repository-local identity algorithm and real PostgreSQL rollback path, not the unavailable batch-23 source population; the mandatory RQ606 tests now fail rather than skip when PostgreSQL is unavailable.
