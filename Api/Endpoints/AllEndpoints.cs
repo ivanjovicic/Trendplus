@@ -5591,14 +5591,13 @@ public static class AllEndpoints
             try
             {
                 var normalizedDataScope = SalesDataScopePolicy.Normalize(dataScope);
-                if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                    fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-                if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                    toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+                fromDate = OperationsDateRange.NormalizeUtc(fromDate);
+                toDate = OperationsDateRange.NormalizeUtc(toDate);
 
                 var fromKey = fromDate?.ToUniversalTime().ToString("O") ?? "null";
                 var toKey = toDate?.ToUniversalTime().ToString("O") ?? "null";
-                var cacheKey = $"analytics_comparison_v2_{fromKey}_{toKey}_scope_{normalizedDataScope}";
+                // v3 invalidates pre-RQ605 inclusive-bound/raw-fact comparison entries.
+                var cacheKey = $"analytics_comparison_v3_{fromKey}_{toKey}_scope_{normalizedDataScope}";
 
                 if (cache.TryGetValue(cacheKey, out object? cachedComparison) && cachedComparison is not null)
                 {
@@ -5611,9 +5610,8 @@ public static class AllEndpoints
                         .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                         .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
                         .AsNoTracking() on ps.IdProdaja equals p.Id
-                    join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                     where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
+                          (!toDate.HasValue || p.DatumProdaje < toDate.Value)
                     select new { p, ps };
 
                 var current = await currentQuery
@@ -5638,7 +5636,6 @@ public static class AllEndpoints
                             .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                             .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
                             .AsNoTracking() on ps.IdProdaja equals p.Id
-                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                         where p.DatumProdaje >= prevFrom && p.DatumProdaje < prevTo
                         select new { p, ps })
                         .GroupBy(_ => 1)
@@ -5669,7 +5666,8 @@ public static class AllEndpoints
                             {
                                 requestedDataScope = normalizedDataScope,
                                 effectiveDataScope = normalizedDataScope,
-                                dataScopeSource = SalesDataScopePolicy.Source
+                                dataScopeSource = SalesDataScopePolicy.Source,
+                                dateBoundaryConvention = "half_open_utc"
                             }
                         };
 
@@ -5687,7 +5685,8 @@ public static class AllEndpoints
                     {
                         requestedDataScope = normalizedDataScope,
                         effectiveDataScope = normalizedDataScope,
-                        dataScopeSource = SalesDataScopePolicy.Source
+                        dataScopeSource = SalesDataScopePolicy.Source,
+                        dateBoundaryConvention = "half_open_utc"
                     }
                 };
                 cache.Set(cacheKey, defaultResponse, TimeSpan.FromMinutes(1));

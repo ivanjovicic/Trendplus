@@ -182,11 +182,8 @@ public static class CachedAnalyticsEndpoints
             CancellationToken ct = default) =>
         {
             var normalizedDataScope = NormalizeDataScope(dataScope);
-            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            fromDate = OperationsDateRange.NormalizeUtc(fromDate);
+            toDate = OperationsDateRange.NormalizeUtc(toDate);
 
             if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
             {
@@ -230,6 +227,11 @@ public static class CachedAnalyticsEndpoints
                 meta.RequestedDataScope = normalizedDataScope;
                 meta.EffectiveDataScope = normalizedDataScope;
                 meta.DataScopeSource = SalesDataScopePolicy.Source;
+                meta.DateBoundaryConvention = "half_open_utc";
+                meta.RequestedPeriodFromUtc = fromDate;
+                meta.RequestedPeriodToUtc = toDate;
+                meta.EffectivePeriodFromUtc = fromDate;
+                meta.EffectivePeriodToUtc = toDate;
                 meta.CorrelationId = correlationId;
 
                 return Results.Ok(new
@@ -1402,11 +1404,8 @@ public static class CachedAnalyticsEndpoints
             CancellationToken ct = default) =>
         {
             var normalizedDataScope = NormalizeDataScope(dataScope);
-            if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
-                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
-
-            if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
-                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            fromDate = OperationsDateRange.NormalizeUtc(fromDate);
+            toDate = OperationsDateRange.NormalizeUtc(toDate);
 
             var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId, normalizedDataScope) + ":meta-v2";
             var snapshot = await cache.GetOrSetAsync(
@@ -1429,6 +1428,11 @@ public static class CachedAnalyticsEndpoints
             meta.RequestedDataScope = normalizedDataScope;
             meta.EffectiveDataScope = normalizedDataScope;
             meta.DataScopeSource = SalesDataScopePolicy.Source;
+            meta.DateBoundaryConvention = "half_open_utc";
+            meta.RequestedPeriodFromUtc = fromDate;
+            meta.RequestedPeriodToUtc = toDate;
+            meta.EffectivePeriodFromUtc = fromDate;
+            meta.EffectivePeriodToUtc = toDate;
             meta.CorrelationId = ResolveCorrelationId(httpContext);
             return Results.Ok(new { items = snapshot.Items, meta });
         });
@@ -5052,11 +5056,12 @@ public static class CachedAnalyticsEndpoints
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
                 .AsNoTracking()
             join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-            join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            join a0 in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a0.Id into articleJoin
+            from a in articleJoin.DefaultIfEmpty()
             where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje < toDate.Value) &&
                   (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  (!supplierId.HasValue || (a != null && a.IDDobavljac == supplierId.Value))
             group new { p, ps } by 1 into g
             select new
             {
@@ -5146,11 +5151,12 @@ public static class CachedAnalyticsEndpoints
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
                 .AsNoTracking()
             join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            join a0 in db.Artikli.AsNoTracking() on ps.IdArtikal equals a0.Id into articleJoin
+            from a in articleJoin.DefaultIfEmpty()
             where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje < toDate.Value) &&
                   (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+                  (!supplierId.HasValue || (a != null && a.IDDobavljac == supplierId.Value))
             group new { p, ps } by p.DatumProdaje.Date into g
             orderby g.Key
             select new

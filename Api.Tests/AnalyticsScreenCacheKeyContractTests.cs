@@ -272,6 +272,16 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     }
 
     [Fact]
+    public void Rq605LegacySalesKeysUseNewSemanticVersions()
+    {
+        var summary = AnalyticsCacheKeys.SalesSummary(FromUtc, ToUtc, 1, 2, "all");
+        var daily = AnalyticsCacheKeys.DailySales(FromUtc, ToUtc, 1, 2, "all");
+
+        Assert.StartsWith("analytics:summary:v2:", summary, StringComparison.Ordinal);
+        Assert.StartsWith("analytics:daily:v3:", daily, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ValidationLostSales_SeparatesImportedAndExistingCacheEntries()
     {
         var all = AnalyticsCacheKeys.ValidationLostSales("all");

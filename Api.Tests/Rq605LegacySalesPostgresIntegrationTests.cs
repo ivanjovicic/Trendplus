@@ -35,8 +35,6 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
     public async Task CachedLegacySales_UsesScopeReceiptPolicySignedReturnsAndScopedCacheKeys()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq605_sales");
-        if (connectionString is null)
-            return;
 
         await using (var trendDb = CreateTrendDb(connectionString))
         await using (var analyticsDb = CreateAnalyticsDb(connectionString))
@@ -47,8 +45,14 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
             await using var setup = new NpgsqlConnection(connectionString);
             await setup.OpenAsync();
             await using var command = new NpgsqlCommand("""
+                INSERT INTO "Dobavljaci" ("Id", "Naziv", "DataOrigin")
+                VALUES (960501, 'RQ605 test supplier', 'existing');
+
                 INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "UpdatedAt", "DataOrigin")
                 VALUES (960500, 'RQ605-TEST', 'RQ605 test article', '2026-10-01T00:00:00Z', 'existing');
+
+                INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "IDDobavljac", "UpdatedAt", "DataOrigin")
+                VALUES (960501, 'RQ605-SUPPLIER', 'RQ605 supplier article', 960501, '2026-10-01T00:00:00Z', 'existing');
 
                 INSERT INTO prodaja_zaglavlje
                     (id, broj_racuna, datum_prodaje, id_objekat, data_origin)
@@ -57,7 +61,11 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
                     (960502, 'RQ605-EXISTING', '2026-10-20T00:00:00Z', 1, 'existing'),
                     (960503, '  dUg  ', '2026-10-20T00:00:00Z', 1, 'existing'),
                     (960504, 'RQ605-RETURN', '2026-10-20T00:00:00Z', 1, 'access'),
-                    (960505, 'RQ605-PREVIOUS', '2026-10-19T00:00:00Z', 1, 'access');
+                    (960505, 'RQ605-PREVIOUS', '2026-10-19T00:00:00Z', 1, 'access'),
+                    (960506, 'RQ605-END-OF-DAY', '2026-10-20T23:59:59Z', 1, 'access'),
+                    (960507, 'RQ605-NEXT-DAY', '2026-10-21T00:00:00Z', 1, 'access'),
+                    (960508, 'RQ605-MISSING-ARTICLE', '2026-10-20T12:00:00Z', 1, 'existing'),
+                    (960509, 'RQ605-STORE-SUPPLIER', '2026-10-20T13:00:00Z', 2, 'access');
 
                 INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena)
                 VALUES
@@ -65,7 +73,11 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
                     (960502, 960502, 960500, 3, 50),
                     (960503, 960503, 960500, 5, 100),
                     (960504, 960504, 960500, -1, 80),
-                    (960505, 960505, 960500, 1, 50);
+                    (960505, 960505, 960500, 1, 50),
+                    (960506, 960506, 960500, 1, 7),
+                    (960507, 960507, 960500, 1, 999),
+                    (960508, 960508, 969500, 1, 33),
+                    (960509, 960509, 960501, 2, 21);
 
                 -- A stale/orphan analytical fact must not leak into the operational population.
                 INSERT INTO "SalesFacts"
@@ -97,42 +109,84 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
             Assert.Equal(scope, response.GetProperty("meta").GetProperty("requestedDataScope").GetString());
             Assert.Equal(scope, response.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
             Assert.Equal(SalesDataScopePolicy.Source, response.GetProperty("meta").GetProperty("dataScopeSource").GetString());
+            Assert.Equal("half_open_utc", response.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
         }
 
         var importedDaily = await GetJsonAsync(
             client,
             "/api/analytics/cached/sales/daily?fromDate=2026-10-20&toDate=2026-10-21&dataScope=imported");
-        Assert.Equal(120m, importedDaily.GetProperty("items")[0].GetProperty("totalRevenue").GetDecimal());
-        Assert.Equal(1, importedDaily.GetProperty("items")[0].GetProperty("totalUnits").GetInt32());
+        Assert.Equal(169m, importedDaily.GetProperty("items")[0].GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(4, importedDaily.GetProperty("items")[0].GetProperty("totalUnits").GetInt32());
+
+        var canonicalDaily = await GetJsonAsync(
+            client,
+            "/api/analytics/daily-sales?fromDate=2026-10-20&toDate=2026-10-21T00:00:00Z&dataScope=all&topN=10");
+        Assert.Equal("half_open_utc", canonicalDaily.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
+        Assert.Equal(
+            352m,
+            canonicalDaily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalRevenue").GetDecimal()));
+        Assert.Equal(
+            8,
+            canonicalDaily.GetProperty("dateRows").EnumerateArray().Sum(row => row.GetProperty("totalItemsSold").GetInt32()));
+
+        var nextDay = await GetJsonAsync(
+            client,
+            "/api/analytics/cached/sales/summary?fromDate=2026-10-21&toDate=2026-10-22&dataScope=imported");
+        Assert.Equal(999m, nextDay.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(1, nextDay.GetProperty("totalTransactions").GetInt32());
+
+        var storeSupplierScoped = await GetJsonAsync(
+            client,
+            "/api/analytics/cached/sales/daily?fromDate=2026-10-20&toDate=2026-10-21&storeId=2&supplierId=960501&dataScope=imported");
+        var scopedRow = Assert.Single(storeSupplierScoped.GetProperty("items").EnumerateArray());
+        Assert.Equal(42m, scopedRow.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(2, scopedRow.GetProperty("totalUnits").GetInt32());
+        Assert.Equal("imported", storeSupplierScoped.GetProperty("meta").GetProperty("effectiveDataScope").GetString());
+        var storeSupplierScopedHit = await GetJsonAsync(
+            client,
+            "/api/analytics/cached/sales/daily?fromDate=2026-10-20&toDate=2026-10-21&storeId=2&supplierId=960501&dataScope=imported");
+        Assert.Equal(storeSupplierScoped.GetProperty("items").GetRawText(), storeSupplierScopedHit.GetProperty("items").GetRawText());
+
+        var dateOnlyDaily = await GetJsonAsync(
+            client,
+            "/api/analytics/cached/sales/daily?fromDate=2026-10-20&toDate=2026-10-21&dataScope=all");
+        var timestampDaily = await GetJsonAsync(
+            client,
+            "/api/analytics/cached/sales/daily?fromDate=2026-10-20T00:00:00Z&toDate=2026-10-21T00:00:00Z&dataScope=all");
+        Assert.Equal(dateOnlyDaily.GetProperty("items").GetRawText(), timestampDaily.GetProperty("items").GetRawText());
 
         var summary = await GetJsonAsync(
             client,
             "/api/analytics/cached/sales/summary?fromDate=2026-10-20&toDate=2026-10-21&dataScope=all");
-        Assert.Equal(270m, summary.GetProperty("totalRevenue").GetDecimal());
-        Assert.Equal(3, summary.GetProperty("totalTransactions").GetInt32());
-        Assert.Equal(4, summary.GetProperty("totalUnits").GetInt32());
+        Assert.Equal(352m, summary.GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(6, summary.GetProperty("totalTransactions").GetInt32());
+        Assert.Equal(8, summary.GetProperty("totalUnits").GetInt32());
 
         var comparison = await GetJsonAsync(
             client,
             "/api/analytics/sales/comparison?fromDate=2026-10-20&toDate=2026-10-21&dataScope=imported");
-        Assert.Equal(120m, comparison.GetProperty("current").GetProperty("totalRevenue").GetDecimal());
+        Assert.Equal(169m, comparison.GetProperty("current").GetProperty("totalRevenue").GetDecimal());
         Assert.Equal(50m, comparison.GetProperty("previous").GetProperty("totalRevenue").GetDecimal());
-        Assert.Equal(140m, comparison.GetProperty("change").GetProperty("revenue").GetDecimal());
+        Assert.Equal(238m, comparison.GetProperty("change").GetProperty("revenue").GetDecimal());
+        Assert.Equal("half_open_utc", comparison.GetProperty("meta").GetProperty("dateBoundaryConvention").GetString());
 
         // The second imported daily request is a cache hit; different scopes must use different keys.
         Assert.True(cache.GetCountForScope("imported") >= 2);
         Assert.Contains(cache.Keys, key => key.Contains("scope:imported", StringComparison.Ordinal));
         Assert.Contains(cache.Keys, key => key.Contains("scope:existing", StringComparison.Ordinal));
         Assert.Contains(cache.Keys, key => key.Contains("scope:all", StringComparison.Ordinal));
-        Assert.Equal(1, cache.FactoryCallsForScope("imported"));
+        Assert.Contains(cache.Keys, key => key.StartsWith("analytics:summary:v2:", StringComparison.Ordinal));
+        Assert.Contains(cache.Keys, key => key.StartsWith("analytics:daily:v3:", StringComparison.Ordinal));
+        Assert.Equal(2, cache.FactoryCallsForScope("imported"));
     }
 
-    private async Task<string?> CreateDatabaseAsync(string prefix)
+    private async Task<string> CreateDatabaseAsync(string prefix)
     {
-        if (!_fixture.IsAvailable)
-            return null;
+        Assert.True(_fixture.IsAvailable, "RQ605 certification requires the PostgreSQL fixture; a missing PostgreSQL service must fail the test, not skip it.");
 
-        return await _fixture.TryCreateDatabaseConnectionStringAsync($"{prefix}_{Guid.NewGuid():N}");
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"{prefix}_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString), "RQ605 certification could not create an isolated PostgreSQL database.");
+        return connectionString!;
     }
 
     private static TrendplusDbContext CreateTrendDb(string connectionString)
@@ -154,7 +208,7 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
             FROM prodaja_zaglavlje p
             JOIN prodaja_stavke ps ON ps.id_prodaja = p.id
             WHERE p.datum_prodaje >= @fromUtc
-              AND p.datum_prodaje <= @toUtc
+              AND p.datum_prodaje < @toUtc
               AND upper(trim(coalesce(p.broj_racuna, ''))) NOT IN ('DUG', 'KOREKCIJA')
               AND (
                     @scope = 'all'

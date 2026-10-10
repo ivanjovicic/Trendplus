@@ -71,7 +71,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
                 .AsNoTracking() on ps.IdProdaja equals pz.Id
-            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
@@ -122,7 +121,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
                 .AsNoTracking() on ps.IdProdaja equals pz.Id
-            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
@@ -227,7 +225,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
             join pz in _db.ProdajaZaglavlja
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
                 .AsNoTracking() on ps.IdProdaja equals pz.Id
-            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
             where pz.DatumProdaje >= fromDateUtc
                && pz.DatumProdaje < toDateExclusiveUtc
                && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
@@ -306,10 +303,8 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                 .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                 .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
                 .AsNoTracking() on ps.IdProdaja equals pz.Id
-            join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-            // Supplier identity is frozen on the sale line. The article join remains
-            // the source for data-origin scoping, but current article master edits must
-            // never reclassify historical Daily Sales buckets.
+            // Supplier identity is frozen on the sale line. An absent or archived
+            // article master row must never erase the historical sales line.
             join d in _db.Dobavljaci.AsNoTracking() on ps.SupplierIdAtSale equals d.Id into supplierJoin
             from supplier in supplierJoin.DefaultIfEmpty()
             where pz.DatumProdaje >= fromDateUtc
@@ -725,7 +720,6 @@ public sealed class DailySalesStatsService : IDailySalesStatsService
                     .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
                     .Where(SalesDataScopePolicy.HeaderPredicate(normalizedScope))
                     .AsNoTracking() on ps.IdProdaja equals pz.Id
-                join a in _db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
                 where (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                 select pz.DatumProdaje;
 

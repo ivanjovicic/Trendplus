@@ -82,9 +82,12 @@ public static class AnalyticsCacheKeys
     public const string PilotIntakeReportPrefix = $"{ReportNamespace}pilot-intake:";
     public const string ObservabilityLogsPrefix = $"{Prefix}observability:logs:";
     public const string ObservabilityPerformancePrefix = $"{Prefix}observability:performance:";
-    public const string SalesSummaryPrefix = $"{Prefix}summary:";
-    // v2: negative Access supplier IDs are valid identifiers; unknown states are explicit.
-    public const string DailySalesPrefix = $"{Prefix}daily:v2:";
+    // v2: canonical half-open population and normalized data-scope semantics.
+    // The version boundary keeps pre-RQ605 inclusive/raw-fact entries unreachable.
+    public const string SalesSummaryPrefix = $"{Prefix}summary:v2:";
+    // v3: canonical half-open population and normalized data-scope semantics.
+    // v2 also carried the negative Access supplier-ID repair, but not the full RQ605 contract.
+    public const string DailySalesPrefix = $"{Prefix}daily:v3:";
     public const string CategoryDataPrefix = $"{Prefix}category:";
     public const string GenderDataPrefix = $"{Prefix}gender:";
     public const string SupplierDataPrefix = $"{Prefix}supplier:";
