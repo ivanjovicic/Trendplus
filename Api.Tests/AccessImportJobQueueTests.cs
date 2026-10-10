@@ -1,8 +1,10 @@
 using Api.Services.Access;
+using Api.Services;
 using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Api.Tests;
@@ -35,6 +37,28 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Equal("running", updated.Status);
         Assert.Equal("starting", updated.CurrentStep);
         Assert.NotNull(updated.LastHeartbeatUtc);
+    }
+
+    [Fact]
+    public async Task ClaimNextAsync_AllowsOnlyOneRunningImportAcrossConcurrentWorkers()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+            return;
+
+        await InsertBatchAsync(db, sourceFilePath: "/tmp/import-1.accdb");
+        await InsertBatchAsync(db, sourceFilePath: "/tmp/import-2.accdb");
+
+        var firstQueue = CreateQueue(db);
+        var secondQueue = CreateQueue(db);
+        var jobs = await Task.WhenAll(
+            firstQueue.ClaimNextAsync(),
+            secondQueue.ClaimNextAsync());
+
+        Assert.Single(jobs.Where(x => x is not null));
+        Assert.Single(jobs.Where(x => x is null));
+        Assert.Equal(1, await db.DataImportBatches.CountAsync(x => x.Status == "running"));
+        Assert.Equal(1, await db.DataImportBatches.CountAsync(x => x.Status == "pending"));
     }
 
     [Fact]
@@ -114,6 +138,34 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Equal("pending", updated.Status);
         Assert.Equal("queued-stale-recovered", updated.CurrentStep);
         Assert.True(updated.LastHeartbeatUtc > queuedAtUtc);
+    }
+
+    [Fact]
+    public async Task RefreshBatchStatusesAsync_FinalizesStaleRunningBatchAfterWorkerRestart()
+    {
+        await using var db = await CreateDatabaseAsync();
+        if (db is null)
+            return;
+
+        var batch = await InsertBatchAsync(db, sourceFilePath: "/tmp/import.accdb");
+        var staleAtUtc = DateTime.UtcNow.AddHours(-5);
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE \"DataImportBatches\" SET \"Status\" = 'running', \"StartedAtUtc\" = @p0, \"LastHeartbeatUtc\" = @p0, \"CompletedAtUtc\" = NULL WHERE \"Id\" = @p1;",
+            new object[] { staleAtUtc, batch.Id });
+        db.ChangeTracker.Clear();
+
+        var service = new AccessImportService(
+            trendDb: db,
+            analyticsDb: null!,
+            logger: NullLogger<AccessImportService>.Instance,
+            options: Options.Create(new Api.Config.AccessImportOptions { RunningBatchStaleMinutes = 15 }));
+
+        await service.RefreshBatchStatusesAsync(batch.Id);
+
+        var updated = await db.DataImportBatches.AsNoTracking().SingleAsync(x => x.Id == batch.Id);
+        Assert.Equal("failed", updated.Status);
+        Assert.NotNull(updated.CompletedAtUtc);
+        Assert.Contains("stale recovery window", updated.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

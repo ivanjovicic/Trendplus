@@ -43,7 +43,10 @@ internal static class RetriableDbContextTransaction
             catch
             {
                 stopwatch.Stop();
-                await transaction.RollbackAsync(ct);
+                // Rollback must still run when the operation token was cancelled. Using the
+                // cancelled token here can mask the original import failure and leave the
+                // execution strategy with an unusable transaction state.
+                await transaction.RollbackAsync(CancellationToken.None);
                 logger?.LogWarning(
                     "DB transaction rolled back. Operation: {Operation}. DbContext: {DbContext}. ElapsedMs: {ElapsedMs}.",
                     effectiveOperationName,

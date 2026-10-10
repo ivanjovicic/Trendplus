@@ -1464,9 +1464,13 @@ using NpgsqlTypes;
             ? _activeIncrementalScope.WriteBatchSize
             : Math.Max(1, _options.DbSaveBatchSize);
 
+    private const int HeartbeatLockTimeoutMilliseconds = 750;
+    private const int HeartbeatStatementTimeoutMilliseconds = 2000;
+    private const int HeartbeatCommandTimeoutSeconds = 3;
+
     private async Task PersistBatchProgressAsync(string reason, bool force, CancellationToken ct)
     {
-        if (_activeBatchId is null || _activeBatchResult is null || _serviceScopeFactory is null)
+        if (_activeBatchId is null || _activeBatchResult is null)
             return;
 
         var now = DateTime.UtcNow;
@@ -1475,33 +1479,83 @@ using NpgsqlTypes;
 
         try
         {
-            await using var scope = _serviceScopeFactory.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
-            var batch = await db.DataImportBatches.FirstOrDefaultAsync(x => x.Id == _activeBatchId.Value, ct);
-            if (batch is null)
+            var connectionString = _trendDb.Database.GetConnectionString();
+            if (string.IsNullOrWhiteSpace(connectionString))
                 return;
 
-            if (!string.Equals(batch.Status, "running", StringComparison.OrdinalIgnoreCase) || batch.CompletedAtUtc is not null)
-                return;
-
-            batch.LastHeartbeatUtc = now;
-            batch.CurrentStep = string.IsNullOrWhiteSpace(_activeBatchStep) ? null : TrimToMaxLength(_activeBatchStep, 64);
-            batch.CurrentTable = string.IsNullOrWhiteSpace(_activeBatchTable) ? null : TrimToMaxLength(_activeBatchTable, 300);
-            batch.DurationSeconds = (int)Math.Max(0, Math.Round((now - batch.StartedAtUtc).TotalSeconds));
-            batch.RowsRead = CountSourceRows(_activeBatchResult);
-            batch.RowsAccepted = CountAcceptedRows(_activeBatchResult);
-            batch.RowsWritten = CountImportedRows(_activeBatchResult) + CountUpdatedRows(_activeBatchResult);
-            batch.RowsSkippedStale = _activeBatchResult.RowsSkippedStale;
-            batch.ProgressPercent = ComputeProgressPercent(
-                status: batch.Status,
-                currentStep: batch.CurrentStep,
-                currentTable: batch.CurrentTable,
+            var currentStep = string.IsNullOrWhiteSpace(_activeBatchStep) ? null : TrimToMaxLength(_activeBatchStep, 64);
+            var currentTable = string.IsNullOrWhiteSpace(_activeBatchTable) ? null : TrimToMaxLength(_activeBatchTable, 300);
+            var rowsRead = CountSourceRows(_activeBatchResult);
+            var rowsAccepted = CountAcceptedRows(_activeBatchResult);
+            var rowsWritten = CountImportedRows(_activeBatchResult) + CountUpdatedRows(_activeBatchResult);
+            var progressPercent = ComputeProgressPercent(
+                status: "running",
+                currentStep: currentStep,
+                currentTable: currentTable,
                 result: _activeBatchResult);
-            batch.TotalImported = CountImportedRows(_activeBatchResult);
-            batch.TotalUpdated = CountUpdatedRows(_activeBatchResult);
-            batch.TotalErrors = _activeBatchResult.Warnings.Count;
-            batch.SummaryJson = JsonSerializer.Serialize(_activeBatchResult);
-            await db.SaveChangesAsync(ct);
+            var totalImported = CountImportedRows(_activeBatchResult);
+            var totalUpdated = CountUpdatedRows(_activeBatchResult);
+            var totalErrors = _activeBatchResult.Warnings.Count;
+            var summaryJson = JsonSerializer.Serialize(_activeBatchResult);
+
+            // Telemetry must not share the import DbContext/transaction. The import transaction
+            // owns business-table atomicity; telemetry uses a bounded local lock timeout so it
+            // can never wait for the global Npgsql command timeout.
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(ct);
+            await using var transaction = await connection.BeginTransactionAsync(ct);
+            await using (var timeoutCommand = new NpgsqlCommand(
+                             $"SET LOCAL lock_timeout = '{HeartbeatLockTimeoutMilliseconds}ms'; " +
+                             $"SET LOCAL statement_timeout = '{HeartbeatStatementTimeoutMilliseconds}ms';",
+                             connection,
+                             transaction)
+                         { CommandTimeout = HeartbeatCommandTimeoutSeconds })
+            {
+                await timeoutCommand.ExecuteNonQueryAsync(ct);
+            }
+
+            const string sql = """
+                UPDATE "DataImportBatches"
+                SET "LastHeartbeatUtc" = @now,
+                    "CurrentStep" = @currentStep,
+                    "CurrentTable" = @currentTable,
+                    "DurationSeconds" = GREATEST(0, CAST(EXTRACT(EPOCH FROM (@now - "StartedAtUtc")) AS integer)),
+                    "RowsRead" = @rowsRead,
+                    "RowsAccepted" = @rowsAccepted,
+                    "RowsWritten" = @rowsWritten,
+                    "RowsSkippedStale" = @rowsSkippedStale,
+                    "ProgressPercent" = @progressPercent,
+                    "TotalImported" = @totalImported,
+                    "TotalUpdated" = @totalUpdated,
+                    "TotalErrors" = @totalErrors,
+                    "SummaryJson" = @summaryJson
+                WHERE "Id" = @batchId
+                  AND "Status" = 'running'
+                  AND "CompletedAtUtc" IS NULL;
+                """;
+
+            await using (var command = new NpgsqlCommand(sql, connection, transaction)
+                         { CommandTimeout = HeartbeatCommandTimeoutSeconds })
+            {
+                command.Parameters.AddWithValue("batchId", _activeBatchId.Value);
+                command.Parameters.AddWithValue("now", now);
+                command.Parameters.AddWithValue("currentStep", (object?)currentStep ?? DBNull.Value);
+                command.Parameters.AddWithValue("currentTable", (object?)currentTable ?? DBNull.Value);
+                command.Parameters.AddWithValue("rowsRead", rowsRead);
+                command.Parameters.AddWithValue("rowsAccepted", rowsAccepted);
+                command.Parameters.AddWithValue("rowsWritten", rowsWritten);
+                command.Parameters.AddWithValue("rowsSkippedStale", _activeBatchResult.RowsSkippedStale);
+                command.Parameters.AddWithValue("progressPercent", progressPercent);
+                command.Parameters.AddWithValue("totalImported", totalImported);
+                command.Parameters.AddWithValue("totalUpdated", totalUpdated);
+                command.Parameters.AddWithValue("totalErrors", totalErrors);
+                command.Parameters.AddWithValue("summaryJson", summaryJson);
+
+                var affected = await command.ExecuteNonQueryAsync(ct);
+                await transaction.CommitAsync(ct);
+                if (affected == 0)
+                    return;
+            }
 
             _lastBatchHeartbeatPersistedUtc = now;
             Interlocked.Increment(ref _batchHeartbeatPersistCount);
@@ -1509,13 +1563,13 @@ using NpgsqlTypes;
             {
                 _logger.LogDebug(
                     "Access import batch heartbeat persisted. BatchId: {BatchId}. Step: {Step}. TableName: {TableName}. Reason: {Reason}. Imported: {Imported}. Updated: {Updated}. Errors: {Errors}.",
-                    batch.Id,
-                    batch.CurrentStep ?? "<none>",
-                    batch.CurrentTable ?? "<none>",
+                    _activeBatchId.Value,
+                    currentStep ?? "<none>",
+                    currentTable ?? "<none>",
                     reason,
-                    batch.TotalImported,
-                    batch.TotalUpdated,
-                    batch.TotalErrors);
+                    totalImported,
+                    totalUpdated,
+                    totalErrors);
             }
         }
         catch (PostgresException ex) when (
@@ -1526,6 +1580,16 @@ using NpgsqlTypes;
                 ex,
                 "Skipping Access import heartbeat persistence because batch progress columns are not fully available yet. BatchId: {BatchId}.",
                 _activeBatchId.Value);
+        }
+        catch (PostgresException ex) when (
+            ex.SqlState == PostgresErrorCodes.LockNotAvailable ||
+            ex.SqlState == PostgresErrorCodes.QueryCanceled)
+        {
+            _logger.LogDebug(
+                ex,
+                "Access import heartbeat skipped because the batch status row was temporarily locked. BatchId: {BatchId}. Reason: {Reason}.",
+                _activeBatchId.Value,
+                reason);
         }
         catch (Exception ex) when (IsTransientDatabaseTimeout(ex))
         {
@@ -2355,6 +2419,25 @@ using NpgsqlTypes;
             deleteWorkingFileAfterCompletion,
             ct);
 
+    private async Task<int> MarkPendingBatchRunningAsync(long batchId, CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE "DataImportBatches"
+            SET "Status" = 'running',
+                "StartedAtUtc" = NOW(),
+                "LastHeartbeatUtc" = NOW(),
+                "CurrentStep" = 'starting',
+                "CurrentTable" = 'all',
+                "CompletedAtUtc" = NULL
+            WHERE "Id" = @p0
+              AND "Status" = 'pending'
+              AND "CompletedAtUtc" IS NULL
+              AND COALESCE("CancellationRequested", FALSE) = FALSE;
+            """;
+
+        return await _trendDb.Database.ExecuteSqlRawAsync(sql, new object[] { batchId }, ct);
+    }
+
     private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> CreateImportBatchAsync(
         string? sourceFilePath,
         string? sourceStorageKey,
@@ -2475,7 +2558,15 @@ using NpgsqlTypes;
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
-        var batch = await _trendDb.DataImportBatches.FirstOrDefaultAsync(x => x.Id == batchId, ct)
+        // CreateImportBatchAsync leaves the newly inserted entity tracked. Detach it before
+        // entering the business transaction so progress/status writes cannot be held by that
+        // transaction for the full duration of the Access import.
+        foreach (var entry in _trendDb.ChangeTracker.Entries<DataImportBatch>().Where(x => x.Entity.Id == batchId).ToList())
+            entry.State = EntityState.Detached;
+
+        var batch = await _trendDb.DataImportBatches
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == batchId, ct)
             ?? throw new InvalidOperationException($"Batch {batchId} nije pronađen.");
 
         if (batch.CancellationRequested &&
@@ -2490,6 +2581,8 @@ using NpgsqlTypes;
             batch.CurrentTable = null;
             batch.ProgressPercent = 100;
             batch.ErrorMessage = "Cancellation requested by user.";
+            _trendDb.DataImportBatches.Attach(batch);
+            _trendDb.Entry(batch).State = EntityState.Modified;
             await _trendDb.SaveChangesAsync(ct);
 
             return new AccessImportRunResponse
@@ -2510,6 +2603,18 @@ using NpgsqlTypes;
         if (string.IsNullOrWhiteSpace(batch.SourceFilePath) && string.IsNullOrWhiteSpace(batch.SourceStorageKey))
             batch.SourceFilePath = accessFilePath;
         batch.SourceFileName = string.IsNullOrWhiteSpace(sourceFileName) ? batch.SourceFileName : sourceFileName;
+        if (string.Equals(batch.Status, "pending", StringComparison.OrdinalIgnoreCase))
+        {
+            var claimed = await MarkPendingBatchRunningAsync(batch.Id, ct);
+            if (claimed == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Access import batch {batch.Id} was claimed by another worker before execution started.");
+            }
+
+            batch.Status = "running";
+            batch.StartedAtUtc = DateTime.UtcNow;
+        }
 
         var result = new AccessImportRunResponse
         {

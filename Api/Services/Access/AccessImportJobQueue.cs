@@ -284,17 +284,28 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
         _logger.LogDebug("Access import claim-next started.");
 
         const string claimSqlStorageAware = """
-            WITH next_job AS (
-                SELECT "Id"
-                FROM "DataImportBatches"
-                WHERE "Status" = 'pending'
-                  AND "CompletedAtUtc" IS NULL
-                  AND COALESCE("CancellationRequested", FALSE) = FALSE
-                  AND (
-                        COALESCE(NULLIF("SourceFilePath", ''), '') <> ''
-                     OR COALESCE(NULLIF("SourceStorageKey", ''), '') <> ''
+            WITH queue_guard AS (
+                SELECT pg_try_advisory_xact_lock(7521946310042217::bigint) AS acquired
+            ),
+            next_job AS (
+                SELECT b."Id"
+                FROM "DataImportBatches" b
+                CROSS JOIN queue_guard
+                WHERE queue_guard.acquired
+                  AND b."Status" = 'pending'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM "DataImportBatches" running
+                      WHERE running."Status" = 'running'
+                        AND running."CompletedAtUtc" IS NULL
                   )
-                ORDER BY "QueuedAtUtc" ASC NULLS FIRST, "Id" ASC
+                  AND b."CompletedAtUtc" IS NULL
+                  AND COALESCE(b."CancellationRequested", FALSE) = FALSE
+                  AND (
+                        COALESCE(NULLIF(b."SourceFilePath", ''), '') <> ''
+                     OR COALESCE(NULLIF(b."SourceStorageKey", ''), '') <> ''
+                  )
+                ORDER BY b."QueuedAtUtc" ASC NULLS FIRST, b."Id" ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
             )
@@ -318,14 +329,25 @@ public sealed class AccessImportJobQueue : IAccessImportJobQueue
             """;
 
         const string claimSqlLegacy = """
-            WITH next_job AS (
-                SELECT "Id"
-                FROM "DataImportBatches"
-                WHERE "Status" = 'pending'
-                  AND "CompletedAtUtc" IS NULL
-                  AND COALESCE("CancellationRequested", FALSE) = FALSE
-                  AND COALESCE(NULLIF("SourceFilePath", ''), '') <> ''
-                ORDER BY "QueuedAtUtc" ASC NULLS FIRST, "Id" ASC
+            WITH queue_guard AS (
+                SELECT pg_try_advisory_xact_lock(7521946310042217::bigint) AS acquired
+            ),
+            next_job AS (
+                SELECT b."Id"
+                FROM "DataImportBatches" b
+                CROSS JOIN queue_guard
+                WHERE queue_guard.acquired
+                  AND b."Status" = 'pending'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM "DataImportBatches" running
+                      WHERE running."Status" = 'running'
+                        AND running."CompletedAtUtc" IS NULL
+                  )
+                  AND b."CompletedAtUtc" IS NULL
+                  AND COALESCE(b."CancellationRequested", FALSE) = FALSE
+                  AND COALESCE(NULLIF(b."SourceFilePath", ''), '') <> ''
+                ORDER BY b."QueuedAtUtc" ASC NULLS FIRST, b."Id" ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
             )
