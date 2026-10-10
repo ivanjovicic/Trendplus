@@ -7,7 +7,7 @@ Agent/tool: Codex desktop
 Delivery target: main
 Working branch / PR: main / direct delivery
 Main commit SHA: 59090c0b96b4f7ecb8f94cd00d07aca2056b31e4
-Main verification: fresh fetch confirms origin/main == 59090c0b96b4f7ecb8f94cd00d07aca2056b31e4; implementation SHA is an ancestor of current main
+Main verification: fresh fetch confirms origin/main == 690313888df6b904c98e0e3268dde508b46d5fa0; implementation SHA 59090c0b96b4f7ecb8f94cd00d07aca2056b31e4 is an ancestor of current main
 Evidence state: synchronized
 Ownership transfer: none
 
@@ -34,6 +34,7 @@ Ownership transfer: none
 - `git fetch origin main` -> pass; local `main` and `origin/main` were both `ecda09b2fec80d374128cbe8ff80b91545288c15` before implementation.
 - `git push origin main` -> pass; implementation commit `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4` delivered to `main`.
 - Fresh `git fetch origin main` + `git rev-parse` + ancestor check -> pass; `origin/main` resolved to `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4`.
+- Final fresh `git fetch origin main` + `git rev-parse` + ancestor check -> pass; current `origin/main` is `690313888df6b904c98e0e3268dde508b46d5fa0` and contains implementation SHA `59090c0b96b4f7ecb8f94cd00d07aca2056b31e4`.
 - `dotnet build Api.Tests/Api.Tests.csproj -c Release --no-restore --verbosity minimal` -> pass; 0 errors, existing warning baseline.
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~AccessImportHeartbeatPostgresIntegrationTests|FullyQualifiedName~AccessImportJobQueueTests|FullyQualifiedName~AccessImportExecutionStrategyTests|FullyQualifiedName~AccessImportCancellationTests|FullyQualifiedName~AccessImportRetryAtomicityTests"` -> pass, 16/16. PostgreSQL Testcontainers was available.
 - `dotnet test Api.Tests/Api.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~AccessImportServiceTests|FullyQualifiedName~AccessImportEnqueueTests|FullyQualifiedName~OperationsAnalyticsPostImportProbeTests|FullyQualifiedName~OperationsAnalyticsIntegrityFamilyTests"` -> pass, 61/61.
