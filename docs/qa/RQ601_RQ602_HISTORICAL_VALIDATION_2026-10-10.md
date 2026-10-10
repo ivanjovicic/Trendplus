@@ -276,3 +276,8 @@ sa izolovanom test bazom koju test kreira i uklanja. TRX rezultat
 nedostupnu bazu. Test pokriva poluotvorene 28-dnevne granice, potpisani povrat,
 DUG/KOREKCIJA, NULL/procenjeni trošak, ponovljeni markdown, neprovereni store
 horizon i determinističko ponovno izvršavanje.
+
+
+### RQ602 naknadna SQL/kvalitet testova korekcija
+
+U pregledu nakon isporuke otkrivena je pogrešna veza: `tools/markdown-pilot-measurement.sql` je proveravao cost-provenance vrednosti u `prodaja_stavke.attribution_basis`, iako je RQ601 uveo nezavisnu kolonu `purchase_cost_provenance`. SQL je korigovan tako da čita isključivo RQ601 cost-provenance polje; vrednosti bez dokaza (uključujući stare baze bez kolone) ostaju nepoznatog porekla. Nulta/nepozitivna cena ne može biti dokazani trošak. PostgreSQL fixture sada namerno razlikuje dimension attribution od cost provenance i proverava konfliktnu staru oznaku. Istorijska marža i dalje **nije sertifikovana**, kontrolna grupa bez prodaje ne predstavlja validan counterfactual, a RQ602 ostaje PARTIAL. Ova korekcija ne menja poslovne podatke ili prethodno izmereni prihod; za njenu izvršnu potvrdu potreban je novi CI test run.

@@ -23,6 +23,8 @@ public sealed class MarkdownPilotMeasurementContractTests
         Assert.Contains("pre_known_cost_margin_rsd", sql, StringComparison.Ordinal);
         Assert.Contains("pre_confirmed_cost_margin_rsd", sql, StringComparison.Ordinal);
         Assert.Contains("pre_estimated_cost_margin_rsd", sql, StringComparison.Ordinal);
+        Assert.Contains("to_jsonb(s)->>'purchase_cost_provenance'", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("s.attribution_basis", sql, StringComparison.Ordinal);
         Assert.Contains("pre_unproven_cost_margin_rsd", sql, StringComparison.Ordinal);
         Assert.Contains("pre_realized_gross_margin_rsd", sql, StringComparison.Ordinal);
         Assert.Contains("post_realized_gross_margin_rsd", sql, StringComparison.Ordinal);
@@ -113,6 +115,7 @@ public sealed class MarkdownPilotMeasurementTests : IClassFixture<PostgresContai
                     cena numeric NOT NULL,
                     nabavna_cena numeric,
                     attribution_basis text,
+                    purchase_cost_provenance text,
                     source_batch_id bigint
                 );
                 INSERT INTO "DataImportBatches" ("Id", "Status") VALUES (23, 'completed');
@@ -133,21 +136,21 @@ public sealed class MarkdownPilotMeasurementTests : IClassFixture<PostgresContai
                     (112, 'treated-unknown', '2026-08-15T12:00:00', 1, 23),
                     (113, 'unmatched-control-sale', '2026-08-05T12:00:00', 1, 23),
                     (114, 'treated-estimated', '2026-08-16T12:00:00', 1, 23);
-                INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, attribution_basis, source_batch_id) VALUES
-                    (201, 101, 1, 2, 100, 60, 'confirmed_calculation', 23),
-                    (202, 102, 1, 100, 100, 60, 'confirmed_calculation', 23),
-                    (203, 103, 1, 3, 100, 70, 'confirmed_calculation', 23),
-                    (204, 104, 1, 5, 80, 60, 'confirmed_calculation', 23),
-                    (205, 105, 1, -1, 80, 60, 'confirmed_calculation', 23),
-                    (206, 106, 1, 50, 80, 60, 'confirmed_calculation', 23),
-                    (207, 107, 1, 1000, 80, 60, 'confirmed_calculation', 23),
-                    (208, 108, 1, 1000, 80, 60, 'confirmed_calculation', 23),
-                    (209, 109, 2, 4, 100, 50, 'confirmed_calculation', 23),
-                    (210, 110, 2, 2, 90, 50, 'confirmed_calculation', 23),
-                    (211, 111, 2, 1, 90, NULL, NULL, 23),
-                    (212, 112, 3, 2, 75, NULL, NULL, 23),
-                    (213, 113, 4, 6, 70, 40, 'confirmed_calculation', 23),
-                    (214, 114, 3, 1, 75, 55, 'master_nabavnacena_din_backfill', 23);
+                INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena, attribution_basis, purchase_cost_provenance, source_batch_id) VALUES
+                    (201, 101, 1, 2, 100, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (202, 102, 1, 100, 100, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (203, 103, 1, 3, 100, 70, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (204, 104, 1, 5, 80, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (205, 105, 1, -1, 80, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (206, 106, 1, 50, 80, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (207, 107, 1, 1000, 80, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (208, 108, 1, 1000, 80, 60, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (209, 109, 2, 4, 100, 50, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (210, 110, 2, 2, 90, 50, 'sale_snapshot', 'confirmed_calculation', 23),
+                    (211, 111, 2, 1, 90, NULL, 'sale_snapshot', NULL, 23),
+                    (212, 112, 3, 2, 75, 0, 'sale_snapshot', NULL, 23),
+                    (213, 113, 4, 6, 70, 40, 'confirmed_calculation', NULL, 23),
+                    (214, 114, 3, 1, 75, 55, 'sale_snapshot', 'master_nabavnacena_din_backfill', 23);
                 INSERT INTO "DnevnikPromena"
                     ("Id", "TipPromene", "Datum", "StaraProdajnaCena", "NovaProdajnaCena", "ArtikalId", "IDObjekat", "SourceBatchId")
                 VALUES
@@ -216,6 +219,11 @@ public sealed class MarkdownPilotMeasurementTests : IClassFixture<PostgresContai
             var unmatched = Find(rows, "fixture-action-2", "comparison", "unmatched_markdown_in_window", isTotal: false);
             Assert.Equal(1m, Number(unmatched, "unmatched_comparison_count"));
             Assert.Equal(6m, Number(unmatched, "post_pairs_sold"));
+            // A dimension attribution label masquerading as a cost label
+            // must NEVER certify sale-line cost provenance.
+            Assert.Equal(1m, Number(unmatched, "post_unproven_cost_line_count"));
+            Assert.Equal("unknown_provenance", unmatched["post_margin_trust_status"]);
+            Assert.Null(unmatched["post_confirmed_margin_rsd"]);
             Assert.Contains(rows, row => Equals(row["match_status"], "unmatched_markdown_in_window"));
             Assert.Contains(rows, row => Equals(row["is_total"], true));
         }

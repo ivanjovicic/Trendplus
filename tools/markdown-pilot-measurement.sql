@@ -139,12 +139,16 @@ eligible_sales AS (
            s.kolicina,
            s.cena,
            s.nabavna_cena,
+           -- RQ601 provenance is independent from sale-dimension attribution_basis.
+           -- to_jsonb preserves read-only compatibility with pre-migration batch-23
+           -- databases: a missing column yields unknown provenance, never confirmed.
            CASE
-               WHEN s.nabavna_cena IS NULL THEN 'unknown_cost'
-               WHEN LOWER(BTRIM(COALESCE(s.attribution_basis, ''))) IN ('source_sale_line', 'confirmed_calculation')
+               WHEN s.nabavna_cena IS NULL OR s.nabavna_cena <= 0 THEN 'unknown_cost'
+               WHEN LOWER(BTRIM(COALESCE(to_jsonb(s)->>'purchase_cost_provenance', '')))
+                    IN ('source_sale_line', 'confirmed_calculation')
                    THEN 'confirmed'
-               WHEN LOWER(BTRIM(COALESCE(s.attribution_basis, ''))) IN (
-                   'master_nabavnacena_din_backfill', 'master_nabavnacena_backfill')
+               WHEN LOWER(BTRIM(COALESCE(to_jsonb(s)->>'purchase_cost_provenance', '')))
+                    IN ('master_nabavnacena_din_backfill', 'master_nabavnacena_backfill')
                    THEN 'estimated'
                ELSE 'unknown_provenance'
            END AS cost_provenance_status,
@@ -183,8 +187,8 @@ period_metrics AS (
            COUNT(sale_line_id) FILTER (WHERE sale_date >= action_date AND sale_date < action_date + 28 AND cost_provenance_status = 'estimated' AND kolicina <> 0) AS post_estimated_cost_line_count,
            COUNT(sale_line_id) FILTER (WHERE sale_date >= action_date - 28 AND sale_date < action_date AND cost_provenance_status = 'unknown_provenance' AND kolicina <> 0) AS pre_unproven_cost_line_count,
            COUNT(sale_line_id) FILTER (WHERE sale_date >= action_date AND sale_date < action_date + 28 AND cost_provenance_status = 'unknown_provenance' AND kolicina <> 0) AS post_unproven_cost_line_count,
-           SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date - 28 AND sale_date < action_date AND nabavna_cena IS NOT NULL) AS pre_known_cost_margin_rsd,
-           SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date AND sale_date < action_date + 28 AND nabavna_cena IS NOT NULL) AS post_known_cost_margin_rsd,
+           SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date - 28 AND sale_date < action_date AND nabavna_cena > 0) AS pre_known_cost_margin_rsd,
+           SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date AND sale_date < action_date + 28 AND nabavna_cena > 0) AS post_known_cost_margin_rsd,
            SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date - 28 AND sale_date < action_date AND cost_provenance_status = 'confirmed') AS pre_confirmed_cost_margin_rsd,
            SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date AND sale_date < action_date + 28 AND cost_provenance_status = 'confirmed') AS post_confirmed_cost_margin_rsd,
            SUM((cena - nabavna_cena) * kolicina) FILTER (WHERE sale_date >= action_date - 28 AND sale_date < action_date AND cost_provenance_status = 'estimated') AS pre_estimated_cost_margin_rsd,

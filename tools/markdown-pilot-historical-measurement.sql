@@ -77,7 +77,6 @@ sales AS (
            s.kolicina,
            s.cena,
            s.nabavna_cena,
-           s.attribution_basis,
            (h.datum_prodaje AT TIME ZONE 'Europe/Belgrade')::date AS sale_date
     FROM members m
     LEFT JOIN prodaja_zaglavlje h
