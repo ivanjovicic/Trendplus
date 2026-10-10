@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none after RQ603 completion and full post-delivery RQ/SQL recovery (RQ604 is PARTIAL: implemented as a local commit, awaiting owner push approval); see `.ai/runs/2026-10-09-RQ603-evidence.md` for the blocker matrix and exact unblock events. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: none after RQ603 completion and full post-delivery RQ/SQL recovery (RQ604 DONE on `63c4d3d480f41cc478233b06579cdc17ff51b110`; no RQ prompt depends on it); see `.ai/runs/2026-10-09-RQ603-evidence.md` for the blocker matrix and exact unblock events. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30745,7 +30745,7 @@ Owner decision satisfied; no STAB16 dependency.
 
 ## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
 
-Status: PARTIAL
+Status: DONE
 Ready after: owner decision 2026-10-10 15:38 (key becomes (SaleId, SourceLineId) from `source_row_id`).
 Priority: P1
 Type: backend/data-integrity/migration/tests
@@ -30790,8 +30790,8 @@ SalesLineFacts identity, its migrations and every writer. Aggregations that SUM 
 ### Completion note
 
 - Date: 2026-10-10
-- Status: PARTIAL
-- Completion: implemented and validated as a local commit in worktree `Trendplus2-grok`; not pushed pending owner approval.
+- Status: DONE
+- Completion: implemented, validated, pushed to main after owner approval (2026-10-10 16:04) and green in CI.
 - Changed files:
 - `Domain/Model/SalesLineFact.cs`, `Domain/Model/SalesLineSourceIdentity.cs` (new)
 - `Infrastructure/DbContexts/AnalyticsDbContext.cs`, `Infrastructure/Migrations/AnalyticsDb/AnalyticsDbContextModelSnapshot.cs`
@@ -30802,13 +30802,14 @@ SalesLineFacts identity, its migrations and every writer. Aggregations that SUM 
 - Checks run: backend build; `SalesLineFactSourceLineKeyTests` (6, incl. Testcontainers migration-over-repeated-lines + double re-import); `OutboxProcessorWorkerConcurrencyTests`; `DatabaseMigrationBootstrapLifecycleSmokeTests` + `DatabaseInitializerP0IntegrationTests` (Testcontainers); full Api.Tests suite with Testcontainers disabled (1907 passed, 42 skipped, 2 known CRLF-only DatabaseMigrationOwnershipTests failures); analytics guardrails; queue/planning/agent validators; `git diff --check`.
 - Checks not run: full suite with Testcontainers locally (C: disk space); production migration run.
 - Run log: `.ai/runs/2026-10-10-RQ604-evidence.md`
-- Evidence state: pending
-- Delivery mode: direct-main (pending owner push approval)
-- Main commit SHA: pending
-- Main verification: pending
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `63c4d3d480f41cc478233b06579cdc17ff51b110`
+- Main verification: fresh `origin/main` equals the implementation SHA; Actions `38058231575` (Analytics Tests & Data Integrity) and `38058231532` (Planning Governance) succeeded on it.
 - Missed: none within the local acceptance.
-- Follow-up: push after owner approval, then close to DONE with CI evidence; Ivan's local DB needs the documented cleanup of the doubled Access load.
+- Follow-up: none in the repository. Owner-approved local DB cleanup ran 2026-10-10 (backup `F:\backup\slf_2026-10-10.dump`; DELETE 42725, UPDATE 3545, 43011 rows) and the local API started with all analytics migrations applied.
 - Residual risk: index build on production SalesLineFacts runs non-concurrently inside the migration transaction (brief write lock during startup migration).
+- Post-close routing: no queue prompt depends on RQ604; RQ READY stays none and the RQ603 Zero-READY proof is unchanged.
 - Prompt defect / scope repair: `20260531103000_AlignAnalyticsRefreshRunContract` has no [Migration] attribute (not discovered by EF); left untouched and reported.
 
 ### Dependencies
