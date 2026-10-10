@@ -4,9 +4,9 @@ Date: 2026-10-10
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `9de51b8814e63eb99ef5cd31955337de1e73dc01`
+Main verification: fresh `origin/main` equals `main` at `9de51b8814e63eb99ef5cd31955337de1e73dc01`; it contains the audit and RQ605 registration.
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
