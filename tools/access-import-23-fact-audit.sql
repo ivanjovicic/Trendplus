@@ -49,6 +49,99 @@ JOIN "SalesLineFacts" slf
  AND slf."SourceLineId" = ps.id
 WHERE ps.source_batch_id = 23;
 
+-- 2b. One-to-one fact cardinality and full identity proof.
+-- A zero-row result is required: every Access header has exactly one fact,
+-- and every matched fact carries the same business identity and totals.
+SELECT p.source_batch_id, p.id AS sale_id, p.broj_racuna,
+       p.datum_prodaje, p.id_objekat, p.data_origin,
+       count(sf."Id") AS fact_count,
+       bool_or(sf."Id" IS NOT NULL AND (
+           sf."SaleId" <> p.id
+        OR sf."BrojRacuna" IS DISTINCT FROM p.broj_racuna
+        OR sf."SaleTimestampUtc" <> p.datum_prodaje
+        OR sf."StoreId" IS DISTINCT FROM p.id_objekat
+        OR sf."DataOrigin" IS DISTINCT FROM p.data_origin
+        OR sf."TotalAmount" IS DISTINCT FROM totals.total_amount
+        OR sf."TotalUnits" IS DISTINCT FROM totals.total_units
+        OR sf."TotalLines" IS DISTINCT FROM totals.total_lines
+       )) AS identity_or_total_mismatch
+FROM prodaja_zaglavlje p
+JOIN (
+    SELECT ps.id_prodaja,
+           sum(ps.kolicina * ps.cena) AS total_amount,
+           sum(ps.kolicina) AS total_units,
+           count(*)::int AS total_lines
+    FROM prodaja_stavke ps
+    GROUP BY ps.id_prodaja
+) totals ON totals.id_prodaja = p.id
+LEFT JOIN "SalesFacts" sf ON sf."SaleId" = p.id
+WHERE p.source_batch_id = 23
+GROUP BY p.source_batch_id, p.id, p.broj_racuna, p.datum_prodaje,
+         p.id_objekat, p.data_origin, totals.total_amount,
+         totals.total_units, totals.total_lines
+HAVING count(sf."Id") <> 1
+    OR bool_or(sf."Id" IS NOT NULL AND (
+           sf."SaleId" <> p.id
+        OR sf."BrojRacuna" IS DISTINCT FROM p.broj_racuna
+        OR sf."SaleTimestampUtc" <> p.datum_prodaje
+        OR sf."StoreId" IS DISTINCT FROM p.id_objekat
+        OR sf."DataOrigin" IS DISTINCT FROM p.data_origin
+        OR sf."TotalAmount" IS DISTINCT FROM totals.total_amount
+        OR sf."TotalUnits" IS DISTINCT FROM totals.total_units
+        OR sf."TotalLines" IS DISTINCT FROM totals.total_lines
+    ));
+
+-- SalesLineSourceIdentity.Resolve contract:
+--   (source_table_key, source_row_id) when both lineage values exist;
+--   otherwise ('trendplus.prodaja_stavke', prodaja_stavke.id).
+-- Batch #23 operational rows use the fallback namespace (source_row_id is NULL),
+-- so comparing directly to prodaja_stavke.source_table_key would report false
+-- zero-match failures.
+SELECT p.source_batch_id, ps.id_prodaja AS sale_id, ps.id AS source_line_id,
+       ps.id_artikal, ps.kolicina, ps.cena, ps.kolicina * ps.cena AS source_total,
+       expected.source_table_key, expected.source_line_id,
+       count(slf."Id") AS fact_count,
+       bool_or(slf."Id" IS NOT NULL AND (
+           slf."SaleId" <> ps.id_prodaja
+        OR slf."ProductId" <> ps.id_artikal
+        OR slf."Qty" <> ps.kolicina
+        OR slf."UnitPrice" <> ps.cena
+        OR slf."LineTotal" <> ps.kolicina * ps.cena
+       OR slf."DataOrigin" IS DISTINCT FROM p.data_origin
+       OR slf."SourceTableKey" IS DISTINCT FROM expected.source_table_key
+       OR slf."SourceLineId" IS DISTINCT FROM expected.source_line_id
+       )) AS identity_or_total_mismatch
+FROM prodaja_stavke ps
+JOIN prodaja_zaglavlje p ON p.id = ps.id_prodaja
+ CROSS JOIN LATERAL (
+    SELECT CASE
+             WHEN ps.source_row_id IS NOT NULL
+              AND NULLIF(btrim(ps.source_table_key), '') IS NOT NULL
+               THEN ps.source_table_key
+             ELSE 'trendplus.prodaja_stavke'
+           END AS source_table_key,
+           COALESCE(ps.source_row_id, ps.id::bigint) AS source_line_id
+ ) expected
+LEFT JOIN "SalesLineFacts" slf
+  ON slf."SaleId" = ps.id_prodaja
+ AND slf."SourceTableKey" = expected.source_table_key
+ AND slf."SourceLineId" = expected.source_line_id
+WHERE p.source_batch_id = 23
+GROUP BY p.source_batch_id, ps.id_prodaja, ps.id, ps.id_artikal,
+         ps.kolicina, ps.cena, p.data_origin,
+         expected.source_table_key, expected.source_line_id
+HAVING count(slf."Id") <> 1
+    OR bool_or(slf."Id" IS NOT NULL AND (
+           slf."SaleId" <> ps.id_prodaja
+        OR slf."ProductId" <> ps.id_artikal
+        OR slf."Qty" <> ps.kolicina
+        OR slf."UnitPrice" <> ps.cena
+        OR slf."LineTotal" <> ps.kolicina * ps.cena
+        OR slf."DataOrigin" IS DISTINCT FROM p.data_origin
+        OR slf."SourceTableKey" IS DISTINCT FROM expected.source_table_key
+        OR slf."SourceLineId" IS DISTINCT FROM expected.source_line_id
+    ));
+
 -- 3. Raw fact versus canonical operational retail population by scope.
 SELECT 'raw_salesfacts' AS source, scope, count(*) AS receipts,
        COALESCE(sum(units),0) AS units, COALESCE(sum(amount),0) AS amount

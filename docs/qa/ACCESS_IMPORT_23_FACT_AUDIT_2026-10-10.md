@@ -115,3 +115,24 @@ The prior P1 transaction/heartbeat repair is present on current `main`: `Persist
 * This audit: `docs/qa/ACCESS_IMPORT_23_FACT_AUDIT_2026-10-10.md`
 * Queue item: `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` — `RQ605`
 * Durable run log: `.ai/runs/2026-10-10-access-import-23-fact-audit-evidence.md`
+
+## RQ605 remediation verification — 2026-10-10
+
+The legacy cached daily/summary and sales-comparison consumers were changed to use the operational receipt/line population directly. They now reuse `SalesDataScopePolicy.HeaderPredicate` and `SalesReceiptPopulationPolicy.IncludedHeaderPredicate`, retain signed `kolicina * cena`, and include normalized `dataScope` in their cache keys. The stale raw `SalesFacts`/aggregate path is not used by these three consumers; no analytical formula or fact row was changed.
+
+The PostgreSQL RQ605 fixture used an independent SQL oracle with imported, existing, `all`, a negative return, a DUG receipt and an orphan 2,676,700.00 RSD fact. The endpoint totals matched the oracle for all three scopes, the orphan never entered canonical totals, the DUG receipt was excluded, the return remained signed, and the previous-period comparison matched. Cache miss/hit and scope-separated keys were asserted.
+
+The initial 2b line audit was corrected during this run. `SalesLineSourceIdentity.Resolve` defines the expected identity as `(source_table_key, source_row_id)` only when both lineage values exist; otherwise it uses `('trendplus.prodaja_stavke', prodaja_stavke.id)`. Batch #23 has `source_row_id IS NULL` for all 67,092 operational lines, so the operational `prodajastavke` value is not the analytics namespace. The corrected audit returned 67,092 audited lines, `min_fact_count=1`, `max_fact_count=1`, and `violating_lines=0`; the full read-only audit exited successfully.
+
+Fresh scope oracle totals remain:
+
+| basis / scope | receipts | units | amount |
+|---|---:|---:|---:|
+| raw facts / imported | 5,530 | 67,664 | 240,603,523.64 |
+| raw facts / existing | 110 | 484 | 2,697,200.00 |
+| raw facts / all | 5,640 | 68,148 | 243,300,723.64 |
+| operational retail / imported | 5,226 | 66,520 | 234,829,573.64 |
+| operational retail / existing | 5 | 8 | 750.00 |
+| operational retail / all | 5,231 | 66,528 | 234,830,323.64 |
+
+The orphan `existing` population therefore remains a consumer-population issue, not proof of Access overcount. No repair, delete, cache rebuild or production mutation was executed.

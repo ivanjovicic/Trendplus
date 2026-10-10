@@ -5581,14 +5581,16 @@ public static class AllEndpoints
             Results.Redirect($"/api/analytics/cached/validation/negative-qty{ctx.Request.QueryString}", permanent: false));
 
         app.MapGet("/api/analytics/sales/comparison", async (
-            IAnalyticsDbContext db,
+            ITrendplusDbContext trendDb,
             IMemoryCache cache,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
             try
             {
+                var normalizedDataScope = SalesDataScopePolicy.Normalize(dataScope);
                 if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                     fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
                 if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
@@ -5596,26 +5598,31 @@ public static class AllEndpoints
 
                 var fromKey = fromDate?.ToUniversalTime().ToString("O") ?? "null";
                 var toKey = toDate?.ToUniversalTime().ToString("O") ?? "null";
-                var cacheKey = $"analytics_comparison_{fromKey}_{toKey}";
+                var cacheKey = $"analytics_comparison_v2_{fromKey}_{toKey}_scope_{normalizedDataScope}";
 
                 if (cache.TryGetValue(cacheKey, out object? cachedComparison) && cachedComparison is not null)
                 {
                     return Results.Ok(cachedComparison);
                 }
 
-                var currentQuery = db.SalesFacts.AsNoTracking();
-                if (fromDate.HasValue)
-                    currentQuery = currentQuery.Where(s => s.SaleTimestampUtc >= fromDate.Value);
-                if (toDate.HasValue)
-                    currentQuery = currentQuery.Where(s => s.SaleTimestampUtc <= toDate.Value);
+                var currentQuery =
+                    from ps in trendDb.ProdajaStavke.AsNoTracking()
+                    join p in trendDb.ProdajaZaglavlja
+                        .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                        .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
+                        .AsNoTracking() on ps.IdProdaja equals p.Id
+                    join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                    where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                          (!toDate.HasValue || p.DatumProdaje <= toDate.Value)
+                    select new { p, ps };
 
                 var current = await currentQuery
                     .GroupBy(_ => 1)
                     .Select(g => new
                     {
-                        totalRevenue = g.Sum(s => s.TotalAmount),
-                        totalTransactions = g.Count(),
-                        totalUnits = g.Sum(s => s.TotalUnits)
+                        totalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                        totalTransactions = g.Select(x => x.p.Id).Distinct().Count(),
+                        totalUnits = g.Sum(x => x.ps.Kolicina)
                     })
                     .FirstOrDefaultAsync(ct);
 
@@ -5625,14 +5632,21 @@ public static class AllEndpoints
                     var prevFrom = fromDate.Value.AddDays(-duration);
                     var prevTo = fromDate.Value;
 
-                    var previous = await db.SalesFacts.AsNoTracking()
-                        .Where(s => s.SaleTimestampUtc >= prevFrom && s.SaleTimestampUtc < prevTo)
+                    var previous = await (
+                        from ps in trendDb.ProdajaStavke.AsNoTracking()
+                        join p in trendDb.ProdajaZaglavlja
+                            .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                            .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
+                            .AsNoTracking() on ps.IdProdaja equals p.Id
+                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+                        where p.DatumProdaje >= prevFrom && p.DatumProdaje < prevTo
+                        select new { p, ps })
                         .GroupBy(_ => 1)
                         .Select(g => new
                         {
-                            totalRevenue = g.Sum(s => s.TotalAmount),
-                            totalTransactions = g.Count(),
-                            totalUnits = g.Sum(s => s.TotalUnits)
+                            totalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                            totalTransactions = g.Select(x => x.p.Id).Distinct().Count(),
+                            totalUnits = g.Sum(x => x.ps.Kolicina)
                         })
                         .FirstOrDefaultAsync(ct);
 
@@ -5650,6 +5664,12 @@ public static class AllEndpoints
                                 revenue = Pct(previous.totalRevenue, current.totalRevenue),
                                 transactions = Pct(previous.totalTransactions, current.totalTransactions),
                                 units = Pct(previous.totalUnits, current.totalUnits)
+                            },
+                            meta = new
+                            {
+                                requestedDataScope = normalizedDataScope,
+                                effectiveDataScope = normalizedDataScope,
+                                dataScopeSource = SalesDataScopePolicy.Source
                             }
                         };
 
@@ -5658,9 +5678,24 @@ public static class AllEndpoints
                     }
                 }
 
-                var defaultResponse = new { current, previous = (object?)null, change = (object?)null };
+                var defaultResponse = new
+                {
+                    current,
+                    previous = (object?)null,
+                    change = (object?)null,
+                    meta = new
+                    {
+                        requestedDataScope = normalizedDataScope,
+                        effectiveDataScope = normalizedDataScope,
+                        dataScopeSource = SalesDataScopePolicy.Source
+                    }
+                };
                 cache.Set(cacheKey, defaultResponse, TimeSpan.FromMinutes(1));
                 return Results.Ok(defaultResponse);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return Results.StatusCode(499);
             }
             catch (Exception ex)
             {

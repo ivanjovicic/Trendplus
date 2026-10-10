@@ -123,3 +123,11 @@ The first test invocation attempted a build but was blocked by an already-runnin
 
 SQL evidence: `tools/access-import-23-mdb-event-reconciliation.sql`.
 
+## RQ606 repository-local verification — 2026-10-10
+
+The safe repository-local slice was implemented without reopening the historical MDB claim. `ImportPrenosRobeAsync` now uses normalized source lineage plus source event/article/date/amount/absolute-quantity and direction as its primary idempotency identity. Because `SourceRowId` can identify a source document/event rather than a unique line, equal-valued rows from one source ID are counted as an occurrence multiset. Rows without usable source identity use the bounded legacy key with direction, article/date/amount/absolute quantity, endpoint and document number.
+
+The isolated PostgreSQL fixture used a synthetic MDB reader containing two different transfers with equal article/date/amount values but different source IDs/endpoints, plus two repeated article rows in one source document. The first run persisted 8 movement rows: four outgoing and four incoming; the second run persisted zero additional rows; pre-cancelled execution persisted zero rows. This proves the repository-local event identity/idempotency behavior and does not certify the unavailable batch-23 source rows.
+
+The exact 244 skipped rows, 20 receipts and 168 skipped journal rows remain unresolved and are intentionally still marked as a historical residual. No source MDB, local business data or production database was modified, and no import was started.
+

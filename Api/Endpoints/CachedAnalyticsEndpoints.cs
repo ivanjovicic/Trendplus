@@ -178,8 +178,10 @@ public static class CachedAnalyticsEndpoints
             DateTime? toDate = null,
             int? storeId = null,
             int? supplierId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var normalizedDataScope = NormalizeDataScope(dataScope);
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
@@ -196,7 +198,7 @@ public static class CachedAnalyticsEndpoints
                 });
             }
 
-            var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId);
+            var cacheKey = AnalyticsCacheKeys.SalesSummary(fromDate, toDate, storeId, supplierId, normalizedDataScope);
 
             try
             {
@@ -205,41 +207,15 @@ public static class CachedAnalyticsEndpoints
                     cacheKey,
                     AnalyticsCachePolicy.DashboardFamily,
                     AnalyticsCachePolicy.DashboardBootstrap,
-                    async () =>
-                    {
-                        if (!storeId.HasValue && !supplierId.HasValue)
-                        {
-                            var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
-                            if (aggregated is not null)
-                            {
-                                return aggregated;
-                            }
-                        }
-
-                        var baseQuery = from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                                        join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
-                                        group ps by p.Id into g
-                                        select new
-                                        {
-                                            TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
-                                            TotalUnits = g.Sum(x => x.Kolicina),
-                                            TransactionCount = g.Key
-                                        };
-
-                        var aggregatedResult = await baseQuery.ToListAsync(ct);
-
-                        var totalRevenue = aggregatedResult.Sum(x => x.TotalRevenue);
-                        var totalUnits = aggregatedResult.Sum(x => x.TotalUnits);
-                        var totalTransactions = aggregatedResult.Count;
-                        var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
-
-                        return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, null, avgItem);
-                    },
+                    async () => await BuildSalesSummarySnapshotAsync(
+                        trendDb,
+                        mediator,
+                        fromDate,
+                        toDate,
+                        storeId,
+                        supplierId,
+                        ct,
+                        normalizedDataScope),
                     ct,
                     loggerFactory: loggerFactory,
                     dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
@@ -251,6 +227,9 @@ public static class CachedAnalyticsEndpoints
                     ? AnalyticsResponseMetaFactory.Empty("no_data_in_period", "Nema prodaje za izabrani period.")
                     : AnalyticsResponseMetaFactory.Success();
                 ApplyStaleCacheWarning(meta, cacheResult.Metadata, AnalyticsCachePolicy.DashboardBootstrap);
+                meta.RequestedDataScope = normalizedDataScope;
+                meta.EffectiveDataScope = normalizedDataScope;
+                meta.DataScopeSource = SalesDataScopePolicy.Source;
                 meta.CorrelationId = correlationId;
 
                 return Results.Ok(new
@@ -1413,115 +1392,43 @@ public static class CachedAnalyticsEndpoints
         // ========== DAILY SALES (CACHED) ==========
         group.MapGet("/sales/daily", async (
             IAnalyticsCacheService cache,
-            IAnalyticsDbContext db,
             ITrendplusDbContext trendDb,
             HttpContext httpContext,
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int? storeId = null,
             int? supplierId = null,
+            string dataScope = "all",
             CancellationToken ct = default) =>
         {
+            var normalizedDataScope = NormalizeDataScope(dataScope);
             if (fromDate.HasValue && fromDate.Value.Kind == DateTimeKind.Unspecified)
                 fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
 
             if (toDate.HasValue && toDate.Value.Kind == DateTimeKind.Unspecified)
                 toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
 
-            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId) + ":meta-v1";
+            var cacheKey = AnalyticsCacheKeys.DailySales(fromDate, toDate, storeId, supplierId, normalizedDataScope) + ":meta-v2";
             var snapshot = await cache.GetOrSetAsync(
                 cacheKey,
-                async () =>
+                async () => new DailySalesCachedSnapshot
                 {
-                    if (!storeId.HasValue && !supplierId.HasValue)
-                    {
-                        var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(trendDb, fromDate, toDate, ct);
-                        if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
-                        {
-                            return new DailySalesCachedSnapshot { Items = aggregatedDaily };
-                        }
-                    }
-
-                    var usedOperationalFallback = false;
-                    try
-                    {
-                        if (!supplierId.HasValue)
-                        {
-                            var query = db.SalesFacts.AsNoTracking();
-
-                            if (fromDate.HasValue)
-                                query = query.Where(s => s.SaleTimestampUtc >= fromDate.Value);
-
-                            if (toDate.HasValue)
-                                query = query.Where(s => s.SaleTimestampUtc <= toDate.Value);
-
-                            if (storeId.HasValue)
-                                query = query.Where(s => s.StoreId == storeId.Value);
-
-                            var dailySalesRaw = await query
-                                .GroupBy(s => s.SaleTimestampUtc.Date)
-                                .Select(g => new
-                                {
-                                    Date = g.Key,
-                                    TotalRevenue = g.Sum(s => s.TotalAmount),
-                                    TransactionCount = g.Count(),
-                                    TotalUnits = g.Sum(s => s.TotalUnits)
-                                })
-                                .OrderBy(x => x.Date)
-                                .ToListAsync(ct);
-
-                            return new DailySalesCachedSnapshot
-                            {
-                                Items = dailySalesRaw.Select(x => new DailySaleDto
-                                {
-                                    Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                                    TotalRevenue = x.TotalRevenue,
-                                    TransactionCount = x.TransactionCount,
-                                    TotalUnits = x.TotalUnits
-                                }).ToList()
-                            };
-                        }
-                    }
-                    catch (Exception ex) when (IsMissingRelation(ex))
-                    {
-                        usedOperationalFallback = true;
-                    }
-
-                    var fallbackRaw = await (
-                                        from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                                        join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                                        join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                                        where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                                              (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                                              (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                                              (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
-                                        group new { p, ps } by p.DatumProdaje.Date into g
-                                        select new
-                                        {
-                                            Date = g.Key,
-                                            TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                                            TransactionCount = g.Select(x => x.p.Id).Distinct().Count(),
-                                            TotalUnits = g.Sum(x => x.ps.Kolicina)
-                                        })
-                        .OrderBy(x => x.Date)
-                        .ToListAsync(ct);
-
-                    return new DailySalesCachedSnapshot
-                    {
-                        UsedOperationalFallback = usedOperationalFallback,
-                        Items = fallbackRaw.Select(x => new DailySaleDto
-                        {
-                            Date = x.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                            TotalRevenue = x.TotalRevenue,
-                            TransactionCount = x.TransactionCount,
-                            TotalUnits = x.TotalUnits
-                        }).ToList()
-                    };
+                    Items = await BuildDailySalesSnapshotAsync(
+                        trendDb,
+                        fromDate,
+                        toDate,
+                        storeId,
+                        supplierId,
+                        ct,
+                        normalizedDataScope)
                 },
                 CacheExpiration.Medium,
                 ct);
 
             var meta = ResolveCachedDailySalesMeta(snapshot.UsedOperationalFallback, snapshot.Items.Count);
+            meta.RequestedDataScope = normalizedDataScope;
+            meta.EffectiveDataScope = normalizedDataScope;
+            meta.DataScopeSource = SalesDataScopePolicy.Source;
             meta.CorrelationId = ResolveCorrelationId(httpContext);
             return Results.Ok(new { items = snapshot.Items, meta });
         });
@@ -3287,50 +3194,6 @@ public static class CachedAnalyticsEndpoints
         return cache.IsRedisEnabled && cache.IsRedisAvailable ? "redis" : "memory";
     }
 
-    private static async Task<SalesSummaryDto?> TryGetSalesSummaryFromAggregatesAsync(
-        ITrendplusDbContext db,
-        DateTime? fromDate,
-        DateTime? toDate,
-        CancellationToken ct)
-    {
-        try
-        {
-            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
-            if (conn is null) return null;
-
-            const string sql = """
-                SELECT
-                    COUNT(*)::int AS days_count,
-                    COALESCE(SUM("TotalRevenue"), 0) AS total_revenue,
-                    COALESCE(SUM("TotalTransactions"), 0)::int AS total_transactions,
-                    COALESCE(SUM("TotalUnits"), 0)::int AS total_units
-                FROM "AnalyticsDailySummary"
-                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
-                  AND (@toDate IS NULL OR "Date" <= @toDate::date);
-                """;
-            await using var cmd = new NpgsqlCommand(sql, conn);
-            AddNullableDateParameter(cmd, "fromDate", fromDate);
-            AddNullableDateParameter(cmd, "toDate", toDate);
-
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            if (!await reader.ReadAsync(ct)) return null;
-
-            var daysCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
-            if (daysCount == 0) return null;
-
-            var totalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
-            var totalTransactions = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
-            var totalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
-            var avgItem = totalUnits > 0 ? totalRevenue / totalUnits : 0m;
-
-            return new SalesSummaryDto(totalRevenue, totalTransactions, totalUnits, null, avgItem);
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-        {
-            return null;
-        }
-    }
-
     private static async Task<TopProductsResult?> TryGetTopProductsFromAggregatesAsync(
         ITrendplusDbContext db,
         int top,
@@ -3376,54 +3239,6 @@ public static class CachedAnalyticsEndpoints
             var byRevenue = all.OrderByDescending(x => x.TotalRevenue).Take(top).ToList();
             var byUnits = all.OrderByDescending(x => x.TotalUnits).Take(top).ToList();
             return new TopProductsResult(byRevenue, byUnits);
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
-        {
-            return null;
-        }
-    }
-
-    private static async Task<List<DailySaleDto>?> TryGetDailySalesFromAggregatesAsync(
-        ITrendplusDbContext db,
-        DateTime? fromDate,
-        DateTime? toDate,
-        CancellationToken ct)
-    {
-        try
-        {
-            await using var conn = await OpenTrendplusConnectionAsync(db, ct);
-            if (conn is null) return null;
-
-            const string sql = """
-                SELECT
-                    "Date",
-                    COALESCE("TotalRevenue", 0) AS total_revenue,
-                    COALESCE("TotalTransactions", 0)::int AS total_transactions,
-                    COALESCE("TotalUnits", 0)::int AS total_units
-                FROM "AnalyticsDailySummary"
-                WHERE (@fromDate IS NULL OR "Date" >= @fromDate::date)
-                  AND (@toDate IS NULL OR "Date" <= @toDate::date)
-                ORDER BY "Date";
-                """;
-            await using var cmd = new NpgsqlCommand(sql, conn);
-            AddNullableDateParameter(cmd, "fromDate", fromDate);
-            AddNullableDateParameter(cmd, "toDate", toDate);
-
-            var list = new List<DailySaleDto>();
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
-            {
-                var date = reader.IsDBNull(0) ? DateTime.UtcNow.Date : reader.GetDateTime(0);
-                list.Add(new DailySaleDto
-                {
-                    Date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    TotalRevenue = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1),
-                    TransactionCount = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
-                    TotalUnits = reader.IsDBNull(3) ? 0 : reader.GetInt32(3)
-                });
-            }
-
-            return list;
         }
         catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
         {
@@ -5230,53 +5045,26 @@ public static class CachedAnalyticsEndpoints
         string dataScope = "all")
     {
         var normalizedDataScope = NormalizeDataScope(dataScope);
-        var importedOnly = normalizedDataScope == "imported";
-        var existingOnly = normalizedDataScope == "existing";
 
-        if (normalizedDataScope == "all" && !storeId.HasValue && !supplierId.HasValue)
-        {
-            var aggregated = await TryGetSalesSummaryFromAggregatesAsync(trendDb, fromDate, toDate, ct);
-            if (aggregated is not null)
+        var totals = await (
+            from p in trendDb.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
+                .AsNoTracking()
+            join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group new { p, ps } by 1 into g
+            select new
             {
-                return aggregated;
-            }
-        }
-
-        var totals = supplierId.HasValue
-            ? await (
-                from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                join a in trendDb.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                      a.IDDobavljac == supplierId.Value &&
-                      (!importedOnly || p.DataOrigin == "access") &&
-                      (!existingOnly || p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")
-                group new { p, ps } by 1 into g
-                select new
-                {
-                    TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                    TotalUnits = g.Sum(x => x.ps.Kolicina),
-                    TotalTransactions = g.Select(x => x.p.Id).Distinct().Count()
-                })
-                .SingleOrDefaultAsync(ct)
-            : await (
-                from p in trendDb.ProdajaZaglavlja.AsNoTracking()
-                join ps in trendDb.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                      (!importedOnly || p.DataOrigin == "access") &&
-                      (!existingOnly || p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")
-                group new { p, ps } by 1 into g
-                select new
-                {
-                    TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
-                    TotalUnits = g.Sum(x => x.ps.Kolicina),
-                    TotalTransactions = g.Select(x => x.p.Id).Distinct().Count()
-                })
-                .SingleOrDefaultAsync(ct);
+                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                TotalUnits = g.Sum(x => x.ps.Kolicina),
+                TotalTransactions = g.Select(x => x.p.Id).Distinct().Count()
+            })
+            .SingleOrDefaultAsync(ct);
 
         var totalRevenue = totals?.TotalRevenue ?? 0m;
         var totalUnits = totals?.TotalUnits ?? 0;
@@ -5352,55 +5140,26 @@ public static class CachedAnalyticsEndpoints
         string dataScope = "all")
     {
         var normalizedDataScope = NormalizeDataScope(dataScope);
-        var importedOnly = normalizedDataScope == "imported";
-        var existingOnly = normalizedDataScope == "existing";
-
-        if (normalizedDataScope == "all" && !storeId.HasValue && !supplierId.HasValue)
-        {
-            var aggregatedDaily = await TryGetDailySalesFromAggregatesAsync(db, fromDate, toDate, ct);
-            if (aggregatedDaily is not null && aggregatedDaily.Count > 0)
+        var fallbackRaw = await (
+            from p in db.ProdajaZaglavlja
+                .Where(SalesReceiptPopulationPolicy.IncludedHeaderPredicate)
+                .Where(SalesDataScopePolicy.HeaderPredicate(normalizedDataScope))
+                .AsNoTracking()
+            join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
+            join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
+            where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
+                  (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
+                  (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
+                  (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
+            group new { p, ps } by p.DatumProdaje.Date into g
+            orderby g.Key
+            select new
             {
-                return aggregatedDaily;
-            }
-        }
-
-        var fallbackRaw = supplierId.HasValue
-            ? await (
-                from p in db.ProdajaZaglavlja.AsNoTracking()
-                join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                join a in db.Artikli.AsNoTracking() on ps.IdArtikal equals a.Id
-                where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                      a.IDDobavljac == supplierId.Value &&
-                      (!importedOnly || p.DataOrigin == "access") &&
-                      (!existingOnly || p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")
-                group ps by p.DatumProdaje.Date into g
-                orderby g.Key
-                select new
-                {
-                    Date = g.Key,
-                    TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
-                    TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count(),
-                    TotalUnits = g.Sum(x => x.Kolicina)
-                }).ToListAsync(ct)
-            : await (
-                from p in db.ProdajaZaglavlja.AsNoTracking()
-                join ps in db.ProdajaStavke.AsNoTracking() on p.Id equals ps.IdProdaja
-                where (!fromDate.HasValue || p.DatumProdaje >= fromDate.Value) &&
-                      (!toDate.HasValue || p.DatumProdaje <= toDate.Value) &&
-                      (!storeId.HasValue || p.IDObjekat == storeId.Value) &&
-                      (!importedOnly || p.DataOrigin == "access") &&
-                      (!existingOnly || p.DataOrigin == "existing" || p.DataOrigin == null || p.DataOrigin == "")
-                group ps by p.DatumProdaje.Date into g
-                orderby g.Key
-                select new
-                {
-                    Date = g.Key,
-                    TotalRevenue = g.Sum(x => x.Kolicina * x.Cena),
-                    TransactionCount = g.Select(x => x.IdProdaja).Distinct().Count(),
-                    TotalUnits = g.Sum(x => x.Kolicina)
-                }).ToListAsync(ct);
+                Date = g.Key,
+                TotalRevenue = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
+                TransactionCount = g.Select(x => x.p.Id).Distinct().Count(),
+                TotalUnits = g.Sum(x => x.ps.Kolicina)
+            }).ToListAsync(ct);
 
         return fallbackRaw.Select(x => new DailySaleDto
         {

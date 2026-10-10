@@ -2,8 +2,10 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is READY for the post-Access fact-population/cache contract gap; `RQ606` is WAITING for the exact batch-23 MDB and owns the separate Access transfer event-identity/reimport gap. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: `RQ605` is READY and unclaimed after the read-only Access #23 fact audit; it is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Owner claim 2026-10-10: fresh `origin/main` `ae47987225fcdf3f80e306ea67d05f66e93c3972` found no active RQ605/RQ606 lock, branch, PR or competing owner. RQ605 moved `READY -> IN_PROGRESS`; RQ606 was narrowed and promoted `WAITING -> READY -> IN_PROGRESS` for the repository-local transfer-idempotency slice. The exact batch-23 MDB row audit remains a separate historical certification residual and is not claimed complete.
+Owner delivery 2026-10-10: RQ605 moved `IN_PROGRESS -> DONE` after the canonical operational PostgreSQL oracle, scope-aware cache/comparison regression tests, corrected RQ604 source-line identity audit and Release build passed. RQ606 moved `IN_PROGRESS -> PARTIAL`: the repository-local transfer identity/idempotency slice is delivered and proven on the synthetic MDB/PostgreSQL fixture, while the exact batch-23 MDB 244/20 row certification remains open because the original source is unavailable. Locks were released before delivery; no duplicate prompt was registered.
+Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is DONE for the post-Access fact-population/cache contract gap; `RQ606` is PARTIAL for the delivered repository-local Access transfer event-identity/reimport fix with historical MDB certification pending. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
+Current READY prompt: none in this owner queue after the RQ605 close; RQ606 remains PARTIAL and is not re-promoted without the original MDB or an explicitly approved historical-certification handoff. RQ605 is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30745,7 +30747,8 @@ Owner decision satisfied; no STAB16 dependency.
 
 ## RQ605 - Canonical retail population for legacy fact, cache and comparison consumers
 
-Status: READY
+Status: DONE
+Claim: Codex / current workspace, 2026-10-10; local lock released before delivery
 Ready after: read-only Access import #23 audit completed on current `origin/main`; no existing prompt, lock, branch or PR owns the legacy raw-fact/cache population gap.
 Priority: P0
 Type: backend/data-integrity/tests
@@ -30807,12 +30810,32 @@ Run validators and `git diff --check`; do not change global SQL timeout or analy
 
 ### Dependencies
 
-None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. This prompt is registered READY but is not claimed by this audit.
+None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. RQ605 was claimed in this run and is now delivered with synchronized evidence.
+
+### Completion note
+
+- Date: 2026-10-10
+- Status: DONE
+- Completion: Legacy cached sales summary/daily and sales comparison now read the canonical operational retail population, reuse `SalesDataScopePolicy` and `SalesReceiptPopulationPolicy`, preserve signed returns, exclude DUG/KOREKCIJA and include normalized `dataScope` in cache identity. Raw/stale analytical facts are no longer a fallback for these consumers.
+- Changed files: `Api/Endpoints/CachedAnalyticsEndpoints.cs`; `Api/Endpoints/AllEndpoints.cs`; `Api.Tests/Rq605LegacySalesPostgresIntegrationTests.cs`; `tools/access-import-23-fact-audit.sql`; `.ai/runs/2026-10-10-RQ605-evidence.md`.
+- Checks run: disposable PostgreSQL RQ605 fixture 1/1; independent operational SQL oracle for imported/existing/all, signed return, DUG exclusion, previous-period comparison and cache miss/hit 1/1; full read-only batch-23 fact audit exit 0; corrected source-line identity proof 67,092/67,092 with one fact each and zero mismatches; focused policy/cache/import/heartbeat/atomicity suite 60/60; `dotnet build Api/Api.csproj -c Release --no-restore` (0 warnings, 0 errors); `git diff --check`.
+- Checks not run: remote CI before delivery; no named RQ605 requirement to wait for queued Actions. No production import, cache rebuild or data mutation was performed.
+- Run log: `.ai/runs/2026-10-10-RQ605-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until push and fresh `origin/main` verification
+- Main verification: pending until push and fresh fetch
+- Missed: none within RQ605 repository scope; exact batch-23 MDB certification remains RQ606's explicit residual and is not an RQ605 acceptance item.
+- Follow-up: keep RQ606 PARTIAL; do not delete DEMO/RQ407/import-fix data or mutate production without a separate approved repair plan.
+- Residual risk: analytical consumers outside these legacy summary/daily/comparison paths (including `analytics_intel` and installed materialized/view dependents) retain their existing separate certification boundary.
+- Post-close routing: post-delivery recovery recorded in `.ai/runs/2026-10-10-RQ605-evidence.md`; no duplicate successor was registered.
+- Prompt defect / scope repair: the audit SQL was corrected to apply the existing `SalesLineSourceIdentity.Resolve` fallback namespace instead of treating operational `source_table_key=prodajastavke` as the analytics identity.
 
 ## RQ606 - Preserve Access movement event identity during transfer re-import
 
-Status: WAITING
-Ready after: the exact batch-23 MDB (or an owner-approved byte-preserving archive) is restored and a disposable PostgreSQL/MDB regression fixture can be run without mutating the source file or production data.
+Status: PARTIAL
+Ready after: repository-local transfer identity/idempotency work is independently safe on a disposable synthetic MDB/PostgreSQL fixture; exact batch-23 MDB restoration remains required only for historical 244/20 row certification.
+Claim: Codex / current workspace, 2026-10-10; local lock released before delivery
 Priority: P1
 Type: backend/import/data-integrity/tests
 Feature family: access-event-identity-and-reimport
@@ -30838,7 +30861,7 @@ The batch #23 target confirms the identity distinction: 8,962 source transfer ro
 
 ### Scope
 
-Change only Access movement identity and re-import idempotency. Keep document identity separate from line/event identity; preserve repeated products and transfer direction. Do not change analytical formulas, global SQL timeout, existing rollback/transaction policy or business values.
+Change only Access movement identity and re-import idempotency for the repository-local slice. Keep document identity separate from line/event identity; preserve repeated products and transfer direction. Do not change analytical formulas, global SQL timeout, existing rollback/transaction policy or business values. Historical batch-23 MDB certification of the exact 244 skipped rows and 20 skipped receipts stays outside this delivery until the original byte-preserving source is restored.
 
 ### Do
 
@@ -30849,26 +30872,44 @@ Change only Access movement identity and re-import idempotency. Keep document id
 
 ### Tests
 
-Use a real PostgreSQL integration fixture plus a read-only MDB fixture:
+Use a disposable PostgreSQL integration fixture plus an isolated synthetic MDB reader fixture:
 
 - two transfer source rows with identical article, timestamp and amount but different source IDs/store endpoints survive two imports as two outgoing/two incoming pairs;
 - one source transfer with repeated article rows preserves the multiset and both directions;
 - a repeated import is idempotent by source identity;
 - cancellation/rollback leaves no partial transfer pair and a retry restores the complete pair;
-- the 16 repeated receipt-number groups remain separate by source event/document identity;
-- the 244 invalid-date sale-line rows remain skipped rather than receiving import time;
+- the transfer SQL audit groups by source document/event and line signature rather than assuming `SourceRowId` is a unique line ID;
 - no unique document-ID index is introduced.
 
 ### Acceptance
 
-- Exact batch-23 MDB rows are reconciled and each previously skipped row has a documented justified/fixable/missing-information outcome.
+- Repository-local transfer identity/idempotency is proven on the synthetic fixture. Exact batch-23 MDB rows are not claimed reconciled until the source is restored; the existing audit remains the historical handoff evidence.
 - PostgreSQL proves no legitimate transfer event is lost or duplicated over two imports, including equal-valued events and repeated article lines.
 - Existing Access atomicity, cancellation, retry and terminal-status tests remain green.
 - No source MDB, production database or analytical formula is changed by the test run.
 
 ### Dependencies
 
-Exact batch-23 MDB restoration is a start gate for the requested row-by-row audit. RQ604 and RQ605 remain separate owners and must not be reopened.
+Exact batch-23 MDB restoration is a residual acceptance gate for the historical row-by-row audit, not a blocker for the isolated repository-local transfer fix. RQ604 and RQ605 remain separate owners and must not be reopened.
+
+### Completion note
+
+- Date: 2026-10-10
+- Status: PARTIAL
+- Completion: Repository-local transfer re-import idempotency now keys usable rows by normalized source table/event ID, direction, article/date/amount/quantity and preserves occurrence counts for repeated article rows. Rows without usable source identity retain a bounded endpoint/document-aware legacy multiset. The exact batch-23 MDB 244/20 certification is not claimed.
+- Changed files: `Api/Services/AccessImportService.cs`; `Api.Tests/Rq606TransferIdentityPostgresIntegrationTests.cs`; `tools/access-import-23-mdb-event-reconciliation.sql`; `.ai/runs/2026-10-10-RQ606-evidence.md`.
+- Checks run: disposable PostgreSQL + synthetic MDB fixture 2/2; two equal-valued transfers with different source IDs/endpoints survived as four movement rows, repeated same-document article lines survived as four movement rows, second import inserted zero, pre-cancelled import persisted zero; transfer SQL audit exit 0; existing focused Access heartbeat/atomicity/cancellation/queue suite 60/60; `dotnet build Api/Api.csproj -c Release --no-restore` (0 warnings, 0 errors); `git diff --check`.
+- Checks not run: exact original batch-23 MDB row-by-row reconciliation because the source was deleted/unavailable; no new Access import; no production or local business-data mutation.
+- Run log: `.ai/runs/2026-10-10-RQ606-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: pending until push and fresh `origin/main` verification
+- Main verification: pending until push and fresh fetch
+- Missed: exact outcomes for 244 skipped `tblProdaja` rows, 20 affected receipts and 168 skipped journal rows remain unresolved without the original MDB.
+- Follow-up: restore the original byte-preserving MDB or explicitly hand off historical certification; then run the existing read-only reconciliation before any repair decision.
+- Residual risk: the synthetic fixture proves the repository-local identity algorithm, not the unavailable batch-23 source population.
+- Post-close routing: no duplicate prompt registered; keep this prompt PARTIAL and do not promote a historical repair/import task without the source artifact and explicit approval.
+- Prompt defect / scope repair: status was narrowed from the original combined historical/implementation request to the safe repository-local slice, as authorized by the prompt; no RQ604 identity-writer scope was reopened.
 
 ## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
 

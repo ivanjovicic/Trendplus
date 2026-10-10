@@ -86,21 +86,50 @@ WHERE source_batch_id = 23
 GROUP BY 1
 ORDER BY 1;
 
--- 7. Transfer expansion and transfer-pair completeness. A source transfer
---    event must produce one outgoing and one incoming event per source row.
-SELECT "SourceRowId",
-       count(*) AS target_rows,
-       count(*) FILTER (WHERE "TipPromene" = 'Prenos izlaz') AS outgoing_rows,
-       count(*) FILTER (WHERE "TipPromene" = 'Prenos ulaz') AS incoming_rows,
-       count(DISTINCT "ArtikalId") AS products,
-       sum(coalesce("Kolicina", 0)) AS net_quantity
+-- 7. Transfer expansion and transfer-pair completeness. SourceRowId is a
+--    document/event identity and may repeat for several article rows. Compare
+--    the outgoing/incoming multisets at source-document + line-signature grain;
+--    a zero-row result is required. Equal-valued repeated lines are retained
+--    because their multiplicities must match, not collapse to one row.
+WITH transfer_line_multiset AS (
+    SELECT "SourceTableKey", "SourceRowId", "ArtikalId", "Datum",
+           abs(coalesce("Kolicina", 0)) AS absolute_quantity,
+           coalesce("Iznos", 0) AS amount,
+           count(*) FILTER (WHERE "TipPromene" = 'Prenos izlaz') AS outgoing_rows,
+           count(*) FILTER (WHERE "TipPromene" = 'Prenos ulaz') AS incoming_rows,
+           sum(CASE WHEN "TipPromene" = 'Prenos izlaz'
+                    THEN coalesce("Kolicina", 0) ELSE 0 END) AS outgoing_quantity,
+           sum(CASE WHEN "TipPromene" = 'Prenos ulaz'
+                    THEN coalesce("Kolicina", 0) ELSE 0 END) AS incoming_quantity,
+           sum(CASE WHEN "TipPromene" = 'Prenos izlaz'
+                    THEN coalesce("Iznos", 0) ELSE 0 END) AS outgoing_amount,
+           sum(CASE WHEN "TipPromene" = 'Prenos ulaz'
+                    THEN coalesce("Iznos", 0) ELSE 0 END) AS incoming_amount
+    FROM "DnevnikPromena"
+    WHERE "SourceBatchId" = 23
+      AND lower("SourceTableKey") IN ('prenosrobe', 'prenos_robe')
+      AND "SourceRowId" IS NOT NULL
+      AND "TipPromene" IN ('Prenos izlaz', 'Prenos ulaz')
+    GROUP BY "SourceTableKey", "SourceRowId", "ArtikalId", "Datum",
+             abs(coalesce("Kolicina", 0)), coalesce("Iznos", 0)
+)
+SELECT *
+FROM transfer_line_multiset
+WHERE outgoing_rows <> incoming_rows
+   OR outgoing_rows = 0
+   OR incoming_rows = 0
+   OR outgoing_quantity + incoming_quantity <> 0
+   OR outgoing_amount <> incoming_amount
+ORDER BY "SourceTableKey", "SourceRowId", "ArtikalId", "Datum";
+
+-- Transfer rows without source document identity cannot be certified by the
+-- source-event contract and must remain visible for manual review.
+SELECT "TipPromene", "ArtikalId", "Datum", "Kolicina", "Iznos", "IDObjekat"
 FROM "DnevnikPromena"
-WHERE "SourceBatchId" = 23 AND "SourceTableKey" = 'prenosrobe'
-GROUP BY "SourceRowId"
-HAVING count(*) <> 2
-    OR count(*) FILTER (WHERE "TipPromene" = 'Prenos izlaz') <> 1
-    OR count(*) FILTER (WHERE "TipPromene" = 'Prenos ulaz') <> 1
-ORDER BY "SourceRowId";
+WHERE "SourceBatchId" = 23
+  AND lower("SourceTableKey") IN ('prenosrobe', 'prenos_robe')
+  AND "SourceRowId" IS NULL
+ORDER BY "Datum", "ArtikalId", "TipPromene";
 
 -- 8. Repeated source IDs are event/document identities with multiple product
 --    rows. This must not be treated as duplicate data.

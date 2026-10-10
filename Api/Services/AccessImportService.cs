@@ -6094,27 +6094,107 @@ using NpgsqlTypes;
         }
     }
 
+    private readonly record struct AccessTransferSourceKey(
+        string SourceTableKey,
+        long SourceRowId,
+        int ArtikalId,
+        DateTime Datum,
+        decimal Iznos,
+        int Kolicina);
+
+    private readonly record struct AccessTransferLegacyKey(
+        string TipPromene,
+        int ArtikalId,
+        DateTime Datum,
+        decimal Iznos,
+        int Kolicina,
+        int? IDObjekat,
+        string? BrojDokumenta);
+
     private async Task ImportPrenosRobeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         if (table is null)
             return;
 
+        var transferSourceTableKey = Normalize("prenos_robe");
+
         var usedIds = GetDnevnikPromenaUsedIds();
         var next = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
 
-        // Composite-key multiset to detect duplicate transfer entries on re-import.
-        // Key includes TipPromene to distinguish izlaz/ulaz pairs.
-        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
+        // SourceRowId is a source document/event cursor for transfer imports, not a
+        // unique line ID. Keep a multiset per source document + article signature so
+        // repeated article rows in one document remain distinct.
+        var sourceIdentityCounts = new Dictionary<(AccessTransferSourceKey Key, string Direction), int>();
+        var existingCompositeKeys = new Dictionary<AccessTransferLegacyKey, int>();
         foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
             .Where(x => x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz))
         {
-            var ck = (d.TipPromene ?? "", d.ArtikalId ?? 0, d.Datum, d.Iznos);
-            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+            var quantity = Math.Abs(d.Kolicina ?? 0);
+            var direction = d.TipPromene == TipPromeneConstants.PrenosIzlaz ? "out" : "in";
+
+            if (string.Equals(d.SourceTableKey, transferSourceTableKey, StringComparison.OrdinalIgnoreCase)
+                && d.SourceRowId is > 0
+                && d.ArtikalId.HasValue)
+            {
+                var sourceKey = new AccessTransferSourceKey(
+                    transferSourceTableKey,
+                    d.SourceRowId.Value,
+                    d.ArtikalId.Value,
+                    d.Datum,
+                    d.Iznos,
+                    quantity);
+                var identityKey = (sourceKey, direction);
+                sourceIdentityCounts[identityKey] = sourceIdentityCounts.GetValueOrDefault(identityKey) + 1;
+            }
+
+            var legacyKey = new AccessTransferLegacyKey(
+                d.TipPromene ?? "",
+                d.ArtikalId ?? 0,
+                d.Datum,
+                d.Iznos,
+                quantity,
+                d.IDObjekat,
+                string.IsNullOrWhiteSpace(d.BrojRacuna) ? null : d.BrojRacuna.Trim());
+            existingCompositeKeys[legacyKey] = existingCompositeKeys.GetValueOrDefault(legacyKey) + 1;
         }
 
+        var sourceRows = new List<AccessDataRow>();
         await foreach (var row in ReadRowsForTableAsync(session, table, "prenos_robe", ct))
         {
             MarkSourceRow(result, "prenos_robe");
+            sourceRows.Add(row);
+        }
+
+        var sourceOccurrences = new Dictionary<AccessTransferSourceKey, int>();
+
+        void AddMovement(string tipPromene, int kolicina, int? storeId, string? documentNumber, int artikalId, DateTime datum, decimal cena, decimal iznos, AccessDataRow sourceRow)
+        {
+            var assignedId = AllocateNextId(usedIds, ref next);
+            var movement = new DnevnikPromena
+            {
+                Id = assignedId,
+                TipPromene = tipPromene,
+                Datum = datum,
+                ArtikalId = artikalId,
+                Kolicina = kolicina,
+                NovaProdajnaCena = cena,
+                Iznos = iznos,
+                IDObjekat = storeId,
+                BrojRacuna = documentNumber,
+                DataOrigin = "access"
+            };
+            ApplyAccessSourceLineage(movement, "prenos_robe", sourceRow);
+            _trendDb.DnevnikPromena.Add(movement);
+            result.PrenosRobeInserted++;
+            TrackTrendWrite();
+            TrackAnalyticsMovementId(assignedId);
+            TrackAnalyticsProductId(artikalId);
+            TrackAnalyticsStoreId(storeId);
+        }
+
+        foreach (var row in sourceRows)
+        {
+            ct.ThrowIfCancellationRequested();
 
             var idArtikal = I(row, "idartikal", "artikalid", "productid");
             if (!idArtikal.HasValue)
@@ -6131,64 +6211,76 @@ using NpgsqlTypes;
             var idU = I(row, "idobjekatulaz", "idobjekatdolaz", "tostore", "idobjekatodredista");
             var brDok = S(row, "iddnevnik", "brdokumenta", "brprenos");
 
-            // Composite-key dedup for izlaz entry.
-            var ckIzlaz = (TipPromeneConstants.PrenosIzlaz, idArtikal.Value, datum, iznos);
+            var sourceRowId = ReadCursorInt(row, ResolveDefaultLineageIdAliases("prenos_robe"));
+            if (sourceRowId is > 0)
+            {
+                var sourceKey = new AccessTransferSourceKey(
+                    transferSourceTableKey,
+                    sourceRowId.Value,
+                    idArtikal.Value,
+                    datum,
+                    iznos,
+                    Math.Abs(kolicina));
+                var occurrence = sourceOccurrences.GetValueOrDefault(sourceKey);
+                sourceOccurrences[sourceKey] = occurrence + 1;
+
+                var existingOutCount = sourceIdentityCounts.GetValueOrDefault((sourceKey, "out"));
+                var existingInCount = sourceIdentityCounts.GetValueOrDefault((sourceKey, "in"));
+                var needsOut = occurrence >= existingOutCount;
+                var needsIn = occurrence >= existingInCount;
+
+                if (!needsOut && !needsIn)
+                    continue;
+
+                if (needsOut)
+                    AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
+                if (needsIn)
+                    AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
+
+                await FlushTrendWritesAsync(force: false, ct);
+                continue;
+            }
+
+            // Rows without a usable source identity retain a bounded legacy
+            // multiset fallback. Endpoints/document number prevent unrelated
+            // transfers with equal values from consuming one another.
+            var ckIzlaz = new AccessTransferLegacyKey(
+                TipPromeneConstants.PrenosIzlaz,
+                idArtikal.Value,
+                datum,
+                iznos,
+                Math.Abs(kolicina),
+                idIz,
+                string.IsNullOrWhiteSpace(brDok) ? null : brDok.Trim());
             if (existingCompositeKeys.TryGetValue(ckIzlaz, out var ckOutCount) && ckOutCount > 0)
             {
-                // Both izlaz and ulaz already exist — skip the whole pair.
                 existingCompositeKeys[ckIzlaz] = ckOutCount - 1;
-                var ckUlaz = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+                var ckUlaz = new AccessTransferLegacyKey(
+                    TipPromeneConstants.PrenosUlaz,
+                    idArtikal.Value,
+                    datum,
+                    iznos,
+                    Math.Abs(kolicina),
+                    idU,
+                    string.IsNullOrWhiteSpace(brDok) ? null : brDok.Trim());
                 if (existingCompositeKeys.TryGetValue(ckUlaz, out var ckInCount) && ckInCount > 0)
                     existingCompositeKeys[ckUlaz] = ckInCount - 1;
                 continue;
             }
 
-            var idOut = AllocateNextId(usedIds, ref next);
+            AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
             existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
-            var movementOut = new DnevnikPromena
-            {
-                Id = idOut,
-                TipPromene = TipPromeneConstants.PrenosIzlaz,
-                Datum = datum,
-                ArtikalId = idArtikal.Value,
-                Kolicina = -kolicina,
-                NovaProdajnaCena = cena,
-                Iznos = iznos,
-                IDObjekat = idIz,
-                BrojRacuna = brDok,
-                DataOrigin = "access"
-            };
-            ApplyAccessSourceLineage(movementOut, "prenos_robe", row);
-            _trendDb.DnevnikPromena.Add(movementOut);
-            result.PrenosRobeInserted++;
-            TrackTrendWrite();
-            TrackAnalyticsMovementId(idOut);
-            TrackAnalyticsProductId(idArtikal.Value);
-            TrackAnalyticsStoreId(idIz);
 
-            var idIn = AllocateNextId(usedIds, ref next);
-            var ckUlazNew = (TipPromeneConstants.PrenosUlaz, idArtikal.Value, datum, iznos);
+            var ckUlazNew = new AccessTransferLegacyKey(
+                TipPromeneConstants.PrenosUlaz,
+                idArtikal.Value,
+                datum,
+                iznos,
+                Math.Abs(kolicina),
+                idU,
+                string.IsNullOrWhiteSpace(brDok) ? null : brDok.Trim());
+            AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
             existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
-            var movementIn = new DnevnikPromena
-            {
-                Id = idIn,
-                TipPromene = TipPromeneConstants.PrenosUlaz,
-                Datum = datum,
-                ArtikalId = idArtikal.Value,
-                Kolicina = kolicina,
-                NovaProdajnaCena = cena,
-                Iznos = iznos,
-                IDObjekat = idU,
-                BrojRacuna = brDok,
-                DataOrigin = "access"
-            };
-            ApplyAccessSourceLineage(movementIn, "prenos_robe", row);
-            _trendDb.DnevnikPromena.Add(movementIn);
-            result.PrenosRobeInserted++;
-            TrackTrendWrite();
-            TrackAnalyticsMovementId(idIn);
-            TrackAnalyticsProductId(idArtikal.Value);
-            TrackAnalyticsStoreId(idU);
 
             await FlushTrendWritesAsync(force: false, ct);
         }
