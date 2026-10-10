@@ -1,7 +1,7 @@
 # RQ601 — sravnjenje razmere nabavne cene
 
-Datum: 2026-10-09  
-Status: **PARTIAL — dijagnostika i worksheet su spremni; vlasnički uzorak iz kalkulacija nije dostavljen**  
+Datum: 2026-10-10 (read-only istorijska dopuna)
+Status: **PARTIAL — stvarna lokalna baza je proverena; vlasnički uzorak iz originalnih kalkulacija nije dostavljen**
 Izvor odluke: `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`
 
 ## Zaključak za vlasnika
@@ -13,13 +13,13 @@ Postojeći istorijski dokaz je dovoljan da se master trošak tretira kao **sumnj
 - mapiranje importa i redosled izvora troška nisu menjani;
 - konačni verdict `master scale correct` ili `master scale defective with cause` čeka 20 originalnih kalkulacionih stavki.
 
-Poznati istorijski signal iz RQ576/re-audita: 3.566 komada zalihe je ranije prikazano kao 93.389 RSD, odnosno približno 26,19 RSD po komadu. Prodajne stavke istog skupa dobavljača imale su približno 1.200–4.700 RSD po komadu. Za artikal 21644 (`70126.1`, UnA plus) master trošak je bio 245 RSD, dok je dobavljački istorijski trošak bio približno 3.038 RSD po komadu; odnos je oko 8,1%, ispod postojećeg 25% praga za sumnjivu razmeru.
+Read-only izvršavanje 2026-10-10 nad batch-om #23 potvrđuje 3.566 komada Access zalihe: 93.389 RSD po legacy `NabavnaCena` naspram 9.572.063 RSD po `NabavnaCenaDin`. Za artikal 21644 (`PLU=3854`, naziv `70126.1`, UnA plus) master legacy trošak je 245 RSD, a `NabavnaCenaDin`/sale-line osnova 2.875 RSD. To je odnos 8,52%, ispod praga 25% za sumnjivu razmeru.
 
 Ovo je dokaz anomalije koju treba proveriti, ne dokaz ispravnog alternativnog troška.
 
 ## Reproduktivni read-only izveštaj
 
-Skripta: `tools/purchase-cost-scale-reconciliation.sql`.
+Skripta: `tools/purchase-cost-scale-reconciliation.sql`; izvršeno nad lokalnim Docker PostgreSQL `trendplus-postgres` / `trendplus`.
 
 Skripta se izvršava nad operativnom Trendplus PostgreSQL bazom i za svaki artikal vraća:
 
@@ -29,6 +29,8 @@ Skripta se izvršava nad operativnom Trendplus PostgreSQL bazom i za svaki artik
 - poreklo troška prodajne stavke: `source_sale_line`, `master_nabavnacena_din_backfill`, `master_nabavnacena_backfill` ili `unknown`;
 - prodajnu cenu, stanje, odnose između izvora i vrednost zalihe po svakoj osnovi;
 - `master_scale_suspicious=true` kada je pozitivni master trošak ispod 25% pozitivnog troška prodajne stavke.
+
+Stvarni rezultat run-a: 12.428 artikala; poslednji inbound trošak postoji za 6.131 (49,33%), a poslednji efektivni sale-line trošak za 7.280 (58,58%). Na Access retail stavkama ima 66.233 redova; 65.732 imaju poznat trošak, 501 ostaje `NULL`. Poznata populacija nosi 233.118.523,64 RSD, a nepoznata 1.711.050,00 RSD.
 
 Upit nema `INSERT`, `UPDATE`, `DELETE`, `CREATE` niti produkcione upise. Sintetički Access ulazi sa iznosom nula ne smatraju se pouzdanim prijemom robe. Nedostajući trošak ostaje `NULL`.
 
@@ -45,38 +47,40 @@ Upit nema `INSERT`, `UPDATE`, `DELETE`, `CREATE` niti produkcione upise. Sinteti
 
 | # | Artikal ID | PLU | Dobavljač | Stanje | Master NC | Master NC Din | Poslednji ulaz | Prodajna stavka | Poreklo | Kalkulacija nabavna cena RSD | Dokaz (broj/datum kalkulacije) | Greška % | Napomena |
 |---:|---:|---|---|---:|---:|---:|---:|---:|---|---:|---|---:|---|
-| 1 | 21644 | 70126.1 | UnA plus | — | 245 | — | — | ≈3.038 dobavljački istorijski prosek | istorijski audit; tačna linija čeka SQL izvoz |  |  |  | poznati kandidat |
-| 2 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 3 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 4 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 5 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 6 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 7 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 8 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 9 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 10 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 11 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 12 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 13 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 14 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 15 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 16 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 17 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 18 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 19 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
-| 20 |  |  |  |  |  |  |  |  |  |  |  |  | kandidat iz SQL izvoza |
+| 1 | 17929 | 1 | Antilop | 23 | 57 | 7.040 | — | 7.040 | source_sale_line |  |  |  | M. Poluduboka cipela; Komision |
+| 2 | 21434 | 3716 | Rieker | 12 | 39 | 4.600 | 10.490 | 4.600 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 3 | 21491 | 3763 | KGFASHION | 12 | 34 | 3.992 | 8.990 | 3.992 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 4 | 21626 | 3549 | UnA plus | 24 | 36 | 4.226 | — | 4.226 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 5 | 21460 | 3739 | Planika | 10 | 35 | 4.097 | 8.990 | 4.097 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 6 | 21496 | 3768 | Planika | 10 | 36 | 4.321 | 8.990 | 4.321 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 7 | 21642 | 1944 | UnA plus | 38 | 19 | 2.253 | — | 2.253 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 8 | 21481 | 3752 | Florida | 11 | 32 | 3.760 | 7.490 | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 9 | 21650 | 3860 | UnA plus | 31 | 22 | 2.640 | — | 2.640 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 10 | 21477 | 3749 | Florida | 21 | 32 | 3.760 | — | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 11 | 21480 | 3751 | Florida | 20 | 32 | 3.760 | — | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 12 | 21479 | 3750 | Florida | 20 | 32 | 3.760 | — | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 13 | 21473 | 3745 | Florida | 20 | 32 | 3.760 | — | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 14 | 21478 | 3753 | Florida | 10 | 32 | 3.760 | 7.490 | 3.760 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 15 | 21602 | 3466 | Leon | 13 | 21 | 2.480 | 5.200 | 2.480 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 16 | 21627 | 3547 | UnA plus | 16 | 33 | 3.872 | — | 3.872 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 17 | 21621 | 3842 | KGFASHION | 12 | 41 | 4.990 | — | 4.990 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 18 | 21465 | 3742 | Moda Pele | 13 | 39 | 4.600 | — | 4.600 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 19 | 21208 | 3516 | Planika | 8 | 28 | 3.300 | 6.990 | 3.300 | source_sale_line |  |  |  | Trend PLUS 1 |
+| 20 | 21644 | 3854 | UnA plus | 19 | 245 | 2.875 | — | 2.875 | source_sale_line |  |  |  | naziv 70126.1; Trend PLUS 1 |
 
 ## Sažetak koji se popunjava posle izvoza
 
 | Mera | Trenutno stanje |
 |---|---|
-| Broj artikala u rezultatu | nije izmeren — nema odobrene istorijske DB konekcije u ovom run-u |
-| Udeo prodajnih stavki sa source troškom | nije izmeren |
-| Udeo prodajnih stavki sa master backfill-om | nije izmeren |
-| Udeo artikala sa nepoznatim troškom | nije izmeren |
-| Medijana `master / sale-line` po dobavljaču | nije izmerena |
-| Vrednost zalihe po ulaznom trošku | nije izmerena |
-| Vrednost zalihe po sale-line trošku | nije izmerena |
+| Broj artikala u rezultatu | 12.428 |
+| Udeo artikala sa poslednjim inbound troškom | 6.131/12.428 = 49,33% |
+| Udeo artikala sa poslednjim sale-line troškom | 7.280/12.428 = 58,58% |
+| Access retail stavke sa poznatim troškom | 65.732/66.233 = 99,24% |
+| Access retail promet sa poznatim troškom | 233.118.523,64/234.829.573,64 = 99,27% |
+| Medijana `legacy master / sale-line` | 0,8621%; 7.256/7.276 parova ispod 25% |
+| Medijana `NC Din / sale-line` | 1,0000% |
+| Vrednost Access zalihe po legacy NC | 93.389,00 RSD |
+| Vrednost Access zalihe po NC Din | 9.572.063,00 RSD |
 | Vlasnički uzorak | 0/20 popunjeno |
 | Konačna ocena razmere | **UNRESOLVED — master trošak ostaje sumnjiv i nesertifikovan** |
 
@@ -91,6 +95,10 @@ Upit nema `INSERT`, `UPDATE`, `DELETE`, `CREATE` niti produkcione upise. Sinteti
 - redom bez ijednog troška.
 
 Test proverava poreklo svake vrednosti, sumnjivu razmeru, backfill oznaku i da nepoznati trošak/vrednost zalihe ostaju `NULL`.
+
+## Istorijska dopuna 2026-10-10
+
+Detaljno sravnjenje batch-a #23, 20 kandidata i screen oracle nalazi se u `docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md`. Nema dovoljno izvornog dokaza za zatvaranje RQ601: vlasnik mora dostaviti originalne kalkulacione stavke za gore navedene artikle. Do tada su obe skale prikazane kao odvojene scenarije, a ne kao potvrđena poslovna istina.
 
 ## Sledeći tačan korak
 

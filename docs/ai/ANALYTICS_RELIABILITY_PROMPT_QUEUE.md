@@ -30553,6 +30553,15 @@ Commit suggestion: `test(analytics): reconcile purchase-cost scale across cost s
 - Residual risk: inventory-capital RSD remains provisional/not-certified; no import mapping or cost precedence was changed. Main Actions run `37981076471` on the correction SHA was queued at last inspection; the earlier red run `37979017062` was traced to and fixed by this query correction.
 - Prompt defect / scope repair: none; the owner decision explicitly permits steps 1-3 and forbids a definitive verdict before the sample.
 
+### Historical validation addendum — 2026-10-10
+
+- Status remains `PARTIAL`: the actual local batch-23 PostgreSQL population was read-only reconciled; no import mapping, cost precedence, formula or data row was changed.
+- Evidence: `docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md` and `docs/qa/PURCHASE_COST_SCALE_RECONCILIATION_2026-10-09.md`.
+- Result: 66.233 Access retail lines; 65.732 known-cost lines (99,24%); 501 unknown-cost lines carrying 1.711.050 RSD. Legacy/master scale remains suspicious; Access stock is 3.566 units, 93.389 RSD by legacy NC versus 9.572.063 RSD by NC Din.
+- The exact 20 candidate articles are recorded with blank owner-calculation/proof columns. No `master scale correct` or `defective with cause` verdict is claimed.
+- A confirmed `imported`/`access` mismatch was observed in the separate InventoryStatus handler; it is outside this prompt's owned paths and is recorded as an owner-boundary residual, without opening a duplicate task.
+- Evidence state: synchronized after direct read-only validation; RQ601 remains pending owner source evidence, not a missing SQL execution.
+
 ### Problem
 
 The product audit's next-milestone plan (item 2, "ispravna nabavna cena i datum ulaza -> zalihe u RSD") has no executable owner. RQ576 stopped using master `Artikli.NabavnaCena` for inventory totals, but master cost is still the fallback in the canonical cost precedence (`sale line -> NabavnaCenaDin -> NabavnaCena`) and in `AnalyticsCostSnapshotService`, which backfills missing Access sale-line cost from the master row. The 2026-10-04 re-audit showed master cost ~245 RSD against ~3,000-4,600 RSD sale-line cost for the same suppliers (≈26 RSD/pair stock value). If the master scale is wrong, every fallback margin, slow-stock capital and supplier capital figure inherits the error, and "koliko para stoji u robi 120+ dana" cannot be trusted.
@@ -30635,6 +30644,15 @@ RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE
 - Residual risk: bundled dataset is marked demo-only; no current or pilot business result is claimed. RQ601 cost basis remains provisional.
 - Post-close routing: RQ603 is DONE; the fresh full active RQ/SQL recovery found no newly runnable successor. Current RQ READY is none; zero-READY proof and blocker matrix: `.ai/runs/2026-10-09-RQ603-evidence.md`.
 - Prompt defect / scope repair: none; synthetic fixture output is not substituted for the historical import acceptance.
+
+### Historical validation addendum — 2026-10-10
+
+- Status remains `PARTIAL`: the existing measurement query was dry-run against the real local batch-23 history; no Actions row, source row or business data was changed.
+- Evidence: `docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md`.
+- Result: 6.052 unique SKU×store×day markdown candidates, 5.818 complete 56-day windows, and a selected 20 treated + 20 matched-control descriptive cohort. All selected windows are complete, all controls matched, and no selected line has unknown cost. Treated revenue changed 177.510 -> 465.870 RSD; controls 159.390 -> 265.870 RSD.
+- The output is explicitly an `istorijska proba, nije pilot`; no causal uplift or markdown recommendation is claimed. API pre/post remains critical/blocked for the bounded 2026-07-01..2026-08-05 request because its maturity boundary leaves the 2026-08-01 post-window incomplete and integrity evidence reports 7 bounded drifts.
+- Missing acceptance remains owner-approved prospective/pilot evidence and the RQ592 readiness decision. No duplicate queue task was registered.
+- Evidence state: synchronized; RQ602 remains `PARTIAL`.
 
 ### Evidence
 
