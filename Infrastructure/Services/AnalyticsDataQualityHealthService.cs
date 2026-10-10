@@ -1,4 +1,5 @@
 using Application.Analytics;
+using Domain.Model;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -14,7 +15,7 @@ public sealed class AnalyticsDataQualityHealthService
     /// <c>sales_30d</c> revenue impact is scoped by sale-header <c>prodaja_zaglavlje.data_origin</c> (RQ05 sales-revenue rule)
     /// over the shared finite interval <c>[@salesFromUtc, @salesToExclusiveUtc)</c>.
     /// <c>missingCost</c> in this top-offender query uses the article master fallback NabavnaCenaDin -> NabavnaCena; null/non-positive values are missing.
-    /// Revenue-window health below additionally prefers a positive sale-line cost before the same article fallback.
+    /// Revenue-window health below uses a sale-line cost only when its provenance is confirmed; otherwise it uses the same article fallback.
     /// </summary>
     public const string TopOffendersSql = """
             WITH sales_30d AS (
@@ -174,13 +175,16 @@ public sealed class AnalyticsDataQualityHealthService
                 ObservedPeriodFromUtc = g.Min(x => x.pz.DatumProdaje),
                 ObservedPeriodToUtc = g.Max(x => x.pz.DatumProdaje),
                 MissingCostRevenue = g.Sum(x =>
-                    (x.ps.NabavnaCena.HasValue && x.ps.NabavnaCena.Value > 0m
-                        ? x.ps.NabavnaCena
-                        : x.a.NabavnaCenaDin.HasValue && x.a.NabavnaCenaDin.Value > 0m
-                            ? x.a.NabavnaCenaDin
-                            : x.a.NabavnaCena.HasValue && x.a.NabavnaCena.Value > 0m
-                                ? x.a.NabavnaCena
-                                : null) == null
+                    (
+                        ((x.ps.PurchaseCostProvenance == PurchaseCostProvenance.SourceSaleLine
+                          || x.ps.PurchaseCostProvenance == PurchaseCostProvenance.ConfirmedCalculation)
+                         && x.ps.NabavnaCena.HasValue && x.ps.NabavnaCena.Value > 0m)
+                            ? x.ps.NabavnaCena
+                            : x.a.NabavnaCenaDin.HasValue && x.a.NabavnaCenaDin.Value > 0m
+                                ? x.a.NabavnaCenaDin
+                                : x.a.NabavnaCena.HasValue && x.a.NabavnaCena.Value > 0m
+                                    ? x.a.NabavnaCena
+                                    : null) == null
                         ? x.ps.Kolicina * x.ps.Cena
                         : 0m),
                 // Negative Access AutoNumber IDs with a Dobavljaci row are known suppliers.

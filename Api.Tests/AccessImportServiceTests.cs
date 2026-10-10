@@ -2,6 +2,7 @@ using Api.Services;
 using Api.Services.Access;
 using Api.Config;
 using Api.Models;
+using Domain.Model;
 using System.Data;
 using System.IO;
 using System.Reflection;
@@ -330,6 +331,30 @@ public sealed class AccessImportServiceTests
         var result = AccessImportService.ResolveProdajaLineNabavnaCena(row);
 
         Assert.Equal(123.45m, result);
+    }
+
+    [Fact]
+    public void ResolveProdajaLinePurchaseCost_RecordsSourceLineProvenance()
+    {
+        var schema = new AccessDataSchema(["NabavnaCenaDin", "NabavnaCena"]);
+        var row = new AccessDataRow(schema, [123.45m, 99m]);
+
+        var result = AccessImportService.ResolveProdajaLinePurchaseCost(row);
+
+        Assert.Equal(123.45m, result.Cost);
+        Assert.Equal(PurchaseCostProvenance.SourceSaleLine, result.Provenance);
+    }
+
+    [Fact]
+    public void ResolveProdajaLinePurchaseCost_DoesNotInventProvenanceForMissingOrZeroCost()
+    {
+        var schema = new AccessDataSchema(["NabavnaCenaDin"]);
+        var row = new AccessDataRow(schema, [0m]);
+
+        var result = AccessImportService.ResolveProdajaLinePurchaseCost(row);
+
+        Assert.Null(result.Cost);
+        Assert.Null(result.Provenance);
     }
 
     [Fact]

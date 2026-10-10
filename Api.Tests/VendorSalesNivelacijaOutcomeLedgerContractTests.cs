@@ -1,5 +1,6 @@
 using Api.Models;
 using Api.Services;
+using Domain.Model;
 using Xunit;
 
 namespace Api.Tests;
@@ -40,7 +41,7 @@ public sealed class VendorSalesNivelacijaOutcomeLedgerContractTests
     {
         var preLines = new[]
         {
-            new VendorSalesNivelacijaOutcomeSaleLineFact(1, 2, 100m, 40m, 70m, 65m),
+            new VendorSalesNivelacijaOutcomeSaleLineFact(1, 2, 100m, 40m, PurchaseCostProvenance.SourceSaleLine, 70m, 65m),
             new VendorSalesNivelacijaOutcomeSaleLineFact(2, 1, 90m, null, null, null)
         };
         var pre = VendorSalesNivelacijaOutcomeEvidencePolicy.CalculatePeriod(

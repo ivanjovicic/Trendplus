@@ -16,36 +16,33 @@ public sealed class PurchaseCostScaleReconciliationContractTests
         Assert.DoesNotContain("UPDATE ", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("DELETE ", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE ", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("master_nabavnacena_din_backfill", sql, StringComparison.Ordinal);
-        Assert.Contains("master_nabavnacena_backfill", sql, StringComparison.Ordinal);
+        Assert.Contains("master_nabavnacena_din_estimate", sql, StringComparison.Ordinal);
+        Assert.Contains("master_nabavnacena_estimate", sql, StringComparison.Ordinal);
+        Assert.Contains("purchase_cost_provenance", sql, StringComparison.Ordinal);
+        Assert.Contains("unknown_provenance", sql, StringComparison.Ordinal);
         Assert.Contains("source_sale_line", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("WHEN s.\"nabavna_cena\" > 0 THEN 'source_sale_line'", sql, StringComparison.Ordinal);
         Assert.Contains("ELSE NULL", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("d.\"Iznos\" > 0", sql, StringComparison.Ordinal);
     }
 }
 
 [Trait("Category", "Integration")]
-public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<PostgresContainerFixture>
+public sealed class PurchaseCostScaleReconciliationTests
 {
-    private readonly PostgresContainerFixture _fixture;
-
-    public PurchaseCostScaleReconciliationTests(PostgresContainerFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [Fact(DisplayName = "RQ601 report attributes source, inbound and master-backfill costs")]
     public async Task Report_AttributesCostOriginsWithoutTurningUnknownIntoZero()
     {
         var configuredPostgres = Environment.GetEnvironmentVariable("RQ601_TEST_POSTGRES");
-        if (string.IsNullOrWhiteSpace(configuredPostgres) && !_fixture.IsAvailable)
-        {
-            return;
-        }
+        Assert.True(
+            !string.IsNullOrWhiteSpace(configuredPostgres) || CanUseLocalPostgres(),
+            "RQ601 PostgreSQL certification requires a reachable PostgreSQL fixture; it must fail instead of silently passing when unavailable.");
 
         var databaseName = $"rq601_{Guid.NewGuid():N}";
         var adminBuilder = new NpgsqlConnectionStringBuilder(
-            string.IsNullOrWhiteSpace(configuredPostgres) ? _fixture.AdminConnectionString : configuredPostgres)
+            string.IsNullOrWhiteSpace(configuredPostgres)
+                ? LocalPostgresConnectionString
+                : configuredPostgres)
         {
             Database = "postgres",
             Pooling = false
@@ -94,12 +91,16 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
                 "id" integer PRIMARY KEY,
                 "id_prodaja" integer NOT NULL,
                 "id_artikal" integer NOT NULL,
-                "nabavna_cena" numeric
+                "nabavna_cena" numeric,
+                "purchase_cost_provenance" varchar(64)
             );
             INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "IDDobavljac", "NabavnaCena", "NabavnaCenaDin", "ProdajnaCena", "Kolicina") VALUES
                 (1, 'SOURCE-1', 'Source cost', 10, 245, NULL, 5700, 5),
-                (2, 'BACKFILL-2', 'Master fallback', 10, 245, NULL, 5700, 4),
-                (3, 'UNKNOWN-3', 'Unknown cost', 11, NULL, NULL, 5700, 3);
+                (2, 'BACKFILL-2', 'Master legacy backfill', 10, 245, NULL, 5700, 4),
+                (3, 'UNKNOWN-3', 'Unknown stored cost', 11, 245, NULL, 5700, 3),
+                (4, 'RSD-4', 'Master RSD estimate', 12, NULL, 310, 5700, 2),
+                (5, 'LEGACY-5', 'Master legacy estimate', 13, 245, NULL, 5700, 1),
+                (6, 'NULL-6', 'No cost', 14, NULL, NULL, 5700, 0);
             INSERT INTO "DnevnikPromena" ("Id", "TipPromene", "Datum", "Iznos", "ArtikalId", "Kolicina", "IDObjekat", "DataOrigin") VALUES
                 (11, 'Ulaz robe', '2026-08-01T10:00:00', 29000, 1, 10, 1, 'existing'),
                 (12, 'Ulaz robe', '2026-08-02T10:00:00', 11600, 2, 4, 1, 'existing'),
@@ -110,8 +111,21 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
                 (23, '2026-08-06T10:00:00', 1);
             INSERT INTO "prodaja_stavke" ("id", "id_prodaja", "id_artikal", "nabavna_cena") VALUES
                 (31, 21, 1, 3000),
-                (32, 22, 2, NULL),
-                (33, 23, 3, NULL);
+                (32, 22, 2, 245),
+                (33, 23, 3, 245),
+                (34, 24, 4, NULL),
+                (35, 25, 5, NULL),
+                (36, 26, 6, NULL);
+            UPDATE "prodaja_stavke"
+            SET "purchase_cost_provenance" = CASE "id"
+                WHEN 31 THEN 'source_sale_line'
+                WHEN 32 THEN 'master_nabavnacena_backfill'
+                ELSE NULL
+            END;
+            INSERT INTO "prodaja_zaglavlje" ("id", "datum_prodaje", "id_objekat") VALUES
+                (24, '2026-08-07T10:00:00', 1),
+                (25, '2026-08-08T10:00:00', 1),
+                (26, '2026-08-09T10:00:00', 1);
             """);
 
         var reportSql = LoadReportQuery();
@@ -129,20 +143,27 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
             rows[Convert.ToInt32(row["article_id"], CultureInfo.InvariantCulture)] = row;
         }
 
-        Assert.Equal(3, rows.Count);
+        Assert.Equal(6, rows.Count);
         Assert.Equal(245m, Convert.ToDecimal(rows[1]["master_cost_legacy"], CultureInfo.InvariantCulture));
         Assert.Equal(2900m, Convert.ToDecimal(rows[1]["latest_inbound_unit_cost"], CultureInfo.InvariantCulture));
         Assert.Equal(3000m, Convert.ToDecimal(rows[1]["latest_sale_line_cost"], CultureInfo.InvariantCulture));
         Assert.Equal("source_sale_line", rows[1]["sale_line_cost_origin"]);
+        Assert.Equal("source_sale_line", rows[1]["latest_sale_line_cost_provenance"]);
         Assert.True(Convert.ToBoolean(rows[1]["master_scale_suspicious"], CultureInfo.InvariantCulture));
 
         Assert.Equal(2900m, Convert.ToDecimal(rows[2]["latest_inbound_unit_cost"], CultureInfo.InvariantCulture));
         Assert.Equal(245m, Convert.ToDecimal(rows[2]["latest_sale_line_cost"], CultureInfo.InvariantCulture));
         Assert.Equal("master_nabavnacena_backfill", rows[2]["sale_line_cost_origin"]);
-        Assert.Null(rows[3]["latest_inbound_unit_cost"]);
-        Assert.Null(rows[3]["latest_sale_line_cost"]);
-        Assert.Equal("unknown", rows[3]["sale_line_cost_origin"]);
-        Assert.Null(rows[3]["stock_value_sale_line"]);
+        Assert.Equal("master_nabavnacena_backfill", rows[2]["latest_sale_line_cost_provenance"]);
+        Assert.Equal(245m, Convert.ToDecimal(rows[3]["latest_sale_line_cost"], CultureInfo.InvariantCulture));
+        Assert.Equal(245m, Convert.ToDecimal(rows[3]["latest_sale_line_cost_raw"], CultureInfo.InvariantCulture));
+        Assert.Equal("master_nabavnacena_estimate", rows[3]["sale_line_cost_origin"]);
+        Assert.Equal("unknown_provenance", rows[3]["latest_sale_line_cost_provenance"]);
+        Assert.Null(rows[6]["latest_sale_line_cost"]);
+        Assert.Equal("unknown_provenance", rows[6]["sale_line_cost_origin"]);
+        Assert.Equal("master_nabavnacena_din_estimate", rows[4]["sale_line_cost_origin"]);
+        Assert.Equal("master_nabavnacena_estimate", rows[5]["sale_line_cost_origin"]);
+        Assert.Null(rows[6]["stock_value_sale_line"]);
         }
         finally
         {
@@ -174,6 +195,23 @@ public sealed class PurchaseCostScaleReconciliationTests : IClassFixture<Postgre
         }
 
         throw new FileNotFoundException("Could not locate the RQ601 report script.");
+    }
+
+    private const string LocalPostgresConnectionString =
+        "Host=127.0.0.1;Port=5434;Database=postgres;Username=postgres;Password=postgres;Pooling=false;Timeout=5;Command Timeout=30";
+
+    private static bool CanUseLocalPostgres()
+    {
+        try
+        {
+            using var connection = new NpgsqlConnection(LocalPostgresConnectionString);
+            connection.Open();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql)

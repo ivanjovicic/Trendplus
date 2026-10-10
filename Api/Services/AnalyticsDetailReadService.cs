@@ -38,6 +38,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
         public int Kolicina { get; init; }
         public decimal Prihod { get; init; }
         public decimal? SaleLineCost { get; init; }
+        public string? SaleLineCostProvenance { get; init; }
         public decimal? ProductCostRsd { get; init; }
         public decimal? ProductCostLegacy { get; init; }
         public DateTime DatumProdaje { get; init; }
@@ -356,6 +357,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 Kolicina = ps.Kolicina,
                 Prihod = ps.Kolicina * ps.Cena,
                 SaleLineCost = ps.NabavnaCena,
+                SaleLineCostProvenance = ps.PurchaseCostProvenance,
                 ProductCostRsd = a.NabavnaCenaDin,
                 ProductCostLegacy = a.NabavnaCena,
                 DatumProdaje = pz.DatumProdaje,
@@ -1091,7 +1093,14 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 snapshotCost = resolvedSnapshotCost;
             }
 
-            margin.Add(row.Prihod, row.Kolicina, row.SaleLineCost, snapshotCost, row.ProductCostRsd, row.ProductCostLegacy);
+            margin.Add(
+                row.Prihod,
+                row.Kolicina,
+                row.SaleLineCost,
+                row.SaleLineCostProvenance,
+                snapshotCost,
+                row.ProductCostRsd,
+                row.ProductCostLegacy);
         }
 
         return margin.Build(totalRevenue);
@@ -1306,6 +1315,7 @@ public sealed class AnalyticsDetailReadService : IAnalyticsDetailReadService
                 row.Prihod,
                 row.Kolicina,
                 row.SaleLineCost,
+                row.SaleLineCostProvenance,
                 snapshotCost,
                 row.ProductCostRsd,
                 row.ProductCostLegacy);

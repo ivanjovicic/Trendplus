@@ -1581,6 +1581,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("nabavna_cena");
 
+                    b.Property<string>("PurchaseCostProvenance")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("purchase_cost_provenance");
+
                     b.Property<int?>("ShoeTypeIdAtSale")
                         .HasColumnType("integer")
                         .HasColumnName("shoe_type_id_at_sale");

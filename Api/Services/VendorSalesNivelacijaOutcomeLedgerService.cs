@@ -97,7 +97,7 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
                         || (normalizedDataScope == "imported" && header.DataOrigin == "access")
                         || (normalizedDataScope == "existing" && (header.DataOrigin == "existing" || header.DataOrigin == null || header.DataOrigin == "")))
                 select new SaleRow(line.Id, line.IdArtikal, header.DatumProdaje, header.IDObjekat,
-                    line.Kolicina, line.Cena, line.NabavnaCena, article.NabavnaCenaDin, article.NabavnaCena)
+                    line.Kolicina, line.Cena, line.NabavnaCena, line.PurchaseCostProvenance, article.NabavnaCenaDin, article.NabavnaCena)
             ).ToListAsync(ct);
 
             var activeBatchId = await db.AnalyticsCostSnapshotBatches.AsNoTracking()
@@ -175,6 +175,7 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
                 row.Quantity,
                 row.Price,
                 row.LineCost,
+                row.LineCostProvenance,
                 row.ProductCostRsd,
                 row.ProductCostLegacy)).ToArray(),
             snapshots,
@@ -200,5 +201,5 @@ internal static class VendorSalesNivelacijaOutcomeLedgerService
     private sealed record EventRow(long Id, DateTime Date, int? StoreId, int ArticleId, string ArticleName,
         int? SupplierId, string SupplierName, int? ShoeTypeId, string ShoeType, decimal? Depth);
     private sealed record SaleRow(int Id, int ArticleId, DateTime Date, int? StoreId, int Quantity,
-        decimal Price, decimal? LineCost, decimal? ProductCostRsd, decimal? ProductCostLegacy);
+        decimal Price, decimal? LineCost, string? LineCostProvenance, decimal? ProductCostRsd, decimal? ProductCostLegacy);
 }

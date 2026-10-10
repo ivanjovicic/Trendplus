@@ -37,6 +37,8 @@ public static class InventoryValuationSupport
                 where batch.Contains(ps.IdArtikal)
                       && ps.NabavnaCena.HasValue
                       && ps.NabavnaCena > 0m
+                      && (ps.PurchaseCostProvenance == PurchaseCostProvenance.SourceSaleLine
+                          || ps.PurchaseCostProvenance == PurchaseCostProvenance.ConfirmedCalculation)
                       && (!storeId.HasValue || pz.IDObjekat == storeId.Value)
                 group new { ps.IdArtikal, ps.NabavnaCena, pz.DatumProdaje } by ps.IdArtikal
                 into g

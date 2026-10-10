@@ -13,6 +13,11 @@ public sealed class ProdajaStavka : IAccessImportSourceLineage
     public int Kolicina { get; set; }
     public decimal Cena { get; set; }
     public decimal? NabavnaCena { get; set; }   // purchase price at time of sale (for GM analytics)
+    /// <summary>
+    /// Nullable for legacy rows created before provenance was persisted. Readers must
+    /// treat null/blank as <see cref="PurchaseCostProvenance.Unknown"/>.
+    /// </summary>
+    public string? PurchaseCostProvenance { get; set; }
     public int? SupplierIdAtSale { get; set; }
     public int? ShoeTypeIdAtSale { get; set; }
     public string AttributionBasis { get; set; } = SaleDimensionAttribution.Unknown;

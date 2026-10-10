@@ -1,4 +1,5 @@
 using Application.Analytics;
+using Domain.Model;
 using Xunit;
 
 namespace Api.Tests;
@@ -86,6 +87,47 @@ public sealed class AnalyticsMarginPolicyTests
         Assert.Equal(MarginCostSource.ProductFallbackLegacy, legacy.Source);
         Assert.Null(unavailable.UnitCost);
         Assert.Equal(MarginCostSource.None, unavailable.Source);
+    }
+
+    [Fact]
+    public void ResolveUnitCostWithSource_DoesNotCallUnprovenStoredCostHistorical()
+    {
+        var estimated = AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost: 820m,
+            saleLineCostProvenance: PurchaseCostProvenance.Unknown,
+            productCostRsd: 900m,
+            productCostLegacy: 950m);
+        var confirmed = AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost: 820m,
+            saleLineCostProvenance: PurchaseCostProvenance.SourceSaleLine,
+            productCostRsd: 900m,
+            productCostLegacy: 950m);
+        var unknown = AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost: 820m,
+            saleLineCostProvenance: PurchaseCostProvenance.Unknown,
+            productCostRsd: null,
+            productCostLegacy: null);
+
+        Assert.Equal(900m, estimated.UnitCost);
+        Assert.Equal(MarginCostSource.ProductFallbackRsd, estimated.Source);
+        Assert.Equal(820m, confirmed.UnitCost);
+        Assert.Equal(MarginCostSource.Historical, confirmed.Source);
+        Assert.Null(unknown.UnitCost);
+        Assert.Equal(MarginCostSource.None, unknown.Source);
+    }
+
+    [Fact]
+    public void BuildPositiveCostSqlWithProvenance_DoesNotTreatUnprovenStoredValueAsHistorical()
+    {
+        var sql = AnalyticsMarginPolicy.BuildPositiveCostSqlWithProvenance(
+            "sale_cost",
+            "sale_cost_origin",
+            "master_rsd",
+            "master_legacy");
+
+        Assert.Contains("sale_cost_origin IN ('source_sale_line', 'confirmed_calculation')", sql);
+        Assert.Contains("WHEN master_rsd > 0 THEN master_rsd", sql);
+        Assert.DoesNotContain("CASE WHEN sale_cost > 0 THEN sale_cost", sql);
     }
 
     [Fact]

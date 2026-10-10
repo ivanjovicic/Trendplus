@@ -154,6 +154,7 @@ public static class InsightStudioV2Endpoints
                         revenue = ps.Kolicina * ps.Cena,
                         units = ps.Kolicina,
                         saleLineCost = ps.NabavnaCena,
+                        saleLineCostProvenance = ps.PurchaseCostProvenance,
                         productCostRsd = a.NabavnaCenaDin,
                         productCostLegacy = a.NabavnaCena
                     }
@@ -172,7 +173,7 @@ public static class InsightStudioV2Endpoints
                             margin.Add(
                                 row.revenue,
                                 row.units,
-                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.productCostRsd, row.productCostLegacy));
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.saleLineCostProvenance, row.productCostRsd, row.productCostLegacy));
                         }
 
                         var marginSnapshot = margin.Build(totalRevenue);
@@ -473,7 +474,8 @@ public static class InsightStudioV2Endpoints
                         productCostLegacy = a.NabavnaCena,
                         revenue = ps.Kolicina * ps.Cena,
                         units = ps.Kolicina,
-                        saleLineCost = ps.NabavnaCena
+                        saleLineCost = ps.NabavnaCena,
+                        saleLineCostProvenance = ps.PurchaseCostProvenance
                     }
                 ).ToListAsync(ct);
 
@@ -499,7 +501,7 @@ public static class InsightStudioV2Endpoints
                             margin.Add(
                                 row.revenue,
                                 row.units,
-                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.productCostRsd, row.productCostLegacy));
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.saleLineCost, row.saleLineCostProvenance, row.productCostRsd, row.productCostLegacy));
                         }
 
                         var marginSnapshot = margin.Build(totalRevenue);
@@ -708,6 +710,7 @@ public static class InsightStudioV2Endpoints
                         Revenue = ps.Kolicina * ps.Cena,
                         Units = ps.Kolicina,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         Kategorija = a.Kategorija ?? "Ostalo",
@@ -744,7 +747,7 @@ public static class InsightStudioV2Endpoints
                             margin.Add(
                                 row.Revenue,
                                 row.Units,
-                                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.ProductCostRsd, row.ProductCostLegacy));
+                                AnalyticsMarginPolicy.ResolveUnitCost(row.SaleLineCost, row.SaleLineCostProvenance, row.ProductCostRsd, row.ProductCostLegacy));
                         }
 
                         var marginSnapshot = margin.Build(rev);

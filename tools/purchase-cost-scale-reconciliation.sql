@@ -26,6 +26,10 @@ inbound_ranked AS (
         d."IDObjekat" AS store_id,
         d."Datum" AS inbound_at,
         round(d."Iznos" / NULLIF(abs(d."Kolicina"), 0), 4) AS inbound_unit_cost,
+        CASE
+            WHEN d."TipPromene" = 'Ulaz robe' THEN 'inbound_receipt_signal'
+            ELSE 'non_authoritative_inbound_signal'
+        END AS inbound_cost_origin,
         row_number() OVER (
             PARTITION BY d."ArtikalId"
             ORDER BY d."Datum" DESC, d."Id" DESC
@@ -42,7 +46,7 @@ inbound_ranked AS (
       )
 ),
 latest_inbound AS (
-    SELECT article_id, store_id, inbound_at, inbound_unit_cost
+    SELECT article_id, store_id, inbound_at, inbound_unit_cost, inbound_cost_origin
     FROM inbound_ranked
     WHERE row_number = 1
 ),
@@ -52,17 +56,34 @@ sale_ranked AS (
         h."id_objekat" AS sale_store_id,
         h."datum_prodaje" AS sold_at,
         s."nabavna_cena" AS sale_line_cost_raw,
+        COALESCE(NULLIF(s."purchase_cost_provenance", ''), 'unknown_provenance') AS stored_sale_line_cost_provenance,
         CASE
-            WHEN s."nabavna_cena" > 0 THEN s."nabavna_cena"
+            WHEN s."nabavna_cena" > 0
+                 AND NULLIF(s."purchase_cost_provenance", '') IN (
+                     'source_sale_line',
+                     'confirmed_calculation',
+                     'master_nabavnacena_din_backfill',
+                     'master_nabavnacena_backfill'
+                 ) THEN s."nabavna_cena"
             WHEN a."NabavnaCenaDin" > 0 THEN a."NabavnaCenaDin"
             WHEN a."NabavnaCena" > 0 THEN a."NabavnaCena"
             ELSE NULL
         END AS sale_line_cost_effective,
         CASE
-            WHEN s."nabavna_cena" > 0 THEN 'source_sale_line'
-            WHEN a."NabavnaCenaDin" > 0 THEN 'master_nabavnacena_din_backfill'
-            WHEN a."NabavnaCena" > 0 THEN 'master_nabavnacena_backfill'
-            ELSE 'unknown'
+            WHEN s."nabavna_cena" IS NOT NULL
+                 AND s."nabavna_cena" > 0
+                 AND NULLIF(s."purchase_cost_provenance", '') IN ('source_sale_line', 'confirmed_calculation')
+                THEN NULLIF(s."purchase_cost_provenance", '')
+            WHEN s."nabavna_cena" IS NOT NULL
+                 AND s."nabavna_cena" > 0
+                 AND NULLIF(s."purchase_cost_provenance", '') IN (
+                     'master_nabavnacena_din_backfill',
+                     'master_nabavnacena_backfill'
+                 )
+                THEN NULLIF(s."purchase_cost_provenance", '')
+            WHEN a."NabavnaCenaDin" > 0 THEN 'master_nabavnacena_din_estimate'
+            WHEN a."NabavnaCena" > 0 THEN 'master_nabavnacena_estimate'
+            ELSE 'unknown_provenance'
         END AS sale_line_cost_origin,
         row_number() OVER (
             PARTITION BY s."id_artikal"
@@ -78,6 +99,7 @@ latest_sale AS (
         sale_store_id,
         sold_at,
         sale_line_cost_raw,
+        stored_sale_line_cost_provenance,
         sale_line_cost_effective,
         sale_line_cost_origin
     FROM sale_ranked
@@ -95,7 +117,9 @@ SELECT
     m.master_cost_rsd,
     i.inbound_unit_cost AS latest_inbound_unit_cost,
     i.inbound_at AS latest_inbound_at,
+    i.inbound_cost_origin AS latest_inbound_cost_origin,
     s.sale_line_cost_raw AS latest_sale_line_cost_raw,
+    s.stored_sale_line_cost_provenance AS latest_sale_line_cost_provenance,
     s.sale_line_cost_effective AS latest_sale_line_cost,
     s.sale_line_cost_origin,
     s.sold_at AS latest_sale_at,

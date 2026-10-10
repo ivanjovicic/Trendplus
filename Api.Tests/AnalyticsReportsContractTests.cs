@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Trendplus2.Dtos;
 using Trendplus2.Endpoints;
+using Domain.Model;
 using Xunit;
 
 namespace Api.Tests;
@@ -141,7 +142,7 @@ public sealed class AnalyticsReportsContractTests
             toUtc);
         var metricBasis = SupplierDecisionHubEndpoints.BuildSupplierReportMetricBasis(
         [
-            new SupplierDecisionHubEndpoints.SupplierReportSalesLine(1, 1_000m, 10, 40m, null, null, null),
+            new SupplierDecisionHubEndpoints.SupplierReportSalesLine(1, 1_000m, 10, 40m, null, null, null, 0, PurchaseCostProvenance.SourceSaleLine),
             new SupplierDecisionHubEndpoints.SupplierReportSalesLine(1, 500m, 5, null, null, null, null)
         ]);
 

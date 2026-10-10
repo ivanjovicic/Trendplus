@@ -255,6 +255,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.NabavnaCena).HasColumnName("nabavna_cena").HasColumnType("decimal(18,2)");
+                eb.Property(e => e.PurchaseCostProvenance).HasColumnName("purchase_cost_provenance").HasMaxLength(64);
                 eb.Property(e => e.SupplierIdAtSale).HasColumnName("supplier_id_at_sale");
                 eb.Property(e => e.ShoeTypeIdAtSale).HasColumnName("shoe_type_id_at_sale");
                 eb.Property(e => e.AttributionBasis).HasColumnName("attribution_basis").HasMaxLength(64).IsRequired().HasDefaultValue("unknown");

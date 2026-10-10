@@ -778,7 +778,8 @@ public static class SupplierDecisionHubEndpoints
         decimal? SnapshotCost,
         decimal? ProductCostRsd,
         decimal? ProductCostLegacy,
-        int SaleLineId = 0);
+        int SaleLineId = 0,
+        string? SaleLineCostProvenance = null);
 
     internal sealed record SupplierReportMetricBasis(
         bool HasEvidence,
@@ -813,6 +814,7 @@ public static class SupplierDecisionHubEndpoints
                 line.Revenue,
                 line.Quantity,
                 line.SaleLineCost,
+                line.SaleLineCostProvenance,
                 line.SnapshotCost,
                 line.ProductCostRsd,
                 line.ProductCostLegacy);
@@ -883,6 +885,7 @@ public static class SupplierDecisionHubEndpoints
                 Revenue = saleLine.Kolicina * saleLine.Cena,
                 saleLine.IdArtikal,
                 SaleLineCost = saleLine.NabavnaCena,
+                SaleLineCostProvenance = saleLine.PurchaseCostProvenance,
                 ProductCostRsd = article.NabavnaCenaDin,
                 ProductCostLegacy = article.NabavnaCena
             };
@@ -896,7 +899,8 @@ public static class SupplierDecisionHubEndpoints
             snapshotCostBySaleLineId.TryGetValue(row.SaleLineId, out var snapshotCost) ? snapshotCost : null,
             row.ProductCostRsd,
             row.ProductCostLegacy,
-            row.SaleLineId)));
+            row.SaleLineId,
+            row.SaleLineCostProvenance)));
     }
 
     internal static bool TryCreateFilters(

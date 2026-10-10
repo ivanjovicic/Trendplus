@@ -3890,7 +3890,11 @@ public static class CachedAnalyticsEndpoints
         }
 
         var safeTop = Math.Max(1, Math.Min(top, 100));
-        var resolvedUnitCostSql = AnalyticsMarginPolicy.BuildPositiveCostSql(@"ps.""nabavna_cena""", @"a.""NabavnaCenaDin""", @"a.""NabavnaCena""");
+        var resolvedUnitCostSql = AnalyticsMarginPolicy.BuildPositiveCostSqlWithProvenance(
+            @"ps.""nabavna_cena""",
+            @"ps.""purchase_cost_provenance""",
+            @"a.""NabavnaCenaDin""",
+            @"a.""NabavnaCena""");
 
         var sql = $"""
             WITH period_meta AS (
@@ -6152,7 +6156,9 @@ public static class CachedAnalyticsEndpoints
                   && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value)
                   && (!importedOnly || pz.DataOrigin == "access")
                   && (!existingOnly || pz.DataOrigin == "existing" || pz.DataOrigin == null || pz.DataOrigin == "")
-            let resolvedUnitCost = (ps.NabavnaCena ?? 0m) > 0m
+            let resolvedUnitCost = (ps.PurchaseCostProvenance == PurchaseCostProvenance.SourceSaleLine
+                    || ps.PurchaseCostProvenance == PurchaseCostProvenance.ConfirmedCalculation)
+                && (ps.NabavnaCena ?? 0m) > 0m
                 ? ps.NabavnaCena
                 : (a.NabavnaCenaDin ?? 0m) > 0m
                     ? a.NabavnaCenaDin

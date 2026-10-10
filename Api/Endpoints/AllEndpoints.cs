@@ -62,6 +62,7 @@ public static class AllEndpoints
         public int Kolicina { get; init; }
         public decimal Prihod { get; init; }
         public decimal? SaleLineCost { get; init; }
+        public string? SaleLineCostProvenance { get; init; }
         public decimal? ProductCostRsd { get; init; }
         public decimal? ProductCostLegacy { get; init; }
         public string? AttributionBasis { get; init; }
@@ -1318,6 +1319,7 @@ public static class AllEndpoints
                         ps.Kolicina,
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         AttributionBasis = ps.AttributionBasis
@@ -1329,6 +1331,7 @@ public static class AllEndpoints
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         AttributionBasis = ps.AttributionBasis
@@ -1344,6 +1347,7 @@ public static class AllEndpoints
                         Kolicina = g.Sum(x => x.Kolicina),
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
+                        SaleLineCostProvenance = g.Key.SaleLineCostProvenance,
                         ProductCostRsd = g.Key.ProductCostRsd,
                         ProductCostLegacy = g.Key.ProductCostLegacy,
                         AttributionBasis = g.Key.AttributionBasis
@@ -1471,6 +1475,7 @@ public static class AllEndpoints
                                 s.Prihod,
                                 s.Kolicina,
                                 s.SaleLineCost,
+                                s.SaleLineCostProvenance,
                                 snapshotCost,
                                 s.ProductCostRsd,
                                 s.ProductCostLegacy);
@@ -1527,6 +1532,7 @@ public static class AllEndpoints
                                         row.Prihod,
                                         row.Kolicina,
                                         row.SaleLineCost,
+                                        row.SaleLineCostProvenance,
                                         snapshotCost,
                                         row.ProductCostRsd,
                                         row.ProductCostLegacy);
@@ -1694,6 +1700,7 @@ public static class AllEndpoints
                         : (decimal?)null;
                     var resolvedCost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
                         s.SaleLineCost,
+                        s.SaleLineCostProvenance,
                         snapshotCost,
                         s.ProductCostRsd,
                         s.ProductCostLegacy);
@@ -2408,6 +2415,7 @@ public static class AllEndpoints
                         ps.Kolicina,
                         Prihod = ps.Kolicina * ps.Cena,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         AttributionBasis = ps.AttributionBasis
@@ -2418,6 +2426,7 @@ public static class AllEndpoints
                         ArtikalId = a.Id,
                         DatumProdaje = pz.DatumProdaje,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         AttributionBasis = ps.AttributionBasis
@@ -2432,6 +2441,7 @@ public static class AllEndpoints
                         Kolicina = g.Sum(x => x.Kolicina),
                         Prihod = g.Sum(x => x.Prihod),
                         SaleLineCost = g.Key.SaleLineCost,
+                        SaleLineCostProvenance = g.Key.SaleLineCostProvenance,
                         ProductCostRsd = g.Key.ProductCostRsd,
                         ProductCostLegacy = g.Key.ProductCostLegacy,
                         AttributionBasis = g.Key.AttributionBasis,
@@ -2517,6 +2527,7 @@ public static class AllEndpoints
                                 s.Prihod,
                                 s.Kolicina,
                                 s.SaleLineCost,
+                                s.SaleLineCostProvenance,
                                 snapshotCost2,
                                 s.ProductCostRsd,
                                 s.ProductCostLegacy);
@@ -3198,6 +3209,7 @@ public static class AllEndpoints
                         Boja = a.Boja,
                         ArtikalId = a.Id,
                         SaleLineCost = ps.NabavnaCena,
+                        SaleLineCostProvenance = ps.PurchaseCostProvenance,
                         ProductCostRsd = a.NabavnaCenaDin,
                         ProductCostLegacy = a.NabavnaCena,
                         DatumProdaje = pz.DatumProdaje
@@ -3210,6 +3222,7 @@ public static class AllEndpoints
                         Kolicina = g.Sum(x => x.ps.Kolicina),
                         Prihod = g.Sum(x => x.ps.Kolicina * x.ps.Cena),
                         SaleLineCost = g.Key.SaleLineCost,
+                        SaleLineCostProvenance = g.Key.SaleLineCostProvenance,
                         ProductCostRsd = g.Key.ProductCostRsd,
                         ProductCostLegacy = g.Key.ProductCostLegacy,
                         DatumProdaje = g.Key.DatumProdaje
@@ -3254,6 +3267,7 @@ public static class AllEndpoints
                                 s.Prihod,
                                 s.Kolicina,
                                 s.SaleLineCost,
+                                s.SaleLineCostProvenance,
                                 s.ProductCostRsd,
                                 s.ProductCostLegacy);
                         }

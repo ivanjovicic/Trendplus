@@ -469,6 +469,7 @@ public sealed class AnalyticsCostSnapshotService
                 ps.Kolicina,
                 Revenue = ps.Kolicina * ps.Cena,
                 SaleLineCost = ps.NabavnaCena,
+                SaleLineCostProvenance = ps.PurchaseCostProvenance,
                 ProductCostRsd = a.NabavnaCenaDin,
                 ProductCostLegacy = a.NabavnaCena
             } by new
@@ -477,6 +478,7 @@ public sealed class AnalyticsCostSnapshotService
                 SupplierId = ps.SupplierIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
+                SaleLineCostProvenance = ps.PurchaseCostProvenance,
                 ProductCostRsd = a.NabavnaCenaDin,
                 ProductCostLegacy = a.NabavnaCena
             }
@@ -488,6 +490,7 @@ public sealed class AnalyticsCostSnapshotService
                 g.Sum(x => x.Kolicina),
                 g.Sum(x => x.Revenue),
                 g.Key.SaleLineCost,
+                g.Key.SaleLineCostProvenance,
                 g.Key.ProductCostRsd,
                 g.Key.ProductCostLegacy))
             .ToListAsync(ct);
@@ -513,6 +516,7 @@ public sealed class AnalyticsCostSnapshotService
             line => line.ProdajaStavkaId,
             line => line.Quantity,
             line => line.Revenue,
+            line => line.SaleLineCostProvenance,
             line => line.SaleLineCost,
             line => line.ProductCostRsd,
             line => line.ProductCostLegacy,
@@ -563,6 +567,7 @@ public sealed class AnalyticsCostSnapshotService
                 ps.Kolicina,
                 Revenue = ps.Kolicina * ps.Cena,
                 SaleLineCost = ps.NabavnaCena,
+                SaleLineCostProvenance = ps.PurchaseCostProvenance,
                 ProductCostRsd = a.NabavnaCenaDin,
                 ProductCostLegacy = a.NabavnaCena
             } by new
@@ -571,6 +576,7 @@ public sealed class AnalyticsCostSnapshotService
                 ShoeTypeId = ps.ShoeTypeIdAtSale,
                 ArtikalId = a.Id,
                 SaleLineCost = ps.NabavnaCena,
+                SaleLineCostProvenance = ps.PurchaseCostProvenance,
                 ProductCostRsd = a.NabavnaCenaDin,
                 ProductCostLegacy = a.NabavnaCena
             }
@@ -582,6 +588,7 @@ public sealed class AnalyticsCostSnapshotService
                 g.Sum(x => x.Kolicina),
                 g.Sum(x => x.Revenue),
                 g.Key.SaleLineCost,
+                g.Key.SaleLineCostProvenance,
                 g.Key.ProductCostRsd,
                 g.Key.ProductCostLegacy))
             .ToListAsync(ct);
@@ -607,6 +614,7 @@ public sealed class AnalyticsCostSnapshotService
             line => line.ProdajaStavkaId,
             line => line.Quantity,
             line => line.Revenue,
+            line => line.SaleLineCostProvenance,
             line => line.SaleLineCost,
             line => line.ProductCostRsd,
             line => line.ProductCostLegacy,
@@ -734,6 +742,7 @@ public sealed class AnalyticsCostSnapshotService
         Func<TLine, int> saleLineIdSelector,
         Func<TLine, int> quantitySelector,
         Func<TLine, decimal> revenueSelector,
+        Func<TLine, string?> saleLineCostProvenanceSelector,
         Func<TLine, decimal?> saleLineCostSelector,
         Func<TLine, decimal?> productCostRsdSelector,
         Func<TLine, decimal?> productCostLegacySelector,
@@ -752,6 +761,7 @@ public sealed class AnalyticsCostSnapshotService
                 {
                     var revenue = revenueSelector(line);
                     var quantity = quantitySelector(line);
+                    var saleLineCostProvenance = saleLineCostProvenanceSelector(line);
                     var saleLineCost = saleLineCostSelector(line);
                     var productCostRsd = productCostRsdSelector(line);
                     var productCostLegacy = productCostLegacySelector(line);
@@ -763,8 +773,8 @@ public sealed class AnalyticsCostSnapshotService
                     }
 
                     totalRevenue += revenue;
-                    legacy.Add(revenue, quantity, saleLineCost, productCostRsd, productCostLegacy);
-                    snapshot.Add(revenue, quantity, saleLineCost, snapshotCost, productCostRsd, productCostLegacy);
+                    legacy.Add(revenue, quantity, saleLineCost, saleLineCostProvenance, productCostRsd, productCostLegacy);
+                    snapshot.Add(revenue, quantity, saleLineCost, saleLineCostProvenance, snapshotCost, productCostRsd, productCostLegacy);
                 }
 
                 return new ComparisonEntityMetric(
@@ -965,6 +975,7 @@ public sealed class AnalyticsCostSnapshotService
         int Quantity,
         decimal Revenue,
         decimal? SaleLineCost,
+        string? SaleLineCostProvenance,
         decimal? ProductCostRsd,
         decimal? ProductCostLegacy);
 
@@ -975,6 +986,7 @@ public sealed class AnalyticsCostSnapshotService
         int Quantity,
         decimal Revenue,
         decimal? SaleLineCost,
+        string? SaleLineCostProvenance,
         decimal? ProductCostRsd,
         decimal? ProductCostLegacy);
 

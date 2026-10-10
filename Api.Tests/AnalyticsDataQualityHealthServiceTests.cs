@@ -37,6 +37,55 @@ public sealed class AnalyticsDataQualityHealthServiceTests
     }
 
     [Fact]
+    public async Task CaptureAsync_DoesNotTreatUnprovenSaleLineCostAsConfirmedHistory()
+    {
+        await using var db = CreateContext();
+        var saleDate = DateTime.UtcNow.Date.AddHours(9);
+        db.Artikli.Add(new Artikli
+        {
+            Id = 1,
+            Naziv = "Artikal bez master troska",
+            Kolicina = 1,
+            NabavnaCena = null,
+            NabavnaCenaDin = null,
+            DataOrigin = "existing",
+            UpdatedAt = saleDate
+        });
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 1,
+            DatumProdaje = saleDate,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 1,
+            IdProdaja = 1,
+            IdArtikal = 1,
+            Kolicina = 1,
+            Cena = 100m,
+            NabavnaCena = 25m,
+            PurchaseCostProvenance = null
+        });
+        await db.SaveChangesAsync();
+
+        var service = new AnalyticsDataQualityHealthService(db);
+        var fromUtc = saleDate.Date;
+        var toExclusiveUtc = fromUtc.AddDays(1);
+
+        var unproven = await service.CaptureAsync(fromUtc, toExclusiveUtc, "all", CancellationToken.None);
+
+        Assert.Equal(100m, unproven.MissingCostRevenue);
+
+        db.ProdajaStavke.Single().PurchaseCostProvenance = PurchaseCostProvenance.SourceSaleLine;
+        await db.SaveChangesAsync();
+
+        var confirmed = await service.CaptureAsync(fromUtc, toExclusiveUtc, "all", CancellationToken.None);
+
+        Assert.Equal(0m, confirmed.MissingCostRevenue);
+    }
+
+    [Fact]
     public async Task CaptureAsync_ExplicitWindowUsesRequestedPeriodInsteadOfNowAnchoredLookback()
     {
         await using var db = CreateContext();

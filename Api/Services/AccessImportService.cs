@@ -5090,7 +5090,7 @@ using NpgsqlTypes;
             var id = I(row, "id", "idstavka", "lineid");
             var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
             var cena = D(row, "cena", "unitprice", "price") ?? 0m;
-            var nabavnaCena = ResolveProdajaLineNabavnaCena(row);
+            var resolvedPurchaseCost = ResolveProdajaLinePurchaseCost(row);
 
             var sourceId = id.GetValueOrDefault();
             if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
@@ -5103,8 +5103,11 @@ using NpgsqlTypes;
                 e.IdArtikal = idArtikal.Value;
                 e.Kolicina = qty;
                 e.Cena = cena;
-                if (nabavnaCena.HasValue)
-                    e.NabavnaCena = nabavnaCena.Value;
+                if (resolvedPurchaseCost.Cost.HasValue)
+                {
+                    e.NabavnaCena = resolvedPurchaseCost.Cost.Value;
+                    e.PurchaseCostProvenance = resolvedPurchaseCost.Provenance;
+                }
                 ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 ApplyAccessSourceLineage(e, "prodaja_stavke", row);
                 _trendDb.ProdajaStavke.Update(e);
@@ -5135,7 +5138,8 @@ using NpgsqlTypes;
                     IdArtikal = idArtikal.Value,
                     Kolicina = qty,
                     Cena = cena,
-                    NabavnaCena = nabavnaCena
+                    NabavnaCena = resolvedPurchaseCost.Cost,
+                    PurchaseCostProvenance = resolvedPurchaseCost.Provenance ?? PurchaseCostProvenance.Unknown
                 };
                 ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
                 ApplyAccessSourceLineage(newLine, "prodaja_stavke", row);
@@ -5393,7 +5397,7 @@ using NpgsqlTypes;
                 qty = 1;
 
             var cena = D(row, "prodajnacena", "cena", "unitprice", "price") ?? 0m;
-            var nabavnaCena = ResolveProdajaLineNabavnaCena(row);
+            var resolvedPurchaseCost = ResolveProdajaLinePurchaseCost(row);
             var idObjekat = I(row, "idobjekat", "storeid");
             var brojRacunaFromRow = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
 
@@ -5461,7 +5465,8 @@ using NpgsqlTypes;
                 IdArtikal = idArtikal.Value,
                 Kolicina = qty,
                 Cena = cena,
-                NabavnaCena = nabavnaCena
+                NabavnaCena = resolvedPurchaseCost.Cost,
+                PurchaseCostProvenance = resolvedPurchaseCost.Provenance ?? PurchaseCostProvenance.Unknown
             };
             ApplyAccessSourceLineage(line, "prodaja_stavke", row);
             if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
@@ -5538,7 +5543,12 @@ using NpgsqlTypes;
         var updated = await _trendDb.Database.ExecuteSqlRawAsync(
             """
             UPDATE prodaja_stavke ps
-            SET nabavna_cena = COALESCE(a."NabavnaCenaDin", a."NabavnaCena")
+            SET nabavna_cena = COALESCE(a."NabavnaCenaDin", a."NabavnaCena"),
+                purchase_cost_provenance = CASE
+                    WHEN a."NabavnaCenaDin" IS NOT NULL THEN 'master_nabavnacena_din_backfill'
+                    WHEN a."NabavnaCena" IS NOT NULL THEN 'master_nabavnacena_backfill'
+                    ELSE 'unknown_provenance'
+                END
             FROM prodaja_zaglavlje pz, "Artikli" a
             WHERE ps.id_prodaja = pz.id
               AND a."Id" = ps.id_artikal
@@ -10505,13 +10515,22 @@ using NpgsqlTypes;
 
     internal static decimal? ResolveProdajaLineNabavnaCena(AccessDataRow row)
     {
-        // Prefer explicit RSD field when available; fallback to legacy purchase-price aliases.
+        return ResolveProdajaLinePurchaseCost(row).Cost;
+    }
+
+    internal static (decimal? Cost, string? Provenance) ResolveProdajaLinePurchaseCost(AccessDataRow row)
+    {
+        // A value explicitly present on the Access sale-line is the only sale-line
+        // source that can be called historical here. Master prices are attributed
+        // separately by the null-cost backfill below.
         var rsd = D(row, "nabavnacenadin", "purchasepricersd");
         if (rsd is > 0)
-            return rsd.Value;
+            return (rsd.Value, PurchaseCostProvenance.SourceSaleLine);
 
         var legacy = D(row, "nabavnacena", "purchaseprice", "cost", "nc");
-        return legacy is > 0 ? legacy.Value : null;
+        return legacy is > 0
+            ? (legacy.Value, PurchaseCostProvenance.SourceSaleLine)
+            : (null, null);
     }
 
     internal static int? ConvertToInt(object? v)

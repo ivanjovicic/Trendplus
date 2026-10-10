@@ -1,3 +1,5 @@
+using Domain.Model;
+
 namespace Application.Analytics;
 
 public enum MarginCostSource
@@ -69,11 +71,43 @@ public sealed class MarginAccumulator
         decimal revenue,
         decimal quantity,
         decimal? saleLineCost,
+        string? saleLineCostProvenance,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+    {
+        Add(revenue, quantity, AnalyticsMarginPolicy.ResolveUnitCostWithSource(
+            saleLineCost,
+            saleLineCostProvenance,
+            productCostRsd,
+            productCostLegacy));
+    }
+
+    public void Add(
+        decimal revenue,
+        decimal quantity,
+        decimal? saleLineCost,
         decimal? snapshotCost,
         decimal? productCostRsd,
         decimal? productCostLegacy)
     {
         Add(revenue, quantity, AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(saleLineCost, snapshotCost, productCostRsd, productCostLegacy));
+    }
+
+    public void Add(
+        decimal revenue,
+        decimal quantity,
+        decimal? saleLineCost,
+        string? saleLineCostProvenance,
+        decimal? snapshotCost,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+    {
+        Add(revenue, quantity, AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
+            saleLineCost,
+            saleLineCostProvenance,
+            snapshotCost,
+            productCostRsd,
+            productCostLegacy));
     }
 
     public void Add(decimal revenue, decimal quantity, ResolvedUnitCost resolvedCost)
@@ -199,6 +233,31 @@ public static class AnalyticsMarginPolicy
         return new ResolvedUnitCost(null, MarginCostSource.None);
     }
 
+    public static ResolvedUnitCost ResolveUnitCostWithSource(
+        decimal? saleLineCost,
+        string? saleLineCostProvenance,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+    {
+        if (PurchaseCostProvenance.IsConfirmed(saleLineCostProvenance)
+            && IsReliableCost(saleLineCost))
+        {
+            return new ResolvedUnitCost(saleLineCost, MarginCostSource.Historical);
+        }
+
+        if (IsReliableCost(productCostRsd))
+        {
+            return new ResolvedUnitCost(productCostRsd, MarginCostSource.ProductFallbackRsd);
+        }
+
+        if (IsReliableCost(productCostLegacy))
+        {
+            return new ResolvedUnitCost(productCostLegacy, MarginCostSource.ProductFallbackLegacy);
+        }
+
+        return new ResolvedUnitCost(null, MarginCostSource.None);
+    }
+
     public static ResolvedUnitCost ResolveUnitCostWithSnapshot(
         decimal? saleLineCost,
         decimal? snapshotCost,
@@ -228,6 +287,37 @@ public static class AnalyticsMarginPolicy
         return new ResolvedUnitCost(null, MarginCostSource.None);
     }
 
+    public static ResolvedUnitCost ResolveUnitCostWithSnapshot(
+        decimal? saleLineCost,
+        string? saleLineCostProvenance,
+        decimal? snapshotCost,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+    {
+        if (PurchaseCostProvenance.IsConfirmed(saleLineCostProvenance)
+            && IsReliableCost(saleLineCost))
+        {
+            return new ResolvedUnitCost(saleLineCost, MarginCostSource.Historical);
+        }
+
+        if (IsReliableCost(snapshotCost))
+        {
+            return new ResolvedUnitCost(snapshotCost, MarginCostSource.SnapshotFallback);
+        }
+
+        if (IsReliableCost(productCostRsd))
+        {
+            return new ResolvedUnitCost(productCostRsd, MarginCostSource.ProductFallbackRsd);
+        }
+
+        if (IsReliableCost(productCostLegacy))
+        {
+            return new ResolvedUnitCost(productCostLegacy, MarginCostSource.ProductFallbackLegacy);
+        }
+
+        return new ResolvedUnitCost(null, MarginCostSource.None);
+    }
+
     public static decimal? ResolveUnitCost(
         decimal? saleLineCost,
         decimal? productCostRsd,
@@ -235,6 +325,17 @@ public static class AnalyticsMarginPolicy
     {
         return ResolveUnitCostWithSource(saleLineCost, productCostRsd, productCostLegacy).UnitCost;
     }
+
+    public static decimal? ResolveUnitCost(
+        decimal? saleLineCost,
+        string? saleLineCostProvenance,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+        => ResolveUnitCostWithSource(
+            saleLineCost,
+            saleLineCostProvenance,
+            productCostRsd,
+            productCostLegacy).UnitCost;
 
     public static decimal? ResolveProductUnitCost(
         decimal? productCostRsd,
@@ -297,6 +398,21 @@ public static class AnalyticsMarginPolicy
         }
 
         return $"CASE {string.Join(" ", clauses)} ELSE NULL END";
+    }
+
+    public static string BuildPositiveCostSqlWithProvenance(
+        string saleLineCost,
+        string saleLineCostProvenance,
+        params string[] fallbackCandidates)
+    {
+        if (string.IsNullOrWhiteSpace(saleLineCost)
+            || string.IsNullOrWhiteSpace(saleLineCostProvenance))
+        {
+            throw new ArgumentException("Sale-line cost and provenance SQL expressions are required.");
+        }
+
+        var fallback = BuildPositiveCostSql(fallbackCandidates);
+        return $"CASE WHEN {saleLineCostProvenance} IN ('source_sale_line', 'confirmed_calculation') AND {saleLineCost} > 0 THEN {saleLineCost} ELSE {fallback} END";
     }
 }
 

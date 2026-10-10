@@ -7,8 +7,21 @@ public sealed record VendorSalesNivelacijaOutcomeSaleLineFact(
     int Quantity,
     decimal Price,
     decimal? SaleLineCost,
+    string? SaleLineCostProvenance,
     decimal? ProductCostRsd,
-    decimal? ProductCostLegacy);
+    decimal? ProductCostLegacy)
+{
+    public VendorSalesNivelacijaOutcomeSaleLineFact(
+        int saleLineId,
+        int quantity,
+        decimal price,
+        decimal? saleLineCost,
+        decimal? productCostRsd,
+        decimal? productCostLegacy)
+        : this(saleLineId, quantity, price, saleLineCost, null, productCostRsd, productCostLegacy)
+    {
+    }
+}
 
 public sealed record VendorSalesNivelacijaOutcomePeriodEvidence(
     decimal? Units,
@@ -39,6 +52,7 @@ public static class VendorSalesNivelacijaOutcomeEvidencePolicy
             snapshotCosts.TryGetValue(row.SaleLineId, out var snapshot);
             var cost = AnalyticsMarginPolicy.ResolveUnitCostWithSnapshot(
                 row.SaleLineCost,
+                row.SaleLineCostProvenance,
                 snapshot,
                 row.ProductCostRsd,
                 row.ProductCostLegacy).UnitCost;
