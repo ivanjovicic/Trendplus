@@ -22,17 +22,19 @@ public sealed class OutboxProcessorWorkerConcurrencyTests : IClassFixture<Postgr
     {
         var worker = ReadRepoFile("Workers/OutboxProcessorWorker.cs");
         var analyticsContext = ReadRepoFile("Infrastructure/DbContexts/AnalyticsDbContext.cs");
-        var migration = ReadRepoFile("Infrastructure/Migrations/AnalyticsDb/20260909190000_AddSalesLineFactIdempotency.cs");
+        var migration = ReadRepoFile("Infrastructure/Migrations/AnalyticsDb/20261010150000_KeySalesLineFactsBySourceLine.cs");
 
         Assert.Contains("FOR UPDATE SKIP LOCKED", worker, StringComparison.Ordinal);
         Assert.Contains("BeginTransactionAsync(ct)", worker, StringComparison.Ordinal);
         Assert.Contains("await transaction.CommitAsync(ct);", worker, StringComparison.Ordinal);
         Assert.Contains("await transaction.RollbackAsync(CancellationToken.None);", worker, StringComparison.Ordinal);
-        Assert.Contains("new { e.SaleId, e.ProductId }).IsUnique()", analyticsContext, StringComparison.Ordinal);
-        Assert.Contains("IX_SalesLineFacts_ProductId_SaleId", migration, StringComparison.Ordinal);
-        Assert.Contains("IX_SalesLineFacts_SaleId_ProductId", migration, StringComparison.Ordinal);
-        Assert.Contains("unique: true", migration, StringComparison.Ordinal);
-        Assert.Contains("duplicate (SaleId, ProductId)", migration, StringComparison.Ordinal);
+        // Line idempotency is keyed by the source receipt line; (SaleId, ProductId) is a
+        // non-unique lookup because one receipt can repeat a product on several lines.
+        Assert.DoesNotContain("new { e.SaleId, e.ProductId }).IsUnique()", analyticsContext, StringComparison.Ordinal);
+        Assert.Contains("new { e.SaleId, e.SourceTableKey, e.SourceLineId }", analyticsContext, StringComparison.Ordinal);
+        Assert.Contains("CREATE UNIQUE INDEX IF NOT EXISTS \"UX_SalesLineFacts_SaleId_SourceLine\"", migration, StringComparison.Ordinal);
+        Assert.Contains("WHERE \"SourceLineId\" IS NOT NULL", migration, StringComparison.Ordinal);
+        Assert.Contains("CREATE INDEX IF NOT EXISTS \"IX_SalesLineFacts_SaleId_ProductId\"", migration, StringComparison.Ordinal);
     }
 
     [Fact]

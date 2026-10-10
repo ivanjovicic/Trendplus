@@ -1398,6 +1398,13 @@ namespace Infrastructure.Migrations.AnalyticsDb
                     b.Property<int>("SaleId")
                         .HasColumnType("integer");
 
+                    b.Property<long?>("SourceLineId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceTableKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("numeric(18,2)");
 
@@ -1405,8 +1412,12 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.HasIndex("SaleId");
 
-                    b.HasIndex("SaleId", "ProductId")
-                        .IsUnique();
+                    b.HasIndex("SaleId", "ProductId");
+
+                    b.HasIndex("SaleId", "SourceTableKey", "SourceLineId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SalesLineFacts_SaleId_SourceLine")
+                        .HasFilter("\"SourceLineId\" IS NOT NULL");
 
                     b.ToTable("SalesLineFacts", (string)null);
                 });

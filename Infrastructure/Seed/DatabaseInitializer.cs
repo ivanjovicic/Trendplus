@@ -3169,8 +3169,9 @@ public static class DatabaseInitializer
                     DataOrigin = sale.DataOrigin
                 });
 
-                foreach (var line in sale.Stavke)
+                foreach (var line in sale.Stavke.OrderBy(s => s.Id))
                 {
+                    var (sourceTableKey, sourceLineId) = SalesLineSourceIdentity.Resolve(line.Id, line.SourceTableKey, line.SourceRowId);
                     analyticsDb.SalesLineFacts.Add(new SalesLineFact
                     {
                         SaleId = sale.Id,
@@ -3179,7 +3180,9 @@ public static class DatabaseInitializer
                         UnitPrice = line.Cena,
                         LineTotal = line.Kolicina * line.Cena,
                         NabavnaCena = line.NabavnaCena,
-                        DataOrigin = sale.DataOrigin
+                        DataOrigin = sale.DataOrigin,
+                        SourceTableKey = sourceTableKey,
+                        SourceLineId = sourceLineId
                     });
                 }
             }

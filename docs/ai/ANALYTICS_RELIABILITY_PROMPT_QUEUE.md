@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none after RQ603 completion and full post-delivery RQ/SQL recovery; see `.ai/runs/2026-10-09-RQ603-evidence.md` for the blocker matrix and exact unblock events. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: none after RQ603 completion and full post-delivery RQ/SQL recovery (RQ604 is PARTIAL: implemented as a local commit, awaiting owner push approval); see `.ai/runs/2026-10-09-RQ603-evidence.md` for the blocker matrix and exact unblock events. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30738,6 +30738,78 @@ Navigation entries and labels only; every route stays reachable by URL and from 
 - Residual risk: production certification and business validation remain open. Actions `37982503218` (Analytics Quality Gates) and `37982503245` (Planning Governance) were `in_progress` when inspected.
 - Post-close routing: no dependency on RQ603 changed and no remaining active RQ/SQL candidate is READY; durable blocker matrix and Zero-READY proof are in `.ai/runs/2026-10-09-RQ603-evidence.md`.
 - Prompt defect / scope repair: kept `/analytics` in a separate primary group after a focused test exposed nested-route active highlighting; no route, sidebar rendering mechanism or business logic was changed.
+
+### Dependencies
+
+Owner decision satisfied; no STAB16 dependency.
+
+## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
+
+Status: PARTIAL
+Ready after: owner decision 2026-10-10 15:38 (key becomes (SaleId, SourceLineId) from `source_row_id`).
+Priority: P1
+Type: backend/data-integrity/migration/tests
+Feature family: sales-line-fact-identity
+Parallel-safe: no (`Api/Services/AccessImportService.cs`, Analytics EF migrations)
+Owner: Analytics Backend
+Owned paths: SalesLineFacts model/config/migrations, SalesLineFacts writers (Access fast sync, admin sync endpoint, startup backfill, outbox projection)
+Avoid paths: analytics metric formulas, SalesFacts header semantics
+Commit suggestion: `fix(analytics): key SalesLineFacts by source receipt line`
+
+### Problem
+
+`20260909190000_AddSalesLineFactIdempotency` made (SaleId, ProductId) unique and aborted migration when duplicates existed. One receipt can legitimately carry the same product on several `prodaja_stavke` lines, so the key rejects real data and blocks databases holding repeated lines from migrating.
+
+### Evidence
+
+- Local DB 2026-10-10 (read-only): 37,647 duplicate (SaleId, ProductId) groups; after removing the fully doubled Access load, thousands of genuine repeated-product receipt lines remain.
+- `prodaja_stavke` lineage is unique on (source_table_key, source_row_id) (`ux_prodaja_stavke_source_row`); source_row_id alone is not guaranteed unique across source tables.
+
+### Scope
+
+SalesLineFacts identity, its migrations and every writer. Aggregations that SUM over lines are unchanged.
+
+### Read first
+
+- `Infrastructure/Migrations/AnalyticsDb/20260909190000_AddSalesLineFactIdempotency.cs`, `AccessImportService.ReplaceSalesLineFactsBulkAsync`, `OutboxProcessorWorker` sale projection
+
+### Do
+
+1. Store (SourceTableKey, SourceLineId); Access lines use (source_table_key, source_row_id), Trendplus/POS lines use namespace `trendplus.prodaja_stavke` + prodaja_stavke.id.
+2. Idempotent migration: add columns, make (SaleId, ProductId) non-unique, add partial unique (SaleId, SourceTableKey, SourceLineId) WHERE SourceLineId IS NOT NULL; make 20260909190000 non-fatal. No backfill (separate analytics DB, no reliable join).
+3. Carry identity through every writer; outbox consumes one source line per payload line.
+
+### Tests
+
+- Repeated product on one receipt -> two rows, totals equal the sum; re-import does not double; migration applies over repeated lines; new migration SQL is idempotent; legacy migration no longer raises.
+
+### Acceptance
+
+- Every source receipt line maps to exactly one SalesLineFacts row, re-import is idempotent, and databases with repeated lines migrate.
+
+### Completion note
+
+- Date: 2026-10-10
+- Status: PARTIAL
+- Completion: implemented and validated as a local commit in worktree `Trendplus2-grok`; not pushed pending owner approval.
+- Changed files:
+- `Domain/Model/SalesLineFact.cs`, `Domain/Model/SalesLineSourceIdentity.cs` (new)
+- `Infrastructure/DbContexts/AnalyticsDbContext.cs`, `Infrastructure/Migrations/AnalyticsDb/AnalyticsDbContextModelSnapshot.cs`
+- `Infrastructure/Migrations/AnalyticsDb/20261010150000_KeySalesLineFactsBySourceLine.cs` (new), `Infrastructure/Migrations/AnalyticsDb/20260909190000_AddSalesLineFactIdempotency.cs`
+- `Api/Services/AccessImportService.cs`, `Api/Endpoints/AllEndpoints.cs`, `Infrastructure/Seed/DatabaseInitializer.cs`, `Workers/OutboxProcessorWorker.cs`
+- `Api.Tests/SalesLineFactSourceLineKeyTests.cs` (new), `Api.Tests/OutboxProcessorWorkerConcurrencyTests.cs`
+- Contract/runtime behavior changed: SalesLineFacts gains nullable SourceTableKey/SourceLineId; (SaleId, ProductId) is no longer unique; uniqueness is per source line. Existing rows keep NULL identity until re-imported.
+- Checks run: backend build; `SalesLineFactSourceLineKeyTests` (6, incl. Testcontainers migration-over-repeated-lines + double re-import); `OutboxProcessorWorkerConcurrencyTests`; `DatabaseMigrationBootstrapLifecycleSmokeTests` + `DatabaseInitializerP0IntegrationTests` (Testcontainers); full Api.Tests suite with Testcontainers disabled (1907 passed, 42 skipped, 2 known CRLF-only DatabaseMigrationOwnershipTests failures); analytics guardrails; queue/planning/agent validators; `git diff --check`.
+- Checks not run: full suite with Testcontainers locally (C: disk space); production migration run.
+- Run log: `.ai/runs/2026-10-10-RQ604-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main (pending owner push approval)
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none within the local acceptance.
+- Follow-up: push after owner approval, then close to DONE with CI evidence; Ivan's local DB needs the documented cleanup of the doubled Access load.
+- Residual risk: index build on production SalesLineFacts runs non-concurrently inside the migration transaction (brief write lock during startup migration).
+- Prompt defect / scope repair: `20260531103000_AlignAnalyticsRefreshRunContract` has no [Migration] attribute (not discovered by EF); left untouched and reported.
 
 ### Dependencies
 

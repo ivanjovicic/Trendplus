@@ -7413,21 +7413,47 @@ using NpgsqlTypes;
         int? IDObjekat,
         string? NacinPlacanja);
 
-    private sealed record SaleLineSourceSyncRow(
+    internal sealed record SaleLineSourceSyncRow(
+        int Id,
         int IdProdaja,
         int IdArtikal,
         int Kolicina,
         decimal Cena,
-        decimal? NabavnaCena);
+        decimal? NabavnaCena,
+        string? SourceTableKey,
+        long? SourceRowId);
 
-    private sealed record SalesLineFactSyncRow(
+    internal sealed record SalesLineFactSyncRow(
         int SaleId,
         int ProductId,
         int Qty,
         decimal UnitPrice,
         decimal LineTotal,
         decimal? NabavnaCena,
-        string DataOrigin);
+        string DataOrigin,
+        string? SourceTableKey = null,
+        long? SourceLineId = null);
+
+    // One fact row per source receipt line; repeated products on a receipt stay separate.
+    internal static List<SalesLineFactSyncRow> MapSalesLineFacts(IEnumerable<SaleLineSourceSyncRow> lines)
+        => lines
+            .OrderBy(x => x.IdProdaja)
+            .ThenBy(x => x.Id)
+            .Select(x =>
+            {
+                var (sourceTableKey, sourceLineId) = SalesLineSourceIdentity.Resolve(x.Id, x.SourceTableKey, x.SourceRowId);
+                return new SalesLineFactSyncRow(
+                    x.IdProdaja,
+                    x.IdArtikal,
+                    x.Kolicina,
+                    x.Cena,
+                    x.Kolicina * x.Cena,
+                    x.NabavnaCena,
+                    "access",
+                    sourceTableKey,
+                    sourceLineId);
+            })
+            .ToList();
 
     private sealed record SupplierDimSyncRow(
         int SupplierId,
@@ -7739,23 +7765,17 @@ using NpgsqlTypes;
                 .AsNoTracking()
                 .Where(x => saleIds.Contains(x.IdProdaja))
                 .Select(x => new SaleLineSourceSyncRow(
+                    x.Id,
                     x.IdProdaja,
                     x.IdArtikal,
                     x.Kolicina,
                     x.Cena,
-                    x.NabavnaCena))
+                    x.NabavnaCena,
+                    x.SourceTableKey,
+                    x.SourceRowId))
                 .ToListAsync(ct);
 
-        var salesLineFacts = salesLinesRaw
-            .Select(x => new SalesLineFactSyncRow(
-                x.IdProdaja,
-                x.IdArtikal,
-                x.Kolicina,
-                x.Cena,
-                x.Kolicina * x.Cena,
-                x.NabavnaCena,
-                "access"))
-            .ToList();
+        var salesLineFacts = MapSalesLineFacts(salesLinesRaw);
 
         var salesLineBySale = salesLineFacts
             .GroupBy(x => x.SaleId)
@@ -7966,7 +7986,7 @@ using NpgsqlTypes;
             if (payload.SalesFacts.Count > 0)
                 await UpsertSalesFactsBulkAsync(connection, transaction, payload.SalesFacts, ct);
             if (payload.SaleIds.Count > 0)
-                await ReplaceSalesLineFactsBulkAsync(connection, transaction, payload.SaleIds, payload.SalesLineFacts, ct);
+                await ReplaceSalesLineFactsBulkAsync(connection, transaction, payload.SaleIds, payload.SalesLineFacts, _logger, ct);
             if (payload.Suppliers.Count > 0)
                 await UpsertSuppliersDimBulkAsync(connection, transaction, payload.Suppliers, ct);
             if (payload.Seasons.Count > 0)
@@ -8300,11 +8320,14 @@ using NpgsqlTypes;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
-    private async Task ReplaceSalesLineFactsBulkAsync(
+    // Delete-then-insert per sale keeps re-imports idempotent: every source line of a
+    // re-imported sale is written exactly once, regardless of repeated products.
+    internal static async Task ReplaceSalesLineFactsBulkAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         IReadOnlyCollection<int> saleIds,
         IReadOnlyList<SalesLineFactSyncRow> rows,
+        ILogger logger,
         CancellationToken ct)
     {
         if (saleIds.Count == 0)
@@ -8330,13 +8353,15 @@ using NpgsqlTypes;
                 "UnitPrice" numeric(18,2) NOT NULL,
                 "LineTotal" numeric(18,2) NOT NULL,
                 "NabavnaCena" numeric(18,2) NULL,
-                "DataOrigin" text NOT NULL
+                "DataOrigin" text NOT NULL,
+                "SourceTableKey" text NULL,
+                "SourceLineId" bigint NULL
             ) ON COMMIT DROP;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, logger);
 
         using (var importer = connection.BeginBinaryImport("""
-            COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin")
+            COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId")
             FROM STDIN (FORMAT BINARY)
             """))
         {
@@ -8350,17 +8375,22 @@ using NpgsqlTypes;
                 importer.Write(row.LineTotal, NpgsqlDbType.Numeric);
                 WriteNullableDecimal(importer, row.NabavnaCena);
                 importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.SourceTableKey);
+                if (row.SourceLineId.HasValue)
+                    importer.Write(row.SourceLineId.Value, NpgsqlDbType.Bigint);
+                else
+                    importer.WriteNull();
             }
 
             importer.Complete();
         }
 
         const string insertSql = """
-            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin")
-            SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin"
+            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId")
+            SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId"
             FROM temp_sales_line_facts;
             """;
-        await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct, _logger);
+        await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct, logger);
     }
 
     private async Task UpsertSuppliersDimBulkAsync(

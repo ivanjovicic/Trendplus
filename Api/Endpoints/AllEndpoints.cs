@@ -6521,15 +6521,18 @@ public static class AllEndpoints
 
                     newSalesFacts.Add(fact);
 
-                    foreach (var line in sale.Stavke)
+                    foreach (var line in sale.Stavke.OrderBy(s => s.Id))
                     {
+                        var (sourceTableKey, sourceLineId) = SalesLineSourceIdentity.Resolve(line.Id, line.SourceTableKey, line.SourceRowId);
                         newSalesLineFacts.Add(new SalesLineFact
                         {
                             SaleId = sale.Id,
                             ProductId = line.IdArtikal,
                             Qty = line.Kolicina,
                             UnitPrice = line.Cena,
-                            LineTotal = line.Kolicina * line.Cena
+                            LineTotal = line.Kolicina * line.Cena,
+                            SourceTableKey = sourceTableKey,
+                            SourceLineId = sourceLineId
                         });
                     }
 

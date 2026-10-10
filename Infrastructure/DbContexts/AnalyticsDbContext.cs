@@ -109,9 +109,15 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.LineTotal).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.NabavnaCena).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.Property(e => e.SourceTableKey).HasMaxLength(128);
 
                 entity.HasIndex(e => e.SaleId);
-                entity.HasIndex(e => new { e.SaleId, e.ProductId }).IsUnique();
+                // Not unique: one receipt can carry the same product on several lines.
+                entity.HasIndex(e => new { e.SaleId, e.ProductId });
+                entity.HasIndex(e => new { e.SaleId, e.SourceTableKey, e.SourceLineId })
+                    .HasDatabaseName("UX_SalesLineFacts_SaleId_SourceLine")
+                    .IsUnique()
+                    .HasFilter("\"SourceLineId\" IS NOT NULL");
             });
 
             modelBuilder.Entity<SuppliersDim>(entity =>

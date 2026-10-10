@@ -329,14 +329,13 @@ namespace Workers
                 .AsNoTracking()
                 .Where(x => x.IdProdaja == payload.ProdajaId)
                 .OrderBy(x => x.Id)
-                .Select(x => new { x.IdArtikal, x.NabavnaCena })
+                .Select(x => new SaleSourceLine(x.Id, x.IdArtikal, x.NabavnaCena, x.SourceTableKey, x.SourceRowId))
                 .ToListAsync(ct);
 
-            var costQueues = saleLineCosts
-                .GroupBy(x => x.IdArtikal)
-                .ToDictionary(
-                    x => x.Key,
-                    x => new Queue<decimal?>(x.Select(y => y.NabavnaCena)));
+            // Per-product queue of source lines in prodaja_stavke order. Each payload line
+            // consumes exactly one source line of its product, so repeated products on one
+            // receipt map to distinct source lines (identity and cost) instead of colliding.
+            var sourceLineQueues = BuildSourceLineQueues(saleLineCosts);
 
             var productIds = payload.Stavke?
                 .Select(x => x.IdArtikal)
@@ -364,14 +363,11 @@ namespace Workers
             {
                 foreach (var s in payload.Stavke)
                 {
-                    decimal? resolvedCost = s.NabavnaCena;
-
-                    if (!resolvedCost.HasValue
-                        && costQueues.TryGetValue(s.IdArtikal, out var queue)
-                        && queue.Count > 0)
-                    {
-                        resolvedCost = queue.Dequeue();
-                    }
+                    var sourceLine = DequeueSourceLine(sourceLineQueues, s.IdArtikal);
+                    decimal? resolvedCost = s.NabavnaCena ?? sourceLine?.NabavnaCena;
+                    var (sourceTableKey, sourceLineId) = sourceLine is null
+                        ? ((string?)null, (long?)null)
+                        : SalesLineSourceIdentity.Resolve(sourceLine.Id, sourceLine.SourceTableKey, sourceLine.SourceRowId);
 
                     if (!resolvedCost.HasValue
                         && fallbackCosts.TryGetValue(s.IdArtikal, out var purchasePrice))
@@ -386,13 +382,31 @@ namespace Workers
                         Qty = s.Kolicina,
                         UnitPrice = s.Cena,
                         LineTotal = (decimal)s.Kolicina * s.Cena,
-                        NabavnaCena = resolvedCost
+                        NabavnaCena = resolvedCost,
+                        SourceTableKey = sourceTableKey,
+                        SourceLineId = sourceLineId
                     });
                 }
             }
 
             await analyticsDb.SaveChangesAsync(ct);
         }
+
+        public sealed record SaleSourceLine(
+            int Id,
+            int IdArtikal,
+            decimal? NabavnaCena,
+            string? SourceTableKey,
+            long? SourceRowId);
+
+        public static Dictionary<int, Queue<SaleSourceLine>> BuildSourceLineQueues(IEnumerable<SaleSourceLine> lines)
+            => lines
+                .OrderBy(x => x.Id)
+                .GroupBy(x => x.IdArtikal)
+                .ToDictionary(x => x.Key, x => new Queue<SaleSourceLine>(x));
+
+        public static SaleSourceLine? DequeueSourceLine(Dictionary<int, Queue<SaleSourceLine>> queues, int productId)
+            => queues.TryGetValue(productId, out var queue) && queue.Count > 0 ? queue.Dequeue() : null;
 
         private sealed class ProdajaKreiranaEvent
         {
