@@ -562,13 +562,24 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {
     private PostgreSqlContainer? _container;
+    private string? _externalConnectionString;
 
     public bool IsAvailable { get; private set; }
 
-    public string AdminConnectionString => _container?.GetConnectionString() ?? string.Empty;
+    public string AdminConnectionString => _externalConnectionString ?? _container?.GetConnectionString() ?? string.Empty;
 
     public async Task InitializeAsync()
     {
+        var configuredConnectionString = Environment.GetEnvironmentVariable("RQ602_TEST_POSTGRES");
+        if (!string.IsNullOrWhiteSpace(configuredConnectionString))
+        {
+            await using var externalConnection = new NpgsqlConnection(configuredConnectionString);
+            await externalConnection.OpenAsync();
+            _externalConnectionString = configuredConnectionString;
+            IsAvailable = true;
+            return;
+        }
+
         try
         {
             _container = new PostgreSqlBuilder()

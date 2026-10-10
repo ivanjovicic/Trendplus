@@ -12,7 +12,7 @@ Access prodajna populacija iz batch-a #23 je potpuno prisutna u analitičkim fak
 
 RQ601 ostaje **PARTIAL**. Na 66.233 Access retail prodajnih stavki poznat je trošak za 65.732 stavke (99,24% po broju; 99,27% po prometu), dok 501 stavka ostaje sa `NULL` troškom i 1.711.050 RSD prometa. Legacy `NabavnaCena` ima snažan signal pogrešne razmere, ali bez originalne kalkulacije nije dokazano da je uzrok valuta, jedinica mere ili pogrešno polje. Nije uveden fallback u nulu niti promenjena precedenca.
 
-RQ602 dobija istorijski read-only dry-run nad batch-om #23, ali ostaje **PARTIAL**. Izabrano je 20 tretiranih i 20 uparenih kontrolnih SKU×prodavnica sa potpunim prozorima i bez nepoznatog troška u toj odabranoj populaciji. Rezultat je deskriptivan; nije poslovno dokazan uzročni efekat i ne predstavlja pilot.
+RQ602 dobija istorijski read-only dry-run nad batch-om #23, ali ostaje **PARTIAL**. Izabrano je 20 tretiranih i 20 kontrolnih SKU×prodavnica determinističkim frozen manifestom. Ranija tvrdnja da su prozori potpuni je povučena: bez dnevnog source-coverage dokaza prozori su `unverified`, a trošak bez dokazanog porekla nije sertifikovan. Rezultat je deskriptivan; nije poslovno dokazan uzročni efekat i ne predstavlja pilot.
 
 ## Batch #23 i Access faktovi
 
@@ -123,12 +123,12 @@ Read-only upit `tools/markdown-pilot-measurement.sql` je korišćen uz postojeć
 |---|---:|
 | `Nivelacija` / `Nivelacija cena` događaji | 10.977 |
 | Kandidati za sniženje, jedinstveno SKU×store×dan | 6.052 |
-| Kandidati sa potpunim 56-dnevnim prozorom | 5.818 |
+| Kandidati sa min/max horizon signalom (nije dokaz potpunosti) | 5.818 |
 | Odabrani tretirani kandidati | 20 |
 | Odabrane kontrole | 20 |
 | Uparene kontrole | 20/20 |
 | Tretirani događaj potvrđen | 20/20 |
-| Nepoznat trošak u odabranoj proba-populaciji | 0 linija |
+| `NULL` trošak u ranijem dry-run izboru (ne dokazuje provenance) | 0 linija |
 
 Odabrana proba, deskriptivno:
 
@@ -178,3 +178,101 @@ SQL dokazi:
 - `tools/access-import-23-mdb-event-reconciliation.sql`
 
 Svi upiti u ovom run-u su izvršeni read-only ili nad izolovanim testnim fixture-om; nema `INSERT`, `UPDATE`, `DELETE`, repair migracije ili novog importa.
+
+## RQ602 završno očvršćavanje — frozen cohort i dokaz potpunosti
+
+Ovaj odeljak dopunjuje i superseduje raniju formulaciju da su odabrani
+istorijski prozori bili „potpuni“. Per-store minimum/maksimum datuma može da
+ograniči horizon, ali ne dokazuje da je svaki dan izvora bio pokriven. U
+operativnoj šemi batch-a #23 nema dnevnog store/source coverage manifesta.
+Zato je nova merna skripta namerno konzervativna: svaki prozor je
+`unverified_source_coverage_not_proven`, a nijedna poznata numerička marža nije
+prikazana kao sertifikovana.
+
+### Zamrznuta kohorta
+
+Tačan manifest svih 20 tretiranih događaja i 20 kontrolnih artikala je u
+`tools/markdown-pilot-cohort-2026-10-10.sql`. Manifest čuva event ID,
+`SourceRowId`, artikal, prodavnicu, dobavljača, tip obuće, datum akcije,
+prethodnu/narednu cenu, kontrolni artikal i kriterijum izbora. Kohorta je
+ponovljiva: događaji su uređeni po datumu opadajuće, artiklu, prodavnici i
+event ID-ju; kontrole su birane po determinističkom najmanjem neiskorišćenom
+ID-ju u odgovarajućem stratumu. Nema slučajnog izbora ni zavisnosti od
+trenutnog redosleda rezultata.
+
+Sažetak provere manifest-a nad PostgreSQL batch-om #23:
+
+| Provera | Rezultat |
+|---|---:|
+| Tretirani članovi / kontrole | 20 / 20 |
+| Potvrđen akcioni događaj po tretiranom članu | 20/20 |
+| Tretirani događaji sa više markdown-a u 56 dana | 0 |
+| Kontrolni članci sa markdown događajem u prozoru | 0 |
+| Store×batch horizon | 2082886995 / batch 23 |
+| Store horizon | 2011-01-06 — 2026-08-05 |
+| Posmatrani prodajni dani u horizon-u | 3.565 |
+| Age-band dokaz | `unknown` za svih 40 članova |
+| Kontrola sa punim supplier×shoe-type stratumom | 19/20 |
+
+Batch metadata čuva `SourceFileName=a61a7605bf7b441a965ec65edd262f68.mdb`, ali
+ne čuva `SourceFileHash`. Dve lokalne MDB datoteke koje su bile dostupne za
+read-only proveru nisu korišćene kao zamena: `Trend plus.mdb` ima SHA-256
+`00F54148475BA1FD4271C29CA3D9BC3ADC49C878F6BBDBEF84D881EA83624DD6` i period
+do 2026-04-05, dok `TRENDPLUS.accdb` završava 2019-11-13. Manifest i metrike
+iznad koriste isključivo već učitanu PostgreSQL populaciju sa
+`SourceBatchId=23`; byte-preserving originalni MDB ostaje dokazni blocker za
+dalju istorijsku sertifikaciju.
+
+Jedini kontrolni par bez istog tipa obuće je kohorta 3 (supplier je isti,
+shoe-type nije mogao biti uparen); zadržan je kao eksplicitno označen
+`matched_supplier_only`, ne kao puni match. Svi prozori koriste
+`Europe/Belgrade` lokalni datum i poluotvorene granice:
+`pre [action_date - 28, action_date)`, `post [action_date, action_date + 28)`.
+
+### Read-only rezultat iste kohorte
+
+`tools/markdown-pilot-historical-measurement.sql` je izvršen nad stvarnim
+lokalnim PostgreSQL-om. DUG/KOREKCIJA su isključeni, potpisane količine su
+sačuvane, a trošak bez dokazanog porekla nije pretvoren u nulu.
+
+| Populacija | Pre količina | Posle količina | Pre promet RSD | Posle promet RSD | Promena prometa RSD | Pre neproverena marža RSD | Posle neproverena marža RSD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 20 tretiranih | 22 | 76 | 161.110 | 426.540 | +265.430 | 76.015 | 146.064 |
+| 20 kontrola | 0 | 0 | 0 | 0 | 0 | — | — |
+
+Ukupna promena potvrđene cene u manifestu je −31.380 RSD po zbiru članova;
+to je samo opisna promena cena, ne poslovna preporuka. Kontrolna populacija
+ima nultu prodaju u ovom uzorku, pa razlika promena nema validan kontrolni
+benchmark. Brojevi su promenili odnos prema ranijem dry-run-u zato što je
+sada korišćen frozen manifest i poluotvoreni prozor bez lažnog „complete“
+statusa; raniji rezultat ne treba mešati sa ovom kohortom.
+
+### Cost/margin i potpunost
+
+U lokalnom batch-23 targetu nema pouzdanog per-line istorijskog cost-provenance
+signala dovoljnog za sertifikaciju. Numerički `nabavna_cena` je zato prikazan
+kao `descriptive_unproven_cost`; `NULL` ostaje nepoznat i ne utiče na zbir kao
+nula. Nema dokaza da inbound ili povrat kupca sami po sebi predstavljaju
+originalnu kalkulacionu cenu.
+
+Skripta sada razdvaja:
+
+- observed sales od verified empty dana;
+- store horizon od dnevnog source-coverage dokaza;
+- poznatu numeričku maržu od sertifikovane istorijske marže;
+- tretirani događaj od kontrole i ponovljenog markdown-a.
+
+Ne koristi trenutno `Artikli.Kolicina` kao istorijski završni stock, ne aktivira
+Actions/preporuke i ne tvrdi uzročni efekat. RQ602 ostaje **PARTIAL** dok
+vlasnik ne odobri prospektivni pilot sa daily coverage manifestom,
+sertifikovanim cost provenance-om i unapred registrovanom kohortom.
+
+### PostgreSQL sertifikacija
+
+Fokusirana regresiona suite je izvršena na postojećem lokalnom PostgreSQL-u,
+sa izolovanom test bazom koju test kreira i uklanja. TRX rezultat
+`artifacts/rq602-results/RQ602.postgres.trx` ima `total=2`, `executed=2`,
+`passed=2`, `failed=0`, `notExecuted=0`; nema tihog `return`/skip-a za
+nedostupnu bazu. Test pokriva poluotvorene 28-dnevne granice, potpisani povrat,
+DUG/KOREKCIJA, NULL/procenjeni trošak, ponovljeni markdown, neprovereni store
+horizon i determinističko ponovno izvršavanje.

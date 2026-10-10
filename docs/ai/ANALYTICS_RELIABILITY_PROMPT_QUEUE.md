@@ -30662,9 +30662,9 @@ RQ592 ("Prvi dokazani dinar") is WAITING only on STAB16 freshness (RQ545 is DONE
 
 - Status remains `PARTIAL`: the existing measurement query was dry-run against the real local batch-23 history; no Actions row, source row or business data was changed.
 - Evidence: `docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md`.
-- Result: 6.052 unique SKU×store×day markdown candidates, 5.818 complete 56-day windows, and a selected 20 treated + 20 matched-control descriptive cohort. All selected windows are complete, all controls matched, and no selected line has unknown cost. Treated revenue changed 177.510 -> 465.870 RSD; controls 159.390 -> 265.870 RSD.
-- The output is explicitly an `istorijska proba, nije pilot`; no causal uplift or markdown recommendation is claimed. API pre/post remains critical/blocked for the bounded 2026-07-01..2026-08-05 request because its maturity boundary leaves the 2026-08-01 post-window incomplete and integrity evidence reports 7 bounded drifts.
-- Missing acceptance remains owner-approved prospective/pilot evidence and the RQ592 readiness decision. No duplicate queue task was registered.
+- Result: 6.052 unique SKU×store×day markdown candidates remain a descriptive population signal. A deterministic frozen manifest now records 20 treated events and 20 controls in `tools/markdown-pilot-cohort-2026-10-10.sql`; 20/20 action events are present, but the local schema has no daily source-coverage manifest, so all 40 pre/post windows are `unverified_source_coverage_not_proven` rather than complete. The exact batch-23 read-only result is 22 -> 76 treated pairs and 161.110 -> 426.540 RSD revenue; controls are 0 -> 0.
+- The output is explicitly an `istorijska proba, nije pilot`; the 76.015 -> 146.064 RSD cost difference is descriptive and unproven, not certified margin. No causal effect or markdown recommendation is claimed. API pre/post remains critical/blocked for the bounded 2026-07-01..2026-08-05 request because its maturity boundary leaves the 2026-08-01 post-window incomplete and integrity evidence reports 7 bounded drifts.
+- Missing acceptance remains an owner-approved prospective pilot with daily coverage evidence, certified cost provenance and the RQ592 readiness decision. The PostgreSQL certification executed 2/2 tests with 0 failures and 0 not-executed tests. No duplicate queue task was registered.
 - Evidence state: synchronized; RQ602 remains `PARTIAL`.
 
 ### Evidence
