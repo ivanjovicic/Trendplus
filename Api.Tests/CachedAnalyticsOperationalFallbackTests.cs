@@ -23,7 +23,7 @@ namespace Api.Tests;
 public sealed class CachedAnalyticsOperationalFallbackTests
 {
     [Fact]
-    public async Task DailySales_OperationalFallbackIsWarningObjectNotBareArray()
+    public async Task DailySales_CanonicalOperationalPopulationReturnsSuccessEnvelope()
     {
         await using var factory = CreateFactory();
         var root = await GetJsonAsync(
@@ -36,13 +36,13 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         Assert.NotEmpty(items);
         Assert.All(items, item => Assert.True(item.GetProperty("totalRevenue").GetDecimal() > 0m));
 
+        // RQ605 made the canonical operational population the primary source.
+        // Returning a legacy fallback warning for a successful query is misleading.
         var meta = root.GetProperty("meta");
         Assert.True(meta.GetProperty("success").GetBoolean());
-        Assert.True(meta.GetProperty("isPartial").GetBoolean());
-        Assert.Equal("daily_sales_operational_fallback", meta.GetProperty("warningCode").GetString());
-        Assert.Equal("warning", meta.GetProperty("dataQualityStatus").GetString());
+        Assert.False(meta.GetProperty("isPartial").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, meta.GetProperty("warningCode").ValueKind);
         Assert.Equal(JsonValueKind.Null, meta.GetProperty("errorCode").ValueKind);
-        Assert.Contains("operativ", meta.GetProperty("warningMessage").GetString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

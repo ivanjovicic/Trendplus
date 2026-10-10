@@ -54,6 +54,10 @@ jobs:
       ConnectionStrings__DefaultConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsConnection: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
       ConnectionStrings__AnalyticsDb: "Host=localhost;Database=trendplus_test;Username=postgres;Password=postgres_password"
+      # Mandatory RQ601/RQ607 PostgreSQL tests use this already-provisioned CI
+      # service and isolate their data in disposable, uniquely named databases.
+      RQ601_TEST_POSTGRES: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres_password"
+      TRENDPLUS_RQ607_POSTGRES_CONNECTION: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres_password"
 
     steps:
       - name: Checkout repository

@@ -184,6 +184,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 kolicina integer NOT NULL,
                 cena numeric(18,2) NOT NULL,
                 nabavna_cena numeric(18,2),
+                purchase_cost_provenance character varying(64),
                 supplier_id_at_sale integer,
                 shoe_type_id_at_sale integer,
                 source_table_key character varying(128),

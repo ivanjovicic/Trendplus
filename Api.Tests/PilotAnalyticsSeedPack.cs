@@ -446,9 +446,9 @@ internal static class PilotAnalyticsSeedPack
             });
 
         db.ProdajaStavke.AddRange(
-            new ProdajaStavka { Id = 301, IdProdaja = 201, IdArtikal = 101, Kolicina = 12, Cena = 250m, NabavnaCena = 100m },
-            new ProdajaStavka { Id = 302, IdProdaja = 202, IdArtikal = 102, Kolicina = 4, Cena = 400m, NabavnaCena = 200m },
-            new ProdajaStavka { Id = 303, IdProdaja = 202, IdArtikal = 103, Kolicina = 5, Cena = 160m, NabavnaCena = 100m });
+            new ProdajaStavka { Id = 301, IdProdaja = 201, IdArtikal = 101, Kolicina = 12, Cena = 250m, NabavnaCena = 100m, PurchaseCostProvenance = PurchaseCostProvenance.SourceSaleLine },
+            new ProdajaStavka { Id = 302, IdProdaja = 202, IdArtikal = 102, Kolicina = 4, Cena = 400m, NabavnaCena = 200m, PurchaseCostProvenance = PurchaseCostProvenance.SourceSaleLine },
+            new ProdajaStavka { Id = 303, IdProdaja = 202, IdArtikal = 103, Kolicina = 5, Cena = 160m, NabavnaCena = 100m, PurchaseCostProvenance = PurchaseCostProvenance.SourceSaleLine });
 
         db.DnevnikPromena.AddRange(
             new DnevnikPromena
