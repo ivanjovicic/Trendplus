@@ -86,16 +86,12 @@ public sealed class CachedAnalyticsOperationalFallbackTests
     }
 
     [Fact]
-    public async Task InventoryStatus_OperationalFallbackRespectsPeriodAndScope()
+    public async Task InventoryStatus_OperationalFallbackIgnoresSalesPeriodAndExplainsSnapshotBasis()
     {
         await using var factory = CreateFactory();
-        var now = DateTime.UtcNow;
-        var fromDate = Uri.EscapeDataString(now.AddHours(-1).ToString("O", CultureInfo.InvariantCulture));
-        var toDate = Uri.EscapeDataString(now.AddHours(1).ToString("O", CultureInfo.InvariantCulture));
-
         var root = await GetJsonAsync(
             factory,
-            $"/api/analytics/cached/inventory/status?lowStockThreshold=2&fromDate={fromDate}&toDate={toDate}&storeId=1&supplierId=1");
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2&fromDate=2026-08-01&toDate=2026-08-01&storeId=1&supplierId=1");
 
         Assert.Equal(1, root.GetProperty("totalSkuCount").GetInt32());
         Assert.Equal(2, root.GetProperty("totalOnHand").GetInt32());
@@ -104,6 +100,10 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         Assert.True(root.GetProperty("usedOperationalFallback").GetBoolean());
         Assert.True(root.GetProperty("meta").GetProperty("success").GetBoolean());
         Assert.True(root.GetProperty("meta").GetProperty("isPartial").GetBoolean());
+        Assert.Equal("latest_available_snapshot", root.GetProperty("inventoryTimeBasis").GetString());
+        Assert.False(root.GetProperty("periodFilterApplied").GetBoolean());
+        Assert.False(root.GetProperty("historicalAsOfSupported").GetBoolean());
+        Assert.Contains("nezavisno od izabranog perioda", root.GetProperty("meta").GetProperty("warningMessage").GetString());
     }
 
     [Fact]

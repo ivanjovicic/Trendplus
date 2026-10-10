@@ -552,11 +552,11 @@ public static class CachedAnalyticsEndpoints
                 var normalizedDataScope = NormalizeDataScope(dataScope);
                 var cacheKey = AnalyticsCacheKeys.Inventory(
                     lowStockThreshold,
-                    fromDate,
-                    toDate,
+                    null,
+                    null,
                     storeId,
                     supplierId,
-                    normalizedDataScope);
+                    normalizedDataScope) + ":latest-snapshot-v1";
 
                 var result = await cache.GetOrSetAsync(
                     cacheKey,
@@ -567,8 +567,8 @@ public static class CachedAnalyticsEndpoints
                             return await mediator.Send(
                                 new GetInventoryStatusQuery(
                                     lowStockThreshold,
-                                    fromDate,
-                                    toDate,
+                                    null,
+                                    null,
                                     storeId,
                                     supplierId,
                                     normalizedDataScope),
@@ -577,9 +577,7 @@ public static class CachedAnalyticsEndpoints
                         catch (Exception ex) when (IsMissingRelation(ex))
                         {
                             var inventoryQuery = trendDb.Artikli.AsNoTracking()
-                                .Where(a => (!fromDate.HasValue || a.UpdatedAt >= fromDate.Value)
-                                    && (!toDate.HasValue || a.UpdatedAt <= toDate.Value)
-                                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                                .Where(a => (!storeId.HasValue || a.IDObjekat == storeId.Value)
                                     && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
 
                             if (normalizedDataScope == "imported")
@@ -615,14 +613,23 @@ public static class CachedAnalyticsEndpoints
                     AnalyticsCachePolicy.Inventory.Ttl,
                     ct);
 
+                // Date filters apply to sales, not the single latest inventory snapshot.
+                var periodRequested = fromDate.HasValue || toDate.HasValue;
                 var meta = result.TotalSkuCount == 0
-                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema podataka o zalihama.")
+                    ? AnalyticsResponseMetaFactory.Empty("no_inventory_data", "Nema dostupnog stanja zaliha za izabrani opseg artikala.")
                     : result.UsedOperationalFallback
                         ? AnalyticsResponseMetaFactory.Warning(
                             "inventory_status_operational_fallback",
-                            "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna.",
+                            periodRequested
+                                ? "Prikazano je poslednje operativno stanje iz Artikli, nezavisno od izabranog perioda prodaje; istorijske zalihe nisu dostupne."
+                                : "Status zaliha je učitan iz operativne tabele Artikli jer analytics relacija nije dostupna.",
                             "warning")
-                        : AnalyticsResponseMetaFactory.Success();
+                        : periodRequested
+                            ? AnalyticsResponseMetaFactory.Warning(
+                                "inventory_status_current_snapshot_only",
+                                "Prikazano je poslednje dostupno stanje zaliha, nezavisno od izabranog perioda prodaje. Istorijsko stanje na datum nije dostupno.",
+                                "warning")
+                            : AnalyticsResponseMetaFactory.Success();
                 meta.CorrelationId = correlationId;
 
                 return Results.Ok(new
@@ -632,6 +639,9 @@ public static class CachedAnalyticsEndpoints
                     result.LowStockCount,
                     result.OutOfStockCount,
                     result.UsedOperationalFallback,
+                    result.InventoryTimeBasis,
+                    result.PeriodFilterApplied,
+                    result.HistoricalAsOfSupported,
                     Meta = meta
                 });
             }
@@ -5101,8 +5111,8 @@ public static class CachedAnalyticsEndpoints
             return await mediator.Send(
                 new GetInventoryStatusQuery(
                     lowStockThreshold,
-                    fromDate,
-                    toDate,
+                    null,
+                    null,
                     storeId,
                     supplierId,
                     dataScope),
@@ -5111,9 +5121,7 @@ public static class CachedAnalyticsEndpoints
         catch (Exception ex) when (IsMissingRelation(ex))
         {
             var inventoryQuery = trendDb.Artikli.AsNoTracking()
-                .Where(a => (!fromDate.HasValue || a.UpdatedAt >= fromDate.Value)
-                    && (!toDate.HasValue || a.UpdatedAt <= toDate.Value)
-                    && (!storeId.HasValue || a.IDObjekat == storeId.Value)
+                .Where(a => (!storeId.HasValue || a.IDObjekat == storeId.Value)
                     && (!supplierId.HasValue || a.IDDobavljac == supplierId.Value));
 
             var normalizedDataScope = NormalizeDataScope(dataScope);

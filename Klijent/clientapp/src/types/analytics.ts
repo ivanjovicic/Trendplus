@@ -293,6 +293,10 @@ export interface InventoryStatus {
   lowStockCount: number;
   outOfStockCount: number;
   usedOperationalFallback?: boolean;
+  /** Latest loaded stock, never an as-of value for the sales date range. */
+  inventoryTimeBasis?: "latest_available_snapshot";
+  periodFilterApplied?: boolean;
+  historicalAsOfSupported?: boolean;
   meta?: AnalyticsResponseMeta | null;
 }
 

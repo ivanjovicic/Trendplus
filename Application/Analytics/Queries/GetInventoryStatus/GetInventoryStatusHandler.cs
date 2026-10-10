@@ -24,10 +24,8 @@ namespace Application.Analytics.Queries.GetInventoryStatus
             var query = _db.ProductsDim.AsNoTracking().AsQueryable();
             var normalizedDataScope = NormalizeDataScope(request.DataScope);
 
-            if (request.FromDate.HasValue)
-                query = query.Where(x => x.Timestamp >= request.FromDate.Value);
-            if (request.ToDate.HasValue)
-                query = query.Where(x => x.Timestamp <= request.ToDate.Value);
+            // ProductsDim is the latest available stock snapshot; Timestamp marks
+            // its refresh time, not stock history for a selected sales period.
             if (normalizedDataScope == "imported")
                 query = query.Where(x => x.DataOrigin == "access");
             else if (normalizedDataScope == "existing")
@@ -55,10 +53,7 @@ namespace Application.Analytics.Queries.GetInventoryStatus
             }).FirstOrDefaultAsync(cancellationToken);
 
             var artikliQuery = _trendDb.Artikli.AsNoTracking().AsQueryable();
-            if (request.FromDate.HasValue)
-                artikliQuery = artikliQuery.Where(x => x.UpdatedAt >= request.FromDate.Value);
-            if (request.ToDate.HasValue)
-                artikliQuery = artikliQuery.Where(x => x.UpdatedAt <= request.ToDate.Value);
+            // Artikli.UpdatedAt is the row refresh time, not historical stock.
             if (request.StoreId.HasValue)
                 artikliQuery = artikliQuery.Where(x => x.IDObjekat == request.StoreId.Value);
             if (request.SupplierId.HasValue)

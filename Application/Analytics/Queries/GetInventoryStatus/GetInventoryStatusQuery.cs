@@ -15,6 +15,9 @@ namespace Application.Analytics.Queries.GetInventoryStatus
         int TotalOnHand,
         int LowStockCount,
         int OutOfStockCount,
-        bool UsedOperationalFallback = false
+        bool UsedOperationalFallback = false,
+        string InventoryTimeBasis = "latest_available_snapshot",
+        bool PeriodFilterApplied = false,
+        bool HistoricalAsOfSupported = false
     );
 }

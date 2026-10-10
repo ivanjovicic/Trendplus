@@ -94,6 +94,28 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
         Assert.Equal(0, empty.GetProperty("totalSkuCount").GetInt32());
         Assert.Equal("no_inventory_data", empty.GetProperty("meta").GetProperty("emptyReason").GetString());
 
+        // Date-only midnight must not exclude a snapshot refreshed later that day.
+        var dateOnly = await GetJsonAsync(client,
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2&fromDate=2026-10-10&toDate=2026-10-10&dataScope=imported");
+        AssertInventory(await ReadOracleAsync(oracle, "imported", null, null), dateOnly);
+        Assert.Equal("latest_available_snapshot", dateOnly.GetProperty("inventoryTimeBasis").GetString());
+        Assert.False(dateOnly.GetProperty("periodFilterApplied").GetBoolean());
+        Assert.False(dateOnly.GetProperty("historicalAsOfSupported").GetBoolean());
+        Assert.Equal("inventory_status_current_snapshot_only",
+            dateOnly.GetProperty("meta").GetProperty("warningCode").GetString());
+
+        var historical = await GetJsonAsync(client,
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2&fromDate=2026-08-01&toDate=2026-08-31&dataScope=imported");
+        AssertInventory(await ReadOracleAsync(oracle, "imported", null, null), historical);
+        Assert.Equal("inventory_status_current_snapshot_only",
+            historical.GetProperty("meta").GetProperty("warningCode").GetString());
+        Assert.False(historical.GetProperty("periodFilterApplied").GetBoolean());
+
+        var withoutPeriod = await GetJsonAsync(client,
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2&dataScope=imported");
+        AssertInventory(await ReadOracleAsync(oracle, "imported", null, null), withoutPeriod);
+        Assert.Equal(JsonValueKind.Null, withoutPeriod.GetProperty("meta").GetProperty("warningCode").ValueKind);
+
         var factoriesBeforeHit = cache.FactoryCallsForScope("imported");
         var importedAgain = await GetJsonAsync(client, Url("IMPORTED"));
         Assert.Equal(
@@ -189,9 +211,7 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
             WITH scoped_products AS (
                 SELECT p."Kolicina"
                 FROM "ProductsDim" p
-                WHERE p."Timestamp" >= @fromUtc
-                  AND p."Timestamp" <= @toUtc
-                  AND (
+                WHERE (
                         @scope = 'all'
                      OR (@scope = 'imported' AND p."DataOrigin" = 'access')
                      OR (@scope = 'existing' AND (p."DataOrigin" = 'existing' OR p."DataOrigin" IS NULL OR p."DataOrigin" = ''))
@@ -211,8 +231,6 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
             FROM scoped_products;
             """;
         await using var command = new NpgsqlCommand(sql, connection);
-        command.Parameters.AddWithValue("fromUtc", FromUtc);
-        command.Parameters.AddWithValue("toUtc", ToUtc);
         command.Parameters.AddWithValue("scope", scope.Trim().ToLowerInvariant());
         command.Parameters.Add("storeId", NpgsqlDbType.Integer).Value = (object?)storeId ?? DBNull.Value;
         command.Parameters.Add("supplierId", NpgsqlDbType.Integer).Value = (object?)supplierId ?? DBNull.Value;
@@ -226,9 +244,7 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
         const string lowStockSql = """
             SELECT COUNT(*)::int
             FROM "Artikli" a
-            WHERE a."UpdatedAt" >= @fromUtc
-              AND a."UpdatedAt" <= @toUtc
-              AND (@storeId IS NULL OR a."IDObjekat" = @storeId)
+            WHERE (@storeId IS NULL OR a."IDObjekat" = @storeId)
               AND (@supplierId IS NULL OR a."IDDobavljac" = @supplierId)
               AND (
                     @scope = 'all'
@@ -243,8 +259,6 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
               );
             """;
         await using var lowStockCommand = new NpgsqlCommand(lowStockSql, connection);
-        lowStockCommand.Parameters.AddWithValue("fromUtc", FromUtc);
-        lowStockCommand.Parameters.AddWithValue("toUtc", ToUtc);
         lowStockCommand.Parameters.AddWithValue("scope", scope.Trim().ToLowerInvariant());
         lowStockCommand.Parameters.Add("storeId", NpgsqlDbType.Integer).Value = (object?)storeId ?? DBNull.Value;
         lowStockCommand.Parameters.Add("supplierId", NpgsqlDbType.Integer).Value = (object?)supplierId ?? DBNull.Value;

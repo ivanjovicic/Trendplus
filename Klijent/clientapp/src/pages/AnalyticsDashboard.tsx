@@ -2766,8 +2766,8 @@ export default function AnalyticsDashboard() {
             {!loading && inventory && (
               <section className="analytics-panel">
                 <h3 className="with-tip">
-                  <span>Brzi pregled zaliha</span>
-                  <InfoTip text="Ukupno stanje i signal rizika od rasprodatosti." />
+                  <span>Brzi pregled zaliha — poslednje dostupno stanje</span>
+                  <InfoTip text="Stanje iz poslednjeg dostupnog snapshot-a. Filter perioda prodaje ne predstavlja istorijske zalihe." />
                 </h3>
                 {inventory.usedOperationalFallback ? (
                   <div className="analytics-empty warning" role="status">
