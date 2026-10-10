@@ -38,6 +38,7 @@ Stare numeričke vrednosti nisu prepisane niti obrisane. Ako im poreklo nije sa�
 - Cached Top Products/Product Decision SQL više ne koristi pozitivan sale-line broj bez potvrđenog porekla.
 - `InventoryValuationSupport` više ne uzima neproveren sale-line broj kao istorijski kapitalni trošak.
 - `AnalyticsDataQualityHealthService` ne smatra pozitivan, ali neproveren sale-line broj potvrđenim istorijskim troškom; može koristiti master samo kao eksplicitnu procenu.
+- Operativni POS upis u `ProdajaRepository` sada čuva isti provenance ugovor, a idempotentni `DatabaseInitializer` bootstrap dodaje novu kolonu na starim bazama.
 - Pre-nivelacija i inventory export koji rade nad master/snapshot cenom nisu preformulisani; njihove formule i postojeća semantika nisu menjane.
 
 ## Read-only dokaz batch-a #23
@@ -72,7 +73,7 @@ Obavezni test koristi stvarni lokalni PostgreSQL na `127.0.0.1:5434`, kreira izo
 TRX dokazi:
 
 - `F:\trendplus-rq601-build\trx-rq601-pg-final6\RQ601-pg-final6.trx`;
-- `F:\trendplus-rq601-build\trx-rq601-final3\RQ601-final3.trx` (pre poslednje SQL korekcije; poslednja SQL korekcija je dodatno potvrđena u `pg-final6`);
+- `F:\trendplus-rq601-build\trx-rq601-final5\RQ601-final5.trx`;
 - `F:\trendplus-rq601-build\trx-rq601-health\RQ601-health.trx` — 12/12 pass.
 
 Fixture pokriva: direktni source-line trošak, master RSD/legacy backfill, stari broj bez provenance, potpuno NULL, inbound klasifikaciju i zabranu da unknown postane potvrđen trošak ili nula.

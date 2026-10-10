@@ -6,6 +6,7 @@ using Application.Analytics;
 using Application.Common.Interfaces;
 using Application.Prodaja.Commands.ProdajArtikle;
 using Application.Prodaja.Queries;
+using Domain.Model;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using NpgsqlTypes;
@@ -50,7 +51,7 @@ namespace Infrastructure.Repository
             // Backfill purchase price on operational sale lines so both analytics
             // backfill and outbox projection can read sale-time gross margin inputs.
             await using var costCmd = conn.CreateCommand();
-            costCmd.CommandText = @"
+            costCmd.CommandText = $@"
                 WITH payload AS (
                     SELECT
                         ordinality,
@@ -66,7 +67,14 @@ namespace Infrastructure.Repository
                     WHERE ps.id_prodaja = $1
                 )
                 UPDATE prodaja_stavke ps
-                SET nabavna_cena = COALESCE(payload.nabavna_cena, {resolvedProductCostSql})
+                SET nabavna_cena = COALESCE(payload.nabavna_cena, {resolvedProductCostSql}),
+                    purchase_cost_provenance = CASE
+                        WHEN payload.nabavna_cena > 0 THEN '{PurchaseCostProvenance.SourceSaleLine}'
+                        WHEN payload.nabavna_cena IS NOT NULL THEN '{PurchaseCostProvenance.Unknown}'
+                        WHEN a.""NabavnaCenaDin"" > 0 THEN '{PurchaseCostProvenance.MasterRsdBackfill}'
+                        WHEN a.""NabavnaCena"" > 0 THEN '{PurchaseCostProvenance.MasterLegacyBackfill}'
+                        ELSE '{PurchaseCostProvenance.Unknown}'
+                    END
                 FROM sale_lines sl
                 LEFT JOIN payload ON payload.ordinality = sl.ordinality
                 LEFT JOIN ""Artikli"" a ON a.""Id"" = sl.id_artikal

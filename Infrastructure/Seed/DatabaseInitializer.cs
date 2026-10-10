@@ -1939,6 +1939,7 @@ public static class DatabaseInitializer
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS korisnik_ime character varying(200);
             ALTER TABLE IF EXISTS prodaja_zaglavlje ADD COLUMN IF NOT EXISTS source_timestamp_basis character varying(64);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS nabavna_cena decimal(18,2);
+            ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS purchase_cost_provenance character varying(64);
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS supplier_id_at_sale integer;
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS shoe_type_id_at_sale integer;
             ALTER TABLE IF EXISTS prodaja_stavke    ADD COLUMN IF NOT EXISTS attribution_basis character varying(64) NOT NULL DEFAULT 'unknown';
