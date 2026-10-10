@@ -223,7 +223,7 @@ public sealed class MarkdownPilotMeasurementTests : IClassFixture<PostgresContai
             // must NEVER certify sale-line cost provenance.
             Assert.Equal(1m, Number(unmatched, "post_unproven_cost_line_count"));
             Assert.Equal("unknown_provenance", unmatched["post_margin_trust_status"]);
-            Assert.Null(unmatched["post_confirmed_margin_rsd"]);
+            Assert.Null(unmatched["post_confirmed_cost_margin_rsd"]);
             Assert.Contains(rows, row => Equals(row["match_status"], "unmatched_markdown_in_window"));
             Assert.Contains(rows, row => Equals(row["is_total"], true));
         }
