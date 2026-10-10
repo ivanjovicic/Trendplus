@@ -2,8 +2,8 @@
 
 Date: 2026-09-28
 Repo: `ivanjovicic/Trendplus`
-Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none after RQ603 completion and full post-delivery RQ/SQL recovery (RQ604 DONE on `63c4d3d480f41cc478233b06579cdc17ff51b110`; no RQ prompt depends on it); see `.ai/runs/2026-10-09-RQ603-evidence.md` for the blocker matrix and exact unblock events. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is newly registered for the post-Access fact-population/cache contract gap. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
+Current READY prompt: `RQ605` is READY and unclaimed after the read-only Access #23 fact audit; it is independent of RQ601/RQ602 and does not reopen RQ604. RQ602 remains PARTIAL pending a genuine historical import dry-run; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -30742,6 +30742,72 @@ Navigation entries and labels only; every route stays reachable by URL and from 
 ### Dependencies
 
 Owner decision satisfied; no STAB16 dependency.
+
+## RQ605 - Canonical retail population for legacy fact, cache and comparison consumers
+
+Status: READY
+Ready after: read-only Access import #23 audit completed on current `origin/main`; no existing prompt, lock, branch or PR owns the legacy raw-fact/cache population gap.
+Priority: P0
+Type: backend/data-integrity/tests
+Feature family: analytical-fact-population-and-cache-contract
+Parallel-safe: yes (legacy endpoint/view/cache consumers and new PostgreSQL regression fixtures; do not edit RQ604 identity writers or the current Daily Sales service contract)
+Owner: Analytics Backend
+Owned paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, `Api/Endpoints/AllEndpoints.cs`, the directly consumed legacy aggregate/view definitions, focused PostgreSQL integration tests, `tools/access-import-23-fact-audit.sql`, `.ai/runs/<date>-RQ605-evidence.md`
+Avoid paths: `AccessImportService` transaction/heartbeat implementation, `SalesLineFacts` identity migration/writers owned by RQ604, analytical formulas, production data and destructive cache/database cleanup
+Commit suggestion: `fix(analytics): align legacy fact consumers with canonical retail population`
+
+### Problem
+
+The current canonical `/api/analytics/daily-sales` path uses operational receipt headers/lines, signed amounts, DUG/KOREKCIJA exclusion and header-based `dataScope`. Legacy consumers do not share that contract:
+
+* `/api/analytics/cached/sales/daily` can return `AnalyticsDailySummary` or raw `SalesFacts`; the local summary contains the 2,697,200.00 RSD legacy `existing`/DEMO population and its cache key omits `dataScope`.
+* `/api/analytics/sales/comparison` aggregates raw `SalesFacts` and caches only by period.
+* Installed daily/rolling/momentum aggregates and `analytics_intel` views require a population/refresh review before they can be treated as standard retail evidence.
+
+This can expose 2,676,700.00 RSD of unmatched DEMO facts on raw-fact/all or existing paths, while Access #23 itself remains exact. The amount is an observed legacy population, not a claim that every screen is overstated by that amount.
+
+### Evidence
+
+* `docs/qa/ACCESS_IMPORT_23_FACT_AUDIT_2026-10-10.md`
+* `tools/access-import-23-fact-audit.sql`
+* `Api/Services/SalesReceiptPopulationPolicy.cs`
+* `Api/Services/DailySalesStatsService.cs`
+* `Api/Endpoints/CachedAnalyticsEndpoints.cs` (`/sales/daily`, aggregate and raw-fact fallbacks)
+* `Api/Endpoints/AllEndpoints.cs` (`/api/analytics/sales/comparison`)
+
+### Scope
+
+Make legacy daily/comparison/fact-based consumers either use the canonical operational retail population and normalized `dataScope`, or fail closed as unsupported rather than silently reading raw/stale facts. Include scope in every affected cache key. Preserve signed returns and existing analytic formulas; change only population/provenance/fallback selection.
+
+### Do
+
+1. Add a shared or directly reused population query for operational headers/lines with DUG/KOREKCIJA exclusion and `imported`/`existing`/`all` header-origin semantics.
+2. Remove or quarantine raw `SalesFacts` fallbacks that cannot prove the operational identity contract; make aggregate/view fallback provenance explicit.
+3. Add `dataScope` to endpoint contracts and cache keys where the legacy path supports scoped results; invalidate or version stale aggregate keys without deleting business facts.
+4. Review installed materialized/view consumers and document any intentionally non-retail signal scope.
+
+### Tests
+
+Use a real PostgreSQL integration fixture, not only mocked LINQ:
+
+* Access receipts/lines from batch #23 reconcile one-to-one by `(SaleId, SourceLineId)` with exact quantity, price and signed amount.
+* Existing DEMO facts without an operational receipt never enter imported or canonical retail totals; `all` and `existing` behavior is explicit.
+* DUG/KOREKCIJA are excluded; a negative return remains signed.
+* Daily/comparison cache miss and hit are isolated by `dataScope`; fallback and aggregate paths cannot double aggregate lines.
+* Repeated product lines, cancellation/failure and refresh/retry leave no stale “successful” analytical result.
+
+Run validators and `git diff --check`; do not change global SQL timeout or analytics formulas.
+
+### Acceptance
+
+* Access #23 remains 5,530/5,530 headers and 67,092/67,092 lines with zero amount delta.
+* A PostgreSQL oracle shows canonical retail totals by day, store and `dataScope` equal the independent operational query, including DUG/KOREKCIJA and signed returns.
+* Legacy raw-fact/cache consumers cannot show the 2,676,700.00 RSD DEMO population as confirmed imported retail, and cache keys cannot cross-contaminate scopes.
+* No data deletion or production mutation is part of this prompt; any future repair has a backup, dry-run, pre/post diff and rollback procedure.
+
+### Dependencies
+
+None. RQ604 is DONE and remains closed; RQ601/RQ602 and STAB16 are independent. This prompt is registered READY but is not claimed by this audit.
 
 ## RQ604 - Key SalesLineFacts by source receipt line instead of (SaleId, ProductId)
 
