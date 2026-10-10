@@ -30847,7 +30847,7 @@ Commit suggestion: `fix(import): key transfer re-imports by source event identit
 
 ### Problem
 
-`ImportPrenosRobeAsync` currently skips an entire transfer pair when the composite multiset key `(TipPromene, ArtikalId, Datum, Iznos)` already exists. The key does not include `SourceTableKey`, `SourceRowId`, source document identity or store endpoints. Two legitimate Access transfer events can therefore collide and the second event can disappear on re-import. The same source ID may legitimately expand to many article rows, and each source transfer must remain both an outgoing and incoming event.
+`ImportPrenosRobeAsync` currently skips an entire transfer pair when the composite multiset key `(TipPromene, ArtikalId, Datum, Iznos)` already exists. The key does not include `SourceTableKey`, `SourceRowId`, source document identity or store endpoints. Two legitimate Access transfer events can therefore collide and the second event can disappear on re-import. The same source ID may legitimately expand to many article rows, and each source transfer must remain both an outgoing and incoming event. Batch #23 also proves that `SourceRowId` is not positive-only: 7,536 persisted transfer rows have negative IDs.
 
 The batch #23 target confirms the identity distinction: 8,962 source transfer rows became 8,962 outgoing plus 8,962 incoming rows across 1,186 source event/document IDs. The exact MDB is currently unavailable, so this prompt must not be claimed or closed from target-only evidence.
 
@@ -30868,7 +30868,8 @@ Change only Access movement identity and re-import idempotency for the repositor
 1. Use `(SourceTableKey, SourceRowId, source line/article identity, direction)` as the primary idempotency lookup for transfer rows.
 2. Preserve both outgoing and incoming rows for every source transfer and never collapse different source IDs merely because their values match.
 3. Keep a bounded legacy composite fallback only for rows with no usable source identity, including endpoints/document number where available.
-4. Preserve the current no-import-date rule and existing retry/rollback semantics.
+4. Define source-ID semantics consistently in transfer reads and writes: NULL/0 means no stable identity and uses the fallback; any non-zero negative or positive value is stable source lineage and must not be downgraded to the fallback.
+5. Preserve the current no-import-date rule and existing retry/rollback semantics.
 
 ### Tests
 
@@ -30877,7 +30878,8 @@ Use a disposable PostgreSQL integration fixture plus an isolated synthetic MDB r
 - two transfer source rows with identical article, timestamp and amount but different source IDs/store endpoints survive two imports as two outgoing/two incoming pairs;
 - one source transfer with repeated article rows preserves the multiset and both directions;
 - a repeated import is idempotent by source identity;
-- cancellation/rollback leaves no partial transfer pair and a retry restores the complete pair;
+- a negative source ID repairs only a missing pair side, cancellation after a real PostgreSQL flush leaves no partial transfer pair, and a retry restores the complete pair;
+- the mandatory PostgreSQL fixture fails closed when unavailable and its TRX reports a non-zero executed count with zero failures/skips;
 - the transfer SQL audit groups by source document/event and line signature rather than assuming `SourceRowId` is a unique line ID;
 - no unique document-ID index is introduced.
 
@@ -30896,18 +30898,18 @@ Exact batch-23 MDB restoration is a residual acceptance gate for the historical 
 
 - Date: 2026-10-10
 - Status: PARTIAL
-- Completion: Repository-local transfer re-import idempotency now keys usable rows by normalized source table/event ID, direction, article/date/amount/quantity and preserves occurrence counts for repeated article rows. Rows without usable source identity retain a bounded endpoint/document-aware legacy multiset. The exact batch-23 MDB 244/20 certification is not claimed.
+- Completion: Repository-local transfer re-import idempotency now keys every non-zero source ID (negative or positive) by normalized source table/event ID, direction, article/date/amount/quantity and preserves occurrence counts for repeated article rows. NULL/0 rows retain the bounded endpoint/document-aware legacy multiset. A missing transfer side is repaired without duplicating the existing side. The exact batch-23 MDB 244/20 certification is not claimed.
 - Changed files: `Api/Services/AccessImportService.cs`; `Api.Tests/Rq606TransferIdentityPostgresIntegrationTests.cs`; `tools/access-import-23-mdb-event-reconciliation.sql`; `.ai/runs/2026-10-10-RQ606-evidence.md`.
-- Checks run: disposable PostgreSQL + synthetic MDB fixture 2/2; two equal-valued transfers with different source IDs/endpoints survived as four movement rows, repeated same-document article lines survived as four movement rows, second import inserted zero, pre-cancelled import persisted zero; transfer SQL audit exit 0; existing focused Access heartbeat/atomicity/cancellation/queue suite 60/60; `dotnet build Api/Api.csproj -c Release --no-restore` (0 warnings, 0 errors); `git diff --check`.
+- Checks run: disposable PostgreSQL + synthetic MDB fixture 4/4 with 0 skipped; two equal-valued transfers with different source IDs/endpoints survived, repeated same-document article lines remained a multiset, negative source ID repaired only the missing pair side, second import inserted zero, cancellation after `SaveChanges` rolled back all movement rows, retry inserted exactly once; RQ606 TRX counters `total=4 executed=4 passed=4 failed=0 skipped=0`; existing Access execution-strategy/heartbeat/rollback/cancellation/queue suite 16/16 with 0 skipped; batch-23 read-only PostgreSQL check confirmed `SourceBatchId=23`, `17,924` transfer rows, `7,536` negative and `10,388` positive IDs; `dotnet build Trendplus2.sln -c Release --no-restore` (0 warnings, 0 errors); `git diff --check`.
 - Checks not run: exact original batch-23 MDB row-by-row reconciliation because the source was deleted/unavailable; no new Access import; no production or local business-data mutation.
 - Run log: `.ai/runs/2026-10-10-RQ606-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `7a23c6d5b0a5a0c3248363c25ee58e91676190d9`
-- Main verification: fresh fetch passed; `HEAD == origin/main` and implementation SHA is an ancestor
+- Main commit SHA: pending current RQ606 continuation delivery
+- Main verification: pre-change fetch passed at `4d0b6e24f8cadeaec952bd98d8af6e8e33df756e`; post-delivery verification is recorded after the continuation commit
 - Missed: exact outcomes for 244 skipped `tblProdaja` rows, 20 affected receipts and 168 skipped journal rows remain unresolved without the original MDB.
 - Follow-up: restore the original byte-preserving MDB or explicitly hand off historical certification; then run the existing read-only reconciliation before any repair decision.
-- Residual risk: the synthetic fixture proves the repository-local identity algorithm, not the unavailable batch-23 source population.
+- Residual risk: the synthetic fixture proves the repository-local identity algorithm and real PostgreSQL rollback path, not the unavailable batch-23 source population; the mandatory RQ606 tests now fail rather than skip when PostgreSQL is unavailable.
 - Post-close routing: no duplicate prompt registered; keep this prompt PARTIAL and do not promote a historical repair/import task without the source artifact and explicit approval.
 - Prompt defect / scope repair: status was narrowed from the original combined historical/implementation request to the safe repository-local slice, as authorized by the prompt; no RQ604 identity-writer scope was reopened.
 

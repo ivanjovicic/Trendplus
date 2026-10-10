@@ -6111,6 +6111,15 @@ using NpgsqlTypes;
         int? IDObjekat,
         string? BrojDokumenta);
 
+    private static bool HasStableTransferSourceId(long? sourceRowId)
+    {
+        // Access transfer IDs are opaque source-event identifiers. Both negative
+        // and positive non-zero values are stable lineage; NULL and zero mean
+        // that the source did not provide a usable identity and must use the
+        // endpoint/document-aware legacy multiset fallback.
+        return sourceRowId.HasValue && sourceRowId.Value != 0;
+    }
+
     private async Task ImportPrenosRobeAsync(IAccessDataReaderSession session, string? table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         if (table is null)
@@ -6133,12 +6142,13 @@ using NpgsqlTypes;
             var direction = d.TipPromene == TipPromeneConstants.PrenosIzlaz ? "out" : "in";
 
             if (string.Equals(d.SourceTableKey, transferSourceTableKey, StringComparison.OrdinalIgnoreCase)
-                && d.SourceRowId is > 0
+                && HasStableTransferSourceId(d.SourceRowId)
                 && d.ArtikalId.HasValue)
             {
+                var stableSourceRowId = d.SourceRowId.GetValueOrDefault();
                 var sourceKey = new AccessTransferSourceKey(
                     transferSourceTableKey,
-                    d.SourceRowId.Value,
+                    stableSourceRowId,
                     d.ArtikalId.Value,
                     d.Datum,
                     d.Iznos,
@@ -6212,11 +6222,12 @@ using NpgsqlTypes;
             var brDok = S(row, "iddnevnik", "brdokumenta", "brprenos");
 
             var sourceRowId = ReadCursorInt(row, ResolveDefaultLineageIdAliases("prenos_robe"));
-            if (sourceRowId is > 0)
+            if (HasStableTransferSourceId(sourceRowId))
             {
+                var stableSourceRowId = sourceRowId.GetValueOrDefault();
                 var sourceKey = new AccessTransferSourceKey(
                     transferSourceTableKey,
-                    sourceRowId.Value,
+                    stableSourceRowId,
                     idArtikal.Value,
                     datum,
                     iznos,
