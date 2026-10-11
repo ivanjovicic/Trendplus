@@ -549,3 +549,30 @@ Two overlapping startup instances cannot orphan a cache at pending when an eligi
 
 ### Ownership
 RQ615 stays DONE; this is a newly identified, narrower concurrency regression outside its existing fixed fixtures. RQ610 remains BLOCKED for unrelated all-writer stock-generation proof. RQ619 is independent of RQ601/RQ602/RQ606/STAB16 external evidence.
+
+
+---
+
+## RQ620 - Exclude future-dated source events from as-of intelligence signal populations
+
+Status: WAITING
+Priority: P1
+Type: disposable PostgreSQL retail-population/date-window oracle and targeted SQL correction
+Feature family: intelligence-asof-upper-bound
+Parallel-safe: no; overlaps 021/022/024 SQL fixture and populated-MV evidence, so serialize after RQ619 and the RQ616 null-baseline audit fix have landed
+Owner: unassigned
+Ready after: RQ619 DONE and RQ616 null-quantity SQL regression on main, with no conflicting owner
+Commit suggestion: fix(analytics): bound as-of signal populations on both dates
+
+### Verified code gap / hypothesis to prove
+SQL 021, 022 and 024 daily_sales CTEs filter SaleTimestampUtc only with a lower bound; SQL 022 daily_non_sale_movements likewise has a lower bound only, and SQL 024 latest_trend_history lacks an as-of upper bound. The calendar ends on UTC as_of_date, but observed_pairs/observed_products are generated from these unbounded inputs. A product/store with only tomorrow's sale or future-dated movement can therefore enter today's signal population as a zero-evidence historical series. Future trend history can also win ROW_NUMBER ordering. These are source-code risks, not proof of a production occurrence.
+
+### Do
+1. On disposable PG build a UTC-boundary matrix: sale/movement/trend-history yesterday, today, +1 day and +30 days; an article/store seen ONLY in future; signed returns, DUG/KOREKCIJA, real zero vs NULL stock, orphan lines, Id != SaleId and all-origin population.
+2. First demonstrate the incorrect or harmless current behavior in independent SQL assertions. Calculate expected as-of populations and values without copying production WHERE predicates.
+3. If reproduced, add explicit upper bounds to date-filtered input CTEs (UTC date cutoff / exclusive next-UTC-midnight for timestamptz) without dropping legitimate current-day events or changing approved timezone policy. Check all observed_pairs/observed_products and trend-history branches, not just final calendar join.
+4. Verify view-versus-populated-materialized-cache EXCEPT ALL on a pre-existing wrong-hash cache, changed-hash refresh and failed-refresh HTTP 503 behavior. Preserve RQ615/RQ619 cache generation semantics; no broad startup rewrite.
+5. Run RQ616/RQ618/RQ619 focused PostgreSQL suites, release build, CLI governance and exact-main CI. Flag genuinely future-scheduled source records in diagnostic/provenance evidence where policy requires, not as fabricated past sales.
+
+### Acceptance
+No future-only article/store creates a misleading historical signal; future events do not affect as-of risk, demand or momentum, while same-day UTC data and signed retail semantics stay correct. Independent oracle and pre-existing cache parity are green, 0 skipped. No live business DB write, migration, import or deploy.

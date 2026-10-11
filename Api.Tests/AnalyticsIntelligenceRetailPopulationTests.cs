@@ -84,6 +84,18 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
         Assert.Null(missingDimensionInventory.DeadStockRisk);
         Assert.Equal(0.033333m, missingDimensionInventory.AverageDailySales30d);
 
+        // A real ProductsDim row with NULL quantity must not become a measured zero.
+        var nullQuantityInventory = await ReadInventorySignalAsync(
+            database,
+            articleId: 606,
+            DateOnly.FromDateTime(utcToday));
+        Assert.Null(nullQuantityInventory.StockQty);
+        Assert.Null(nullQuantityInventory.DaysOfCover);
+        Assert.Null(nullQuantityInventory.StockTurn);
+        Assert.Null(nullQuantityInventory.StockoutDays);
+        Assert.Null(nullQuantityInventory.LowStockDays);
+        Assert.Null(nullQuantityInventory.DeadStockRisk);
+
         var apiMissingDimensionInventory = await AnalyticsIntelligenceEndpoints.QueryInventoryRiskSignalsAsync(
             database.ConnectionString,
             new InventoryRiskSignalsRequest(
@@ -124,6 +136,29 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 SortDir: "desc"),
             CancellationToken.None);
         Assert.Equal(0m, Assert.Single(apiKnownZeroInventory.Items).StockQty);
+
+        var apiNullQuantityInventory = await AnalyticsIntelligenceEndpoints.QueryInventoryRiskSignalsAsync(
+            database.ConnectionString,
+            new InventoryRiskSignalsRequest(
+                Date: utcToday,
+                HistoryDays: 1,
+                ArticleId: 606,
+                SupplierId: null,
+                Category: null,
+                MinDeadStockRisk: null,
+                OnlyAtRisk: false,
+                Page: 1,
+                PageSize: 5,
+                SortBy: "deadStockRisk",
+                SortDir: "desc"),
+            CancellationToken.None);
+        var apiNullQuantityItem = Assert.Single(apiNullQuantityInventory.Items);
+        Assert.Null(apiNullQuantityItem.StockQty);
+        Assert.Null(apiNullQuantityItem.DaysOfCover);
+        Assert.Null(apiNullQuantityItem.StockTurn);
+        Assert.Null(apiNullQuantityItem.StockoutDays);
+        Assert.Null(apiNullQuantityItem.LowStockDays);
+        Assert.Null(apiNullQuantityItem.DeadStockRisk);
 
         // Sales for a product without a product-dimension row remain visible as sales evidence,
         // while their inventory baseline remains unknown. A DEMO-origin row is included by the
@@ -256,7 +291,8 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             );
             INSERT INTO "ProductsDim" ("ProductId", "Timestamp", "Kolicina") VALUES
                 (101, clock_timestamp(), 0),
-                (505, clock_timestamp(), 0);
+                (505, clock_timestamp(), 0),
+                (606, clock_timestamp(), NULL);
             """, connection))
             await schema.ExecuteNonQueryAsync();
 
