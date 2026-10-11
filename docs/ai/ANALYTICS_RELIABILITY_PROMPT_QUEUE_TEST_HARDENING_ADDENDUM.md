@@ -832,10 +832,10 @@ These tests never mutate a user-configured business database and cannot silently
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`
-- Main verification: `origin/main` was fetched at `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`, which contains the final implementation commit.
+- Main verification: post-close `origin/main` was fetched at `17bf5d95b84390e987fa3faf851f375b5a654a0e`; it contains implementation commit `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`.
 - Missed: none known.
 - Follow-up: RQ618 remains independently READY for its UTC movement-day SQL oracle.
-- Residual risk: GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) is queued on the implementation SHA; focused local PostgreSQL proof is green.
+- Residual risk: GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) is in progress on the implementation SHA; Planning Governance run `38176779148` is in progress on the closure SHA. Focused local PostgreSQL proof is green.
 - Next: RQ618 remains READY and was not claimed by this request.
 - Prompt defect / scope repair: Updated the queue and roadmap current-READY pointer from RQ617 to RQ618 after closure. The unsafe helper itself had no other test callsites.
 - Post-close routing: RQ618 remains the only READY prompt in the active RQ/SQL queue set; see the post-close cascade in the run log.
