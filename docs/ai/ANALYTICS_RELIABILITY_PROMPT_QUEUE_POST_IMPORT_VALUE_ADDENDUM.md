@@ -561,6 +561,7 @@ Two overlapping startup instances cannot orphan a cache at pending when an eligi
 - Disposable PostgreSQL regression covers both startup invocation orders; all three 021/022/024 view/materialized-view pairs match under independent `EXCEPT ALL` checks.
 - Focused convergence class: 7/7 passed, 0 skipped; Release test-project build and all six repository governance checks passed.
 - Delivered to `main` at `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; fresh `origin/main` contains this exact SHA.
+- Exact-SHA Analytics Tests & Data Integrity run `38182000713` passed; Planning Governance run `38182182163` on the closeout sync commit passed.
 - Run log: `.ai/runs/2026-10-12-RQ619-evidence.md`
 - Evidence state: synchronized
 
