@@ -207,14 +207,14 @@ RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
 - Checks run: read-only local Trendplus source qualification and cross-table reconciliation; focused governance checks and `git diff --check`.
 - Checks not run: disposable capture/worker fixture and Release build; no runtime capture code was changed because the source-generation contract failed qualification.
 - Run log: `.ai/runs/2026-10-11-RQ610-source-qualification-evidence.md`
-- Evidence state: pending close-out push
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending close-out push
-- Main verification: pending fresh post-delivery fetch
+- Main commit SHA: `93b1c3dcc3a6f74373ca68754c8af064642cede6`
+- Main verification: fresh fetch verified `origin/main` at `93b1c3dcc3a6f74373ca68754c8af064642cede6`.
 - Missed: POS/Access and manual stock updates are not tied to a common audited generation; existing history was not backfilled.
 - Follow-up: inventory/source owner must define a durable current-stock mutation generation and prove it across imports, POS, manual edits and transfers before re-entry.
 - Residual risk: `UpdatedAt`, `DataOrigin` and `SourceBatchId` can retain old Access provenance after non-Access quantity edits; this is unsafe as a freshness signal.
-- Post-close routing: RQ612 promoted to primary READY after fresh post-delivery dependency scan; details in run log.
+- Post-close routing: fresh post-delivery scan from `93b1c3dcc3a6f74373ca68754c8af064642cede6` confirmed RQ612 as primary READY; details in run log.
 - Prompt defect / scope repair: bounded READY source qualification was executable and confirmed store-key relationships, but its acceptance was not met because reliable mutation generation is absent. Re-blocked at the specific freshness/provenance boundary; worker/schema scope remains released.
 - Ownership transfer: Codex -> unassigned; authority/evidence: current claimant's source-qualification result in this queue and `.ai/runs/2026-10-11-RQ610-source-qualification-evidence.md`; effective 2026-10-11 after read-only inspection and before close-out commit; no branch/PR artifacts existed or were reused.
 

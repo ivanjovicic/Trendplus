@@ -4,9 +4,9 @@ Date: 2026-10-11
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: `main` / none
-Main commit SHA: pending close-out commit
-Main verification: pending fresh post-delivery fetch
-Evidence state: pending
+Main commit SHA: `93b1c3dcc3a6f74373ca68754c8af064642cede6`
+Main verification: fresh fetch verified `origin/main` at `93b1c3dcc3a6f74373ca68754c8af064642cede6`
+Evidence state: synchronized
 Ownership transfer: Codex -> unassigned; authority/evidence: source-qualification outcome recorded in queue and this run log; no branch/PR artifacts existed
 
 ## What was done
@@ -49,10 +49,11 @@ Updated the RQ610 status/owner and primary READY routing to reflect the verified
 
 ## Post-close routing recovery
 
-- Recovery base: fresh post-close `origin/main` SHA to be recorded after push.
-- Scanned the active RQ/SQL owner queue/addendum set and broader `docs/ai` queue inventory, plus `MASTER_ROADMAP.md`; refreshed task locks and checked RQ612 readiness/collisions after RQ611 close. RQ612 is independent read-only SQL/methodology work; no RQ612 lock/branch/open PR was found.
+- Recovery base: post-delivery `origin/main` SHA `93b1c3dcc3a6f74373ca68754c8af064642cede6`.
+- Scanned all 30 queue/addendum documents in `docs/ai`, including the full active RQ/SQL owner set, and `MASTER_ROADMAP.md`; refreshed task locks, branches and open PRs. RQ612 is independent read-only SQL/methodology work; no matching lock, branch or open PR was found. The unrelated active lock is P-UI-43.
 - RQ610 returned to BLOCKED with owner unassigned. Exact unblock: define a durable stock-generation/provenance contract that advances atomically for Access imports, POS writes, manual stock/store edits and transfers; make the POS function definition inspectable/source-controlled; prove two-store attribution, retries/concurrency and atomic capture against a disposable PostgreSQL fixture.
 - RQ612 is promoted to primary READY. There is no Zero-READY conclusion.
+- Planning Governance run `38123766384` on the recovery SHA succeeded.
 
 ## Next
 
