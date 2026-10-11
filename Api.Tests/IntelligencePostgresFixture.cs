@@ -124,6 +124,23 @@ public sealed class IntelligencePostgresFixture : IAsyncLifetime
         }
 
         state.BootstrapAttempted = true;
+        await using (var connection = new NpgsqlConnection(state.Database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            // Intelligence SQL consumes the production sale-header receipt field. Keep older
+            // disposable test schemas source-compatible without touching any business database.
+            await using var addReceiptNumber = new NpgsqlCommand("""
+                DO $$
+                BEGIN
+                    IF to_regclass('public."SalesFacts"') IS NOT NULL THEN
+                        ALTER TABLE public."SalesFacts"
+                            ADD COLUMN IF NOT EXISTS "BrojRacuna" text;
+                    END IF;
+                END $$;
+                """, connection);
+            await addReceiptNumber.ExecuteNonQueryAsync();
+        }
+
         await bootstrap(state.Database.ConnectionString);
         state.BootstrapCompleted = true;
     }

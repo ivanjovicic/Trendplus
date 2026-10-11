@@ -47,7 +47,7 @@ END $$;
 CREATE OR REPLACE VIEW analytics_intel.vw_inventory_risk_signals_v1 AS
 WITH settings AS (
     SELECT
-        CURRENT_DATE::date AS as_of_date,
+        (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date AS as_of_date,
         120::int AS horizon_days,
         30::int AS sales_window_days,
         45::int AS dead_stock_window_days,
@@ -68,16 +68,17 @@ latest_product_dim AS (
 daily_sales AS (
     SELECT
         slf."ProductId" AS article_id,
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date AS sale_date,
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date AS sale_date,
         SUM(slf."Qty")::numeric(18,4) AS sales_qty
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
       ON sf."SaleId" = slf."SaleId"
     JOIN settings s
-      ON sf."SaleTimestampUtc"::date >= s.as_of_date - s.horizon_days
+      ON (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date >= s.as_of_date - s.horizon_days
+    WHERE UPPER(BTRIM(COALESCE(sf."BrojRacuna", ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY
         slf."ProductId",
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date
 ),
 daily_non_sale_movements AS (
     SELECT
@@ -142,6 +143,7 @@ daily_stock_inputs AS (
         pc.article_id,
         pc.signal_date,
         COALESCE(lpd.current_stock_qty, 0)::numeric(18,4) AS current_stock_qty,
+        (lpd.article_id IS NOT NULL) AS has_current_stock_baseline,
         COALESCE(lpd.low_stock_threshold, (SELECT minimum_low_stock_threshold FROM settings))::numeric(18,4) AS low_stock_threshold,
         COALESCE(lpd.unit_cost, 0)::numeric(18,4) AS unit_cost,
         COALESCE(ds.sales_qty, 0)::numeric(18,4) AS sales_qty,
@@ -166,35 +168,38 @@ stock_proxy AS (
         dsi.low_stock_threshold,
         dsi.unit_cost,
         dsi.sales_qty,
-        GREATEST(
-            dsi.current_stock_qty
-            + COALESCE(SUM(dsi.sales_qty) OVER (
-                PARTITION BY dsi.article_id
-                ORDER BY dsi.signal_date DESC
-                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-            ), 0)
-            + COALESCE(SUM(dsi.transfer_out_qty) OVER (
-                PARTITION BY dsi.article_id
-                ORDER BY dsi.signal_date DESC
-                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-            ), 0)
-            - COALESCE(SUM(dsi.receipts_qty) OVER (
-                PARTITION BY dsi.article_id
-                ORDER BY dsi.signal_date DESC
-                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-            ), 0)
-            - COALESCE(SUM(dsi.transfer_in_qty) OVER (
-                PARTITION BY dsi.article_id
-                ORDER BY dsi.signal_date DESC
-                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-            ), 0)
-            - COALESCE(SUM(dsi.customer_return_qty) OVER (
-                PARTITION BY dsi.article_id
-                ORDER BY dsi.signal_date DESC
-                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-            ), 0),
-            0
-        )::numeric(18,4) AS stock_qty
+        CASE
+            WHEN NOT dsi.has_current_stock_baseline THEN NULL::numeric(18,4)
+            ELSE GREATEST(
+                dsi.current_stock_qty
+                + COALESCE(SUM(dsi.sales_qty) OVER (
+                    PARTITION BY dsi.article_id
+                    ORDER BY dsi.signal_date DESC
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                ), 0)
+                + COALESCE(SUM(dsi.transfer_out_qty) OVER (
+                    PARTITION BY dsi.article_id
+                    ORDER BY dsi.signal_date DESC
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                ), 0)
+                - COALESCE(SUM(dsi.receipts_qty) OVER (
+                    PARTITION BY dsi.article_id
+                    ORDER BY dsi.signal_date DESC
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                ), 0)
+                - COALESCE(SUM(dsi.transfer_in_qty) OVER (
+                    PARTITION BY dsi.article_id
+                    ORDER BY dsi.signal_date DESC
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                ), 0)
+                - COALESCE(SUM(dsi.customer_return_qty) OVER (
+                    PARTITION BY dsi.article_id
+                    ORDER BY dsi.signal_date DESC
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                ), 0),
+                0
+            )::numeric(18,4)
+        END AS stock_qty
     FROM daily_stock_inputs dsi
 ),
 risk_rollup AS (
@@ -220,21 +225,33 @@ risk_rollup AS (
             ORDER BY sp.signal_date
             ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
         )::numeric(18,4) AS avg_inventory_value_30d,
-        COUNT(*) FILTER (
-            WHERE sp.stock_qty = 0
-        ) OVER (
-            PARTITION BY sp.article_id
-            ORDER BY sp.signal_date
-            ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
-        )::integer AS stockout_days_30d,
-        COUNT(*) FILTER (
-            WHERE sp.stock_qty > 0
-              AND sp.stock_qty <= sp.low_stock_threshold
-        ) OVER (
-            PARTITION BY sp.article_id
-            ORDER BY sp.signal_date
-            ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
-        )::integer AS low_stock_days_30d,
+        CASE
+            WHEN COUNT(sp.stock_qty) OVER (
+                PARTITION BY sp.article_id
+                ORDER BY sp.signal_date
+                ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+            ) = 0 THEN NULL::integer
+            ELSE COUNT(*) FILTER (WHERE sp.stock_qty = 0) OVER (
+                PARTITION BY sp.article_id
+                ORDER BY sp.signal_date
+                ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+            )::integer
+        END AS stockout_days_30d,
+        CASE
+            WHEN COUNT(sp.stock_qty) OVER (
+                PARTITION BY sp.article_id
+                ORDER BY sp.signal_date
+                ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+            ) = 0 THEN NULL::integer
+            ELSE COUNT(*) FILTER (
+                WHERE sp.stock_qty > 0
+                  AND sp.stock_qty <= sp.low_stock_threshold
+            ) OVER (
+                PARTITION BY sp.article_id
+                ORDER BY sp.signal_date
+                ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+            )::integer
+        END AS low_stock_days_30d,
         SUM(sp.sales_qty) OVER (
             PARTITION BY sp.article_id
             ORDER BY sp.signal_date
@@ -265,6 +282,7 @@ SELECT
     rr.low_stock_days_30d AS low_stock_days,
     ROUND(
         CASE
+            WHEN rr.stock_qty IS NULL THEN NULL::numeric
             WHEN rr.stock_qty <= 0 THEN 0::numeric
             WHEN COALESCE(rr.sales_units_45d, 0) = 0 THEN 1::numeric
             WHEN COALESCE(rr.avg_daily_sales_30d, 0) = 0 THEN 0.8::numeric
@@ -276,22 +294,28 @@ SELECT
 FROM risk_rollup rr;
 
 COMMENT ON VIEW analytics_intel.vw_inventory_risk_signals_v1 IS
-'Versioned inventory risk signal view built from a reconstructed daily stock proxy. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
+'Versioned inventory risk signal view built from a reconstructed daily stock proxy using UTC sales dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts. It is not an Access-only history. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_qty IS
-'Estimated on-hand quantity for the signal date. This is a reconstructed proxy (provenance reconstructed), not an observed daily snapshot.';
+'Estimated on-hand quantity for the signal date. This is a reconstructed proxy (provenance reconstructed), not an observed daily snapshot; NULL means no current product-dimension stock baseline exists.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.avg_daily_sales_30d IS
 'Average daily sold units over the trailing 30-day window. This drives both days_of_cover and dead-stock heuristics.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.days_of_cover IS
-'Estimated stock_qty divided by trailing average daily sales. NULL means there is no recent sales demand to anchor the calculation.';
+'Estimated stock_qty divided by trailing average daily sales. NULL means there is no recent sales demand or no product-dimension stock baseline to anchor the calculation.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_turn IS
-'Trailing 30-day sales cost divided by trailing average inventory value. Cost is sourced from ProductsDim PurchasePriceRsd/PurchasePrice fallback.';
+'Trailing 30-day sales cost divided by trailing average inventory value. Cost is sourced from ProductsDim PurchasePriceRsd/PurchasePrice fallback; NULL is preserved when there is no inventory baseline.';
+
+COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stockout_days IS
+'Trailing stockout-day count. NULL means no product-dimension stock baseline exists in the measurement window.';
+
+COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.low_stock_days IS
+'Trailing low-stock-day count. NULL means no product-dimension stock baseline exists in the measurement window.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.dead_stock_risk IS
-'0-1 heuristic risk score. The default threshold assumes dead stock means stock remains while no units sold during the last 45 days.';
+'0-1 heuristic risk score. NULL means there is no product-dimension stock baseline. The default threshold assumes dead stock means stock remains while no units sold during the last 45 days.';
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_intel.mv_inventory_risk_signals_v1_cache AS
 SELECT *

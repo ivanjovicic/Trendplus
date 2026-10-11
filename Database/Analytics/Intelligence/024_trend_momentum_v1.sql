@@ -42,7 +42,7 @@ END $$;
 CREATE OR REPLACE VIEW analytics_intel.vw_trend_momentum_v1 AS
 WITH settings AS (
     SELECT
-        CURRENT_DATE::date AS as_of_date,
+        (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date AS as_of_date,
         28::int AS trend_window_days
 ),
 latest_trend_history AS (
@@ -66,16 +66,17 @@ latest_global_scores AS (
 daily_sales AS (
     SELECT
         slf."ProductId" AS article_id,
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date AS sale_date,
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date AS sale_date,
         SUM(slf."Qty")::numeric(18,4) AS units_sold
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
       ON sf."SaleId" = slf."SaleId"
     JOIN settings s
-      ON sf."SaleTimestampUtc"::date >= s.as_of_date - s.trend_window_days
+      ON (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date >= s.as_of_date - s.trend_window_days
+    WHERE UPPER(BTRIM(COALESCE(sf."BrojRacuna", ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY
         slf."ProductId",
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date
 ),
 observed_products AS (
     SELECT article_id FROM latest_global_scores
@@ -178,7 +179,7 @@ LEFT JOIN trend_entropy te
   ON te.article_id = op.article_id;
 
 COMMENT ON VIEW analytics_intel.vw_trend_momentum_v1 IS
-'Versioned trend momentum view combining external trend scores with local demand slope and entropy. Local acceleration is a 28-day regression slope over daily sold units; trend_entropy is normalized Shannon entropy over the same window.';
+'Versioned trend momentum view combining external trend scores with local demand slope and entropy. Sales use UTC calendar dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts; this is not an Access-only history. Local acceleration is a 28-day regression slope over daily sold units; trend_entropy is normalized Shannon entropy over the same window.';
 
 COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.external_trend_score IS
 'Latest external trend signal for the product, preferring TrendHistory when recent history exists and falling back to GlobalTrendScores.';

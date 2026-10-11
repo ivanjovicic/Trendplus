@@ -47,7 +47,7 @@ END $$;
 CREATE OR REPLACE VIEW analytics_intel.vw_product_demand_signals_v1 AS
 WITH settings AS (
     SELECT
-        CURRENT_DATE::date AS as_of_date,
+        (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date AS as_of_date,
         180::int AS horizon_days,
         7::int AS velocity_window_days,
         30::int AS coverage_window_days
@@ -55,7 +55,7 @@ WITH settings AS (
 latest_product_dim AS (
     SELECT DISTINCT ON (pd."ProductId")
         pd."ProductId" AS article_id,
-        pd."Timestamp"::date AS product_seen_date
+        (pd."Timestamp" AT TIME ZONE 'UTC')::date AS product_seen_date
     FROM "ProductsDim" pd
     ORDER BY pd."ProductId", pd."Timestamp" DESC
 ),
@@ -63,18 +63,19 @@ daily_sales AS (
     SELECT
         slf."ProductId" AS article_id,
         sf."StoreId" AS store_id,
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date AS sale_date,
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date AS sale_date,
         SUM(slf."Qty")::numeric(18,4) AS units_sold,
         COUNT(*)::integer AS source_rows
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
       ON sf."SaleId" = slf."SaleId"
     JOIN settings s
-      ON sf."SaleTimestampUtc"::date >= s.as_of_date - (s.horizon_days + s.coverage_window_days)
+      ON (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date >= s.as_of_date - (s.horizon_days + s.coverage_window_days)
+    WHERE UPPER(BTRIM(COALESCE(sf."BrojRacuna", ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY
         slf."ProductId",
         sf."StoreId",
-        DATE_TRUNC('day', sf."SaleTimestampUtc")::date
+        (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date
 ),
 observed_pairs AS (
     SELECT DISTINCT
@@ -233,7 +234,7 @@ LEFT JOIN product_day_coverage pdc
  AND pdc.signal_date = ds.signal_date;
 
 COMMENT ON VIEW analytics_intel.vw_product_demand_signals_v1 IS
-'Versioned product demand signal view at article/store/day grain. Uses a 7-day rolling velocity window, a lagged 7-day comparison for acceleration, first-sale launch proxying, and 30-day store coverage.';
+'Versioned product demand signal view at article/store/day grain. Uses UTC calendar dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts; it is not an Access-only history. Uses a 7-day rolling velocity window, a lagged 7-day comparison for acceleration, first-sale launch proxying, and 30-day store coverage.';
 
 COMMENT ON COLUMN analytics_intel.vw_product_demand_signals_v1.sales_velocity IS
 'Rolling 7-day sum of sold units. Window size is intentionally fixed in SQL for deterministic dashboard behavior.';

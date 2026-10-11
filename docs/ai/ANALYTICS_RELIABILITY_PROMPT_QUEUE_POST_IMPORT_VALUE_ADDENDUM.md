@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ616.
+Current READY prompt: none (RQ616 is IN_PROGRESS; no other READY task is registered in this active set).
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -469,13 +469,21 @@ After successful isolated upgrade, cached demand/risk/trend rows reflect the cor
 
 ## RQ616 - Certify intelligence retail population and release impact after RQ613
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: read-only analytics oracle/contract review
 Feature family: intelligence-retail-population
 Parallel-safe: yes after RQ615 release of shared 021/022/024 SQL ownership; initially read-only SQL and a separate fixture/test file
-Owner: unassigned
+Owner: Codex / worktree `rq614-test-isolation` (branch `codex/rq616-retail-population`)
 Ready after: RQ615 DONE with isolated cache parity; RQ614 test-safety guard DONE
+
+### Claim note — 2026-10-11
+
+- Refreshed `origin/main` to `1ad4295e19043fe136393b2c7373f4ec61d805e9`; RQ615 is DONE on `4eb58461af39b442a6eb1b471e4ed6073f4e0387` and RQ614's test-safety guard is DONE on `918fdd4e4a7df86ac0696ba720d72f7e7eee657e`.
+- RQ616 was the only current RQ READY task. No RQ616 lock, local/remote branch, open PR or conflicting intelligence-retail-population owner was found; the Master Roadmap has no higher-priority runnable READY task.
+- Transitioned READY -> IN_PROGRESS on branch `codex/rq616-retail-population` in the clean managed worktree `rq614-test-isolation`; local lock: `.ai/task-locks/RQ616-codex.lock.md`.
+- Working hypothesis: the three intelligence views may diverge from certified operational retail population through correction receipts, signed returns, demo/orphan facts, date handling or incomplete dimensions. No runtime SQL edit is justified unless the independent oracle proves a defect.
+- Execution boundary: disposable PostgreSQL fixtures only; no local/business database, deployed service, production data or import.
 
 ### Problem
 RQ613 fixed ID attribution but did not prove intelligence's population matches certified operational retail semantics. SalesFacts includes BrojRacuna, DataOrigin and demo/existing sources. The 021/022/024 daily_sales CTEs use SalesFacts + SalesLineFacts but currently do not explicitly exclude trimmed/case-insensitive DUG/KOREKCIJA. Signed returns, orphan/DEMO rows, date timezone, missing product dimensions and imported/existing/all coverage need independent proof before intelligence demand/risk/trend is treated as canonical retail.
@@ -487,4 +495,4 @@ RQ613 fixed ID attribution but did not prove intelligence's population matches c
 4. Read-only local business DB comparisons are permitted ONLY after separately verifying the exact target and with an explicit read-only session; never execute intelligence bootstrap/smoke DDL against it. Deployed parity stays with STAB16.
 
 ### Acceptance
-No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA contamination, signed returns preserved, scope/unknown provenance documented, zero skipped PostgreSQL tests. Queue RQ616 stays WAITING until its named code prerequisites are delivered; do not pre-claim it.
+No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA contamination, signed returns preserved, scope/unknown provenance documented, zero skipped PostgreSQL tests. Do not claim this prompt before RQ615 cache parity and the RQ614 test-safety guard are DONE; both prerequisites are now delivered.

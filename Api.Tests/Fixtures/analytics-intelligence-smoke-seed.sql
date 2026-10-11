@@ -22,8 +22,10 @@ CREATE TABLE "SuppliersDim" (
 CREATE TABLE "SalesFacts" (
     "Id" bigint PRIMARY KEY,
     "SaleId" integer NOT NULL UNIQUE,
+    "BrojRacuna" text NULL,
     "StoreId" integer NOT NULL,
-    "SaleTimestampUtc" timestamptz NOT NULL
+    "SaleTimestampUtc" timestamptz NOT NULL,
+    "DataOrigin" text NULL
 );
 
 CREATE TABLE "SalesLineFacts" (
