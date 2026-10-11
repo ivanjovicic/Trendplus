@@ -5,11 +5,11 @@ Queue: `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`
 Date: 2026-10-12
 Agent/tool: Codex, isolated worktree
 Delivery target: main
-Working branch / PR: `codex/bci17-42-skip-gate`; sequential integration pending
-Main commit SHA: pending
-Main verification: pending - fresh `origin/main` base is `5666c79ed4550d4d7a5709fd23bca4373e70cd91`; implementation not yet delivered
-Evidence state: pending - local proofs synchronized; exact-main delivery/CI remains open
-Ownership transfer: none
+Working branch / PR: `codex/bci17-42-skip-gate`; implementation delivered by parent integration
+Main commit SHA: `8ea2ba6acb03d59f09136d197056f8d5496d60e5`
+Main verification: passed - fresh `origin/main` is `8ea2ba6acb03d59f09136d197056f8d5496d60e5` and contains the implementation
+Evidence state: pending - exact-SHA CI and final queue close-out remain with parent coordinator
+Ownership transfer: Codex (BCI17 worktree) -> Codex (parent coordinator); parent instruction in this task on 2026-10-12; implementation commit `d652f41f015d8ae89366dc063a31b0b98506ddae` was integrated at main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`; branch/worktree retained untouched
 
 ## What was done
 

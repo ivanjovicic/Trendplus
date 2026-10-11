@@ -489,8 +489,9 @@ Priority: P1
 Type: CI test execution/observability and bounded fixture hardening
 Feature family: backend-ci-skipped-test-truth
 Parallel-safe: yes; owns test skip classification and CI reporting only, not DatabaseInitializer, SQL 021/022/024, RQ619 cache tests or source-business databases
-Owner: Codex (BCI17 worktree)
-Local lock: `.ai/task-locks/BCI17-codex-bci17.lock.md` (uncommitted)
+Owner: Codex (parent coordinator; exact-SHA close-out)
+Local lock: removed before implementation commit per protocol
+Handoff/release: On 2026-10-12, Codex (BCI17 worktree) explicitly released close-out ownership to Codex (parent coordinator) per parent instruction; implementation is on main at `8ea2ba6acb03d59f09136d197056f8d5496d60e5`; exact-SHA CI, Master routing, queue/runlog synchronization and terminal status remain with parent. The isolated branch/worktree is left untouched.
 Ready after: BCI16 DONE and successful current backend CI 38178775379; no provider production access needed for initial classification
 Commit suggestion: test(ci): certify required operations tests cannot silently skip
 
