@@ -463,19 +463,23 @@ public sealed class Rq610StockMutationLedgerPostgresTests : IClassFixture<Rq610S
 
 public sealed class Rq610StockMutationPostgresFixture : IAsyncLifetime
 {
-    private const string DefaultConnectionString =
-        "Host=127.0.0.1;Port=5434;Database=postgres;Username=postgres;Password=postgres;Pooling=false;Timeout=5;Command Timeout=30";
-
+    // The ledger fixture may create and drop databases. Never silently fall back
+    // to the developer's local PostgreSQL cluster when the test target is missing.
     private readonly ConcurrentBag<string> _databases = new();
-    private string _adminConnectionString = DefaultConnectionString;
+    private string _adminConnectionString = string.Empty;
     private bool _isAvailable;
 
     public async Task InitializeAsync()
     {
         var configured = Environment.GetEnvironmentVariable("RQ610_LEDGER_TEST_POSTGRES");
-        _adminConnectionString = string.IsNullOrWhiteSpace(configured)
-            ? DefaultConnectionString
-            : configured;
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            throw new InvalidOperationException(
+                "RQ610 ledger PostgreSQL tests require an explicitly provisioned disposable test server via RQ610_LEDGER_TEST_POSTGRES. " +
+                "No developer/business database will be used as a default.");
+        }
+
+        _adminConnectionString = configured;
 
         try
         {
