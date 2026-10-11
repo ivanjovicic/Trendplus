@@ -265,13 +265,13 @@ public static class AnalyticsIntelligenceEndpoints
                 GetNullableInt32(record, "supplier_id"),
                 GetString(record, "supplier_name"),
                 GetDateTime(record, "date"),
-                GetDecimal(record, "stock_qty"),
+                GetNullableDecimal(record, "stock_qty"),
                 GetDecimal(record, "avg_daily_sales_30d"),
                 GetNullableDecimal(record, "days_of_cover"),
                 GetNullableDecimal(record, "stock_turn"),
-                GetInt32(record, "stockout_days"),
-                GetInt32(record, "low_stock_days"),
-                GetDecimal(record, "dead_stock_risk")),
+                GetNullableInt32(record, "stockout_days"),
+                GetNullableInt32(record, "low_stock_days"),
+                GetNullableDecimal(record, "dead_stock_risk")),
             "analytics_intel.mv_inventory_risk_signals_v1_cache",
             "date",
             request.Date,
@@ -946,13 +946,13 @@ LIMIT @limit OFFSET @offset;
         return (sortBy ?? "deadStockRisk") switch
         {
             "productName" => $"product_name {(desc ? "DESC" : "ASC")}, date DESC, article_id ASC",
-            "date" => $"date {(desc ? "DESC" : "ASC")}, dead_stock_risk DESC, article_id ASC",
-            "stockQty" => $"stock_qty {(desc ? "DESC" : "ASC")}, dead_stock_risk DESC, article_id ASC",
-            "daysOfCover" => $"days_of_cover {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, dead_stock_risk DESC, article_id ASC",
-            "stockTurn" => $"stock_turn {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, dead_stock_risk DESC, article_id ASC",
-            "stockoutDays" => $"stockout_days {(desc ? "DESC" : "ASC")}, dead_stock_risk DESC, article_id ASC",
-            "lowStockDays" => $"low_stock_days {(desc ? "DESC" : "ASC")}, dead_stock_risk DESC, article_id ASC",
-            _ => $"dead_stock_risk {(desc ? "DESC" : "ASC")}, stockout_days DESC, article_id ASC"
+            "date" => $"date {(desc ? "DESC" : "ASC")}, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            "stockQty" => $"stock_qty {(desc ? "DESC" : "ASC")} NULLS LAST, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            "daysOfCover" => $"days_of_cover {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            "stockTurn" => $"stock_turn {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            "stockoutDays" => $"stockout_days {(desc ? "DESC" : "ASC")} NULLS LAST, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            "lowStockDays" => $"low_stock_days {(desc ? "DESC" : "ASC")} NULLS LAST, dead_stock_risk DESC NULLS LAST, article_id ASC",
+            _ => $"dead_stock_risk {(desc ? "DESC" : "ASC")} NULLS LAST, stockout_days DESC NULLS LAST, article_id ASC"
         };
     }
 
@@ -1191,13 +1191,13 @@ public sealed record InventoryRiskSignalItem(
     int? SupplierId,
     string SupplierName,
     DateTime Date,
-    decimal StockQty,
+    decimal? StockQty,
     decimal AvgDailySales30d,
     decimal? DaysOfCover,
     decimal? StockTurn,
-    int StockoutDays,
-    int LowStockDays,
-    decimal DeadStockRisk);
+    int? StockoutDays,
+    int? LowStockDays,
+    decimal? DeadStockRisk);
 
 public sealed record PriceIntelligenceRequest(
     int? ArticleId,

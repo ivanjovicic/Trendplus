@@ -1,5 +1,6 @@
 using Npgsql;
 using NpgsqlTypes;
+using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Api.Tests;
@@ -83,6 +84,47 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
         Assert.Null(missingDimensionInventory.DeadStockRisk);
         Assert.Equal(0.033333m, missingDimensionInventory.AverageDailySales30d);
 
+        var apiMissingDimensionInventory = await AnalyticsIntelligenceEndpoints.QueryInventoryRiskSignalsAsync(
+            database.ConnectionString,
+            new InventoryRiskSignalsRequest(
+                Date: utcToday,
+                HistoryDays: 1,
+                ArticleId: 303,
+                SupplierId: null,
+                Category: null,
+                MinDeadStockRisk: null,
+                OnlyAtRisk: false,
+                Page: 1,
+                PageSize: 5,
+                SortBy: "deadStockRisk",
+                SortDir: "desc"),
+            CancellationToken.None);
+        var apiMissingDimensionItem = Assert.Single(apiMissingDimensionInventory.Items);
+        Assert.Null(apiMissingDimensionItem.StockQty);
+        Assert.Null(apiMissingDimensionItem.DaysOfCover);
+        Assert.Null(apiMissingDimensionItem.StockTurn);
+        Assert.Null(apiMissingDimensionItem.StockoutDays);
+        Assert.Null(apiMissingDimensionItem.LowStockDays);
+        Assert.Null(apiMissingDimensionItem.DeadStockRisk);
+        Assert.Equal(0.033333m, apiMissingDimensionItem.AvgDailySales30d);
+
+        var apiKnownZeroInventory = await AnalyticsIntelligenceEndpoints.QueryInventoryRiskSignalsAsync(
+            database.ConnectionString,
+            new InventoryRiskSignalsRequest(
+                Date: utcToday,
+                HistoryDays: 1,
+                ArticleId: 505,
+                SupplierId: null,
+                Category: null,
+                MinDeadStockRisk: null,
+                OnlyAtRisk: false,
+                Page: 1,
+                PageSize: 5,
+                SortBy: "deadStockRisk",
+                SortDir: "desc"),
+            CancellationToken.None);
+        Assert.Equal(0m, Assert.Single(apiKnownZeroInventory.Items).StockQty);
+
         // Sales for a product without a product-dimension row remain visible as sales evidence,
         // while their inventory baseline remains unknown. A DEMO-origin row is included by the
         // global all-origin view, so callers must not describe this view as Access-only history.
@@ -164,6 +206,8 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             CREATE TABLE "ProductsDim" (
                 "ProductId" integer NOT NULL,
                 "Timestamp" timestamp with time zone NOT NULL,
+                "PLU" text NULL,
+                "ProductName" text NULL,
                 "Kolicina" integer NULL,
                 "MinimalnaKolicina" integer NULL,
                 "PurchasePrice" numeric(18,2) NULL,
@@ -174,6 +218,11 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 "SalePrice" numeric(18,2) NULL,
                 "SupplierId" integer NULL,
                 "DataOrigin" text NULL
+            );
+            CREATE TABLE "SuppliersDim" (
+                "SupplierId" integer NOT NULL,
+                "Naziv" text NULL,
+                "UpdatedAt" timestamp with time zone NOT NULL DEFAULT clock_timestamp()
             );
             CREATE TABLE "SalesFacts" (
                 "Id" bigint PRIMARY KEY,
