@@ -111,15 +111,15 @@ Commit suggestion: `test(analytics): fail closed on cost provenance schema misma
 - Checks run: Node preflight tests 5/5; disposable PostgreSQL integration 2/2 (0 skipped, 0 failed); Release API.Tests focused build/test passed; agent instruction self-test/check passed; prompt queue self-test/check passed (733 tasks); planning architecture self-test/check passed (80 tasks); `git diff --check` passed.
 - Checks not run: full backend test suite; production/live schema preflight and migration; these are outside this repository-only task and production change authority was not granted.
 - Run log: `.ai/runs/2026-10-11-RQ609-evidence.md`
-- Evidence state: pending post-closure main refresh and routing cascade
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `d85fe70a1be4c1e52b8035cdf7549925005322a5`
-- Main verification: refreshed `origin/main` to `d85fe70a1be4c1e52b8035cdf7549925005322a5`; it contains implementation commit `d85fe70a1be4c1e52b8035cdf7549925005322a5`.
+- Main verification: refreshed `origin/main` to `be4d6ee155210a9216c99c4a3191871e0dd34af0`; it contains implementation commit `d85fe70a1be4c1e52b8035cdf7549925005322a5` and closure commit `be4d6ee155210a9216c99c4a3191871e0dd34af0`.
 - Missed: no operator-authorized live migration was executed; live deployment proof remains STAB16.
 - Follow-up: RQ610 (primary READY); RQ612 remains independently READY and path-disjoint.
-- Residual risk: Analytics Tests & Data Integrity run `38118021843` on `d85fe70a1be4c1e52b8035cdf7549925005322a5` was `in_progress` at evidence capture; Planning Governance run `38118021859` on the same SHA succeeded. Neither remote run was needed to validate the focused disposable-database proof.
-- Next: pending post-closure routing cascade.
-- Post-close routing: pending post-closure `origin/main` refresh and dependency/collision cascade; completion log will record the recovery SHA and successor.
+- Residual risk: Analytics Tests & Data Integrity run `38118021843` on `d85fe70a1be4c1e52b8035cdf7549925005322a5` remains `in_progress`; Planning Governance run `38118021859` on the same SHA succeeded; closure-SHA Planning Governance run `38118155298` was `in_progress` at evidence capture. These remote runs do not replace the focused disposable-database proof.
+- Next: RQ610.
+- Post-close routing: refreshed `origin/main` to `be4d6ee155210a9216c99c4a3191871e0dd34af0`; scanned the active RQ queue/addenda set and SQL queue for changed/dependent IDs RQ609/RQ610/RQ612, RQ96 and RQ569, and rechecked BCI/STAB current READY. RQ610 dependencies RQ609 and RQ96 are DONE; RQ610 was promoted WAITING -> READY after a clear lock/branch/open-PR scan. RQ612 remains independently READY; RQ611 remains WAITING behind RQ610.
 - Prompt defect / scope repair: none.
 
 ### Problem
