@@ -2,8 +2,8 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ608
-Additional path-disjoint READY: RQ609 and RQ612.
+Current READY prompt: RQ609
+Additional path-disjoint READY: RQ612.
 Next: RQ610 after RQ609; RQ611 after RQ610, with fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -23,13 +23,13 @@ On claim: fresh `origin/main`, complete canonical RQ/addendum/SQL queue, same-ow
 
 ## RQ608 - Fix exact-main RQ607 current-snapshot CI regression
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: PostgreSQL/HTTP regression tests
 Feature family: inventory-latest-snapshot-ci
 Parallel-safe: yes; isolated `Api.Tests/Rq607InventoryStatusPostgresIntegrationTests.cs` and run evidence; no shared files with RQ609/RQ612
 Owner: Codex
-Local lock: `.ai/task-locks/RQ608-codex.lock.md`
+Local lock: removed after done close
 Ready after: `968e8f30` current inventory-snapshot implementation and red Actions `38090750465` are available
 Commit suggestion: `test(inventory): correct latest snapshot fixture and oracle expectations`
 
@@ -60,6 +60,26 @@ No false zero or fake historical as-of, test reproduces old failure and passes o
 
 ### Dependencies
 No external start gate: STAB16 and RQ601 original documents are not needed for this test-only fix.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Corrected the stale latest-snapshot expectation and proved scoped imported/existing/all results against independent PostgreSQL queries. Exact-main backend CI is green.
+- Changed files: `Api.Tests/Rq607InventoryStatusPostgresIntegrationTests.cs`; `MASTER_ROADMAP.md`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`; `.ai/runs/2026-10-11-RQ608-evidence.md`
+- Contract/runtime behavior changed: no; test expectations and scope-oracle coverage only.
+- Checks run: focused PostgreSQL RQ607 test 1/1; fallback/dashboard + RQ607 tests 7/7; API Release build 0 warnings / 0 errors; all six governance checks; `git diff --check`; Analytics Tests & Data Integrity run `38116562952` on `35aabd582e754bb293337eace0a6b45aeee58026` succeeded (1,969 total / 1,927 passed / 42 skipped / 0 failed); RQ453 certification job succeeded.
+- Checks not run: full local backend suite; exact-main Actions provided the broad backend proof.
+- Run log: `.ai/runs/2026-10-11-RQ608-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `35aabd582e754bb293337eace0a6b45aeee58026`
+- Main verification: fetched `origin/main` at `35aabd582e754bb293337eace0a6b45aeee58026`; it contains the implementation commit. Exact-SHA Actions run `38116562952` succeeded.
+- Missed: none known.
+- Follow-up: RQ609 (primary READY); RQ612 remains an additional path-disjoint READY prompt.
+- Residual risk: Actions logged a non-fatal duplicate `pg_extension_name_index` error while applying batch 4 of `025_AddTrendplusPerformanceIndexes.sql`; the retry completed and the workflow passed. This is separate from RQ608 and remains an infrastructure/bootstrap diagnostic.
+- Post-close routing: RQ609 is the current primary READY pointer; RQ612 remains independently READY after the post-close scan.
+- Prompt defect / scope repair: the master roadmap still said RQ READY was `none` although the current post-import addendum registered RQ608/RQ609/RQ612; repaired the master pointer at claim time and advanced it to RQ609 at close.
 
 ---
 
