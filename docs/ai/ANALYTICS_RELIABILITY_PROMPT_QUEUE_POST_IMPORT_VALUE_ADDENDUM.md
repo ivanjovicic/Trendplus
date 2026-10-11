@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none (post-close recovery at origin/main 530e99503b8b914c8740cafdbb82513392877341 scanned 21 active execution queues, 2 future planning queues and the historical NEXT ledger; no READY task or new RQ618 dependency remains. RQ610's isolated ledger tests pass on current main; RQ610 remains BLOCKED pending the all-writer stock-generation/POS contract).
+Current READY prompt: RQ619 (P1, new bounded concurrent-startup cache generation regression; earlier RQ618 zero-READY result is superseded by this confirmed source-code gap).
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -518,3 +518,34 @@ No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA c
 - Next: none; the post-close Zero-READY proof is in the run log.
 - Post-close routing: Zero-READY proof in the run log.
 - Prompt defect / scope repair: the prompt's initial read-only type was broadened only after the disposable oracle proved a bounded SQL defect; the related API/UI correction was required to preserve unknown-versus-zero semantics. No business database or production DDL was used.
+
+
+
+---
+
+## RQ619 - Prevent competing API startups from orphaning intelligence cache build generations
+
+Status: READY
+Priority: P1
+Type: PostgreSQL concurrency/startup-cache regression and targeted runtime fix
+Feature family: intelligence-cache-convergence-concurrent-startup
+Parallel-safe: yes for a dedicated test and DatabaseInitializer intelligence build state methods; no active RQ615 owner after DONE, no overlap with RQ610 production stock-generation work
+Owner: unassigned
+Ready after: RQ615 DONE, RQ618 DONE; no provider/live access required
+Commit suggestion: fix(analytics): serialize intelligence cache preparation with build ownership
+
+### Confirmed source-code gap / hypothesis to prove
+Infrastructure/Seed/DatabaseInitializer.cs executes PrepareAnalyticsIntelligenceCacheBuildAsync BEFORE its fire-and-forget Task.Run acquires AnalyticsIntelligenceBuildLockKey (987654323). Preparation unconditionally writes pending state and a new build_generation_id for each cache requiring upgrade. If two API instances interleave, a later Prepare can replace an earlier generation while its builder holds the lock; the later builder may fail to acquire the lock and return. The first builder then sees isPendingCacheGeneration=false, skips refresh/MarkReady; the cache can stay pending (HTTP 503) until a future startup. Existing AnalyticsIntelligenceCacheConvergenceTests cover a single prepared generation, lock contention then explicit retry, and failed builds, but no two-instance interleaving/Task.WhenAll scenario. Fail-closed is appropriate but indefinite orphaned pending without retry is not acceptable.
+
+### Do
+1. On one disposable PostgreSQL fixture, force a deterministic interleaving: Prepare A, hold build advisory lock with builder A, Prepare B before A's cache processing, run both builder tasks, assert no permanent pending/failed state when one builder succeeds, and view/MV EXCEPT ALL parity. Seed a pre-RQ613 wrong-join materialized cache with Id != SaleId to verify semantic freshness; avoid tests that pass only on newly created caches.
+2. Also test reverse ordering, contention without an available winner, startup cancellation/failure, same-hash restart, changed hash, 2+ API processes/generations, and no nightly worker. Existing RQ615 fail-closed 503 for stale/pending must remain intact and unchanged.
+3. Fix only the actual proven race, e.g., serialize build preparation + execution under the SAME advisory lock or implement safe claim/lease/version-aware generation CAS and bounded recovery. Ensure a losing instance cannot overwrite a live builder's owned generation, and a skipped builder cannot silently strand pending. Do not mark ready until SQL hash, successful MV refresh/rebuild and generation ownership are verified.
+4. Preserve startup latency requirements (no unbounded blocking cold start), current cache per-file version, exact hash and rollout operator evidence, and distinct 021/022/024 cache keys. Preserve business data and manual Render deployment policy.
+5. Run targeted real PostgreSQL tests with TRX expected=executed, failed=0, skipped=0, Release build, RQ615 existing tests, queue/governance validators and current-main CI status. If the interleaving hypothesis is falsified, do not change production code; document precise counterexample and close as a proof-only DONE.
+
+### Acceptance
+Two overlapping startup instances cannot orphan a cache at pending when an eligible builder completes; failed/contended updates remain explicitly unavailable and recover automatically without live production/manual DB intervention. View/MV agree by independent SQL oracle, stale state never yields 200, no business DB DDL/import/migration/deploy. End with exact main SHA and per-test CI evidence. No force push.
+
+### Ownership
+RQ615 stays DONE; this is a newly identified, narrower concurrency regression outside its existing fixed fixtures. RQ610 remains BLOCKED for unrelated all-writer stock-generation proof. RQ619 is independent of RQ601/RQ602/RQ606/STAB16 external evidence.
