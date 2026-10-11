@@ -58,6 +58,8 @@ jobs:
       # service and isolate their data in disposable, uniquely named databases.
       RQ601_TEST_POSTGRES: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres_password"
       TRENDPLUS_RQ607_POSTGRES_CONNECTION: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres_password"
+      # RQ610 ledger fixture must use the CI disposable service, never its developer-only 5434 default.
+      RQ610_LEDGER_TEST_POSTGRES: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres_password"
 
     steps:
       - name: Checkout repository
