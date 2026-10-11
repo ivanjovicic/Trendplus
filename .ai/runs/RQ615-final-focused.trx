@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="c05fae98-8389-4a04-8776-2e22300e22a8" name="Ivan@DESKTOP-V877DAD 2026-10-11 20:31:54" runUser="DESKTOP-V877DAD\Ivan" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-11T20:31:54.0116386+02:00" queuing="2026-10-11T20:31:54.0116390+02:00" start="2026-10-11T20:31:31.6165666+02:00" finish="2026-10-11T20:32:21.5531148+02:00" />
+  <TestSettings name="default" id="f0fde8b9-1db5-4c88-8bc1-23b06da56e5d">
+    <Deployment runDeploymentRoot="Ivan_DESKTOP-V877DAD_2026-10-11_20_31_54" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="dedac72b-f2eb-45d6-aa20-4cacc5b15f94" testId="634651f0-1b60-cac2-918a-af9a9a9bd3e7" testName="Api.Tests.AnalyticsIntelligenceSmokeTests.ProductDemandSignalsView_DistinguishesNewDemandFromMeasuredAcceleration" computerName="DESKTOP-V877DAD" duration="00:00:00.2316540" startTime="2026-10-11T20:32:18.9699883+02:00" endTime="2026-10-11T20:32:18.9699886+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dedac72b-f2eb-45d6-aa20-4cacc5b15f94" />
+    <UnitTestResult executionId="fa821481-6787-4251-8e2e-7ba8791569c5" testId="f88e3940-f918-8c0a-185a-e0b02ed545f1" testName="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ChangedViewSchema_RebuildsCacheWithoutASecondRefresh" computerName="DESKTOP-V877DAD" duration="00:00:03.0833708" startTime="2026-10-11T20:32:18.7352540+02:00" endTime="2026-10-11T20:32:18.7352543+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fa821481-6787-4251-8e2e-7ba8791569c5" />
+    <UnitTestResult executionId="dc86995c-6c7e-452a-a328-d0e459f25b43" testId="edff1372-ed97-003c-70bf-f3f60a9b83f2" testName="Api.Tests.AnalyticsIntelligenceSmokeTests.PriceIntelligenceView_DoesNotExposeDiscountDepthForInvalidListPrice" computerName="DESKTOP-V877DAD" duration="00:00:00.1419069" startTime="2026-10-11T20:32:19.1124901+02:00" endTime="2026-10-11T20:32:19.1124903+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dc86995c-6c7e-452a-a328-d0e459f25b43" />
+    <UnitTestResult executionId="52b2a5d7-0162-40a8-977c-0f2faa641ae6" testId="550a40fa-716c-0d68-b39a-9842f37cc347" testName="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ChangedSaleJoinSql_RefreshesExistingDemandRiskAndTrendCaches" computerName="DESKTOP-V877DAD" duration="00:00:12.7521171" startTime="2026-10-11T20:32:14.4916862+02:00" endTime="2026-10-11T20:32:14.4916865+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="52b2a5d7-0162-40a8-977c-0f2faa641ae6" />
+    <UnitTestResult executionId="6ae5865a-57da-4ccf-aaa2-d553761963ca" testId="0d6140bc-560e-c8d0-66cc-14176387df43" testName="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.AdvisoryLockContention_LeavesCachePendingThenRetriesWithoutNightlyWorker" computerName="DESKTOP-V877DAD" duration="00:00:07.7568201" startTime="2026-10-11T20:32:01.7389185+02:00" endTime="2026-10-11T20:32:01.7389188+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6ae5865a-57da-4ccf-aaa2-d553761963ca" />
+    <UnitTestResult executionId="63c7cd72-541b-4b2a-bc79-b5fce95255f6" testId="db762559-0c4f-8870-93d6-f3e680b02637" testName="Api.Tests.AnalyticsIntelligenceSmokeTests.IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches" computerName="DESKTOP-V877DAD" duration="00:00:01.2476231" startTime="2026-10-11T20:32:20.3607895+02:00" endTime="2026-10-11T20:32:20.3607897+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="63c7cd72-541b-4b2a-bc79-b5fce95255f6" />
+    <UnitTestResult executionId="d4dc7151-df81-4380-bf61-6f98bd05f75b" testId="1f4527d3-0362-65bb-0ca2-7ea485e1523e" testName="Api.Tests.AnalyticsIntelligenceSmokeTests.ProductDemandSignalsView_Exists_WithExpectedColumns_AndQueryExecutes" computerName="DESKTOP-V877DAD" duration="00:00:00.1938763" startTime="2026-10-11T20:32:20.5554391+02:00" endTime="2026-10-11T20:32:20.5554393+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d4dc7151-df81-4380-bf61-6f98bd05f75b" />
+    <UnitTestResult executionId="ef28842b-79f6-4a2a-ac4d-66b9d8f0b1da" testId="b6cbd518-79cc-9366-668c-4edf565c5cf3" testName="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.InterruptedOrFailedBuild_IsUnavailableAndPersistsSafeFailureState" computerName="DESKTOP-V877DAD" duration="00:00:17.2385330" startTime="2026-10-11T20:31:53.9813937+02:00" endTime="2026-10-11T20:31:53.9814125+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ef28842b-79f6-4a2a-ac4d-66b9d8f0b1da" />
+    <UnitTestResult executionId="8a86da4c-e708-421b-942a-c76e05bb1813" testId="1d15ddd7-b180-dd11-ea0a-698dc3fd1d21" testName="Api.Tests.AnalyticsIntelligenceSmokeTests.ObservedDailyStockView_Exists_WithProvenanceColumns" computerName="DESKTOP-V877DAD" duration="00:00:00.2953987" startTime="2026-10-11T20:32:20.8514192+02:00" endTime="2026-10-11T20:32:20.8514195+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8a86da4c-e708-421b-942a-c76e05bb1813" />
+    <UnitTestResult executionId="a9756b28-81f2-431b-b4dc-606a1d3e9b11" testId="ab918fc5-7ba9-62fb-f16a-825cd67ecb57" testName="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ReadyEmptyCache_Is200WhilePendingCacheIs503" computerName="DESKTOP-V877DAD" duration="00:00:01.1589345" startTime="2026-10-11T20:32:15.6513105+02:00" endTime="2026-10-11T20:32:15.6513108+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a9756b28-81f2-431b-b4dc-606a1d3e9b11" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.InterruptedOrFailedBuild_IsUnavailableAndPersistsSafeFailureState" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="b6cbd518-79cc-9366-668c-4edf565c5cf3">
+      <Execution id="ef28842b-79f6-4a2a-ac4d-66b9d8f0b1da" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests" name="InterruptedOrFailedBuild_IsUnavailableAndPersistsSafeFailureState" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceSmokeTests.PriceIntelligenceView_DoesNotExposeDiscountDepthForInvalidListPrice" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="edff1372-ed97-003c-70bf-f3f60a9b83f2">
+      <Execution id="dc86995c-6c7e-452a-a328-d0e459f25b43" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceSmokeTests" name="PriceIntelligenceView_DoesNotExposeDiscountDepthForInvalidListPrice" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceSmokeTests.IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="db762559-0c4f-8870-93d6-f3e680b02637">
+      <Execution id="63c7cd72-541b-4b2a-bc79-b5fce95255f6" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceSmokeTests" name="IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceSmokeTests.ObservedDailyStockView_Exists_WithProvenanceColumns" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="1d15ddd7-b180-dd11-ea0a-698dc3fd1d21">
+      <Execution id="8a86da4c-e708-421b-942a-c76e05bb1813" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceSmokeTests" name="ObservedDailyStockView_Exists_WithProvenanceColumns" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.AdvisoryLockContention_LeavesCachePendingThenRetriesWithoutNightlyWorker" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="0d6140bc-560e-c8d0-66cc-14176387df43">
+      <Execution id="6ae5865a-57da-4ccf-aaa2-d553761963ca" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests" name="AdvisoryLockContention_LeavesCachePendingThenRetriesWithoutNightlyWorker" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ChangedSaleJoinSql_RefreshesExistingDemandRiskAndTrendCaches" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="550a40fa-716c-0d68-b39a-9842f37cc347">
+      <Execution id="52b2a5d7-0162-40a8-977c-0f2faa641ae6" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests" name="ChangedSaleJoinSql_RefreshesExistingDemandRiskAndTrendCaches" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceSmokeTests.ProductDemandSignalsView_DistinguishesNewDemandFromMeasuredAcceleration" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="634651f0-1b60-cac2-918a-af9a9a9bd3e7">
+      <Execution id="dedac72b-f2eb-45d6-aa20-4cacc5b15f94" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceSmokeTests" name="ProductDemandSignalsView_DistinguishesNewDemandFromMeasuredAcceleration" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceSmokeTests.ProductDemandSignalsView_Exists_WithExpectedColumns_AndQueryExecutes" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="1f4527d3-0362-65bb-0ca2-7ea485e1523e">
+      <Execution id="d4dc7151-df81-4380-bf61-6f98bd05f75b" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceSmokeTests" name="ProductDemandSignalsView_Exists_WithExpectedColumns_AndQueryExecutes" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ReadyEmptyCache_Is200WhilePendingCacheIs503" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="ab918fc5-7ba9-62fb-f16a-825cd67ecb57">
+      <Execution id="a9756b28-81f2-431b-b4dc-606a1d3e9b11" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests" name="ReadyEmptyCache_Is200WhilePendingCacheIs503" />
+    </UnitTest>
+    <UnitTest name="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests.ChangedViewSchema_RebuildsCacheWithoutASecondRefresh" storage="c:\users\ivan\.codex\worktrees\rq614-test-isolation\trendplus2\api.tests\bin\release\net8.0\api.tests.dll" id="f88e3940-f918-8c0a-185a-e0b02ed545f1">
+      <Execution id="fa821481-6787-4251-8e2e-7ba8791569c5" />
+      <TestMethod codeBase="C:\Users\Ivan\.codex\worktrees\rq614-test-isolation\Trendplus2\Api.Tests\bin\Release\net8.0\Api.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Api.Tests.AnalyticsIntelligenceCacheConvergenceTests" name="ChangedViewSchema_RebuildsCacheWithoutASecondRefresh" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="634651f0-1b60-cac2-918a-af9a9a9bd3e7" executionId="dedac72b-f2eb-45d6-aa20-4cacc5b15f94" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f88e3940-f918-8c0a-185a-e0b02ed545f1" executionId="fa821481-6787-4251-8e2e-7ba8791569c5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="edff1372-ed97-003c-70bf-f3f60a9b83f2" executionId="dc86995c-6c7e-452a-a328-d0e459f25b43" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="550a40fa-716c-0d68-b39a-9842f37cc347" executionId="52b2a5d7-0162-40a8-977c-0f2faa641ae6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0d6140bc-560e-c8d0-66cc-14176387df43" executionId="6ae5865a-57da-4ccf-aaa2-d553761963ca" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="db762559-0c4f-8870-93d6-f3e680b02637" executionId="63c7cd72-541b-4b2a-bc79-b5fce95255f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1f4527d3-0362-65bb-0ca2-7ea485e1523e" executionId="d4dc7151-df81-4380-bf61-6f98bd05f75b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b6cbd518-79cc-9366-668c-4edf565c5cf3" executionId="ef28842b-79f6-4a2a-ac4d-66b9d8f0b1da" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1d15ddd7-b180-dd11-ea0a-698dc3fd1d21" executionId="8a86da4c-e708-421b-942a-c76e05bb1813" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ab918fc5-7ba9-62fb-f16a-825cd67ecb57" executionId="a9756b28-81f2-431b-b4dc-606a1d3e9b11" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="10" executed="10" passed="10" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 8.0.23)&#xD;
+[xUnit.net 00:00:00.19]   Discovering: Api.Tests&#xD;
+[xUnit.net 00:00:00.52]   Discovered:  Api.Tests&#xD;
+[xUnit.net 00:00:00.54]   Starting:    Api.Tests&#xD;
+[testcontainers.org 00:00:00.09] Connected to Docker:&#xD;
+  Host: npipe://./pipe/docker_engine&#xD;
+  Server Version: 29.3.0&#xD;
+  Kernel Version: 6.18.40.1-microsoft-standard-WSL2&#xD;
+  API Version: 1.54&#xD;
+  Operating System: Docker Desktop (containerized)&#xD;
+  Total Memory: 7.69 GB&#xD;
+  Labels: &#xD;
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli&#xD;
+[testcontainers.org 00:00:00.29] Docker container 7088f1d3794a created&#xD;
+[testcontainers.org 00:00:00.39] Start Docker container 7088f1d3794a&#xD;
+[testcontainers.org 00:00:00.68] Wait for Docker container 7088f1d3794a to complete readiness checks&#xD;
+[testcontainers.org 00:00:00.69] Docker container 7088f1d3794a ready&#xD;
+[testcontainers.org 00:00:00.94] Docker container b7c8723e0a3f created&#xD;
+[testcontainers.org 00:00:00.97] Start Docker container b7c8723e0a3f&#xD;
+[testcontainers.org 00:00:01.42] Wait for Docker container b7c8723e0a3f to complete readiness checks&#xD;
+[testcontainers.org 00:00:01.45] Execute "pg_isready --host localhost --dbname postgres --username postgres" at Docker container b7c8723e0a3f&#xD;
+[testcontainers.org 00:00:02.62] Execute "pg_isready --host localhost --dbname postgres --username postgres" at Docker container b7c8723e0a3f&#xD;
+[testcontainers.org 00:00:03.74] Execute "pg_isready --host localhost --dbname postgres --username postgres" at Docker container b7c8723e0a3f&#xD;
+[testcontainers.org 00:00:03.86] Docker container b7c8723e0a3f ready&#xD;
+[testcontainers.org 00:00:48.01] Delete Docker container b7c8723e0a3f&#xD;
+[xUnit.net 00:00:49.30]   Finished:    Api.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

@@ -5,6 +5,7 @@ using NpgsqlTypes;
 using System.Data;
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Trendplus2.Endpoints;
 
@@ -65,11 +66,12 @@ public static class AnalyticsIntelligenceEndpoints
                 NormalizeText(sortBy),
                 NormalizeText(sortDir));
 
-            var response = await QueryDemandSignalsAsync(GetAnalyticsConnectionString(configuration), request, ct);
-            return Results.Ok(response);
+            return await ExecuteCacheQueryAsync(() => QueryDemandSignalsAsync(
+                GetAnalyticsConnectionString(configuration), request, ct));
         })
         .WithName("GetAnalyticsIntelligenceDemandSignals")
         .Produces<IntelligencePageResponse<DemandSignalItem>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status503ServiceUnavailable)
         .ProducesValidationProblem();
 
         group.MapGet("/inventory-risk", async (
@@ -114,11 +116,12 @@ public static class AnalyticsIntelligenceEndpoints
                 NormalizeText(sortBy),
                 NormalizeText(sortDir));
 
-            var response = await QueryInventoryRiskSignalsAsync(GetAnalyticsConnectionString(configuration), request, ct);
-            return Results.Ok(response);
+            return await ExecuteCacheQueryAsync(() => QueryInventoryRiskSignalsAsync(
+                GetAnalyticsConnectionString(configuration), request, ct));
         })
         .WithName("GetAnalyticsIntelligenceInventoryRisk")
         .Produces<IntelligencePageResponse<InventoryRiskSignalItem>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status503ServiceUnavailable)
         .ProducesValidationProblem();
 
         group.MapGet("/price-intelligence", async (
@@ -200,11 +203,12 @@ public static class AnalyticsIntelligenceEndpoints
                 NormalizeText(sortBy),
                 NormalizeText(sortDir));
 
-            var response = await QueryTrendMomentumAsync(GetAnalyticsConnectionString(configuration), request, ct);
-            return Results.Ok(response);
+            return await ExecuteCacheQueryAsync(() => QueryTrendMomentumAsync(
+                GetAnalyticsConnectionString(configuration), request, ct));
         })
         .WithName("GetAnalyticsIntelligenceTrendMomentum")
         .Produces<IntelligencePageResponse<TrendMomentumItem>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status503ServiceUnavailable)
         .ProducesValidationProblem();
     }
 
@@ -239,6 +243,8 @@ public static class AnalyticsIntelligenceEndpoints
             "analytics_intel.mv_product_demand_signals_v1_cache",
             "date",
             request.Date,
+            "analytics_intel.mv_product_demand_signals_v1_cache",
+            "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql",
             ct);
 
     internal static Task<IntelligencePageResponse<InventoryRiskSignalItem>> QueryInventoryRiskSignalsAsync(
@@ -269,6 +275,8 @@ public static class AnalyticsIntelligenceEndpoints
             "analytics_intel.mv_inventory_risk_signals_v1_cache",
             "date",
             request.Date,
+            "analytics_intel.mv_inventory_risk_signals_v1_cache",
+            "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
             ct);
 
     internal static Task<IntelligencePageResponse<PriceIntelligenceItem>> QueryPriceIntelligenceAsync(
@@ -300,6 +308,8 @@ public static class AnalyticsIntelligenceEndpoints
             "analytics_intel.mv_price_intelligence_v1_cache",
             "price_date",
             null,
+            null,
+            null,
             ct);
 
     internal static Task<IntelligencePageResponse<TrendMomentumItem>> QueryTrendMomentumAsync(
@@ -326,6 +336,8 @@ public static class AnalyticsIntelligenceEndpoints
             "analytics_intel.mv_trend_momentum_v1_cache",
             "signal_date",
             null,
+            "analytics_intel.mv_trend_momentum_v1_cache",
+            "Database/Analytics/Intelligence/024_trend_momentum_v1.sql",
             ct);
 
     private static async Task<IntelligencePageResponse<T>> ExecutePagedQueryAsync<T>(
@@ -338,12 +350,23 @@ public static class AnalyticsIntelligenceEndpoints
         string relationName,
         string dateColumn,
         DateTime? requestedAsOfDate,
+        string? freshnessCacheName,
+        string? freshnessSqlPath,
         CancellationToken ct)
     {
         await using var connection = await OpenConnectionAsync(analyticsConnectionString, ct);
 
         try
         {
+            if (freshnessCacheName is not null && freshnessSqlPath is not null)
+            {
+                await EnsureIntelligenceCacheIsFreshAsync(
+                    connection,
+                    freshnessCacheName,
+                    freshnessSqlPath,
+                    ct);
+            }
+
             await using var command = new NpgsqlCommand(sql, connection)
             {
                 CommandTimeout = 120
@@ -374,8 +397,128 @@ public static class AnalyticsIntelligenceEndpoints
         }
         catch (PostgresException ex) when (IsIntelligenceRelationUnavailable(ex))
         {
-            return new IntelligencePageResponse<T>(requestedAsOfDate?.Date, page, pageSize, 0, Array.Empty<T>());
+            return new IntelligencePageResponse<T>(requestedAsOfDate?.Date, page, pageSize, 0, Array.Empty<T>())
+            {
+                IsUnavailable = freshnessCacheName is not null
+            };
         }
+    }
+
+    private static async Task EnsureIntelligenceCacheIsFreshAsync(
+        NpgsqlConnection connection,
+        string cacheName,
+        string sqlFilePath,
+        CancellationToken ct)
+    {
+        const string tableExistsSql = "SELECT to_regclass('analytics_intel.cache_refresh_state') IS NOT NULL;";
+        await using (var tableExists = new NpgsqlCommand(tableExistsSql, connection))
+        {
+            if ((bool?)await tableExists.ExecuteScalarAsync(ct) != true)
+            {
+                throw new IntelligenceCacheUnavailableException();
+            }
+        }
+
+        const string statusSql = """
+            SELECT
+                state.build_state,
+                state.expected_script_hash,
+                state.last_refreshed_at_utc IS NOT NULL,
+                to_regclass(@cacheName)::oid IS NOT NULL
+            FROM analytics_intel.cache_refresh_state AS state
+            WHERE state.cache_name = @cacheName
+              AND state.sql_file_path = @sqlFilePath;
+            """;
+        string? buildState;
+        string? expectedScriptHash;
+        bool hasRefreshTimestamp;
+        bool cacheRelationExists;
+        await using (var statusCommand = new NpgsqlCommand(statusSql, connection))
+        {
+            statusCommand.Parameters.AddWithValue("cacheName", cacheName);
+            statusCommand.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+            await using var reader = await statusCommand.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct))
+            {
+                throw new IntelligenceCacheUnavailableException();
+            }
+
+            buildState = reader.GetString(0);
+            expectedScriptHash = reader.IsDBNull(1) ? null : reader.GetString(1);
+            hasRefreshTimestamp = reader.GetBoolean(2);
+            cacheRelationExists = reader.GetBoolean(3);
+        }
+
+        if (!string.Equals(buildState, "ready", StringComparison.Ordinal)
+            || !hasRefreshTimestamp
+            || !cacheRelationExists)
+        {
+            throw new IntelligenceCacheUnavailableException();
+        }
+
+        const string historyExistsSql = """
+            SELECT to_regclass('"__StartupSqlScriptHistory"') IS NOT NULL;
+            """;
+        bool startupHistoryExists;
+        await using (var historyExists = new NpgsqlCommand(historyExistsSql, connection))
+        {
+            startupHistoryExists = (bool?)await historyExists.ExecuteScalarAsync(ct) == true;
+        }
+
+        if (expectedScriptHash is null)
+        {
+            // Direct SQL smoke tests use an isolated database with no startup history.
+            // In a bootstrapped application DB, an unversioned ready row is not trusted.
+            if (startupHistoryExists)
+            {
+                throw new IntelligenceCacheUnavailableException();
+            }
+
+            return;
+        }
+
+        if (!startupHistoryExists)
+        {
+            throw new IntelligenceCacheUnavailableException();
+        }
+
+        const string appliedHashSql = """
+            SELECT "ScriptHash"
+            FROM "__StartupSqlScriptHistory"
+            WHERE "ScriptPath" = @sqlFilePath;
+            """;
+        await using var appliedHashCommand = new NpgsqlCommand(appliedHashSql, connection);
+        appliedHashCommand.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+        var appliedHash = (string?)await appliedHashCommand.ExecuteScalarAsync(ct);
+        if (!string.Equals(expectedScriptHash, appliedHash, StringComparison.Ordinal))
+        {
+            throw new IntelligenceCacheUnavailableException();
+        }
+    }
+
+    internal static async Task<IResult> ExecuteCacheQueryAsync<T>(
+        Func<Task<IntelligencePageResponse<T>>> query)
+    {
+        try
+        {
+            var response = await query();
+            return response.IsUnavailable
+                ? CreateUnavailableCacheProblem()
+                : Results.Ok(response);
+        }
+        catch (IntelligenceCacheUnavailableException)
+        {
+            return CreateUnavailableCacheProblem();
+        }
+    }
+
+    private static IResult CreateUnavailableCacheProblem() => Results.Problem(
+        statusCode: StatusCodes.Status503ServiceUnavailable,
+        title: "Analytics intelligence cache is unavailable",
+        detail: "The signal cache is refreshing or its applied version has not been verified.");
+
+    internal sealed class IntelligenceCacheUnavailableException : Exception
+    {
     }
 
     private static string BuildDemandSignalsSql(DemandSignalsRequest request, out List<NpgsqlParameter> parameters)
@@ -988,7 +1131,11 @@ public sealed record IntelligencePageResponse<T>(
     int Page,
     int PageSize,
     int TotalCount,
-    IReadOnlyList<T> Items);
+    IReadOnlyList<T> Items)
+{
+    [JsonIgnore]
+    internal bool IsUnavailable { get; init; }
+}
 
 public sealed record DemandSignalsRequest(
     DateTime? Date,

@@ -201,3 +201,27 @@ CREATE INDEX IF NOT EXISTS idx_mv_trend_momentum_v1_cache_signal_date
 
 COMMENT ON MATERIALIZED VIEW analytics_intel.mv_trend_momentum_v1_cache IS
 'Materialized cache for analytics_intel.vw_trend_momentum_v1. Unique key supports REFRESH MATERIALIZED VIEW CONCURRENTLY.';
+
+INSERT INTO analytics_intel.cache_refresh_state (
+    cache_name,
+    sql_file_path,
+    build_state,
+    last_refreshed_at_utc,
+    updated_at_utc
+)
+VALUES (
+    'analytics_intel.mv_trend_momentum_v1_cache',
+    'Database/Analytics/Intelligence/024_trend_momentum_v1.sql',
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'ready' ELSE 'pending' END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp() ELSE NULL END,
+    clock_timestamp()
+)
+ON CONFLICT (cache_name) DO UPDATE
+SET sql_file_path = EXCLUDED.sql_file_path,
+    build_state = CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'ready' ELSE 'pending' END,
+    last_refreshed_at_utc = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp()
+        ELSE analytics_intel.cache_refresh_state.last_refreshed_at_utc
+    END,
+    failure_code = NULL,
+    updated_at_utc = clock_timestamp();

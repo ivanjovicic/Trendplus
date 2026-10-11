@@ -226,7 +226,35 @@ Endpoint design notes:
 - demand and inventory default to the latest available snapshot date and support `historyDays` for short sparkline-style history windows
 - all routes support pagination and whitelisted sort keys
 - filters are applied against the intelligence caches plus latest product/supplier/store dimension snapshots
-- when intelligence objects are still building during startup, the API returns empty paged payloads instead of failing over to slow ad-hoc SQL
+- the demand, inventory-risk and trend-momentum routes return `503` while their startup cache is pending, failed, missing or hash-mismatched; they do not present stale rows as a successful empty result. A ready cache containing zero rows remains a valid empty result. Price intelligence keeps its separate refresh contract.
+
+### Cache freshness operator check
+
+The startup refresh is asynchronous and does not depend on `NightlyAnalyticsRefreshWorker`. For the three caches affected by intelligence SQL changes, `analytics_intel.cache_refresh_state` records each cache's state, expected startup SQL hash, last successful refresh time and safe failure code. The app serves a cache only when it is `ready`, the materialized relation exists, and `expected_script_hash` matches `__StartupSqlScriptHistory.ScriptHash`.
+
+Run this read-only query against the analytics database when one of the three endpoints returns `503`:
+
+```sql
+SELECT
+    state.cache_name,
+    state.build_state,
+    state.expected_script_hash,
+    history."ScriptHash" AS applied_script_hash,
+    state.last_refreshed_at_utc,
+    state.failure_code,
+    to_regclass(state.cache_name) IS NOT NULL AS cache_exists
+FROM analytics_intel.cache_refresh_state AS state
+LEFT JOIN "__StartupSqlScriptHistory" AS history
+  ON history."ScriptPath" = state.sql_file_path
+WHERE state.cache_name IN (
+    'analytics_intel.mv_product_demand_signals_v1_cache',
+    'analytics_intel.mv_inventory_risk_signals_v1_cache',
+    'analytics_intel.mv_trend_momentum_v1_cache'
+)
+ORDER BY state.cache_name;
+```
+
+`pending` means a refresh is queued or interrupted; `failed` means the latest background build did not complete. A hash mismatch or missing cache is also unavailable. Check the application startup log for the corresponding build failure, then let the next authorized application startup retry the idempotent build. Do not clear startup history or mark a cache ready by hand. This runbook is a release-time diagnostic; it does not deploy the application or refresh a business database. A `ready` row with matching hashes and an empty cache is a successful empty result, not a refresh failure.
 
 ## Testing
 

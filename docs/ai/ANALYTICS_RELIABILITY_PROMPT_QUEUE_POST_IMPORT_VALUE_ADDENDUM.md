@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ615.
+Current READY prompt: none (RQ615 is IN_PROGRESS; no other READY task is registered in this active set).
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -416,14 +416,22 @@ All five smoke cases and the RQ613 source-SaleId probe run against isolated data
 
 ## RQ615 - Ensure intelligence caches actually adopt the RQ613 SQL change
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: backend/startup-SQL/materialized-view-freshness
 Feature family: intelligence-cache-convergence
 Parallel-safe: yes; owns Infrastructure/Seed/DatabaseInitializer.cs, intelligence SQL files 021/022/024, runtime refresh orchestration and a distinct isolated integration-test file; do not edit RQ614-owned test files
-Owner: unassigned
+Owner: Codex / worktree `rq615-cache-convergence`
 Ready after: RQ613 DONE
 Commit suggestion: fix(analytics): certify cache refresh after intelligence SQL hash change
+
+### Claim note — 2026-10-11
+
+- Refreshed `origin/main` to `39336101e53eaa09b6d4a5953da2206a645fe45b`; RQ613 is DONE at `a6acdbbb4d016767522f70b670d237ba0af4833c` and RQ614's isolated test guard is DONE at `918fdd4e4a7df86ac0696ba720d72f7e7eee657e`.
+- RQ615 was READY, P0 and the primary eligible RQ task. No RQ615 task lock, local/remote branch or open PR existed; no other active owner owns the cache-convergence feature family. RQ614 is closed and owns test-isolation paths; this claim owns the initializer, intelligence SQL/refresh behavior and a separate integration-test file.
+- Transitioned READY -> IN_PROGRESS in worktree `rq615-cache-convergence`; local lock: `.ai/task-locks/RQ615-codex.lock.md`.
+- Working hypothesis to reproduce before runtime edits: changed script hashes re-run `CREATE MATERIALIZED VIEW IF NOT EXISTS`, which can leave pre-existing unchanged-schema materialized rows stale after the corrected source SaleId join.
+- Execution boundary: disposable PostgreSQL only; no business database mutation, production deployment or import.
 
 ### Problem / confirmed evidence
 DatabaseInitializer re-executes 021/022/024 on changed script hash, asynchronously with a background advisory lock and warning-only exception handling. The scripts run CREATE OR REPLACE VIEW, while dropping old materialized caches only on COLUMN STRUCTURE changes. With the unchanged RQ613 output schema they use CREATE MATERIALIZED VIEW IF NOT EXISTS, which does not refresh an existing cache. A successful SQL hash/history update or API /ready does not by itself prove that the cached data has been recalculated. NightlyAnalyticsRefreshWorker may be disabled, stopped or delayed. RQ613's test checks newly created caches, not a previously populated stale cache after an in-place SQL change.

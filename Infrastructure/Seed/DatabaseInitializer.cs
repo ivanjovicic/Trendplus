@@ -25,6 +25,13 @@ public static class DatabaseInitializer
     private const int StartupSqlLockTimeoutSeconds = 15;
     private const int SupplierDecisionHubCoreBatchCount = 5;
     private const int SupplierDecisionHubCacheStartBatchNumber = SupplierDecisionHubCoreBatchCount + 1;
+    private static readonly IReadOnlyDictionary<string, string> AnalyticsIntelligenceCacheBySqlFile =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Database/Analytics/Intelligence/021_product_demand_signals_v1.sql"] = "analytics_intel.mv_product_demand_signals_v1_cache",
+            ["Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql"] = "analytics_intel.mv_inventory_risk_signals_v1_cache",
+            ["Database/Analytics/Intelligence/024_trend_momentum_v1.sql"] = "analytics_intel.mv_trend_momentum_v1_cache"
+        };
 
     public static async Task<DatabaseInitializationOutcome> InitializeDatabasesAsync(
         IServiceProvider services,
@@ -2918,59 +2925,314 @@ public static class DatabaseInitializer
             )
         };
 
-        var bgAnalyticsIntelligenceConnectionString = connectionString;
-        var bgAnalyticsIntelligenceLogger = logger;
-        _ = Task.Run(async () =>
+        var cacheBuildGenerationId = await PrepareAnalyticsIntelligenceCacheBuildAsync(
+            connectionString,
+            analyticsIntelligenceScripts);
+        _ = Task.Run(() => RunAnalyticsIntelligenceBuildAsync(
+            connectionString,
+            logger,
+            analyticsIntelligenceScripts,
+            cacheBuildGenerationId));
+    }
+
+    internal static async Task<Guid> PrepareAnalyticsIntelligenceCacheBuildAsync(
+        string connectionString,
+        IReadOnlyList<(string SqlFilePath, string[] RequiredRelations)> scripts)
+    {
+        var generationId = Guid.NewGuid();
+
+        foreach (var script in scripts)
         {
-            await using var lockConnection = new NpgsqlConnection(bgAnalyticsIntelligenceConnectionString);
+            var normalizedPath = NormalizeSqlScriptIdentifier(script.SqlFilePath);
+            if (!AnalyticsIntelligenceCacheBySqlFile.TryGetValue(normalizedPath, out var cacheName))
+            {
+                continue;
+            }
+
+            var resolvedPath = ResolveSqlFilePath(script.SqlFilePath)
+                ?? throw new FileNotFoundException($"Required startup SQL file was not found: {script.SqlFilePath}", script.SqlFilePath);
+            var sql = await File.ReadAllTextAsync(resolvedPath);
+            var expectedHash = ComputeSqlScriptHash(
+                string.Join(Environment.NewLine + "-- SQL_BATCH_BREAK" + Environment.NewLine, SplitSqlBatches(sql)));
+            var appliedHash = await GetAppliedStartupSqlHashAsync(connectionString, normalizedPath);
+            var cacheState = await GetAnalyticsIntelligenceCacheStateAsync(connectionString, cacheName);
+            var relationsReady = await AreRelationsReadyAsync(connectionString, script.RequiredRelations);
+
+            if (relationsReady
+                && string.Equals(appliedHash, expectedHash, StringComparison.Ordinal)
+                && string.Equals(cacheState.BuildState, "ready", StringComparison.Ordinal)
+                && string.Equals(cacheState.ExpectedScriptHash, expectedHash, StringComparison.Ordinal)
+                && cacheState.LastRefreshedAtUtc.HasValue)
+            {
+                continue;
+            }
+
+            await MarkAnalyticsIntelligenceCachePendingAsync(
+                connectionString,
+                cacheName,
+                normalizedPath,
+                expectedHash,
+                generationId);
+
+        }
+
+        return generationId;
+    }
+
+    internal static async Task RunAnalyticsIntelligenceBuildAsync(
+        string connectionString,
+        ILogger logger,
+        IReadOnlyList<(string SqlFilePath, string[] RequiredRelations)> scripts,
+        Guid cacheBuildGenerationId)
+    {
+        await using var lockConnection = new NpgsqlConnection(connectionString);
+        var lockAcquired = false;
+        try
+        {
+            await lockConnection.OpenAsync();
+
+            if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
+            {
+                logger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
+                return;
+            }
+
+            lockAcquired = true;
+            foreach (var script in scripts)
+            {
+                var relationsReady = await AreRelationsReadyAsync(connectionString, script.RequiredRelations);
+
+                if (!relationsReady)
+                {
+                    logger.LogInformation(
+                        "[BG] Analytics intelligence relations missing for {SqlFile}. Forcing re-execution.",
+                        script.SqlFilePath);
+                    await DeleteAppliedStartupSqlHistoryAsync(connectionString, script.SqlFilePath);
+                }
+
+                var normalizedPath = NormalizeSqlScriptIdentifier(script.SqlFilePath);
+                var isCacheScript = AnalyticsIntelligenceCacheBySqlFile.TryGetValue(normalizedPath, out var cacheName);
+                var cacheState = isCacheScript
+                    ? await GetAnalyticsIntelligenceCacheStateAsync(connectionString, cacheName!)
+                    : null;
+                var isPendingCacheGeneration = isCacheScript
+                    && cacheState?.BuildGenerationId == cacheBuildGenerationId;
+                var relationOidBefore = isPendingCacheGeneration
+                    ? await GetRelationOidAsync(connectionString, cacheName!)
+                    : null;
+
+                await ExecuteSqlFileAsync(
+                    connectionString,
+                    script.SqlFilePath,
+                    logger,
+                    commandTimeoutSeconds: 0,
+                    useTransaction: false,
+                    failClosed: isCacheScript);
+
+                if (!isPendingCacheGeneration)
+                {
+                    continue;
+                }
+
+                var relationOidAfter = await GetRelationOidAsync(connectionString, cacheName!);
+                if (!relationOidAfter.HasValue)
+                {
+                    throw new InvalidOperationException($"Startup SQL did not create the required intelligence cache {cacheName}.");
+                }
+
+                if (relationOidBefore.HasValue && relationOidBefore == relationOidAfter)
+                {
+                    await RefreshAnalyticsIntelligenceCacheConcurrentlyAsync(connectionString, cacheName!);
+                }
+
+                await MarkAnalyticsIntelligenceCacheReadyAsync(
+                    connectionString,
+                    cacheName!,
+                    normalizedPath,
+                    cacheBuildGenerationId);
+            }
+
+            logger.LogInformation("[BG] Analytics intelligence SQL build completed successfully.");
+        }
+        catch (Exception ex)
+        {
             try
             {
-                await lockConnection.OpenAsync();
-
-                if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
-                {
-                    bgAnalyticsIntelligenceLogger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
-                    return;
-                }
-
-                foreach (var script in analyticsIntelligenceScripts)
-                {
-                    var relationsReady = await AreRelationsReadyAsync(
-                        bgAnalyticsIntelligenceConnectionString,
-                        script.RequiredRelations);
-
-                    if (!relationsReady)
-                    {
-                        bgAnalyticsIntelligenceLogger.LogInformation(
-                            "[BG] Analytics intelligence relations missing for {SqlFile}. Forcing re-execution.",
-                            script.SqlFilePath);
-                        await DeleteAppliedStartupSqlHistoryAsync(
-                            bgAnalyticsIntelligenceConnectionString,
-                            script.SqlFilePath);
-                    }
-
-                    await ExecuteSqlFileAsync(
-                        bgAnalyticsIntelligenceConnectionString,
-                        script.SqlFilePath,
-                        bgAnalyticsIntelligenceLogger,
-                        commandTimeoutSeconds: 0,
-                        useTransaction: false);
-                }
-
-                bgAnalyticsIntelligenceLogger.LogInformation("[BG] Analytics intelligence SQL build completed successfully.");
+                await MarkAnalyticsIntelligenceCacheBuildFailedAsync(connectionString, cacheBuildGenerationId);
             }
-            catch (Exception ex)
+            catch (Exception statusException)
             {
-                bgAnalyticsIntelligenceLogger.LogWarning(ex, "[BG] Analytics intelligence SQL build failed. Intelligence views may be partially unavailable until next startup.");
+                logger.LogWarning(statusException, "[BG] Could not persist the failed analytics intelligence cache state.");
             }
-            finally
+
+            logger.LogWarning(ex, "[BG] Analytics intelligence SQL build failed. Affected intelligence caches remain unavailable until a successful retry.");
+        }
+        finally
+        {
+            if (lockAcquired && lockConnection.State == System.Data.ConnectionState.Open)
             {
-                if (lockConnection.State == System.Data.ConnectionState.Open)
-                {
-                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
-                }
+                await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
             }
-        });
+        }
+    }
+
+    private sealed record AnalyticsIntelligenceCacheState(
+        string? BuildState,
+        string? ExpectedScriptHash,
+        DateTime? LastRefreshedAtUtc,
+        Guid? BuildGenerationId);
+
+    private static async Task<AnalyticsIntelligenceCacheState> GetAnalyticsIntelligenceCacheStateAsync(
+        string connectionString,
+        string cacheName)
+    {
+        const string sql = """
+            SELECT build_state, expected_script_hash, last_refreshed_at_utc, build_generation_id
+            FROM analytics_intel.cache_refresh_state
+            WHERE cache_name = @cacheName;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("cacheName", cacheName);
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+        {
+            return new AnalyticsIntelligenceCacheState(null, null, null, null);
+        }
+
+        return new AnalyticsIntelligenceCacheState(
+            reader.GetString(0),
+            reader.IsDBNull(1) ? null : reader.GetString(1),
+            reader.IsDBNull(2) ? null : reader.GetDateTime(2),
+            reader.IsDBNull(3) ? null : reader.GetGuid(3));
+    }
+
+    private static async Task MarkAnalyticsIntelligenceCachePendingAsync(
+        string connectionString,
+        string cacheName,
+        string sqlFilePath,
+        string expectedHash,
+        Guid generationId)
+    {
+        const string sql = """
+            INSERT INTO analytics_intel.cache_refresh_state (
+                cache_name, sql_file_path, build_state, expected_script_hash,
+                build_generation_id, refresh_started_at_utc, failure_code, updated_at_utc)
+            VALUES (
+                @cacheName, @sqlFilePath, 'pending', @expectedHash,
+                @generationId, clock_timestamp(), NULL, clock_timestamp())
+            ON CONFLICT (cache_name) DO UPDATE
+            SET sql_file_path = EXCLUDED.sql_file_path,
+                build_state = 'pending',
+                expected_script_hash = EXCLUDED.expected_script_hash,
+                build_generation_id = EXCLUDED.build_generation_id,
+                refresh_started_at_utc = clock_timestamp(),
+                failure_code = NULL,
+                updated_at_utc = clock_timestamp();
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("cacheName", cacheName);
+        command.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+        command.Parameters.AddWithValue("expectedHash", expectedHash);
+        command.Parameters.AddWithValue("generationId", generationId);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task MarkAnalyticsIntelligenceCacheReadyAsync(
+        string connectionString,
+        string cacheName,
+        string sqlFilePath,
+        Guid generationId)
+    {
+        const string sql = """
+            UPDATE analytics_intel.cache_refresh_state AS state
+            SET build_state = 'ready',
+                last_refreshed_at_utc = clock_timestamp(),
+                failure_code = NULL,
+                updated_at_utc = clock_timestamp()
+            FROM "__StartupSqlScriptHistory" AS history
+            WHERE state.cache_name = @cacheName
+              AND state.sql_file_path = @sqlFilePath
+              AND state.build_generation_id = @generationId
+              AND state.expected_script_hash = history."ScriptHash"
+              AND history."ScriptPath" = @sqlFilePath;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("cacheName", cacheName);
+        command.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+        command.Parameters.AddWithValue("generationId", generationId);
+        if (await command.ExecuteNonQueryAsync() != 1)
+        {
+            throw new InvalidOperationException($"Startup SQL hash was not recorded for refreshed intelligence cache {cacheName}.");
+        }
+    }
+
+    private static async Task MarkAnalyticsIntelligenceCacheBuildFailedAsync(
+        string connectionString,
+        Guid generationId)
+    {
+        const string sql = """
+            UPDATE analytics_intel.cache_refresh_state
+            SET build_state = 'failed',
+                failure_code = 'startup_build_failed',
+                updated_at_utc = clock_timestamp()
+            WHERE build_generation_id = @generationId;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("generationId", generationId);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<long?> GetRelationOidAsync(string connectionString, string relationName)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("SELECT to_regclass(@relationName)::oid::bigint;", connection);
+        command.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+        command.Parameters.AddWithValue("relationName", relationName);
+        var result = await command.ExecuteScalarAsync();
+        return result is null || result is DBNull
+            ? null
+            : Convert.ToInt64(result, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static async Task RefreshAnalyticsIntelligenceCacheConcurrentlyAsync(
+        string connectionString,
+        string cacheName)
+    {
+        if (!AnalyticsIntelligenceCacheBySqlFile.Values.Contains(cacheName, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException($"Unregistered intelligence cache refresh request: {cacheName}.");
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using (var timeout = new NpgsqlCommand("SET lock_timeout = '15s';", connection))
+        {
+            timeout.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+            await timeout.ExecuteNonQueryAsync();
+        }
+
+        await using var command = new NpgsqlCommand($"REFRESH MATERIALIZED VIEW CONCURRENTLY {cacheName};", connection)
+        {
+            CommandTimeout = 0
+        };
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task EnsureCoreAnalyticsDimensionTablesAsync(
