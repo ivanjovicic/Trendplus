@@ -68,7 +68,7 @@ daily_sales AS (
         COUNT(*)::integer AS source_rows
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
-      ON sf."Id" = slf."SaleId"
+      ON sf."SaleId" = slf."SaleId"
     JOIN settings s
       ON sf."SaleTimestampUtc"::date >= s.as_of_date - (s.horizon_days + s.coverage_window_days)
     GROUP BY

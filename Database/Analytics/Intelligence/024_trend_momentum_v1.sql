@@ -70,7 +70,7 @@ daily_sales AS (
         SUM(slf."Qty")::numeric(18,4) AS units_sold
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
-      ON sf."Id" = slf."SaleId"
+      ON sf."SaleId" = slf."SaleId"
     JOIN settings s
       ON sf."SaleTimestampUtc"::date >= s.as_of_date - s.trend_window_days
     GROUP BY
