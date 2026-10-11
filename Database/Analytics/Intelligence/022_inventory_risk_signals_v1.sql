@@ -12,6 +12,7 @@
 --     * current on-hand
 --     * future sales from SalesLineFacts/SalesFacts
 --     * non-sale inventory movements from InventoryMovementFacts
+-- - sales and inventory movements share explicit UTC retail-day attribution
 -- - low stock threshold uses GREATEST(MinimalnaKolicina, 5)
 -- - dead stock risk uses a 45-day "no sales while stock remains" heuristic
 -- ==========================================================
@@ -83,7 +84,7 @@ daily_sales AS (
 daily_non_sale_movements AS (
     SELECT
         imf."ArtikalId" AS article_id,
-        DATE_TRUNC('day', imf."Datum")::date AS movement_date,
+        (imf."Datum" AT TIME ZONE 'UTC')::date AS movement_date,
         SUM(
             CASE
                 WHEN imf."TipPromene" = 'Ulaz robe' THEN ABS(COALESCE(imf."Kolicina", 0))
@@ -110,12 +111,12 @@ daily_non_sale_movements AS (
         )::numeric(18,4) AS customer_return_qty
     FROM "InventoryMovementFacts" imf
     JOIN settings s
-      ON imf."Datum"::date >= s.as_of_date - s.horizon_days
+      ON imf."Datum" >= ((s.as_of_date - s.horizon_days)::timestamp AT TIME ZONE 'UTC')
     WHERE imf."ArtikalId" IS NOT NULL
       AND imf."TipPromene" IN ('Ulaz robe', 'Prenos ulaz', 'Prenos izlaz', 'Povrat kupca')
     GROUP BY
         imf."ArtikalId",
-        DATE_TRUNC('day', imf."Datum")::date
+        (imf."Datum" AT TIME ZONE 'UTC')::date
 ),
 observed_products AS (
     SELECT article_id FROM latest_product_dim
@@ -294,7 +295,7 @@ SELECT
 FROM risk_rollup rr;
 
 COMMENT ON VIEW analytics_intel.vw_inventory_risk_signals_v1 IS
-'Versioned inventory risk signal view built from a reconstructed daily stock proxy using UTC sales dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts. It is not an Access-only history. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
+'Versioned inventory risk signal view built from a reconstructed daily stock proxy using UTC sales and inventory-movement dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts. It is not an Access-only history. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_qty IS
 'Estimated on-hand quantity for the signal date. This is a reconstructed proxy (provenance reconstructed), not an observed daily snapshot; NULL means no current product-dimension stock baseline exists.';
