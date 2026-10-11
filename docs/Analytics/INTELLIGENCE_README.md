@@ -143,7 +143,7 @@ Details:
 
 - `external_trend_score` prefers recent `TrendHistory` and falls back to `GlobalTrendScores`
 - `local_sales_acceleration` is the 28-day regression slope of daily sales
-- `trend_entropy` is normalized Shannon entropy over trailing 28-day daily sales shares
+- `trend_entropy` is normalized Shannon entropy over trailing 28-day gross positive sold-unit shares. Signed customer returns remain in the net-sales regression slope but are not probability mass. The value is `NULL` when the window has no positive sold-unit evidence; one active gross-sales day is a measured entropy of zero.
 
 Future extension:
 

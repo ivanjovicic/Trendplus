@@ -299,7 +299,7 @@ export default function IntelligenceSnapshotPanel({
             <SignalRow
               key={`${item.articleId}-${item.signalDate}`}
               title={item.productName}
-              subtitle={`${item.category} | entropija ${item.trendEntropy.toFixed(2)} | ${item.supplierName}`}
+              subtitle={`${item.category} | entropija ${item.trendEntropy?.toFixed(2) ?? ANALYTICS_UNAVAILABLE_LABEL} | ${item.supplierName}`}
               badge={item.externalTrendScore.toFixed(1)}
               badgeColor={signalTone(item.externalTrendScore, 50, PAL.cyan, PAL.yellow)}
             />

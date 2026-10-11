@@ -73,7 +73,7 @@ export interface TrendMomentumItem {
   signalDate: string;
   externalTrendScore: number;
   localSalesAcceleration: number;
-  trendEntropy: number;
+  trendEntropy: number | null;
 }
 
 export interface DemandSignalsQuery {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import IntelligenceSnapshotPanel from "./IntelligenceSnapshotPanel";
-import type { DemandSignalItem, InventoryRiskSignalItem } from "../../services/analyticsIntelligenceApi";
+import type { DemandSignalItem, InventoryRiskSignalItem, TrendMomentumItem } from "../../services/analyticsIntelligenceApi";
 
 const newDemand: DemandSignalItem = {
   articleId: 101,
@@ -38,6 +38,19 @@ const unknownInventory: InventoryRiskSignalItem = {
   lowStockDays: null,
   deadStockRisk: null,
 };
+
+const trendItem = (trendEntropy: number | null): TrendMomentumItem => ({
+  articleId: 707,
+  sku: "SKU-707",
+  productName: "Artikal trenda",
+  category: "Obuća",
+  supplierId: null,
+  supplierName: "Dobavljač",
+  signalDate: "2026-09-08",
+  externalTrendScore: 12,
+  localSalesAcceleration: 0,
+  trendEntropy,
+});
 
 describe("IntelligenceSnapshotPanel demand state", () => {
   it("renders new demand distinctly from measured acceleration", () => {
@@ -91,5 +104,21 @@ describe("IntelligenceSnapshotPanel demand state", () => {
     expect(screen.getByText("Nema potvrđenog rizika zaliha")).toBeInTheDocument();
     expect(screen.queryByText("Artikal bez poznate zalihe")).not.toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
+  });
+
+  it("distinguishes unavailable entropy from a measured zero", () => {
+    render(
+      <IntelligenceSnapshotPanel
+        demand={[]}
+        inventory={[]}
+        price={[]}
+        trend={[trendItem(null), { ...trendItem(0), articleId: 708, sku: "SKU-708", productName: "Jednodnevna prodaja" }]}
+        asOfDate="2026-09-08"
+        loading={false}
+      />,
+    );
+
+    expect(screen.getByText(/entropija Nije dostupno/)).toBeInTheDocument();
+    expect(screen.getByText(/entropija 0\.00/)).toBeInTheDocument();
   });
 });

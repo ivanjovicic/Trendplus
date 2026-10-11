@@ -6,8 +6,9 @@
 -- - external_trend_score prefers the latest TrendHistory score and falls back
 --   to GlobalTrendScores.FinalGlobalScore
 -- - local_sales_acceleration uses a 28-day regression slope on daily units sold
--- - trend_entropy measures how evenly demand is distributed across days in the
---   trailing 28-day window using normalized Shannon entropy
+-- - trend_entropy measures how evenly gross positive sold units are distributed
+--   across days in the trailing 28-day window using normalized Shannon entropy
+--   (signed net units remain the basis for local_sales_acceleration)
 --
 -- Future pgvector integration:
 -- - the analytics database already enables pgvector via 020
@@ -67,7 +68,8 @@ daily_sales AS (
     SELECT
         slf."ProductId" AS article_id,
         (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date AS sale_date,
-        SUM(slf."Qty")::numeric(18,4) AS units_sold
+        SUM(slf."Qty")::numeric(18,4) AS units_sold,
+        SUM(GREATEST(slf."Qty", 0))::numeric(18,4) AS gross_units_sold
     FROM "SalesLineFacts" slf
     JOIN "SalesFacts" sf
       ON sf."SaleId" = slf."SaleId"
@@ -108,7 +110,8 @@ daily_product_sales AS (
         pc.article_id,
         pc.signal_date,
         pc.day_number,
-        COALESCE(ds.units_sold, 0)::numeric(18,4) AS units_sold
+        COALESCE(ds.units_sold, 0)::numeric(18,4) AS units_sold,
+        COALESCE(ds.gross_units_sold, 0)::numeric(18,4) AS gross_units_sold
     FROM product_calendar pc
     LEFT JOIN daily_sales ds
       ON ds.article_id = pc.article_id
@@ -117,8 +120,8 @@ daily_product_sales AS (
 sales_distribution AS (
     SELECT
         dps.article_id,
-        SUM(dps.units_sold)::numeric(18,4) AS total_units_28d,
-        COUNT(*) FILTER (WHERE dps.units_sold > 0)::integer AS active_days_28d,
+        SUM(dps.gross_units_sold)::numeric(18,4) AS gross_units_28d,
+        COUNT(*) FILTER (WHERE dps.gross_units_sold > 0)::integer AS active_gross_sales_days_28d,
         REGR_SLOPE(dps.units_sold::double precision, dps.day_number::double precision)::numeric(18,6) AS sales_slope_28d
     FROM daily_product_sales dps
     GROUP BY dps.article_id
@@ -127,11 +130,11 @@ entropy_components AS (
     SELECT
         dps.article_id,
         CASE
-            WHEN sd.total_units_28d <= 0 THEN 0::numeric
-            WHEN dps.units_sold <= 0 THEN 0::numeric
-            ELSE (dps.units_sold / NULLIF(sd.total_units_28d, 0))
-        END AS sales_share,
-        sd.active_days_28d,
+            WHEN dps.gross_units_sold <= 0 THEN 0::numeric
+            ELSE dps.gross_units_sold / NULLIF(sd.gross_units_28d, 0)
+        END AS gross_sales_share,
+        sd.gross_units_28d,
+        sd.active_gross_sales_days_28d,
         sd.sales_slope_28d
     FROM daily_product_sales dps
     JOIN sales_distribution sd
@@ -142,16 +145,17 @@ trend_entropy AS (
         ec.article_id,
         ec.sales_slope_28d,
         CASE
-            WHEN MAX(ec.active_days_28d) <= 1 THEN 0::numeric
+            WHEN MAX(ec.gross_units_28d) <= 0 THEN NULL
+            WHEN MAX(ec.active_gross_sales_days_28d) <= 1 THEN 0::numeric
             ELSE ROUND(
                 (
                     -SUM(
                         CASE
-                            WHEN ec.sales_share <= 0 THEN 0::numeric
-                            ELSE ec.sales_share * LN(ec.sales_share)
+                            WHEN ec.gross_sales_share <= 0 THEN 0::numeric
+                            ELSE ec.gross_sales_share * LN(ec.gross_sales_share)
                         END
                     )
-                ) / NULLIF(LN(MAX(ec.active_days_28d)::numeric), 0),
+                ) / NULLIF(LN(MAX(ec.active_gross_sales_days_28d)::numeric), 0),
                 6
             )
         END AS trend_entropy
@@ -168,7 +172,7 @@ SELECT
         4
     ) AS external_trend_score,
     ROUND(COALESCE(te.sales_slope_28d, 0), 6) AS local_sales_acceleration,
-    ROUND(COALESCE(te.trend_entropy, 0), 6) AS trend_entropy
+    ROUND(te.trend_entropy, 6) AS trend_entropy
 FROM observed_products op
 LEFT JOIN latest_global_scores lgs
   ON lgs.article_id = op.article_id
@@ -188,7 +192,7 @@ COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.local_sales_acceleration 
 'Recent sales slope from REGR_SLOPE over the trailing 28-day daily sales curve. Positive values imply strengthening local demand.';
 
 COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.trend_entropy IS
-'Normalized Shannon entropy of trailing 28-day daily sales shares. Higher values mean demand is broadly distributed; lower values indicate spiky or event-driven demand.';
+'Normalized Shannon entropy of trailing 28-day gross positive sold-unit shares. Signed returns remain in local_sales_acceleration but are not probability mass; NULL means no positive sold-unit evidence, while a single active sales day is a measured zero.';
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_intel.mv_trend_momentum_v1_cache AS
 SELECT *

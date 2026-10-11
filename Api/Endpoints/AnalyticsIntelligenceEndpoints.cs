@@ -332,7 +332,7 @@ public static class AnalyticsIntelligenceEndpoints
                 GetDateTime(record, "signal_date"),
                 GetDecimal(record, "external_trend_score"),
                 GetDecimal(record, "local_sales_acceleration"),
-                GetDecimal(record, "trend_entropy")),
+                GetNullableDecimal(record, "trend_entropy")),
             "analytics_intel.mv_trend_momentum_v1_cache",
             "signal_date",
             null,
@@ -1249,4 +1249,4 @@ public sealed record TrendMomentumItem(
     DateTime SignalDate,
     decimal ExternalTrendScore,
     decimal LocalSalesAcceleration,
-    decimal TrendEntropy);
+    decimal? TrendEntropy);

@@ -679,12 +679,13 @@ RQ619 and RQ621 DONE; independent of external STAB16 proof, which remains the de
 
 ## RQ623 - Keep Trend Momentum entropy mathematically valid with signed customer returns
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: independent SQL math oracle, nullable signal contract and focused API/UI tests
 Feature family: trend-momentum-signed-entropy
 Parallel-safe: yes against RQ619 initializer-only concurrency scope and RQ621 SQL 023; owns SQL 024 math and dedicated tests, so RQ620/RQ625 serialize behind it
-Owner: unassigned
+Owner: Codex (RQ623 worktree)
+Local lock: `.ai/task-locks/RQ623-codex.lock.md`
 Ready after: RQ616 DONE (signed retail population certified), no product-owner decision needed for reproducing invalid values
 Commit suggestion: fix(analytics): bound trend entropy under signed returns
 
@@ -714,6 +715,13 @@ Entropy never becomes negative, >1 or fabricated 0 for invalid probability data,
 
 ### Dependencies
 Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownership; RQ625 is later same-file follow-up.
+
+### Claim note — 2026-10-12
+
+- Refreshed `origin/main`: `7e960799284ca3fdbb34079f9e589652d24f55ca`; later RQ619 CI evidence sync advanced main to `5666c79ed4550d4d7a5709fd23bca4373e70cd91`.
+- Confirmed RQ623 was READY and unassigned; no matching branch, lock, or open PR existed.
+- Isolated worktree: `C:\Users\Ivan\.codex\worktrees\rq623-signed-entropy\Trendplus2`, branch `codex/rq623-signed-entropy`.
+- Existing PostgreSQL fixture reproduced negative entropy `-5.399910` for signed daily quantities `10`, `2`, and `-9`.
 
 ---
 

@@ -171,7 +171,42 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
         var expectedTrend = ExpectedTrend(allPopulation, articleId: 101, DateOnly.FromDateTime(utcToday));
         var trend = await ReadTrendSignalAsync(database, articleId: 101);
         Assert.Equal(expectedTrend.LocalSalesAcceleration, trend.LocalSalesAcceleration, 5);
-        Assert.Equal(expectedTrend.TrendEntropy, trend.TrendEntropy, 5);
+        Assert.Equal(expectedTrend.TrendEntropy, trend.TrendEntropy);
+
+        // A signed net denominator is not a probability base: with daily +10, +2 and -9,
+        // the current SQL produces a negative normalized Shannon entropy.
+        var refundDominatedTrend = await ReadTrendSignalAsync(database, articleId: 707);
+        Assert.InRange(refundDominatedTrend.TrendEntropy!.Value, 0m, 1m);
+        var refundDominatedOracle = ExpectedTrend(
+            allPopulation,
+            articleId: 707,
+            DateOnly.FromDateTime(utcToday));
+        Assert.Equal(refundDominatedOracle.LocalSalesAcceleration, refundDominatedTrend.LocalSalesAcceleration);
+        Assert.Equal(0m, (await ReadTrendSignalAsync(database, articleId: 708)).TrendEntropy); // 10 / -9: one gross-sales day
+        Assert.Equal(0m, (await ReadTrendSignalAsync(database, articleId: 709)).TrendEntropy); // 10 / -10: one gross-sales day
+        Assert.Null((await ReadTrendSignalAsync(database, articleId: 710)).TrendEntropy); // zero-only rows: no probability mass
+        Assert.Null((await ReadTrendSignalAsync(database, articleId: 711)).TrendEntropy); // pure returns: no gross-sales evidence
+        Assert.Equal(0.970951m, (await ReadTrendSignalAsync(database, articleId: 712)).TrendEntropy); // gross units 2 / 3
+        Assert.Equal(0m, (await ReadTrendSignalAsync(database, articleId: 713)).TrendEntropy); // positive sale and refund across UTC midnight
+        Assert.Null((await ReadTrendSignalAsync(database, articleId: 714)).TrendEntropy); // external trend only, no local sales
+
+        var apiTrend = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(710, null, null, null, null, 1, 5, null, null),
+            CancellationToken.None);
+        var apiMissingEntropy = Assert.Single(apiTrend.Items);
+        Assert.Null(apiMissingEntropy.TrendEntropy);
+        using (var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            apiMissingEntropy,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))))
+        {
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, json.RootElement.GetProperty("trendEntropy").ValueKind);
+        }
+        var apiMeasuredZero = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(708, null, null, null, null, 1, 5, null, null),
+            CancellationToken.None);
+        Assert.Equal(0m, Assert.Single(apiMeasuredZero.Items).TrendEntropy);
 
         foreach (var viewAndCache in new[]
         {
@@ -211,6 +246,19 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             new(7006, 5007, 7, AtUtc(utcToday, 0, 5, 0), "R-DEMO", "demo"),
             new(7007, 5008, 7, AtUtc(utcToday, 0, 6, 0), "R-MISSING-DIM", "existing"),
             new(7008, 5009, 8, AtUtc(utcToday, 0, 7, 0), "R-DEMO-ONLY", "demo"),
+            new(7010, 5010, 7, AtUtc(utcToday, -5, 12, 0), "R-707-10", "existing"),
+            new(7011, 5011, 7, AtUtc(utcToday, -4, 12, 0), "R-707-2", "existing"),
+            new(7012, 5012, 7, AtUtc(utcToday, -3, 12, 0), "R-707-return", "existing"),
+            new(7013, 5013, 7, AtUtc(utcToday, -5, 12, 0), "R-708-10", "existing"),
+            new(7014, 5014, 7, AtUtc(utcToday, -4, 12, 0), "R-708-return", "existing"),
+            new(7015, 5015, 7, AtUtc(utcToday, -5, 12, 0), "R-709-10", "existing"),
+            new(7016, 5016, 7, AtUtc(utcToday, -4, 12, 0), "R-709-return", "existing"),
+            new(7017, 5017, 7, AtUtc(utcToday, -5, 12, 0), "R-710-zero", "existing"),
+            new(7018, 5018, 7, AtUtc(utcToday, -5, 12, 0), "R-711-return", "existing"),
+            new(7019, 5019, 7, AtUtc(utcToday, -5, 12, 0), "R-712-2", "existing"),
+            new(7020, 5020, 7, AtUtc(utcToday, -4, 12, 0), "R-712-3", "existing"),
+            new(7021, 5021, 7, AtUtc(utcToday, -1, 23, 59), "R-713-sale", "existing"),
+            new(7022, 5022, 7, AtUtc(utcToday, 0, 0, 1), "R-713-return", "existing"),
         ];
     }
 
@@ -228,6 +276,19 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             new(5008, 303, 1), // no ProductsDim row
             new(5009, 404, 5),
             new(9999, 101, 99), // orphan line has no matching sale header
+            new(5010, 707, 10),
+            new(5011, 707, 2),
+            new(5012, 707, -9),
+            new(5013, 708, 10),
+            new(5014, 708, -9),
+            new(5015, 709, 10),
+            new(5016, 709, -10),
+            new(5017, 710, 0),
+            new(5018, 711, -2),
+            new(5019, 712, 2),
+            new(5020, 712, 3),
+            new(5021, 713, 5),
+            new(5022, 713, -4),
         ];
     }
 
@@ -293,6 +354,7 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 (101, clock_timestamp(), 0),
                 (505, clock_timestamp(), 0),
                 (606, clock_timestamp(), NULL);
+            INSERT INTO "GlobalTrendScores" ("LocalProductId", "FinalGlobalScore") VALUES (714, 12);
             """, connection))
             await schema.ExecuteNonQueryAsync();
 
@@ -395,7 +457,7 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             """, connection);
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync(), $"Missing trend signal for article {articleId}.");
-        return new TrendSignal(reader.GetDecimal(0), reader.GetDecimal(1));
+        return new TrendSignal(reader.GetDecimal(0), ReadNullableDecimal(reader, 1));
     }
 
     private async Task<bool> ExistsAsync(IntelligenceTestDatabase database, string sql)
@@ -509,30 +571,42 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 && row.SaleDate >= signalDate.AddDays(-28)
                 && row.SaleDate <= signalDate)
             .GroupBy(row => row.SaleDate)
-            .ToDictionary(group => group.Key, group => group.Sum(row => row.Quantity));
+            .ToDictionary(group => group.Key, group => new
+            {
+                NetUnits = group.Sum(row => row.Quantity),
+                GrossUnits = group.Sum(row => Math.Max(row.Quantity, 0))
+            });
 
         var values = Enumerable.Range(0, 29)
-            .Select(day => (X: (double)day, Y: (double)daily.GetValueOrDefault(signalDate.AddDays(day - 28))))
+            .Select(day =>
+            {
+                var item = daily.GetValueOrDefault(signalDate.AddDays(day - 28));
+                return (X: (double)day, Net: (double)(item?.NetUnits ?? 0), Gross: (double)(item?.GrossUnits ?? 0));
+            })
             .ToArray();
         var meanX = values.Average(value => value.X);
-        var meanY = values.Average(value => value.Y);
-        var slope = values.Sum(value => (value.X - meanX) * (value.Y - meanY))
+        var meanY = values.Average(value => value.Net);
+        var slope = values.Sum(value => (value.X - meanX) * (value.Net - meanY))
             / values.Sum(value => Math.Pow(value.X - meanX, 2));
 
-        var totalUnits = values.Sum(value => value.Y);
-        var positiveUnits = values.Where(value => value.Y > 0).Select(value => value.Y).ToArray();
-        var entropy = 0d;
-        if (positiveUnits.Length > 1 && totalUnits > 0)
+        var grossSales = values.Where(value => value.Gross > 0).Select(value => value.Gross).ToArray();
+        decimal? entropy = null;
+        if (grossSales.Length == 1)
         {
-            var entropySum = positiveUnits
-                .Select(units => units / totalUnits)
+            entropy = 0m;
+        }
+        else if (grossSales.Length > 1)
+        {
+            var totalGross = grossSales.Sum();
+            var entropySum = grossSales
+                .Select(units => units / totalGross)
                 .Sum(share => share * Math.Log(share));
-            entropy = -entropySum / Math.Log(positiveUnits.Length);
+            entropy = decimal.Round((decimal)(-entropySum / Math.Log(grossSales.Length)), 6);
         }
 
         return new TrendSignal(
             decimal.Round((decimal)slope, 6),
-            decimal.Round((decimal)entropy, 6));
+            entropy);
     }
 
     private static DateTime AtUtc(DateTime utcToday, int dayOffset, int hour, int minute) =>
@@ -582,5 +656,5 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
         int? LowStockDays,
         decimal? DeadStockRisk);
 
-    private sealed record TrendSignal(decimal LocalSalesAcceleration, decimal TrendEntropy);
+    private sealed record TrendSignal(decimal LocalSalesAcceleration, decimal? TrendEntropy);
 }
