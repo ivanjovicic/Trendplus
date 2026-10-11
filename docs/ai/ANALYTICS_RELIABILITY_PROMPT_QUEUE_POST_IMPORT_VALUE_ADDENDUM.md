@@ -573,12 +573,13 @@ RQ615 stays DONE; this is a newly identified, narrower concurrency regression ou
 
 ## RQ620 - Exclude future-dated source events from as-of intelligence signal populations
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: disposable PostgreSQL retail-population/date-window oracle and targeted SQL correction
 Feature family: intelligence-asof-upper-bound
 Parallel-safe: no; overlaps 021/022/024 SQL fixture and populated-MV evidence, so serialize after RQ619 and the RQ616 null-baseline audit fix have landed
-Owner: unassigned
+Owner: Codex (`codex/rq620-asof-bounds`)
+Local lock: `.ai/task-locks/RQ620-codex.lock.md`
 Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main; all verified on refreshed `origin/main` `8ea2ba6acb03d59f09136d197056f8d5496d60e5`
 Commit suggestion: fix(analytics): bound as-of signal populations on both dates
 
@@ -595,10 +596,12 @@ SQL 021, 022 and 024 daily_sales CTEs filter SaleTimestampUtc only with a lower 
 ### Acceptance
 No future-only article/store creates a misleading historical signal; future events do not affect as-of risk, demand or momentum, while same-day UTC data and signed retail semantics stay correct. Independent oracle and pre-existing cache parity are green, 0 skipped. No live business DB write, migration, import or deploy.
 
-### Promotion note — 2026-10-12
+### Promotion and claim note — 2026-10-12
 
-- Post-close recovery refreshed `origin/main` at `8ea2ba6acb03d59f09136d197056f8d5496d60e5`; RQ619 DONE, RQ623 DONE, and RQ616's null-quantity SQL regression is present. No other owner holds SQL 021/022/024 or the populated-cache fixture.
-- Promoted to primary READY as the SQL 021/022/024 successor. No implementation ownership is claimed until a fresh post-close `origin/main` claim check and local lock are recorded.
+- Post-close recovery refreshed `origin/main` at `d56d1cd54bdfd5076f3b25f430e44c655150baee`; RQ619 DONE, RQ623 DONE, and RQ616's null-quantity SQL regression is present.
+- Promoted to primary READY, then claimed after fresh inspection of all registered owner queues, active worktree branches, matching local locks and open PRs. No competing SQL 021/022/024/cache fixture owner was found.
+- Isolated worktree: `C:\Users\Ivan\.codex\worktrees\rq620-asof-bounds\Trendplus2`; branch `codex/rq620-asof-bounds`.
+- Local ignored lock `.ai/task-locks/RQ620-codex.lock.md` created; it will be removed before implementation commit.
 
 ---
 
