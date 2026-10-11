@@ -346,7 +346,7 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 - Changed files: `tools/markdown-pilot-shadow-control-candidates.sql`; `Api.Tests/MarkdownPilotShadowControlSqlTests.cs`; `docs/qa/MARKDOWN_PILOT_SHADOW_CONTROLS_RQ612_2026-10-11.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-11-RQ612-evidence.md`.
 - Contract/runtime behavior changed: no runtime behavior, recommendation, price or database state changed; the SQL is read-only and shadow-only.
 - Checks run: read-only local batch-23 query; disposable PostgreSQL fixture tests 2/2 passed, 0 skipped; Release Api.Tests build completed; all six governance validators and `git diff --check` passed (recorded in run log).
-- Checks not run: full backend suite; prospective pilot, availability proof, causal estimate and owner approval.
+- Checks not run: full backend suite locally; prospective pilot, historical availability proof, causal estimate and owner approval. Remote main full-backend Actions run `38125791980` later passed on the implementation SHA.
 - Run log: `.ai/runs/2026-10-11-RQ612-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
@@ -354,6 +354,6 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 - Main verification: fresh fetch from `origin/main` at `370a553b0af65b33799e8560ae8e7781f6e1e134` contains implementation SHA `370a553b0af65b33799e8560ae8e7781f6e1e134`.
 - Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
 - Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
-- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability.
+- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability. Relevant main Actions run `38125791980` passed; Planning Governance run `38126221304` passed on the evidence-sync SHA.
 - Post-close routing: no safe successor after full post-delivery RQ/SQL and cross-program scan; Zero-READY proof and candidate matrix in the run log.
 - Prompt defect / scope repair: none.
