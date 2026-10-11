@@ -85,8 +85,9 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
         Assert.Equal(0, importedStoreSupplier.GetProperty("outOfStockCount").GetInt32());
 
         var trueZero = await GetJsonAsync(client, Url("imported", storeId: 1, supplierId: 6701));
-        Assert.Equal(2, trueZero.GetProperty("totalSkuCount").GetInt32());
-        Assert.Equal(5, trueZero.GetProperty("totalOnHand").GetInt32());
+        AssertInventory(await ReadOracleAsync(oracle, "imported", 1, 6701), trueZero);
+        Assert.Equal(3, trueZero.GetProperty("totalSkuCount").GetInt32());
+        Assert.Equal(55, trueZero.GetProperty("totalOnHand").GetInt32());
         Assert.Equal(1, trueZero.GetProperty("outOfStockCount").GetInt32());
         Assert.NotEqual("no_inventory_data", trueZero.GetProperty("meta").GetProperty("emptyReason").GetString());
 
@@ -130,6 +131,16 @@ public sealed class Rq607InventoryStatusPostgresIntegrationTests : IClassFixture
         Assert.NotEqual(
             AnalyticsCacheKeys.Inventory(2, FromUtc, ToUtc, 1, 6701, "imported"),
             AnalyticsCacheKeys.Inventory(2, FromUtc, ToUtc, 1, 6701, "existing"));
+
+        foreach (var scope in new[] { "imported", "existing", "all" })
+        {
+            foreach (var (storeId, supplierId) in new (int StoreId, int SupplierId)[]
+                     { (1, 6701), (2, 6702), (999, 999) })
+            {
+                var scoped = await GetJsonAsync(client, Url(scope, storeId, supplierId));
+                AssertInventory(await ReadOracleAsync(oracle, scope, storeId, supplierId), scoped);
+            }
+        }
     }
 
     private static void Seed(TrendplusDbContext trendDb, AnalyticsDbContext analyticsDb)

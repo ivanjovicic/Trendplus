@@ -23,14 +23,22 @@ On claim: fresh `origin/main`, complete canonical RQ/addendum/SQL queue, same-ow
 
 ## RQ608 - Fix exact-main RQ607 current-snapshot CI regression
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: PostgreSQL/HTTP regression tests
 Feature family: inventory-latest-snapshot-ci
 Parallel-safe: yes; isolated `Api.Tests/Rq607InventoryStatusPostgresIntegrationTests.cs` and run evidence; no shared files with RQ609/RQ612
-Owner: Analytics Reliability / Backend QA (unclaimed)
+Owner: Codex
+Local lock: `.ai/task-locks/RQ608-codex.lock.md`
 Ready after: `968e8f30` current inventory-snapshot implementation and red Actions `38090750465` are available
 Commit suggestion: `test(inventory): correct latest snapshot fixture and oracle expectations`
+
+### Claim note
+
+- Date: 2026-10-11
+- Status: IN_PROGRESS
+- Claim: Refreshed `origin/main` at `806924d48c743548f7046b3e6bca3de29b1748a0`; BCI/STAB have no READY candidate. RQ608 is the primary P0 READY prompt. Its test file is disjoint from additional READY tasks RQ609/RQ612; no matching lock, branch or open PR was found.
+- Local lock: `.ai/task-locks/RQ608-codex.lock.md`.
 
 ### Problem
 The RQ607 test retained an old date-filter expectation although InventoryStatus deliberately ignores sale-period dates. In the fixture, article 607010 (store=1, supplier=6701, 50 on-hand, `UpdatedAt` before date range) now belongs to the current snapshot: assert 3 rather than 2 SKU, 55 rather than 5 on-hand, OOS still 1.
