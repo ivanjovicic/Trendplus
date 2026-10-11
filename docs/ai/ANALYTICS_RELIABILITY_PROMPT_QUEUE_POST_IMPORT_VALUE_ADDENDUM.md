@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none (RQ615 is IN_PROGRESS; no other READY task is registered in this active set).
+Current READY prompt: RQ616.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -416,7 +416,7 @@ All five smoke cases and the RQ613 source-SaleId probe run against isolated data
 
 ## RQ615 - Ensure intelligence caches actually adopt the RQ613 SQL change
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend/startup-SQL/materialized-view-freshness
 Feature family: intelligence-cache-convergence
@@ -446,11 +446,30 @@ DatabaseInitializer re-executes 021/022/024 on changed script hash, asynchronous
 ### Acceptance
 After successful isolated upgrade, cached demand/risk/trend rows reflect the corrected source SaleId join without relying on a nightly refresh; after a failed upgrade, stale outputs are clearly unavailable/degraded rather than trusted as current. No duplicate event or rollback surprise. Record exact SHA, test/CI evidence and operator runbook; send deployed/prod verification to the existing STAB16 owner, not a duplicate live task.
 
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: 100%; changed-hash cache convergence, failure state, API fail-closed behavior and operator diagnostics delivered.
+- Changed files: `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`, `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`, `Database/Analytics/Intelligence/020_create_intelligence_schema.sql`, `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql`, `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql`, `Database/Analytics/Intelligence/024_trend_momentum_v1.sql`, `Infrastructure/Seed/DatabaseInitializer.cs`, `docs/Analytics/INTELLIGENCE_README.md`, this queue addendum, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-11-RQ615-evidence.md`.
+- Checks run: focused Release PostgreSQL/API tests 10/10 passed, 0 skipped; `dotnet build Api/Api.csproj -c Release --no-restore --verbosity quiet` passed with 0 warnings/errors; all six instruction/queue/planning governance checks and self-tests passed; `git diff --check` passed. Analytics Tests & Data Integrity Actions run `38164357316` for the implementation SHA was `in_progress` at inspection and was not polled.
+- Checks not run: full backend solution suite; no mapped intelligence performance benchmark exists. Heavy cache work remains asynchronous; new/schema-rebuilt caches skip duplicate refresh.
+- Run log: `.ai/runs/2026-10-11-RQ615-evidence.md`
+- Evidence state: synchronized in `.ai/runs/2026-10-11-RQ615-evidence.md`.
+- Delivery mode: direct-main
+- Main commit SHA: `4eb58461af39b442a6eb1b471e4ed6073f4e0387`
+- Main verification: refreshed `origin/main` equals `4eb58461af39b442a6eb1b471e4ed6073f4e0387` and contains the implementation SHA.
+- Missed: none known within the code acceptance; production deployment and rebuild were not authorized or performed.
+- Follow-up: RQ616 is promoted to READY after RQ615 cache parity and the RQ614 test-safety guard; the full post-close scan found it to be the only current RQ READY candidate.
+- Residual risk: endpoints return 503 while a changed cache is pending or failed; live Render deployment/parity remains with STAB16.
+- Post-close routing: recovery base `origin/main` `4eb58461af39b442a6eb1b471e4ed6073f4e0387`; all 14 active RQ/SQL queue files and their 22 nonterminal task rows were reviewed. RQ616 is READY and unassigned; details and checked gates are in the run log.
+- Prompt defect / scope repair: cache-state DDL was added to the existing intelligence bootstrap (020) so all three owned SQL scripts share one status contract; no RQ614-owned test files or fixtures were edited.
+
 ---
 
 ## RQ616 - Certify intelligence retail population and release impact after RQ613
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: read-only analytics oracle/contract review
 Feature family: intelligence-retail-population
