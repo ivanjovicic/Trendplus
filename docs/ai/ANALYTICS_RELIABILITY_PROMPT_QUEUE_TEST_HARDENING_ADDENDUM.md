@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ617
+Current READY prompt: RQ617 (primary; now IN_PROGRESS); RQ618 remains independently READY.
 Additional path-disjoint READY: RQ618.
 RQ598 and RQ600 remain DONE.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
@@ -785,14 +785,23 @@ None. STAB16 retains production certification/freshness ownership and does not b
 
 ## RQ617 - Prevent DnevnikPromena integration tests from writing to developer/business databases
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: backend-test-isolation/PostgreSQL fail-closed regression
 Feature family: dnevnik-integration-test-safety
 Parallel-safe: yes; only Api.Tests/DnevnikPromenaReadServiceTests.cs and its dedicated isolated fixtures/tests; no RQ610 queue, importer, writer or inventory production paths
-Owner: unassigned
+Owner: Codex
 Ready after: immediate; RQ614 disposable PostgreSQL isolation pattern is DONE and reusable
 Commit suggestion: test(dnevnik): isolate read-service fixture and ban configured business DB writes
+
+### Claim note (2026-10-11)
+
+- Claim status: READY -> IN_PROGRESS.
+- Claimed by Codex from refreshed origin/main SHA dd22a474912d05f31661ce411b6e5422a701793e.
+- Dependencies: RQ614 DONE; no unmet start gate.
+- Ownership check: no matching active lock, branch, worktree or open PR; RQ618 has a separate SQL/dedicated-test path and remains READY.
+- Branch/worktree: codex/rq617-dnevnik-test-isolation in the existing managed Trendplus worktree; the RQ610 changes are already on the base main and this prompt owns disjoint files.
+- Local lock: .ai/task-locks/RQ617-codex.lock.md.
 
 ### Confirmed problem and code
 Current Api.Tests/DnevnikPromenaReadServiceTests.cs uses appsettings Development DefaultConnection and AnalyticsConnection, passes them through IntegrationDbGuard.TryEnsureAvailable (connectivity check only), and then writes/deletes Artikli, DnevnikPromena, ProductsDim and InventoryMovementFacts. A failed test/cleanup can leave mutations in local trendplus. Each test silently returns when its connection is unavailable. The Random.Shared.Next(1,10000)-based unique IDs do not prove isolation from real records. RQ614 solved this pattern only for intelligence/bootstrap test families; do not reopen that DONE prompt.
