@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ612
+Current READY prompt: none
 Additional path-disjoint READY: none.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
@@ -298,13 +298,22 @@ RQ569 DONE and RQ610 captured/schema path released. RQ592 real pilot remains sep
 
 ## RQ612 - Find feasible nonzero-sale shadow controls for the next markdown pilot
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: read-only-SQL/methodology/tests
 Feature family: markdown-shadow-control-validity
 Parallel-safe: yes; create a **new** shadow-only query/report/test, do not overwrite RQ602 frozen 40-member manifest or touch RQ609 schema/RQ608 test files
-Owner: Analytics Value / Decision Science (unclaimed)
+Owner: Codex
+Local lock: removed after DONE close
 Ready after: RQ602 frozen historical evidence exists. No authorization for prospective action is implied.
+
+### Claim note
+
+- Date: 2026-10-11
+- Status: IN_PROGRESS
+- Claim: refreshed `origin/main` to `683b83dce4bbe3c0c4699d4d2a8629e5d4789bc5` after RQ610 source-qualification close-out. RQ612 is the next path-disjoint READY prompt; no matching lock, branch or open PR was found. RQ610 was returned to BLOCKED and ownership released; its importer/worker paths are not being changed here.
+- Local lock: `.ai/task-locks/RQ612-codex.lock.md` (removed after close).
+
 Commit suggestion: `test(nivelacija): reject zero-signal shadow controls`
 
 ### Problem
@@ -328,3 +337,28 @@ Nonzero-control design with explicit feasibility and limitations, or precisely d
 
 ### Dependencies
 No start gate from original MDB or 20 cost calculations for descriptive revenue/units-only feasibility. Source/day coverage and genuine prospective data still required before RQ592 business conclusion.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Added a read-only screen for exact-stratum, nonzero-demand shadow controls and an RQ592 prospective pilot design. Batch #23 yielded four unique exploratory candidates but zero fully qualified pairs because historical daily availability and source coverage remain unverified.
+- Changed files: `tools/markdown-pilot-shadow-control-candidates.sql`; `Api.Tests/MarkdownPilotShadowControlSqlTests.cs`; `docs/qa/MARKDOWN_PILOT_SHADOW_CONTROLS_RQ612_2026-10-11.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-11-RQ612-evidence.md`.
+- Contract/runtime behavior changed: no runtime behavior, recommendation, price or database state changed; the SQL is read-only and shadow-only.
+- Checks run: read-only local batch-23 query; disposable PostgreSQL fixture tests 2/2 passed, 0 skipped; Release Api.Tests build completed; all six governance validators and `git diff --check` passed (recorded in run log).
+- Checks not run: full backend suite; prospective pilot, availability proof, causal estimate and owner approval.
+- Run log: `.ai/runs/2026-10-11-RQ612-evidence.md`
+- Evidence state: pending close-out push
+- Delivery mode: direct-main
+- Main commit SHA: pending close-out push
+- Main verification: pending fresh post-delivery fetch
+- Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
+- Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
+- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability.
+- Post-close routing: pending fresh post-delivery RQ/SQL and global queue scan; details in the run log.
+- Prompt defect / scope repair: none.
+- Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
+- Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
+- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; historical stockout/source-day gaps cannot be repaired from current snapshots.
+- Post-close routing: pending fresh post-delivery RQ/SQL and global queue scan; details in the run log.
+- Prompt defect / scope repair: none.
