@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ623 (P1 signed-return trend entropy), which is the direct SQL024 prerequisite for RQ620. Additional collision-safe READY: RQ621 (P1 Price Intelligence missing-cost margin). BCI17 READY belongs to the independent backend CI queue. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ620/RQ622/RQ624-RQ627 remain WAITING on exact listed dependencies.
+Current READY prompt: RQ620 (P1 future-dated intelligence as-of bounds), promoted after RQ619 and RQ623 were verified DONE on `main` and RQ616's null-quantity regression was already delivered. RQ621 is an additional collision-safe READY (P1 Price Intelligence missing-cost margin). BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -573,13 +573,13 @@ RQ615 stays DONE; this is a newly identified, narrower concurrency regression ou
 
 ## RQ620 - Exclude future-dated source events from as-of intelligence signal populations
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: disposable PostgreSQL retail-population/date-window oracle and targeted SQL correction
 Feature family: intelligence-asof-upper-bound
 Parallel-safe: no; overlaps 021/022/024 SQL fixture and populated-MV evidence, so serialize after RQ619 and the RQ616 null-baseline audit fix have landed
 Owner: unassigned
-Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main, with no conflicting owner
+Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main; all verified on refreshed `origin/main` `8ea2ba6acb03d59f09136d197056f8d5496d60e5`
 Commit suggestion: fix(analytics): bound as-of signal populations on both dates
 
 ### Verified code gap / hypothesis to prove
@@ -594,6 +594,11 @@ SQL 021, 022 and 024 daily_sales CTEs filter SaleTimestampUtc only with a lower 
 
 ### Acceptance
 No future-only article/store creates a misleading historical signal; future events do not affect as-of risk, demand or momentum, while same-day UTC data and signed retail semantics stay correct. Independent oracle and pre-existing cache parity are green, 0 skipped. No live business DB write, migration, import or deploy.
+
+### Promotion note — 2026-10-12
+
+- Post-close recovery refreshed `origin/main` at `8ea2ba6acb03d59f09136d197056f8d5496d60e5`; RQ619 DONE, RQ623 DONE, and RQ616's null-quantity SQL regression is present. No other owner holds SQL 021/022/024 or the populated-cache fixture.
+- Promoted to primary READY as the SQL 021/022/024 successor. No implementation ownership is claimed until a fresh post-close `origin/main` claim check and local lock are recorded.
 
 ---
 
@@ -679,13 +684,13 @@ RQ619 and RQ621 DONE; independent of external STAB16 proof, which remains the de
 
 ## RQ623 - Keep Trend Momentum entropy mathematically valid with signed customer returns
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: independent SQL math oracle, nullable signal contract and focused API/UI tests
 Feature family: trend-momentum-signed-entropy
 Parallel-safe: yes against RQ619 initializer-only concurrency scope and RQ621 SQL 023; owns SQL 024 math and dedicated tests, so RQ620/RQ625 serialize behind it
-Owner: Codex (RQ623 worktree)
-Local lock: `.ai/task-locks/RQ623-codex.lock.md`
+Owner: Codex
+Local lock: removed before delivery
 Ready after: RQ616 DONE (signed retail population certified), no product-owner decision needed for reproducing invalid values
 Commit suggestion: fix(analytics): bound trend entropy under signed returns
 
@@ -722,6 +727,15 @@ Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownershi
 - Confirmed RQ623 was READY and unassigned; no matching branch, lock, or open PR existed.
 - Isolated worktree: `C:\Users\Ivan\.codex\worktrees\rq623-signed-entropy\Trendplus2`, branch `codex/rq623-signed-entropy`.
 - Existing PostgreSQL fixture reproduced negative entropy `-5.399910` for signed daily quantities `10`, `2`, and `-9`.
+
+### Completion — 2026-10-12
+
+- Used gross positive daily units to form Shannon shares while preserving signed net units for sales slope and local acceleration; entropy is NULL when no positive gross evidence exists, and measured zero remains distinct.
+- Independent disposable PostgreSQL oracle reproduced pre-fix entropy `-5.399910`; corrected cases cover 10/-9, 10/-10, 2/3, 0/0, one-day, pure returns, UTC-midnight refunds and no rows. API JSON plus TypeScript/UI preserve NULL versus measured zero.
+- Populated-cache `EXCEPT ALL` parity covers SQL 021/022/024; existing cache hash/retry/503 behavior remains covered.
+- Focused RQ623 + RQ619 PostgreSQL tests: 8/8 passed, 0 skipped; Release build 0 warnings/errors; analytics UI test 4/4; analytics guardrails/typecheck/build and all six governance validators passed.
+- Delivered implementation SHA `d20b75a6db69b05aea8d8a908614831b6fce07e9`; refreshed `origin/main` `8ea2ba6acb03d59f09136d197056f8d5496d60e5` contains it. Exact current-main Analytics Tests & Data Integrity run `38183667143` and Analytics Quality Gates run `38183667166` passed; Planning Governance run `38183667171` passed.
+- Run log: `.ai/runs/2026-10-12-RQ623-evidence.md`; Evidence state: synchronized.
 
 ---
 

@@ -484,14 +484,14 @@ None. This is a test-quality repair with repository-local source of truth and no
 
 ## BCI17 - Classify 42 skipped backend analytics tests and close critical coverage gaps
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: CI test execution/observability and bounded fixture hardening
 Feature family: backend-ci-skipped-test-truth
 Parallel-safe: yes; owns test skip classification and CI reporting only, not DatabaseInitializer, SQL 021/022/024, RQ619 cache tests or source-business databases
-Owner: Codex (parent coordinator; exact-SHA close-out)
+Owner: Codex
 Local lock: removed before implementation commit per protocol
-Handoff/release: On 2026-10-12, Codex (BCI17 worktree) explicitly released close-out ownership to Codex (parent coordinator) per parent instruction; implementation is on main at `8ea2ba6acb03d59f09136d197056f8d5496d60e5`; exact-SHA CI, Master routing, queue/runlog synchronization and terminal status remain with parent. The isolated branch/worktree is left untouched.
+Handoff/release: On 2026-10-12, Codex (BCI17 worktree) explicitly released close-out ownership to Codex (parent coordinator) per parent instruction; branch/worktree retained untouched.
 Ready after: BCI16 DONE and successful current backend CI 38178775379; no provider production access needed for initial classification
 Commit suggestion: test(ci): certify required operations tests cannot silently skip
 
@@ -507,3 +507,23 @@ On 2026-10-11, Analytics Tests & Data Integrity run 38178775379 (implementation 
 
 ### Acceptance
 All 42 are individually classified with exact proof links; high-priority analytics correctness has a non-vacuous, enforced CI gate or an explicit owner/external dependency. Workflow remains red on a required failure or a newly skipped required test. No false declaration that optional provider tests ran.
+
+### Completion note
+
+- Date: 2026-10-12
+- Status: DONE
+- Completion: All 42 source skips classified (13 runnable, 14 superseded by named proofs, 15 uncovered with prerequisite/unblock event, 0 external/provider). Added a drift-rejecting inventory validator and strict CI count gates for critical certification families. Exact-main backend workflow passed 1,963 tests with 42 classified skips; the separate RQ453 suite passed its 5/5, 2/2, 1/1, 1/1, 1/1, 4/4 gates with zero skips.
+- Changed files: `.github/workflows/analytics-tests.yml`; `Api.Tests/SupplierShoeTypeRq447SeamIntegrationTests.cs`; `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md`; `docs/ci/ANALYTICS_CI_GATES.md`; `scripts/ci/backend-skip-inventory.json`; `scripts/ci/validate_backend_skip_inventory.py`; `.ai/runs/2026-10-12-BCI17-evidence.md`.
+- Contract/runtime behavior changed: CI now validates all 42 exact skip records and requires non-vacuous proof counts for mandatory analytics correctness families; OP2-14 compares UTC instants explicitly.
+- Checks run: source/fresh TRX inventory validation and negative reason-drift check; local isolated RQ453 proofs; full exact-main run `38183667143` passed (1,963 passed, 42 skipped); RQ453 certification within same run passed all strict gates; Analytics Quality Gates `38183667166` passed; Planning Governance `38183667171` passed.
+- Checks not run: none after exact-main workflows. The earlier local full-suite run failed 14 tests; details and classifications are retained in the run log and those failures were not suppressed.
+- Run log: `.ai/runs/2026-10-12-BCI17-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: fast-forward integration on `main`
+- Main commit SHA: `8ea2ba6acb03d59f09136d197056f8d5496d60e5`
+- Main verification: passed - refreshed `origin/main` contains the implementation; exact-main backend, quality gates and planning workflows passed.
+- Missed: 15 historically skipped tests remain uncovered; their inventory rows specify needed fixture/source evidence and unblock event.
+- Follow-up: None for BCI17. Preserve the 15 explicit uncovered classifications until their named prerequisites occur.
+- Residual risk: A local full-suite run had 14 failures (cache fixture-order assertions, one Belgrade date expectation, CRLF source checks, Docker named-pipe timeouts, and missing opt-in RQ610 ledger DB); the exact-main full suite passed. These local failures remain classified in evidence and were not altered.
+- Next: RQ queue recovery promoted RQ620; other BCI work requires a new classified prompt.
+- Prompt defect / scope repair: none.
