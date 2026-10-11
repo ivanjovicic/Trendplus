@@ -2,9 +2,9 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ610
-Additional path-disjoint READY: RQ612.
-Next: RQ611 after RQ610, with fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
+Current READY prompt: RQ612
+Additional path-disjoint READY: none.
+RQ610 is IN_PROGRESS under Codex. Next dependency successor: RQ611 after RQ610 closes and fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
 
@@ -146,13 +146,16 @@ Repository-local READY. No production privileges or owner cost sample required t
 
 ## RQ610 - Schedule opt-in observed SKU×store×day inventory capture using RQ96 foundation
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: inventory-worker/SQL/tests
 Feature family: inventory-observed-daily-capture
 Parallel-safe: no with active schema/worker owner; run after RQ609 and refresh collision check
-Owner: Inventory Capture (unclaimed)
+Owner: Codex
+Local lock: `.ai/task-locks/RQ610-codex.lock.md`
 Ready after: RQ609 DONE, RQ96 DONE
+
+Claim 2026-10-11: refreshed `origin/main` at `87a05efd4276e43a14c568e427778075b7a9d88b`; RQ609 and RQ96 are DONE. No RQ610 lock, branch or open PR was found. The active P-UI-43 lock is unrelated; RQ612 is explicitly path-disjoint. RQ610 claimed by Codex on `main`.
 Commit suggestion: `feat(inventory): opt-in observed daily stock capture`
 
 ### Problem

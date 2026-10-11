@@ -2,7 +2,7 @@
 
 ## Active RQ post-import execution (2026-10-11)
 
-The new [RQ post-import value queue](docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md) is an **active canonical RQ addendum** (registered in `scripts/check-prompt-queues.mjs`). RQ608 and RQ609 are DONE on `main`; **Primary READY: RQ610 (P1)** — enable opt-in RQ96 observed daily inventory capture, with both RQ609 and RQ96 foundations DONE. Independent READY: **RQ612 (P1)** — read-only nonzero-control *shadow* cohort. **RQ611 WAITING** after RQ610: real per-store/day source completeness for future imports and Nivelacija. Follow the canonical `PROMPT_QUEUE_PROTOCOL.md` and global priority; additional READY work is not a global mutex.
+The new [RQ post-import value queue](docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md) is an **active canonical RQ addendum** (registered in `scripts/check-prompt-queues.mjs`). RQ608 and RQ609 are DONE on `main`; **RQ610 (P1) is IN_PROGRESS under Codex** — enable opt-in RQ96 observed daily inventory capture. Independent primary READY: **RQ612 (P1)** — read-only nonzero-control *shadow* cohort. **RQ611 WAITING** after RQ610: real per-store/day source completeness for future imports and Nivelacija. Follow the canonical `PROMPT_QUEUE_PROTOCOL.md` and global priority; additional READY work is not a global mutex.
 
 | Evidence already closed | Remaining authority / concrete work |
 |---|---|
@@ -15,6 +15,8 @@ The new [RQ post-import value queue](docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_
 **Safety:** no new import, repair/delete, live DB migration, Render auto-deploy, unproven historical valuation, causal uplift or automatic markdown action is authorized by this queue refresh. Plan executable narrow improvements; do not reopen DONE audits or duplicate PARTIAL owners.
 
 Owner completion and post-close recovery 2026-10-11: RQ609 is DONE on implementation SHA `d85fe70a1be4c1e52b8035cdf7549925005322a5`; read-only provenance schema preflight, disposable PostgreSQL rerun proof and the operator runbook are on `main`. The post-close dependency cascade verified RQ96 DONE and promoted RQ610 to primary READY; RQ612 remains path-disjoint READY. Run log: `.ai/runs/2026-10-11-RQ609-evidence.md`.
+
+RQ610 claim 2026-10-11: fresh `origin/main` `87a05efd4276e43a14c568e427778075b7a9d88b`; RQ609/RQ96 dependencies DONE; no task-specific lock, branch or open PR; unrelated P-UI-43 lock and path-disjoint RQ612 verified. RQ610 is IN_PROGRESS under Codex; RQ612 is now the primary READY pointer. Local lock: `.ai/task-locks/RQ610-codex.lock.md`.
 
 ---
 

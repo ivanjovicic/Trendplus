@@ -195,6 +195,10 @@ try
         .Bind(builder.Configuration.GetSection(Infrastructure.Configuration.NightlyAnalyticsRefreshOptions.Section))
         .ValidateOnStart();
     builder.Services.AddSingleton<IValidateOptions<Infrastructure.Configuration.NightlyAnalyticsRefreshOptions>, Infrastructure.Configuration.NightlyAnalyticsRefreshOptionsValidator>();
+    builder.Services.AddOptions<Infrastructure.Configuration.ObservedInventoryDailyCaptureOptions>()
+        .Bind(builder.Configuration.GetSection(Infrastructure.Configuration.ObservedInventoryDailyCaptureOptions.Section))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<Infrastructure.Configuration.ObservedInventoryDailyCaptureOptions>, Infrastructure.Configuration.ObservedInventoryDailyCaptureOptionsValidator>();
     builder.Services.Configure<Infrastructure.Configuration.OpenTrainingModelTrainingOptions>(
         builder.Configuration.GetSection(Infrastructure.Configuration.OpenTrainingModelTrainingOptions.Section));
     builder.Services.Configure<Infrastructure.Configuration.TrendIngestionOptions>(

@@ -83,7 +83,7 @@ public sealed class ObservedInventoryDailySnapshotTests
         Assert.Contains("'reconstructed'", sql, StringComparison.Ordinal);
         Assert.Contains("'mixed'", sql, StringComparison.Ordinal);
         Assert.Contains("'missing'", sql, StringComparison.Ordinal);
-        Assert.Contains("WHERE pd.\"Kolicina\" IS NOT NULL", sql, StringComparison.Ordinal);
+        Assert.Contains("WHERE latest.\"Kolicina\" IS NOT NULL", sql, StringComparison.Ordinal);
         Assert.DoesNotContain("INSERT INTO analytics_intel.inventory_observed_daily_snapshot", StripCaptureFunction(sql), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("FROM analytics_intel.vw_inventory_risk_signals_v1", ExtractCaptureFunction(sql), StringComparison.Ordinal);
         Assert.DoesNotContain("coalesce(observed_qty, 0)", sql, StringComparison.OrdinalIgnoreCase);

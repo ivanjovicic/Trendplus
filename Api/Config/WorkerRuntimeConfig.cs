@@ -165,6 +165,9 @@ public static class WorkerRuntimeConfig
             case "InventoryReportSchedulerWorker":
                 services.AddHostedService<Workers.InventoryReportSchedulerWorker>();
                 return;
+            case Workers.ObservedInventoryDailyCaptureWorker.WorkerName:
+                services.AddHostedService<Workers.ObservedInventoryDailyCaptureWorker>();
+                return;
             case "DecisionPulseSchedulerWorker":
                 services.AddHostedService<Workers.DecisionPulseSchedulerWorker>();
                 return;

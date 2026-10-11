@@ -96,7 +96,28 @@ public sealed class WorkerRuntimeConfigTests
         Assert.Contains(typeof(Workers.SyncWorker), hostedServiceTypes);
         Assert.Contains(typeof(AccessImportBackgroundWorker), hostedServiceTypes);
         Assert.Contains(typeof(Workers.NightlyAnalyticsRefreshWorker), hostedServiceTypes);
+        Assert.Contains(typeof(Workers.ObservedInventoryDailyCaptureWorker), hostedServiceTypes);
         Assert.Contains(typeof(DeferredStartupTasksHostedService), hostedServiceTypes);
+    }
+
+    [Fact]
+    public void ObservedInventoryCapture_IsOptInAndSchedulerDeduplicatesTheSameBusinessDateAcrossDstFold()
+    {
+        var options = new Infrastructure.Configuration.ObservedInventoryDailyCaptureOptions();
+        Assert.False(options.Enabled);
+
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Belgrade");
+        var firstFallBackHour = new DateTimeOffset(2026, 10, 25, 0, 30, 0, TimeSpan.Zero);
+        var secondFallBackHour = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero);
+        var firstDate = Workers.ObservedInventoryDailyCaptureWorker.GetDueBusinessDate(
+            firstFallBackHour, zone, TimeSpan.FromHours(2), null);
+        Assert.Equal(new DateOnly(2026, 10, 25), firstDate);
+        Assert.Null(Workers.ObservedInventoryDailyCaptureWorker.GetDueBusinessDate(
+            secondFallBackHour, zone, TimeSpan.FromHours(2), firstDate));
+
+        var springForwardAfterGap = new DateTimeOffset(2026, 3, 29, 1, 5, 0, TimeSpan.Zero);
+        Assert.Equal(new DateOnly(2026, 3, 29), Workers.ObservedInventoryDailyCaptureWorker.GetDueBusinessDate(
+            springForwardAfterGap, zone, TimeSpan.FromHours(2.5), null));
     }
 
     [Fact]

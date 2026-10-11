@@ -109,6 +109,15 @@ public static class WorkerRegistryCatalog
             RegistersInWorkerProcess: true,
             RegistersInWebProcess: false),
         new(
+            WorkerName: "ObservedInventoryDailyCaptureWorker",
+            DisplayName: "Observed inventory daily capture",
+            Description: "Opt-in prospective capture of observed ProductsDim stock at global/company grain.",
+            WorkerType: "scheduled",
+            IsRuntimeControllable: true,
+            IsScheduleControllable: true,
+            RegistersInWorkerProcess: true,
+            RegistersInWebProcess: false),
+        new(
             WorkerName: "DecisionPulseSchedulerWorker",
             DisplayName: "Decision Pulse Scheduler",
             Description: "Executes Decision Pulse schedules and email delivery.",

@@ -35,6 +35,156 @@ COMMENT ON COLUMN analytics_intel.inventory_observed_daily_snapshot.on_hand_qty 
 CREATE INDEX IF NOT EXISTS idx_inventory_observed_daily_snapshot_date
     ON analytics_intel.inventory_observed_daily_snapshot (snapshot_date DESC);
 
+ALTER TABLE analytics_intel.inventory_observed_daily_snapshot
+    ADD COLUMN IF NOT EXISTS observed_at_utc timestamptz,
+    ADD COLUMN IF NOT EXISTS source_batch_id text,
+    ADD COLUMN IF NOT EXISTS source_row_updated_through_utc timestamptz,
+    ADD COLUMN IF NOT EXISTS source_data_origin text,
+    ADD COLUMN IF NOT EXISTS capture_run_id uuid,
+    ADD COLUMN IF NOT EXISTS run_state text NOT NULL DEFAULT 'succeeded';
+
+CREATE TABLE IF NOT EXISTS analytics_intel.inventory_observed_daily_capture_run (
+    run_id uuid PRIMARY KEY,
+    business_date date NOT NULL,
+    business_time_zone text NOT NULL,
+    observed_at_utc timestamptz NOT NULL,
+    source_system text NOT NULL,
+    source_batch_id text,
+    source_row_updated_through_utc timestamptz,
+    run_state text NOT NULL,
+    row_count integer,
+    completed_at_utc timestamptz,
+    error_code text,
+    CONSTRAINT inventory_observed_daily_capture_run_state_chk
+        CHECK (run_state IN ('running', 'succeeded', 'empty', 'failed')),
+    CONSTRAINT inventory_observed_daily_capture_run_row_count_chk
+        CHECK (row_count IS NULL OR row_count >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_observed_daily_capture_run_date
+    ON analytics_intel.inventory_observed_daily_capture_run (business_date DESC, observed_at_utc DESC);
+
+CREATE OR REPLACE FUNCTION analytics_intel.capture_observed_inventory_daily(
+    p_run_id uuid
+)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _row_count integer;
+    _business_date date;
+    _observed_at_utc timestamptz;
+    _source_row_updated_through_utc timestamptz;
+BEGIN
+    SELECT business_date, observed_at_utc
+      INTO _business_date, _observed_at_utc
+      FROM analytics_intel.inventory_observed_daily_capture_run
+     WHERE run_id = p_run_id AND run_state = 'running'
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'capture run % is missing or is not running', p_run_id
+            USING ERRCODE = '55000';
+    END IF;
+
+    IF _business_date IS DISTINCT FROM (
+        SELECT business_date FROM analytics_intel.inventory_observed_daily_capture_run
+         WHERE run_id = p_run_id
+           AND business_date = (observed_at_utc AT TIME ZONE business_time_zone)::date
+    ) THEN
+        RAISE EXCEPTION 'capture business date must match the observation instant in its configured time zone'
+            USING ERRCODE = '22023';
+    END IF;
+
+    -- Serialize captures across worker instances while allowing repeatable same-day refresh.
+    PERFORM pg_advisory_xact_lock(20261011, 610);
+
+    SELECT MAX(pd."Timestamp")
+      INTO _source_row_updated_through_utc
+      FROM "ProductsDim" pd
+     WHERE pd."Timestamp" <= _observed_at_utc;
+
+    IF _source_row_updated_through_utc IS NULL THEN
+        UPDATE analytics_intel.inventory_observed_daily_capture_run
+           SET run_state = 'empty', row_count = 0, completed_at_utc = clock_timestamp()
+         WHERE run_id = p_run_id;
+        RETURN 0;
+    END IF;
+
+    DELETE FROM analytics_intel.inventory_observed_daily_snapshot s
+     WHERE s.snapshot_date = _business_date
+       AND s.store_id = 0
+       AND s.source_system = 'products_dim_current'
+       AND NOT EXISTS (
+            SELECT 1
+              FROM (
+                    SELECT DISTINCT ON (pd."ProductId") pd."ProductId", pd."Kolicina"
+                      FROM "ProductsDim" pd
+                     WHERE pd."Timestamp" <= _observed_at_utc
+                     ORDER BY pd."ProductId", pd."Timestamp" DESC
+              ) latest
+             WHERE latest."ProductId" = s.article_id
+               AND latest."Kolicina" IS NOT NULL
+       );
+
+    INSERT INTO analytics_intel.inventory_observed_daily_snapshot (
+        article_id,
+        store_id,
+        snapshot_date,
+        on_hand_qty,
+        captured_at_utc,
+        source_system,
+        observed_at_utc,
+        source_batch_id,
+        source_row_updated_through_utc,
+        source_data_origin,
+        capture_run_id,
+        run_state
+    )
+    SELECT latest."ProductId",
+        0,
+        _business_date,
+        latest."Kolicina"::numeric(18, 4),
+        now(),
+        'products_dim_current',
+        _observed_at_utc,
+        NULL,
+        _source_row_updated_through_utc,
+        latest."DataOrigin",
+        p_run_id,
+        'succeeded'
+    FROM (
+        SELECT DISTINCT ON (pd."ProductId") pd."ProductId", pd."Kolicina", pd."Timestamp", pd."DataOrigin"
+          FROM "ProductsDim" pd
+         WHERE pd."Timestamp" <= _observed_at_utc
+         ORDER BY pd."ProductId", pd."Timestamp" DESC
+    ) latest
+    WHERE latest."Kolicina" IS NOT NULL
+    ON CONFLICT (article_id, store_id, snapshot_date)
+    DO UPDATE SET
+        on_hand_qty = EXCLUDED.on_hand_qty,
+        captured_at_utc = EXCLUDED.captured_at_utc,
+        source_system = EXCLUDED.source_system,
+        observed_at_utc = EXCLUDED.observed_at_utc,
+        source_batch_id = EXCLUDED.source_batch_id,
+        source_row_updated_through_utc = EXCLUDED.source_row_updated_through_utc,
+        source_data_origin = EXCLUDED.source_data_origin,
+        capture_run_id = EXCLUDED.capture_run_id,
+        run_state = EXCLUDED.run_state;
+
+    GET DIAGNOSTICS _row_count = ROW_COUNT;
+
+    UPDATE analytics_intel.inventory_observed_daily_capture_run
+       SET source_row_updated_through_utc = _source_row_updated_through_utc,
+           row_count = _row_count,
+           run_state = CASE WHEN _row_count = 0 THEN 'empty' ELSE 'succeeded' END,
+           completed_at_utc = clock_timestamp()
+     WHERE run_id = p_run_id;
+
+    RETURN _row_count;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION analytics_intel.capture_observed_inventory_daily(
     p_as_of date DEFAULT CURRENT_DATE
 )
@@ -42,39 +192,24 @@ RETURNS integer
 LANGUAGE plpgsql
 AS $$
 DECLARE
+    _run_id uuid := gen_random_uuid();
     _row_count integer;
 BEGIN
-    INSERT INTO analytics_intel.inventory_observed_daily_snapshot (
-        article_id,
-        store_id,
-        snapshot_date,
-        on_hand_qty,
-        captured_at_utc,
-        source_system
-    )
-    SELECT DISTINCT ON (pd."ProductId")
-        pd."ProductId",
-        0,
-        p_as_of,
-        pd."Kolicina"::numeric(18, 4),
-        now(),
-        'products_dim_current'
-    FROM "ProductsDim" pd
-    WHERE pd."Kolicina" IS NOT NULL
-    ORDER BY pd."ProductId", pd."Timestamp" DESC
-    ON CONFLICT (article_id, store_id, snapshot_date)
-    DO UPDATE SET
-        on_hand_qty = EXCLUDED.on_hand_qty,
-        captured_at_utc = EXCLUDED.captured_at_utc,
-        source_system = EXCLUDED.source_system;
-
-    GET DIAGNOSTICS _row_count = ROW_COUNT;
+    INSERT INTO analytics_intel.inventory_observed_daily_capture_run (
+        run_id, business_date, business_time_zone, observed_at_utc, source_system, run_state
+    ) VALUES (
+        _run_id, p_as_of, current_setting('TimeZone'), clock_timestamp(), 'products_dim_current', 'running'
+    );
+    SELECT analytics_intel.capture_observed_inventory_daily(_run_id) INTO _row_count;
     RETURN _row_count;
 END;
 $$;
 
+COMMENT ON FUNCTION analytics_intel.capture_observed_inventory_daily(uuid) IS
+'Captures ProductsDim at the current global/company grain (store_id=0), recording exact observation instant and the maximum eligible source-row UpdatedAt watermark. This watermark is not an import batch identifier or a source-freshness certification. Product rows newer than the observation instant are excluded. NULL quantity is omitted; negative values are preserved. A transaction-scoped advisory lock serializes retries.';
+
 COMMENT ON FUNCTION analytics_intel.capture_observed_inventory_daily(date) IS
-'Upserts observed on-hand for one calendar day from the latest ProductsDim row per article. Skips NULL Kolicina. Does not fabricate historical days.';
+'Compatibility wrapper for one observed daily capture. It records a run and does not backfill reconstructed history.';
 
 DO $$
 DECLARE
