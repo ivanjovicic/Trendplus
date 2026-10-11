@@ -2,8 +2,8 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none
-Additional path-disjoint READY: none.
+Current READY prompt: RQ614
+Additional path-disjoint READY: RQ615.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -357,3 +357,80 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 - Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability. Analytics Tests & Data Integrity run `38125791980` passed; Planning Governance runs `38126221304` and `38126319495` passed on evidence-sync SHAs.
 - Post-close routing: no safe successor after full post-delivery RQ/SQL and cross-program scan; Zero-READY proof and candidate matrix in the run log.
 - Prompt defect / scope repair: none.
+
+
+---
+
+## RQ614 - Isolate intelligence smoke tests and make PostgreSQL certification fail closed
+
+Status: READY
+Priority: P0
+Type: test-safety/PostgreSQL regression
+Feature family: intelligence-test-isolation
+Parallel-safe: yes; owns Api.Tests/AnalyticsIntelligenceSmokeTests.cs, Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs and test-only fixtures; RQ615 owns runtime SQL/bootstrap/refresh paths
+Owner: unassigned
+Ready after: RQ613 DONE; actual unsafe smoke execution recorded in .ai/runs/2026-10-11-RQ613-evidence.md
+Commit suggestion: test(analytics): isolate intelligence bootstrap and prohibit business database mutation
+
+### Problem / confirmed evidence
+The five AnalyticsIntelligenceSmokeTests resolve AnalyticsConnection/DefaultConnection from development appsettings, call IntegrationDbGuard.TryEnsureAvailable, and execute CREATE OR REPLACE VIEW and materialized-view SQL against that selected database. The RQ613 run actually rebuilt analytics_intel objects on the local trendplus business database. AnalyticsIntelligenceSaleJoinTests also returns silently when the PostgreSQL fixture or one of its created databases is unavailable; its isolated proof could be counted green with no assertions.
+
+### Do
+1. Replace every intelligence smoke bootstrap with a disposable, verified PostgreSQL test database and deterministic minimal schema/seed. Never execute DDL from a test against a developer's trendplus database or any production/shared target, even when a connection string is available in appsettings.
+2. Add a strict executable safety guard before SQL execution: only an isolated database created by the test is eligible; reject ambiguous/shared/local-business/prod connections. Do not rely only on host name or Environment == Development. Teardown the isolated DB safely.
+3. Fail closed for the mandatory intelligence PostgreSQL tests when the test DB cannot start/create/connect; no early return, no fake PASS, no hidden skip. Prove actual test assertions and executions in TRX (expected=executed, failed=0, skipped=0).
+4. Add negative regression cases for accidentally configured business DB, unreachable PostgreSQL, and existing intelligence schema. Confirm no mutation occurs on forbidden connections. Keep source data and non-test schemas untouched.
+5. Check other tests invoking Database/Analytics/Intelligence SQL or DatabaseInitializer bootstrap for the same unsafe pattern. Repair proven cases within this test-only owner scope; register a small successor only if runtime/code ownership would collide.
+
+### Acceptance
+All five smoke cases and the RQ613 source-SaleId probe run against isolated databases only. The probe must verify distinct Id/SaleId and a surrogate-ID collision on real PostgreSQL; tests fail when unavailable, not pass. API/backend focused tests and Release build pass; exact TRX test counts and governance validations are recorded. No writes to local trendplus, Render, Neon or any business database; no new Access import. Commit/merge/push safely with current-main ancestry and .ai/runs evidence.
+
+---
+
+## RQ615 - Ensure intelligence caches actually adopt the RQ613 SQL change
+
+Status: READY
+Priority: P0
+Type: backend/startup-SQL/materialized-view-freshness
+Feature family: intelligence-cache-convergence
+Parallel-safe: yes; owns Infrastructure/Seed/DatabaseInitializer.cs, intelligence SQL files 021/022/024, runtime refresh orchestration and a distinct isolated integration-test file; do not edit RQ614-owned test files
+Owner: unassigned
+Ready after: RQ613 DONE
+Commit suggestion: fix(analytics): certify cache refresh after intelligence SQL hash change
+
+### Problem / confirmed evidence
+DatabaseInitializer re-executes 021/022/024 on changed script hash, asynchronously with a background advisory lock and warning-only exception handling. The scripts run CREATE OR REPLACE VIEW, while dropping old materialized caches only on COLUMN STRUCTURE changes. With the unchanged RQ613 output schema they use CREATE MATERIALIZED VIEW IF NOT EXISTS, which does not refresh an existing cache. A successful SQL hash/history update or API /ready does not by itself prove that the cached data has been recalculated. NightlyAnalyticsRefreshWorker may be disabled, stopped or delayed. RQ613's test checks newly created caches, not a previously populated stale cache after an in-place SQL change.
+
+### Do
+1. On disposable PostgreSQL only, seed a pre-RQ613 wrong-join cached state (surrogate Id != source SaleId and an ID collision), then apply changed-hash startup logic without changing the view schema. Prove or falsify immediate view-vs-MV parity for all three objects.
+2. Implement the smallest safe, bounded, idempotent refresh/rebuild route on SQL semantic changes that cannot leave a successful-looking stale cache. Preserve advisory-lock/concurrent-start contracts, avoid clearing unrelated caches, and define failure/partial status clearly.
+3. Verify startup background failure/lock-contention, repeat boot, disabled nightly worker, schema unchanged, schema changed, and interrupted refresh. A successful history hash must not be mistaken for cache freshness; expose enough observable per-view freshness/version evidence for operators.
+4. Distinguish release-time cache correctness from the separately authorized production deploy/rebuild. Do NOT auto-deploy, apply SQL to a business DB, re-import or mutate production. Preserve manual Render deployment policy. Re-run focused performance checks to avoid an unbounded synchronous cold-start.
+5. Add real PostgreSQL before/after oracle for the THREE views and materialized caches with independent store/date/qty checks, stable output columns and 0 skipped tests.
+
+### Acceptance
+After successful isolated upgrade, cached demand/risk/trend rows reflect the corrected source SaleId join without relying on a nightly refresh; after a failed upgrade, stale outputs are clearly unavailable/degraded rather than trusted as current. No duplicate event or rollback surprise. Record exact SHA, test/CI evidence and operator runbook; send deployed/prod verification to the existing STAB16 owner, not a duplicate live task.
+
+---
+
+## RQ616 - Certify intelligence retail population and release impact after RQ613
+
+Status: WAITING
+Priority: P1
+Type: read-only analytics oracle/contract review
+Feature family: intelligence-retail-population
+Parallel-safe: yes after RQ615 release of shared 021/022/024 SQL ownership; initially read-only SQL and a separate fixture/test file
+Owner: unassigned
+Ready after: RQ615 DONE with isolated cache parity; RQ614 test-safety guard DONE
+
+### Problem
+RQ613 fixed ID attribution but did not prove intelligence's population matches certified operational retail semantics. SalesFacts includes BrojRacuna, DataOrigin and demo/existing sources. The 021/022/024 daily_sales CTEs use SalesFacts + SalesLineFacts but currently do not explicitly exclude trimmed/case-insensitive DUG/KOREKCIJA. Signed returns, orphan/DEMO rows, date timezone, missing product dimensions and imported/existing/all coverage need independent proof before intelligence demand/risk/trend is treated as canonical retail.
+
+### Do
+1. Build a disposable PostgreSQL independent oracle against operational header/line retail semantics, with imported/existing/all, DUG/KOREKCIJA, signed returns, demo/orphan facts, midnight timezone, same SKU across stores, Id/SaleId collision and true zero vs unknown examples.
+2. Compare each view AND MV output with the oracle; classify confirmed defects and their user-visible impact, do not treat reconstructed stock risk as observed stock. Preserve existing declared confidence/provenance semantics and avoid automatic recommendations from unverified history.
+3. If a bounded defect is proven, implement minimum-scope correction after checking other analytics owners and concurrency; rerun PostgreSQL oracle/CI and record before/after differences. If not proven, deliver evidence-only with explicit limits.
+4. Read-only local business DB comparisons are permitted ONLY after separately verifying the exact target and with an explicit read-only session; never execute intelligence bootstrap/smoke DDL against it. Deployed parity stays with STAB16.
+
+### Acceptance
+No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA contamination, signed returns preserved, scope/unknown provenance documented, zero skipped PostgreSQL tests. Queue RQ616 stays WAITING until its named code prerequisites are delivered; do not pre-claim it.
