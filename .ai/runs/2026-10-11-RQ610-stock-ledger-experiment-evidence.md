@@ -4,9 +4,9 @@ Date: 2026-10-11
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/rq610-ledger-test-fix / no PR
-Main commit SHA: pending
-Main verification: pre-delivery fetch resolved origin/main to ed88a14f0a02456b1f493e6408be3dce525874cc
-Evidence state: pending
+Main commit SHA: d7d4caec07449ed42b1283564c6f27947c37c3c7
+Main verification: fresh fetch resolved origin/main to d7d4caec07449ed42b1283564c6f27947c37c3c7 and confirmed it contains the implementation commit
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -28,8 +28,8 @@ Ownership transfer: none
 - dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~Rq610StockMutationLedgerPostgresTests --logger "trx;LogFileName=rq610-ledger-isolated.trx" --results-directory .ai/test-results/rq610-isolated, with RQ610_LEDGER_TEST_POSTGRES pointing only to the new disposable PostgreSQL container -> passed; total=2, executed=2, passed=2, failed=0, skipped=0, notExecuted=0.
 - TRX inspection of .ai/test-results/rq610-isolated/rq610-ledger-isolated.trx -> total=2, passed=2, failed=0, skipped=0, notExecuted=0.
 - The two passing tests assert atomic rollback; concurrent independent transactions; same-value retry suppression; quantity changes including zero, negative and NULL; store change; transfer rows; and append-only rejection using the identified committed row.
-- node scripts/check-prompt-queues.mjs -> pass; 737 tasks validated.
-- git diff --check -> pass. Static inspection confirms the assertion no longer assumes ledger_id=1.
+- node scripts/check-prompt-queues.mjs after implementation delivery -> pass; 739 tasks validated.
+- git diff --cached --check -> pass. Static inspection confirms the assertion no longer assumes ledger_id=1.
 
 ## Validation not run
 
@@ -54,9 +54,13 @@ Ownership transfer: none
 ## Post-close routing recovery
 
 - Not applicable as a queue close: this was direct-user-request work and no prompt status changed.
-- The latest pre-delivery roadmap lists RQ617 and RQ618 as READY. They were rechecked separately and are not claimed by this task; a fresh post-delivery verification is pending.
+- Post-delivery recovery base: origin/main SHA d7d4caec07449ed42b1283564c6f27947c37c3c7.
+- Rechecked the complete program READY table in MASTER_ROADMAP.md and current-pointer headers across the prompt-queue documents. RQ617 is still the primary P0 READY candidate; RQ618 is also READY as an independent P1 candidate. No other program has a READY candidate.
+- RQ617's Dnevnik test/fixture paths and RQ618's intelligence SQL/dedicated-test paths are disjoint from this RQ610 test/evidence change. The local task-lock scan found only the unrelated P-UI-43 lock; no RQ617/RQ618 lock, branch or open PR was found. Neither candidate was claimed or changed.
+- node scripts/check-prompt-queues.mjs after delivery -> pass; 739 tasks validated.
+- This is a direct-user-request delivery, not a queue close; no Zero-READY claim is made.
 
 ## Next
 
-- Verify the direct-main delivery and rerun the READY-candidate scan.
 - Keep RQ610 BLOCKED until an inspectable POS writer and one durable generation/provenance contract are proven across Access, POS, manual quantity/store edits and transfers.
+- The remaining READY candidates are RQ617 and RQ618; this task did not claim them.
