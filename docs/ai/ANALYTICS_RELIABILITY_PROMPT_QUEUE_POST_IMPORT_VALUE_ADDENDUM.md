@@ -2,9 +2,9 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ612
-Additional path-disjoint READY: none.
-RQ610 is IN_PROGRESS under Codex. Next dependency successor: RQ611 after RQ610 closes and fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
+Current READY prompt: RQ611
+Additional path-disjoint READY: RQ612.
+RQ610 is BLOCKED after delivery of the company-grain opt-in capture slice; the authoritative store-grained inventory source and import-batch lineage are still missing. Codex released the worker/schema paths. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
 
@@ -146,16 +146,16 @@ Repository-local READY. No production privileges or owner cost sample required t
 
 ## RQ610 - Schedule opt-in observed SKU×store×day inventory capture using RQ96 foundation
 
-Status: IN_PROGRESS
+Status: BLOCKED
 Priority: P1
 Type: inventory-worker/SQL/tests
 Feature family: inventory-observed-daily-capture
 Parallel-safe: no with active schema/worker owner; run after RQ609 and refresh collision check
-Owner: Codex
-Local lock: `.ai/task-locks/RQ610-codex.lock.md`
+Owner: Inventory Capture (unassigned after source-contract handoff)
+Local lock: removed after source-contract handoff
 Ready after: RQ609 DONE, RQ96 DONE
 
-Claim 2026-10-11: refreshed `origin/main` at `87a05efd4276e43a14c568e427778075b7a9d88b`; RQ609 and RQ96 are DONE. No RQ610 lock, branch or open PR was found. The active P-UI-43 lock is unrelated; RQ612 is explicitly path-disjoint. RQ610 claimed by Codex on `main`.
+Claim 2026-10-11: refreshed `origin/main` at `87a05efd4276e43a14c568e427778075b7a9d88b`; RQ609 and RQ96 are DONE. No RQ610 lock, branch or open PR was found. The active P-UI-43 lock is unrelated; RQ612 is explicitly path-disjoint. RQ610 was claimed by Codex on `main`.
 Commit suggestion: `feat(inventory): opt-in observed daily stock capture`
 
 ### Problem
@@ -179,17 +179,26 @@ Reliable opt-in prospective observed stock capture, truthful source metadata and
 ### Dependencies
 RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
 
+### Blocker / repository-local delivery
+- Delivered the opt-in scheduler, run ledger, exact capture instant, same-day update retry and idempotent company-grain `store_id=0` capture on `main` at `34a5ecf2cdc5f3702b259303952873ac67974366`.
+- Source proof: `ProductsDim` has article, quantity, row timestamp and data origin, but no `StoreId`; `SyncWorker.MapToDim` maps `Artikli.UpdatedAt` to its timestamp. There is no authoritative per-store stock table or ProductsDim-to-import-batch key in this source. Copying company stock to `StoresDim` locations or inventing a batch id would fabricate evidence.
+- `source_batch_id` remains NULL; the saved source-row update watermark is explicitly not treated as a batch id or freshness certification. This is insufficient to complete truthful SKU×store×day capture.
+- Handoff/release 2026-10-11: Codex -> unassigned, authority/evidence: current claiming owner records the unresolved source contract in `.ai/runs/2026-10-11-RQ610-evidence.md`; worker/schema paths are released after main delivery so independent RQ611 may proceed.
+- Exact unblock event: the inventory/source owner identifies an authoritative store-grained on-hand source and its observation timestamp, batch/generation identity and data-origin mapping, plus a deterministic disposable PostgreSQL fixture contract.
+- Run log: `.ai/runs/2026-10-11-RQ610-evidence.md`
+- Evidence state: synchronized
+
 ---
 
 ## RQ611 - Real per-store/per-day source-coverage evidence for sales and markdown measurement
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: import-metadata/analytics-integrity/tests
 Feature family: imported-store-day-coverage
-Parallel-safe: no while RQ610 owns worker/bootstrap paths
+Parallel-safe: yes; importer/store-day evidence paths are separate from released RQ610 worker/schema paths and RQ612's new shadow-control SQL/fixture
 Owner: Import/Data Quality (unclaimed)
-Ready after: RQ610 shared worker/schema ownership released; RQ569 horizon contract DONE
+Ready after: satisfied 2026-10-11 - RQ610 shared worker/schema ownership explicitly released; RQ569 horizon contract DONE
 Commit suggestion: `feat(analytics): prove store-day importer completeness`
 
 ### Problem
