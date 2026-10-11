@@ -354,6 +354,6 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 - Main verification: fresh fetch from `origin/main` at `370a553b0af65b33799e8560ae8e7781f6e1e134` contains implementation SHA `370a553b0af65b33799e8560ae8e7781f6e1e134`.
 - Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
 - Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
-- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability. Relevant main Actions run `38125791980` passed; Planning Governance run `38126221304` passed on the evidence-sync SHA.
+- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability. Analytics Tests & Data Integrity run `38125791980` passed; Planning Governance runs `38126221304` and `38126319495` passed on evidence-sync SHAs.
 - Post-close routing: no safe successor after full post-delivery RQ/SQL and cross-program scan; Zero-READY proof and candidate matrix in the run log.
 - Prompt defect / scope repair: none.
