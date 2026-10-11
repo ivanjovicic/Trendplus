@@ -2,8 +2,8 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ611
-Additional path-disjoint READY: RQ612 and RQ610 (read-only source qualification only).
+Current READY prompt: RQ610
+Additional path-disjoint READY: RQ612 (read-only shadow-control qualification).
 RQ610 was BLOCKED after the company-grain capture delivery but is REOPENED as READY for a bounded, repository-local source qualification. `Artikli` already carries `IDObjekat`, `Kolicina`, source lineage and timestamps; this is a candidate source, NOT certified store/day inventory. No producer/worker mutation is authorized until its grain and batch-generation semantics are proved. Codex previously released the worker/schema paths. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -204,7 +204,7 @@ RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
 
 ## RQ611 - Real per-store/per-day source-coverage evidence for sales and markdown measurement
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: import-metadata/analytics-integrity/tests
 Feature family: imported-store-day-coverage
@@ -246,6 +246,26 @@ RQ569 DONE and RQ610 captured/schema path released. RQ592 real pilot remains sep
 ### Delivery note
 - Store/day evidence contract: `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md`.
 - Read-only frozen-cohort consumer hook: `tools/markdown-pilot-store-day-coverage-oracle.sql`; it requires a complete status for every requested store/day and selects the latest source attempt, leaving absent evidence unverified. It does not alter RQ602's frozen manifest/query or make a recommendation.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Future Access imports can persist conservative store/day source coverage with batch lineage; only a fully accounted direct snapshot can certify empty days, while missing stores, gaps outside observed bounds and historical batch #23 remain unverified.
+- Changed files: `Api/Services/AccessImportService.cs`; `Api/Services/AccessStoreDayCoverageEvidence.cs`; `Infrastructure/Migrations/20261011110000_AddAccessImportStoreDayCoverage.cs`; `Api.Tests/AccessStoreDayCoverageEvidenceTests.cs`; `Api.Tests/AccessImportStoreDayCoveragePostgresTests.cs`; `tools/markdown-pilot-store-day-coverage-oracle.sql`; `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-11-RQ611-evidence.md`.
+- Contract/runtime behavior changed: future importer executions persist evidence transactionally when the migration is deployed; the consumer oracle is read-only and does not enable recommendations.
+- Checks run: focused evidence and disposable PostgreSQL tests 6/6 passed; final PostgreSQL importer-oracle rerun 1/1 passed; EF migration list succeeded and showed this migration Pending; all six governance self-tests/checks and `git diff --check` passed before close-out synchronization. Actions: Analytics Tests & Data Integrity `38122708609` was in progress; Planning Governance `38122708546` succeeded on implementation SHA `a514ea4d0fe80896a297093077d22f78f7568593`.
+- Checks not run: full backend suite; production migration/import; historical batch #23 backfill.
+- Run log: `.ai/runs/2026-10-11-RQ611-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a514ea4d0fe80896a297093077d22f78f7568593` (implementation); closure SHA recorded in run log after push.
+- Main verification: implementation SHA was freshly verified equal to `HEAD` and `origin/main`; closure verification is recorded in the run log.
+- Missed: no historical per-store/day proof for batch #23; no production schema rollout.
+- Follow-up: RQ610 is promoted as primary READY for bounded read-only source-grain qualification; RQ612 remains independently READY.
+- Residual risk: future evidence requires deployment of the pending migration; historical coverage is unknown; Analytics Actions was still running at close-out and is recorded as residual unless it completes before final verification.
+- Post-close routing: fresh scan from implementation SHA `a514ea4d0fe80896a297093077d22f78f7568593` found RQ610 and RQ612 READY and path-disjoint; RQ610 is the next primary READY. Full scan and unblock/dependency details are in the run log.
+- Prompt defect / scope repair: none.
 
 ---
 
