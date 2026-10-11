@@ -887,7 +887,7 @@ A reproducible before/after oracle proves the timestamp and session-timezone bou
 - Main verification: freshly fetched `origin/main` contains the implementation SHA.
 - Missed: production rollout/provider proof remains STAB16-owned; no production database or migration was used.
 - Follow-up: no READY candidate after post-close cascade; Zero-READY proof is in the run log.
-- Residual risk: current Analytics Tests & Data Integrity workflow 38177795288 is in progress; an older predecessor-SHA run failed only because RQ610's PostgreSQL server at `127.0.0.1:5434` was unavailable.
+- Residual risk: Analytics Tests & Data Integrity workflow 38177795288 completed red because both RQ610 tests could not reach their configured PostgreSQL server at `127.0.0.1:5434`; both RQ618 tests passed in the same run. The RQ610 isolated PostgreSQL proof passes when its test connection is supplied.
 - Post-close routing: no READY successor; the full Zero-READY proof and blocker matrix are in `.ai/runs/2026-10-11-RQ618-evidence.md` (recovery base `530e99503b8b914c8740cafdbb82513392877341`).
 - Prompt defect / scope repair: current SQL already used an explicit UTC as-of date; the stale `CURRENT_DATE` claim was incorrect. The reproduced defect was session-dependent `timestamptz` grouping/filtering.
 

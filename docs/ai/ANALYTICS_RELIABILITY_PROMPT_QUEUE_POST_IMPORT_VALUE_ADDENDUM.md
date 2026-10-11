@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none (post-close recovery at origin/main 530e99503b8b914c8740cafdbb82513392877341 scanned 21 active execution queues, 2 future planning queues and the historical NEXT ledger; no READY task or new RQ618 dependency remains. RQ610 is still BLOCKED pending the all-writer stock-generation/POS contract and isolated PostgreSQL test repair).
+Current READY prompt: none (post-close recovery at origin/main 530e99503b8b914c8740cafdbb82513392877341 scanned 21 active execution queues, 2 future planning queues and the historical NEXT ledger; no READY task or new RQ618 dependency remains. RQ610's isolated ledger tests pass on current main; RQ610 remains BLOCKED pending the all-writer stock-generation/POS contract).
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
