@@ -348,17 +348,12 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 - Checks run: read-only local batch-23 query; disposable PostgreSQL fixture tests 2/2 passed, 0 skipped; Release Api.Tests build completed; all six governance validators and `git diff --check` passed (recorded in run log).
 - Checks not run: full backend suite; prospective pilot, availability proof, causal estimate and owner approval.
 - Run log: `.ai/runs/2026-10-11-RQ612-evidence.md`
-- Evidence state: pending close-out push
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending close-out push
-- Main verification: pending fresh post-delivery fetch
+- Main commit SHA: `370a553b0af65b33799e8560ae8e7781f6e1e134`
+- Main verification: fresh fetch from `origin/main` at `370a553b0af65b33799e8560ae8e7781f6e1e134` contains implementation SHA `370a553b0af65b33799e8560ae8e7781f6e1e134`.
 - Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
 - Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
 - Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; current stock snapshots cannot certify historical availability.
-- Post-close routing: pending fresh post-delivery RQ/SQL and global queue scan; details in the run log.
-- Prompt defect / scope repair: none.
-- Missed: no candidate qualified while historical source-day coverage and stock availability remain unverified.
-- Follow-up: RQ592/STAB16 owner gates remain; RQ610 stays BLOCKED on source mutation generation.
-- Residual risk: four exploratory candidates are not eligible controls for a causal or business conclusion; historical stockout/source-day gaps cannot be repaired from current snapshots.
-- Post-close routing: pending fresh post-delivery RQ/SQL and global queue scan; details in the run log.
+- Post-close routing: no safe successor after full post-delivery RQ/SQL and cross-program scan; Zero-READY proof and candidate matrix in the run log.
 - Prompt defect / scope repair: none.
