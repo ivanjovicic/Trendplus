@@ -85,14 +85,22 @@ No external start gate: STAB16 and RQ601 original documents are not needed for t
 
 ## RQ609 - RQ601 provenance migration compatibility and read-only release preflight
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: schema-test/preflight script
 Feature family: purchase-cost-provenance-schema-readiness
 Parallel-safe: yes; new preflight tooling/isolated migration test, no RQ608 or RQ612 source files; owns schema-test lane until close
-Owner: Analytics Schema / Release QA (unclaimed)
+Owner: Codex
+Local lock: `.ai/task-locks/RQ609-codex.lock.md`
 Ready after: RQ601 nullable EF/bootstrap migration exists; original 20 calculations are final business proof, not a start gate
 Commit suggestion: `test(analytics): fail closed on cost provenance schema mismatch`
+
+### Claim note
+
+- Date: 2026-10-11
+- Status: IN_PROGRESS
+- Claim: Refreshed `origin/main` at `02007bb283bd91b5bae9ba87d179998e8b96ffab`; RQ609 remains the primary P0 READY prompt after RQ608 closed. No matching lock, branch or open PR exists. RQ612 is explicitly path-disjoint.
+- Local lock: `.ai/task-locks/RQ609-codex.lock.md`.
 
 ### Problem
 Current local batch-23 business DB was **not migrated** after RQ601 added `prodaja_stavke.purchase_cost_provenance`. Do not deploy endpoints reading the column against an unmigrated DB; no implicit bootstrap green without a real test.
