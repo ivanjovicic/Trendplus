@@ -158,9 +158,27 @@ public sealed class DnevnikPromenaReadServiceTests
     [Fact]
     public async Task ConfiguredBusinessNamedDatabasesAreRejectedBeforeAnyDml()
     {
-        const string businessDatabaseName = "trendplus";
-        var businessConnectionString = await _fixture.CreateUnregisteredBusinessNamedDatabaseForSafetyTestAsync();
-        _output.WriteLine($"RQ617 business-looking test database created inside disposable container: {businessDatabaseName}; fixture registration: rejected.");
+        var safetyAdminDatabase = await _fixture.CreateDatabaseAsync("rq617_safety_admin");
+        var businessDatabaseName = $"trendplus_rq617_{Guid.NewGuid():N}";
+        var adminConnectionString = new NpgsqlConnectionStringBuilder(safetyAdminDatabase.ConnectionString)
+        {
+            Database = "postgres",
+            Pooling = false
+        }.ConnectionString;
+        await using (var admin = new NpgsqlConnection(adminConnectionString))
+        {
+            await admin.OpenAsync();
+            await using var create = new NpgsqlCommand($"CREATE DATABASE \"{businessDatabaseName}\";", admin);
+            await create.ExecuteNonQueryAsync();
+        }
+
+        var businessConnectionString = new NpgsqlConnectionStringBuilder(safetyAdminDatabase.ConnectionString)
+        {
+            Database = businessDatabaseName,
+            Pooling = false
+        }.ConnectionString;
+        _output.WriteLine(
+            $"RQ617 safety admin database: {safetyAdminDatabase.Name}; business-looking database created inside disposable container: {businessDatabaseName}; fixture registration: rejected.");
         await using (var businessDatabase = new NpgsqlConnection(businessConnectionString))
         {
             await businessDatabase.OpenAsync();
