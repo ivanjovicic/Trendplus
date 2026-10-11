@@ -827,15 +827,15 @@ These tests never mutate a user-configured business database and cannot silently
 - Changed files: `Api.Tests/DnevnikPromenaReadServiceTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-11-RQ617-evidence.md`.
 - Contract/runtime behavior changed: test-only. No application runtime, schema, inventory, importer or business-data behavior changed.
 - Checks run: Release build; six focused Dnevnik PostgreSQL tests plus the RQ614 business-name safety test with TRX; agent-instruction, prompt-queue and planning-architecture validators with self-tests; `git diff --check`; complete `IntegrationDbGuard` callsite search.
-- Checks not run: Full `Api.Tests` suite; relevant current-main GitHub Actions run `38176669519` is queued and was not awaited, per queue policy.
+- Checks not run: Full `Api.Tests` suite; relevant current-main GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) was `in_progress` on implementation SHA `b691f7d1` and was not awaited, per queue policy.
 - Run log: `.ai/runs/2026-10-11-RQ617-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`
-- Main verification: post-close `origin/main` was fetched at `17bf5d95b84390e987fa3faf851f375b5a654a0e`; it contains implementation commit `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`.
+- Main verification: post-close `origin/main` was fetched at `91546f081a42b9a84fca006e4e1900de4522e73b`; it contains implementation commit `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`.
 - Missed: none known.
 - Follow-up: RQ618 remains independently READY for its UTC movement-day SQL oracle.
-- Residual risk: GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) is in progress on the implementation SHA; Planning Governance run `38176779148` is in progress on the closure SHA. Focused local PostgreSQL proof is green.
+- Residual risk: GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) is in progress on the implementation SHA; latest Planning Governance run `38176862352` is in progress on current main. Earlier closure governance run `38176779148` completed successfully. Focused local PostgreSQL proof is green.
 - Next: RQ618 remains READY and was not claimed by this request.
 - Prompt defect / scope repair: Updated the queue and roadmap current-READY pointer from RQ617 to RQ618 after closure. The unsafe helper itself had no other test callsites.
 - Post-close routing: RQ618 remains the only READY prompt in the active RQ/SQL queue set; see the post-close cascade in the run log.
