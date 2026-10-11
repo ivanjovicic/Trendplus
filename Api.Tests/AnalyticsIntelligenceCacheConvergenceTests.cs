@@ -157,6 +157,46 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             Assert.Equal(0L, await DifferenceCountAsync(connection, view, cache));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompetingStartupPreparation_CannotOrphanTheWinningBuildGeneration(bool reverseStartupOrder)
+    {
+        var database = await CreatePreR613CacheDatabaseAsync("competing_startup");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
+        var stateBeforeContendedStartups = await GetCacheStateSnapshotAsync(connection);
+
+        // Hold the real database lock while two independent startup tasks contend. Neither task
+        // may publish a pending generation before it owns the lock.
+        await using (var lockCommand = new NpgsqlCommand("SELECT pg_try_advisory_lock(987654323);", connection))
+            Assert.True((bool)(await lockCommand.ExecuteScalarAsync())!);
+
+        var startupA = () => DatabaseInitializer.RunAnalyticsIntelligenceCacheStartupBuildAsync(
+            database.ConnectionString,
+            NullLogger.Instance,
+            CacheScripts);
+        var startupB = () => DatabaseInitializer.RunAnalyticsIntelligenceCacheStartupBuildAsync(
+            database.ConnectionString,
+            NullLogger.Instance,
+            CacheScripts);
+        var first = reverseStartupOrder ? startupB() : startupA();
+        var second = reverseStartupOrder ? startupA() : startupB();
+
+        await Task.Delay(TimeSpan.FromMilliseconds(300));
+        Assert.Equal(stateBeforeContendedStartups, await GetCacheStateSnapshotAsync(connection));
+
+        await using (var releaseCommand = new NpgsqlCommand("SELECT pg_advisory_unlock(987654323);", connection))
+            Assert.True((bool)(await releaseCommand.ExecuteScalarAsync())!);
+
+        await Task.WhenAll(first, second);
+
+        foreach (var (view, cache) in CachePairs)
+        {
+            Assert.Equal("ready", await GetBuildStateAsync(connection, cache));
+            Assert.Equal(0L, await DifferenceCountAsync(connection, view, cache));
+        }
+    }
+
     [Fact]
     public async Task InterruptedOrFailedBuild_IsUnavailableAndPersistsSafeFailureState()
     {
@@ -371,6 +411,22 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             connection);
         command.Parameters.AddWithValue("cacheName", cacheName);
         return (string)(await command.ExecuteScalarAsync())!;
+    }
+
+    private static async Task<string[]> GetCacheStateSnapshotAsync(NpgsqlConnection connection)
+    {
+        await using var command = new NpgsqlCommand("""
+            SELECT cache_name, build_state, COALESCE(build_generation_id::text, ''), COALESCE(expected_script_hash, '')
+            FROM analytics_intel.cache_refresh_state
+            WHERE cache_name = ANY(@cacheNames)
+            ORDER BY cache_name;
+            """, connection);
+        command.Parameters.AddWithValue("cacheNames", CachePairs.Select(pair => pair.Cache).ToArray());
+        var rows = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            rows.Add($"{reader.GetString(0)}|{reader.GetString(1)}|{reader.GetString(2)}|{reader.GetString(3)}");
+        return rows.ToArray();
     }
 
     private static async Task<long> ScalarLongAsync(NpgsqlConnection connection, string sql)

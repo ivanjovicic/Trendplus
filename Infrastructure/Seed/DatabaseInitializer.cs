@@ -2925,14 +2925,10 @@ public static class DatabaseInitializer
             )
         };
 
-        var cacheBuildGenerationId = await PrepareAnalyticsIntelligenceCacheBuildAsync(
-            connectionString,
-            analyticsIntelligenceScripts);
-        _ = Task.Run(() => RunAnalyticsIntelligenceBuildAsync(
+        _ = Task.Run(() => RunAnalyticsIntelligenceCacheStartupBuildAsync(
             connectionString,
             logger,
-            analyticsIntelligenceScripts,
-            cacheBuildGenerationId));
+            analyticsIntelligenceScripts));
     }
 
     internal static async Task<Guid> PrepareAnalyticsIntelligenceCacheBuildAsync(
@@ -2986,18 +2982,108 @@ public static class DatabaseInitializer
         Guid cacheBuildGenerationId)
     {
         await using var lockConnection = new NpgsqlConnection(connectionString);
-        var lockAcquired = false;
+        await lockConnection.OpenAsync();
+        if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
+        {
+            logger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
+            return;
+        }
+
         try
         {
-            await lockConnection.OpenAsync();
+            _ = await RunAnalyticsIntelligenceBuildUnderLockAsync(
+                connectionString,
+                logger,
+                scripts,
+                cacheBuildGenerationId);
+        }
+        finally
+        {
+            await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
+        }
+    }
 
-            if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey))
+    internal static async Task RunAnalyticsIntelligenceCacheStartupBuildAsync(
+        string connectionString,
+        ILogger logger,
+        IReadOnlyList<(string SqlFilePath, string[] RequiredRelations)> scripts)
+    {
+        const int maxAttempts = 8;
+        var retryDelay = TimeSpan.FromSeconds(1);
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            await using var lockConnection = new NpgsqlConnection(connectionString);
+            var lockAcquired = false;
+            var buildSucceeded = false;
+            try
             {
-                logger.LogInformation("[BG] Skipping analytics intelligence SQL build because another instance already holds the build lock.");
-                return;
+                await lockConnection.OpenAsync();
+                lockAcquired = await TryAcquireSingleRunAdvisoryLockAsync(
+                    lockConnection,
+                    AnalyticsIntelligenceBuildLockKey);
+
+                if (!lockAcquired)
+                {
+                    logger.LogInformation(
+                        "[BG] Analytics intelligence startup build is contended (attempt {Attempt}/{MaxAttempts}); retrying without changing cache generation state.",
+                        attempt,
+                        maxAttempts);
+                }
+                else
+                {
+                    // Generation preparation and SQL execution share the same advisory lock.
+                    // A startup that loses contention therefore cannot overwrite the active
+                    // builder's pending generation before returning.
+                    var generationId = await PrepareAnalyticsIntelligenceCacheBuildAsync(
+                        connectionString,
+                        scripts);
+                    buildSucceeded = await RunAnalyticsIntelligenceBuildUnderLockAsync(
+                        connectionString,
+                        logger,
+                        scripts,
+                        generationId);
+                    if (buildSucceeded)
+                    {
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "[BG] Analytics intelligence startup build attempt {Attempt}/{MaxAttempts} failed before completion.",
+                    attempt,
+                    maxAttempts);
+            }
+            finally
+            {
+                if (lockAcquired && lockConnection.State == System.Data.ConnectionState.Open)
+                {
+                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
+                }
             }
 
-            lockAcquired = true;
+            if (attempt < maxAttempts)
+            {
+                await Task.Delay(retryDelay);
+            }
+        }
+
+        logger.LogWarning(
+            "[BG] Analytics intelligence startup build exhausted {MaxAttempts} bounded attempts; cache state remains unavailable or unchanged for a later startup retry.",
+            maxAttempts);
+    }
+
+    private static async Task<bool> RunAnalyticsIntelligenceBuildUnderLockAsync(
+        string connectionString,
+        ILogger logger,
+        IReadOnlyList<(string SqlFilePath, string[] RequiredRelations)> scripts,
+        Guid cacheBuildGenerationId)
+    {
+        try
+        {
             foreach (var script in scripts)
             {
                 var relationsReady = await AreRelationsReadyAsync(connectionString, script.RequiredRelations);
@@ -3053,6 +3139,7 @@ public static class DatabaseInitializer
             }
 
             logger.LogInformation("[BG] Analytics intelligence SQL build completed successfully.");
+            return true;
         }
         catch (Exception ex)
         {
@@ -3066,13 +3153,7 @@ public static class DatabaseInitializer
             }
 
             logger.LogWarning(ex, "[BG] Analytics intelligence SQL build failed. Affected intelligence caches remain unavailable until a successful retry.");
-        }
-        finally
-        {
-            if (lockAcquired && lockConnection.State == System.Data.ConnectionState.Open)
-            {
-                await ReleaseSingleRunAdvisoryLockAsync(lockConnection, AnalyticsIntelligenceBuildLockKey);
-            }
+            return false;
         }
     }
 
