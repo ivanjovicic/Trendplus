@@ -3,8 +3,8 @@
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 Current READY prompt: RQ611
-Additional path-disjoint READY: RQ612.
-RQ610 is BLOCKED after delivery of the company-grain opt-in capture slice; the authoritative store-grained inventory source and import-batch lineage are still missing. Codex released the worker/schema paths. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
+Additional path-disjoint READY: RQ612 and RQ610 (read-only source qualification only).
+RQ610 was BLOCKED after the company-grain capture delivery but is REOPENED as READY for a bounded, repository-local source qualification. `Artikli` already carries `IDObjekat`, `Kolicina`, source lineage and timestamps; this is a candidate source, NOT certified store/day inventory. No producer/worker mutation is authorized until its grain and batch-generation semantics are proved. Codex previously released the worker/schema paths. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
 
@@ -146,12 +146,12 @@ Repository-local READY. No production privileges or owner cost sample required t
 
 ## RQ610 - Schedule opt-in observed SKU×store×day inventory capture using RQ96 foundation
 
-Status: BLOCKED
+Status: READY
 Priority: P1
 Type: inventory-worker/SQL/tests
 Feature family: inventory-observed-daily-capture
-Parallel-safe: no with active schema/worker owner; run after RQ609 and refresh collision check
-Owner: Inventory Capture (unassigned after source-contract handoff)
+Parallel-safe: yes for isolated read-only source-qualification SQL/evidence; no worker/importer/schema edits concurrently with RQ611 or another active owner
+Owner: Inventory Capture (unassigned; prior Codex ownership explicitly released)
 Local lock: removed after source-contract handoff
 Ready after: RQ609 DONE, RQ96 DONE
 
@@ -178,6 +178,18 @@ Reliable opt-in prospective observed stock capture, truthful source metadata and
 
 ### Dependencies
 RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
+
+### Owner-approved re-entry — bounded source-grain qualification (2026-10-11)
+
+**Status interpretation:** The BLOCKED decision below correctly forbids pretending `ProductsDim` is store-grained, but its broader statement that *no possible* per-store stock source exists was not established. Current `Domain/Model/Artikli.cs` exposes `IDObjekat`, `Kolicina`, `UpdatedAt`, `DataOrigin`, `SourceTableKey`, `SourceRowId`, `SourceUpdatedAtUtc`, `SourceHash` and `SourceBatchId`; `Api/Services/AccessImportService.cs` accepts Artikli store alias `idobjekat/storeid` and records imported source lineage; `Api/Services/TransferService.cs` explicitly resolves destination stock entries by `IDObjekat`. None proves per-store historical snapshot coverage automatically. Reopen **only the source qualification and safe bounded follow-through**, not production capture enablement.
+
+1. **First deliverable:** execute `tools/rq610-store-stock-source-qualification.sql` read-only on the exact existing local `trendplus` business PostgreSQL (operator reported 127.0.0.1:5434) and record safe target identity, row origin, per-store counts, NULL/unmapped store IDs, non-null quantities, `SourceBatchId` coverage, distinct source lineages, `UpdatedAt`/source timestamps, and exact ArticleId/ProductsDim quantity parity. If connection unavailable, run deterministic disposable PostgreSQL fixtures and mark actual batch-23 verification `not run`. No new import, seed, migration or source data correction.
+2. Verify whether each `Artikli.Id` genuinely denotes a **store-specific stock line** (not merely the owning/default store), whether quantities and timestamps are authoritative for that line, how the same logical SKU/PLU appears in multiple stores, and how POS/transfer/import updates affect `UpdatedAt` and source batch lineage. Distinguish `SourceBatchId` (last Access import lineage) from a post-import operational stock-change generation. Prove non-fanout and no double counting. A NULL `IDObjekat` is unverified store identity, not store 0 or each location.
+3. **Only if** real evidence supports SKU×store current on-hand and a reliable observation/generation boundary: implement a separately selected `Artikli`-based source adapter for the existing RQ96/RQ610 capture, preserving `ProductsDim` company-grain `store_id=0` as a different source. Do not double-count the company row against store rows in aggregate/view/readers; do not attach false source-batch certainty. Require isolated PostgreSQL tests for two stores sharing PLU, missing store, same article different sources, NULL/zero/negative stock, POS/transfer correction, batch retry, concurrent capture, DST and atomic rollback. Serialize any write-path work with RQ611's importer owner.
+4. **If unproved:** keep the existing opt-in company-grain implementation intact; record a compact field-by-field evidence matrix, set RQ610 back to BLOCKED with **the specific missing column/source behavior** and exact next owner/event. This is not grounds to block the path-disjoint RQ611/RQ612.
+5. Only mark RQ610 DONE if all store-grain acceptance tests, provenance and source freshness/coverage proofs exist. Production cron remains disabled; never backfill August as observed. Do not modify any real business DB or change `Artikli` rows to manufacture coverage.
+
+**Re-entry evidence:** `.ai/runs/2026-10-11-RQ610-source-reentry-evidence.md`; `main` currently contains the prior opt-in company-grain implementation `34a5ecf2` with exact-SHA backend CI `38119404029` now green. RQ608 exact-SHA CI `38116562952` and RQ609 exact-SHA CI `38118021843` are also green. Historical BLOCKED note below is preserved as an audit trail; it no longer constitutes a start gate for read-only/source-qualification work.
 
 ### Blocker / repository-local delivery
 - Delivered the opt-in scheduler, run ledger, exact capture instant, same-day update retry and idempotent company-grain `store_id=0` capture on `main` at `34a5ecf2cdc5f3702b259303952873ac67974366`.
