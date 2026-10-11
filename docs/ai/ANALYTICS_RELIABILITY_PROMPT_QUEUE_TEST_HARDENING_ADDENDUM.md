@@ -881,13 +881,13 @@ A reproducible before/after oracle proves the timestamp and session-timezone bou
 - Implementation: `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql` now groups movement rows by UTC day and filters with a UTC-midnight lower bound; the test-only PostgreSQL oracle proves view/cache parity and refresh behavior.
 - Validation: focused disposable-PostgreSQL tests passed 2/2 (0 failed, 0 skipped); Release test-project build passed with 0 errors. Governance validators and `git diff --check` passed.
 - Run log: `.ai/runs/2026-10-11-RQ618-evidence.md`
-- Evidence state: pending final post-close recovery synchronization.
+- Evidence state: synchronized.
 - Delivery mode: direct-main.
 - Main implementation SHA: `b8e1c08f5ebea55319b61ce0e11a3dc8f51a7e03`.
 - Main verification: freshly fetched `origin/main` contains the implementation SHA.
 - Missed: production rollout/provider proof remains STAB16-owned; no production database or migration was used.
 - Follow-up: no READY candidate after post-close cascade; Zero-READY proof is in the run log.
 - Residual risk: current Analytics Tests & Data Integrity workflow 38177795288 is in progress; an older predecessor-SHA run failed only because RQ610's PostgreSQL server at `127.0.0.1:5434` was unavailable.
-- Post-close routing: recovery and final evidence synchronization pending.
+- Post-close routing: no READY successor; the full Zero-READY proof and blocker matrix are in `.ai/runs/2026-10-11-RQ618-evidence.md` (recovery base `530e99503b8b914c8740cafdbb82513392877341`).
 - Prompt defect / scope repair: current SQL already used an explicit UTC as-of date; the stale `CURRENT_DATE` claim was incorrect. The reproduced defect was session-dependent `timestamptz` grouping/filtering.
 
