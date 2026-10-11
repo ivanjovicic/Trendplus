@@ -74,7 +74,7 @@ No external start gate: STAB16 and RQ601 original documents are not needed for t
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `35aabd582e754bb293337eace0a6b45aeee58026`
-- Main verification: fetched `origin/main` at `35aabd582e754bb293337eace0a6b45aeee58026`; it contains the implementation commit. Exact-SHA Actions run `38116562952` succeeded.
+- Main verification: at closure verification `origin/main` was `b0a9814509858897bd6ac6f7bfee3882901e1652`, containing implementation `35aabd582e754bb293337eace0a6b45aeee58026` and closure `b0a9814509858897bd6ac6f7bfee3882901e1652`. Exact-SHA Actions run `38116562952` succeeded.
 - Missed: none known.
 - Follow-up: RQ609 (primary READY); RQ612 remains an additional path-disjoint READY prompt.
 - Residual risk: Actions logged a non-fatal duplicate `pg_extension_name_index` error while applying batch 4 of `025_AddTrendplusPerformanceIndexes.sql`; the retry completed and the workflow passed. This is separate from RQ608 and remains an infrastructure/bootstrap diagnostic.
