@@ -8,7 +8,8 @@ namespace Api.Tests;
 // The probe database seeds headers whose surrogate Id differs from SaleId (and one Id that
 // collides with another sale's SaleId); a control database seeds the same sales with
 // Id = SaleId. With the correct join both produce identical view output.
-public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresContainerFixture>
+[Collection(IntelligencePostgresCollection.Name)]
+public sealed class AnalyticsIntelligenceSaleJoinTests
 {
     private static readonly string[] IntelligenceScripts =
     {
@@ -24,9 +25,9 @@ public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresC
         "SELECT * FROM analytics_intel.vw_trend_momentum_v1 WHERE article_id = 42 ORDER BY article_id, signal_date",
     };
 
-    private readonly PostgresContainerFixture _fixture;
+    private readonly IntelligencePostgresFixture _fixture;
 
-    public AnalyticsIntelligenceSaleJoinTests(PostgresContainerFixture fixture)
+    public AnalyticsIntelligenceSaleJoinTests(IntelligencePostgresFixture fixture)
     {
         _fixture = fixture;
     }
@@ -45,13 +46,8 @@ public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresC
     [Fact]
     public async Task IntelligenceViews_AttributeLinesBySourceSaleId_NotSurrogateId()
     {
-        if (!_fixture.IsAvailable)
-            return;
-
         var control = await CreateSeededDatabaseAsync("ctl", saleAId: 1000, saleBId: 2000);
         var probe = await CreateSeededDatabaseAsync("prb", saleAId: 1, saleBId: 1000);
-        if (control is null || probe is null)
-            return;
 
         // The line belongs to source sale 1000 (store 7, yesterday), never to the header whose
         // surrogate Id happens to be 1000 (store 9, five days ago).
@@ -70,20 +66,24 @@ public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresC
         }
     }
 
-    private async Task<string?> CreateSeededDatabaseAsync(string suffix, int saleAId, int saleBId)
+    private async Task<IntelligenceTestDatabase> CreateSeededDatabaseAsync(string suffix, int saleAId, int saleBId)
     {
-        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_intel_join_{suffix}_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(connectionString))
-            return null;
+        var database = await _fixture.CreateDatabaseAsync($"salejoin_{suffix}");
 
-        await ExecuteAsync(connectionString, $"""
+        await ExecuteAsync(database, $"""
             CREATE TABLE "ProductsDim" (
                 "ProductId" integer NOT NULL,
                 "Timestamp" timestamp with time zone NOT NULL,
                 "Kolicina" integer NULL,
                 "MinimalnaKolicina" integer NULL,
                 "PurchasePrice" numeric(18,2) NULL,
-                "PurchasePriceRsd" numeric(18,2) NULL
+                "PurchasePriceRsd" numeric(18,2) NULL,
+                "Brand" text NULL,
+                "Category" text NULL,
+                "FirstSalePrice" numeric(18,2) NULL,
+                "SalePrice" numeric(18,2) NULL,
+                "SupplierId" integer NULL,
+                "DataOrigin" text NULL
             );
             CREATE TABLE "SalesFacts" (
                 "Id" bigint PRIMARY KEY,
@@ -118,17 +118,19 @@ public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresC
             INSERT INTO "SalesLineFacts" ("SaleId", "ProductId", "Qty") VALUES (1000, 42, 3);
             """);
 
-        await ExecuteAsync(connectionString, await File.ReadAllTextAsync(RepoPath("Database/Analytics/Intelligence/020_create_intelligence_schema.sql")));
-        foreach (var script in IntelligenceScripts)
-            await ExecuteAsync(connectionString, await File.ReadAllTextAsync(RepoPath(script)));
+        await _fixture.RunFreshBootstrapAsync(database.ConnectionString, async _ =>
+        {
+            await ExecuteAsync(database, await File.ReadAllTextAsync(RepoPath("Database/Analytics/Intelligence/020_create_intelligence_schema.sql")));
+            foreach (var script in IntelligenceScripts)
+                await ExecuteAsync(database, await File.ReadAllTextAsync(RepoPath(script)));
+        });
 
-        return connectionString;
+        return database;
     }
 
-    private static async Task<List<string>> QueryRowsAsync(string connectionString, string sql)
+    private async Task<List<string>> QueryRowsAsync(IntelligenceTestDatabase database, string sql)
     {
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await using var connection = await _fixture.OpenConnectionAsync(database);
         await using (var setTimeZone = new NpgsqlCommand("SET TIME ZONE 'UTC';", connection))
             await setTimeZone.ExecuteNonQueryAsync();
         await using var command = new NpgsqlCommand(sql, connection);
@@ -143,12 +145,11 @@ public sealed class AnalyticsIntelligenceSaleJoinTests : IClassFixture<PostgresC
         return rows;
     }
 
-    private static Task<List<string>> QueryColumnAsync(string connectionString, string sql) => QueryRowsAsync(connectionString, sql);
+    private Task<List<string>> QueryColumnAsync(IntelligenceTestDatabase database, string sql) => QueryRowsAsync(database, sql);
 
-    private static async Task ExecuteAsync(string connectionString, string sql)
+    private async Task ExecuteAsync(IntelligenceTestDatabase database, string sql)
     {
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await using var connection = await _fixture.OpenConnectionAsync(database);
         await using var setTimeZone = new NpgsqlCommand("SET TIME ZONE 'UTC';", connection);
         await setTimeZone.ExecuteNonQueryAsync();
         await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = 0 };

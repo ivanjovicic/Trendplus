@@ -1,26 +1,26 @@
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Trendplus2.Endpoints;
 using Xunit;
 
 namespace Api.Tests;
 
+[Collection(IntelligencePostgresCollection.Name)]
 public sealed class AnalyticsIntelligenceSmokeTests
 {
+    private readonly IntelligencePostgresFixture _fixture;
+
+    public AnalyticsIntelligenceSmokeTests(IntelligencePostgresFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public async Task ProductDemandSignalsView_Exists_WithExpectedColumns_AndQueryExecutes()
     {
-        if (!TryGetAnalyticsConnectionString(out var connectionString))
-        {
-            return;
-        }
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await BootstrapIntelligenceSqlAsync(connection,
+        var database = await CreateBootstrappedDatabaseAsync(
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
 
         await using (var existsCommand = new NpgsqlCommand(
                          "SELECT to_regclass('analytics_intel.vw_product_demand_signals_v1')::text;",
@@ -72,26 +72,21 @@ public sealed class AnalyticsIntelligenceSmokeTests
 
         Assert.Equal(expectedColumns, actualColumns);
 
-        while (await reader.ReadAsync())
+        Assert.True(await reader.ReadAsync(), "The isolated seed should produce product demand rows.");
+        do
         {
             _ = reader.GetValue(0);
         }
+        while (await reader.ReadAsync());
     }
 
     [Fact]
     public async Task ProductDemandSignalsView_DistinguishesNewDemandFromMeasuredAcceleration()
     {
-        if (!TryGetAnalyticsConnectionString(out var connectionString))
-        {
-            return;
-        }
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await BootstrapIntelligenceSqlAsync(connection,
+        var database = await CreateBootstrappedDatabaseAsync(
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
 
         await using var command = new NpgsqlCommand("""
             SELECT COUNT(*)
@@ -105,23 +100,17 @@ public sealed class AnalyticsIntelligenceSmokeTests
 
         var invalidBaselineCount = Convert.ToInt64(await command.ExecuteScalarAsync());
         Assert.Equal(0L, invalidBaselineCount);
+        Assert.True(await ScalarLongAsync(connection, "SELECT COUNT(*) FROM analytics_intel.vw_product_demand_signals_v1;") > 0);
     }
 
     [Fact]
     public async Task ObservedDailyStockView_Exists_WithProvenanceColumns()
     {
-        if (!TryGetAnalyticsConnectionString(out var connectionString))
-        {
-            return;
-        }
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await BootstrapIntelligenceSqlAsync(connection,
+        var database = await CreateBootstrappedDatabaseAsync(
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
             "Database/Analytics/Intelligence/025_observed_inventory_daily_snapshot_v1.sql");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
 
         await using (var existsCommand = new NpgsqlCommand(
                          "SELECT to_regclass('analytics_intel.vw_inventory_daily_stock_v1')::text;",
@@ -170,30 +159,31 @@ public sealed class AnalyticsIntelligenceSmokeTests
             ],
             actualColumns);
 
-        while (await reader.ReadAsync())
+        Assert.True(await reader.ReadAsync(), "The isolated seed should produce observed stock view rows.");
+        do
         {
             _ = reader.GetValue(0);
         }
+        while (await reader.ReadAsync());
     }
 
     [Fact]
     public async Task IntelligenceEndpointQueries_ExecuteAgainstMaterializedCaches()
     {
-        if (!TryGetAnalyticsConnectionString(out var connectionString))
-        {
-            return;
-        }
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await BootstrapIntelligenceSqlAsync(connection,
+        var database = await CreateBootstrappedDatabaseAsync(
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/021_product_demand_signals_v1.sql",
             "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
             "Database/Analytics/Intelligence/025_observed_inventory_daily_snapshot_v1.sql",
             "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",
             "Database/Analytics/Intelligence/024_trend_momentum_v1.sql");
+        var connectionString = database.ConnectionString;
+        await using var connection = await _fixture.OpenConnectionAsync(database);
+
+        Assert.True(await ScalarLongAsync(connection, "SELECT COUNT(*) FROM analytics_intel.mv_product_demand_signals_v1_cache;") > 0);
+        Assert.True(await ScalarLongAsync(connection, "SELECT COUNT(*) FROM analytics_intel.mv_inventory_risk_signals_v1_cache;") > 0);
+        Assert.True(await ScalarLongAsync(connection, "SELECT COUNT(*) FROM analytics_intel.mv_price_intelligence_v1_cache;") > 0);
+        Assert.True(await ScalarLongAsync(connection, "SELECT COUNT(*) FROM analytics_intel.mv_trend_momentum_v1_cache;") > 0);
 
         var demand = await AnalyticsIntelligenceEndpoints.QueryDemandSignalsAsync(
             connectionString,
@@ -277,17 +267,10 @@ public sealed class AnalyticsIntelligenceSmokeTests
     [Fact]
     public async Task PriceIntelligenceView_DoesNotExposeDiscountDepthForInvalidListPrice()
     {
-        if (!TryGetAnalyticsConnectionString(out var connectionString))
-        {
-            return;
-        }
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
-        await BootstrapIntelligenceSqlAsync(connection,
+        var database = await CreateBootstrappedDatabaseAsync(
             "Database/Analytics/Intelligence/020_create_intelligence_schema.sql",
             "Database/Analytics/Intelligence/023_price_intelligence_v1.sql");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
 
         await using var command = new NpgsqlCommand("""
             SELECT COUNT(*)
@@ -301,51 +284,49 @@ public sealed class AnalyticsIntelligenceSmokeTests
 
         var invalidDiscountCount = Convert.ToInt64(await command.ExecuteScalarAsync());
         Assert.Equal(0L, invalidDiscountCount);
+
+        Assert.Equal(1L, await ScalarLongAsync(
+            connection,
+            "SELECT COUNT(*) FROM analytics_intel.vw_price_intelligence_v1 WHERE article_id = 43 AND list_price <= 0;"));
     }
 
-    private static bool TryGetAnalyticsConnectionString(out string connectionString)
+    private async Task<IntelligenceTestDatabase> CreateBootstrappedDatabaseAsync(params string[] scripts)
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var resolved = configuration.GetConnectionString("AnalyticsConnection")
-            ?? configuration.GetConnectionString("DefaultConnection");
-
-        if (!IntegrationDbGuard.TryResolveConnectionString(resolved, out var validConnectionString))
+        var database = await _fixture.CreateDatabaseAsync("smoke");
+        await using (var connection = await _fixture.OpenConnectionAsync(database))
         {
-            connectionString = string.Empty;
-            return false;
-        }
-
-        if (!IntegrationDbGuard.TryEnsureAvailable(("AnalyticsConnection", validConnectionString)))
-        {
-            connectionString = string.Empty;
-            return false;
-        }
-
-        connectionString = validConnectionString;
-        return true;
-    }
-
-    private static async Task BootstrapIntelligenceSqlAsync(NpgsqlConnection connection, params string[] relativePaths)
-    {
-        foreach (var relativePath in relativePaths)
-        {
-            var filePath = Path.Combine(
-                AppContext.BaseDirectory,
-                relativePath.Replace('/', Path.DirectorySeparatorChar));
-
-            Assert.True(File.Exists(filePath), $"Expected SQL file was not copied to output: {relativePath}");
-
-            var sql = await File.ReadAllTextAsync(filePath);
-            await using var bootstrapCommand = new NpgsqlCommand(sql, connection)
+            var seedPath = FindRepositoryFile("Api.Tests/Fixtures/analytics-intelligence-smoke-seed.sql");
+            await using var seed = new NpgsqlCommand(await File.ReadAllTextAsync(seedPath), connection)
             {
                 CommandTimeout = 0
             };
-            await bootstrapCommand.ExecuteNonQueryAsync();
+            await seed.ExecuteNonQueryAsync();
         }
+
+        await _fixture.ExecuteIntelligenceScriptsAsync(database, scripts);
+        return database;
+    }
+
+    private static async Task<long> ScalarLongAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        return Convert.ToInt64(await command.ExecuteScalarAsync());
+    }
+
+    private static string FindRepositoryFile(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(relativePath);
     }
 }

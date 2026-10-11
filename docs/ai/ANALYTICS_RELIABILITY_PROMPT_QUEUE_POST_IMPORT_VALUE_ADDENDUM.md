@@ -363,14 +363,22 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 
 ## RQ614 - Isolate intelligence smoke tests and make PostgreSQL certification fail closed
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P0
 Type: test-safety/PostgreSQL regression
 Feature family: intelligence-test-isolation
 Parallel-safe: yes; owns Api.Tests/AnalyticsIntelligenceSmokeTests.cs, Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs and test-only fixtures; RQ615 owns runtime SQL/bootstrap/refresh paths
-Owner: unassigned
+Owner: Codex / worktree `rq614-test-isolation`
 Ready after: RQ613 DONE; actual unsafe smoke execution recorded in .ai/runs/2026-10-11-RQ613-evidence.md
 Commit suggestion: test(analytics): isolate intelligence bootstrap and prohibit business database mutation
+
+### Claim note — 2026-10-11
+
+- Refreshed `origin/main` to `1aae9d97f61fd9843008b7b414e7b9db2c12dd87`; RQ613 is DONE and RQ614 is the primary READY P0 prompt.
+- No RQ614 lock, branch or open PR existed before this claim. RQ615 remains path-disjoint and independent.
+- Claimed READY -> IN_PROGRESS in worktree `rq614-test-isolation`; local lock: `.ai/task-locks/RQ614-codex.lock.md`.
+- The original main checkout contains unrelated uncommitted RQ610 test/evidence/queue changes; they are preserved and excluded from this worktree.
+- Audit found `DatabaseMigrationBootstrapLifecycleSmokeTests` and `DatabaseInitializerP0IntegrationTests` also had silent PostgreSQL early returns; both now use the isolated test-only fixture and fail closed.
 
 ### Problem / confirmed evidence
 The five AnalyticsIntelligenceSmokeTests resolve AnalyticsConnection/DefaultConnection from development appsettings, call IntegrationDbGuard.TryEnsureAvailable, and execute CREATE OR REPLACE VIEW and materialized-view SQL against that selected database. The RQ613 run actually rebuilt analytics_intel objects on the local trendplus business database. AnalyticsIntelligenceSaleJoinTests also returns silently when the PostgreSQL fixture or one of its created databases is unavailable; its isolated proof could be counted green with no assertions.

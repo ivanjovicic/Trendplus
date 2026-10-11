@@ -9,11 +9,12 @@ using Xunit;
 
 namespace Api.Tests;
 
-public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixture<PostgresContainerFixture>
+[Collection(IntelligencePostgresCollection.Name)]
+public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests
 {
-    private readonly PostgresContainerFixture _fixture;
+    private readonly IntelligencePostgresFixture _fixture;
 
-    public DatabaseMigrationBootstrapLifecycleSmokeTests(PostgresContainerFixture fixture)
+    public DatabaseMigrationBootstrapLifecycleSmokeTests(IntelligencePostgresFixture fixture)
     {
         _fixture = fixture;
     }
@@ -21,17 +22,8 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
     [Fact]
     public async Task FreshBootstrapRepeatAndRestartRemainIdempotent()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_bootstrap_smoke_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        var database = await _fixture.CreateDatabaseAsync("bootstrap_lifecycle");
+        var connectionString = database.ConnectionString;
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -46,15 +38,20 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests : IClassFixtur
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
         var logger = loggerFactory.CreateLogger("DatabaseMigrationBootstrapLifecycleSmoke");
 
-        await RunBootstrapAsync(connectionString, configuration, logger);
-        await RunBootstrapAsync(connectionString, configuration, logger);
+        await _fixture.RunFreshBootstrapAsync(
+            connectionString,
+            _ => RunBootstrapAsync(connectionString, configuration, logger));
+        await _fixture.RunOwnedBootstrapRepeatAsync(
+            database,
+            _ => RunBootstrapAsync(connectionString, configuration, logger));
 
         // A new service provider models a process restart, rather than reusing
         // the scoped contexts from the first two bootstrap calls.
-        await RunBootstrapAsync(connectionString, configuration, logger);
+        await _fixture.RunOwnedBootstrapRepeatAsync(
+            database,
+            _ => RunBootstrapAsync(connectionString, configuration, logger));
 
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
+        await using var connection = await _fixture.OpenConnectionAsync(database);
 
         Assert.True(await TableExistsAsync(connection, "__EFMigrationsHistory"));
         Assert.True(await TableExistsAsync(connection, "Artikli"));

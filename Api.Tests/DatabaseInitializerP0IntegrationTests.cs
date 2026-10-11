@@ -13,11 +13,12 @@ using Xunit;
 
 namespace Api.Tests;
 
-public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<PostgresContainerFixture>
+[Collection(IntelligencePostgresCollection.Name)]
+public sealed class DatabaseInitializerP0IntegrationTests
 {
-    private readonly PostgresContainerFixture _fixture;
+    private readonly IntelligencePostgresFixture _fixture;
 
-    public DatabaseInitializerP0IntegrationTests(PostgresContainerFixture fixture)
+    public DatabaseInitializerP0IntegrationTests(IntelligencePostgresFixture fixture)
     {
         _fixture = fixture;
     }
@@ -25,17 +26,8 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     [Fact]
     public async Task SaveSnapshotAsync_PersistsHistoryRow_WhenCancellationTokenIsPassedSeparately()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var trendConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_execsql_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(trendConnectionString))
-        {
-            return;
-        }
+        var trendDatabase = await _fixture.CreateDatabaseAsync("quality_history");
+        var trendConnectionString = trendDatabase.ConnectionString;
 
         await using var trendDb = CreateTrendDbContext(trendConnectionString);
         await trendDb.Database.EnsureCreatedAsync();
@@ -57,8 +49,7 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
 
         await service.SaveSnapshotAsync(snapshot, "all", CancellationToken.None);
 
-        await using var verifyConnection = new NpgsqlConnection(trendConnectionString);
-        await verifyConnection.OpenAsync();
+        await using var verifyConnection = await _fixture.OpenConnectionAsync(trendDatabase);
         await using var verifyCommand = new NpgsqlCommand(
             """
             SELECT COUNT(*)
@@ -79,30 +70,21 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     [Fact]
     public async Task ForecastMaterializer_PersistsTrustedSnapshot_AndPairsObservedEvidence()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var analyticsConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_forecast_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(analyticsConnectionString))
-        {
-            return;
-        }
+        var analyticsDatabase = await _fixture.CreateDatabaseAsync("forecast_trusted");
+        var analyticsConnectionString = analyticsDatabase.ConnectionString;
 
         ResetForecastSchemaGuard();
 
         await using var analyticsDb = CreateAnalyticsDbContext(analyticsConnectionString);
-        await analyticsDb.Database.EnsureCreatedAsync();
 
         var basisDate = new DateTime(2026, 8, 18);
         var issuedAtUtc = new DateTime(2026, 8, 21, 10, 15, 0, DateTimeKind.Utc);
         var updatedIssuedAtUtc = new DateTime(2026, 8, 21, 11, 30, 0, DateTimeKind.Utc);
 
-        await using (var setupConnection = new NpgsqlConnection(analyticsConnectionString))
+        await _fixture.RunFreshBootstrapAsync(analyticsConnectionString, async _ =>
         {
-            await setupConnection.OpenAsync();
+            await analyticsDb.Database.EnsureCreatedAsync();
+            await using var setupConnection = await _fixture.OpenConnectionAsync(analyticsDatabase);
 
             await using var setupCommand = new NpgsqlCommand(
                 """
@@ -160,7 +142,7 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
             seedObservedCommand.Parameters.AddWithValue("capturedAtUtc", issuedAtUtc);
             seedObservedCommand.Parameters.AddWithValue("sourceSystem", "fixture");
             await seedObservedCommand.ExecuteNonQueryAsync();
-        }
+        });
 
         var service = new InventoryForecastSnapshotMaterializerService(
             analyticsDb,
@@ -209,10 +191,8 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
         Assert.True(firstResult.ForecastSnapshotId > 0);
         Assert.Equal(firstResult.ForecastSnapshotId, secondResult.ForecastSnapshotId);
 
-        await using (var verifyConnection = new NpgsqlConnection(analyticsConnectionString))
+        await using (var verifyConnection = await _fixture.OpenConnectionAsync(analyticsDatabase))
         {
-            await verifyConnection.OpenAsync();
-
             await using var verifySnapshotCommand = new NpgsqlCommand(
                 """
                 SELECT forecast_7d, forecast_14d, forecast_28d, issued_at_utc, provenance_status, materializer_owner
@@ -267,31 +247,22 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     [Fact]
     public async Task ForecastMaterializer_StaleAndMismatchedScopesRemainUnpaired()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var analyticsConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_forecast_scope_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(analyticsConnectionString))
-        {
-            return;
-        }
+        var analyticsDatabase = await _fixture.CreateDatabaseAsync("forecast_scope");
+        var analyticsConnectionString = analyticsDatabase.ConnectionString;
 
         ResetForecastSchemaGuard();
 
         await using var analyticsDb = CreateAnalyticsDbContext(analyticsConnectionString);
-        await analyticsDb.Database.EnsureCreatedAsync();
 
         var basisDate = new DateTime(2026, 8, 18);
         var observedAtUtc = new DateTime(2026, 8, 21, 10, 15, 0, DateTimeKind.Utc);
         var staleIssuedAtUtc = new DateTime(2026, 8, 21, 11, 30, 0, DateTimeKind.Utc);
         var mismatchedIssuedAtUtc = new DateTime(2026, 8, 21, 12, 30, 0, DateTimeKind.Utc);
 
-        await using (var setupConnection = new NpgsqlConnection(analyticsConnectionString))
+        await _fixture.RunFreshBootstrapAsync(analyticsConnectionString, async _ =>
         {
-            await setupConnection.OpenAsync();
+            await analyticsDb.Database.EnsureCreatedAsync();
+            await using var setupConnection = await _fixture.OpenConnectionAsync(analyticsDatabase);
 
             await using var setupCommand = new NpgsqlCommand(
                 """
@@ -350,7 +321,7 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
             seedObservedCommand.Parameters.AddWithValue("capturedAtUtc", observedAtUtc);
             seedObservedCommand.Parameters.AddWithValue("sourceSystem", "fixture");
             await seedObservedCommand.ExecuteNonQueryAsync();
-        }
+        });
 
         var service = new InventoryForecastSnapshotMaterializerService(
             analyticsDb,
@@ -423,19 +394,10 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     [Fact]
     public async Task DeferredBackfillPattern_CreatesFreshDbContexts_AfterScopedContextsAreDisposed()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var trendConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_trend_{Guid.NewGuid():N}");
-        var analyticsConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_analytics_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(trendConnectionString) || string.IsNullOrWhiteSpace(analyticsConnectionString))
-        {
-            return;
-        }
+        var trendDatabase = await _fixture.CreateDatabaseAsync("backfill_trend");
+        var analyticsDatabase = await _fixture.CreateDatabaseAsync("backfill_analytics");
+        var trendConnectionString = trendDatabase.ConnectionString;
+        var analyticsConnectionString = analyticsDatabase.ConnectionString;
 
         await using (var scopedTrendDb = CreateTrendDbContext(trendConnectionString))
         await using (var scopedAnalyticsDb = CreateAnalyticsDbContext(analyticsConnectionString))
@@ -474,23 +436,12 @@ public sealed class DatabaseInitializerP0IntegrationTests : IClassFixture<Postgr
     [Fact]
     public async Task TryAcquireAdvisoryLockAsync_ReturnsFalseAfterTimeout_WhenAnotherConnectionHoldsLock()
     {
-        if (!_fixture.IsAvailable)
-        {
-            return;
-        }
-
-        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_lock_timeout_{Guid.NewGuid():N}");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        var database = await _fixture.CreateDatabaseAsync("lock_timeout");
+        var connectionString = database.ConnectionString;
 
         var lockKey = Random.Shared.NextInt64(1_000_000, long.MaxValue);
-        await using var holder = new NpgsqlConnection(connectionString);
-        await using var contender = new NpgsqlConnection(connectionString);
-        await holder.OpenAsync();
-        await contender.OpenAsync();
+        await using var holder = await _fixture.OpenConnectionAsync(database);
+        await using var contender = await _fixture.OpenConnectionAsync(database);
 
         await using (var acquireCommand = new NpgsqlCommand("SELECT pg_advisory_lock(@key);", holder))
         {
