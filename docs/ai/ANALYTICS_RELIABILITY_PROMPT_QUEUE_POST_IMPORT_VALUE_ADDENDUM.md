@@ -204,14 +204,22 @@ RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
 
 ## RQ611 - Real per-store/per-day source-coverage evidence for sales and markdown measurement
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: import-metadata/analytics-integrity/tests
 Feature family: imported-store-day-coverage
 Parallel-safe: yes; importer/store-day evidence paths are separate from released RQ610 worker/schema paths and RQ612's new shadow-control SQL/fixture
-Owner: Import/Data Quality (unclaimed)
+Owner: Codex
+Local lock: `.ai/task-locks/RQ611-codex.lock.md`
 Ready after: satisfied 2026-10-11 - RQ610 shared worker/schema ownership explicitly released; RQ569 horizon contract DONE
 Commit suggestion: `feat(analytics): prove store-day importer completeness`
+
+### Claim note
+
+- Date: 2026-10-11
+- Status: IN_PROGRESS
+- Claim: refreshed `origin/main` to `41bc37865cc002ae7f2912f3e72ca043e002e6db`; RQ611 remains primary READY. RQ610 read-only source qualification and RQ612 are path-disjoint. No matching local lock, branch or open PR was found.
+- Local lock: `.ai/task-locks/RQ611-codex.lock.md`.
 
 ### Problem
 RQ569 knows bounded source horizon, but global import status or min/max receipt dates cannot verify **each day per store** or an empty sales day. RQ602's 40 windows remain unverified for good reason.
@@ -234,6 +242,10 @@ Future imports can produce truthful store/day coverage; existing history stays u
 
 ### Dependencies
 RQ569 DONE and RQ610 captured/schema path released. RQ592 real pilot remains separate.
+
+### Delivery note
+- Store/day evidence contract: `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md`.
+- Read-only frozen-cohort consumer hook: `tools/markdown-pilot-store-day-coverage-oracle.sql`; it requires a complete status for every requested store/day and selects the latest source attempt, leaving absent evidence unverified. It does not alter RQ602's frozen manifest/query or make a recommendation.
 
 ---
 

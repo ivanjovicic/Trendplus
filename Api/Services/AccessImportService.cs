@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Api.Config;
 using Api.Models;
+using Api.Services;
 using Api.Services.Access;
 using Application.Common.Interfaces;
 using Application.Analytics;
@@ -20,6 +21,7 @@ using Infrastructure.Configuration;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -43,6 +45,19 @@ using NpgsqlTypes;
 
     public sealed class AccessImportService : IAccessImportService
 {
+    internal const string StoreDaySourceAggregationSql = """
+        SELECT h.id_objekat,
+               h.datum_prodaje::date,
+               count(DISTINCT h.id)::integer AS receipt_count,
+               count(s.id)::integer AS sale_line_count
+          FROM prodaja_zaglavlje h
+          LEFT JOIN prodaja_stavke s ON s.id_prodaja = h.id
+         WHERE h.source_batch_id = @batch_id
+           AND lower(btrim(h.data_origin)) = 'access'
+         GROUP BY h.id_objekat, h.datum_prodaje::date
+         ORDER BY h.datum_prodaje::date, h.id_objekat;
+        """;
+
     private sealed class FieldAlias
     {
         public string TargetField { get; }
@@ -367,6 +382,7 @@ using NpgsqlTypes;
     private string? _cliFilePath;
     private int _pendingTrendWrites;
     private long? _activeBatchId;
+    private int _salesHeaderRowsWithUnknownDate;
     private AccessImportRunResponse? _activeBatchResult;
     private string? _activeBatchStep;
     private string? _activeBatchTable;
@@ -4381,6 +4397,136 @@ using NpgsqlTypes;
             if (importedRows == 0)
                 result.Warnings.Add($"[coverage] Tabela '{key}' ima {sourceRows} redova u Access bazi, ali 0 upisanih/azuriranih redova. Proveri mapiranje i quality podataka.");
         }
+
+        var directHeaderScan = !skipLinkedByDnevnikTrigger &&
+            prodaja is not null &&
+            !importedProdajaFromLineTable &&
+            !synthesizedProdajaFromDnevnik;
+        if (directHeaderScan)
+        {
+            await PersistAccessStoreDayCoverageAsync(
+                result,
+                prodaja!,
+                prodajaStavke,
+                sourceSnapshotComplete: ShouldResetAccessSalesSnapshot(overwriteExisting) &&
+                    !IsIncrementalWriteMode() &&
+                    prodajaStavke is not null,
+                ct);
+        }
+    }
+
+    private async Task PersistAccessStoreDayCoverageAsync(
+        AccessImportRunResponse result,
+        string sourceHeaderTable,
+        string? sourceLineTable,
+        bool sourceSnapshotComplete,
+        CancellationToken ct)
+    {
+        var schemaExists = await _trendDb.Database
+            .SqlQueryRaw<bool>("SELECT to_regclass('public.access_import_store_day_coverage') IS NOT NULL AS \"Value\"")
+            .SingleAsync(ct);
+        if (!schemaExists)
+        {
+            result.Warnings.Add("[store-day-coverage] Evidence schema is not installed; this import did not certify per-store days.");
+            return;
+        }
+
+        result.CoverageByTable.TryGetValue("prodaja_zaglavlje", out var headerScan);
+        result.CoverageByTable.TryGetValue("prodaja_stavke", out var lineScan);
+        var mappedStoreIds = _importedStores.Keys.ToHashSet();
+        var sourceDays = new List<AccessStoreDayCounts>();
+        var connection = (NpgsqlConnection)_trendDb.Database.GetDbConnection();
+        await using (var command = new NpgsqlCommand(
+            StoreDaySourceAggregationSql,
+            connection,
+            (NpgsqlTransaction?)_trendDb.Database.CurrentTransaction?.GetDbTransaction()))
+        {
+            command.Parameters.AddWithValue("batch_id", NpgsqlTypes.NpgsqlDbType.Bigint, result.BatchId);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                int? storeId = reader.IsDBNull(0) ? null : reader.GetInt32(0);
+                var businessDate = reader.GetFieldValue<DateOnly>(1);
+                sourceDays.Add(new AccessStoreDayCounts(
+                    storeId,
+                    businessDate,
+                    reader.GetInt32(2),
+                    reader.GetInt32(3),
+                    storeId.HasValue && mappedStoreIds.Contains(storeId.Value)));
+            }
+        }
+
+        var headerRows = headerScan?.SourceRows ?? 0;
+        var acceptedHeaderRows = headerScan?.AcceptedRows ?? 0;
+        var lineRows = lineScan?.SourceRows ?? 0;
+        var acceptedLineRows = lineScan?.AcceptedRows ?? 0;
+        var persistedHeaderRows = sourceDays.Sum(x => x.ReceiptCount);
+        var persistedLineRows = sourceDays.Sum(x => x.SaleLineCount);
+        var sourceDayComplete = AccessStoreDayCoverageEvidence.IsCompleteSourceScan(
+            sourceSnapshotComplete,
+            headerRows,
+            acceptedHeaderRows,
+            persistedHeaderRows,
+            lineRows,
+            acceptedLineRows,
+            persistedLineRows,
+            _salesHeaderRowsWithUnknownDate);
+        var evidence = AccessStoreDayCoverageEvidence.Build(sourceDays, sourceDayComplete);
+        if (evidence.Count == 0)
+        {
+            result.Warnings.Add("[store-day-coverage] No store/date keys could be verified from this batch; requested days remain unverified.");
+            return;
+        }
+
+        var checkpointMaterial = BuildBatchCursorSnapshotJson();
+        var checkpointHash = string.IsNullOrWhiteSpace(checkpointMaterial)
+            ? null
+            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(checkpointMaterial)));
+        var sourceIdentity = await _trendDb.DataImportBatches
+            .AsNoTracking()
+            .Where(batch => batch.Id == result.BatchId)
+            .Select(batch => new
+            {
+                batch.SourceSystem,
+                batch.SourceStorageProvider,
+                batch.SourceStorageKey,
+                batch.SourceFilePath,
+                batch.SourceFileName
+            })
+            .SingleAsync(ct);
+        var sourceScopeMaterial = string.Join("|",
+            sourceIdentity.SourceSystem,
+            sourceIdentity.SourceStorageProvider,
+            sourceIdentity.SourceStorageKey ?? sourceIdentity.SourceFilePath ?? sourceIdentity.SourceFileName);
+        var sourceScopeFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sourceScopeMaterial)));
+        var sourceGeneration = $"access-batch:{result.BatchId}";
+        const string businessTimeZone = "Europe/Belgrade";
+        var now = DateTime.UtcNow;
+        await _trendDb.Database.ExecuteSqlInterpolatedAsync($"""
+            DELETE FROM access_import_store_day_coverage
+             WHERE source_batch_id = {result.BatchId};
+            """, ct);
+
+        foreach (var row in evidence)
+        {
+            await _trendDb.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO access_import_store_day_coverage
+                    (source_batch_id, store_id, business_date, business_timezone,
+                     coverage_status, source_scope_fingerprint, source_generation, source_checkpoint_hash,
+                     source_header_table, source_line_table, receipt_count, sale_line_count,
+                     source_header_rows, accepted_header_rows, source_line_rows,
+                     accepted_line_rows, reason_code, captured_at_utc)
+                VALUES
+                    ({result.BatchId}, {row.StoreId}, {row.BusinessDate}, {businessTimeZone},
+                     {row.Status}, {sourceScopeFingerprint}, {sourceGeneration}, {checkpointHash},
+                     {sourceHeaderTable}, {sourceLineTable}, {row.ReceiptCount}, {row.SaleLineCount},
+                     {headerRows}, {acceptedHeaderRows}, {lineRows}, {acceptedLineRows},
+                     {row.ReasonCode}, {now});
+                """, ct);
+        }
+
+        if (!sourceDayComplete)
+            result.Warnings.Add("[store-day-coverage] Source scan was partial or lacked a complete direct sales snapshot; days are not certified empty.");
     }
 
     private async Task RunImportStepAsync(
@@ -4917,12 +5063,16 @@ using NpgsqlTypes;
 
     private async Task ImportProdajaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
+        _salesHeaderRowsWithUnknownDate = 0;
         var existing = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
         await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_zaglavlje", ct))
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
             var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
             if (!id.HasValue) continue;
+            var sourceSaleDate = DT(row, "datumprodaje", "datum", "saledate");
+            if (!sourceSaleDate.HasValue)
+                _salesHeaderRowsWithUnknownDate++;
             MarkAccepted(result, "prodaja_zaglavlje");
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             TrackAnalyticsSaleId(id.Value);
@@ -4933,7 +5083,7 @@ using NpgsqlTypes;
                 {
                     Id = id.Value,
                     BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
-                    DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow,
+                    DatumProdaje = sourceSaleDate ?? DateTime.UtcNow,
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
                     IDObjekat = I(row, "idobjekat", "storeid"),
                     KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
@@ -4951,7 +5101,7 @@ using NpgsqlTypes;
                     continue;
 
                 e.BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
-                e.DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.UtcNow;
+                e.DatumProdaje = sourceSaleDate ?? DateTime.UtcNow;
                 e.NacinPlacanja = S(row, "nacinplacanja", "paymenttype");
                 e.IDObjekat = I(row, "idobjekat", "storeid");
                 e.KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir");
