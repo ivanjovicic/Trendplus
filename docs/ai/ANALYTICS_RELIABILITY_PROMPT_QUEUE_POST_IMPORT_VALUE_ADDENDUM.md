@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ619 (P1 competing-startup cache generation). Additional collision-safe READY: RQ621 (P1 Price Intelligence missing-cost margin) and RQ623 (P1 signed-return trend entropy). BCI17 READY belongs to the independent backend CI queue. RQ620/RQ622/RQ624-RQ627 remain WAITING on exact listed dependencies.
+Current READY prompt: RQ623 (P1 signed-return trend entropy), which is the direct SQL024 prerequisite for RQ620. Additional collision-safe READY: RQ621 (P1 Price Intelligence missing-cost margin). BCI17 READY belongs to the independent backend CI queue. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ620/RQ622/RQ624-RQ627 remain WAITING on exact listed dependencies.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -525,12 +525,13 @@ No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA c
 
 ## RQ619 - Prevent competing API startups from orphaning intelligence cache build generations
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: PostgreSQL concurrency/startup-cache regression and targeted runtime fix
 Feature family: intelligence-cache-convergence-concurrent-startup
 Parallel-safe: yes for a dedicated test and DatabaseInitializer intelligence build state methods; no active RQ615 owner after DONE, no overlap with RQ610 production stock-generation work
-Owner: unassigned
+Owner: Codex
+Local lock: removed before delivery
 Ready after: RQ615 DONE, RQ618 DONE; no provider/live access required
 Commit suggestion: fix(analytics): serialize intelligence cache preparation with build ownership
 
@@ -546,6 +547,22 @@ Infrastructure/Seed/DatabaseInitializer.cs executes PrepareAnalyticsIntelligence
 
 ### Acceptance
 Two overlapping startup instances cannot orphan a cache at pending when an eligible builder completes; failed/contended updates remain explicitly unavailable and recover automatically without live production/manual DB intervention. View/MV agree by independent SQL oracle, stale state never yields 200, no business DB DDL/import/migration/deploy. End with exact main SHA and per-test CI evidence. No force push.
+
+### Claim note — 2026-10-12
+
+- Refreshed recovery base: `origin/main` `9cc108173321c6c84b1e8cd8582467abb0f0b086`.
+- Confirmed `RQ619` was `READY` and unassigned; no matching local branch, worktree lock or open PR was found.
+- Isolated worktree: `C:\Users\Ivan\.codex\worktrees\rq619-intel-cache\Trendplus2`, branch `codex/rq619-intelligence-cache-startup`.
+- Competing-startup regression reproduces pending orphan on disposable PostgreSQL (`Expected ready`, actual `pending`).
+
+### Completion — 2026-10-12
+
+- Serialized cache generation preparation and execution under the same PostgreSQL advisory lock, with bounded startup retry for a contending instance.
+- Disposable PostgreSQL regression covers both startup invocation orders; all three 021/022/024 view/materialized-view pairs match under independent `EXCEPT ALL` checks.
+- Focused convergence class: 7/7 passed, 0 skipped; Release test-project build and all six repository governance checks passed.
+- Delivered to `main` at `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; fresh `origin/main` contains this exact SHA.
+- Run log: `.ai/runs/2026-10-12-RQ619-evidence.md`
+- Evidence state: synchronized
 
 ### Ownership
 RQ615 stays DONE; this is a newly identified, narrower concurrency regression outside its existing fixed fixtures. RQ610 remains BLOCKED for unrelated all-writer stock-generation proof. RQ619 is independent of RQ601/RQ602/RQ606/STAB16 external evidence.
