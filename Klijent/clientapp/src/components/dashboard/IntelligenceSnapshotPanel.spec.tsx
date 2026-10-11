@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import IntelligenceSnapshotPanel from "./IntelligenceSnapshotPanel";
-import type { DemandSignalItem } from "../../services/analyticsIntelligenceApi";
+import type { DemandSignalItem, InventoryRiskSignalItem } from "../../services/analyticsIntelligenceApi";
 
 const newDemand: DemandSignalItem = {
   articleId: 101,
@@ -20,6 +20,23 @@ const newDemand: DemandSignalItem = {
   launchAgeDays: 3,
   storeCoverage: 1,
   sourceRows: 4,
+};
+
+const unknownInventory: InventoryRiskSignalItem = {
+  articleId: 303,
+  sku: "SKU-303",
+  productName: "Artikal bez poznate zalihe",
+  category: "Obuća",
+  supplierId: null,
+  supplierName: "Dobavljač",
+  date: "2026-09-08",
+  stockQty: null,
+  avgDailySales30d: 0.033333,
+  daysOfCover: null,
+  stockTurn: null,
+  stockoutDays: null,
+  lowStockDays: null,
+  deadStockRisk: null,
 };
 
 describe("IntelligenceSnapshotPanel demand state", () => {
@@ -52,10 +69,27 @@ describe("IntelligenceSnapshotPanel demand state", () => {
     );
 
     expect(screen.getByText("Pregled signala")).toBeInTheDocument();
-    expect(screen.getByText("Nema rizika zaliha")).toBeInTheDocument();
+    expect(screen.getByText("Nema potvrđenog rizika zaliha")).toBeInTheDocument();
     expect(screen.getByText("Nema signala cene")).toBeInTheDocument();
     expect(screen.getByText("Nema trend signala")).toBeInTheDocument();
     expect(screen.queryByText("n/a")).not.toBeInTheDocument();
     expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
+  it("does not present an unknown stock baseline as a zero-risk result", () => {
+    render(
+      <IntelligenceSnapshotPanel
+        demand={[]}
+        inventory={[unknownInventory]}
+        price={[]}
+        trend={[]}
+        asOfDate="2026-09-08"
+        loading={false}
+      />,
+    );
+
+    expect(screen.getByText("Nema potvrđenog rizika zaliha")).toBeInTheDocument();
+    expect(screen.queryByText("Artikal bez poznate zalihe")).not.toBeInTheDocument();
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
   });
 });

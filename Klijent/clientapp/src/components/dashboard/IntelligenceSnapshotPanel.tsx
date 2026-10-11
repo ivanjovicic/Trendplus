@@ -41,7 +41,12 @@ type SignalCardProps = {
   children: ReactNode;
 };
 
-function formatCompact(value: number) {
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function formatCompact(value: number | null | undefined) {
+  if (!isFiniteNumber(value)) return ANALYTICS_UNAVAILABLE_LABEL;
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
   return value.toLocaleString("sr-RS", { maximumFractionDigits: 1 });
@@ -77,7 +82,8 @@ function formatDateLabel(value?: string | null) {
   return date.toLocaleDateString("sr-RS");
 }
 
-function signalTone(value: number, warningThreshold: number, goodColor: string, warningColor: string) {
+function signalTone(value: number | null | undefined, warningThreshold: number, goodColor: string, warningColor: string) {
+  if (!isFiniteNumber(value)) return PAL.textSecondary;
   return value >= warningThreshold ? goodColor : warningColor;
 }
 
@@ -198,7 +204,8 @@ export default function IntelligenceSnapshotPanel({
   }
 
   const topDemand = demand[0];
-  const topInventory = inventory[0];
+  const knownRiskInventory = inventory.filter((item) => isFiniteNumber(item.deadStockRisk));
+  const topInventory = knownRiskInventory[0];
   const topPrice = price[0];
   const topTrend = trend[0];
 
@@ -243,14 +250,14 @@ export default function IntelligenceSnapshotPanel({
           summaryMeta={
             topInventory
               ? `${topInventory.productName} | pokriće ${topInventory.daysOfCover?.toFixed(1) ?? ANALYTICS_UNAVAILABLE_LABEL} d`
-              : "Nema rizika zaliha"
+              : "Nema potvrđenog rizika zaliha"
           }
         >
-          {inventory.slice(0, 4).map((item) => (
+          {knownRiskInventory.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.date}`}
               title={item.productName}
-              subtitle={`${item.category} | stanje ${formatCompact(item.stockQty)} | OOS ${item.stockoutDays} d`}
+              subtitle={`${item.category} | stanje ${formatCompact(item.stockQty)} | OOS ${item.stockoutDays == null ? ANALYTICS_UNAVAILABLE_LABEL : `${item.stockoutDays} d`}`}
               badge={formatPercent(item.deadStockRisk, 0)}
               badgeColor={signalTone(item.deadStockRisk, 0.5, PAL.red, PAL.yellow)}
             />
@@ -271,7 +278,7 @@ export default function IntelligenceSnapshotPanel({
               title={item.productName}
               subtitle={`${item.category} | neto ${formatCompact(item.netPrice)} | indeks ${item.priceIndexVsCategory?.toFixed(2) ?? ANALYTICS_UNAVAILABLE_LABEL}`}
               badge={formatPercent(item.marginPct, 0)}
-              badgeColor={signalTone(item.marginPct ?? 0, 0.2, PAL.green, PAL.yellow)}
+              badgeColor={signalTone(item.marginPct, 0.2, PAL.green, PAL.yellow)}
             />
           ))}
         </SignalCard>

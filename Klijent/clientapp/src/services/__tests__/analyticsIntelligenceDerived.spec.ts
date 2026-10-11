@@ -306,7 +306,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
         inventoryItem({ articleId: 1, category: "Zero risk", avgDailySales30d: 1, daysOfCover: 14, stockQty: 0 }),
         inventoryItem({ articleId: 2, category: "Negative", avgDailySales30d: 1, daysOfCover: -1 }),
         inventoryItem({ articleId: 3, category: "NaN", avgDailySales30d: 1, daysOfCover: Number.NaN }),
-        inventoryItem({ articleId: 4, category: "Null", avgDailySales30d: 1, daysOfCover: null as unknown as number }),
+        inventoryItem({ articleId: 4, category: "Null", avgDailySales30d: 1, daysOfCover: null }),
       ],
       [priceItem({ articleId: 1, category: "Zero risk", netPrice: 100 })],
       "2026-08-01T00:00:00Z",
@@ -321,6 +321,17 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     const result = buildDepletionResultFromSignals(
       [inventoryItem({ articleId: 1, category: "Unknown", avgDailySales30d: 1, daysOfCover: null as unknown as number })],
       [priceItem({ articleId: 1, category: "Unknown", netPrice: 100 })],
+      "2026-08-01T00:00:00Z",
+    );
+
+    expect(result.forecasts).toEqual([]);
+    expect(result.totalAtRiskRevenue).toBeNull();
+  });
+
+  it("does not turn an unknown stock baseline into a measured zero-stock forecast", () => {
+    const result = buildDepletionResultFromSignals(
+      [inventoryItem({ articleId: 1, category: "Unknown stock", avgDailySales30d: 1, stockQty: null, daysOfCover: 0 })],
+      [priceItem({ articleId: 1, category: "Unknown stock", netPrice: 100 })],
       "2026-08-01T00:00:00Z",
     );
 

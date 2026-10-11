@@ -36,13 +36,13 @@ export interface InventoryRiskSignalItem {
   supplierId: number | null;
   supplierName: string;
   date: string;
-  stockQty: number;
+  stockQty: number | null;
   avgDailySales30d: number;
   daysOfCover: number | null;
   stockTurn: number | null;
-  stockoutDays: number;
-  lowStockDays: number;
-  deadStockRisk: number;
+  stockoutDays: number | null;
+  lowStockDays: number | null;
+  deadStockRisk: number | null;
 }
 
 export interface PriceIntelligenceItem {
