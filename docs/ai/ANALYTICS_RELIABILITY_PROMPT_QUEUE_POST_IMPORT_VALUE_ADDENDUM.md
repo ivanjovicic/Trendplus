@@ -259,12 +259,12 @@ RQ569 DONE and RQ610 captured/schema path released. RQ592 real pilot remains sep
 - Run log: `.ai/runs/2026-10-11-RQ611-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: `a514ea4d0fe80896a297093077d22f78f7568593` (implementation); closure SHA recorded in run log after push.
-- Main verification: implementation SHA was freshly verified equal to `HEAD` and `origin/main`; closure verification is recorded in the run log.
+- Main commit SHA: `a514ea4d0fe80896a297093077d22f78f7568593` (implementation); close-out documentation commit `0c2479ec762f1fa00fa02529f5bede1e1d134ada`.
+- Main verification: fresh fetch verified `origin/main` at `0c2479ec762f1fa00fa02529f5bede1e1d134ada`, containing the implementation and close-out documentation.
 - Missed: no historical per-store/day proof for batch #23; no production schema rollout.
 - Follow-up: RQ610 is promoted as primary READY for bounded read-only source-grain qualification; RQ612 remains independently READY.
-- Residual risk: future evidence requires deployment of the pending migration; historical coverage is unknown; Analytics Actions was still running at close-out and is recorded as residual unless it completes before final verification.
-- Post-close routing: fresh scan from implementation SHA `a514ea4d0fe80896a297093077d22f78f7568593` found RQ610 and RQ612 READY and path-disjoint; RQ610 is the next primary READY. Full scan and unblock/dependency details are in the run log.
+- Residual risk: future evidence requires deployment of the pending migration; historical coverage is unknown; Analytics Tests & Data Integrity run `38122708609` remained in progress at final inspection, while Planning Governance `38122708546` succeeded.
+- Post-close routing: fresh scan from post-delivery SHA `0c2479ec762f1fa00fa02529f5bede1e1d134ada` found RQ610 and RQ612 READY and path-disjoint; RQ610 is the next primary READY. Full scan and unblock/dependency details are in the run log.
 - Prompt defect / scope repair: none.
 
 ---
