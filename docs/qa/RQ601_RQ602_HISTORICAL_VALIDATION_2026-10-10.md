@@ -157,17 +157,17 @@ Period za ekrane je `[2026-07-01, 2026-08-05)`, uz UTC normalizaciju i bez raču
 | Prodaja po vrsti obuće | existing | 480 / 5 | 480 / 5 | PASS za total |
 | Prodaja po vrsti obuće | all | 1.833.500 / 364 | 1.833.500 / 364 | PASS za total |
 | Pre/post nivelacija | imported | 132 event-a u sirovom oracle-u | API 0 comparable totals, critical/blocked | NOT CERTIFIED; zrelost/drift evidence otvoren |
-| Inventar / kapital | imported | `Artikli.DataOrigin=access`: 12.422 SKU, 3.566 kom, 9.572.063 RSD po NC Din | API status vraća 0 SKU / 0 on-hand | FAIL: scope token bug u handleru |
+| Inventar / kapital | imported | `Artikli.DataOrigin=access`: 12.422 SKU, 3.566 kom, 9.572.063 RSD po NC Din | API status vraća 0 SKU / 0 on-hand | Historical run found the scope bug; RQ607 later fixed the mapping, without re-certifying this population |
 
-Potvrđena inventory greška je u `Application/Analytics/Queries/GetInventoryStatus/GetInventoryStatusHandler.cs`: `ProductsDim` se filtrira sa `DataOrigin == normalizedDataScope`, pa `imported` traži literal `imported`, dok kanonska politika i stvarni podaci koriste `access`. Operativni fallback koristi ispravno mapiranje. Ova popravka pripada InventoryStatus vlasniku, nije tiho ugrađena u RQ601/RQ602 i nije promenila bazu u ovom run-u.
+U trenutku ove validacije potvrđena je InventoryStatus greška: `imported` je tražio literalni `DataOrigin = imported`, iako Access snapshot koristi `access`. Greška je naknadno zasebno popravljena kroz RQ607, commit `ca5f9ffc72216c3d212a4ee915c5e8ad44e6ced5`: mapiranje je usklađeno i za `ProductsDim` snapshot i za operativni fallback. RQ607 PostgreSQL oracle je ponovo izvršen 2026-10-11 na trenutnom `main` i prošao je 1/1; originalna populacija iz batch-a #23 nije ponovo sertifikovana u ovom run-u. Detalji su u `.ai/runs/2026-10-10-RQ607-evidence.md`.
 
 Za supplier/shoe type nije nađen gubitak zbog `Artikli` inner join-a u canonical retail totalima; oracle radi preko prodajnih zaglavlja/stavki i dimenziju prikazuje kao unknown kada nedostaje. Nema dokaza dvostrukog agregiranja u proveravanim totalima.
 
 ## Odluke i ograničenja
 
-1. RQ601 ostaje `PARTIAL`: originalnih 20 kalkulacionih dokaza nije u lokalnom repozitorijumu/bazi, pa nema dozvole za promenu mapiranja ili proglašenje RSD kapitala sertifikovanim.
-2. RQ602 ostaje `PARTIAL`: istorijski dry-run je dostavljen sa kontrolama i svim gap-ovima, ali nema vlasnički odobren prospektivni pilot ni uzročni dokaz.
-3. Inventory scope mismatch je potvrđen i evidentiran kao zaseban owner-boundary nalaz; nije otvoren duplikat queue zadatka i nije izvršena popravka mimo RQ601/RQ602 vlasništva.
+1. RQ601 ostaje `PARTIAL`: originalnih 20 kalkulacionih dokaza nije u lokalnom repozitorijumu/bazi, pa nema osnova za završni verdict o master skali ili sertifikaciju RSD kapitala.
+2. RQ602 ostaje `PARTIAL`: istorijski dry-run je dostavljen sa kontrolama i svim gap-ovima, ali nema vlasnički odobren prospektivni pilot ni uzročni dokaz; RQ611 store/day coverage još čeka deployment migracije i ne popunjava retroaktivno batch #23.
+3. Inventory scope mismatch je zasebno popravljen i zatvoren u okviru RQ607; ova istorijska provera ne tvrdi da je populacija batch-a #23 ponovo sertifikovana.
 4. Nisu menjane formule prometa/marže, DEMO/testni redovi, produkcijska baza niti originalni Access/MDB izvor.
 
 SQL dokazi:
