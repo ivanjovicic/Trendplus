@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ618 (primary READY after RQ617 close-out).
+Current READY prompt: none (post-close recovery after RQ618 found no safe READY successor; see `.ai/runs/2026-10-11-RQ618-evidence.md`).
 Additional path-disjoint READY: none in this addendum.
 RQ598 and RQ600 remain DONE.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
@@ -844,7 +844,7 @@ These tests never mutate a user-configured business database and cannot silently
 
 ## RQ618 - Make intelligence inventory-movement dates UTC-deterministic
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: isolated PostgreSQL oracle/intelligence SQL correctness
 Feature family: intelligence-movement-day-timezone
@@ -874,4 +874,20 @@ Database/Analytics/Intelligence/{021,022,024}_*.sql; Api.Tests/AnalyticsIntellig
 
 ### Acceptance
 A reproducible before/after oracle proves the timestamp and session-timezone boundary (or documents no defect and makes no unnecessary change); view and MV agree; no misleading historical stock certification or fake availability. Exact SHA, skipped=0/failed=0 tests and evidence. Production deployment/rollout stays STAB16-owned.
+
+### Completion note (2026-10-11)
+
+- Claim status: READY -> IN_PROGRESS -> DONE.
+- Implementation: `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql` now groups movement rows by UTC day and filters with a UTC-midnight lower bound; the test-only PostgreSQL oracle proves view/cache parity and refresh behavior.
+- Validation: focused disposable-PostgreSQL tests passed 2/2 (0 failed, 0 skipped); Release test-project build passed with 0 errors. Governance validators and `git diff --check` passed.
+- Run log: `.ai/runs/2026-10-11-RQ618-evidence.md`
+- Evidence state: pending final post-close recovery synchronization.
+- Delivery mode: direct-main.
+- Main implementation SHA: `b8e1c08f5ebea55319b61ce0e11a3dc8f51a7e03`.
+- Main verification: freshly fetched `origin/main` contains the implementation SHA.
+- Missed: production rollout/provider proof remains STAB16-owned; no production database or migration was used.
+- Follow-up: no READY candidate after post-close cascade; Zero-READY proof is in the run log.
+- Residual risk: current Analytics Tests & Data Integrity workflow 38177795288 is in progress; an older predecessor-SHA run failed only because RQ610's PostgreSQL server at `127.0.0.1:5434` was unavailable.
+- Post-close routing: recovery and final evidence synchronization pending.
+- Prompt defect / scope repair: current SQL already used an explicit UTC as-of date; the stale `CURRENT_DATE` claim was incorrect. The reproduced defect was session-dependent `timestamptz` grouping/filtering.
 
