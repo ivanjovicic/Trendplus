@@ -4891,7 +4891,7 @@ public static class AllEndpoints
 
                 // Vendor stats
                 var unknownVendorSourceIdCount = SupplierUnknownBucketPolicy.CountUnresolvedSourceIds(
-                    analyzed.Select(x => (x.VendorId, x.VendorName)));
+                    analyzed.Select(x => (SupplierId: x.VendorId, SupplierName: (string?)x.VendorName)));
                 var vendorRecommendationRows = analyzed
                     .GroupBy(x =>
                     {
@@ -4945,7 +4945,7 @@ public static class AllEndpoints
                             Vendor = new VendorSalesNivelacijaVendorStatDto
                             {
                                 VendorId = g.Key.VendorId,
-                                VendorName = g.Key.VendorName,
+                                VendorName = normalizedVendorName,
                                 PreQty = preQty,
                                 PreRevenue = preRev,
                                 PostQty = postQty,
