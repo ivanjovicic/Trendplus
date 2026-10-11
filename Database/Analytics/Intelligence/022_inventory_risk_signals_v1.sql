@@ -57,7 +57,7 @@ WITH settings AS (
 latest_product_dim AS (
     SELECT DISTINCT ON (pd."ProductId")
         pd."ProductId" AS article_id,
-        COALESCE(pd."Kolicina", 0)::numeric(18,4) AS current_stock_qty,
+        pd."Kolicina"::numeric(18,4) AS current_stock_qty,
         GREATEST(
             COALESCE(pd."MinimalnaKolicina", 0)::numeric,
             (SELECT minimum_low_stock_threshold FROM settings)
@@ -143,8 +143,9 @@ daily_stock_inputs AS (
     SELECT
         pc.article_id,
         pc.signal_date,
-        COALESCE(lpd.current_stock_qty, 0)::numeric(18,4) AS current_stock_qty,
-        (lpd.article_id IS NOT NULL) AS has_current_stock_baseline,
+        -- A present product with NULL quantity is still an unknown stock baseline.
+        lpd.current_stock_qty::numeric(18,4) AS current_stock_qty,
+        (lpd.current_stock_qty IS NOT NULL) AS has_current_stock_baseline,
         COALESCE(lpd.low_stock_threshold, (SELECT minimum_low_stock_threshold FROM settings))::numeric(18,4) AS low_stock_threshold,
         COALESCE(lpd.unit_cost, 0)::numeric(18,4) AS unit_cost,
         COALESCE(ds.sales_qty, 0)::numeric(18,4) AS sales_qty,
