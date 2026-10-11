@@ -2,8 +2,8 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: RQ617 (primary; now IN_PROGRESS); RQ618 remains independently READY.
-Additional path-disjoint READY: RQ618.
+Current READY prompt: RQ618 (primary READY after RQ617 close-out).
+Additional path-disjoint READY: none in this addendum.
 RQ598 and RQ600 remain DONE.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
@@ -785,7 +785,7 @@ None. STAB16 retains production certification/freshness ownership and does not b
 
 ## RQ617 - Prevent DnevnikPromena integration tests from writing to developer/business databases
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: backend-test-isolation/PostgreSQL fail-closed regression
 Feature family: dnevnik-integration-test-safety
@@ -818,6 +818,27 @@ Api.Tests/DnevnikPromenaReadServiceTests.cs; Api.Tests/IntegrationDbGuard.cs; Ap
 
 ### Acceptance
 These tests never mutate a user-configured business database and cannot silently pass without PostgreSQL. Each case runs and asserts against a fixture-owned schema. No production/local business import, migrations, startup, API run, deployment or stock modification. Commit/merge/push only if safe; evidence must state which DB was created/dropped and actual test counts.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Replaced the appsettings-connected tests with six deterministic PostgreSQL integration cases backed by the existing fail-closed disposable fixture. All six passed alongside the existing RQ614 fixed-name safety test; the combined TRX recorded 7 executed, 7 passed, 0 failed and 0 skipped.
+- Changed files: `Api.Tests/DnevnikPromenaReadServiceTests.cs`; `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md`; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-11-RQ617-evidence.md`.
+- Contract/runtime behavior changed: test-only. No application runtime, schema, inventory, importer or business-data behavior changed.
+- Checks run: Release build; six focused Dnevnik PostgreSQL tests plus the RQ614 business-name safety test with TRX; agent-instruction, prompt-queue and planning-architecture validators with self-tests; `git diff --check`; complete `IntegrationDbGuard` callsite search.
+- Checks not run: Full `Api.Tests` suite; relevant current-main GitHub Actions run `38176669519` is queued and was not awaited, per queue policy.
+- Run log: `.ai/runs/2026-10-11-RQ617-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`
+- Main verification: `origin/main` was fetched at `b691f7d1e2ffc17968ca0fdb11f1e17ccd6a267d`, which contains the final implementation commit.
+- Missed: none known.
+- Follow-up: RQ618 remains independently READY for its UTC movement-day SQL oracle.
+- Residual risk: GitHub Actions run `38176669519` (`Analytics Tests & Data Integrity`) is queued on the implementation SHA; focused local PostgreSQL proof is green.
+- Next: RQ618 remains READY and was not claimed by this request.
+- Prompt defect / scope repair: Updated the queue and roadmap current-READY pointer from RQ617 to RQ618 after closure. The unsafe helper itself had no other test callsites.
+- Post-close routing: RQ618 remains the only READY prompt in the active RQ/SQL queue set; see the post-close cascade in the run log.
 
 ---
 
