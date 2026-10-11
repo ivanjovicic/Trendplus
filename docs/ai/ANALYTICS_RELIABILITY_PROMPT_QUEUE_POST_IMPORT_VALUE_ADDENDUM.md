@@ -2,9 +2,9 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ609
+Current READY prompt: RQ610
 Additional path-disjoint READY: RQ612.
-Next: RQ610 after RQ609; RQ611 after RQ610, with fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
+Next: RQ611 after RQ610, with fresh collision checks. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
 
@@ -85,13 +85,12 @@ No external start gate: STAB16 and RQ601 original documents are not needed for t
 
 ## RQ609 - RQ601 provenance migration compatibility and read-only release preflight
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: schema-test/preflight script
 Feature family: purchase-cost-provenance-schema-readiness
 Parallel-safe: yes; new preflight tooling/isolated migration test, no RQ608 or RQ612 source files; owns schema-test lane until close
 Owner: Codex
-Local lock: `.ai/task-locks/RQ609-codex.lock.md`
 Ready after: RQ601 nullable EF/bootstrap migration exists; original 20 calculations are final business proof, not a start gate
 Commit suggestion: `test(analytics): fail closed on cost provenance schema mismatch`
 
@@ -101,6 +100,27 @@ Commit suggestion: `test(analytics): fail closed on cost provenance schema misma
 - Status: IN_PROGRESS
 - Claim: Refreshed `origin/main` at `02007bb283bd91b5bae9ba87d179998e8b96ffab`; RQ609 remains the primary P0 READY prompt after RQ608 closed. No matching lock, branch or open PR exists. RQ612 is explicitly path-disjoint.
 - Local lock: `.ai/task-locks/RQ609-codex.lock.md`.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Added read-only JSON schema preflight with secret-safe target identity, exact nullable `varchar(64)` compatibility, EF history/bootstrap reporting and nonzero `missing`/`unknown` exits; added disposable PostgreSQL migration/rerun and API readiness/error contract proof; documented operator backup, preview, separately-authorized migrate, verify and rollback procedure.
+- Changed files: `tools/purchase-cost-provenance-preflight.mjs`; `scripts/purchase-cost-provenance-preflight.test.mjs`; `Api.Tests/Rq609PurchaseCostProvenancePostgresIntegrationTests.cs`; `docs/runbooks/PURCHASE_COST_PROVENANCE_SCHEMA_PREFLIGHT.md`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-11-RQ609-evidence.md`.
+- Contract/runtime behavior changed: no; API `/ready` remains a connectivity/startup signal and the preflight is the release schema-compatibility gate.
+- Checks run: Node preflight tests 5/5; disposable PostgreSQL integration 2/2 (0 skipped, 0 failed); Release API.Tests focused build/test passed; agent instruction self-test/check passed; prompt queue self-test/check passed (733 tasks); planning architecture self-test/check passed (80 tasks); `git diff --check` passed.
+- Checks not run: full backend test suite; production/live schema preflight and migration; these are outside this repository-only task and production change authority was not granted.
+- Run log: `.ai/runs/2026-10-11-RQ609-evidence.md`
+- Evidence state: pending post-closure main refresh and routing cascade
+- Delivery mode: direct-main
+- Main commit SHA: `d85fe70a1be4c1e52b8035cdf7549925005322a5`
+- Main verification: refreshed `origin/main` to `d85fe70a1be4c1e52b8035cdf7549925005322a5`; it contains implementation commit `d85fe70a1be4c1e52b8035cdf7549925005322a5`.
+- Missed: no operator-authorized live migration was executed; live deployment proof remains STAB16.
+- Follow-up: RQ610 (primary READY); RQ612 remains independently READY and path-disjoint.
+- Residual risk: Analytics Tests & Data Integrity run `38118021843` on `d85fe70a1be4c1e52b8035cdf7549925005322a5` was `in_progress` at evidence capture; Planning Governance run `38118021859` on the same SHA succeeded. Neither remote run was needed to validate the focused disposable-database proof.
+- Next: pending post-closure routing cascade.
+- Post-close routing: pending post-closure `origin/main` refresh and dependency/collision cascade; completion log will record the recovery SHA and successor.
+- Prompt defect / scope repair: none.
 
 ### Problem
 Current local batch-23 business DB was **not migrated** after RQ601 added `prodaja_stavke.purchase_cost_provenance`. Do not deploy endpoints reading the column against an unmigrated DB; no implicit bootstrap green without a real test.
@@ -126,7 +146,7 @@ Repository-local READY. No production privileges or owner cost sample required t
 
 ## RQ610 - Schedule opt-in observed SKU×store×day inventory capture using RQ96 foundation
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: inventory-worker/SQL/tests
 Feature family: inventory-observed-daily-capture
