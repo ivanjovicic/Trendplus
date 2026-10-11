@@ -844,14 +844,20 @@ These tests never mutate a user-configured business database and cannot silently
 
 ## RQ618 - Make intelligence inventory-movement dates UTC-deterministic
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: isolated PostgreSQL oracle/intelligence SQL correctness
 Feature family: intelligence-movement-day-timezone
 Parallel-safe: yes; 022 inventory-risk SQL and a new dedicated integration test file, independent of RQ617 test-only paths; no changes to RQ610 inventory generation/capture or RQ616 DTO/frontend unless a reproduced separate defect is explicitly documented
-Owner: unassigned
+Owner: Codex
 Ready after: RQ616 DONE; no provider or production dependency for the isolated SQL reproduction
 Commit suggestion: fix(analytics): align inventory movement day with UTC retail signal date
+
+### Claim note (2026-10-11)
+
+- Refreshed `origin/main` at `46b932413ee4a4ccd51368a2c3839a3bc3f4e3af`; RQ617 is DONE and RQ616 is DONE.
+- No RQ618 lock, matching local/remote branch, open PR, or attached conflicting worktree was found. The isolated 022 SQL and dedicated test paths are disjoint from RQ617's closed Dnevnik tests and RQ610's blocked stock-generation paths.
+- Claimed RQ618 for the UTC inventory-movement SQL oracle. Branch: `codex/rq618-utc-movement-day`; local lock: `.ai/task-locks/RQ618-codex.lock.md`.
 
 ### Problem and testable hypothesis
 RQ616 made SalesFacts.SaleTimestampUtc -> UTC business-day projection in 021/022/024, but 022_inventory_risk_signals_v1.sql still computes DATE_TRUNC('day', imf."Datum")::date for InventoryMovementFacts timestamps. For timestamptz it can depend on the database session TimeZone. The view also uses CURRENT_DATE in settings, which is session-date based rather than an explicit UTC as-of date. Thus sales and inventory events around UTC midnight may land on different days, and a view/cache may depend on the executing session or refresh service TimeZone. This is a source-code hypothesis requiring a *failing* PostgreSQL fixture before runtime edits; do not conflate UTC reporting with an explicitly approved local-store business calendar.
