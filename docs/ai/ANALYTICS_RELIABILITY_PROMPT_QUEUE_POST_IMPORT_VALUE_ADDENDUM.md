@@ -452,17 +452,17 @@ After successful isolated upgrade, cached demand/risk/trend rows reflect the cor
 - Status: DONE
 - Completion: 100%; changed-hash cache convergence, failure state, API fail-closed behavior and operator diagnostics delivered.
 - Changed files: `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`, `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`, `Database/Analytics/Intelligence/020_create_intelligence_schema.sql`, `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql`, `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql`, `Database/Analytics/Intelligence/024_trend_momentum_v1.sql`, `Infrastructure/Seed/DatabaseInitializer.cs`, `docs/Analytics/INTELLIGENCE_README.md`, this queue addendum, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-11-RQ615-evidence.md`.
-- Checks run: focused Release PostgreSQL/API tests 10/10 passed, 0 skipped; `dotnet build Api/Api.csproj -c Release --no-restore --verbosity quiet` passed with 0 warnings/errors; all six instruction/queue/planning governance checks and self-tests passed; `git diff --check` passed. Analytics Tests & Data Integrity Actions run `38164357316` for the implementation SHA was `in_progress` at inspection and was not polled.
+- Checks run: focused Release PostgreSQL/API tests 10/10 passed, 0 skipped; `dotnet build Api/Api.csproj -c Release --no-restore --verbosity quiet` passed with 0 warnings/errors; all six instruction/queue/planning governance checks and self-tests passed; `git diff --check` passed. Analytics Tests & Data Integrity Actions run `38164357316` for the implementation SHA and Planning Governance run `38164722772` for the terminal-transition SHA were `in_progress` at inspection; neither was polled.
 - Checks not run: full backend solution suite; no mapped intelligence performance benchmark exists. Heavy cache work remains asynchronous; new/schema-rebuilt caches skip duplicate refresh.
 - Run log: `.ai/runs/2026-10-11-RQ615-evidence.md`
 - Evidence state: synchronized in `.ai/runs/2026-10-11-RQ615-evidence.md`.
 - Delivery mode: direct-main
 - Main commit SHA: `4eb58461af39b442a6eb1b471e4ed6073f4e0387`
-- Main verification: refreshed `origin/main` equals `4eb58461af39b442a6eb1b471e4ed6073f4e0387` and contains the implementation SHA.
+- Main verification: refreshed post-close `origin/main` at `97436868230b514e09462b8570587f0981d81627` contains the implementation SHA `4eb58461af39b442a6eb1b471e4ed6073f4e0387`.
 - Missed: none known within the code acceptance; production deployment and rebuild were not authorized or performed.
 - Follow-up: RQ616 is promoted to READY after RQ615 cache parity and the RQ614 test-safety guard; the full post-close scan found it to be the only current RQ READY candidate.
 - Residual risk: endpoints return 503 while a changed cache is pending or failed; live Render deployment/parity remains with STAB16.
-- Post-close routing: recovery base `origin/main` `4eb58461af39b442a6eb1b471e4ed6073f4e0387`; all 14 active RQ/SQL queue files and their 22 nonterminal task rows were reviewed. RQ616 is READY and unassigned; details and checked gates are in the run log.
+- Post-close routing: recovery base `origin/main` `97436868230b514e09462b8570587f0981d81627`; all 14 active RQ/SQL queue files and their 22 nonterminal task rows were reviewed again after terminal delivery. RQ616 is READY and unassigned; details and checked gates are in the run log.
 - Prompt defect / scope repair: cache-state DDL was added to the existing intelligence bootstrap (020) so all three owned SQL scripts share one status contract; no RQ614-owned test files or fixtures were edited.
 
 ---
