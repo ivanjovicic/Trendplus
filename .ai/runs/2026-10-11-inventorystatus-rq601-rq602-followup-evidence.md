@@ -36,3 +36,10 @@
 - Deploy the additive RQ611 schema migration through its owning release path before relying on future store/day coverage; do not backfill or re-import batch #23 to imply historical coverage.
 - Run RQ601 and RQ602 PostgreSQL fixture tests in an environment with an explicitly provisioned disposable test database. The tests are intentionally fail-closed when infrastructure is unavailable.
 - Obtain owner approval and the named readiness inputs before any prospective RQ602 pilot or business recommendation.
+
+## Delivery verification
+
+- Delivery mode: direct push to `main`; no force-push and no PR merge was needed.
+- Documentation delivery commit: `3bbbedb5ab25b5aca1784b1dc7ef90957769f09a` (`docs(analytics): sync RQ601 RQ602 validation state`).
+- After push, `git fetch origin` confirmed `HEAD == origin/main == 3bbbedb5ab25b5aca1784b1dc7ef90957769f09a`; `git merge-base --is-ancestor 3bbbedb5ab25b5aca1784b1dc7ef90957769f09a origin/main` passed.
+- Only the pre-existing untracked `.codex-remote-attachments/`, `Klijent/clientapp/%TEMP%/` and `Klijent/clientapp/tmp/` directories remain outside the delivered commit; they were preserved.
