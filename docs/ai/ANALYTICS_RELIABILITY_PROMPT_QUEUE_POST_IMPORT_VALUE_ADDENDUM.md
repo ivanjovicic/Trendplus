@@ -210,7 +210,7 @@ Type: import-metadata/analytics-integrity/tests
 Feature family: imported-store-day-coverage
 Parallel-safe: yes; importer/store-day evidence paths are separate from released RQ610 worker/schema paths and RQ612's new shadow-control SQL/fixture
 Owner: Codex
-Local lock: `.ai/task-locks/RQ611-codex.lock.md`
+Local lock: removed after DONE close
 Ready after: satisfied 2026-10-11 - RQ610 shared worker/schema ownership explicitly released; RQ569 horizon contract DONE
 Commit suggestion: `feat(analytics): prove store-day importer completeness`
 
