@@ -2,9 +2,9 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ610
-Additional path-disjoint READY: RQ612 (read-only shadow-control qualification).
-RQ610 was BLOCKED after the company-grain capture delivery but is REOPENED as READY for a bounded, repository-local source qualification. `Artikli` already carries `IDObjekat`, `Kolicina`, source lineage and timestamps; this is a candidate source, NOT certified store/day inventory. No producer/worker mutation is authorized until its grain and batch-generation semantics are proved. Codex previously released the worker/schema paths. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
+Current READY prompt: RQ612
+Additional path-disjoint READY: none.
+RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
 
@@ -71,7 +71,7 @@ No external start gate: STAB16 and RQ601 original documents are not needed for t
 - Checks run: focused PostgreSQL RQ607 test 1/1; fallback/dashboard + RQ607 tests 7/7; API Release build 0 warnings / 0 errors; all six governance checks; `git diff --check`; Analytics Tests & Data Integrity run `38116562952` on `35aabd582e754bb293337eace0a6b45aeee58026` succeeded (1,969 total / 1,927 passed / 42 skipped / 0 failed); RQ453 certification job succeeded.
 - Checks not run: full local backend suite; exact-main Actions provided the broad backend proof.
 - Run log: `.ai/runs/2026-10-11-RQ608-evidence.md`
-- Evidence state: synchronized
+- Evidence state: pending close-out push
 - Delivery mode: direct-main
 - Main commit SHA: `35aabd582e754bb293337eace0a6b45aeee58026`
 - Main verification: at closure verification `origin/main` was `b0a9814509858897bd6ac6f7bfee3882901e1652`, containing implementation `35aabd582e754bb293337eace0a6b45aeee58026` and closure `b0a9814509858897bd6ac6f7bfee3882901e1652`. Exact-SHA Actions run `38116562952` succeeded.
@@ -146,13 +146,13 @@ Repository-local READY. No production privileges or owner cost sample required t
 
 ## RQ610 - Schedule opt-in observed SKU×store×day inventory capture using RQ96 foundation
 
-Status: READY
+Status: BLOCKED
 Priority: P1
 Type: inventory-worker/SQL/tests
 Feature family: inventory-observed-daily-capture
 Parallel-safe: yes for isolated read-only source-qualification SQL/evidence; no worker/importer/schema edits concurrently with RQ611 or another active owner
-Owner: Inventory Capture (unassigned; prior Codex ownership explicitly released)
-Local lock: removed after source-contract handoff
+Owner: Inventory Capture (unassigned; source lineage contract required)
+Local lock: removed after BLOCKED handoff
 Ready after: RQ609 DONE, RQ96 DONE
 
 Claim 2026-10-11: refreshed `origin/main` at `87a05efd4276e43a14c568e427778075b7a9d88b`; RQ609 and RQ96 are DONE. No RQ610 lock, branch or open PR was found. The active P-UI-43 lock is unrelated; RQ612 is explicitly path-disjoint. RQ610 was claimed by Codex on `main`.
@@ -191,7 +191,34 @@ RQ609 schema-lane handoff; STAB16 provider access is not a code start gate.
 
 **Re-entry evidence:** `.ai/runs/2026-10-11-RQ610-source-reentry-evidence.md`; `main` currently contains the prior opt-in company-grain implementation `34a5ecf2` with exact-SHA backend CI `38119404029` now green. RQ608 exact-SHA CI `38116562952` and RQ609 exact-SHA CI `38118021843` are also green. Historical BLOCKED note below is preserved as an audit trail; it no longer constitutes a start gate for read-only/source-qualification work.
 
-### Blocker / repository-local delivery
+### Claim — bounded source qualification
+
+- Date: 2026-10-11
+- Claim status at start: IN_PROGRESS; closed as BLOCKED below
+- Claim: refreshed `origin/main` to `3a6e442ecfef478996708d9642f37a38a1e27e6d` after RQ611 close-out; RQ610 is the primary READY candidate. No matching lock, branch or open PR was found. RQ612 remains independently READY and path-disjoint.
+- Local lock: `.ai/task-locks/RQ610-codex.lock.md`.
+
+### Source-qualification outcome / handoff (2026-10-11)
+
+- Date: 2026-10-11
+- Status: BLOCKED
+- Outcome: Local evidence supports `Artikli` as structurally store-keyed current rows, but does not support trustworthy stock observation freshness/generation. No capture adapter or worker/schema changes were made.
+- Changed files: `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-11-RQ610-source-qualification-evidence.md`.
+- Checks run: read-only local Trendplus source qualification and cross-table reconciliation; focused governance checks and `git diff --check`.
+- Checks not run: disposable capture/worker fixture and Release build; no runtime capture code was changed because the source-generation contract failed qualification.
+- Run log: `.ai/runs/2026-10-11-RQ610-source-qualification-evidence.md`
+- Evidence state: pending close-out push
+- Delivery mode: direct-main
+- Main commit SHA: pending close-out push
+- Main verification: pending fresh post-delivery fetch
+- Missed: POS/Access and manual stock updates are not tied to a common audited generation; existing history was not backfilled.
+- Follow-up: inventory/source owner must define a durable current-stock mutation generation and prove it across imports, POS, manual edits and transfers before re-entry.
+- Residual risk: `UpdatedAt`, `DataOrigin` and `SourceBatchId` can retain old Access provenance after non-Access quantity edits; this is unsafe as a freshness signal.
+- Post-close routing: RQ612 promoted to primary READY after fresh post-delivery dependency scan; details in run log.
+- Prompt defect / scope repair: bounded READY source qualification was executable and confirmed store-key relationships, but its acceptance was not met because reliable mutation generation is absent. Re-blocked at the specific freshness/provenance boundary; worker/schema scope remains released.
+- Ownership transfer: Codex -> unassigned; authority/evidence: current claimant's source-qualification result in this queue and `.ai/runs/2026-10-11-RQ610-source-qualification-evidence.md`; effective 2026-10-11 after read-only inspection and before close-out commit; no branch/PR artifacts existed or were reused.
+
+### Historical blocker / repository-local delivery (before source re-entry)
 - Delivered the opt-in scheduler, run ledger, exact capture instant, same-day update retry and idempotent company-grain `store_id=0` capture on `main` at `34a5ecf2cdc5f3702b259303952873ac67974366`.
 - Source proof: `ProductsDim` has article, quantity, row timestamp and data origin, but no `StoreId`; `SyncWorker.MapToDim` maps `Artikli.UpdatedAt` to its timestamp. There is no authoritative per-store stock table or ProductsDim-to-import-batch key in this source. Copying company stock to `StoresDim` locations or inventing a batch id would fabricate evidence.
 - `source_batch_id` remains NULL; the saved source-row update watermark is explicitly not treated as a batch id or freshness certification. This is insufficient to complete truthful SKU×store×day capture.
