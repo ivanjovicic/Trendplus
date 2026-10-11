@@ -8,7 +8,7 @@ Final RQ605 regression follow-up 2026-10-10: the focused recheck found and repai
 Owner delivery 2026-10-10: RQ607 moved `IN_PROGRESS -> DONE` after the InventoryStatus `imported -> access` snapshot/fallback fix, real PostgreSQL certification (`2/2`, `0` failed, `0` skipped), focused InventoryStatus/cache regression (`25/25`, `0` failed, `0` skipped), Release backend build and governance validation passed. Implementation `ca5f9ffc72216c3d212a4ee915c5e8ad44e6ced5` is verified on `origin/main`; no production or local business data was mutated and no Access import was run. The connected local `trendplus` database did not contain the reported Access population, so its read-only SQL evidence is recorded as an environment mismatch rather than a fabricated count. Remote CI runs `38084796528` (Analytics Tests, queued) and `38084796404` (Planning Governance, in progress) are residual risk, not a local-test skip.
 Owner continuation 2026-10-10: RQ601 remains `PARTIAL` after the cost-provenance implementation and read-only batch-23 verification. Explicit sale-line, master-backfill and unknown provenance are now distinct across import, margin, cache, inventory sale-line valuation and cost-quality consumers. PostgreSQL certification is `2/2` for the SQL contract/fixture and the focused RQ601 regression is `176/176`, with zero skipped/not-executed; the 20 original calculation proofs remain open. Evidence: `docs/qa/PURCHASE_COST_PROVENANCE_2026-10-10.md`, `.ai/runs/2026-10-10-RQ601-evidence.md`.
 Current RQ routing: `RQ598` is DONE for the owner-requested regression-gap inventory; independently registered `RQ600` is DONE for the later action-eligibility/value contract audit; `RQ605` is DONE for the post-Access fact-population/cache contract gap; `RQ606` is PARTIAL for the delivered repository-local Access transfer event-identity/reimport fix with historical MDB certification pending; `RQ607` is DONE for the narrowly scoped InventoryStatus Access-origin population fix and PostgreSQL certification. RQ140 remains PARTIAL only for exact-deployment proof owned by STAB16. RQ50/RQ46/RQ319/RQ320/RQ481/RQ597 and RQ55/RQ56/RQ131/RQ482/RQ555/RQ556/RQ585/RQ593/RQ594/RQ595/RQ596 are DONE; RQ130 is OBSOLETE.
-Current READY prompt: none in this owner queue after the RQ612 close (owner-approved RQ613 intelligence sale-join fix registered 2026-10-11, see its entry); RQ606 remains PARTIAL and is not re-promoted without the original MDB or an explicitly approved historical-certification handoff. RQ605 is independent of RQ601/RQ602 and does not reopen RQ604. RQ602's batch-23 historical dry-run is complete and remains PARTIAL pending an owner-approved prospective pilot with deployed per-store/day coverage, qualified nonzero controls and confirmed cost provenance; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
+Current READY prompt: none in this owner queue after the RQ612 close (owner-approved RQ613 intelligence sale-join fix is DONE on `a6acdbbb4d016767522f70b670d237ba0af4833c`; no prompt depends on it); RQ606 remains PARTIAL and is not re-promoted without the original MDB or an explicitly approved historical-certification handoff. RQ605 is independent of RQ601/RQ602 and does not reopen RQ604. RQ602's batch-23 historical dry-run is complete and remains PARTIAL pending an owner-approved prospective pilot with deployed per-store/day coverage, qualified nonzero controls and confirmed cost provenance; RQ601 remains PARTIAL pending the genuine 20-item owner sample. `RQ598` and `RQ600` are DONE in their respective addenda.
 Registration 2026-10-09 (post-review of `02a539b1..da826635`): the product audit's "Prvi dokazani dinar" plan had no executable owner for item 2 (cost scale -> inventory RSD) or for the repo-local preparation of RQ592; RQ601/RQ602 are registered for those, RQ603 for the navigation reduction (owner-gated because it revises RQ507). Already owned and not duplicated: STAB16 (fresh import, BLOCKED on provider access), RQ592 (pilot; now waits only on STAB16 because RQ545 is DONE), RQ585 (weekly digest, DONE), RQ455 (customer acceptance/demo). RQ599 stays reserved in the 2026-10-09 intake. Evidence: `.ai/runs/2026-10-09-recent-commits-review-evidence.md`.
 Registration/claim 2026-10-09: owner-approved intake `docs/ai/ANALYTICS_NEXT_EXECUTION_PROMPTS_2026-10-09.md` superseded the earlier zero-READY conclusion. Fresh `origin/main` `052a64b05d001e1adeb7971562bf03c116f77622` had no RQ598/RQ600 lock, branch or open PR. RQ598 was registered in the Test Hardening addendum, completed as an audit-first no-formula-change slice, and its lock was released; RQ600 was registered in the Cross-Surface addendum with disjoint output files and is now DONE with its lock released. STAB16 stays BLOCKED on provider/read-only production authority and runs as a separate operational lane.
 
@@ -31119,7 +31119,7 @@ Owner decision satisfied; no STAB16 dependency.
 
 ## RQ613 - Join intelligence views to SalesFacts by source SaleId
 
-Status: PARTIAL
+Status: DONE
 Ready after: owner approval 2026-10-11 18:14.
 Priority: P1
 Type: backend/sql/tests
@@ -31163,8 +31163,8 @@ Join key only; no formula or output-column change.
 ### Completion note
 
 - Date: 2026-10-11
-- Status: PARTIAL
-- Completion: implemented and committed; pending main CI evidence.
+- Status: DONE
+- Completion: delivered to main and green in CI, including the PostgreSQL control-vs-probe test.
 - Changed files:
 - `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql`, `022_inventory_risk_signals_v1.sql`, `024_trend_momentum_v1.sql`
 - `Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs` (new)
@@ -31172,12 +31172,13 @@ Join key only; no formula or output-column change.
 - Checks run: backend build; static guard test; `AnalyticsIntelligenceSmokeTests` (ran against the configured local DB, see run log); analytics guardrails; queue/planning/agent validators; `git diff --check`.
 - Checks not run: the PostgreSQL probe test locally (Docker engine unresponsive on the dev machine); it runs in CI.
 - Run log: `.ai/runs/2026-10-11-RQ613-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `a6acdbbb4d016767522f70b670d237ba0af4833c`
+- Main verification: fresh `origin/main` equals the implementation SHA; Actions `38156293083` (Analytics Tests & Data Integrity: complete backend suite with Testcontainers and RQ453 certification) and `38156293080` (Planning Governance) succeeded on it.
 - Missed: none known.
-- Follow-up: close with CI evidence.
+- Follow-up: none.
+- Post-close routing: no queue prompt depends on RQ613; RQ READY stays none.
 - Residual risk: intelligence signal values shift after the next startup rebuild; the nightly refresh/startup rebuild repopulates the caches.
 - Prompt defect / scope repair: none.
 
