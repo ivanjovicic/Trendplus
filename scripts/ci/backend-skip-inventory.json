@@ -1,0 +1,736 @@
+{
+  "schemaVersion": 1,
+  "inventoryId": "backend-operations-skipped-tests-bci17",
+  "sourceRun": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+  "sourceSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7",
+  "expectedKnownSkippedCount": 42,
+  "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+  "entries": [
+    {
+      "fullyQualifiedName": "Api.Tests.InventoryOperationsIntegrityProbeIntegrationTests.Probe_UsesScopedBoundedFactsAndPreservesUnknownAndNegativeStores",
+      "displayName": "Inventory integrity probe bounds scope and detects stock, sell-through and store-grain drift",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "Test creates its own disposable PostgreSQL Testcontainer; BCI17 adds it to mandatory certification.",
+      "proof": {
+        "suite": "inventory-integrity",
+        "fullyQualifiedName": "Api.Tests.InventoryOperationsIntegrityProbeIntegrationTests.Probe_UsesScopedBoundedFactsAndPreservesUnknownAndNegativeStores",
+        "workflowStep": "Run inventory integrity probe"
+      }
+    },
+    {
+      "fullyQualifiedName": "Api.Tests.OperationsAnalyticsRawFactOracleIntegrationTests.SharedFixture_OracleUsesHeaderOriginAndPreservesSupplierAndShoeTypeBuckets",
+      "displayName": "Runtime integrity oracle follows sale-header scope, receipt exclusions and bucket grain",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "Test creates its own disposable PostgreSQL Testcontainer and seeds the RQ407 fixture; BCI17 adds it to mandatory certification.",
+      "proof": {
+        "suite": "raw-fact-oracle",
+        "fullyQualifiedName": "Api.Tests.OperationsAnalyticsRawFactOracleIntegrationTests.SharedFixture_OracleUsesHeaderOriginAndPreservesSupplierAndShoeTypeBuckets",
+        "workflowStep": "Run runtime raw-fact oracle"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsCrossScreenRevenueInvariantIntegrationTests.ImportedStore2_FourScreens_ShareIdenticalCertifiedPromet",
+      "displayName": "Cross-screen promet: store isolation stays equal across four screens",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 seeded PostgreSQL fixture; BCI17 adds both explicit parity cases to the mandatory certification job.",
+      "proof": {
+        "suite": "cross-screen-parity",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsCrossScreenRevenueInvariantIntegrationTests.ImportedStore2_FourScreens_ShareIdenticalCertifiedPromet",
+        "workflowStep": "Run cross-screen Supplier/Shoe Type/Color/Daily parity cases"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsCrossScreenRevenueInvariantIntegrationTests.JulyWindow_FourScreens_ShareIdenticalCertifiedPromet",
+      "displayName": "Cross-screen promet: Daily == Supplier == Shoe Type == Color (July RQ407 window)",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 seeded PostgreSQL fixture; BCI17 adds both explicit parity cases to the mandatory certification job.",
+      "proof": {
+        "suite": "cross-screen-parity",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsCrossScreenRevenueInvariantIntegrationTests.JulyWindow_FourScreens_ShareIdenticalCertifiedPromet",
+        "workflowStep": "Run cross-screen Supplier/Shoe Type/Color/Daily parity cases"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeDetail_PreservesDecisionTrustAndUnknownIdentity",
+      "displayName": "ShoeType detail preserves recommendation, provenance and canonical unknown identity",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_AggregatesUnknownTypes",
+      "displayName": "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_DataScopeFiltersRows",
+      "displayName": "Data scope filters imported and existing rows",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_FiltersByStoreId",
+      "displayName": "ShoeType endpoint filters by storeId correctly",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_IncludesMarginMetrics",
+      "displayName": "ShoeType endpoint includes Margin metrics",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_IncludesNivelacijaSplitMetrics",
+      "displayName": "ShoeType endpoint includes Nivelacija split metrics",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_InvalidPeriod_ReturnsBadRequest",
+      "displayName": "Invalid date range returns bad request",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "The invalid-period contract also has an in-memory host test with no external database dependency.",
+      "proof": {
+        "suite": "in-memory-input-validation",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_InvalidPeriod_ReturnsBadRequest_InMemory",
+        "sourcePath": "Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_InvalidSeason_ReturnsNotFound",
+      "displayName": "Invalid season returns not found",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_MatchesGoldenSnapshot",
+      "displayName": "ShoeType endpoint matches golden snapshot",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_ProducesDeterministicJson",
+      "displayName": "Endpoint is deterministic for same inputs",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_ReturnsValidJsonStructure",
+      "displayName": "ShoeType endpoint returns valid JSON structure",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its route shape, scope, unknown bucket, margin and Nivelacija behavior is checked on the seeded RQ453 routes/oracle.",
+      "proof": {
+        "suite": "six-screen-routes",
+        "fullyQualifiedName": "Trendplus2.Tests.OperationsAnalyticsAllRoutesIntegrationTests.SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesDetail_ExposesRecommendationTrustAndReferenceCohort",
+      "displayName": "Supplier detail preserves recommendation and trust provenance",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows",
+      "displayName": "Supplier totals expose comparable pre/post cohort separately from observed totals",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_DataQualityIncludesMissingCostInfo",
+      "displayName": "Data quality reports missing cost metadata",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_DataScopeFiltersRows",
+      "displayName": "Data scope filters existing and imported rows",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_DeclaresRecommendationReferenceCohort",
+      "displayName": "Supplier endpoint declares the recommendation reference cohort",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ExposesMarginQualityAndNonNegativeNoCost",
+      "displayName": "Supplier margin quality and uncovered revenue are explicit and non-negative",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_HandlesMissingSchemaGracefully",
+      "displayName": "Endpoint handles gracefully when schema is incomplete",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidPeriod_ReturnsBadRequest",
+      "displayName": "Invalid period returns bad request",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidSeason_ReturnsNotFound",
+      "displayName": "Invalid season returns not found",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_MatchesGoldenSnapshot",
+      "displayName": "Supplier endpoint matches golden snapshot",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_MetricsMatchFixtureValues",
+      "displayName": "Supplier metrics calculate correctly against fixture",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_PerformanceWithinThreshold",
+      "displayName": "Endpoint responds within acceptable time",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ProducesDeterministicJson",
+      "displayName": "Endpoint produces deterministic output for same inputs",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ReturnsValidJsonWithAllFields",
+      "displayName": "Endpoint returns valid JSON with required fields",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_SharesSumTo100",
+      "displayName": "Supplier SharePct invariant: all shares sum to 100%",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_SupplierSumEqualsTotal",
+      "displayName": "Supplier sum invariant: components equal totals",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_UnknownSuppliersNormalized",
+      "displayName": "Unknown suppliers map to 'Nepoznato'",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy method reads the pre-populated shared test database; its aggregate, scope, cost-quality, unknown-bucket or share behavior is checked against the seeded raw-fact oracle in RQ453.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_UsesWeightedMarginBenchmark",
+      "displayName": "Supplier benchmark uses covered revenue weighting and exposes cost-source basis",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "genuinely-uncovered",
+      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
+      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
+      "proof": null
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_AttributionFrozenAfterMasterMutation",
+      "displayName": "Historical supplier attribution ignores current article master mutation",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_AttributionFrozenAfterMasterMutation",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+      "displayName": "Supplier and Shoe Type endpoints reconcile to the raw-fact oracle (RQ407 fixture, all scope)",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ExistingScopeAndStore",
+      "displayName": "Supplier and Shoe Type oracle respects existing dataScope and store filter",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ExistingScopeAndStore",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ImportedScope",
+      "displayName": "Supplier and Shoe Type oracle respects imported dataScope",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ImportedScope",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_HeaderOriginWinsOverCurrentArticleOrigin",
+      "displayName": "Supplier and Shoe Type scope follows sale header when article origin disagrees",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "oracle",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_HeaderOriginWinsOverCurrentArticleOrigin",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op201_DateBoundaries_ExcludeUpperBoundaryAndPreserveSignedRows",
+      "displayName": "RQ447 OP2-01 date boundaries use the same half-open certified window",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "op2-seams",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op201_DateBoundaries_ExcludeUpperBoundaryAndPreserveSignedRows",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op204_CanonicalRouteFamilies_KeepScopeTotalsInParity",
+      "displayName": "RQ447 OP2-04 canonical Supplier and Shoe Type route totals stay in parity",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "op2-seams",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op204_CanonicalRouteFamilies_KeepScopeTotalsInParity",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op205_BackendRecommendationStatus_IsNotMaskedByActionabilityGate",
+      "displayName": "RQ447 OP2-05 backend status remains distinct from actionability",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "op2-seams",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op205_BackendRecommendationStatus_IsNotMaskedByActionabilityGate",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    },
+    {
+      "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op214_PeriodMetadata_ReflectsRequestedAndEffectiveWindow",
+      "displayName": "RQ447 OP2-14 requested and effective period remain inspectable",
+      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
+      "source": {
+        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
+        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754440",
+        "artifact": "analytics-backend-test-results/analytics-tests.trx",
+        "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
+      },
+      "classification": "isolated-postgresql-runnable",
+      "prerequisite": "RQ453 job supplies the disposable PostgreSQL fixture and the integration opt-in.",
+      "proof": {
+        "suite": "op2-seams",
+        "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op214_PeriodMetadata_ReflectsRequestedAndEffectiveWindow",
+        "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
+      }
+    }
+  ]
+}

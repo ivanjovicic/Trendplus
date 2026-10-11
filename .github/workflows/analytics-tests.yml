@@ -138,6 +138,13 @@ jobs:
           --results-directory TestResults
           --logger "trx;LogFileName=analytics-tests.trx"
 
+      - name: Classify backend skipped-test inventory
+        if: always()
+        run: >-
+          python3 scripts/ci/validate_backend_skip_inventory.py
+          --trx TestResults/analytics-tests.trx
+          --inventory scripts/ci/backend-skip-inventory.json
+
       - name: Publish coverage summary
         if: always()
         shell: bash
@@ -324,11 +331,11 @@ jobs:
           dotnet test Api.Tests/Api.Tests.csproj
           --no-build
           --configuration Release
-          --filter "FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_AllScope|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ImportedScope|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_EndpointsMatchIndependentOracle_ExistingScopeAndStore|FullyQualifiedName=Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_HeaderOriginWinsOverCurrentArticleOrigin"
+          --filter FullyQualifiedName~SupplierShoeTypeIndependentOracleIntegrationTests
           --logger "trx;LogFileName=rq453-oracle.trx"
           --results-directory TestResults/rq453-oracle
 
-      - name: Assert oracle executed 4/4 with no skips
+      - name: Assert oracle executed 5/5 with no skips
         if: always()
         env:
           ORACLE_OUTCOME: ${{ steps.oracle.outcome }}
@@ -351,8 +358,122 @@ jobs:
           skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
           failed = len(results) - passed - skipped
           print(f"Oracle results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
-          if os.environ.get("ORACLE_OUTCOME") != "success" or len(results) != 4 or passed != 4 or skipped != 0 or failed != 0:
-              print("::error::Operations certification requires exactly 4 executed and passed oracle tests with zero skipped.")
+          if os.environ.get("ORACLE_OUTCOME") != "success" or len(results) != 5 or passed != 5 or skipped != 0 or failed != 0:
+              print("::error::Operations certification requires exactly 5 executed and passed oracle tests with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Run explicit four-screen Supplier/Shoe Type/Color/Daily parity cases
+        id: cross_screen
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~AnalyticsCrossScreenRevenueInvariantIntegrationTests
+          --logger "trx;LogFileName=rq453-cross-screen-parity.trx"
+          --results-directory TestResults/rq453-cross-screen-parity
+
+      - name: Assert cross-screen parity executed 2/2 with no skips
+        if: always()
+        env:
+          CROSS_SCREEN_OUTCOME: ${{ steps.cross_screen.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq453-cross-screen-parity/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::Cross-screen parity certification produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"Cross-screen parity results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("CROSS_SCREEN_OUTCOME") != "success" or len(results) != 2 or passed != 2 or skipped != 0 or failed != 0:
+              print("::error::Operations certification requires exactly 2 executed and passed cross-screen parity tests with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Run inventory integrity probe
+        id: inventory_integrity
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~InventoryOperationsIntegrityProbeIntegrationTests
+          --logger "trx;LogFileName=rq453-inventory-integrity.trx"
+          --results-directory TestResults/rq453-inventory-integrity
+
+      - name: Assert inventory integrity executed 1/1 with no skips
+        if: always()
+        env:
+          INVENTORY_INTEGRITY_OUTCOME: ${{ steps.inventory_integrity.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq453-inventory-integrity/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::Inventory integrity certification produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"Inventory integrity results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("INVENTORY_INTEGRITY_OUTCOME") != "success" or len(results) != 1 or passed != 1 or skipped != 0 or failed != 0:
+              print("::error::Operations certification requires exactly 1 executed and passed inventory integrity test with zero skipped.")
+              sys.exit(1)
+          PY
+
+      - name: Run runtime raw-fact oracle
+        id: raw_fact_oracle
+        run: >-
+          dotnet test Api.Tests/Api.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter FullyQualifiedName~OperationsAnalyticsRawFactOracleIntegrationTests
+          --logger "trx;LogFileName=rq453-raw-fact-oracle.trx"
+          --results-directory TestResults/rq453-raw-fact-oracle
+
+      - name: Assert runtime raw-fact oracle executed 1/1 with no skips
+        if: always()
+        env:
+          RAW_FACT_ORACLE_OUTCOME: ${{ steps.raw_fact_oracle.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("TestResults/rq453-raw-fact-oracle/**/*.trx", recursive=True)
+          if not reports:
+              print("::error::Runtime raw-fact oracle certification produced no TRX report.")
+              sys.exit(1)
+
+          root = ET.parse(reports[0]).getroot()
+          namespace = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          results = root.findall(".//t:UnitTestResult", namespace)
+          passed = sum(result.attrib.get("outcome") == "Passed" for result in results)
+          skipped = sum(result.attrib.get("outcome") in {"Skipped", "NotExecuted"} for result in results)
+          failed = len(results) - passed - skipped
+          print(f"Runtime raw-fact oracle results: total={len(results)} passed={passed} skipped={skipped} failed={failed}")
+          if os.environ.get("RAW_FACT_ORACLE_OUTCOME") != "success" or len(results) != 1 or passed != 1 or skipped != 0 or failed != 0:
+              print("::error::Operations certification requires exactly 1 executed and passed raw-fact oracle test with zero skipped.")
               sys.exit(1)
           PY
 
@@ -492,6 +613,9 @@ jobs:
         if: always()
         env:
           ORACLE_OUTCOME: ${{ steps.oracle.outcome }}
+          CROSS_SCREEN_OUTCOME: ${{ steps.cross_screen.outcome }}
+          INVENTORY_INTEGRITY_OUTCOME: ${{ steps.inventory_integrity.outcome }}
+          RAW_FACT_ORACLE_OUTCOME: ${{ steps.raw_fact_oracle.outcome }}
           ROUTES_OUTCOME: ${{ steps.routes.outcome }}
           SEAMS_OUTCOME: ${{ steps.seams.outcome }}
           INTEGRITY_OUTCOME: ${{ steps.integrity.outcome }}
@@ -501,11 +625,17 @@ jobs:
             --manifest-out TestResults/rq453-certification-manifest.json \
             --commit-sha "${{ github.sha }}" \
             --step-outcome "oracle=${ORACLE_OUTCOME}" \
+            --step-outcome "cross-screen-parity=${CROSS_SCREEN_OUTCOME}" \
+            --step-outcome "inventory-integrity=${INVENTORY_INTEGRITY_OUTCOME}" \
+            --step-outcome "raw-fact-oracle=${RAW_FACT_ORACLE_OUTCOME}" \
             --step-outcome "six-screen-routes=${ROUTES_OUTCOME}" \
             --step-outcome "op2-seams=${SEAMS_OUTCOME}" \
             --step-outcome "integrity-contracts=${INTEGRITY_OUTCOME}" \
             --step-outcome "trust-state=${TRUST_STATE_OUTCOME}" \
-            --suite "oracle|TestResults/rq453-oracle/**/*.trx|true|Supplier/Shoe independent oracle" \
+            --suite "oracle|TestResults/rq453-oracle/**/*.trx|true|Supplier/Shoe independent oracle (including master mutation)" \
+            --suite "cross-screen-parity|TestResults/rq453-cross-screen-parity/**/*.trx|true|Daily/Supplier/Shoe Type/Color parity" \
+            --suite "inventory-integrity|TestResults/rq453-inventory-integrity/**/*.trx|true|Inventory integrity probe" \
+            --suite "raw-fact-oracle|TestResults/rq453-raw-fact-oracle/**/*.trx|true|Runtime raw-fact oracle" \
             --suite "six-screen-routes|TestResults/rq453-six-screen-routes/**/*.trx|true|Six current Operations routes (RQ561/RQ568)" \
             --suite "op2-seams|TestResults/rq453-op2-seams/**/*.trx|true|OP2 seam reproducers" \
             --suite "integrity-contracts|TestResults/rq453-integrity-contracts/**/*.trx|true|Integrity, freshness and Nivelacija cache contracts" \

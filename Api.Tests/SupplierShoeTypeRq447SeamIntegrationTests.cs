@@ -97,8 +97,8 @@ public sealed class SupplierShoeTypeRq447SeamIntegrationTests
             client,
             "/api/analytics/shoe-type-sales-stats?fromDate=2026-07-01&toDate=2026-07-02&dataScope=all");
 
-        Assert.Equal(DateTime.Parse("2026-07-01T00:00:00Z"), response.GetProperty("fromDate").GetDateTime());
-        Assert.Equal(DateTime.Parse("2026-07-02T00:00:00Z"), response.GetProperty("toDate").GetDateTime());
+        Assert.Equal(DateTimeOffset.Parse("2026-07-01T00:00:00Z").UtcDateTime, response.GetProperty("fromDate").GetDateTime());
+        Assert.Equal(DateTimeOffset.Parse("2026-07-02T00:00:00Z").UtcDateTime, response.GetProperty("toDate").GetDateTime());
         Assert.NotEqual(JsonValueKind.Null, response.GetProperty("dataWindowFrom").ValueKind);
         Assert.NotEqual(JsonValueKind.Null, response.GetProperty("dataWindowTo").ValueKind);
         Assert.Equal("all", response.GetProperty("dataScope").GetString());
