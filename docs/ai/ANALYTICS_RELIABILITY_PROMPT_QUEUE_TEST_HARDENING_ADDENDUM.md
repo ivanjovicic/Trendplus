@@ -2,7 +2,9 @@
 
 Date: 2026-08-13
 Repo: `ivanjovicic/Trendplus`
-Current READY prompt: none in this addendum; `RQ598` and independently registered `RQ600` are DONE in their respective addenda.
+Current READY prompt: RQ617
+Additional path-disjoint READY: RQ618.
+RQ598 and RQ600 remain DONE.
 Status: owner-promoted test-hardening follow-up; `RQ598` was registered from the 2026-10-09 owner-approved execution plan. `RQ96`/`RQ106`/`RQ97`/`RQ98`/`RQ597` are DONE on main.
 
 Purpose: lock the highest-value analytics contracts with focused integration and display tests. This is not a new program. Runtime formula changes are out of scope unless a test reproduces a real contract bug.
@@ -777,3 +779,63 @@ Current analytics coverage is extensive, but the repository still needs a curren
 ### Dependencies
 
 None. STAB16 retains production certification/freshness ownership and does not block this repository-local audit.
+
+
+---
+
+## RQ617 - Prevent DnevnikPromena integration tests from writing to developer/business databases
+
+Status: READY
+Priority: P0
+Type: backend-test-isolation/PostgreSQL fail-closed regression
+Feature family: dnevnik-integration-test-safety
+Parallel-safe: yes; only Api.Tests/DnevnikPromenaReadServiceTests.cs and its dedicated isolated fixtures/tests; no RQ610 queue, importer, writer or inventory production paths
+Owner: unassigned
+Ready after: immediate; RQ614 disposable PostgreSQL isolation pattern is DONE and reusable
+Commit suggestion: test(dnevnik): isolate read-service fixture and ban configured business DB writes
+
+### Confirmed problem and code
+Current Api.Tests/DnevnikPromenaReadServiceTests.cs uses appsettings Development DefaultConnection and AnalyticsConnection, passes them through IntegrationDbGuard.TryEnsureAvailable (connectivity check only), and then writes/deletes Artikli, DnevnikPromena, ProductsDim and InventoryMovementFacts. A failed test/cleanup can leave mutations in local trendplus. Each test silently returns when its connection is unavailable. The Random.Shared.Next(1,10000)-based unique IDs do not prove isolation from real records. RQ614 solved this pattern only for intelligence/bootstrap test families; do not reopen that DONE prompt.
+
+### Read first
+Api.Tests/DnevnikPromenaReadServiceTests.cs; Api.Tests/IntegrationDbGuard.cs; Api.Tests/IntelligencePostgresFixture.cs; existing disposable Trendplus + Analytics two-DbContext fixtures; RQ614 evidence and test safety guard.
+
+### Do
+1. Replace appsettings-connected Dnevnik tests with individually owned, disposable PostgreSQL database(s) that contain the required migrated schema. Prefer the existing proper Trendplus/Analytics fixture mechanism rather than a duplicate Testcontainers host. If a genuinely separate analytics DB is required, provision it inside the same ephemeral fixture; otherwise prove the unified mode.
+2. Forbid direct DDL/DML on DefaultConnection/AnalyticsConnection from development/user/provider config. Fail closed if the disposable DB is unavailable, could be confused with an existing database, or schema/migration is missing; no early return or "pass" without assertions. Assert fixture-issued connection identity, not just localhost or env Development.
+3. Replace random IDs and real-data cleanup with deterministic fixture-owned seed data and isolation-level cleanup. Cover GetById, pagination/filtering, analytics fallback, missing record, two-store scope and failure path, preserving business semantics.
+4. Test a deliberately configured business-looking connection string is rejected without executing INSERT/UPDATE/DELETE. Inspect other tests that call IntegrationDbGuard and report exact risky call sites without broad cross-owner edits; new confirmed cases only via separately scoped follow-up.
+5. Focused tests on disposable PostgreSQL with explicit count and TRX (expected=executed, failed=0, skipped=0), Release build, governance validators and safe post-push current-main check. Preserve unrelated RQ610 dirty worktree.
+
+### Acceptance
+These tests never mutate a user-configured business database and cannot silently pass without PostgreSQL. Each case runs and asserts against a fixture-owned schema. No production/local business import, migrations, startup, API run, deployment or stock modification. Commit/merge/push only if safe; evidence must state which DB was created/dropped and actual test counts.
+
+---
+
+## RQ618 - Make intelligence inventory-movement dates UTC-deterministic
+
+Status: READY
+Priority: P1
+Type: isolated PostgreSQL oracle/intelligence SQL correctness
+Feature family: intelligence-movement-day-timezone
+Parallel-safe: yes; 022 inventory-risk SQL and a new dedicated integration test file, independent of RQ617 test-only paths; no changes to RQ610 inventory generation/capture or RQ616 DTO/frontend unless a reproduced separate defect is explicitly documented
+Owner: unassigned
+Ready after: RQ616 DONE; no provider or production dependency for the isolated SQL reproduction
+Commit suggestion: fix(analytics): align inventory movement day with UTC retail signal date
+
+### Problem and testable hypothesis
+RQ616 made SalesFacts.SaleTimestampUtc -> UTC business-day projection in 021/022/024, but 022_inventory_risk_signals_v1.sql still computes DATE_TRUNC('day', imf."Datum")::date for InventoryMovementFacts timestamps. For timestamptz it can depend on the database session TimeZone. The view also uses CURRENT_DATE in settings, which is session-date based rather than an explicit UTC as-of date. Thus sales and inventory events around UTC midnight may land on different days, and a view/cache may depend on the executing session or refresh service TimeZone. This is a source-code hypothesis requiring a *failing* PostgreSQL fixture before runtime edits; do not conflate UTC reporting with an explicitly approved local-store business calendar.
+
+### Read first
+Database/Analytics/Intelligence/{021,022,024}_*.sql; Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs; Domain/Model/InventoryMovementFact.cs; Infrastructure/DbContexts/AnalyticsDbContext.cs; RQ616 retail-population evidence, RQ615 MV freshness evidence, and the relevant signal date/seasonality contract.
+
+### Do
+1. Prove actual InventoryMovementFacts.Datum column type/mapping on disposable PostgreSQL, and document desired signal-day convention (UTC if current view contract, else require owner decision without guessing).
+2. Seed paired movement timestamps immediately before/after UTC midnight and signed retail sales for same article, with receipts, transfer in/out and customer return. Run 022 view under session TimeZone UTC and at least two distinct zones (including one that flips calendar date), with frozen as-of values where necessary to avoid nondeterministic current-date tests. Check that movement attribution, reconstructed stock, rolling risk and daily output are invariant under the declared UTC convention.
+3. If the failing case is real, use explicit AT TIME ZONE 'UTC' or appropriate typed conversion consistently in movement-date grouping/filtering and as-of anchor; check 021/024 CURRENT_DATE consistency only if needed to avoid mixed anchors. Preserve NULL versus measured zero and the reconstructed-not-observed disclaimer.
+4. Upgrade a previously populated MV cache using the RQ615 changed-hash semantics and verify view=MV with EXCEPT ALL for the affected date/store and that retry/failed refresh doesn't claim fresh data. Check indexes and bounded query planning.
+5. Add independent PostgreSQL regression assertions (0 skipped), Release build, refreshed code-level comments, governance and CI; avoid DDL on business DB or unattended production refresh.
+
+### Acceptance
+A reproducible before/after oracle proves the timestamp and session-timezone boundary (or documents no defect and makes no unnecessary change); view and MV agree; no misleading historical stock certification or fake availability. Exact SHA, skipped=0/failed=0 tests and evidence. Production deployment/rollout stays STAB16-owned.
+
