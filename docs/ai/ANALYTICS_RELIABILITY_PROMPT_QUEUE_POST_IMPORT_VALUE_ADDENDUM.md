@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none (RQ616 is IN_PROGRESS; no other READY task is registered in this active set).
+Current READY prompt: none (RQ616 has completed implementation; recompute after the required post-close cascade).
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -469,12 +469,13 @@ After successful isolated upgrade, cached demand/risk/trend rows reflect the cor
 
 ## RQ616 - Certify intelligence retail population and release impact after RQ613
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
-Type: read-only analytics oracle/contract review
+Type: independent PostgreSQL oracle with bounded analytics SQL/API/UI correction
 Feature family: intelligence-retail-population
 Parallel-safe: yes after RQ615 release of shared 021/022/024 SQL ownership; initially read-only SQL and a separate fixture/test file
-Owner: Codex / worktree `rq614-test-isolation` (branch `codex/rq616-retail-population`)
+Owner: Codex
+Local lock: removed before delivery; Codex retained task ownership through close-out.
 Ready after: RQ615 DONE with isolated cache parity; RQ614 test-safety guard DONE
 
 ### Claim note — 2026-10-11
@@ -496,3 +497,24 @@ RQ613 fixed ID attribution but did not prove intelligence's population matches c
 
 ### Acceptance
 No unqualified claims about Access historical signals, no silent DUG/KOREKCIJA contamination, signed returns preserved, scope/unknown provenance documented, zero skipped PostgreSQL tests. Do not claim this prompt before RQ615 cache parity and the RQ614 test-safety guard are DONE; both prerequisites are now delivered.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: Independent disposable PostgreSQL oracle found and corrected retail-population/date defects in intelligence views, and preserved unknown reconstructed inventory baselines through the API and Insight Studio.
+- Changed files: Database/Analytics/Intelligence/021_product_demand_signals_v1.sql; Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql; Database/Analytics/Intelligence/024_trend_momentum_v1.sql; Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs; Api.Tests/IntelligencePostgresFixture.cs; Api.Tests/Fixtures/analytics-intelligence-smoke-seed.sql; Api/Endpoints/AnalyticsIntelligenceEndpoints.cs; Klijent/clientapp/src/services/analyticsIntelligenceApi.ts; Klijent/clientapp/src/services/analyticsIntelligenceDerived.spec.ts; Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.tsx; Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.spec.tsx; MASTER_ROADMAP.md; this queue addendum; .ai/runs/2026-10-11-RQ616-evidence.md.
+- Contract/runtime behavior changed: yes; 021/022/024 use UTC calendar-day boundaries and exclude trimmed/case-insensitive DUG/KOREKCIJA receipts while retaining signed quantities and source-origin scope. Missing current inventory baseline remains unknown/null; known zero stays zero through API and UI.
+- Checks run: focused disposable PostgreSQL/API Release tests 13/13 passed, 0 skipped; frontend tests 18/18 passed; npm run check:analytics-guardrails passed (encoding and TypeScript checks included; one existing fake-zero fallback removed and 38 baseline violations remain); Analytics Tests & Data Integrity run 38167550530 on ac20efcf8b8d76b6a39c5b36b15b7752e0f01637 succeeded; Analytics Quality Gates run 38168216722 on f1200dff2c01fbc49a01b1268a5e40ea5ae39516 succeeded; all six governance checks and git diff --check are recorded in the run log.
+- Checks not run: full backend/frontend suites and deployed/live parity; deployed parity belongs to STAB16 and no production database, deployment, import or migration was used.
+- Run log: .ai/runs/2026-10-11-RQ616-evidence.md
+- Evidence state: pending post-close routing synchronization
+- Delivery mode: direct-main
+- Main commit SHA: f1200dff2c01fbc49a01b1268a5e40ea5ae39516
+- Main verification: implementation SHA is on current origin/main; exact post-close recovery SHA and terminal-evidence synchronization are pending.
+- Missed: deployed parity and any claim that reconstructed current inventory represents observed historical stock.
+- Follow-up: STAB16 retains deployed provider/deployment parity. RQ610 remains separately BLOCKED pending a passing all-writer source-generation contract and inspectable POS writer.
+- Residual risk: SQL 022 stock-risk values remain reconstructed from the latest product baseline; NULL is preserved where that baseline is unknown. Live deployed parity remains unverified.
+- Next: post-close dependency cascade and Zero-READY proof are pending in the run log.
+- Post-close routing: pending
+- Prompt defect / scope repair: the prompt's initial read-only type was broadened only after the disposable oracle proved a bounded SQL defect; the related API/UI correction was required to preserve unknown-versus-zero semantics. No business database or production DDL was used.
