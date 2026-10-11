@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ619 (P1, new bounded concurrent-startup cache generation regression; earlier RQ618 zero-READY result is superseded by this confirmed source-code gap).
+Current READY prompt: RQ619 (P1 competing-startup cache generation). Additional collision-safe READY: RQ621 (P1 Price Intelligence missing-cost margin) and RQ623 (P1 signed-return trend entropy). BCI17 READY belongs to the independent backend CI queue. RQ620/RQ622/RQ624-RQ627 remain WAITING on exact listed dependencies.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -561,7 +561,7 @@ Type: disposable PostgreSQL retail-population/date-window oracle and targeted SQ
 Feature family: intelligence-asof-upper-bound
 Parallel-safe: no; overlaps 021/022/024 SQL fixture and populated-MV evidence, so serialize after RQ619 and the RQ616 null-baseline audit fix have landed
 Owner: unassigned
-Ready after: RQ619 DONE and RQ616 null-quantity SQL regression on main, with no conflicting owner
+Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main, with no conflicting owner
 Commit suggestion: fix(analytics): bound as-of signal populations on both dates
 
 ### Verified code gap / hypothesis to prove
@@ -576,3 +576,281 @@ SQL 021, 022 and 024 daily_sales CTEs filter SaleTimestampUtc only with a lower 
 
 ### Acceptance
 No future-only article/store creates a misleading historical signal; future events do not affect as-of risk, demand or momentum, while same-day UTC data and signed retail semantics stay correct. Independent oracle and pre-existing cache parity are green, 0 skipped. No live business DB write, migration, import or deploy.
+
+---
+
+## RQ621 - Preserve missing purchase cost instead of reporting a 100% Price Intelligence margin
+
+Status: READY
+Priority: P1
+Type: SQL/API/frontend nullability correctness with disposable PostgreSQL oracle
+Feature family: price-intelligence-missing-cost
+Parallel-safe: yes; owns SQL 023 cost/margin calculation, price DTO/types and dedicated tests, not RQ619 initializer or RQ623 SQL 024; coordinate with RQ622 before editing price endpoint
+Owner: unassigned
+Ready after: RQ188 DONE and RQ616 DONE; no owner or external samples required for fail-closed missing-cost proof
+Commit suggestion: fix(analytics): preserve unknown cost and margin in price signals
+
+### Problem
+`vw_price_intelligence_v1` currently computes missing purchase cost as measured zero, so a valid sale price with no cost produces a fake 100% margin. This can mislead price ranking, filtering and recommendation consumers.
+
+### Evidence
+`Database/Analytics/Intelligence/023_price_intelligence_v1.sql`: `COALESCE(pd."PurchasePriceRsd", pd."PurchasePrice", 0) AS cost`, followed by `(pp.net_price - pp.cost) / pp.net_price AS margin_pct`. `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs` maps cost with `GetDecimal`, uses `m.margin_pct` for filtering and defaults price sort to margin; RQ188 only fixed missing list-price/discount-depth handling, not cost. RQ601's original kalkulacije prove historical cost scale externally, but are not required to stop a missing value from becoming fabricated zero.
+
+### Scope
+SQL 023 and dedicated independent PostgreSQL price oracle; PriceIntelligenceItem, TypeScript price DTO, price dashboard/Insight Studio consumers and focused null/margin tests. Do not change supplier costing decisions or inventory capture. Separate RQ622 owns price cache lifecycle/fail-closed.
+
+### Read first
+`Database/Analytics/Intelligence/023_price_intelligence_v1.sql`; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Api.Tests/AnalyticsIntelligenceSmokeTests.cs`; `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`; RQ188/RQ601 evidence and `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`.
+
+### Do
+1. Create a failing disposable PostgreSQL oracle: no cost, one missing source but other valid, explicit 0, positive cost, negative/invalid source, and a measured margin of zero. Keep net/list-price cases from RQ188.
+2. Preserve unknown/invalid unit-cost provenance as nullable, do not silently substitute a numeric zero; if legitimate free-stock 0 cost is ambiguous, keep the status unknown until product policy clarifies it.
+3. Propagate nullable `cost` and `margin_pct` through API and TS schemas, sorting/filtering, UI cards, exports and derived analytics; missing margin must not rank as 100% or create actionable price suggestions.
+4. Maintain exact SQL column contract and previously populated cache schema evolution; coordinate changed-hash refresh with RQ622 and preserve RQ188 discount-depth semantics.
+
+### Tests
+Disposable PostgreSQL before/after oracle and populated-MV parity with zero skipped, API JSON/threshold/page/sort tests, frontend missing-vs-known-zero tests, Release build, analytics guardrails, governance, `git diff --check`, exact-main CI.
+
+### Acceptance
+Missing cost never yields measured 0 or 100%-margin; known cost retains correct formula; every consumer distinguishes unavailable vs measured zero and remains non-actionable on unknown cost. No business DB mutation/import/Render deploy.
+
+### Dependencies
+Independent of RQ619 and BCI17; serialize any shared price endpoint/DTO path with RQ622. RQ601 external owner proof remains separate.
+
+---
+
+## RQ622 - Certify Price Intelligence cache rebuild, readiness and fail-closed API parity
+
+Status: WAITING
+Priority: P1
+Type: startup/MV lifecycle/API trust-contract regression
+Feature family: price-intelligence-cache-truth
+Parallel-safe: no; `DatabaseInitializer` overlaps RQ619 and price API/SQL schema may overlap RQ621
+Owner: unassigned
+Ready after: RQ619 DONE and RQ621 DONE; code proof only, no provider access necessary
+Commit suggestion: fix(analytics): fail closed on stale price intelligence cache
+
+### Problem
+Price Intelligence alone bypasses the readiness/hash checks applied to Demand, Inventory and Trend. A semantic SQL change with unchanged MV column structure can leave a pre-existing price MV stale while the price endpoint returns HTTP 200; missing relations may be represented as an empty-success response.
+
+### Evidence
+`DatabaseInitializer.AnalyticsIntelligenceCacheBySqlFile` lists only 021, 022 and 024; SQL 023 uses `CREATE MATERIALIZED VIEW IF NOT EXISTS` with no `cache_refresh_state` ownership. `QueryPriceIntelligenceAsync` passes `freshnessCacheName=null, freshnessSqlPath=null`; price GET calls `QueryPriceIntelligenceAsync` directly rather than `ExecuteCacheQueryAsync`. `ExecutePagedQueryAsync` marks missing relations unavailable only when a freshness cache name exists. Nightly refresh can happen, but cannot certify exact startup SQL/hash parity when disabled.
+
+### Scope
+Price signal cache registry/status/SQL 023, startup initializer, price endpoint/API status, dedicated PostgreSQL populated-MV regression and minimal operator diagnostics. Do not rework all intelligence SQL or alter Render service flags.
+
+### Read first
+RQ615, RQ619 and RQ621 evidence; `Infrastructure/Seed/DatabaseInitializer.cs`; `Database/Analytics/Intelligence/020_create_intelligence_schema.sql`; SQL 023; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`.
+
+### Do
+1. Seed a populated pre-change price MV and a same-column-count semantic SQL change, with clear before/after results and an independent SQL oracle.
+2. Reproduce stale-200 and missing-cache/empty-success behavior under no nightly worker, failed refresh, concurrent restart, unchanged and changed hashes.
+3. Make price cache participate in equivalent version/hash/generation readiness rules; ensure a successful rebuild/refresh and row-level MV/view parity before setting ready; fail closed 503/typed unavailable otherwise.
+4. Preserve business KPI nullability from RQ621, no unbounded startup blocking and no collision with RQ619 lock ownership.
+
+### Tests
+Disposable PostgreSQL old-cache migration/retry/parity, API 200-vs-503/empty/missing tests, concurrency gate inherited from RQ619, Release build, governance and exact-main CI with zero skipped.
+
+### Acceptance
+Price 200 requires verified matching cache state/hash and refreshed MV; stale/pending/failed/missing state is never represented as trusted empty or current data. No database/import/deploy outside disposable tests.
+
+### Dependencies
+RQ619 and RQ621 DONE; independent of external STAB16 proof, which remains the deployed-state authority.
+
+---
+
+## RQ623 - Keep Trend Momentum entropy mathematically valid with signed customer returns
+
+Status: READY
+Priority: P1
+Type: independent SQL math oracle, nullable signal contract and focused API/UI tests
+Feature family: trend-momentum-signed-entropy
+Parallel-safe: yes against RQ619 initializer-only concurrency scope and RQ621 SQL 023; owns SQL 024 math and dedicated tests, so RQ620/RQ625 serialize behind it
+Owner: unassigned
+Ready after: RQ616 DONE (signed retail population certified), no product-owner decision needed for reproducing invalid values
+Commit suggestion: fix(analytics): bound trend entropy under signed returns
+
+### Problem
+Shannon entropy requires a nonnegative probability distribution summing to one. The current signed net-sales denominator can be smaller than a positive day's sales after returns, giving shares greater than 1 and negative normalized entropy, while the API/UI treats it as a meaningful trend score.
+
+### Evidence
+SQL 024: `total_units_28d = SUM(dps.units_sold)`, `sales_share = dps.units_sold / total_units_28d` when daily units positive and denominator >0, then `-SUM(sales_share * LN(sales_share)) / LN(active_days_28d)`. For daily 10 and -9, total is 1 so positive share is 10 and Shannon term is negative. `GetDecimal(record, "trend_entropy")` assumes always-present trustworthy number. This is a code/mathematics counterexample, not a measured production incident.
+
+### Scope
+SQL 024 entropy pathway, independent trend oracle fixtures and API/TS downstream trust semantics only if the corrected signal can be unavailable. Do not change signed net sales slope/retail population, external scores or SQL 021 demand semantics.
+
+### Read first
+SQL 024; `Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs`; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; RQ616 fixture; `docs/Analytics/INTELLIGENCE_README.md`.
+
+### Do
+1. Execute PostgreSQL fixtures 10/-9, 10/-10, 2/3, 0/0, one active day, pure returns, refunds across UTC midnight, no rows; assert current invalid behavior before correction.
+2. Define/justify a valid probability base (positive gross sold units if independently reconstructable, otherwise explicit insufficient evidence); do not use ABS(returns) or clamp invalid entropy to 0 merely to pass assertions.
+3. Keep legitimate signed returns in `local_sales_acceleration`; propagate unavailable entropy as NULL if evidence is insufficient and block trust/actionability, preserving measured 0 when genuinely concentrated demand.
+4. Check changed-hash/pre-existing MV parity and stable downstream classifications.
+
+### Tests
+Independent calculation oracle `0 <= entropy <= 1` for available values, regression against signed windows/denominator-0, API JSON and frontend missing/zero distinctions, PostgreSQL cache EXCEPT ALL, guardrails/build/CI; zero skipped.
+
+### Acceptance
+Entropy never becomes negative, >1 or fabricated 0 for invalid probability data, while signed net demand semantics remain unchanged. No outside business database or deployment writes.
+
+### Dependencies
+Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownership; RQ625 is later same-file follow-up.
+
+---
+
+## RQ624 - Certify intelligence daily as-of rollover and worker refresh-state truth
+
+Status: WAITING
+Priority: P1
+Type: clock-boundary PostgreSQL MV/worker lifecycle and API freshness proof
+Feature family: intelligence-cache-calendar-rollover
+Parallel-safe: no; startup state methods and endpoint readiness overlap RQ619/RQ622; do not claim together
+Owner: unassigned
+Ready after: RQ619 DONE, RQ622 DONE and RQ620 DONE for finalized as-of input bounds
+Commit suggestion: fix(analytics): enforce current as-of and refreshed cache generations
+
+### Problem
+Demand/Risk/Trend materialized views freeze UTC `as_of_date` and signal rows at refresh time. `EnsureIntelligenceCacheIsFreshAsync` checks ready, hash and presence of a last-refresh timestamp, but not whether the cache covers the required UTC day or incoming changes. The nightly worker refresh path updates its own refreshed-object set without obviously advancing `analytics_intel.cache_refresh_state.last_refreshed_at_utc`. With the worker disabled, yesterday's ready cache can remain an apparently successful historical snapshot; after a worker-only refresh, diagnostics may still report the earlier startup refresh timestamp.
+
+### Evidence
+SQL 021/022/024 use `CURRENT_TIMESTAMP AT TIME ZONE 'UTC'` in materialized view definitions. `DatabaseInitializer.PrepareAnalyticsIntelligenceCacheBuildAsync` skips work when applied hash and ready state match, without age/as-of comparison. API `EnsureIntelligenceCacheIsFreshAsync` reads `last_refreshed_at_utc IS NOT NULL` but no max age or current day. `NightlyAnalyticsRefreshWorker.RefreshMaterializedViewsAsync` performs REFRESH and collects `refreshedObjects`, with no direct matching per-cache readiness timestamp write in that path. Existing STAB16 owns deployed worker proof, but this local clock contract can be tested independently.
+
+### Scope
+Isolated PostgreSQL cache freshness state and API status/metadata, nightly refresh status synchronization and minimal instrumentation. Does not require a running production worker, new import, global SLA policy, or changing configured backend time zone.
+
+### Read first
+`Infrastructure/Seed/DatabaseInitializer.cs`; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Workers/NightlyAnalyticsRefreshWorker.cs`; SQL 020-024; RQ619/RQ620/RQ622 and STAB16 evidence; `docs/Analytics/INTELLIGENCE_README.md`.
+
+### Do
+1. Freeze UTC 23:59 -> 00:01, completed vs missed nightly refresh, unchanged SQL hash, data mutation without SQL change, failed/partial refresh, separate analytics DB and same-DB mode.
+2. Independently compare MV MAX(date)/signal_date and view with expected UTC as-of; test how endpoint reports old but ready data and worker-only successful refresh timestamp.
+3. Implement versioned, inspectable last-refreshed timestamp, as-of day and successful-generation/lineage metadata; separate SQL freshness from business-source freshness so no fake currentness is claimed. Retry/refresh under bounded work without blocking normal startup indefinitely.
+4. Preserve legitimate explicit historic as-of queries and historical value usefulness; currentness failure must not corrupt/rewrite history or report stale as observed current.
+
+### Tests
+Disposable PG with controllable clock/injected as-of fixture, API response/200/503 or explicitly stale metadata per existing trust policy, worker refresh success/failure/lock, full RQ615/RQ619/RQ622 regressions; deterministic zero-skipped checks, governance and CI.
+
+### Acceptance
+Yesterday's MV cannot silently masquerade as today's fresh signal; successful nightly refresh updates traceable state; failed/missed refresh is explicit; historical lookback remains available and correctly labeled. STAB16 production proof unchanged.
+
+### Dependencies
+RQ619, RQ620, RQ622 DONE; no new product-owner SLAs invented.
+
+---
+
+## RQ625 - Separate missing external trend evidence from a measured zero trend score
+
+Status: WAITING
+Priority: P2
+Type: SQL/API/React missing-evidence propagation and signal trust
+Feature family: trend-momentum-external-signal-provenance
+Parallel-safe: no; shares SQL 024 and TrendMomentum DTO with RQ623/RQ620
+Owner: unassigned
+Ready after: RQ623 DONE and RQ620 DONE; no external provider credentials required for null-versus-zero fixture
+Commit suggestion: fix(analytics): preserve unavailable external trend scores
+
+### Problem
+A product seen only in local sales can receive an external trend score of zero even though neither external trend table has evidence. That number can be interpreted as measured lack of interest and influence ranking.
+
+### Evidence
+SQL 024 includes `daily_sales` in `observed_products` and selects `COALESCE(lth.final_global_score, lgs.final_global_score, 0)` as `external_trend_score`. The API maps the field using `GetDecimal`; no missing-source confidence/provenance is attached in this row contract.
+
+### Scope
+Trend SQL 024 nullable/provenance signal, TrendMomentumItem, TS DTO/derivations, small API/UI tests. No external scraper, machine learning rerun or policy threshold change.
+
+### Read first
+SQL 024; API price/trend DTO; `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`; `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`; RQ623/RQ620 tests; RQ139/RQ152 fake-zero precedents.
+
+### Do
+1. Prove local-only product, known explicit external zero, positive external score, stale history vs latest score, orphan/missing dimension and future-only external score (coordinated with RQ620).
+2. Preserve explicit measured zero; make missing external input NULL/typed unavailable, with minimal evidence basis (latest source/time where available), and keep local slope/entropy independent.
+3. Confirm ranking/filtering/insight recommendations do not treat unknown as low interest or fill it with UI zero; maintain pagination and cross-surface parity.
+
+### Tests
+Disposable PG oracle, API/TypeScript schema/null-and-zero tests, frontend insight and ordering tests, populated MV hash and build/CI; zero skipped.
+
+### Acceptance
+No external evidence != measured external zero throughout SQL/API/frontend; no fabricated trend recommendation on absent source.
+
+### Dependencies
+RQ623/RQ620 DONE, separate from STAB16/provider data collection.
+
+---
+
+## RQ626 - Audit negative reconstructed inventory and stockout classification instead of silent clamping
+
+Status: WAITING
+Priority: P2
+Type: inventory proxy semantic characterization and SQL/UI safety oracle
+Feature family: reconstructed-stock-negative-evidence
+Parallel-safe: no; shares SQL 022 with RQ620 and its fixture
+Owner: unassigned
+Ready after: RQ620 DONE and SQL 022 nullable quantity fix on main; no production stock writes
+Commit suggestion: test(inventory): distinguish negative proxy from verified stockouts
+
+### Problem
+The back-calculated stock proxy uses `GREATEST(reconstructed_quantity,0)`. An inferred negative balance is turned into a measured zero, then contributes to `stockout_days` and risk labels. Because this is a reconstructed proxy rather than observed stock, masking negatives can hide source inconsistencies and create unjustified observed-stockout impressions.
+
+### Evidence
+SQL 022 `stock_proxy` clamps `current_stock_qty + signed-sales - movements` to zero before `COUNT(*) FILTER (WHERE sp.stock_qty = 0)`. RQ616 correctly labels the series reconstructed, RQ610 proves negative real stock can be meaningful; no fixture explicitly distinguishes negative reconstructed balance from a verified zero-day stockout.
+
+### Scope
+Dedicated PostgreSQL reconstruction oracle, inventory risk SQL 022 where an actual defect is proven, API/UI trust labeling and tests. Do not convert the proxy to observed stock or change RQ610 stock-generation architecture.
+
+### Read first
+SQL 022, `Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs`, `Api.Tests/AnalyticsIntelligenceMovementUtcTests.cs`, RQ610/RQ616/RQ618 evidence, `docs/Analytics/INTELLIGENCE_README.md`.
+
+### Do
+1. Seed observed-zero, observed-negative, inferred-negative, missing baseline, restock, transfer, return and unknown movement cases; compare independent signed arithmetic to proxy.
+2. Characterize whether the clamp is an intentional visualization heuristic or falsely promotes a negative estimate into a true zero. Keep original signed evidence/quality status inspectable; any policy change to physical stockout definitions must be approved, not guessed.
+3. If proven unsafe, preserve negative/insufficient evidence separately from a known zero and prevent unjustified stockout/reorder actionability. Maintain nullable cost and day-UTC constraints.
+4. Rerun as-of and cache-view parity regressions plus API/React trust tests.
+
+### Tests
+Disposable PostgreSQL oracle and output parity, null/negative/zero classification, no skipped tests, Release/guardrails/governance/CI, no business DB DML.
+
+### Acceptance
+A fabricated stockout cannot originate solely from clamping a negative historical proxy; negative, missing and measured zero stock remain distinguishable, and observed snapshot authority is preserved.
+
+### Dependencies
+RQ620 DONE; RQ610 all-writer proof remains a separate blocked production validation.
+
+---
+
+## RQ627 - Align Price Intelligence product snapshot dates with the certified UTC calendar
+
+Status: WAITING
+Priority: P2
+Type: timestamp-with-time-zone read/oracle and bounded SQL contract correction
+Feature family: price-intelligence-day-timezone
+Parallel-safe: no; shares SQL 023, price cache and DTO with RQ621/RQ622
+Owner: unassigned
+Ready after: RQ621 DONE and RQ622 DONE; independent of deployed provider
+Commit suggestion: fix(analytics): normalize price signal day to UTC
+
+### Problem
+`price_date` is derived with session-sensitive `pd."Timestamp"::date`, while the demand/inventory/trend families now declare UTC day attribution. One timestamp near UTC midnight can be assigned to different price dates depending on database session TimeZone and refresh connection settings.
+
+### Evidence
+SQL 023 `latest_products` selects `pd."Timestamp"::date AS price_date`; SQL 021/022/024 use explicit `AT TIME ZONE 'UTC'` for their date basis. `ProductsDim.Timestamp` is created as `timestamp with time zone` in `DatabaseInitializer.EnsureCoreAnalyticsDimensionTablesAsync`. A session time-zone invariant price-date fixture is not listed among RQ188/RQ618 proofs.
+
+### Scope
+SQL 023 date projection, dedicated PostgreSQL UTC boundary tests and minimal metadata docs; do not redefine the whole platform business time zone or date-valued user filters.
+
+### Read first
+SQL 023; SQL 021/022/024; `Infrastructure/Seed/DatabaseInitializer.cs`; RQ618 UTC date oracle; RQ621/RQ622 state proof.
+
+### Do
+1. Prove mapped PostgreSQL type in actual migration/fixture and compare a single near-midnight `ProductsDim.Timestamp` under UTC, Pacific/Kiritimati and America/Los_Angeles sessions; test DST dates.
+2. When reproduced for timestamptz, align `price_date` to the explicitly certified UTC convention using typed conversion; if actual store-local calendar policy differs, stop and request owner decision.
+3. Refresh a previously populated price MV, verify date/index/page metadata parity, and preserve all cost/margin nullability and price-cache readiness invariants.
+
+### Tests
+Provider-strict isolated PostgreSQL timezone oracle, pre-existing MV EXCEPT ALL, API date metadata, zero skipped, Release/guardrails/CI.
+
+### Acceptance
+Price snapshot day is invariant under session TimeZone and consistent with documented UTC semantics; no live data writes or implicit policy changes.
+
+### Dependencies
+RQ621/RQ622 DONE; avoid simultaneous SQL 023 changes.
