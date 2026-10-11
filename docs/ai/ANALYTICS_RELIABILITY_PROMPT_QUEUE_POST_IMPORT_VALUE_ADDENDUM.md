@@ -2,8 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ614
-Additional path-disjoint READY: RQ615.
+Current READY prompt: RQ615.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -363,12 +362,13 @@ No start gate from original MDB or 20 cost calculations for descriptive revenue/
 
 ## RQ614 - Isolate intelligence smoke tests and make PostgreSQL certification fail closed
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: test-safety/PostgreSQL regression
 Feature family: intelligence-test-isolation
 Parallel-safe: yes; owns Api.Tests/AnalyticsIntelligenceSmokeTests.cs, Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs and test-only fixtures; RQ615 owns runtime SQL/bootstrap/refresh paths
 Owner: Codex / worktree `rq614-test-isolation`
+Local lock: removed after done close
 Ready after: RQ613 DONE; actual unsafe smoke execution recorded in .ai/runs/2026-10-11-RQ613-evidence.md
 Commit suggestion: test(analytics): isolate intelligence bootstrap and prohibit business database mutation
 
@@ -392,6 +392,25 @@ The five AnalyticsIntelligenceSmokeTests resolve AnalyticsConnection/DefaultConn
 
 ### Acceptance
 All five smoke cases and the RQ613 source-SaleId probe run against isolated databases only. The probe must verify distinct Id/SaleId and a surrogate-ID collision on real PostgreSQL; tests fail when unavailable, not pass. API/backend focused tests and Release build pass; exact TRX test counts and governance validations are recorded. No writes to local trendplus, Render, Neon or any business database; no new Access import. Commit/merge/push safely with current-main ancestry and .ai/runs evidence.
+
+### Completion note
+
+- Date: 2026-10-11
+- Status: DONE
+- Completion: All five intelligence smoke cases, the real PostgreSQL source-SaleId control/probe, three database-safety negatives, the bootstrap lifecycle test and five audited initializer P0 tests now use the disposable fail-closed fixture; no configured/local business database is used.
+- Changed files: `Api.Tests/IntelligencePostgresFixture.cs`, `Api.Tests/Fixtures/analytics-intelligence-smoke-seed.sql`, `Api.Tests/AnalyticsIntelligenceSmokeTests.cs`, `Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs`, `Api.Tests/AnalyticsIntelligenceDatabaseSafetyTests.cs`, `Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs`, `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`, this queue addendum, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-11-RQ614-evidence.md`.
+- Checks run: focused Release PostgreSQL run 16/16 passed, 0 failed, 0 skipped, 0 not executed; Release project build passed with 0 warnings and 0 errors; six governance validators and `git diff --check` passed (results in the run log).
+- Checks not run: full backend suite; not required for the bounded test-only change. The current-main Actions runs listed below were still in progress when inspected.
+- Run log: `.ai/runs/2026-10-11-RQ614-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `918fdd4e4a7df86ac0696ba720d72f7e7eee657e`
+- Main verification: passed; refreshed `origin/main` contained the implementation SHA. The closure/evidence commits are descendants of it.
+- Missed: none known within RQ614 acceptance.
+- Follow-up: RQ615 remains the primary READY task; RQ616 remains WAITING for RQ615 cache-parity delivery.
+- Residual risk: full backend suite not run; Analytics Tests & Data Integrity run `38161632292` and Planning Governance run `38161632296` were `in_progress` at inspection and were not used as a completion gate.
+- Post-close routing: RQ615 remains READY; RQ616 is still gated on RQ615. Full active-set scan and exact recovery base are recorded in the run log.
+- Prompt defect / scope repair: same-owner test-only audit expanded to the `DatabaseMigrationBootstrapLifecycleSmokeTests` and `DatabaseInitializerP0IntegrationTests` silent-return paths; no runtime/code owner collision.
 
 ---
 
