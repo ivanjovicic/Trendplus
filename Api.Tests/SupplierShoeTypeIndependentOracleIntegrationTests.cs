@@ -1,4 +1,6 @@
 using System.Net.Http;
+using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
@@ -89,6 +91,7 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         Assert.Equal(oracleTotals.TotalRevenue, oracleShoeTypes.Sum(b => b.Revenue));
 
         using var client = _factory.CreateClient();
+        await WaitForActualReadinessAsync(client);
         var scopeQuery = $"&dataScope={Uri.EscapeDataString(filters.DataScope)}";
         var storeQuery = filters.StoreId.HasValue ? $"&storeId={filters.StoreId.Value}" : string.Empty;
         var fromQuery = $"fromDate={filters.FromUtc:yyyy-MM-dd}&toDate={filters.ToUtc:yyyy-MM-dd}";
@@ -223,6 +226,61 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
         Assert.True(response.IsSuccessStatusCode, $"{path} returned {(int)response.StatusCode}: {body}");
         using var document = JsonDocument.Parse(body);
         return document.RootElement.Clone();
+    }
+
+    private static async Task WaitForActualReadinessAsync(HttpClient client)
+    {
+        // CI runs the actual PostgreSQL warmup in Testing. The 180s bound covers
+        // 12 attempts, two 5s DB probes per attempt and 5s backoff (175s maximum).
+        // Keep readiness real before analytics requests; never disable the API gate.
+        var timeout = TimeSpan.FromSeconds(180);
+        var stopwatch = Stopwatch.StartNew();
+        string? lastBody = null;
+        HttpStatusCode? lastStatus = null;
+
+        while (stopwatch.Elapsed < timeout)
+        {
+            using var response = await client.GetAsync("/ready");
+            lastStatus = response.StatusCode;
+            lastBody = await response.Content.ReadAsStringAsync();
+
+            using var document = JsonDocument.Parse(lastBody);
+            var root = document.RootElement;
+            var reason = root.TryGetProperty("reason", out var reasonValue)
+                ? reasonValue.GetString()
+                : null;
+            var initializationState = root.TryGetProperty("databaseInitialization", out var initialization)
+                && initialization.TryGetProperty("state", out var stateValue)
+                    ? stateValue.GetString()
+                    : null;
+
+            if (string.Equals(initializationState, "failed", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(reason, "schema_incompatible", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(reason, "schema_verification_failed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"API startup reached a terminal readiness failure after {stopwatch.Elapsed}. " +
+                    $"HTTP {(int)response.StatusCode}: {lastBody}");
+            }
+
+            var ready = root.TryGetProperty("ready", out var readyValue) && readyValue.GetBoolean();
+            var databasesOk = root.TryGetProperty("db", out var dbValue)
+                && dbValue.TryGetProperty("ok", out var dbOkValue)
+                && dbOkValue.GetBoolean();
+            if (response.IsSuccessStatusCode && ready && databasesOk)
+                return;
+
+            if (response.StatusCode != HttpStatusCode.ServiceUnavailable)
+            {
+                throw new InvalidOperationException(
+                    $"Unexpected /ready response during RQ453 startup. HTTP {(int)response.StatusCode}: {lastBody}");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        throw new TimeoutException(
+            $"API did not become ready within {timeout}. Last /ready response: HTTP {(int?)lastStatus}: {lastBody}");
     }
 
     private static string RequireConnectionString()
