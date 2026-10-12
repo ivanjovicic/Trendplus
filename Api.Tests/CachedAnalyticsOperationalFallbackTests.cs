@@ -304,6 +304,8 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
+            // This host deliberately models unavailable analytics relations; HTTP metric persistence is out of scope.
+            builder.UseSetting("PerformanceLogging:CaptureHttpRequests", "false");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
