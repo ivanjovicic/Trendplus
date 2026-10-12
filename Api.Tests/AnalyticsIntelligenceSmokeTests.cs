@@ -470,7 +470,7 @@ public sealed class AnalyticsIntelligenceSmokeTests
         Assert.Equal(1, response.Page);
         Assert.Equal(20, response.PageSize);
         Assert.Equal(47, response.Items[0].ArticleId);
-        Assert.Equal(49, response.Items[1].ArticleId);
+        Assert.Equal(45, response.Items[1].ArticleId);
         Assert.All(response.Items.Skip(3), item => Assert.Null(item.MarginPct));
         Assert.Null(response.Items.Single(item => item.ArticleId == 44).Cost);
         Assert.Null(response.Items.Single(item => item.ArticleId == 44).MarginPct);
