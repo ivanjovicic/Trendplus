@@ -264,7 +264,10 @@ public static class DatabaseInitializer
         // Pre/Posle nivelacije page stays on vendor_sales_nivelacija_contract_missing.
         // Runs first so an analytics-side problem cannot skip it; it never throws.
         var trendplusConnectionString = ResolveTrendplusRepairConnectionString(scope.ServiceProvider, defaultConnectionString);
-        var trendplusNivelacijaStatus = await EnsureTrendplusVendorSalesNivelacijaContractAsync(trendplusConnectionString, logger);
+        var trendplusNivelacijaStatus = await EnsureTrendplusVendorSalesNivelacijaContractAsync(
+            trendplusConnectionString,
+            logger,
+            ShouldBuildSupplierDecisionWindowedViewsAtStartup(configuration));
         logger.LogInformation(
             "Trendplus vendor sales nivelacija contract check finished with status {Status}.",
             trendplusNivelacijaStatus);
@@ -962,7 +965,8 @@ public static class DatabaseInitializer
     /// </summary>
     internal static async Task<string> EnsureTrendplusVendorSalesNivelacijaContractAsync(
         string? connectionString,
-        ILogger logger)
+        ILogger logger,
+        bool buildSupplierWindowedViews = true)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -1060,7 +1064,7 @@ public static class DatabaseInitializer
                 "nivelacija-contract-repair",
                 allowHeavyRefresh: false);
 
-            if (dependentsBefore.Any(name => TrendplusNivelacijaWindowedDependents.Contains(name)))
+            if (buildSupplierWindowedViews && dependentsBefore.Any(name => TrendplusNivelacijaWindowedDependents.Contains(name)))
             {
                 try
                 {
