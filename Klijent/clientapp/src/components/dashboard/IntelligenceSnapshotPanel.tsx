@@ -75,6 +75,21 @@ function externalTrendEvidenceLabel(item: TrendMomentumItem) {
   return observedAt ? `${sourceLabel} | ${observedAt}` : sourceLabel;
 }
 
+function inventoryStockEvidenceLabel(item: InventoryRiskSignalItem) {
+  if (item.stockProxyEvidence === "missing_baseline" || item.stockQty == null) {
+    return `stanje ${ANALYTICS_UNAVAILABLE_LABEL} | OOS ${ANALYTICS_UNAVAILABLE_LABEL}`;
+  }
+
+  if (item.stockProxyEvidence === "negative_proxy" || item.stockQty < 0) {
+    return `proxy ${formatCompact(item.stockQty)} (nije mereni OOS)`;
+  }
+
+  const oosLabel = item.stockoutDays == null
+    ? ANALYTICS_UNAVAILABLE_LABEL
+    : `${item.stockoutDays} d`;
+  return `stanje ${formatCompact(item.stockQty)} | OOS ${oosLabel}`;
+}
+
 function formatDemandSignal(item: DemandSignalItem) {
   if (item.demandState === "NEW_DEMAND") return "Novi signal";
   if (item.demandState === "NO_BASELINE") return "Nema baze";
@@ -216,7 +231,14 @@ export default function IntelligenceSnapshotPanel({
   }
 
   const topDemand = demand[0];
-  const knownRiskInventory = inventory.filter((item) => isFiniteNumber(item.deadStockRisk));
+  // Negative reconstructed proxy is inconsistency evidence, not actionable dead-stock risk.
+  const knownRiskInventory = inventory.filter(
+    (item) =>
+      isFiniteNumber(item.deadStockRisk) &&
+      item.stockProxyEvidence !== "negative_proxy" &&
+      item.stockProxyEvidence !== "missing_baseline" &&
+      !(isFiniteNumber(item.stockQty) && item.stockQty < 0),
+  );
   const topInventory = knownRiskInventory[0];
   const topPrice = price[0];
   const topTrend = trend.find((item) => item.externalTrendScore != null && item.externalTrendSource != null);
@@ -269,7 +291,7 @@ export default function IntelligenceSnapshotPanel({
             <SignalRow
               key={`${item.articleId}-${item.date}`}
               title={item.productName}
-              subtitle={`${item.category} | stanje ${formatCompact(item.stockQty)} | OOS ${item.stockoutDays == null ? ANALYTICS_UNAVAILABLE_LABEL : `${item.stockoutDays} d`}`}
+              subtitle={`${item.category} | ${inventoryStockEvidenceLabel(item)}`}
               badge={formatPercent(item.deadStockRisk, 0)}
               badgeColor={signalTone(item.deadStockRisk, 0.5, PAL.red, PAL.yellow)}
             />

@@ -92,6 +92,9 @@ Important assumption:
 - canonical observed daily stock is `analytics_intel.inventory_observed_daily_snapshot` (see `docs/architecture/OBSERVED_INVENTORY_DAILY_SNAPSHOT.md`)
 - this risk view still reconstructs a **proxy** from current `ProductsDim.Kolicina`, trailing sales, and canonical movement types in `InventoryMovementFacts`
 - reconstructed `stock_qty` is not observed warehouse history; use `vw_inventory_daily_stock_v1.provenance` to tell the difference
+- `stock_qty` keeps the **signed** reconstructed balance. A negative proxy is source-inconsistency evidence, not a measured zero and not an observed stockout
+- `stockout_days` counts only exact reconstructed zeros; negative proxy days are excluded so silent clamping cannot fabricate OOS/reorder actionability
+- API/UI expose `stockProxyEvidence` as `missing_baseline` | `negative_proxy` | `zero` | `positive` so callers can keep those states distinct
 
 Movement handling used by the SQL:
 

@@ -42,6 +42,12 @@ export interface DemandSignalItem {
   sourceRows: number;
 }
 
+export type StockProxyEvidence =
+  | "missing_baseline"
+  | "negative_proxy"
+  | "zero"
+  | "positive";
+
 export interface InventoryRiskSignalItem {
   articleId: number;
   sku: string;
@@ -57,6 +63,8 @@ export interface InventoryRiskSignalItem {
   stockoutDays: number | null;
   lowStockDays: number | null;
   deadStockRisk: number | null;
+  /** Distinguishes missing, negative reconstructed, measured zero and positive proxy stock. */
+  stockProxyEvidence: StockProxyEvidence;
 }
 
 export interface PriceIntelligenceItem {

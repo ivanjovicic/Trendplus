@@ -172,9 +172,11 @@ stock_proxy AS (
         dsi.low_stock_threshold,
         dsi.unit_cost,
         dsi.sales_qty,
+        -- Preserve the signed reconstructed balance. Clamping to zero would turn an
+        -- inferred negative proxy into a measured stockout day and hide source inconsistency.
         CASE
             WHEN NOT dsi.has_current_stock_baseline THEN NULL::numeric(18,4)
-            ELSE GREATEST(
+            ELSE (
                 dsi.current_stock_qty
                 + COALESCE(SUM(dsi.sales_qty) OVER (
                     PARTITION BY dsi.article_id
@@ -200,8 +202,7 @@ stock_proxy AS (
                     PARTITION BY dsi.article_id
                     ORDER BY dsi.signal_date DESC
                     ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                ), 0),
-                0
+                ), 0)
             )::numeric(18,4)
         END AS stock_qty
     FROM daily_stock_inputs dsi
@@ -235,6 +236,8 @@ risk_rollup AS (
                 ORDER BY sp.signal_date
                 ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
             ) = 0 THEN NULL::integer
+            -- Exact reconstructed zero only. Negative proxy days are source-inconsistency
+            -- evidence and must not fabricate stockout/reorder actionability.
             ELSE COUNT(*) FILTER (WHERE sp.stock_qty = 0) OVER (
                 PARTITION BY sp.article_id
                 ORDER BY sp.signal_date
@@ -270,6 +273,8 @@ SELECT
     ROUND(COALESCE(rr.avg_daily_sales_30d, 0), 6) AS avg_daily_sales_30d,
     ROUND(
         CASE
+            WHEN rr.stock_qty IS NULL THEN NULL
+            WHEN rr.stock_qty < 0 THEN NULL
             WHEN COALESCE(rr.avg_daily_sales_30d, 0) <= 0 THEN NULL
             ELSE rr.stock_qty / NULLIF(rr.avg_daily_sales_30d, 0)
         END,
@@ -301,19 +306,19 @@ COMMENT ON VIEW analytics_intel.vw_inventory_risk_signals_v1 IS
 'Versioned inventory risk signal view built from a reconstructed daily stock proxy using UTC sales and inventory-movement dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts. It is not an Access-only history. Canonical observed stock is analytics_intel.inventory_observed_daily_snapshot / vw_inventory_daily_stock_v1. This view must not be treated as observed warehouse history.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_qty IS
-'Estimated on-hand quantity for the signal date. This is a reconstructed proxy (provenance reconstructed), not an observed daily snapshot; NULL means no current product-dimension stock baseline exists.';
+'Signed reconstructed on-hand estimate for the signal date (provenance reconstructed), not an observed daily snapshot. NULL means no current product-dimension stock baseline exists. Negative values preserve inferred proxy inconsistency and must not be silently clamped to a measured zero.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.avg_daily_sales_30d IS
 'Average daily sold units over the trailing 30-day window. This drives both days_of_cover and dead-stock heuristics.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.days_of_cover IS
-'Estimated stock_qty divided by trailing average daily sales. NULL means there is no recent sales demand or no product-dimension stock baseline to anchor the calculation.';
+'Estimated non-negative stock_qty divided by trailing average daily sales. NULL means missing baseline, negative reconstructed proxy, or no recent sales demand.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stock_turn IS
 'Trailing 30-day sales cost divided by trailing average inventory value. Cost is sourced from ProductsDim PurchasePriceRsd/PurchasePrice fallback; NULL is preserved when there is no inventory baseline.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.stockout_days IS
-'Trailing stockout-day count. NULL means no product-dimension stock baseline exists in the measurement window.';
+'Trailing exact-zero reconstructed stock day count. Negative proxy days are excluded so clamping cannot fabricate stockouts. NULL means no product-dimension stock baseline exists in the measurement window.';
 
 COMMENT ON COLUMN analytics_intel.vw_inventory_risk_signals_v1.low_stock_days IS
 'Trailing low-stock-day count. NULL means no product-dimension stock baseline exists in the measurement window.';

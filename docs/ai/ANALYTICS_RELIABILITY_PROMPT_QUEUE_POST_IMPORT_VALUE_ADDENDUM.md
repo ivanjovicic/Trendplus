@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ626 primary (READY; P2 negative reconstructed-inventory evidence); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; PR backend run `38262164454` passed 1,977 tests with 42 previously classified skips and zero failures, including the cache parity oracle. The first exact-main backend run `38260258785` exposed one cache/view mismatch; PR #126 aligned TrendHistory fixtures and filtering to the canonical DATE contract. Current-main backend run `38262945885` is in progress on the merged SHA. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ626 primary (IN_PROGRESS; P2 negative reconstructed-inventory evidence; owner cursor/`bc-bd7c41e3-72e2-4cad-a05c-3fcaa0ebd661`); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; PR backend run `38262164454` passed 1,977 tests with 42 previously classified skips and zero failures, including the cache parity oracle. The first exact-main backend run `38260258785` exposed one cache/view mismatch; PR #126 aligned TrendHistory fixtures and filtering to the canonical DATE contract. Current-main backend run `38262945885` is in progress on the merged SHA. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -910,14 +910,19 @@ RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is 
 
 ## RQ626 - Audit negative reconstructed inventory and stockout classification instead of silent clamping
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: inventory proxy semantic characterization and SQL/UI safety oracle
 Feature family: reconstructed-stock-negative-evidence
 Parallel-safe: no; shares SQL 022 with RQ620 and the intelligence endpoint/client DTO files with RQ621/RQ622/RQ624/RQ625
-Owner: unassigned
+Owner: cursor / bc-bd7c41e3-72e2-4cad-a05c-3fcaa0ebd661
 Ready after: RQ620 DONE, SQL 022 nullable quantity fix on main, RQ621/RQ622/RQ624 DONE, and RQ625 DONE to serialize shared intelligence endpoint/client DTO paths; no production stock writes
 Commit suggestion: test(inventory): distinguish negative proxy from verified stockouts
+
+### Claim note — 2026-10-12
+
+- Claimed from refreshed `origin/main` `edd69f88` after verifying dependencies, no RQ626 lock/branch/open PR, and separate RQ630/RQ631 paths.
+- Branch: `cursor/rq626-negative-inventory-d661`. Local lock: `.ai/task-locks/RQ626-cursor.lock.md`.
 
 ### Promotion note — 2026-10-12
 

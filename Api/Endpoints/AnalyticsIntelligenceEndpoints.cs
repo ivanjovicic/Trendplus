@@ -258,21 +258,26 @@ public static class AnalyticsIntelligenceEndpoints
             parameters,
             request.Page,
             request.PageSize,
-            record => new InventoryRiskSignalItem(
-                GetInt32(record, "article_id"),
-                GetString(record, "sku"),
-                GetString(record, "product_name"),
-                GetString(record, "category"),
-                GetNullableInt32(record, "supplier_id"),
-                GetString(record, "supplier_name"),
-                GetDateTime(record, "date"),
-                GetNullableDecimal(record, "stock_qty"),
-                GetDecimal(record, "avg_daily_sales_30d"),
-                GetNullableDecimal(record, "days_of_cover"),
-                GetNullableDecimal(record, "stock_turn"),
-                GetNullableInt32(record, "stockout_days"),
-                GetNullableInt32(record, "low_stock_days"),
-                GetNullableDecimal(record, "dead_stock_risk")),
+            record =>
+            {
+                var stockQty = GetNullableDecimal(record, "stock_qty");
+                return new InventoryRiskSignalItem(
+                    GetInt32(record, "article_id"),
+                    GetString(record, "sku"),
+                    GetString(record, "product_name"),
+                    GetString(record, "category"),
+                    GetNullableInt32(record, "supplier_id"),
+                    GetString(record, "supplier_name"),
+                    GetDateTime(record, "date"),
+                    stockQty,
+                    GetDecimal(record, "avg_daily_sales_30d"),
+                    GetNullableDecimal(record, "days_of_cover"),
+                    GetNullableDecimal(record, "stock_turn"),
+                    GetNullableInt32(record, "stockout_days"),
+                    GetNullableInt32(record, "low_stock_days"),
+                    GetNullableDecimal(record, "dead_stock_risk"),
+                    ClassifyStockProxyEvidence(stockQty));
+            },
             "analytics_intel.mv_inventory_risk_signals_v1_cache",
             "date",
             request.Date,
@@ -1179,6 +1184,15 @@ LIMIT @limit OFFSET @offset;
     private static string? NormalizeText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    internal static string ClassifyStockProxyEvidence(decimal? stockQty) =>
+        stockQty switch
+        {
+            null => "missing_baseline",
+            < 0 => "negative_proxy",
+            0 => "zero",
+            _ => "positive"
+        };
+
     private static int GetInt32(IDataRecord record, string column) =>
         record.IsDBNull(record.GetOrdinal(column))
             ? 0
@@ -1306,7 +1320,8 @@ public sealed record InventoryRiskSignalItem(
     decimal? StockTurn,
     int? StockoutDays,
     int? LowStockDays,
-    decimal? DeadStockRisk);
+    decimal? DeadStockRisk,
+    string StockProxyEvidence);
 
 public sealed record PriceIntelligenceRequest(
     int? ArticleId,

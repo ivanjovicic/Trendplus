@@ -39,18 +39,28 @@ function priceItem(
 function inventoryItem(
   overrides: Partial<InventoryRiskSignalItem> & Pick<InventoryRiskSignalItem, "articleId" | "category" | "avgDailySales30d">,
 ): InventoryRiskSignalItem {
+  const stockQty = overrides.stockQty === undefined ? 10 : overrides.stockQty;
+  const stockProxyEvidence = overrides.stockProxyEvidence
+    ?? (stockQty == null
+      ? "missing_baseline"
+      : stockQty < 0
+        ? "negative_proxy"
+        : stockQty === 0
+          ? "zero"
+          : "positive");
   return {
     sku: `SKU-${overrides.articleId}`,
     productName: `Artikal ${overrides.articleId}`,
     supplierId: 1,
     supplierName: "Dobavljac",
     date: "2026-08-01",
-    stockQty: 10,
+    stockQty,
     daysOfCover: 20,
     stockTurn: 1,
     stockoutDays: 0,
     lowStockDays: 0,
     deadStockRisk: 0,
+    stockProxyEvidence,
     ...overrides,
   };
 }

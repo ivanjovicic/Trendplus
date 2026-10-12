@@ -37,6 +37,43 @@ const unknownInventory: InventoryRiskSignalItem = {
   stockoutDays: null,
   lowStockDays: null,
   deadStockRisk: null,
+  stockProxyEvidence: "missing_baseline",
+};
+
+const negativeProxyInventory: InventoryRiskSignalItem = {
+  articleId: 626,
+  sku: "SKU-626",
+  productName: "Negativan proxy zalihe",
+  category: "Obuća",
+  supplierId: 1,
+  supplierName: "Dobavljač",
+  date: "2026-09-08",
+  stockQty: -10,
+  avgDailySales30d: 0.5,
+  daysOfCover: null,
+  stockTurn: null,
+  stockoutDays: 0,
+  lowStockDays: 0,
+  deadStockRisk: 0,
+  stockProxyEvidence: "negative_proxy",
+};
+
+const measuredZeroInventory: InventoryRiskSignalItem = {
+  articleId: 505,
+  sku: "SKU-505",
+  productName: "Merena nula zalihe",
+  category: "Obuća",
+  supplierId: 1,
+  supplierName: "Dobavljač",
+  date: "2026-09-08",
+  stockQty: 0,
+  avgDailySales30d: 0.2,
+  daysOfCover: null,
+  stockTurn: null,
+  stockoutDays: 3,
+  lowStockDays: 0,
+  deadStockRisk: 0.5,
+  stockProxyEvidence: "zero",
 };
 
 const trendItem = (
@@ -111,6 +148,24 @@ describe("IntelligenceSnapshotPanel demand state", () => {
     expect(screen.getByText("Nema potvrđenog rizika zaliha")).toBeInTheDocument();
     expect(screen.queryByText("Artikal bez poznate zalihe")).not.toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
+  });
+
+  it("does not treat a negative reconstructed proxy as actionable stockout risk", () => {
+    render(
+      <IntelligenceSnapshotPanel
+        demand={[]}
+        inventory={[negativeProxyInventory, measuredZeroInventory]}
+        price={[]}
+        trend={[]}
+        asOfDate="2026-09-08"
+        loading={false}
+      />,
+    );
+
+    expect(screen.getByText("Merena nula zalihe")).toBeInTheDocument();
+    expect(screen.getByText(/stanje 0 \| OOS 3 d/)).toBeInTheDocument();
+    expect(screen.queryByText("Negativan proxy zalihe")).not.toBeInTheDocument();
+    expect(screen.queryByText(/nije mereni OOS/)).not.toBeInTheDocument();
   });
 
   it("distinguishes unavailable entropy from a measured zero", () => {
