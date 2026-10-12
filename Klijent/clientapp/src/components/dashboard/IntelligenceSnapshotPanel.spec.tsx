@@ -39,7 +39,12 @@ const unknownInventory: InventoryRiskSignalItem = {
   deadStockRisk: null,
 };
 
-const trendItem = (trendEntropy: number | null): TrendMomentumItem => ({
+const trendItem = (
+  trendEntropy: number | null,
+  externalTrendScore: number | null = 12,
+  externalTrendSource: TrendMomentumItem["externalTrendSource"] = "trend_history",
+  externalTrendObservedAt: string | null = "2026-09-08",
+): TrendMomentumItem => ({
   articleId: 707,
   sku: "SKU-707",
   productName: "Artikal trenda",
@@ -47,7 +52,9 @@ const trendItem = (trendEntropy: number | null): TrendMomentumItem => ({
   supplierId: null,
   supplierName: "Dobavljač",
   signalDate: "2026-09-08",
-  externalTrendScore: 12,
+  externalTrendScore,
+  externalTrendSource,
+  externalTrendObservedAt,
   localSalesAcceleration: 0,
   trendEntropy,
 });
@@ -120,5 +127,35 @@ describe("IntelligenceSnapshotPanel demand state", () => {
 
     expect(screen.getByText(/entropija Nije dostupno/)).toBeInTheDocument();
     expect(screen.getByText(/entropija 0\.00/)).toBeInTheDocument();
+  });
+
+  it("keeps a missing external score out of the summary while preserving a measured zero", () => {
+    const missing = {
+      ...trendItem(null, null, null, null),
+      articleId: 717,
+      productName: "Bez eksternog skora",
+    };
+    const measuredZero = {
+      ...trendItem(null, 0, "global_trend_scores", "2026-09-08T14:30:00"),
+      articleId: 718,
+      productName: "Izmerena nula",
+    };
+
+    render(
+      <IntelligenceSnapshotPanel
+        demand={[]}
+        inventory={[]}
+        price={[]}
+        trend={[missing, measuredZero]}
+        asOfDate="2026-09-08"
+        loading={false}
+      />,
+    );
+
+    expect(screen.getByText("Najveći eksterni skor")).toBeInTheDocument();
+    expect(screen.getAllByText("0.0")).toHaveLength(2);
+    expect(screen.getByText(/Izmerena nula \| lokalno \+0\.0% \| Poslednji proračun trenda \| 2026-09-08 14:30/)).toBeInTheDocument();
+    expect(screen.getAllByText("Nije dostupno").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Eksterni skor nije dostupan/)).toBeInTheDocument();
   });
 });

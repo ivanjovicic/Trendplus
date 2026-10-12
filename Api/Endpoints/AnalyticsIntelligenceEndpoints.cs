@@ -331,7 +331,9 @@ public static class AnalyticsIntelligenceEndpoints
                 GetNullableInt32(record, "supplier_id"),
                 GetString(record, "supplier_name"),
                 GetDateTime(record, "signal_date"),
-                GetDecimal(record, "external_trend_score"),
+                GetNullableDecimal(record, "external_trend_score"),
+                GetNullableString(record, "external_trend_source"),
+                GetNullableString(record, "external_trend_observed_at"),
                 GetDecimal(record, "local_sales_acceleration"),
                 GetNullableDecimal(record, "trend_entropy")),
             "analytics_intel.mv_trend_momentum_v1_cache",
@@ -948,6 +950,8 @@ filtered AS (
         COALESCE(ls.supplier_name, 'Unknown supplier') AS supplier_name,
         m.signal_date,
         m.external_trend_score,
+        m.external_trend_source,
+        m.external_trend_observed_at,
         m.local_sales_acceleration,
         m.trend_entropy
     FROM analytics_intel.mv_trend_momentum_v1_cache m
@@ -973,6 +977,8 @@ SELECT
     supplier_name,
     signal_date,
     external_trend_score,
+    external_trend_source,
+    external_trend_observed_at,
     local_sales_acceleration,
     trend_entropy,
     total_count,
@@ -1067,9 +1073,9 @@ LIMIT @limit OFFSET @offset;
         {
             "productName" => $"product_name {(desc ? "DESC" : "ASC")}, article_id ASC",
             "signalDate" => $"signal_date {(desc ? "DESC" : "ASC")}, article_id ASC",
-            "localSalesAcceleration" => $"local_sales_acceleration {(desc ? "DESC" : "ASC")}, external_trend_score DESC, article_id ASC",
-            "trendEntropy" => $"trend_entropy {(desc ? "DESC" : "ASC")}, external_trend_score DESC, article_id ASC",
-            _ => $"external_trend_score {(desc ? "DESC" : "ASC")}, local_sales_acceleration DESC, article_id ASC"
+            "localSalesAcceleration" => $"local_sales_acceleration {(desc ? "DESC" : "ASC")}, external_trend_score DESC NULLS LAST, article_id ASC",
+            "trendEntropy" => $"trend_entropy {(desc ? "DESC NULLS LAST" : "ASC NULLS LAST")}, external_trend_score DESC NULLS LAST, article_id ASC",
+            _ => $"external_trend_score {(desc ? "DESC" : "ASC")} NULLS LAST, local_sales_acceleration DESC, article_id ASC"
         };
     }
 
@@ -1350,6 +1356,8 @@ public sealed record TrendMomentumItem(
     int? SupplierId,
     string SupplierName,
     DateTime SignalDate,
-    decimal ExternalTrendScore,
+    decimal? ExternalTrendScore,
+    string? ExternalTrendSource,
+    string? ExternalTrendObservedAt,
     decimal LocalSalesAcceleration,
     decimal? TrendEntropy);

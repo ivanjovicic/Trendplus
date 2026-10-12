@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ625 primary (P2 missing-vs-zero external trend evidence); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; Analytics Tests & Data Integrity run `38248162958` passed on rerun, including the UTC oracle, and Planning Governance run `38248162921` passed. The first backend attempt had two unrelated 503 test-host failures; the same tests passed on the prior backend run `38245964827` and on the rerun. RQ625 was promoted after RQ627 removed its shared API/client metadata gate; RQ626 remains behind RQ625. RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ625 primary (IN_PROGRESS, Codex; P2 missing-vs-zero external trend evidence); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; Analytics Tests & Data Integrity run `38248162958` passed on rerun, including the UTC oracle, and Planning Governance run `38248162921` passed. The first backend attempt had two unrelated 503 test-host failures; the same tests passed on the prior backend run `38245964827` and on the rerun. RQ625 was promoted after RQ627 removed its shared API/client metadata gate; RQ626 remains behind RQ625. RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -838,12 +838,12 @@ RQ619, RQ620, RQ622 DONE; no new product-owner SLAs invented.
 
 ## RQ625 - Separate missing external trend evidence from a measured zero trend score
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: SQL/API/React missing-evidence propagation and signal trust
 Feature family: trend-momentum-external-signal-provenance
 Parallel-safe: no; shares SQL 024 with RQ623/RQ620 and the intelligence endpoint/client DTO files with RQ621/RQ622/RQ624
-Owner: unassigned
+Owner: Codex
 Ready after: RQ623 DONE, RQ620 DONE, RQ621/RQ622/RQ624 DONE and RQ627 DONE to serialize shared intelligence endpoint/client DTO paths; no external provider credentials required for null-versus-zero fixture
 Commit suggestion: fix(analytics): preserve unavailable external trend scores
 
@@ -878,6 +878,13 @@ RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is 
 - RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ623, RQ620, RQ621, RQ622 and RQ624 are also DONE.
 - Post-delivery collision check found no RQ625 lock, branch, open PR or attached worktree. RQ630 owns a separate migration/test path and RQ631 owns telemetry middleware/test paths; neither overlaps RQ625's SQL 024 and intelligence API/client DTO scope.
 - Promoted WAITING → READY. No external provider credentials are required for the null-versus-zero fixture.
+
+### Owner claim — 2026-10-12
+
+- Refreshed `origin/main` to `304223ff1a5835be62dffe9eed908cc8cb90a271`; RQ625 was the primary READY prompt at claim time and all declared dependencies are DONE.
+- Scanned all 13 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files and the active SQL analytics queue; no higher-priority runnable program or RQ task in progress displaces this claim. RQ630/RQ631 remain READY on separate paths.
+- No RQ625 lock/branch, open PR, or attached worktree exists; `gh pr list --state open --search RQ625` returned `[]` and Codex artifact listing returned no attachments.
+- Claimed by Codex on `main`. Local lock: `.ai/task-locks/RQ625-codex.lock.md`.
 
 ---
 

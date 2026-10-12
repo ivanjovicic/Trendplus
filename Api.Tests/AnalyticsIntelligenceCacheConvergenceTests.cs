@@ -734,7 +734,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         await AssertColumnNamesAsync(
             connection,
             "analytics_intel.vw_trend_momentum_v1",
-            ["article_id", "signal_date", "external_trend_score", "local_sales_acceleration", "trend_entropy"]);
+            ["article_id", "signal_date", "external_trend_score", "external_trend_source", "external_trend_observed_at", "local_sales_acceleration", "trend_entropy"]);
         await AssertColumnNamesAsync(
             connection,
             "analytics_intel.vw_price_intelligence_v1",

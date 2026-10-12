@@ -103,7 +103,11 @@ public sealed class AnalyticsIntelligenceSaleJoinTests
                 "TipPromene" character varying(100) NOT NULL,
                 "Kolicina" integer NULL
             );
-            CREATE TABLE "GlobalTrendScores" ("LocalProductId" integer NOT NULL, "FinalGlobalScore" numeric(18,4) NOT NULL);
+            CREATE TABLE "GlobalTrendScores" (
+                "LocalProductId" integer NOT NULL,
+                "FinalGlobalScore" numeric(18,4) NOT NULL,
+                "UpdatedAt" timestamp without time zone NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
+            );
             CREATE TABLE "TrendHistory" (
                 "LocalProductId" integer NOT NULL,
                 "FinalGlobalScore" numeric(18,4) NOT NULL,

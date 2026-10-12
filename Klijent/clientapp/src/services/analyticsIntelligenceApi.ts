@@ -85,7 +85,9 @@ export interface TrendMomentumItem {
   supplierId: number | null;
   supplierName: string;
   signalDate: string;
-  externalTrendScore: number;
+  externalTrendScore: number | null;
+  externalTrendSource: "trend_history" | "global_trend_scores" | null;
+  externalTrendObservedAt: string | null;
   localSalesAcceleration: number;
   trendEntropy: number | null;
 }

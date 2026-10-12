@@ -170,8 +170,26 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
 
         var expectedTrend = ExpectedTrend(allPopulation, articleId: 101, DateOnly.FromDateTime(utcToday));
         var trend = await ReadTrendSignalAsync(database, articleId: 101);
+        Assert.Null(trend.ExternalTrendScore); // local sales and a future-only external row do not create a score
+        Assert.Null(trend.ExternalTrendSource);
+        Assert.Null(trend.ExternalTrendObservedAt);
         Assert.Equal(expectedTrend.LocalSalesAcceleration, trend.LocalSalesAcceleration, 5);
         Assert.Equal(expectedTrend.TrendEntropy, trend.TrendEntropy);
+
+        var measuredZeroTrend = await ReadTrendSignalAsync(database, articleId: 715);
+        Assert.Equal(0m, measuredZeroTrend.ExternalTrendScore);
+        Assert.Equal("global_trend_scores", measuredZeroTrend.ExternalTrendSource); // stale history falls back to latest score
+        Assert.NotNull(measuredZeroTrend.ExternalTrendObservedAt);
+        var historyTrend = await ReadTrendSignalAsync(database, articleId: 716);
+        Assert.Equal(31m, historyTrend.ExternalTrendScore);
+        Assert.Equal("trend_history", historyTrend.ExternalTrendSource);
+        Assert.NotNull(historyTrend.ExternalTrendObservedAt);
+        var orphanTrend = await ReadTrendSignalAsync(database, articleId: 714);
+        Assert.Equal(12m, orphanTrend.ExternalTrendScore);
+        Assert.Equal("global_trend_scores", orphanTrend.ExternalTrendSource);
+        Assert.NotNull(orphanTrend.ExternalTrendObservedAt);
+        Assert.False(await ExistsAsync(database,
+            "SELECT EXISTS (SELECT 1 FROM analytics_intel.vw_trend_momentum_v1 WHERE article_id = 720)"));
 
         // A signed net denominator is not a probability base: with daily +10, +2 and -9,
         // the current SQL produces a negative normalized Shannon entropy.
@@ -207,6 +225,72 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             new TrendMomentumRequest(708, null, null, null, null, 1, 5, null, null),
             CancellationToken.None);
         Assert.Equal(0m, Assert.Single(apiMeasuredZero.Items).TrendEntropy);
+
+        var apiLocalOnly = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(101, null, null, null, null, 1, 5, null, null),
+            CancellationToken.None);
+        var apiMissingExternal = Assert.Single(apiLocalOnly.Items);
+        Assert.Null(apiMissingExternal.ExternalTrendScore);
+        Assert.Null(apiMissingExternal.ExternalTrendSource);
+        Assert.Null(apiMissingExternal.ExternalTrendObservedAt);
+        Assert.Equal(expectedTrend.LocalSalesAcceleration, apiMissingExternal.LocalSalesAcceleration, 5);
+        using (var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            apiMissingExternal,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))))
+        {
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, json.RootElement.GetProperty("externalTrendScore").ValueKind);
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, json.RootElement.GetProperty("externalTrendSource").ValueKind);
+        }
+
+        var apiKnownZero = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(715, null, null, 0m, null, 1, 5, null, null),
+            CancellationToken.None);
+        var apiZeroItem = Assert.Single(apiKnownZero.Items);
+        Assert.Equal(0m, apiZeroItem.ExternalTrendScore);
+        Assert.Equal("global_trend_scores", apiZeroItem.ExternalTrendSource);
+        using (var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            apiZeroItem,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))))
+        {
+            Assert.Equal(System.Text.Json.JsonValueKind.Number, json.RootElement.GetProperty("externalTrendScore").ValueKind);
+            Assert.Equal(0m, json.RootElement.GetProperty("externalTrendScore").GetDecimal());
+        }
+
+        var apiMissingScoreWithZeroFloor = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(101, null, null, 0m, null, 1, 5, null, null),
+            CancellationToken.None);
+        Assert.Empty(apiMissingScoreWithZeroFloor.Items);
+
+        var apiOrphanTrend = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(714, null, null, null, null, 1, 5, null, null),
+            CancellationToken.None);
+        var apiOrphanItem = Assert.Single(apiOrphanTrend.Items);
+        Assert.Equal("Unknown product", apiOrphanItem.ProductName);
+        Assert.Equal(12m, apiOrphanItem.ExternalTrendScore);
+        Assert.Equal("global_trend_scores", apiOrphanItem.ExternalTrendSource);
+        Assert.NotNull(apiOrphanItem.ExternalTrendObservedAt);
+
+        var apiOrderedTrend = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(null, null, null, null, null, 1, 50, "externalTrendScore", "desc"),
+            CancellationToken.None);
+        var orderedItems = apiOrderedTrend.Items.ToArray();
+        var lastKnownScoreIndex = Array.FindLastIndex(orderedItems, item => item.ExternalTrendScore.HasValue);
+        var firstMissingScoreIndex = Array.FindIndex(orderedItems, item => !item.ExternalTrendScore.HasValue);
+        Assert.True(lastKnownScoreIndex >= 0);
+        Assert.True(firstMissingScoreIndex > lastKnownScoreIndex);
+
+        var apiOrderedTrendPageTwo = await AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
+            database.ConnectionString,
+            new TrendMomentumRequest(null, null, null, null, null, 2, 2, "externalTrendScore", "desc"),
+            CancellationToken.None);
+        Assert.Equal(apiOrderedTrend.TotalCount, apiOrderedTrendPageTwo.TotalCount);
+        Assert.Equal(2, apiOrderedTrendPageTwo.Page);
+        Assert.Equal(715, apiOrderedTrendPageTwo.Items[0].ArticleId); // measured zero stays paged ahead of missing scores
 
         foreach (var viewAndCache in new[]
         {
@@ -342,7 +426,8 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             );
             CREATE TABLE "GlobalTrendScores" (
                 "LocalProductId" integer NOT NULL,
-                "FinalGlobalScore" numeric(18,4) NOT NULL
+                "FinalGlobalScore" numeric(18,4) NOT NULL,
+                "UpdatedAt" timestamp without time zone NOT NULL
             );
             CREATE TABLE "TrendHistory" (
                 "LocalProductId" integer NOT NULL,
@@ -354,7 +439,14 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 (101, clock_timestamp(), 0),
                 (505, clock_timestamp(), 0),
                 (606, clock_timestamp(), NULL);
-            INSERT INTO "GlobalTrendScores" ("LocalProductId", "FinalGlobalScore") VALUES (714, 12);
+            INSERT INTO "GlobalTrendScores" ("LocalProductId", "FinalGlobalScore", "UpdatedAt") VALUES
+                (714, 12, CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+                (715, 0, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'),
+                (720, 99, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + INTERVAL '1 day');
+            INSERT INTO "TrendHistory" ("LocalProductId", "FinalGlobalScore", "Date", "CreatedAt") VALUES
+                (101, 88, ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date + 1)::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP),
+                (715, 25, ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 30)::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP),
+                (716, 31, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP);
             """, connection))
             await schema.ExecuteNonQueryAsync();
 
@@ -451,13 +543,19 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
     {
         await using var connection = await OpenUtcIndependentSessionAsync(database);
         await using var command = new NpgsqlCommand($"""
-            SELECT local_sales_acceleration, trend_entropy
+            SELECT external_trend_score, external_trend_source, external_trend_observed_at,
+                   local_sales_acceleration, trend_entropy
             FROM analytics_intel.vw_trend_momentum_v1
             WHERE article_id = {articleId}
             """, connection);
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync(), $"Missing trend signal for article {articleId}.");
-        return new TrendSignal(reader.GetDecimal(0), ReadNullableDecimal(reader, 1));
+        return new TrendSignal(
+            reader.GetDecimal(3),
+            ReadNullableDecimal(reader, 4),
+            ReadNullableDecimal(reader, 0),
+            ReadNullableString(reader, 1),
+            ReadNullableString(reader, 2));
     }
 
     private async Task<bool> ExistsAsync(IntelligenceTestDatabase database, string sql)
@@ -488,6 +586,9 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
 
     private static decimal? ReadNullableDecimal(NpgsqlDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetDecimal(ordinal);
+
+    private static string? ReadNullableString(NpgsqlDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
     private static int? ReadNullableInt(NpgsqlDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetInt32(ordinal);
@@ -656,5 +757,10 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
         int? LowStockDays,
         decimal? DeadStockRisk);
 
-    private sealed record TrendSignal(decimal LocalSalesAcceleration, decimal? TrendEntropy);
+    private sealed record TrendSignal(
+        decimal LocalSalesAcceleration,
+        decimal? TrendEntropy,
+        decimal? ExternalTrendScore = null,
+        string? ExternalTrendSource = null,
+        string? ExternalTrendObservedAt = null);
 }

@@ -146,7 +146,8 @@ Signals:
 
 Details:
 
-- `external_trend_score` prefers recent `TrendHistory` and falls back to `GlobalTrendScores`
+- `external_trend_score` prefers recent `TrendHistory` and falls back to a `GlobalTrendScores` row updated before the next UTC signal day; it is `NULL` when neither source has an eligible row, while a stored zero remains a measured zero
+- `external_trend_source` and `external_trend_observed_at` identify the selected source and its recorded date/time; `GlobalTrendScores.UpdatedAt` has no time zone in the source schema and is returned as stored
 - `local_sales_acceleration` is the 28-day regression slope of daily sales
 - `trend_entropy` is normalized Shannon entropy over trailing 28-day gross positive sold-unit shares. Signed customer returns remain in the net-sales regression slope but are not probability mass. The value is `NULL` when the window has no positive sold-unit evidence; one active gross-sales day is a measured entropy of zero.
 

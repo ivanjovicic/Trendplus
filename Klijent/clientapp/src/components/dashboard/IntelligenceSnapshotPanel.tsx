@@ -63,6 +63,18 @@ function formatSignedPercent(value: number | null | undefined, decimals = 1) {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(decimals)}%`;
 }
 
+function externalTrendEvidenceLabel(item: TrendMomentumItem) {
+  if (item.externalTrendScore == null || item.externalTrendSource == null) {
+    return "Eksterni skor nije dostupan";
+  }
+
+  const sourceLabel = item.externalTrendSource === "trend_history"
+    ? "Istorija trenda"
+    : "Poslednji proračun trenda";
+  const observedAt = item.externalTrendObservedAt?.replace("T", " ").slice(0, 16);
+  return observedAt ? `${sourceLabel} | ${observedAt}` : sourceLabel;
+}
+
 function formatDemandSignal(item: DemandSignalItem) {
   if (item.demandState === "NEW_DEMAND") return "Novi signal";
   if (item.demandState === "NO_BASELINE") return "Nema baze";
@@ -207,7 +219,7 @@ export default function IntelligenceSnapshotPanel({
   const knownRiskInventory = inventory.filter((item) => isFiniteNumber(item.deadStockRisk));
   const topInventory = knownRiskInventory[0];
   const topPrice = price[0];
-  const topTrend = trend[0];
+  const topTrend = trend.find((item) => item.externalTrendScore != null && item.externalTrendSource != null);
 
   return (
     <div className="space-y-4">
@@ -287,20 +299,22 @@ export default function IntelligenceSnapshotPanel({
           title="Momentum trenda"
           subtitle="Spoj eksternog trend skora i lokalnog ubrzanja prodaje."
           accent={PAL.cyan}
-          summaryLabel="Najjači trend"
-          summaryValue={topTrend ? topTrend.externalTrendScore.toFixed(1) : ANALYTICS_UNAVAILABLE_LABEL}
+          summaryLabel="Najveći eksterni skor"
+          summaryValue={topTrend?.externalTrendScore == null ? ANALYTICS_UNAVAILABLE_LABEL : topTrend.externalTrendScore.toFixed(1)}
           summaryMeta={
             topTrend
-              ? `${topTrend.productName} | lokalno ${formatSignedPercent(topTrend.localSalesAcceleration, 1)}`
-              : "Nema trend signala"
+              ? `${topTrend.productName} | lokalno ${formatSignedPercent(topTrend.localSalesAcceleration, 1)} | ${externalTrendEvidenceLabel(topTrend)}`
+              : trend.length > 0
+                ? "Eksterni skor nije dostupan za prikazane artikle"
+                : "Nema trend signala"
           }
         >
           {trend.slice(0, 4).map((item) => (
             <SignalRow
               key={`${item.articleId}-${item.signalDate}`}
               title={item.productName}
-              subtitle={`${item.category} | entropija ${item.trendEntropy?.toFixed(2) ?? ANALYTICS_UNAVAILABLE_LABEL} | ${item.supplierName}`}
-              badge={item.externalTrendScore.toFixed(1)}
+              subtitle={`${item.category} | entropija ${item.trendEntropy?.toFixed(2) ?? ANALYTICS_UNAVAILABLE_LABEL} | ${item.supplierName} | ${externalTrendEvidenceLabel(item)}`}
+              badge={item.externalTrendScore == null ? ANALYTICS_UNAVAILABLE_LABEL : item.externalTrendScore.toFixed(1)}
               badgeColor={signalTone(item.externalTrendScore, 50, PAL.cyan, PAL.yellow)}
             />
           ))}

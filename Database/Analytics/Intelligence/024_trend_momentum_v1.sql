@@ -3,8 +3,11 @@
 -- Trend momentum intelligence layer.
 --
 -- Signal design notes:
--- - external_trend_score prefers the latest TrendHistory score and falls back
---   to GlobalTrendScores.FinalGlobalScore
+-- - external_trend_score prefers recent TrendHistory and falls back to
+--   GlobalTrendScores.FinalGlobalScore; absent external evidence stays NULL
+-- - external_trend_source and external_trend_observed_at identify the selected
+--   external row without assigning a timezone to the legacy UpdatedAt column
+-- - GlobalTrendScores rows updated after the next UTC as-of day are ineligible
 -- - local_sales_acceleration uses a 28-day regression slope on daily units sold
 -- - trend_entropy measures how evenly gross positive sold units are distributed
 --   across days in the trailing 28-day window using normalized Shannon entropy
@@ -23,6 +26,8 @@ DECLARE
         'article_id',
         'signal_date',
         'external_trend_score',
+        'external_trend_source',
+        'external_trend_observed_at',
         'local_sales_acceleration',
         'trend_entropy'
     ];
@@ -50,6 +55,8 @@ latest_trend_history AS (
     SELECT
         th."LocalProductId" AS article_id,
         th."FinalGlobalScore"::numeric(18,4) AS final_global_score,
+        'trend_history'::text AS external_trend_source,
+        TO_CHAR(th."Date"::date, 'YYYY-MM-DD') AS external_trend_observed_at,
         ROW_NUMBER() OVER (
             PARTITION BY th."LocalProductId"
             ORDER BY th."Date" DESC, th."CreatedAt" DESC
@@ -62,8 +69,12 @@ latest_trend_history AS (
 latest_global_scores AS (
     SELECT
         gts."LocalProductId" AS article_id,
-        gts."FinalGlobalScore"::numeric(18,4) AS final_global_score
+        gts."FinalGlobalScore"::numeric(18,4) AS final_global_score,
+        'global_trend_scores'::text AS external_trend_source,
+        TO_CHAR(gts."UpdatedAt", 'YYYY-MM-DD"T"HH24:MI:SS') AS external_trend_observed_at
     FROM "GlobalTrendScores" gts
+    JOIN settings s
+      ON gts."UpdatedAt" < ((s.as_of_date + 1)::timestamp)
 ),
 daily_sales AS (
     SELECT
@@ -169,10 +180,9 @@ trend_entropy AS (
 SELECT
     op.article_id,
     (SELECT as_of_date FROM settings) AS signal_date,
-    ROUND(
-        COALESCE(lth.final_global_score, lgs.final_global_score, 0),
-        4
-    ) AS external_trend_score,
+    ROUND(COALESCE(lth.final_global_score, lgs.final_global_score), 4) AS external_trend_score,
+    COALESCE(lth.external_trend_source, lgs.external_trend_source) AS external_trend_source,
+    COALESCE(lth.external_trend_observed_at, lgs.external_trend_observed_at) AS external_trend_observed_at,
     ROUND(COALESCE(te.sales_slope_28d, 0), 6) AS local_sales_acceleration,
     ROUND(te.trend_entropy, 6) AS trend_entropy
 FROM observed_products op
@@ -188,7 +198,13 @@ COMMENT ON VIEW analytics_intel.vw_trend_momentum_v1 IS
 'Versioned trend momentum view combining external trend scores with local demand slope and entropy. Sales use UTC calendar dates and the global all-origin SalesFacts population, excluding trimmed case-insensitive DUG/KOREKCIJA receipts; this is not an Access-only history. Local acceleration is a 28-day regression slope over daily sold units; trend_entropy is normalized Shannon entropy over the same window.';
 
 COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.external_trend_score IS
-'Latest external trend signal for the product, preferring TrendHistory when recent history exists and falling back to GlobalTrendScores.';
+'Latest known external trend score, preferring TrendHistory when a recent row exists and falling back to GlobalTrendScores. NULL means no eligible external row; zero is a measured score.';
+
+COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.external_trend_source IS
+'Source table for the selected external trend score; NULL means no eligible external row.';
+
+COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.external_trend_observed_at IS
+'Source date for TrendHistory or the recorded UpdatedAt value for GlobalTrendScores. GlobalTrendScores.UpdatedAt is timezone-naive and is returned as stored.';
 
 COMMENT ON COLUMN analytics_intel.vw_trend_momentum_v1.local_sales_acceleration IS
 'Recent sales slope from REGR_SLOPE over the trailing 28-day daily sales curve. Positive values imply strengthening local demand.';

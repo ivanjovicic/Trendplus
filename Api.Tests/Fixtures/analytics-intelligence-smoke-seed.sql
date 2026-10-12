@@ -44,7 +44,8 @@ CREATE TABLE "InventoryMovementFacts" (
 
 CREATE TABLE "GlobalTrendScores" (
     "LocalProductId" integer NOT NULL,
-    "FinalGlobalScore" numeric(18,4) NOT NULL
+    "FinalGlobalScore" numeric(18,4) NOT NULL,
+    "UpdatedAt" timestamp without time zone NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')
 );
 
 CREATE TABLE "TrendHistory" (
