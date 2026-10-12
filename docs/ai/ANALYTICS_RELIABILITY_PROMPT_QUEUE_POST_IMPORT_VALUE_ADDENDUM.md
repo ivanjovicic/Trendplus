@@ -827,9 +827,11 @@ RQ619, RQ620, RQ622 DONE; no new product-owner SLAs invented.
 - RQ624 is delivered directly to `main` at implementation SHA `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`, correcting the daily UTC as-of gate to apply only to Demand/Inventory/Trend caches and strengthening the historical stale-cache fixture with its missing store dimension and row assertions.
 - Exact-main Analytics Tests & Data Integrity run `38245964827` passed: 2,018 tests, 1,976 passed, 42 individually classified skips; the RQ453 lifecycle smoke passed 1/1. The RQ624 cache-convergence regressions `ChangedSaleJoinSql_RefreshesExistingDemandRiskAndTrendCaches` and `StaleButReadyCache_RejectsCurrentDayAndKeepsCoveredHistoricalDateAvailable` passed. Planning Governance run `38245964910` passed.
 - The earlier exact-main run `38244596954` failed those two RQ624 tests; the cache-family date gate and incomplete `StoresDim` fixture were corrected. Analytics Quality Gates run `38244596872` passed.
-- Main verification: refreshed `origin/main` at implementation SHA `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1` contains the implementation. Local build, focused freshness-date test, frontend typecheck/analytics guardrails, six governance validators and `git diff --check` passed.
-- Run log: `.ai/runs/2026-10-12-RQ624-evidence.md`; Evidence state: pending post-close routing refresh.
-- Follow-up candidate: RQ627 is promoted to primary READY; RQ630/RQ631 remain independent READY; RQ625 is serialized behind RQ627 and RQ626 behind RQ625.
+- Delivery mode: direct-main.
+- Main commit SHA: `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`.
+- Main verification: post-close refreshed `origin/main` at `0b916fee0c6a81b10e492834c9f48801f994326d` contains implementation SHA `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`. Local build, focused freshness-date test, frontend typecheck/analytics guardrails, six governance validators and `git diff --check` passed.
+- Run log: `.ai/runs/2026-10-12-RQ624-evidence.md`; Evidence state: synchronized.
+- Post-close recovery: refreshed base `origin/main` `0b916fee0c6a81b10e492834c9f48801f994326d`; scanned all 13 `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`. RQ624 DONE satisfied RQ627's remaining gate. RQ627 has no active lock, branch/PR or dirty/ahead colliding worktree; no higher-priority runnable program pointer appeared in `MASTER_ROADMAP.md`. RQ627 remains primary READY; RQ630/RQ631 remain independent READY; RQ625 is serialized behind RQ627 and RQ626 behind RQ625.
 - Residual risk: local Docker was unavailable for the first local PostgreSQL fixture attempt; the exact-main backend suite and RQ453 PostgreSQL lifecycle smoke passed. Deployed worker freshness remains owned by STAB16.
 
 ---
