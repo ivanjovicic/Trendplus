@@ -1177,13 +1177,13 @@ RQ629 DONE; independent of RQ622 and STAB16.
 - Status: DONE
 - Completion: catalog guard passed on PR and exact current-main PostgreSQL CI.
 - Changed files: `Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-12-RQ630-evidence.md`.
-- Checks run: Release Api.Tests build passed with 0 warnings/errors; PR #131 backend run `38275016017` passed (1,983 passed, 42 classified skips, 0 failures); exact-main backend run `38275050911` passed on `1a1322f8d73d682df3b531047d3eb597b7fd34eb` with the same counts; agent-instruction, queue and planning validators (including self-tests) and `git diff --check` passed.
+- Checks run: Release Api.Tests build passed with 0 warnings/errors; PR #131 backend run `38275016017` passed (1,983 passed, 42 classified skips, 0 failures); exact-main backend run `38275050911` passed on `1a1322f8d73d682df3b531047d3eb597b7fd34eb` with the same counts; agent-instruction, queue and planning validators (including self-tests) and `git diff --check` passed. Post-close Planning Governance run `38277164328` is in progress on `3cce486d0e663f8da69f5dc8382b4a26d96292b6`.
 - Checks not run: local PostgreSQL execution was unavailable because Docker was stopped; CI executed the PostgreSQL test. No production DB or deployment was accessed.
 - Run log: `.ai/runs/2026-10-12-RQ630-evidence.md`
 - Evidence state: synchronized
 - Delivery mode: pull-request; PRs #129, #130, and #131 merged.
 - Main commit SHA: `1a1322f8d73d682df3b531047d3eb597b7fd34eb`
-- Main verification: refreshed `origin/main` and local `main` both contain `1a1322f8d73d682df3b531047d3eb597b7fd34eb`; exact-main backend run `38275050911` passed.
+- Main verification: refreshed local `main` and `origin/main` both point to `3cce486d0e663f8da69f5dc8382b4a26d96292b6`, which contains implementation SHA `1a1322f8d73d682df3b531047d3eb597b7fd34eb`; exact-main backend run `38275050911` passed.
 - Missed: none within RQ630 acceptance.
 - Follow-up: RQ631 remains READY; its test-host diagnosis is clearer, but a recent unmerged branch overlaps its middleware path and needs owner resolution before same-file work.
 - Residual risk: production/deployed schema was not accessed; RQ631's production telemetry status remains unknown.
