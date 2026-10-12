@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ627 primary (P2 Price Intelligence UTC calendar); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ624 is DONE on main at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; exact-main Analytics Tests & Data Integrity run `38245964827` and Planning Governance run `38245964910` passed. The initial backend run `38244596954` exposed two RQ624 test failures; the follow-up fixed both. RQ625 waits for RQ627 to serialize shared intelligence API/client metadata paths; RQ626 remains behind RQ625. RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ627 primary (P2 Price Intelligence UTC calendar), currently IN_PROGRESS by Codex; RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ624 is DONE on main at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; exact-main Analytics Tests & Data Integrity run `38245964827` and Planning Governance run `38245964910` passed. The initial backend run `38244596954` exposed two RQ624 test failures; the follow-up fixed both. RQ625 waits for RQ627 to serialize shared intelligence API/client metadata paths; RQ626 remains behind RQ625. RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -917,14 +917,20 @@ RQ620 DONE; RQ610 all-writer proof remains a separate blocked production validat
 
 ## RQ627 - Align Price Intelligence product snapshot dates with the certified UTC calendar
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: timestamp-with-time-zone read/oracle and bounded SQL contract correction
 Feature family: price-intelligence-day-timezone
 Parallel-safe: no; shares SQL 023, price cache and API metadata paths with RQ621/RQ622/RQ624
-Owner: unassigned
+Owner: Codex (local main workspace)
 Ready after: RQ621 DONE, RQ622 DONE and RQ624 DONE to serialize overlapping price-cache/API metadata; independent of deployed provider
 Commit suggestion: fix(analytics): normalize price signal day to UTC
+
+### Claim note — 2026-10-12
+
+- Refreshed `origin/main` at `76fdc503d9a41d718548fca86aa254499eb794b5`; RQ627 was still the primary READY prompt and RQ621/RQ622/RQ624 dependencies were DONE.
+- No RQ627 lock, branch or open PR existed. The related RQ619/RQ620/RQ621/RQ623 worktrees were clean and behind current `origin/main` with no unique commits. RQ630 is a parallel-safe migration/test-only lane and RQ631 owns telemetry paths; neither overlaps RQ627 SQL 023, price cache or API metadata ownership.
+- Claim owner/workspace: Codex on local `main`; local lock: `.ai/task-locks/RQ627-codex.lock.md`.
 
 ### Problem
 `price_date` is derived with session-sensitive `pd."Timestamp"::date`, while the demand/inventory/trend families now declare UTC day attribution. One timestamp near UTC midnight can be assigned to different price dates depending on database session TimeZone and refresh connection settings.

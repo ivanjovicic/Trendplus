@@ -55,7 +55,7 @@ WITH latest_suppliers AS (
 latest_products AS (
     SELECT DISTINCT ON (pd."ProductId")
         pd."ProductId" AS article_id,
-        pd."Timestamp"::date AS price_date,
+        (pd."Timestamp" AT TIME ZONE 'UTC')::date AS price_date,
         COALESCE(NULLIF(BTRIM(pd."Category"), ''), 'Uncategorized') AS category,
         COALESCE(
             NULLIF(BTRIM(pd."Brand"), ''),

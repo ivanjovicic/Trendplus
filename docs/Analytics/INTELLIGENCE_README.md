@@ -105,6 +105,11 @@ Default thresholds:
 
 ### Price Intelligence
 
+Price snapshot dates are derived from `ProductsDim.Timestamp` in UTC. The source
+column is `timestamp with time zone` and represents the UTC `Artikli.UpdatedAt`
+snapshot, so a database session's time zone must not change `price_date` or the
+page's `asOfDate` metadata.
+
 Object:
 
 - `analytics_intel.vw_price_intelligence_v1`
