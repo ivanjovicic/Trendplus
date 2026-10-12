@@ -41,9 +41,27 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests
         await _fixture.RunFreshBootstrapAsync(
             connectionString,
             _ => RunBootstrapAsync(connectionString, configuration, logger));
+
+        // Reproduce a database whose EF migration history is intact while the
+        // physical column was removed or lost by an out-of-band restore.
+        await using (var driftConnection = await _fixture.OpenConnectionAsync(database))
+        {
+            await using var dropColumn = new NpgsqlCommand(
+                "ALTER TABLE public.prodaja_stavke DROP COLUMN purchase_cost_provenance;",
+                driftConnection);
+            await dropColumn.ExecuteNonQueryAsync();
+            Assert.False(await ColumnExistsAsync(driftConnection, "prodaja_stavke", "purchase_cost_provenance"));
+            Assert.True(await MigrationExistsAsync(driftConnection, "20261010160000_AddPurchaseCostProvenance"));
+        }
+
         await _fixture.RunOwnedBootstrapRepeatAsync(
             database,
             _ => RunBootstrapAsync(connectionString, configuration, logger));
+
+        await using (var repairedConnection = await _fixture.OpenConnectionAsync(database))
+        {
+            Assert.True(await ColumnExistsAsync(repairedConnection, "prodaja_stavke", "purchase_cost_provenance"));
+        }
 
         // A new service provider models a process restart, rather than reusing
         // the scoped contexts from the first two bootstrap calls.

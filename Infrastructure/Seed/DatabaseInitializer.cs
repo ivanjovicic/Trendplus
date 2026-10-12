@@ -1312,6 +1312,12 @@ public static class DatabaseInitializer
         try
         {
             await context.Database.MigrateAsync();
+            await EnsurePurchaseCostProvenanceColumnAsync(connectionString, logger);
+            if (!await HasPurchaseCostProvenanceColumnAsync(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "Trendplus schema is missing prodaja_stavke.purchase_cost_provenance after migration and bootstrap.");
+            }
             logger.LogInformation("✔ Trendplus DB migrations applied.");
         }
         catch (Exception ex)
@@ -1846,6 +1852,40 @@ public static class DatabaseInitializer
         logger.LogInformation("Ensured Trendplus EF migration history is aligned with bootstrap schema.");
     }
 
+    private static async Task EnsurePurchaseCostProvenanceColumnAsync(
+        string connectionString,
+        ILogger logger)
+    {
+        const string sql = """
+            ALTER TABLE IF EXISTS public.prodaja_stavke
+                ADD COLUMN IF NOT EXISTS purchase_cost_provenance character varying(64);
+            """;
+
+        await ExecuteSqlCommandAsync(connectionString, sql, logger);
+        logger.LogInformation("Ensured additive prodaja_stavke.purchase_cost_provenance schema contract.");
+    }
+
+    private static async Task<bool> HasPurchaseCostProvenanceColumnAsync(string connectionString)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'prodaja_stavke'
+                  AND column_name = 'purchase_cost_provenance'
+            );
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection)
+        {
+            CommandTimeout = AdvisoryLockCommandTimeoutSeconds
+        };
+        return (bool?)await command.ExecuteScalarAsync() ?? false;
+    }
+
     private static async Task EnsureTrendplusCoreSchemaAsync(
         string connectionString,
         ILogger logger)
@@ -1859,6 +1899,10 @@ public static class DatabaseInitializer
         // Legacy compatibility self-heal:
         // some existing databases have these tables without DataOrigin.
         await EnsureImportReferenceDataOriginColumnsAsync(connectionString, logger);
+        // Core schemas skip the large bootstrap script below. Keep this additive
+        // column repair independent of that shortcut so databases whose EF history
+        // got ahead of the physical schema converge before API traffic.
+        await EnsurePurchaseCostProvenanceColumnAsync(connectionString, logger);
 
         if (await IsTrendplusCoreSchemaReadyAsync(connectionString))
         {
