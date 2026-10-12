@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Application.Config;
 using Domain.Model;
@@ -10,11 +11,18 @@ namespace Api.Middleware;
 
 public sealed class RequestPerformanceLoggingMiddleware
 {
+    internal const string PersistenceFailureCounterName = "trendplus.http.performance.persistence.failures";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly Meter Meter = new("Trendplus.Api");
+    private static readonly Counter<long> PersistenceFailureCounter = Meter.CreateCounter<long>(
+        PersistenceFailureCounterName,
+        description: "HTTP request performance records that could not be persisted.");
 
     private readonly RequestDelegate _next;
     private readonly ILogger<RequestPerformanceLoggingMiddleware> _logger;
     private readonly IOptions<PerformanceLoggingOptions> _options;
+    private int _hasLoggedPersistenceFailure;
 
     public RequestPerformanceLoggingMiddleware(
         RequestDelegate next,
@@ -61,7 +69,7 @@ public sealed class RequestPerformanceLoggingMiddleware
             }
             catch (Exception persistEx)
             {
-                _logger.LogWarning(persistEx, "Failed to persist HTTP request performance metric.");
+                RecordPersistenceFailure(persistEx, "Failed to persist HTTP request performance metric.");
             }
         }
     }
@@ -126,12 +134,29 @@ public sealed class RequestPerformanceLoggingMiddleware
         var db = context.RequestServices.GetService<AnalyticsDbContext>();
         if (db is null)
         {
-            _logger.LogWarning("AnalyticsDbContext is unavailable; HTTP request performance metric was not persisted.");
+            RecordPersistenceFailure(
+                exception: null,
+                message: "AnalyticsDbContext is unavailable; HTTP request performance metric was not persisted.");
             return;
         }
 
         db.PerformanceLogs.Add(record);
         await db.SaveChangesAsync(CancellationToken.None);
+        Interlocked.Exchange(ref _hasLoggedPersistenceFailure, 0);
+    }
+
+    private void RecordPersistenceFailure(Exception? exception, string message)
+    {
+        PersistenceFailureCounter.Add(1);
+
+        if (Interlocked.CompareExchange(ref _hasLoggedPersistenceFailure, 1, 0) != 0)
+            return;
+
+        _logger.LogWarning(
+            exception,
+            "{PersistenceFailureMessage} Failures are counted by metric {MetricName}.",
+            message,
+            PersistenceFailureCounterName);
     }
 
     private static bool IsSampled(double sampleRate)
