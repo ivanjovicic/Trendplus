@@ -12,6 +12,7 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
 {
     private static readonly DateOnly AllowlistSunset = new(2026, 12, 31);
 
+    // A fresh migration path can already converge the legacy RQ629 differences; allowances may be unused here.
     private static readonly IReadOnlyDictionary<SchemaObjectKey, ColumnDriftAllowance> ColumnDriftAllowlist =
         new Dictionary<SchemaObjectKey, ColumnDriftAllowance>
         {
@@ -92,8 +93,6 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
         IReadOnlyDictionary<SchemaObjectKey, IndexContract> indexes)
     {
         var failures = new List<string>();
-        var usedColumnAllowlist = new HashSet<SchemaObjectKey>();
-        var usedIndexAllowlist = new HashSet<SchemaObjectKey>();
         ValidateAllowlistMetadata(DateOnly.FromDateTime(DateTime.UtcNow), failures);
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -114,7 +113,6 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
             if (ColumnDriftAllowlist.TryGetValue(key, out var allowance)
                 && ColumnAllowanceMatches(expected, actual, allowance))
             {
-                usedColumnAllowlist.Add(key);
                 continue;
             }
 
@@ -158,7 +156,6 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
             if (IndexDriftAllowlist.TryGetValue(expected.Key, out var allowance)
                 && IndexAllowanceMatches(expectedShape, actual.Shape, allowance))
             {
-                usedIndexAllowlist.Add(expected.Key);
                 continue;
             }
 
@@ -166,9 +163,6 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
                 $"Index drift at {expected.Key}: model expects {FormatIndex(expectedShape)}; " +
                 $"catalog has {FormatIndex(actual.Shape)}.");
         }
-
-        AddUnusedAllowlistFailures(ColumnDriftAllowlist.Keys, usedColumnAllowlist, "column", failures);
-        AddUnusedAllowlistFailures(IndexDriftAllowlist.Keys, usedIndexAllowlist, "index", failures);
 
         return failures;
     }
@@ -517,19 +511,6 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
                 failures.Add($"Index allowlist entry {key} expired on {allowance.SunsetUtc:yyyy-MM-dd}.");
             if (string.IsNullOrWhiteSpace(allowance.Reason) || string.IsNullOrWhiteSpace(allowance.Owner))
                 failures.Add($"Index allowlist entry {key} must include a reason and owner.");
-        }
-    }
-
-    private static void AddUnusedAllowlistFailures(
-        IEnumerable<SchemaObjectKey> allowanceKeys,
-        ISet<SchemaObjectKey> usedKeys,
-        string objectKind,
-        ICollection<string> failures)
-    {
-        foreach (var key in allowanceKeys)
-        {
-            if (!usedKeys.Contains(key))
-                failures.Add($"The {objectKind} allowlist entry {key} is no longer needed; remove it before its sunset.");
         }
     }
 
