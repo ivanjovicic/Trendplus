@@ -285,7 +285,7 @@ public static class DatabaseInitializer
         if (unifiedDb)
         {
             logger.LogInformation("Analytics supplier decision schema repair skipped: analytics and trendplus share the same database.");
-            await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "supplier-decision-repair");
+            await EnsureSupplierDecisionWindowedViewsAtStartupAsync(connectionString, configuration, logger, "supplier-decision-repair");
             return;
         }
 
@@ -309,7 +309,7 @@ public static class DatabaseInitializer
             "analytics",
             "supplier-decision-repair",
             allowHeavyRefresh: false);
-        await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "supplier-decision-repair");
+        await EnsureSupplierDecisionWindowedViewsAtStartupAsync(connectionString, configuration, logger, "supplier-decision-repair");
 
         logger.LogInformation("Analytics supplier decision schema repair completed.");
     }
@@ -830,6 +830,39 @@ public static class DatabaseInitializer
             string.Join(",", windowed90.MissingColumns),
             windowed180.ErrorCode ?? "READY",
             string.Join(",", windowed180.MissingColumns));
+    }
+
+    /// <summary>
+    /// Supplier windowed caches are an optional analytics capability. Building two populated
+    /// materialized views during cold start can saturate a small PostgreSQL instance and
+    /// prevent the rest of the API from passing readiness. Production disables this path
+    /// explicitly and runs it only in a controlled maintenance/worker environment.
+    /// Keep the capability check fail-closed: unavailable views must not be reported ready.
+    /// </summary>
+    internal static bool ShouldBuildSupplierDecisionWindowedViewsAtStartup(IConfiguration configuration) =>
+        configuration.GetValue<bool?>("DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup") ?? true;
+
+    private static async Task EnsureSupplierDecisionWindowedViewsAtStartupAsync(
+        string connectionString,
+        IConfiguration configuration,
+        ILogger logger,
+        string mode)
+    {
+        if (ShouldBuildSupplierDecisionWindowedViewsAtStartup(configuration))
+        {
+            await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, mode);
+            return;
+        }
+
+        logger.LogInformation(
+            "[{Mode}] Automatic build of populated supplier decision 90d/180d materialized views is disabled for this process. " +
+            "The supplier windowed scorecard stays unavailable until an explicit maintenance run repairs it; " +
+            "the rest of the API may complete startup without executing SQL 029.",
+            mode);
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await LogSupplierDecisionHubWindowedCacheStatusAsync(connection, logger, "analytics", mode);
     }
 
     private static async Task EnsureSupplierDecisionWindowedViewsAsync(
@@ -2957,7 +2990,7 @@ public static class DatabaseInitializer
 
         // 029: Windowed materialized views for supplier decision scorecard (90d/180d accuracy fix)
         // Depends on core supplier decision views from 018 built above.
-        await EnsureSupplierDecisionWindowedViewsAsync(connectionString, logger, "analytics");
+        await EnsureSupplierDecisionWindowedViewsAtStartupAsync(connectionString, configuration, logger, "analytics");
 
         var analyticsIntelligenceScripts = new (string SqlFilePath, string[] RequiredRelations)[]
         {
