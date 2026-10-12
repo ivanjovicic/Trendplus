@@ -41,6 +41,13 @@ public static class DatabaseInitializer
             ["analytics_intel.mv_price_intelligence_v1_cache"] = "price_date",
             ["analytics_intel.mv_trend_momentum_v1_cache"] = "signal_date"
         };
+    // Price Intelligence uses product snapshot dates, not the daily rollover contract.
+    private static readonly HashSet<string> AnalyticsIntelligenceDailyAsOfCacheNames =
+    [
+        "analytics_intel.mv_product_demand_signals_v1_cache",
+        "analytics_intel.mv_inventory_risk_signals_v1_cache",
+        "analytics_intel.mv_trend_momentum_v1_cache"
+    ];
 
     public static bool TryGetAnalyticsIntelligenceCacheMetadata(
         string cacheName,
@@ -3011,7 +3018,8 @@ public static class DatabaseInitializer
                 && string.Equals(cacheState.BuildState, "ready", StringComparison.Ordinal)
                 && string.Equals(cacheState.ExpectedScriptHash, expectedHash, StringComparison.Ordinal)
                 && cacheState.LastRefreshedAtUtc.HasValue
-                && cacheState.LastSuccessfulAsOfDateUtc == currentUtcDate)
+                && (!AnalyticsIntelligenceDailyAsOfCacheNames.Contains(cacheName)
+                    || cacheState.LastSuccessfulAsOfDateUtc == currentUtcDate))
             {
                 continue;
             }

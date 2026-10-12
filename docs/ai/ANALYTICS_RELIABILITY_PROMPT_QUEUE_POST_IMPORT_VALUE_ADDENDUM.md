@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ624 primary (P1 intelligence daily as-of rollover), promoted after RQ622 DONE. RQ630 (P2) and RQ631 (P3) remain independent READY prompts. RQ622 is DONE on implementation SHA `116df731117a5f5190b10e654840e3f7c225cbf8`; Analytics Tests & Data Integrity run `38238211919` on main SHA `319d24f6b549ad93b0487a70d70a5a17f681e5a9` passed (1,971 passed, 42 classified skips, 0 failed; RQ453 certification succeeded). The latest Planning Governance run `38242189493` on current-main SHA `6545dedcb8e52cfe0e7a76d9cab353d9c48fecbc` passed. RQ621 is DONE on `d500304bdc767f32de773e07d534a3a50a0b12ae`; RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`. RQ627 now waits for RQ624 because their price-cache/API metadata paths overlap. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ624 primary (P1 intelligence daily as-of rollover), currently IN_PROGRESS by Codex. RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ624 runtime implementation is on main at a3fb3ee47f8ba717cedd2a5cafa632afc9427ad0; its exact-main backend test run exposed two RQ624 failures, now being fixed before close-out. RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ627 remains WAITING behind the RQ624 cache/API metadata owner. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -786,12 +786,12 @@ Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownershi
 
 ## RQ624 - Certify intelligence daily as-of rollover and worker refresh-state truth
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: clock-boundary PostgreSQL MV/worker lifecycle and API freshness proof
 Feature family: intelligence-cache-calendar-rollover
 Parallel-safe: no; startup state methods and endpoint readiness overlap RQ619/RQ622; do not claim together
-Owner: unassigned
+Owner: Codex (local main workspace)
 Ready after: RQ619 DONE, RQ622 DONE and RQ620 DONE for finalized as-of input bounds
 Commit suggestion: fix(analytics): enforce current as-of and refreshed cache generations
 
