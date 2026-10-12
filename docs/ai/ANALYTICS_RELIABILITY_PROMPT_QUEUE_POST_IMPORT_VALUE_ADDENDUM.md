@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ625 primary (IN_PROGRESS, Codex; P2 missing-vs-zero external trend evidence); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; Analytics Tests & Data Integrity run `38248162958` passed on rerun, including the UTC oracle, and Planning Governance run `38248162921` passed. The first backend attempt had two unrelated 503 test-host failures; the same tests passed on the prior backend run `38245964827` and on the rerun. RQ625 was promoted after RQ627 removed its shared API/client metadata gate; RQ626 remains behind RQ625. RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ626 primary (READY; P2 negative reconstructed-inventory evidence); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; PR backend run `38262164454` passed 1,977 tests with 42 previously classified skips and zero failures, including the cache parity oracle. The first exact-main backend run `38260258785` exposed one cache/view mismatch; PR #126 aligned TrendHistory fixtures and filtering to the canonical DATE contract. Current-main backend run `38262945885` is in progress on the merged SHA. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -886,11 +886,31 @@ RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is 
 - No RQ625 lock/branch, open PR, or attached worktree exists; `gh pr list --state open --search RQ625` returned `[]` and Codex artifact listing returned no attachments.
 - Claimed by Codex on `main`. Local lock: `.ai/task-locks/RQ625-codex.lock.md`.
 
+### Completion note
+
+- Date: 2026-10-12
+- Status: DONE
+- Completion: Missing external trend evidence remains NULL through SQL, API and frontend; measured zero remains numeric zero. TrendHistory uses its canonical DATE calendar bounds and stable source-date provenance.
+- Changed files: `Database/Analytics/Intelligence/024_trend_momentum_v1.sql`; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`; `Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs`; `Api.Tests/AnalyticsIntelligenceSaleJoinTests.cs`; `Api.Tests/Fixtures/analytics-intelligence-smoke-seed.sql`; `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`; `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.tsx`; `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.spec.tsx`; `docs/Analytics/INTELLIGENCE_README.md`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-12-RQ625-evidence.md`.
+- Contract/runtime behavior changed: absent external rows now yield nullable score/source/time; explicit zero is preserved; score filtering and ordering keep unknown values distinct; TrendHistory compares DATE values against the UTC as-of DATE.
+- Checks run: Release backend build; focused PostgreSQL oracle on PR run `38262164454` (target parity test passed; full suite 1,977 passed, 42 previously classified skips, 0 failed); frontend analytics tests, guardrails and build on `38262164469`; Analytics Quality Gates on `38260258802`; Planning Governance on `38260258744`; local `npm run typecheck`, `npm run build`, `npm run check:analytics-guardrails`, six governance validators, analytics execution-plan/lineage checks and `git diff --check` passed.
+- Checks not run: local disposable PostgreSQL execution could not initialize because Docker Desktop is unable to start; the identical oracle ran and passed in the PR backend workflow. No production database or deployment was accessed or changed.
+- Run log: `.ai/runs/2026-10-12-RQ625-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request (#126; initial implementation `fd2d0fb0242f5c105ef90d01a0e33c0da053c33e`, correction merged as `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`)
+- Main commit SHA: `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`
+- Main verification: refreshed `origin/main` at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; it contains both implementation commits. PR #126's required backend and frontend checks passed before merge.
+- Missed: none known.
+- Follow-up: RQ626 promoted from WAITING to primary READY; RQ630 and RQ631 remain independent READY prompts.
+- Residual risk: exact-main backend run `38262945885` was in progress when this note was prepared; the same merged content passed the full backend suite on PR run `38262164454`. The 42 global skips are previously classified and no RQ625 test was skipped.
+- Post-close routing: refreshed recovery base `origin/main` `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; scanned all 13 active Analytics Reliability queue files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`. RQ626 is the only prompt with a direct `Ready after: RQ625 DONE` dependency; its other dependencies and SQL 022 nullable-baseline contract are already satisfied, and no RQ626 lock, branch or open PR exists. RQ630/RQ631 remain independent READY; no higher-priority runnable BCI/STAB/SQL task was found.
+- Prompt defect / scope repair: the test fixture used `timestamptz` for `TrendHistory.Date`, while the canonical source schema is `DATE`; corrected the fixtures and UTC date comparison after exact-main cache parity exposed session-time-zone-dependent provenance. The initial implementation push also preceded focused backend proof despite the rule already present on the starting `main`; the deviation and corrective PR validation are recorded in the run log.
+
 ---
 
 ## RQ626 - Audit negative reconstructed inventory and stockout classification instead of silent clamping
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: inventory proxy semantic characterization and SQL/UI safety oracle
 Feature family: reconstructed-stock-negative-evidence
@@ -898,6 +918,12 @@ Parallel-safe: no; shares SQL 022 with RQ620 and the intelligence endpoint/clien
 Owner: unassigned
 Ready after: RQ620 DONE, SQL 022 nullable quantity fix on main, RQ621/RQ622/RQ624 DONE, and RQ625 DONE to serialize shared intelligence endpoint/client DTO paths; no production stock writes
 Commit suggestion: test(inventory): distinguish negative proxy from verified stockouts
+
+### Promotion note — 2026-10-12
+
+- RQ625 is DONE on refreshed `origin/main` `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; all other declared dependencies were already satisfied.
+- The full active RQ queue/addendum and SQL queue scan found no RQ626 lock, branch or open PR. Its shared API/test paths are released by RQ625's main delivery; RQ630 and RQ631 remain independently READY.
+- Promoted WAITING → READY as the primary RQ successor. No claim was started in this RQ625 close-out.
 
 ### Problem
 The back-calculated stock proxy uses `GREATEST(reconstructed_quantity,0)`. An inferred negative balance is turned into a measured zero, then contributes to `stockout_days` and risk labels. Because this is a reconstructed proxy rather than observed stock, masking negatives can hide source inconsistencies and create unjustified observed-stockout impressions.
