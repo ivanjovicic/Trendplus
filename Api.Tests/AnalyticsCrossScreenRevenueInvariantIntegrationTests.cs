@@ -1,4 +1,6 @@
 using System.Net.Http;
+using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -27,8 +29,9 @@ public sealed class AnalyticsCrossScreenRevenueInvariantIntegrationTests
     [OperationsIntegrationFact(DisplayName = "Cross-screen promet: Daily == Supplier == Shoe Type == Color (July RQ407 window)")]
     public async Task JulyWindow_FourScreens_ShareIdenticalCertifiedPromet()
     {
-        await SeedSharedFixtureAsync();
         using var client = _factory.CreateClient();
+        await WaitForActualReadinessAsync(client);
+        await SeedSharedFixtureAsync();
         const string from = "2026-07-01";
         const string to = "2026-07-07";
         const string query = $"fromDate={from}&toDate={to}&dataScope=all";
@@ -63,8 +66,9 @@ public sealed class AnalyticsCrossScreenRevenueInvariantIntegrationTests
     [OperationsIntegrationFact(DisplayName = "Cross-screen promet: store isolation stays equal across four screens")]
     public async Task ImportedStore2_FourScreens_ShareIdenticalCertifiedPromet()
     {
-        await SeedSharedFixtureAsync();
         using var client = _factory.CreateClient();
+        await WaitForActualReadinessAsync(client);
+        await SeedSharedFixtureAsync();
         const string query = "fromDate=2026-09-01&toDate=2026-09-02&dataScope=imported&storeId=2";
 
         var supplier = await GetJsonAsync(client, $"/api/analytics/supplier-sales-stats?{query}");
@@ -91,6 +95,64 @@ public sealed class AnalyticsCrossScreenRevenueInvariantIntegrationTests
         Assert.True(response.IsSuccessStatusCode, $"{path} returned {(int)response.StatusCode}: {body}");
         using var document = JsonDocument.Parse(body);
         return document.RootElement.Clone();
+    }
+
+    private static async Task WaitForActualReadinessAsync(HttpClient client)
+    {
+        // The RQ453 CI database migrations/bootstrap run before this host starts. Warmup still
+        // probes both configured PostgreSQL connections asynchronously; do not bypass the API
+        // traffic gate or send the certified requests until /ready reports the live result.
+        // Production defaults permit 12 attempts, a 5-second delay, and up to
+        // two 5-second DB probes per attempt. 180 seconds bounds that worst-case
+        // window (175s) with a small scheduling margin; observed CI warmup took 12s.
+        var timeout = TimeSpan.FromSeconds(180);
+        var stopwatch = Stopwatch.StartNew();
+        string? lastBody = null;
+        HttpStatusCode? lastStatus = null;
+
+        while (stopwatch.Elapsed < timeout)
+        {
+            using var response = await client.GetAsync("/ready");
+            lastStatus = response.StatusCode;
+            lastBody = await response.Content.ReadAsStringAsync();
+
+            using var document = JsonDocument.Parse(lastBody);
+            var root = document.RootElement;
+            var reason = root.TryGetProperty("reason", out var reasonValue)
+                ? reasonValue.GetString()
+                : null;
+            var initializationState = root.TryGetProperty("databaseInitialization", out var initialization)
+                && initialization.TryGetProperty("state", out var stateValue)
+                    ? stateValue.GetString()
+                    : null;
+
+            if (string.Equals(initializationState, "failed", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(reason, "schema_incompatible", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(reason, "schema_verification_failed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"API startup reached a terminal readiness failure after {stopwatch.Elapsed}. " +
+                    $"HTTP {(int)response.StatusCode}: {lastBody}");
+            }
+
+            var ready = root.TryGetProperty("ready", out var readyValue) && readyValue.GetBoolean();
+            var databasesOk = root.TryGetProperty("db", out var dbValue)
+                && dbValue.TryGetProperty("ok", out var dbOkValue)
+                && dbOkValue.GetBoolean();
+            if (response.IsSuccessStatusCode && ready && databasesOk)
+                return;
+
+            if (response.StatusCode != HttpStatusCode.ServiceUnavailable)
+            {
+                throw new InvalidOperationException(
+                    $"Unexpected /ready response during RQ453 startup. HTTP {(int)response.StatusCode}: {lastBody}");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        throw new TimeoutException(
+            $"API did not become ready within {timeout}. Last /ready response: HTTP {(int?)lastStatus}: {lastBody}");
     }
 
     private static async Task SeedSharedFixtureAsync()
@@ -126,8 +188,8 @@ public sealed class AnalyticsCrossScreenWebApplicationFactory : WebApplicationFa
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // The PostgreSQL fixture validates endpoint contracts after schema setup;
-        // do not make its request order depend on the host's asynchronous warmup.
-        builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
+        // Force the production traffic gate even when local tests run in Development.
+        // CI starts in Testing, where this is already the default.
+        builder.UseSetting("StartupReadiness:GateApiTraffic", "true");
     }
 }

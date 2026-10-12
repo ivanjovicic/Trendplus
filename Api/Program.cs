@@ -1122,10 +1122,12 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             context.Response.ContentType = "application/json";
             context.Response.Headers.RetryAfter = "5";
+            var initialization = readiness.DatabaseInitialization;
             await context.Response.WriteAsJsonAsync(new
             {
-                status = "starting",
+                status = initialization.State == "failed" ? "failed" : "starting",
                 reason = readiness.Reason,
+                failureCategory = initialization.FailureCategory,
                 retryAfterSeconds = 5
             }, context.RequestAborted);
             return;

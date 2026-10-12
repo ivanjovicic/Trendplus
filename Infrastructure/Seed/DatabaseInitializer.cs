@@ -1313,10 +1313,10 @@ public static class DatabaseInitializer
         {
             await context.Database.MigrateAsync();
             await EnsurePurchaseCostProvenanceColumnAsync(connectionString, logger);
-            if (!await HasPurchaseCostProvenanceColumnAsync(connectionString))
+            var provenanceSchemaError = await PurchaseCostProvenanceSchemaContract.ValidateAsync(connectionString);
+            if (provenanceSchemaError is not null)
             {
-                throw new InvalidOperationException(
-                    "Trendplus schema is missing prodaja_stavke.purchase_cost_provenance after migration and bootstrap.");
+                throw new InvalidOperationException(provenanceSchemaError);
             }
             logger.LogInformation("✔ Trendplus DB migrations applied.");
         }
@@ -1856,34 +1856,8 @@ public static class DatabaseInitializer
         string connectionString,
         ILogger logger)
     {
-        const string sql = """
-            ALTER TABLE IF EXISTS public.prodaja_stavke
-                ADD COLUMN IF NOT EXISTS purchase_cost_provenance character varying(64);
-            """;
-
-        await ExecuteSqlCommandAsync(connectionString, sql, logger);
+        await PurchaseCostProvenanceSchemaContract.EnsureColumnAsync(connectionString);
         logger.LogInformation("Ensured additive prodaja_stavke.purchase_cost_provenance schema contract.");
-    }
-
-    private static async Task<bool> HasPurchaseCostProvenanceColumnAsync(string connectionString)
-    {
-        const string sql = """
-            SELECT EXISTS (
-                SELECT 1
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND table_name = 'prodaja_stavke'
-                  AND column_name = 'purchase_cost_provenance'
-            );
-            """;
-
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection)
-        {
-            CommandTimeout = AdvisoryLockCommandTimeoutSeconds
-        };
-        return (bool?)await command.ExecuteScalarAsync() ?? false;
     }
 
     private static async Task EnsureTrendplusCoreSchemaAsync(

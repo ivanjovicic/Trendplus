@@ -1,4 +1,5 @@
 using Api.Config;
+using Infrastructure.Database;
 using Npgsql;
 
 namespace Api.Services.Startup;
@@ -30,6 +31,39 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
         {
             if (await ProbeConfiguredDatabasesAsync(stoppingToken))
             {
+                // When database initialization is not required, startup is connectivity-only.
+                // Keep it read-only, but do not admit analytics traffic against an incompatible schema.
+                try
+                {
+                    if (!_readiness.DatabaseInitialization.Required)
+                    {
+                        var defaultConnection = _configuration.GetConnectionString("DefaultConnection");
+                        var schemaError = await PurchaseCostProvenanceSchemaContract.ValidateAsync(
+                            defaultConnection!,
+                            stoppingToken);
+                        if (schemaError is not null)
+                        {
+                            MarkSchemaVerificationFailure("schema_contract_incompatible");
+                            _logger.LogCritical(
+                                "Startup readiness rejected API traffic because the Trendplus database does not satisfy a required analytics schema contract. Contract={Contract}",
+                                schemaError);
+                            return;
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    MarkSchemaVerificationFailure("schema_verification_failed");
+                    _logger.LogCritical(
+                        ex,
+                        "Startup readiness could not verify a required analytics schema contract; API traffic remains gated.");
+                    return;
+                }
+
                 _readiness.MarkReady();
                 _logger.LogInformation("Startup readiness warmup succeeded on attempt {Attempt}/{MaxAttempts}.", attempt, maxAttempts);
                 return;
@@ -49,6 +83,16 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
         }
 
         _readiness.MarkNotReady("db_warmup_exhausted");
+    }
+
+    private void MarkSchemaVerificationFailure(string category)
+    {
+        _readiness.BeginDatabaseInitializationAttempt();
+        _readiness.RecordDatabaseInitializationFailure(category, "purchase_cost_provenance");
+        _readiness.MarkDatabaseInitializationFailed();
+        _readiness.MarkNotReady(category == "schema_contract_incompatible"
+            ? "schema_incompatible"
+            : "schema_verification_failed");
     }
 
     private async Task<bool> ProbeConfiguredDatabasesAsync(CancellationToken stoppingToken)

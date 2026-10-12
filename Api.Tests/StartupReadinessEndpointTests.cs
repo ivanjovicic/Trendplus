@@ -68,6 +68,7 @@ public sealed class StartupReadinessEndpointTests
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal("failed", document.RootElement.GetProperty("status").GetString());
         Assert.False(document.RootElement.GetProperty("ready").GetBoolean());
         Assert.Equal("failed", document.RootElement.GetProperty("databaseInitialization").GetProperty("state").GetString());
         Assert.Equal("schema_verification_failed", document.RootElement.GetProperty("databaseInitialization").GetProperty("failureCategory").GetString());
