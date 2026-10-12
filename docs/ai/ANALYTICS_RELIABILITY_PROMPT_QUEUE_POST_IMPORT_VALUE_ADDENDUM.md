@@ -960,5 +960,5 @@ An existing schema with an already-applied migration but a missing physical prov
 ### Delivery note
 
 - Implementation and regression test are recorded in `.ai/runs/2026-10-12-RQ628-evidence.md`.
-- PR #123 passed all required CI workflows on implementation head `3cda1f7d0f9b803c11306125b66c1e1069df717c`; final documentation-sync CI is required before squash merge.
+- PR #123 was squash-merged after all required CI passed on head `ba256ba8f849bfe50eded4dddd679d5c3556afa8`; `main` is verified at `3a78e062946cb8263b58c156b796259acb54f483`.
 - Exact production drift was not independently inspected. Render `autoDeployTrigger` remains off; no production database was changed.
