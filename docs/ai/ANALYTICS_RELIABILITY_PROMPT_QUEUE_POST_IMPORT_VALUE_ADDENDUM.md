@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ620 (P1 future-dated intelligence as-of bounds), promoted after RQ619 and RQ623 were verified DONE on `main` and RQ616's null-quantity regression was already delivered. RQ621 is an additional collision-safe READY (P1 Price Intelligence missing-cost margin). BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
+Current READY prompt: RQ621 primary (P1 Price Intelligence missing-cost margin). RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; its exact-main Analytics Tests & Data Integrity run `38220977010` passed after retrying the transient RQ453 database-warmup failure. RQ625 and RQ626 remain WAITING because their API DTO/client paths serialize behind RQ621/RQ622/RQ624 and each other. BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -573,14 +573,14 @@ RQ615 stays DONE; this is a newly identified, narrower concurrency regression ou
 
 ## RQ620 - Exclude future-dated source events from as-of intelligence signal populations
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: disposable PostgreSQL retail-population/date-window oracle and targeted SQL correction
 Feature family: intelligence-asof-upper-bound
 Parallel-safe: no; overlaps 021/022/024 SQL fixture and populated-MV evidence, so serialize after RQ619 and the RQ616 null-baseline audit fix have landed
 Owner: Codex (`codex/rq620-asof-bounds`)
-Local lock: `.ai/task-locks/RQ620-codex.lock.md`
-Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main; all verified on refreshed `origin/main` `8ea2ba6acb03d59f09136d197056f8d5496d60e5`
+Local lock: removed before implementation commit; claim closed after exact-main validation
+Ready after: RQ619 DONE, RQ623 DONE (shared SQL 024), and RQ616 null-quantity SQL regression on main; verified before claim on refreshed `origin/main` `d56d1cd54bdfd5076f3b25f430e44c655150baee`
 Commit suggestion: fix(analytics): bound as-of signal populations on both dates
 
 ### Verified code gap / hypothesis to prove
@@ -601,7 +601,26 @@ No future-only article/store creates a misleading historical signal; future even
 - Post-close recovery refreshed `origin/main` at `d56d1cd54bdfd5076f3b25f430e44c655150baee`; RQ619 DONE, RQ623 DONE, and RQ616's null-quantity SQL regression is present.
 - Promoted to primary READY, then claimed after fresh inspection of all registered owner queues, active worktree branches, matching local locks and open PRs. No competing SQL 021/022/024/cache fixture owner was found.
 - Isolated worktree: `C:\Users\Ivan\.codex\worktrees\rq620-asof-bounds\Trendplus2`; branch `codex/rq620-asof-bounds`.
-- Local ignored lock `.ai/task-locks/RQ620-codex.lock.md` created; it will be removed before implementation commit.
+- Local ignored lock `.ai/task-locks/RQ620-codex.lock.md` was created for the claim and removed before the implementation commit; no lock remains after close-out.
+
+### Completion note
+
+- Date: 2026-10-12
+- Status: DONE
+- Completion: Added end-exclusive UTC as-of bounds to SQL 021/022/024 input populations after disposable PostgreSQL reproduced future-only signals and future trend-history selection. Same-day sales, signed returns and established UTC calendar behavior remain intact; populated changed-hash cache parity and fail-closed refresh were verified.
+- Changed files: `Database/Analytics/Intelligence/021_product_demand_signals_v1.sql`; `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql`; `Database/Analytics/Intelligence/024_trend_momentum_v1.sql`; `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-12-RQ620-evidence.md`; `.ai/runs/2026-10-12-RQ623-evidence.md`.
+- Contract/runtime behavior changed: future-dated source sales, non-sale inventory movements and trend history no longer create or alter past as-of intelligence signals.
+- Checks run: disposable PostgreSQL reproduction and regression; focused RQ620 test 1/1 passed, 0 skipped; RQ616/RQ618/RQ619 group 11/11 passed, 0 skipped; Release build 0 warnings/errors; governance checks passed; exact-main Analytics Tests & Data Integrity run `38220977010` passed after retry, backend 1,964 passed/42 classified skips and RQ453 required suites passed with zero skips.
+- Checks not run: local full backend suite did not produce a final summary after six minutes without progress and was interrupted; exact-main full backend suite passed. No browser/deployed/live-database validation was part of acceptance.
+- Run log: `.ai/runs/2026-10-12-RQ620-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`
+- Main verification: refreshed `origin/main` at `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; it contains the implementation SHA. Exact-main workflow `38220977010` passed after rerunning failed jobs; first RQ453 attempt returned 503 `starting/db_warmup`, retry passed all required cases.
+- Missed: none within RQ620 acceptance.
+- Follow-up: RQ621 is the primary READY successor. RQ622 remains WAITING on RQ621. RQ624 remains WAITING on RQ622. RQ625 is serialized after RQ621/RQ622/RQ624 because its DTO/client files overlap; RQ626 is serialized after RQ625 and the same cache/readiness owners. Other independent or externally gated prompts retain their existing owners/statuses.
+- Residual risk: local full-suite execution was incomplete; exact-main backend suite and mandatory RQ453 certification passed. Production/deployed freshness remains owned by STAB16; no production data or service was touched.
+- Post-close routing: refreshed recovery base `origin/main` `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; scanned 13 active Analytics Reliability queue/addendum files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`, including all non-terminal RQ prompts. RQ621 remains the only current READY in this addendum. RQ625/RQ626 dependencies are clarified to serialize shared `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs` and `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts` paths behind RQ621/RQ622/RQ624 and each other. No unrelated non-terminal task's dependency changed.
 
 ---
 
@@ -788,9 +807,9 @@ Status: WAITING
 Priority: P2
 Type: SQL/API/React missing-evidence propagation and signal trust
 Feature family: trend-momentum-external-signal-provenance
-Parallel-safe: no; shares SQL 024 and TrendMomentum DTO with RQ623/RQ620
+Parallel-safe: no; shares SQL 024 with RQ623/RQ620 and the intelligence endpoint/client DTO files with RQ621/RQ622/RQ624
 Owner: unassigned
-Ready after: RQ623 DONE and RQ620 DONE; no external provider credentials required for null-versus-zero fixture
+Ready after: RQ623 DONE, RQ620 DONE and RQ621/RQ622/RQ624 DONE to serialize shared intelligence endpoint/client DTO paths; no external provider credentials required for null-versus-zero fixture
 Commit suggestion: fix(analytics): preserve unavailable external trend scores
 
 ### Problem
@@ -827,9 +846,9 @@ Status: WAITING
 Priority: P2
 Type: inventory proxy semantic characterization and SQL/UI safety oracle
 Feature family: reconstructed-stock-negative-evidence
-Parallel-safe: no; shares SQL 022 with RQ620 and its fixture
+Parallel-safe: no; shares SQL 022 with RQ620 and the intelligence endpoint/client DTO files with RQ621/RQ622/RQ624/RQ625
 Owner: unassigned
-Ready after: RQ620 DONE and SQL 022 nullable quantity fix on main; no production stock writes
+Ready after: RQ620 DONE, SQL 022 nullable quantity fix on main, RQ621/RQ622/RQ624 DONE, and RQ625 DONE to serialize shared intelligence endpoint/client DTO paths; no production stock writes
 Commit suggestion: test(inventory): distinguish negative proxy from verified stockouts
 
 ### Problem
