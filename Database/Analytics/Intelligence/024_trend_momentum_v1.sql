@@ -63,8 +63,9 @@ latest_trend_history AS (
         ) AS rn
     FROM "TrendHistory" th
     JOIN settings s
+      -- TrendHistory.Date is a calendar DATE; date-to-date bounds stay session-time-zone independent.
       ON th."Date" >= s.as_of_date - s.trend_window_days
-     AND th."Date" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')
+     AND th."Date" <= s.as_of_date
 ),
 latest_global_scores AS (
     SELECT

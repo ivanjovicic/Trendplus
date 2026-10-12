@@ -432,8 +432,8 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
             CREATE TABLE "TrendHistory" (
                 "LocalProductId" integer NOT NULL,
                 "FinalGlobalScore" numeric(18,4) NOT NULL,
-                "Date" timestamp with time zone NOT NULL,
-                "CreatedAt" timestamp with time zone NOT NULL
+                "Date" date NOT NULL,
+                "CreatedAt" timestamp without time zone NOT NULL
             );
             INSERT INTO "ProductsDim" ("ProductId", "Timestamp", "Kolicina") VALUES
                 (101, clock_timestamp(), 0),
@@ -444,9 +444,9 @@ public sealed class AnalyticsIntelligenceRetailPopulationTests
                 (715, 0, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '1 day'),
                 (720, 99, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + INTERVAL '1 day');
             INSERT INTO "TrendHistory" ("LocalProductId", "FinalGlobalScore", "Date", "CreatedAt") VALUES
-                (101, 88, ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date + 1)::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP),
-                (715, 25, ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 30)::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP),
-                (716, 31, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date::timestamp AT TIME ZONE 'UTC', CURRENT_TIMESTAMP);
+                (101, 88, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date + 1, CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+                (715, 25, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 30, CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+                (716, 31, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
             """, connection))
             await schema.ExecuteNonQueryAsync();
 
