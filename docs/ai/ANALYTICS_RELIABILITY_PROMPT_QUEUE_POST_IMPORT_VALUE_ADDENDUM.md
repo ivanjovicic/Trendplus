@@ -2,7 +2,7 @@
 
 Date: 2026-10-11
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ621 primary (P1 Price Intelligence missing-cost margin). RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; its exact-main Analytics Tests & Data Integrity run `38220977010` passed after retrying the transient RQ453 database-warmup failure. RQ625 and RQ626 remain WAITING because their API DTO/client paths serialize behind RQ621/RQ622/RQ624 and each other. BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
+Current READY prompt: RQ622 primary (P1 Price Intelligence cache readiness and fail-closed parity). RQ621 is DONE on `d500304bdc767f32de773e07d534a3a50a0b12ae`; exact-main Analytics Tests & Data Integrity run `38226160681` passed, including the PostgreSQL regression and RQ453 certification. RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; RQ625 and RQ626 remain WAITING because their API DTO/client paths serialize behind RQ621/RQ622/RQ624 and each other. BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -626,12 +626,12 @@ No future-only article/store creates a misleading historical signal; future even
 
 ## RQ621 - Preserve missing purchase cost instead of reporting a 100% Price Intelligence margin
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: SQL/API/frontend nullability correctness with disposable PostgreSQL oracle
 Feature family: price-intelligence-missing-cost
 Parallel-safe: yes; owns SQL 023 cost/margin calculation, price DTO/types and dedicated tests, not RQ619 initializer or RQ623 SQL 024; coordinate with RQ622 before editing price endpoint
-Owner: Codex (worktree `rq621-price-cost`, branch `codex/rq621-missing-cost`)
+Owner: Codex (worktree `rq621-price-cost`, branch `codex/rq621-missing-cost`); closed on `d500304bdc767f32de773e07d534a3a50a0b12ae`
 Ready after: RQ188 DONE and RQ616 DONE; no owner or external samples required for fail-closed missing-cost proof
 Commit suggestion: fix(analytics): preserve unknown cost and margin in price signals
 
@@ -662,11 +662,14 @@ Missing cost never yields measured 0 or 100%-margin; known cost retains correct 
 ### Dependencies
 Independent of RQ619 and BCI17; serialize any shared price endpoint/DTO path with RQ622. RQ601 external owner proof remains separate.
 
+Run log: `.ai/runs/2026-10-12-RQ621-evidence.md`
+Evidence state: synchronized
+
 ---
 
 ## RQ622 - Certify Price Intelligence cache rebuild, readiness and fail-closed API parity
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: startup/MV lifecycle/API trust-contract regression
 Feature family: price-intelligence-cache-truth
