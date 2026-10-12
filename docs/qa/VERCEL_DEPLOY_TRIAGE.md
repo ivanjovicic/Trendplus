@@ -75,8 +75,7 @@ Nije:
 - repo root `package.json` postoji, ali nema `build` skriptu
 - frontend `package.json` sa validnim `build` i `check:analytics-guardrails` skriptama je u:
   - `Klijent/clientapp/package.json`
-- Vercel routing config je u:
-  - `Klijent/clientapp/vercel.json`
+- Vercel routing config (2026-10-12 RQ633): **kanonski** je repo root `vercel.json` (install/build/output + `ignoreCommand`). `Klijent/clientapp/vercel.json` duplira samo headers/rewrites za legacy slučaj kada je Vercel Root Directory `Klijent/clientapp`.
 
 ### Relevantna Vercel dokumentacija
 

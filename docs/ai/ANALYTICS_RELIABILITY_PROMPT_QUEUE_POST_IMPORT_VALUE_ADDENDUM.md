@@ -1245,17 +1245,16 @@ Owner (Ivan) chose option (a) on 2026-10-12 15:13: code changes may go directly 
 
 ## RQ633 - Diagnose failed Vercel production deploys and stop deploying docs-only commits
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend deploy/config
 Feature family: vercel-deploy-hygiene
 Parallel-safe: yes (`vercel.json`, `Klijent/clientapp/vercel.json`)
-Owner: unassigned
-Ready after: someone with Vercel access runs `npx vercel inspect dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT --logs` and `npx vercel inspect dpl_GWMNgzfNTGe5338RVEPQJH39C7m6 --logs`
+Owner: Cursor (cloud agent)
 Commit suggestion: `chore(deploy): skip Vercel builds for non-frontend commits`
 
 ### Problem
-Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` (11:12). Both are commits with no frontend change; later deploys succeeded. The root `vercel.json` has no `ignoreCommand`, so every docs/backend commit triggers a production build. `Klijent/clientapp/vercel.json` duplicates the headers/rewrites, so it is unclear which config is authoritative.
+Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` (11:12). Both are commits with no frontend change; later deploys succeeded. The root `vercel.json` had no `ignoreCommand`, so every docs/backend commit triggered a production build. `Klijent/clientapp/vercel.json` duplicates the headers/rewrites, so it was unclear which config is authoritative.
 
 ### Do
 1. Classify both failures from the Vercel logs: transient, concurrency/cancel, or a real build break.
@@ -1263,3 +1262,21 @@ Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` 
 
 ### Acceptance
 Docs-only commits do not create production deployments. Both historic failures are classified with evidence.
+
+### Completion note
+
+- Date: 2026-10-12
+- Agent: Cursor cloud agent
+- Status: DONE
+- Completion: 100%
+- Changed files: `vercel.json`, `scripts/vercel-should-build.sh`, `scripts/vercel-should-build-selftest.sh`, `docs/qa/VERCEL_DEPLOY_FAILURE_CLASSIFICATION_2026-10-12.md`, `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` (stale BCI17 header repair), `.github/workflows/analytics-quality-gates.yml`
+- Checks run: `bash scripts/vercel-should-build-selftest.sh` — pass; `git diff --check` — pass; `node scripts/check-prompt-queues.mjs` — pass
+- Checks not run: `npx vercel inspect … --logs` — no Vercel credentials; live Vercel skip-build proof — requires post-merge production push
+- Run log: `.ai/runs/2026-10-12-RQ633-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: pending until push
+- Main verification: pending until push
+- Missed: line-level Vercel deployment log capture
+- Follow-up: owner optional `vercel inspect` on `dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT` and `dpl_GWMNgzfNTGe5338RVEPQJH39C7m6`
+- Residual risk: duplicate `Klijent/clientapp/vercel.json` kept for legacy subdirectory-root Vercel projects only
+- Evidence state: synchronized

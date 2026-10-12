@@ -12,6 +12,9 @@ on:
       - 'Klijent/Klijent.esproj'
       - 'Trendplus.POS.Ui/Trendplus.POS.Ui.esproj'
       - 'scripts/check-javascript-sdk-pins.mjs'
+      - 'scripts/vercel-should-build.sh'
+      - 'scripts/vercel-should-build-selftest.sh'
+      - 'vercel.json'
       - 'Trendplus2.Backend.slnf'
 
 permissions:
@@ -36,6 +39,9 @@ jobs:
 
       - name: Verify .esproj JavaScript SDK pins exist on nuget.org
         run: node scripts/check-javascript-sdk-pins.mjs
+
+      - name: Self-test Vercel ignoreCommand helper
+        run: bash scripts/vercel-should-build-selftest.sh
 
   frontend:
     name: Frontend analytics tests, guardrails and build
