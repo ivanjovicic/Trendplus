@@ -39,12 +39,15 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         var prior = DateOnly.FromDateTime(yesterday);
         var older = DateOnly.FromDateTime(twoDaysAgo);
 
-        // Independent signed arithmetic for the inferred-negative article:
-        // current=0, yesterday receipt +10, two-days-ago transfer-out 2 and sale 3.
-        // Walking backward from as-of:
+        // Reconstruction uses only FUTURE days relative to the signal date
+        // (ROWS ... 1 PRECEDING over signal_date DESC). Same-day events do not
+        // change that day's proxy; they change earlier days.
+        //
+        // Inferred-negative article: current=0, as-of receipt +10, yesterday sale 3
+        // and transfer-out 2:
         //   as-of = 0
         //   yesterday = 0 - 10 = -10
-        //   two-days-ago = -10 + 2 + 3 = -5
+        //   two-days-ago = 0 + 3 + 2 - 10 = -5
         Assert.Equal(0m, IndependentSignedStock(
             current: 0m,
             futureSales: 0m,
@@ -104,10 +107,11 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         Assert.Null(missing.DeadStockRisk);
         Assert.Equal("missing_baseline", AnalyticsIntelligenceEndpoints.ClassifyStockProxyEvidence(missing.StockQty));
 
-        // Restock / transfer / return matrix on a positive baseline:
-        // current=20; yesterday: sale 4, Ulaz 8, Prenos ulaz 3, Prenos izlaz 2, Povrat 1
-        // as-of = 20
-        // yesterday = 20 + 4 + 2 - 8 - 3 - 1 = 14
+        // Restock / transfer / return matrix on a positive baseline.
+        // Events are on as-of so the prior day receives the signed adjustment:
+        // current=20; as-of: sale 4, Ulaz 8, Prenos ulaz 3, Prenos izlaz 2, Povrat 1
+        //   as-of = 20
+        //   yesterday = 20 + 4 + 2 - 8 - 3 - 1 = 14
         var restockAsOf = await ReadInventoryAsync(database, RestockTransferReturnArticleId, asOf);
         var restockYesterday = await ReadInventoryAsync(database, RestockTransferReturnArticleId, prior);
         Assert.Equal(20m, restockAsOf.StockQty);
@@ -134,7 +138,7 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
             CancellationToken.None);
         Assert.Contains(apiNegative.Items, item => item.StockQty == -10m && item.StockProxyEvidence == "negative_proxy");
         Assert.Contains(apiNegative.Items, item => item.StockQty == 0m && item.StockProxyEvidence == "zero");
-        Assert.DoesNotContain(apiNegative.Items, item => item.StockQty < 0 && item.StockoutDays > 1);
+        Assert.DoesNotContain(apiNegative.Items, item => item.StockQty < 0 && (item.StockoutDays ?? 0) > 0);
 
         var apiOnlyAtRisk = await AnalyticsIntelligenceEndpoints.QueryInventoryRiskSignalsAsync(
             database.ConnectionString,
@@ -241,8 +245,8 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
             INSERT INTO "SuppliersDim" ("SupplierId", "Naziv") VALUES (1, 'Dobavljac');
 
             INSERT INTO "SalesFacts" ("Id", "SaleId", "BrojRacuna", "SaleTimestampUtc", "StoreId", "DataOrigin") VALUES
-                (626101, 626101, 'RQ626-INF-SALE', @twoDaysAgo, 1, 'existing'),
-                (626102, 626102, 'RQ626-RST-SALE', @yesterday, 1, 'existing'),
+                (626101, 626101, 'RQ626-INF-SALE', @yesterday, 1, 'existing'),
+                (626102, 626102, 'RQ626-RST-SALE', @asOfDay, 1, 'existing'),
                 (626103, 626103, 'RQ626-MISS-SALE', @yesterday, 1, 'existing');
 
             INSERT INTO "SalesLineFacts" ("SaleId", "ProductId", "Qty") VALUES
@@ -251,12 +255,12 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
                 (626103, @missingBaseline, 1);
 
             INSERT INTO "InventoryMovementFacts" ("ArtikalId", "Datum", "TipPromene", "Kolicina") VALUES
-                (@inferredNegative, @yesterday, 'Ulaz robe', 10),
-                (@inferredNegative, @twoDaysAgo, 'Prenos izlaz', 2),
-                (@restock, @yesterday, 'Ulaz robe', 8),
-                (@restock, @yesterday, 'Prenos ulaz', 3),
-                (@restock, @yesterday, 'Prenos izlaz', 2),
-                (@restock, @yesterday, 'Povrat kupca', 1),
+                (@inferredNegative, @asOfDay, 'Ulaz robe', 10),
+                (@inferredNegative, @yesterday, 'Prenos izlaz', 2),
+                (@restock, @asOfDay, 'Ulaz robe', 8),
+                (@restock, @asOfDay, 'Prenos ulaz', 3),
+                (@restock, @asOfDay, 'Prenos izlaz', 2),
+                (@restock, @asOfDay, 'Povrat kupca', 1),
                 (@missingBaseline, @yesterday, 'Ulaz robe', 4);
             """, connection);
         schema.Parameters.AddWithValue("observedZero", ObservedZeroArticleId);
@@ -265,6 +269,7 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         schema.Parameters.AddWithValue("missingBaseline", MissingBaselineArticleId);
         schema.Parameters.AddWithValue("restock", RestockTransferReturnArticleId);
         schema.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, DateTime.UtcNow);
+        schema.Parameters.AddWithValue("asOfDay", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(utcToday.AddHours(12), DateTimeKind.Utc));
         schema.Parameters.AddWithValue("yesterday", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(yesterday.AddHours(12), DateTimeKind.Utc));
         schema.Parameters.AddWithValue("twoDaysAgo", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(twoDaysAgo.AddHours(12), DateTimeKind.Utc));
         await schema.ExecuteNonQueryAsync();
