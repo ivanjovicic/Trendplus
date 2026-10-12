@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ624 primary (P1 intelligence daily as-of rollover), currently IN_PROGRESS by Codex. RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ624 runtime implementation is on main at a3fb3ee47f8ba717cedd2a5cafa632afc9427ad0; its exact-main backend test run exposed two RQ624 failures, now being fixed before close-out. RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ627 remains WAITING behind the RQ624 cache/API metadata owner. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ627 primary (P2 Price Intelligence UTC calendar); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ624 is DONE on main at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; exact-main Analytics Tests & Data Integrity run `38245964827` and Planning Governance run `38245964910` passed. The initial backend run `38244596954` exposed two RQ624 test failures; the follow-up fixed both. RQ625 waits for RQ627 to serialize shared intelligence API/client metadata paths; RQ626 remains behind RQ625. RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -786,7 +786,7 @@ Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownershi
 
 ## RQ624 - Certify intelligence daily as-of rollover and worker refresh-state truth
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: clock-boundary PostgreSQL MV/worker lifecycle and API freshness proof
 Feature family: intelligence-cache-calendar-rollover
@@ -822,6 +822,16 @@ Yesterday's MV cannot silently masquerade as today's fresh signal; successful ni
 ### Dependencies
 RQ619, RQ620, RQ622 DONE; no new product-owner SLAs invented.
 
+### Completion note — 2026-10-12
+
+- RQ624 is delivered directly to `main` at implementation SHA `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`, correcting the daily UTC as-of gate to apply only to Demand/Inventory/Trend caches and strengthening the historical stale-cache fixture with its missing store dimension and row assertions.
+- Exact-main Analytics Tests & Data Integrity run `38245964827` passed: 2,018 tests, 1,976 passed, 42 individually classified skips; the RQ453 lifecycle smoke passed 1/1. The RQ624 cache-convergence regressions `ChangedSaleJoinSql_RefreshesExistingDemandRiskAndTrendCaches` and `StaleButReadyCache_RejectsCurrentDayAndKeepsCoveredHistoricalDateAvailable` passed. Planning Governance run `38245964910` passed.
+- The earlier exact-main run `38244596954` failed those two RQ624 tests; the cache-family date gate and incomplete `StoresDim` fixture were corrected. Analytics Quality Gates run `38244596872` passed.
+- Main verification: refreshed `origin/main` at implementation SHA `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1` contains the implementation. Local build, focused freshness-date test, frontend typecheck/analytics guardrails, six governance validators and `git diff --check` passed.
+- Run log: `.ai/runs/2026-10-12-RQ624-evidence.md`; Evidence state: pending post-close routing refresh.
+- Follow-up candidate: RQ627 is promoted to primary READY; RQ630/RQ631 remain independent READY; RQ625 is serialized behind RQ627 and RQ626 behind RQ625.
+- Residual risk: local Docker was unavailable for the first local PostgreSQL fixture attempt; the exact-main backend suite and RQ453 PostgreSQL lifecycle smoke passed. Deployed worker freshness remains owned by STAB16.
+
 ---
 
 ## RQ625 - Separate missing external trend evidence from a measured zero trend score
@@ -832,7 +842,7 @@ Type: SQL/API/React missing-evidence propagation and signal trust
 Feature family: trend-momentum-external-signal-provenance
 Parallel-safe: no; shares SQL 024 with RQ623/RQ620 and the intelligence endpoint/client DTO files with RQ621/RQ622/RQ624
 Owner: unassigned
-Ready after: RQ623 DONE, RQ620 DONE and RQ621/RQ622/RQ624 DONE to serialize shared intelligence endpoint/client DTO paths; no external provider credentials required for null-versus-zero fixture
+Ready after: RQ623 DONE, RQ620 DONE, RQ621/RQ622/RQ624 DONE and RQ627 DONE to serialize shared intelligence endpoint/client DTO paths; no external provider credentials required for null-versus-zero fixture
 Commit suggestion: fix(analytics): preserve unavailable external trend scores
 
 ### Problem
@@ -859,7 +869,7 @@ Disposable PG oracle, API/TypeScript schema/null-and-zero tests, frontend insigh
 No external evidence != measured external zero throughout SQL/API/frontend; no fabricated trend recommendation on absent source.
 
 ### Dependencies
-RQ623/RQ620 DONE, separate from STAB16/provider data collection.
+RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is included because both prompts edit shared intelligence endpoint/client metadata paths.
 
 ---
 
@@ -905,7 +915,7 @@ RQ620 DONE; RQ610 all-writer proof remains a separate blocked production validat
 
 ## RQ627 - Align Price Intelligence product snapshot dates with the certified UTC calendar
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: timestamp-with-time-zone read/oracle and bounded SQL contract correction
 Feature family: price-intelligence-day-timezone
