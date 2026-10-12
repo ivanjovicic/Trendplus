@@ -359,12 +359,14 @@ public static class AnalyticsIntelligenceEndpoints
 
         try
         {
+            IntelligenceCacheFreshnessResponse? cacheFreshness = null;
             if (freshnessCacheName is not null && freshnessSqlPath is not null)
             {
-                await EnsureIntelligenceCacheIsFreshAsync(
+                cacheFreshness = await EnsureIntelligenceCacheIsFreshAsync(
                     connection,
                     freshnessCacheName,
                     freshnessSqlPath,
+                    requestedAsOfDate,
                     ct);
             }
 
@@ -394,7 +396,10 @@ public static class AnalyticsIntelligenceEndpoints
             if (!asOfDate.HasValue)
                 asOfDate = await TryGetLatestSnapshotDateAsync(connection, relationName, dateColumn, ct);
 
-            return new IntelligencePageResponse<T>(asOfDate, page, pageSize, totalCount, items);
+            return new IntelligencePageResponse<T>(asOfDate, page, pageSize, totalCount, items)
+            {
+                CacheFreshness = cacheFreshness
+            };
         }
         catch (PostgresException ex) when (IsIntelligenceRelationUnavailable(ex))
         {
@@ -405,10 +410,11 @@ public static class AnalyticsIntelligenceEndpoints
         }
     }
 
-    private static async Task EnsureIntelligenceCacheIsFreshAsync(
+    private static async Task<IntelligenceCacheFreshnessResponse> EnsureIntelligenceCacheIsFreshAsync(
         NpgsqlConnection connection,
         string cacheName,
         string sqlFilePath,
+        DateTime? requestedAsOfDate,
         CancellationToken ct)
     {
         const string tableExistsSql = "SELECT to_regclass('analytics_intel.cache_refresh_state') IS NOT NULL;";
@@ -425,7 +431,16 @@ public static class AnalyticsIntelligenceEndpoints
                 state.build_state,
                 state.expected_script_hash,
                 state.last_refreshed_at_utc IS NOT NULL,
-                to_regclass(@cacheName)::oid IS NOT NULL
+                to_regclass(@cacheName)::oid IS NOT NULL,
+                state.last_successful_as_of_date_utc,
+                state.last_successful_refresh_at_utc,
+                state.last_successful_generation_id,
+                state.last_successful_run_id,
+                state.last_successful_refresh_source,
+                state.last_refresh_attempt_at_utc,
+                state.last_refresh_status,
+                state.last_refresh_failure_code,
+                state.metadata_version
             FROM analytics_intel.cache_refresh_state AS state
             WHERE state.cache_name = @cacheName
               AND state.sql_file_path = @sqlFilePath;
@@ -434,6 +449,15 @@ public static class AnalyticsIntelligenceEndpoints
         string? expectedScriptHash;
         bool hasRefreshTimestamp;
         bool cacheRelationExists;
+        DateOnly? lastSuccessfulAsOfDateUtc;
+        DateTime? lastSuccessfulRefreshAtUtc;
+        Guid? lastSuccessfulGenerationId;
+        long? lastSuccessfulRunId;
+        string? lastSuccessfulRefreshSource;
+        DateTime? lastRefreshAttemptAtUtc;
+        string lastRefreshStatus;
+        string? lastRefreshFailureCode;
+        int metadataVersion;
         await using (var statusCommand = new NpgsqlCommand(statusSql, connection))
         {
             statusCommand.Parameters.AddWithValue("cacheName", cacheName);
@@ -448,13 +472,61 @@ public static class AnalyticsIntelligenceEndpoints
             expectedScriptHash = reader.IsDBNull(1) ? null : reader.GetString(1);
             hasRefreshTimestamp = reader.GetBoolean(2);
             cacheRelationExists = reader.GetBoolean(3);
+            lastSuccessfulAsOfDateUtc = reader.IsDBNull(4) ? null : DateOnly.FromDateTime(reader.GetDateTime(4));
+            lastSuccessfulRefreshAtUtc = reader.IsDBNull(5) ? null : reader.GetDateTime(5);
+            lastSuccessfulGenerationId = reader.IsDBNull(6) ? null : reader.GetGuid(6);
+            lastSuccessfulRunId = reader.IsDBNull(7) ? null : reader.GetInt64(7);
+            lastSuccessfulRefreshSource = reader.IsDBNull(8) ? null : reader.GetString(8);
+            lastRefreshAttemptAtUtc = reader.IsDBNull(9) ? null : reader.GetDateTime(9);
+            lastRefreshStatus = reader.GetString(10);
+            lastRefreshFailureCode = reader.IsDBNull(11) ? null : reader.GetString(11);
+            metadataVersion = reader.GetInt16(12);
         }
+
+        var freshness = new IntelligenceCacheFreshnessResponse(
+            MetadataVersion: metadataVersion,
+            AsOfDateUtc: lastSuccessfulAsOfDateUtc,
+            LastSuccessfulRefreshAtUtc: lastSuccessfulRefreshAtUtc,
+            SuccessfulGenerationId: lastSuccessfulGenerationId,
+            SuccessfulRunId: lastSuccessfulRunId,
+            RefreshSource: lastSuccessfulRefreshSource,
+            SourceFreshnessStatus: "unknown",
+            LastAttemptAtUtc: lastRefreshAttemptAtUtc,
+            LastAttemptStatus: lastRefreshStatus,
+            LastAttemptFailureCode: lastRefreshFailureCode);
 
         if (!string.Equals(buildState, "ready", StringComparison.Ordinal)
             || !hasRefreshTimestamp
             || !cacheRelationExists)
         {
             throw new IntelligenceCacheUnavailableException();
+        }
+
+        if (metadataVersion != 1)
+        {
+            throw new IntelligenceCacheUnavailableException();
+        }
+
+        if (!string.Equals(cacheName, "analytics_intel.mv_price_intelligence_v1_cache", StringComparison.Ordinal))
+        {
+            const string utcDateSql = "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date;";
+            await using var utcDateCommand = new NpgsqlCommand(utcDateSql, connection);
+            var currentUtcDateValue = await utcDateCommand.ExecuteScalarAsync(ct);
+            var currentUtcDate = currentUtcDateValue switch
+            {
+                DateOnly date => date,
+                DateTime dateTime => DateOnly.FromDateTime(dateTime),
+                _ => throw new IntelligenceCacheUnavailableException()
+            };
+            var requiredAsOfDate = requestedAsOfDate.HasValue
+                ? DateOnly.FromDateTime(requestedAsOfDate.Value.Date)
+                : currentUtcDate;
+
+            if (!IsCacheFreshForRequestedAsOfDate(lastSuccessfulAsOfDateUtc, requiredAsOfDate))
+            {
+                throw new IntelligenceCacheUnavailableException(
+                    requestedAsOfDate.HasValue ? "cache_as_of_unavailable" : "cache_as_of_stale");
+            }
         }
 
         const string historyExistsSql = """
@@ -475,7 +547,7 @@ public static class AnalyticsIntelligenceEndpoints
                 throw new IntelligenceCacheUnavailableException();
             }
 
-            return;
+            return freshness;
         }
 
         if (!startupHistoryExists)
@@ -495,7 +567,12 @@ public static class AnalyticsIntelligenceEndpoints
         {
             throw new IntelligenceCacheUnavailableException();
         }
+
+        return freshness;
     }
+
+    internal static bool IsCacheFreshForRequestedAsOfDate(DateOnly? cacheAsOfDateUtc, DateOnly requiredAsOfDateUtc)
+        => cacheAsOfDateUtc.HasValue && cacheAsOfDateUtc.Value >= requiredAsOfDateUtc;
 
     internal static async Task<IResult> ExecuteCacheQueryAsync<T>(
         Func<Task<IntelligencePageResponse<T>>> query)
@@ -507,19 +584,30 @@ public static class AnalyticsIntelligenceEndpoints
                 ? CreateUnavailableCacheProblem()
                 : Results.Ok(response);
         }
-        catch (IntelligenceCacheUnavailableException)
+        catch (IntelligenceCacheUnavailableException ex)
         {
-            return CreateUnavailableCacheProblem();
+            return CreateUnavailableCacheProblem(ex.ReasonCode);
         }
     }
 
-    private static IResult CreateUnavailableCacheProblem() => Results.Problem(
+    private static IResult CreateUnavailableCacheProblem(string? reasonCode = null) => Results.Problem(
         statusCode: StatusCodes.Status503ServiceUnavailable,
         title: "Analytics intelligence cache is unavailable",
-        detail: "The signal cache is refreshing or its applied version has not been verified.");
+        detail: reasonCode switch
+        {
+            "cache_as_of_stale" => "The signal cache does not contain a successful refresh for the current UTC date.",
+            "cache_as_of_unavailable" => "The signal cache does not contain the requested as-of date.",
+            _ => "The signal cache is refreshing or its applied version has not been verified."
+        });
 
     internal sealed class IntelligenceCacheUnavailableException : Exception
     {
+        public IntelligenceCacheUnavailableException(string? reasonCode = null)
+        {
+            ReasonCode = reasonCode;
+        }
+
+        public string? ReasonCode { get; }
     }
 
     private static string BuildDemandSignalsSql(DemandSignalsRequest request, out List<NpgsqlParameter> parameters)
@@ -1134,9 +1222,23 @@ public sealed record IntelligencePageResponse<T>(
     int TotalCount,
     IReadOnlyList<T> Items)
 {
+    public IntelligenceCacheFreshnessResponse? CacheFreshness { get; init; }
+
     [JsonIgnore]
     internal bool IsUnavailable { get; init; }
 }
+
+public sealed record IntelligenceCacheFreshnessResponse(
+    int MetadataVersion,
+    DateOnly? AsOfDateUtc,
+    DateTime? LastSuccessfulRefreshAtUtc,
+    Guid? SuccessfulGenerationId,
+    long? SuccessfulRunId,
+    string? RefreshSource,
+    string SourceFreshnessStatus,
+    DateTime? LastAttemptAtUtc,
+    string LastAttemptStatus,
+    string? LastAttemptFailureCode);
 
 public sealed record DemandSignalsRequest(
     DateTime? Date,

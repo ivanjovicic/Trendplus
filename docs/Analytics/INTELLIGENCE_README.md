@@ -230,7 +230,11 @@ Endpoint design notes:
 
 ### Cache freshness operator check
 
-The startup refresh is asynchronous and does not depend on `NightlyAnalyticsRefreshWorker`. For all four signal caches, `analytics_intel.cache_refresh_state` records each cache's state, expected startup SQL hash, last successful refresh time and safe failure code. The app serves a cache only when it is `ready`, the materialized relation exists, and `expected_script_hash` matches `__StartupSqlScriptHistory.ScriptHash`.
+The startup refresh is asynchronous and does not depend on `NightlyAnalyticsRefreshWorker`. For all four signal caches, `analytics_intel.cache_refresh_state` records startup state, expected startup SQL hash, last successful refresh time, as-of date, generation and refresh source, plus the latest attempt status and safe failure code. The app serves a cache only when it is `ready`, the materialized relation exists, and `expected_script_hash` matches `__StartupSqlScriptHistory.ScriptHash`.
+
+Demand, inventory-risk and trend-momentum default reads also require a successful cache generation for the database's current UTC date. A stale but otherwise ready cache returns `503` for a current-day read. An explicit historical date remains available when covered by the last successful cache as-of date. This checks cache-generation freshness; source-data freshness is reported as `unknown` because there is no authoritative generation contract across every business-data mutation path. It does not establish a 24-hour SLA or certify production worker deployment.
+
+Successful route responses include `cacheFreshness` with the metadata version, cache as-of date, last successful refresh time, successful generation/run identifiers, refresh source, latest attempt time/status/failure code, and `sourceFreshnessStatus: "unknown"`. `asOfDate` continues to describe the requested or returned signal period.
 
 Run this read-only query against the analytics database when one of these endpoints returns `503`:
 
@@ -241,6 +245,15 @@ SELECT
     state.expected_script_hash,
     history."ScriptHash" AS applied_script_hash,
     state.last_refreshed_at_utc,
+    state.metadata_version,
+    state.last_successful_as_of_date_utc,
+    state.last_successful_refresh_at_utc,
+    state.last_successful_generation_id,
+    state.last_successful_run_id,
+    state.last_successful_refresh_source,
+    state.last_refresh_attempt_at_utc,
+    state.last_refresh_status,
+    state.last_refresh_failure_code,
     state.failure_code,
     to_regclass(state.cache_name) IS NOT NULL AS cache_exists
 FROM analytics_intel.cache_refresh_state AS state
@@ -255,7 +268,7 @@ WHERE state.cache_name IN (
 ORDER BY state.cache_name;
 ```
 
-`pending` means a refresh is queued or interrupted; `failed` means the latest background build did not complete. A hash mismatch or missing cache is also unavailable. Check the application startup log for the corresponding build failure, then let the next authorized application startup retry the idempotent build. Do not clear startup history or mark a cache ready by hand. This runbook is a release-time diagnostic; it does not deploy the application or refresh a business database. A `ready` row with matching hashes and an empty cache is a successful empty result, not a refresh failure.
+`pending` means a refresh is queued or interrupted; `failed` in `build_state` means the latest background build did not complete. `last_refresh_status` records the latest startup/worker attempt separately, while the last successful generation is retained after a failed attempt. A daily cache whose `last_successful_as_of_date_utc` is earlier than the current UTC date is unavailable for a default current-day read; the attempt fields distinguish a recorded failure from a missed refresh. A hash mismatch or missing cache is also unavailable. Check the application startup log for a build failure, then let the next authorized application startup retry the bounded idempotent build. Do not clear startup history or mark a cache ready by hand. This runbook is a release-time diagnostic; it does not deploy the application or refresh a business database. A `ready` row with matching hashes and an empty cache remains a successful empty result when its refresh metadata covers the requested as-of date.
 
 ## Testing
 

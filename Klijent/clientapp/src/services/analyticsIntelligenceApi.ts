@@ -2,10 +2,24 @@ import { makeUrl } from "./analyticsApi";
 
 export interface IntelligencePageResponse<T> {
   asOfDate: string | null;
+  cacheFreshness?: IntelligenceCacheFreshness | null;
   page: number;
   pageSize: number;
   totalCount: number;
   items: T[];
+}
+
+export interface IntelligenceCacheFreshness {
+  metadataVersion: number;
+  asOfDateUtc: string | null;
+  lastSuccessfulRefreshAtUtc: string | null;
+  successfulGenerationId: string | null;
+  successfulRunId: number | null;
+  refreshSource: string | null;
+  sourceFreshnessStatus: "unknown";
+  lastAttemptAtUtc: string | null;
+  lastAttemptStatus: "unknown" | "pending" | "succeeded" | "failed";
+  lastAttemptFailureCode: string | null;
 }
 
 export interface DemandSignalItem {
@@ -237,6 +251,7 @@ async function collectPagedSignals<TItem, TQuery extends object>(
 
   const first = responses[0] ?? {
     asOfDate: null,
+    cacheFreshness: null,
     page: 1,
     pageSize: 100,
     totalCount: 0,
@@ -250,6 +265,7 @@ async function collectPagedSignals<TItem, TQuery extends object>(
 
   return {
     asOfDate: first.asOfDate,
+    cacheFreshness: first.cacheFreshness,
     page: 1,
     pageSize: items.length,
     totalCount,

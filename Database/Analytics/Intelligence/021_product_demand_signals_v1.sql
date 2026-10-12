@@ -273,6 +273,13 @@ INSERT INTO analytics_intel.cache_refresh_state (
     sql_file_path,
     build_state,
     last_refreshed_at_utc,
+    metadata_version,
+    last_refresh_attempt_at_utc,
+    last_refresh_status,
+    last_successful_refresh_at_utc,
+    last_successful_as_of_date_utc,
+    last_successful_generation_id,
+    last_successful_refresh_source,
     updated_at_utc
 )
 VALUES (
@@ -280,6 +287,15 @@ VALUES (
     'Database/Analytics/Intelligence/021_product_demand_signals_v1.sql',
     CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'ready' ELSE 'pending' END,
     CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp() ELSE NULL END,
+    1,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp() ELSE NULL END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'succeeded' ELSE 'pending' END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp() ELSE NULL END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN COALESCE(
+        (SELECT MAX(date)::date FROM analytics_intel.mv_product_demand_signals_v1_cache),
+        (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date) ELSE NULL END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN gen_random_uuid() ELSE NULL END,
+    CASE WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'sql_bootstrap' ELSE NULL END,
     clock_timestamp()
 )
 ON CONFLICT (cache_name) DO UPDATE
@@ -288,6 +304,35 @@ SET sql_file_path = EXCLUDED.sql_file_path,
     last_refreshed_at_utc = CASE
         WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp()
         ELSE analytics_intel.cache_refresh_state.last_refreshed_at_utc
+    END,
+    metadata_version = 1,
+    last_refresh_attempt_at_utc = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN clock_timestamp()
+        ELSE analytics_intel.cache_refresh_state.last_refresh_attempt_at_utc
+    END,
+    last_refresh_status = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN 'succeeded'
+        ELSE analytics_intel.cache_refresh_state.last_refresh_status
+    END,
+    last_successful_refresh_at_utc = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN EXCLUDED.last_successful_refresh_at_utc
+        ELSE analytics_intel.cache_refresh_state.last_successful_refresh_at_utc
+    END,
+    last_successful_as_of_date_utc = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN EXCLUDED.last_successful_as_of_date_utc
+        ELSE analytics_intel.cache_refresh_state.last_successful_as_of_date_utc
+    END,
+    last_successful_generation_id = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN EXCLUDED.last_successful_generation_id
+        ELSE analytics_intel.cache_refresh_state.last_successful_generation_id
+    END,
+    last_successful_refresh_source = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN EXCLUDED.last_successful_refresh_source
+        ELSE analytics_intel.cache_refresh_state.last_successful_refresh_source
+    END,
+    last_refresh_failure_code = CASE
+        WHEN to_regclass('"__StartupSqlScriptHistory"') IS NULL THEN NULL
+        ELSE analytics_intel.cache_refresh_state.last_refresh_failure_code
     END,
     failure_code = NULL,
     updated_at_utc = clock_timestamp();

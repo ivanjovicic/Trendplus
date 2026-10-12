@@ -51,6 +51,129 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         Assert.True((bool)method.Invoke(null, [new[] { "public.completed_mv" }])!);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RunNightlyRefreshAsync_RecordsIntelligenceCacheGenerationForSameAndSeparateDatabase(bool separateAnalyticsDatabase)
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var trendplusConnectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"rq624_worker_trend_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(trendplusConnectionString));
+        var analyticsConnectionString = separateAnalyticsDatabase
+            ? await _fixture.TryCreateDatabaseConnectionStringAsync($"rq624_worker_analytics_{Guid.NewGuid():N}")
+            : trendplusConnectionString;
+        Assert.False(string.IsNullOrWhiteSpace(analyticsConnectionString));
+
+        const string coreView = "public.rq624_worker_core_mv";
+        const string cacheName = "analytics_intel.mv_product_demand_signals_v1_cache";
+        await CreateMaterializedViewAsync(trendplusConnectionString!, "rq624_worker_core_mv");
+        await CreateIntelligenceCacheAsync(analyticsConnectionString!, cacheName);
+        if (separateAnalyticsDatabase)
+        {
+            await CreateMaterializedViewAsync(analyticsConnectionString!, "rq624_worker_core_mv");
+        }
+
+        await using (var mutateSource = new NpgsqlConnection(analyticsConnectionString))
+        {
+            await mutateSource.OpenAsync();
+            await using var update = new NpgsqlCommand(
+                "UPDATE analytics_intel.rq624_source_probe SET source_value = 2;",
+                mutateSource);
+            Assert.Equal(1, await update.ExecuteNonQueryAsync());
+        }
+
+        await using var harness = CreateHarness(
+            trendplusConnectionString!,
+            [coreView],
+            analyticsConnectionString,
+            [cacheName]);
+        await InvokeRefreshAsync(harness.Worker);
+
+        await using var analyticsConnection = new NpgsqlConnection(analyticsConnectionString);
+        await analyticsConnection.OpenAsync();
+        await using var command = new NpgsqlCommand("""
+            SELECT last_refresh_status,
+                   last_successful_as_of_date_utc,
+                   last_successful_refresh_at_utc,
+                   last_successful_generation_id,
+                   last_successful_refresh_source,
+                   expected_script_hash,
+                   (SELECT source_value FROM analytics_intel.mv_product_demand_signals_v1_cache),
+                   (SELECT MAX(date)::date FROM analytics_intel.mv_product_demand_signals_v1_cache)
+            FROM analytics_intel.cache_refresh_state
+            WHERE cache_name = 'analytics_intel.mv_product_demand_signals_v1_cache';
+            """, analyticsConnection);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("succeeded", reader.GetString(0));
+        Assert.False(reader.IsDBNull(1));
+        Assert.False(reader.IsDBNull(2));
+        Assert.False(reader.IsDBNull(3));
+        Assert.Equal("worker", reader.GetString(4));
+        Assert.Equal("stable-hash", reader.GetString(5));
+        Assert.Equal(2, reader.GetInt32(6));
+        Assert.Equal(DateOnly.FromDateTime(reader.GetDateTime(1)), DateOnly.FromDateTime(reader.GetDateTime(7)));
+    }
+
+    [Fact]
+    public async Task RunNightlyRefreshAsync_RecordsFailedIntelligenceAttemptAndPreservesLastSuccess()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"rq624_worker_failed_{Guid.NewGuid():N}");
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+        const string coreView = "public.rq624_worker_failed_core_mv";
+        const string missingCache = "analytics_intel.mv_product_demand_signals_v1_cache";
+        await CreateMaterializedViewAsync(connectionString!, "rq624_worker_failed_core_mv");
+        await CreateIntelligenceCacheStateAsync(connectionString!, missingCache);
+
+        var previousGenerationId = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            await using var seedState = new NpgsqlCommand("""
+                UPDATE analytics_intel.cache_refresh_state
+                SET last_successful_as_of_date_utc = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 1,
+                    last_successful_generation_id = @generationId,
+                    last_successful_refresh_source = 'startup',
+                    last_successful_refresh_at_utc = clock_timestamp()
+                WHERE cache_name = 'analytics_intel.mv_product_demand_signals_v1_cache';
+                """, connection);
+            seedState.Parameters.AddWithValue("generationId", previousGenerationId);
+            Assert.Equal(1, await seedState.ExecuteNonQueryAsync());
+        }
+
+        await using var harness = CreateHarness(
+            connectionString!,
+            [coreView],
+            intelligenceMaterializedViews: [missingCache]);
+        await InvokeRefreshAsync(harness.Worker);
+
+        await using var verifyConnection = new NpgsqlConnection(connectionString);
+        await verifyConnection.OpenAsync();
+        await using var verify = new NpgsqlCommand("""
+            SELECT last_refresh_status,
+                   last_refresh_failure_code,
+                   last_successful_generation_id,
+                   last_successful_as_of_date_utc
+            FROM analytics_intel.cache_refresh_state
+            WHERE cache_name = 'analytics_intel.mv_product_demand_signals_v1_cache';
+            """, verifyConnection);
+        await using var reader = await verify.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("failed", reader.GetString(0));
+        Assert.Equal("materialized_view_missing", reader.GetString(1));
+        Assert.Equal(previousGenerationId, reader.GetGuid(2));
+        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-1)), DateOnly.FromDateTime(reader.GetDateTime(3)));
+    }
+
     [Fact]
     public async Task RunNightlyRefreshAsync_WhenSomeViewsCompleteBeforeFailure_InvalidatesCache()
     {
@@ -109,6 +232,56 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         await command.ExecuteNonQueryAsync();
     }
 
+    private static async Task CreateIntelligenceCacheAsync(string connectionString, string cacheName)
+    {
+        await CreateIntelligenceCacheStateAsync(connectionString, cacheName);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("""
+            CREATE TABLE analytics_intel.rq624_source_probe (
+                signal_date date NOT NULL,
+                source_value integer NOT NULL);
+            INSERT INTO analytics_intel.rq624_source_probe (signal_date, source_value)
+            VALUES ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date, 1);
+            CREATE MATERIALIZED VIEW analytics_intel.mv_product_demand_signals_v1_cache AS
+            SELECT signal_date AS date, source_value
+            FROM analytics_intel.rq624_source_probe;
+            """, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task CreateIntelligenceCacheStateAsync(string connectionString, string cacheName)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("""
+            CREATE SCHEMA IF NOT EXISTS analytics_intel;
+            CREATE TABLE IF NOT EXISTS analytics_intel.cache_refresh_state (
+                cache_name text PRIMARY KEY,
+                sql_file_path varchar(512) NOT NULL,
+                expected_script_hash varchar(64) DEFAULT 'stable-hash',
+                metadata_version smallint NOT NULL DEFAULT 1,
+                last_refresh_attempt_at_utc timestamptz,
+                last_refresh_status text NOT NULL DEFAULT 'unknown',
+                last_refresh_failure_code text,
+                last_refreshed_at_utc timestamptz,
+                last_successful_refresh_at_utc timestamptz,
+                last_successful_as_of_date_utc date,
+                last_successful_generation_id uuid,
+                last_successful_run_id bigint,
+                last_successful_refresh_source text,
+                updated_at_utc timestamptz NOT NULL DEFAULT clock_timestamp()
+            );
+            INSERT INTO analytics_intel.cache_refresh_state (cache_name, sql_file_path, last_refresh_status)
+            VALUES (
+                @cacheName,
+                'Database/Analytics/Intelligence/021_product_demand_signals_v1.sql',
+                'unknown');
+            """, connection);
+        command.Parameters.AddWithValue("cacheName", cacheName);
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static async Task InvokeRefreshAsync(NightlyAnalyticsRefreshWorker worker)
     {
         var method = typeof(NightlyAnalyticsRefreshWorker).GetMethod(
@@ -154,7 +327,9 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
 
     private static WorkerHarness CreateHarness(
         string connectionString,
-        IReadOnlyCollection<string> materializedViews)
+        IReadOnlyCollection<string> materializedViews,
+        string? analyticsConnectionString = null,
+        IReadOnlyCollection<string>? intelligenceMaterializedViews = null)
     {
         var services = new ServiceCollection();
         var recordingCache = new RecordingAnalyticsCacheService();
@@ -169,7 +344,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         services.AddSingleton<ILogger<AnalyticsCacheAdminService>>(NullLogger<AnalyticsCacheAdminService>.Instance);
         services.AddSingleton<ILogger<AnalyticsRefreshRunRecorder>>(NullLogger<AnalyticsRefreshRunRecorder>.Instance);
         services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
-        services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(analyticsConnectionString ?? connectionString));
         services.AddScoped<AnalyticsRefreshRunRecorder>();
 
         var provider = services.BuildServiceProvider(validateScopes: true);
@@ -184,7 +359,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
             {
                 RefreshConcurrently = false,
                 MaterializedViewsToRefresh = materializedViews.ToList(),
-                IntelligenceMaterializedViewsToRefresh = [],
+                IntelligenceMaterializedViewsToRefresh = intelligenceMaterializedViews?.ToList() ?? [],
                 OpenTrainingMaterializedViewsToRefresh = [],
                 VacuumAnalyzeTargets = [],
                 QueueSupplierRankingTraining = false,

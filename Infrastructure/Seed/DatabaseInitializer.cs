@@ -33,6 +33,38 @@ public static class DatabaseInitializer
             ["Database/Analytics/Intelligence/023_price_intelligence_v1.sql"] = "analytics_intel.mv_price_intelligence_v1_cache",
             ["Database/Analytics/Intelligence/024_trend_momentum_v1.sql"] = "analytics_intel.mv_trend_momentum_v1_cache"
         };
+    private static readonly IReadOnlyDictionary<string, string> AnalyticsIntelligenceCacheDateColumnByName =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["analytics_intel.mv_product_demand_signals_v1_cache"] = "date",
+            ["analytics_intel.mv_inventory_risk_signals_v1_cache"] = "date",
+            ["analytics_intel.mv_price_intelligence_v1_cache"] = "price_date",
+            ["analytics_intel.mv_trend_momentum_v1_cache"] = "signal_date"
+        };
+
+    public static bool TryGetAnalyticsIntelligenceCacheMetadata(
+        string cacheName,
+        out string sqlFilePath,
+        out string dateColumn)
+    {
+        dateColumn = string.Empty;
+        sqlFilePath = string.Empty;
+        if (!AnalyticsIntelligenceCacheDateColumnByName.TryGetValue(cacheName, out var resolvedDateColumn))
+        {
+            return false;
+        }
+
+        var script = AnalyticsIntelligenceCacheBySqlFile.FirstOrDefault(pair =>
+            string.Equals(pair.Value, cacheName, StringComparison.Ordinal));
+        if (script.Key is null)
+        {
+            return false;
+        }
+
+        sqlFilePath = script.Key;
+        dateColumn = resolvedDateColumn;
+        return true;
+    }
 
     public static async Task<DatabaseInitializationOutcome> InitializeDatabasesAsync(
         IServiceProvider services,
@@ -2955,6 +2987,7 @@ public static class DatabaseInitializer
         IReadOnlyList<(string SqlFilePath, string[] RequiredRelations)> scripts)
     {
         var generationId = Guid.NewGuid();
+        var currentUtcDate = await GetDatabaseUtcDateAsync(connectionString);
 
         foreach (var script in scripts)
         {
@@ -2977,7 +3010,8 @@ public static class DatabaseInitializer
                 && string.Equals(appliedHash, expectedHash, StringComparison.Ordinal)
                 && string.Equals(cacheState.BuildState, "ready", StringComparison.Ordinal)
                 && string.Equals(cacheState.ExpectedScriptHash, expectedHash, StringComparison.Ordinal)
-                && cacheState.LastRefreshedAtUtc.HasValue)
+                && cacheState.LastRefreshedAtUtc.HasValue
+                && cacheState.LastSuccessfulAsOfDateUtc == currentUtcDate)
             {
                 continue;
             }
@@ -3180,14 +3214,16 @@ public static class DatabaseInitializer
         string? BuildState,
         string? ExpectedScriptHash,
         DateTime? LastRefreshedAtUtc,
-        Guid? BuildGenerationId);
+        Guid? BuildGenerationId,
+        DateOnly? LastSuccessfulAsOfDateUtc);
 
     private static async Task<AnalyticsIntelligenceCacheState> GetAnalyticsIntelligenceCacheStateAsync(
         string connectionString,
         string cacheName)
     {
         const string sql = """
-            SELECT build_state, expected_script_hash, last_refreshed_at_utc, build_generation_id
+            SELECT build_state, expected_script_hash, last_refreshed_at_utc, build_generation_id,
+                   last_successful_as_of_date_utc
             FROM analytics_intel.cache_refresh_state
             WHERE cache_name = @cacheName;
             """;
@@ -3200,14 +3236,31 @@ public static class DatabaseInitializer
         await using var reader = await command.ExecuteReaderAsync();
         if (!await reader.ReadAsync())
         {
-            return new AnalyticsIntelligenceCacheState(null, null, null, null);
+            return new AnalyticsIntelligenceCacheState(null, null, null, null, null);
         }
 
         return new AnalyticsIntelligenceCacheState(
             reader.GetString(0),
             reader.IsDBNull(1) ? null : reader.GetString(1),
             reader.IsDBNull(2) ? null : reader.GetDateTime(2),
-            reader.IsDBNull(3) ? null : reader.GetGuid(3));
+            reader.IsDBNull(3) ? null : reader.GetGuid(3),
+            reader.IsDBNull(4) ? null : DateOnly.FromDateTime(reader.GetDateTime(4)));
+    }
+
+    private static async Task<DateOnly> GetDatabaseUtcDateAsync(string connectionString)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date;",
+            connection);
+        var value = await command.ExecuteScalarAsync();
+        return value switch
+        {
+            DateOnly date => date,
+            DateTime dateTime => DateOnly.FromDateTime(dateTime),
+            _ => throw new InvalidOperationException("The analytics database did not return its UTC date.")
+        };
     }
 
     private static async Task MarkAnalyticsIntelligenceCachePendingAsync(
@@ -3220,16 +3273,21 @@ public static class DatabaseInitializer
         const string sql = """
             INSERT INTO analytics_intel.cache_refresh_state (
                 cache_name, sql_file_path, build_state, expected_script_hash,
-                build_generation_id, refresh_started_at_utc, failure_code, updated_at_utc)
+                build_generation_id, refresh_started_at_utc, last_refresh_attempt_at_utc,
+                last_refresh_status, last_refresh_failure_code, failure_code, updated_at_utc)
             VALUES (
                 @cacheName, @sqlFilePath, 'pending', @expectedHash,
-                @generationId, clock_timestamp(), NULL, clock_timestamp())
+                @generationId, clock_timestamp(), clock_timestamp(),
+                'pending', NULL, NULL, clock_timestamp())
             ON CONFLICT (cache_name) DO UPDATE
             SET sql_file_path = EXCLUDED.sql_file_path,
                 build_state = 'pending',
                 expected_script_hash = EXCLUDED.expected_script_hash,
                 build_generation_id = EXCLUDED.build_generation_id,
                 refresh_started_at_utc = clock_timestamp(),
+                last_refresh_attempt_at_utc = clock_timestamp(),
+                last_refresh_status = 'pending',
+                last_refresh_failure_code = NULL,
                 failure_code = NULL,
                 updated_at_utc = clock_timestamp();
             """;
@@ -3251,10 +3309,27 @@ public static class DatabaseInitializer
         string sqlFilePath,
         Guid generationId)
     {
-        const string sql = """
+        if (!TryGetAnalyticsIntelligenceCacheMetadata(cacheName, out _, out var dateColumn))
+        {
+            throw new InvalidOperationException($"Unregistered intelligence cache readiness request: {cacheName}.");
+        }
+
+        var sql = $$"""
             UPDATE analytics_intel.cache_refresh_state AS state
             SET build_state = 'ready',
                 last_refreshed_at_utc = clock_timestamp(),
+                metadata_version = 1,
+                last_refresh_attempt_at_utc = clock_timestamp(),
+                last_refresh_status = 'succeeded',
+                last_refresh_failure_code = NULL,
+                last_successful_refresh_at_utc = clock_timestamp(),
+                last_successful_as_of_date_utc = COALESCE(
+                    (SELECT MAX({{dateColumn}})::date FROM {{cacheName}}),
+                    (state.refresh_started_at_utc AT TIME ZONE 'UTC')::date,
+                    (clock_timestamp() AT TIME ZONE 'UTC')::date),
+                last_successful_generation_id = @generationId,
+                last_successful_run_id = NULL,
+                last_successful_refresh_source = 'startup',
                 failure_code = NULL,
                 updated_at_utc = clock_timestamp()
             FROM "__StartupSqlScriptHistory" AS history
@@ -3286,6 +3361,9 @@ public static class DatabaseInitializer
             UPDATE analytics_intel.cache_refresh_state
             SET build_state = 'failed',
                 failure_code = 'startup_build_failed',
+                last_refresh_status = 'failed',
+                last_refresh_failure_code = 'startup_build_failed',
+                last_refresh_attempt_at_utc = clock_timestamp(),
                 updated_at_utc = clock_timestamp()
             WHERE build_generation_id = @generationId;
             """;

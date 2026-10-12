@@ -75,6 +75,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         await AssertCorrectDemandStoreDateAndQuantityAsync(connection);
         await AssertInventoryDateAndQuantityAsync(connection);
         await AssertTrendDateAsync(connection);
+        await AssertDailyCacheAsOfMetadataAsync(connection);
         await AssertStableOutputColumnsAsync(connection);
         await AssertAllCachesReadyForCurrentSqlAsync(connection);
 
@@ -521,6 +522,53 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsAssignableFrom<IStatusCodeHttpResult>(pendingResult).StatusCode);
     }
 
+    [Fact]
+    public async Task StaleButReadyCache_RejectsCurrentDayAndKeepsCoveredHistoricalDateAvailable()
+    {
+        var database = await CreatePreR613CacheDatabaseAsync("stale_asof");
+        await using var connection = await _fixture.OpenConnectionAsync(database);
+        var generationId = await DatabaseInitializer.PrepareAnalyticsIntelligenceCacheBuildAsync(
+            database.ConnectionString,
+            CacheScripts);
+        await DatabaseInitializer.RunAnalyticsIntelligenceBuildAsync(
+            database.ConnectionString,
+            NullLogger.Instance,
+            CacheScripts,
+            generationId);
+
+        var currentUtcDate = await ScalarDateOnlyAsync(
+            connection,
+            "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date;");
+        var yesterdayUtc = currentUtcDate.AddDays(-1);
+        await using (var markStale = new NpgsqlCommand("""
+            UPDATE analytics_intel.cache_refresh_state
+            SET last_successful_as_of_date_utc = @yesterday
+            WHERE cache_name = 'analytics_intel.mv_product_demand_signals_v1_cache';
+            """, connection))
+        {
+            markStale.Parameters.AddWithValue("yesterday", yesterdayUtc);
+            Assert.Equal(1, await markStale.ExecuteNonQueryAsync());
+        }
+
+        var defaultRequest = new DemandSignalsRequest(null, 1, null, null, null, null, null, null, 1, 5, null, null);
+        var staleResult = await AnalyticsIntelligenceEndpoints.ExecuteCacheQueryAsync(
+            () => AnalyticsIntelligenceEndpoints.QueryDemandSignalsAsync(
+                database.ConnectionString,
+                defaultRequest,
+                CancellationToken.None));
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsAssignableFrom<IStatusCodeHttpResult>(staleResult).StatusCode);
+
+        var historicalRequest = defaultRequest with { Date = yesterdayUtc.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc) };
+        var historicalResponse = await AnalyticsIntelligenceEndpoints.QueryDemandSignalsAsync(
+            database.ConnectionString,
+            historicalRequest,
+            CancellationToken.None);
+
+        Assert.Equal(yesterdayUtc, historicalResponse.CacheFreshness?.AsOfDateUtc);
+        Assert.Equal("unknown", historicalResponse.CacheFreshness?.SourceFreshnessStatus);
+        Assert.Equal("succeeded", historicalResponse.CacheFreshness?.LastAttemptStatus);
+    }
+
     private async Task<IntelligenceTestDatabase> CreatePreR613CacheDatabaseAsync(string purpose)
     {
         var database = await _fixture.CreateDatabaseAsync($"rq615_cache_{purpose}");
@@ -626,6 +674,44 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
         Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow.Date), DateOnly.FromDateTime(reader.GetDateTime(0)));
+    }
+
+    private static async Task AssertDailyCacheAsOfMetadataAsync(NpgsqlConnection connection)
+    {
+        var expectedUtcDate = await ScalarDateOnlyAsync(
+            connection,
+            "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date;");
+        await using var command = new NpgsqlCommand("""
+            SELECT state.last_successful_as_of_date_utc,
+                   (SELECT MAX(cache.date)::date FROM analytics_intel.mv_product_demand_signals_v1_cache AS cache)
+            FROM analytics_intel.cache_refresh_state AS state
+            WHERE state.cache_name = 'analytics_intel.mv_product_demand_signals_v1_cache'
+            UNION ALL
+            SELECT state.last_successful_as_of_date_utc,
+                   (SELECT MAX(cache.date)::date FROM analytics_intel.mv_inventory_risk_signals_v1_cache AS cache)
+            FROM analytics_intel.cache_refresh_state AS state
+            WHERE state.cache_name = 'analytics_intel.mv_inventory_risk_signals_v1_cache'
+            UNION ALL
+            SELECT state.last_successful_as_of_date_utc,
+                   (SELECT MAX(cache.signal_date)::date FROM analytics_intel.mv_trend_momentum_v1_cache AS cache)
+            FROM analytics_intel.cache_refresh_state AS state
+            WHERE state.cache_name = 'analytics_intel.mv_trend_momentum_v1_cache';
+            """, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var checkedCaches = 0;
+        while (await reader.ReadAsync())
+        {
+            Assert.False(reader.IsDBNull(0));
+            Assert.False(reader.IsDBNull(1));
+            var stateDate = DateOnly.FromDateTime(reader.GetDateTime(0));
+            var cacheDate = DateOnly.FromDateTime(reader.GetDateTime(1));
+            Assert.Equal(expectedUtcDate, stateDate);
+            Assert.Equal(expectedUtcDate, cacheDate);
+            Assert.Equal(stateDate, cacheDate);
+            checkedCaches++;
+        }
+
+        Assert.Equal(3, checkedCaches);
     }
 
     private static async Task AssertStableOutputColumnsAsync(NpgsqlConnection connection)
@@ -734,6 +820,18 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         if (asOf.HasValue)
             command.Parameters.AddWithValue("asOf", NpgsqlDbType.Date, asOf.Value);
         return Convert.ToDecimal(await command.ExecuteScalarAsync());
+    }
+
+    private static async Task<DateOnly> ScalarDateOnlyAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        var value = await command.ExecuteScalarAsync();
+        return value switch
+        {
+            DateOnly date => date,
+            DateTime dateTime => DateOnly.FromDateTime(dateTime),
+            _ => throw new InvalidOperationException("Expected a database date.")
+        };
     }
 
     private static async Task<bool> ScalarIsNullAsync(

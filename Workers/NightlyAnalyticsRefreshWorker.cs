@@ -1,5 +1,6 @@
 ﻿using Infrastructure.Configuration;
 using Infrastructure.DbContexts;
+using Infrastructure.Seed;
 using Infrastructure.Services;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.DependencyInjection;
@@ -289,6 +290,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                     errors: errors,
                     refreshedObjects: refreshedObjects,
                     failedObjects: failedObjects,
+                    refreshRunId: runId,
                     ct: ct);
 
                 await RefreshOpenTrainingMaterializedViewsAsync(
@@ -568,6 +570,7 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         List<string> errors,
         ISet<string> refreshedObjects,
         ISet<string> failedObjects,
+        long? refreshRunId,
         CancellationToken ct)
     {
         var analyticsDb = serviceProvider.GetRequiredService<AnalyticsDbContext>();
@@ -601,7 +604,8 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 refreshedObjects,
                 failedObjects,
                 sourceLabel: "analytics_intel",
-                ct: ct);
+                ct: ct,
+                refreshRunId: refreshRunId);
             return;
         }
 
@@ -635,7 +639,8 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 refreshedObjects,
                 failedObjects,
                 sourceLabel: "analytics_intel",
-                ct: ct);
+                ct: ct,
+                refreshRunId: refreshRunId);
         }
         finally
         {
@@ -651,7 +656,8 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
         ISet<string> refreshedObjects,
         ISet<string> failedObjects,
         string sourceLabel,
-        CancellationToken ct)
+        CancellationToken ct,
+        long? refreshRunId = null)
     {
         if (materializedViews.Count == 0)
         {
@@ -668,6 +674,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             {
                 warnings.Add($"Invalid MV identifier ({sourceLabel}): {mv}");
                 failedObjects.Add(relationName);
+                await MarkIntelligenceCacheRefreshFailedIfTrackedAsync(
+                    connection,
+                    sourceLabel,
+                    relationName,
+                    "invalid_relation",
+                    warnings,
+                    errors,
+                    ct);
                 continue;
             }
 
@@ -676,11 +690,24 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
             {
                 warnings.Add($"Missing MV ({sourceLabel}): {schema}.{rel}");
                 failedObjects.Add(relationName);
+                await MarkIntelligenceCacheRefreshFailedIfTrackedAsync(
+                    connection,
+                    sourceLabel,
+                    relationName,
+                    "materialized_view_missing",
+                    warnings,
+                    errors,
+                    ct);
                 continue;
             }
 
             _healthService.ReportRunning(WorkerName, $"Refreshing {sourceLabel}:{schema}.{rel}...");
             var refreshSw = Stopwatch.StartNew();
+            var isTrackedIntelligenceCache = string.Equals(sourceLabel, "analytics_intel", StringComparison.Ordinal)
+                && DatabaseInitializer.TryGetAnalyticsIntelligenceCacheMetadata(relationName, out _, out _);
+            var refreshStartUtcDate = isTrackedIntelligenceCache
+                ? await GetDatabaseUtcDateAsync(connection, ct)
+                : (DateOnly?)null;
             try
             {
                 var canRefreshConcurrently = _options.RefreshConcurrently
@@ -704,6 +731,29 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                     $"{schema}.{rel}",
                     refreshMode,
                     refreshSw.Elapsed.TotalMilliseconds);
+
+                if (isTrackedIntelligenceCache)
+                {
+                    try
+                    {
+                        var recorded = await RecordIntelligenceCacheRefreshSuccessAsync(
+                            connection,
+                            relationName,
+                            refreshStartUtcDate!.Value,
+                            refreshRunId,
+                            ct);
+                        if (!recorded)
+                        {
+                            throw new InvalidOperationException("The intelligence cache refresh state row is missing.");
+                        }
+                    }
+                    catch (Exception ex) when (ex is NpgsqlException or InvalidOperationException)
+                    {
+                        failedObjects.Add(relationName);
+                        errors.Add($"Refresh state update failed for {relationName}.");
+                        _logger.LogError(ex, "[nightly] Could not persist refresh state for {Relation}", relationName);
+                    }
+                }
             }
             catch (PostgresException ex) when (ex.SqlState == "0A000")
             {
@@ -711,6 +761,14 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 failedObjects.Add(relationName);
                 errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
                 _logger.LogError(ex, "[nightly] Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+                await MarkIntelligenceCacheRefreshFailedIfTrackedAsync(
+                    connection,
+                    sourceLabel,
+                    relationName,
+                    "refresh_failed",
+                    warnings,
+                    errors,
+                    ct);
             }
             catch (PostgresException ex)
             {
@@ -718,7 +776,119 @@ public sealed class NightlyAnalyticsRefreshWorker : BackgroundService
                 failedObjects.Add(relationName);
                 errors.Add($"Refresh failed ({sourceLabel}) for {schema}.{rel}: {ex.MessageText}");
                 _logger.LogError(ex, "[nightly] Refresh failed ({Scope}) for {Relation}", sourceLabel, $"{schema}.{rel}");
+                await MarkIntelligenceCacheRefreshFailedIfTrackedAsync(
+                    connection,
+                    sourceLabel,
+                    relationName,
+                    "refresh_failed",
+                    warnings,
+                    errors,
+                    ct);
             }
+        }
+    }
+
+    private static async Task<DateOnly> GetDatabaseUtcDateAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        await using var command = new NpgsqlCommand(
+            "SELECT (clock_timestamp() AT TIME ZONE 'UTC')::date;",
+            connection);
+        var value = await command.ExecuteScalarAsync(ct);
+        return value switch
+        {
+            DateOnly date => date,
+            DateTime dateTime => DateOnly.FromDateTime(dateTime),
+            _ => throw new InvalidOperationException("The analytics database did not return its UTC date.")
+        };
+    }
+
+    private static async Task<bool> RecordIntelligenceCacheRefreshSuccessAsync(
+        NpgsqlConnection connection,
+        string cacheName,
+        DateOnly fallbackAsOfDateUtc,
+        long? refreshRunId,
+        CancellationToken ct)
+    {
+        if (!DatabaseInitializer.TryGetAnalyticsIntelligenceCacheMetadata(cacheName, out var sqlFilePath, out var dateColumn))
+        {
+            return false;
+        }
+
+        var generationId = Guid.NewGuid();
+        var sql = $$"""
+            UPDATE analytics_intel.cache_refresh_state AS state
+            SET metadata_version = 1,
+                last_refresh_attempt_at_utc = clock_timestamp(),
+                last_refresh_status = 'succeeded',
+                last_refresh_failure_code = NULL,
+                last_refreshed_at_utc = clock_timestamp(),
+                last_successful_refresh_at_utc = clock_timestamp(),
+                last_successful_as_of_date_utc = COALESCE(
+                    (SELECT MAX({{dateColumn}})::date FROM {{cacheName}}),
+                    @fallbackAsOfDateUtc),
+                last_successful_generation_id = @generationId,
+                last_successful_run_id = @refreshRunId,
+                last_successful_refresh_source = 'worker',
+                updated_at_utc = clock_timestamp()
+            WHERE state.cache_name = @cacheName
+              AND state.sql_file_path = @sqlFilePath;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection)
+        {
+            CommandTimeout = 30
+        };
+        command.Parameters.AddWithValue("generationId", generationId);
+        command.Parameters.AddWithValue("fallbackAsOfDateUtc", fallbackAsOfDateUtc);
+        command.Parameters.AddWithValue("refreshRunId", (object?)refreshRunId ?? DBNull.Value);
+        command.Parameters.AddWithValue("cacheName", cacheName);
+        command.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+        return await command.ExecuteNonQueryAsync(ct) == 1;
+    }
+
+    private static async Task MarkIntelligenceCacheRefreshFailedIfTrackedAsync(
+        NpgsqlConnection connection,
+        string sourceLabel,
+        string cacheName,
+        string failureCode,
+        List<string> warnings,
+        List<string> errors,
+        CancellationToken ct)
+    {
+        if (!string.Equals(sourceLabel, "analytics_intel", StringComparison.Ordinal)
+            || !DatabaseInitializer.TryGetAnalyticsIntelligenceCacheMetadata(cacheName, out var sqlFilePath, out _))
+        {
+            return;
+        }
+
+        try
+        {
+            const string sql = """
+                UPDATE analytics_intel.cache_refresh_state
+                SET metadata_version = 1,
+                    last_refresh_attempt_at_utc = clock_timestamp(),
+                    last_refresh_status = 'failed',
+                    last_refresh_failure_code = @failureCode,
+                    updated_at_utc = clock_timestamp()
+                WHERE cache_name = @cacheName
+                  AND sql_file_path = @sqlFilePath;
+                """;
+            await using var command = new NpgsqlCommand(sql, connection)
+            {
+                CommandTimeout = 30
+            };
+            command.Parameters.AddWithValue("failureCode", failureCode);
+            command.Parameters.AddWithValue("cacheName", cacheName);
+            command.Parameters.AddWithValue("sqlFilePath", sqlFilePath);
+            if (await command.ExecuteNonQueryAsync(ct) != 1)
+            {
+                warnings.Add($"No refresh-state row exists for intelligence cache {cacheName}.");
+            }
+        }
+        catch (Exception ex) when (ex is NpgsqlException or InvalidOperationException)
+        {
+            errors.Add($"Could not record failed refresh state for intelligence cache {cacheName}.");
+            warnings.Add($"Refresh state persistence failed for intelligence cache {cacheName}.");
         }
     }
 
