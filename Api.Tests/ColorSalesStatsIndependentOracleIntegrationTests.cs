@@ -197,6 +197,7 @@ public sealed class ColorSalesStatsIndependentOracleIntegrationTests : IClassFix
                 ["ConnectionStrings:DefaultConnection"] = connectionString,
                 ["ConnectionStrings:AnalyticsConnection"] = connectionString,
                 ["ConnectionStrings:OpenProductTrainingConnection"] = connectionString,
+                ["PerformanceLogging:CaptureHttpRequests"] = "false",
                 ["DailySales:TimeZoneId"] = "Europe/Belgrade"
             };
 

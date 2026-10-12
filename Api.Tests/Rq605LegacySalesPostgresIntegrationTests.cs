@@ -255,6 +255,8 @@ internal sealed class Rq605EndpointFactory : WebApplicationFactory<global::Progr
             ["PROCESS_TYPE"] = "web",
             ["Workers:Enabled"] = "false",
             ["AnalyticsCache:Provider"] = "disabled",
+            // This isolated EF-migrated database intentionally omits the optional PerformanceLogs bootstrap.
+            ["PerformanceLogging:CaptureHttpRequests"] = "false",
             ["Analytics:AllowLoopbackInProduction"] = "true",
             ["ConnectionStrings:DefaultConnection"] = _connectionString,
             ["ConnectionStrings:AnalyticsConnection"] = _connectionString,
