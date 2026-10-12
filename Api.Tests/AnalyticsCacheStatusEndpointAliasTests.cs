@@ -11,7 +11,11 @@ public sealed class AnalyticsCacheStatusEndpointAliasTests : IClassFixture<WebAp
 
     public AnalyticsCacheStatusEndpointAliasTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        // This contract is about payload parity, not startup warmup: in non-Development hosts
+        // (CI runs ASPNETCORE_ENVIRONMENT=Testing) the readiness gate would otherwise race the
+        // background schema-contract probe and intermittently answer 503.
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [Fact]

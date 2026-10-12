@@ -163,6 +163,8 @@ public sealed class CachedAnalyticsFailureContractTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            // Failure contracts must not depend on startup warmup timing (see readiness gate in Program.cs).
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IAnalyticsCacheService>();

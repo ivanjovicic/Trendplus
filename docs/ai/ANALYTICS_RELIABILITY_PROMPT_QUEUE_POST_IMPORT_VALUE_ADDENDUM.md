@@ -1130,13 +1130,13 @@ No unexplained persistence warnings in the backend CI log. A production failure 
 
 ## RQ632 - Stop pushing implementation commits to main before their focused backend tests pass
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: process/governance
 Feature family: direct-main-delivery-hygiene
 Parallel-safe: yes (docs/protocol only)
-Owner: owner decision
-Ready after: owner chooses between (a) the protocol requiring focused PostgreSQL/backend tests for touched test classes before direct-main push, or (b) code changes going through PRs with required checks.
+Owner: Grok Bot (owner decision recorded)
+Ready after: owner decision 2026-10-12 15:13: option (a), direct-main stays allowed, focused backend tests must pass before push.
 Commit suggestion: `docs(queue): require focused backend proof before direct-main code push`
 
 ### Problem
@@ -1144,6 +1144,9 @@ Of 12 failed "Analytics Tests & Data Integrity" runs on main from 2026-10-10 to 
 
 ### Acceptance
 The protocol has an explicit pre-push rule (or a PR requirement). The validator self-test covers the rule if it is machine-checkable.
+
+### Completion note
+Owner (Ivan) chose option (a) on 2026-10-12 15:13: code changes may go directly to `main`, but the focused backend tests must pass before the push. The rule is in `docs/ai/PROMPT_QUEUE_PROTOCOL.md` under `## Main-first delivery` ("Pre-push backend proof for direct-main code changes"). The rule depends on which tests are relevant to a change, so it is not machine-checkable; no validator self-test was added. Delivered together with the fix for the flaky startup-readiness 503 in Analytics Tests run 38248162958 (test hosts now disable `StartupReadiness:GateApiTraffic`).
 
 ---
 

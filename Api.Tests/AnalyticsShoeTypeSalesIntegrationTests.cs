@@ -338,6 +338,7 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
