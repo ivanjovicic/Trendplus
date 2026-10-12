@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ630 primary (READY; P2 EF catalog-vs-model drift guard); RQ631 (P3 telemetry persistence) remains an independent READY prompt. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); signed reconstructed inventory is preserved and stockout_days no longer counts negative proxy days. Local Docker was unavailable for the new PostgreSQL oracle; current-main backend run `38265812357`, quality gates `38265812415` and planning governance `38265812374` are in progress on that SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ630 primary (IN_PROGRESS; P2 EF catalog-vs-model drift guard; claimed by Codex in worktree `rq630-schema-drift`); RQ631 (READY; P3 telemetry persistence) remains independent. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1132,14 +1132,21 @@ RQ588 guarded EF migration discovery for `TrendplusDbContext` only. In the analy
 
 ## RQ630 - Fail CI when a migrated analytics database drifts from the EF model
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: tests/CI schema-drift guard
 Feature family: ef-migration-discovery-guard
 Parallel-safe: yes (new PostgreSQL test only; keep the scope test-only and do not edit `DatabaseInitializer.cs`)
-Owner: unassigned
+Owner: Codex / worktree `rq630-schema-drift`
 Ready after: RQ629 DONE
 Commit suggestion: `test(analytics): catalog-vs-model drift guard after migrations`
+
+### Claim note — 2026-10-12
+
+- Claimed from refreshed `origin/main` `6a287b97cf73a1dbd63d070566b8a4bd167a8b6b`; RQ629 is DONE and RQ630 remains the primary runnable prompt.
+- The post-close cascade recorded in `.ai/runs/2026-10-12-RQ626-evidence.md` scanned the active RQ addenda and SQL queue with no higher-priority runnable BCI/STAB/SQL task. The RQ626 correction changed evidence/runtime tests only; no queue dependency changed.
+- Collision check: no RQ630 lock, branch, open PR, or attached worktree existed. Existing P-UI-43 owns separate AnalyticsTrustHeader files.
+- Worktree: `C:\Users\Ivan\.codex\worktrees\rq630-schema-drift\Trendplus2`; branch: `codex/rq630-analytics-schema-drift`; local lock: `.ai/task-locks/RQ630-codex.lock.md`.
 
 ### Problem
 RQ613, RQ628 and RQ629 were all classes of the same silent drift: catalog state differed from what the model/snapshot claims, and nothing failed until a runtime query hit it. No test compares the physical catalog of a freshly migrated analytics database against the EF model.
