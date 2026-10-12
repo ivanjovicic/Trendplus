@@ -973,14 +973,14 @@ RQ621/RQ622/RQ624 DONE; avoid simultaneous SQL 023 or cache-readiness metadata c
 - Checks run: Debug and Release `Api.Tests` builds; `npm run check:analytics-guardrails`; six local governance validators; exact-main Analytics Tests & Data Integrity run `38248162958` passed on rerun (1,977 passed, 42 known classified skips, 0 failed), including RQ627 oracle pass; Planning Governance run `38248162921` passed; `git diff --check`.
 - Checks not run: local PostgreSQL execution could not start because Docker Desktop is unavailable; the provider-strict PostgreSQL test executed and passed in CI.
 - Run log: `.ai/runs/2026-10-12-RQ627-evidence.md`
-- Evidence state: pending post-close routing synchronization.
+- Evidence state: synchronized.
 - Delivery mode: direct-main
 - Main commit SHA: `84d90ed44bcdba916aa795f707dbf7c96dec1468`
-- Main verification: fresh `origin/main` contains implementation SHA `84d90ed44bcdba916aa795f707dbf7c96dec1468`; close-out routing/evidence synchronization follows.
+- Main verification: refreshed `origin/main` at `b4a4b1be073ead7ce41d906ed761809b8052cf61` contains implementation SHA `84d90ed44bcdba916aa795f707dbf7c96dec1468`; Planning Governance run `38250159167` passed on the close-out SHA.
 - Missed: none known.
 - Follow-up: RQ625 promoted to primary READY; RQ630 and RQ631 remain independent READY lanes.
 - Residual risk: first backend CI attempt had two unrelated endpoint-test 503s; both passed on the same-SHA rerun and on the preceding backend run. The 42 global skips are all previously classified, with no new or changed skips.
-- Post-close routing: RQ625 promoted to READY after RQ627 DONE; full recovery-base scan and final SHA are recorded in the run log.
+- Post-close routing: RQ625 promoted to primary READY after the full active-queue scan on recovery base `b4a4b1be073ead7ce41d906ed761809b8052cf61`; full file list and remaining candidate matrix are recorded in the run log.
 - Prompt defect / scope repair: none.
 
 ---
