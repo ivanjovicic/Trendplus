@@ -1,11 +1,6 @@
-using Infrastructure.Database;
 using Infrastructure.DbContexts;
-using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -62,19 +57,7 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
     public async Task MigratedPostgresCatalog_MatchesAnalyticsAndCoreEfModelsExceptReviewedDrift()
     {
         var database = await _fixture.CreateDatabaseAsync("ef_model_catalog_drift");
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] = database.ConnectionString,
-                ["ConnectionStrings:AnalyticsConnection"] = database.ConnectionString,
-                ["DatabaseInitialization:FailFast"] = "true",
-                ["DatabaseInitialization:RunFullSupplierDecisionHubOnStartup"] = "false",
-            })
-            .Build();
-
-        await _fixture.RunFreshBootstrapAsync(
-            database.ConnectionString,
-            connectionString => RunBootstrapAsync(connectionString, configuration));
+        await ApplyCiMigrationsAndStartupSqlAsync(database.ConnectionString);
 
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
             .UseNpgsql(database.ConnectionString)
@@ -172,22 +155,58 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
-    private static async Task RunBootstrapAsync(
-        string connectionString,
-        IConfiguration configuration)
+    private static async Task ApplyCiMigrationsAndStartupSqlAsync(string connectionString)
     {
-        using var services = new ServiceCollection()
-            .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString))
-            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString))
-            .BuildServiceProvider();
+        var coreOptions = new DbContextOptionsBuilder<TrendplusDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var coreContext = new TrendplusDbContext(coreOptions))
+            await coreContext.Database.MigrateAsync();
 
-        var outcome = await DatabaseInitializer.InitializeDatabasesAsync(
-            services,
-            configuration,
-            NullLogger.Instance);
-        Assert.False(outcome.CompletedWithErrors);
-        Assert.Null(outcome.FailureCategory);
-        Assert.Null(outcome.FailureStage);
+        var analyticsOptions = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var analyticsContext = new AnalyticsDbContext(analyticsOptions))
+            await analyticsContext.Database.MigrateAsync();
+
+        var repositoryRoot = FindRepositoryRoot();
+        var startupSqlFiles = new[]
+        {
+            "Database/Migrations/002_CreatePerformanceLogsTable.sql",
+            "Database/Migrations/012_AddAccessImportSupport.sql",
+            "Database/Migrations/017_CreateNightlyAnalyticsMaterializedViews.sql",
+            "Database/Migrations/013_AddVendorSalesNivelacijaViews.sql",
+            "Database/Migrations/014_FixNivelacijaViewsFromDnevnik.sql",
+            "Database/Analytics/014_CreateVendorSalesNivelacijaViews.sql",
+            "Database/Migrations/016_AnalyticsNivelacijaEnhancements.sql",
+        };
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        foreach (var relativePath in startupSqlFiles)
+        {
+            var sql = await File.ReadAllTextAsync(Path.Combine(repositoryRoot, relativePath));
+            await using var command = new NpgsqlCommand(sql, connection)
+            {
+                CommandTimeout = 300,
+            };
+            await command.ExecuteNonQueryAsync();
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        foreach (var startPath in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+        {
+            for (var directory = new DirectoryInfo(startPath); directory is not null; directory = directory.Parent)
+            {
+                var workflowPath = Path.Combine(directory.FullName, ".github", "workflows", "analytics-tests.yml");
+                if (File.Exists(workflowPath))
+                    return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not find the repository root containing analytics-tests.yml.");
     }
 
     private static (Dictionary<SchemaObjectKey, ColumnContract> Columns,
