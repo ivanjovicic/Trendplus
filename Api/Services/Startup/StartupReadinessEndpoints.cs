@@ -15,6 +15,8 @@ public static class StartupReadinessEndpoints
             var isDegradedSuccess = initialization.State == "completed_with_errors";
             var status = isReady
                 ? isDegradedSuccess ? "degraded" : "healthy"
+                : initialization.State == "failed"
+                    ? "failed"
                 : readiness.Reason.Contains("warmup", StringComparison.OrdinalIgnoreCase)
                     || readiness.Reason.Contains("starting", StringComparison.OrdinalIgnoreCase)
                     ? "warming_up"
