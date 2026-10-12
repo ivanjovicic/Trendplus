@@ -963,3 +963,78 @@ An existing schema with an already-applied migration but a missing physical prov
 - PR #123 was squash-merged after all required CI passed on head `ba256ba8f849bfe50eded4dddd679d5c3556afa8`; `main` is verified at `3a78e062946cb8263b58c156b796259acb54f483`.
 - Exact production drift was not independently inspected. Render `autoDeployTrigger` remains off; no production database was changed.
 - Follow-up audit (2026-10-12): PR #123's RQ453 green result used `GateApiTraffic=false`, so it did not prove traffic-gated readiness. The exact earlier 503 was a test request racing asynchronous PostgreSQL warmup. PR #125 adds contract validation, fail-closed read-only readiness when auto-migration is disabled, and real `/ready` waits in both RQ453 oracle/parity paths. On head `b42bdbd0289cdf2a6ad3f19b54c793d887651020`, backend and CI skip inventory passed; both new readiness PostgreSQL tests and the migration lifecycle test passed, and RQ453 passed all 8 required suites with zero skipped. See the follow-up section in the same evidence file. Do not create a duplicate queue item. Production remains unverified until controlled deployment and runtime DB checks.
+
+---
+
+## RQ629 - Guard analytics EF migration discovery and reconcile schema skipped by two undiscoverable classes
+
+Status: PARTIAL
+Priority: P2
+Type: backend/migrations/tests
+Feature family: ef-migration-discovery-guard
+Parallel-safe: yes (one new additive analytics migration and one new test; no READY/IN_PROGRESS lane owns `Infrastructure/Migrations/AnalyticsDb`)
+Owner: Grok Bot
+Ready after: owner request 2026-10-12 12:12 (analytics follow-up review)
+Commit suggestion: `fix(analytics): reconcile schema skipped by undiscoverable migrations`
+
+### Problem
+RQ588 guarded EF migration discovery for `TrendplusDbContext` only. In the analytics context two classes are silently skipped by EF because they lack `[DbContext]`: `20260521123000_AddAnalyticsActionIndexes` (has only `[Migration]`) and `20260531103000_AlignAnalyticsRefreshRunContract` (no attributes). The model and every later snapshot already contain their effects, so EF reports no pending change while migrated databases drift.
+
+### Evidence
+- `Infrastructure/Migrations/AnalyticsDb/20260521123000_AddAnalyticsActionIndexes.cs:7` (no `[DbContext]`, no Designer); model `Infrastructure/DbContexts/AnalyticsDbContext.cs:442-445` declares `idx_analytics_action_sourcekey_status` and `idx_analytics_action_priority_status`; no other migration or SQL creates them.
+- `Infrastructure/Migrations/AnalyticsDb/20260531103000_AlignAnalyticsRefreshRunContract.cs:9` (no attributes). `20260524222817_AddAnalyticsRefreshRuns.cs:32-34` creates TriggeredBy varchar(32), ProcessMode varchar(16), WorkerName varchar(128); the model (`AnalyticsDbContext.cs:349-356`) and `Infrastructure/Services/AnalyticsRefreshRunRecorder.cs:59` use 80/32/200. A WorkerName over 128 characters fails the insert, which the recorder swallows as a warning, so refresh-run history and readiness evidence silently disappear.
+
+### Delivered
+- `Infrastructure/Migrations/AnalyticsDb/20261012120000_ReconcileUndiscoveredAnalyticsSchema.cs`: additive and idempotent. Creates the two indexes with IF NOT EXISTS and widens the three columns only when they are narrower. It never shrinks JobKey/ErrorMessage/CorrelationId (the legacy class would) and has a no-op Down. The legacy classes stay undiscoverable on purpose.
+- `Api.Tests/AnalyticsMigrationDiscoveryContractTests.cs`: runtime EF discovery guard for the analytics context with an explicit two-entry allowlist; idempotency/model-parity assertions for the reconcile SQL.
+- Not changed: the `idx_analytics_refresh_runs_job_started` sort direction (model DESC on StartedAtUtc, DB ASC) is a performance-only difference, left for RQ630.
+
+### Completion note
+- Date: 2026-10-12
+- Status: PARTIAL (pending main push and CI)
+- Checks run: `dotnet build Api.Tests`; migration/refresh/action-item filter, 90 pass. Failures: the 2 known CRLF `DatabaseMigrationOwnershipTests`, plus 3 Testcontainers tests that need Docker, which is unresponsive on the dev machine and runs in CI. Governance validators with/without self-test; `git diff --check`.
+- Completion: implemented and committed; pending main CI evidence.
+- Changed files: `Infrastructure/Migrations/AnalyticsDb/20261012120000_ReconcileUndiscoveredAnalyticsSchema.cs`, `Api.Tests/AnalyticsMigrationDiscoveryContractTests.cs`
+- Contract/runtime behavior changed: migrated analytics DBs gain the two model indexes and model-length refresh-run columns; no data rewritten.
+- Checks not run: local PostgreSQL apply (Docker unresponsive); CI applies all analytics migrations.
+- Run log: `.ai/runs/2026-10-12-RQ629-evidence.md`
+- Evidence state: pending
+- Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known.
+- Follow-up: RQ630 catalog-vs-model drift guard.
+- Residual risk: non-concurrent CREATE INDEX briefly locks the small analytics_action_items table on first apply.
+- Prompt defect / scope repair: none.
+
+---
+
+## RQ630 - Fail CI when a migrated analytics database drifts from the EF model
+
+Status: READY
+Priority: P2
+Type: tests/CI schema-drift guard
+Feature family: ef-migration-discovery-guard
+Parallel-safe: yes (new PostgreSQL test only; must not edit `DatabaseInitializer.cs`, which RQ622 owns)
+Owner: unassigned
+Ready after: RQ629 DONE
+Commit suggestion: `test(analytics): catalog-vs-model drift guard after migrations`
+
+### Problem
+RQ613, RQ628 and RQ629 were all classes of the same silent drift: catalog state differed from what the model/snapshot claims, and nothing failed until a runtime query hit it. No test compares the physical catalog of a freshly migrated analytics database against the EF model.
+
+### Evidence
+- RQ629: two undiscoverable migrations left missing indexes and narrower columns for months with green CI.
+- RQ628: physical column missing while migration history said applied.
+- CI `analytics-tests.yml` applies migrations and startup SQL but only runs behavioural tests.
+
+### Do
+1. Disposable PostgreSQL: apply `AnalyticsDbContext` migrations (plus the startup analytics SQL the CI job applies). For every model entity, compare columns (existence, nullability, varchar length, type), and named indexes (existence, uniqueness, filter, column order) with `information_schema`/`pg_indexes`.
+2. Maintain a small reviewed allowlist (reason, owner, sunset) for intentional differences. Examples: columns left wider than the model by RQ629; the refresh-run index sort direction, unless fixed with an additive idempotent migration.
+3. Repeat for `TrendplusDbContext` core tables only where the cost is small; otherwise register the follow-up.
+
+### Acceptance
+Removing any model index or narrowing any model column in a migration fails CI; allowlist entries cannot expire silently. No production DB access.
+
+### Dependencies
+RQ629 DONE; independent of RQ622 and STAB16.
