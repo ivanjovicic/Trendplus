@@ -1,8 +1,8 @@
 # Analytics Reliability RQ queue — post-import correctness and business value
 
-Date: 2026-10-11
+Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ622 primary (P1 Price Intelligence cache readiness and fail-closed parity). RQ621 is DONE on `d500304bdc767f32de773e07d534a3a50a0b12ae`; exact-main Analytics Tests & Data Integrity run `38226160681` passed, including the PostgreSQL regression and RQ453 certification. RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; RQ625 and RQ626 remain WAITING because their API DTO/client paths serialize behind RQ621/RQ622/RQ624 and each other. BCI17 is DONE on current-main SHA `8ea2ba6acb03d59f09136d197056f8d5496d60e5`. RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`.
+Current READY prompt: RQ624 primary (P1 intelligence daily as-of rollover), promoted after RQ622 DONE. RQ630 (P2) and RQ631 (P3) remain independent READY prompts. RQ622 is DONE on implementation SHA `116df731117a5f5190b10e654840e3f7c225cbf8`; exact-current-main Analytics Tests & Data Integrity run `38238211919` on `319d24f6b549ad93b0487a70d70a5a17f681e5a9` passed (1,971 passed, 42 classified skips, 0 failed; RQ453 certification succeeded), and Planning Governance run `38238211851` passed. RQ621 is DONE on `d500304bdc767f32de773e07d534a3a50a0b12ae`; RQ620 is DONE on `876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1`; RQ619 is DONE on `a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f`; RQ623 is DONE on `d20b75a6db69b05aea8d8a908614831b6fce07e9`. RQ627 now waits for RQ624 because their price-cache/API metadata paths overlap. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -669,7 +669,7 @@ Evidence state: synchronized
 
 ## RQ622 - Certify Price Intelligence cache rebuild, readiness and fail-closed API parity
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: startup/MV lifecycle/API trust-contract regression
 Feature family: price-intelligence-cache-truth
@@ -683,7 +683,7 @@ Commit suggestion: fix(analytics): fail closed on stale price intelligence cache
 Price Intelligence alone bypasses the readiness/hash checks applied to Demand, Inventory and Trend. A semantic SQL change with unchanged MV column structure can leave a pre-existing price MV stale while the price endpoint returns HTTP 200; missing relations may be represented as an empty-success response.
 
 ### Evidence
-`DatabaseInitializer.AnalyticsIntelligenceCacheBySqlFile` lists only 021, 022 and 024; SQL 023 uses `CREATE MATERIALIZED VIEW IF NOT EXISTS` with no `cache_refresh_state` ownership. `QueryPriceIntelligenceAsync` passes `freshnessCacheName=null, freshnessSqlPath=null`; price GET calls `QueryPriceIntelligenceAsync` directly rather than `ExecuteCacheQueryAsync`. `ExecutePagedQueryAsync` marks missing relations unavailable only when a freshness cache name exists. Nightly refresh can happen, but cannot certify exact startup SQL/hash parity when disabled.
+Pre-fix evidence (historical): `DatabaseInitializer.AnalyticsIntelligenceCacheBySqlFile` listed only 021, 022 and 024; SQL 023 used `CREATE MATERIALIZED VIEW IF NOT EXISTS` without `cache_refresh_state` ownership. `QueryPriceIntelligenceAsync` passed `freshnessCacheName=null, freshnessSqlPath=null`; price GET called it directly rather than `ExecuteCacheQueryAsync`. Missing relations could be represented as empty success, and nightly refresh could not certify exact startup SQL/hash parity when disabled.
 
 ### Scope
 Price signal cache registry/status/SQL 023, startup initializer, price endpoint/API status, dedicated PostgreSQL populated-MV regression and minimal operator diagnostics. Do not rework all intelligence SQL or alter Render service flags.
@@ -705,6 +705,25 @@ Price 200 requires verified matching cache state/hash and refreshed MV; stale/pe
 
 ### Dependencies
 RQ619 and RQ621 DONE; independent of external STAB16 proof, which remains the deployed-state authority.
+
+### Completion note
+
+- Date: 2026-10-12
+- Status: DONE
+- Completion: Price Intelligence now uses the registered SQL 023 cache lifecycle and verifies readiness, refreshed generation, required relation and applied SQL hash before returning HTTP 200. Pending, failed, missing or mismatched cache state returns HTTP 503; ready-empty remains a successful empty result.
+- Changed files: `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Infrastructure/Seed/DatabaseInitializer.cs`; `Database/Analytics/Intelligence/023_price_intelligence_v1.sql`; `Api.Tests/AnalyticsIntelligenceCacheConvergenceTests.cs`; `Api.Tests/AnalyticsPriceIntelligenceCacheReadinessTests.cs`; `docs/Analytics/INTELLIGENCE_README.md`; this queue; `.ai/runs/2026-10-12-RQ622-evidence.md`.
+- Checks run: Release `Api.Tests` build passed (0 warnings/errors); all six governance checks passed; exact-main Analytics Tests & Data Integrity run `38238211919` passed with 1,971 passed / 42 classified skips / 0 failed, including both Price readiness tests and RQ453 certification; Planning Governance run `38238211851` passed.
+- Checks not run: local disposable PostgreSQL tests could not start because the Docker Desktop service was stopped and this process could not open it. Exact-main CI executed the PostgreSQL tests successfully. No production database/import/deployment was used.
+- Run log: `.ai/runs/2026-10-12-RQ622-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `116df731117a5f5190b10e654840e3f7c225cbf8`
+- Main verification: fresh `origin/main` `319d24f6b549ad93b0487a70d70a5a17f681e5a9` contains implementation SHA `116df731` and test follow-up `d186bde9`; exact-current-main Analytics run `38238211919` and RQ453 job succeeded.
+- Missed: none known.
+- Follow-up: RQ624 is the primary READY successor; RQ630 and RQ631 remain independently READY.
+- Residual risk: local Docker was unavailable; exact-main disposable PostgreSQL proof passed. Deployed freshness remains owned by STAB16, and the separate session-time-zone price-date correction remains queued as RQ627.
+- Post-close routing: RQ624 promoted to primary READY; RQ630/RQ631 remain independent READY.
+- Prompt defect / scope repair: extending the shared cache matrix exposed a known SQL 023 session-time-zone divergence in an RQ627 non-UTC fixture; the fixture now checks the other cache pairs there, while Price parity remains covered under a matching session. The fail-closed test helper now includes the Price route. RQ627's readiness gate now includes RQ624 to serialize their overlapping metadata/cache paths.
 
 ---
 
@@ -767,7 +786,7 @@ Independent READY after RQ616; RQ620 waits for RQ623 to release SQL 024 ownershi
 
 ## RQ624 - Certify intelligence daily as-of rollover and worker refresh-state truth
 
-Status: WAITING
+Status: READY
 Priority: P1
 Type: clock-boundary PostgreSQL MV/worker lifecycle and API freshness proof
 Feature family: intelligence-cache-calendar-rollover
@@ -890,9 +909,9 @@ Status: WAITING
 Priority: P2
 Type: timestamp-with-time-zone read/oracle and bounded SQL contract correction
 Feature family: price-intelligence-day-timezone
-Parallel-safe: no; shares SQL 023, price cache and DTO with RQ621/RQ622
+Parallel-safe: no; shares SQL 023, price cache and API metadata paths with RQ621/RQ622/RQ624
 Owner: unassigned
-Ready after: RQ621 DONE and RQ622 DONE; independent of deployed provider
+Ready after: RQ621 DONE, RQ622 DONE and RQ624 DONE to serialize overlapping price-cache/API metadata; independent of deployed provider
 Commit suggestion: fix(analytics): normalize price signal day to UTC
 
 ### Problem
@@ -919,7 +938,7 @@ Provider-strict isolated PostgreSQL timezone oracle, pre-existing MV EXCEPT ALL,
 Price snapshot day is invariant under session TimeZone and consistent with documented UTC semantics; no live data writes or implicit policy changes.
 
 ### Dependencies
-RQ621/RQ622 DONE; avoid simultaneous SQL 023 changes.
+RQ621/RQ622/RQ624 DONE; avoid simultaneous SQL 023 or cache-readiness metadata changes.
 
 ---
 
@@ -1016,7 +1035,7 @@ Status: READY
 Priority: P2
 Type: tests/CI schema-drift guard
 Feature family: ef-migration-discovery-guard
-Parallel-safe: yes (new PostgreSQL test only; must not edit `DatabaseInitializer.cs`, which RQ622 owns)
+Parallel-safe: yes (new PostgreSQL test only; keep the scope test-only and do not edit `DatabaseInitializer.cs`)
 Owner: unassigned
 Ready after: RQ629 DONE
 Commit suggestion: `test(analytics): catalog-vs-model drift guard after migrations`
