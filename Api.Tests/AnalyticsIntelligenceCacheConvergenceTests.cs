@@ -14,6 +14,8 @@ namespace Api.Tests;
 [Collection(IntelligencePostgresCollection.Name)]
 public sealed class AnalyticsIntelligenceCacheConvergenceTests
 {
+    private const string PriceIntelligenceSqlPath = "Database/Analytics/Intelligence/023_price_intelligence_v1.sql";
+
     private static readonly (string SqlFilePath, string[] RequiredRelations)[] CacheScripts =
     [
         (
@@ -25,6 +27,10 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             ["analytics_intel.vw_inventory_risk_signals_v1", "analytics_intel.mv_inventory_risk_signals_v1_cache"]
         ),
         (
+            PriceIntelligenceSqlPath,
+            ["analytics_intel.vw_price_intelligence_v1", "analytics_intel.mv_price_intelligence_v1_cache"]
+        ),
+        (
             "Database/Analytics/Intelligence/024_trend_momentum_v1.sql",
             ["analytics_intel.vw_trend_momentum_v1", "analytics_intel.mv_trend_momentum_v1_cache"]
         )
@@ -34,6 +40,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
     [
         ("analytics_intel.vw_product_demand_signals_v1", "analytics_intel.mv_product_demand_signals_v1_cache"),
         ("analytics_intel.vw_inventory_risk_signals_v1", "analytics_intel.mv_inventory_risk_signals_v1_cache"),
+        ("analytics_intel.vw_price_intelligence_v1", "analytics_intel.mv_price_intelligence_v1_cache"),
         ("analytics_intel.vw_trend_momentum_v1", "analytics_intel.mv_trend_momentum_v1_cache")
     ];
 
@@ -516,6 +523,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
 
         var seedPath = FindRepositoryFile("Api.Tests/Fixtures/analytics-intelligence-smoke-seed.sql");
         await ExecuteAsync(connection, await File.ReadAllTextAsync(seedPath));
+        await ExecuteAsync(connection, "ALTER TABLE \"ProductsDim\" ADD COLUMN \"ProductName\" text; ALTER TABLE \"ProductsDim\" ADD COLUMN \"PLU\" text;");
         await ExecuteScriptAsync(connection, "Database/Analytics/Intelligence/020_create_intelligence_schema.sql");
 
         // SaleId 50001 belongs to the recent Store 7 sale above, while another header's
@@ -529,6 +537,17 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
         foreach (var (relativePath, _) in CacheScripts)
         {
             var sql = await File.ReadAllTextAsync(FindRepositoryFile(relativePath));
+            if (relativePath == PriceIntelligenceSqlPath)
+            {
+                const string currentDiscountFormula = "ELSE (pp.list_price - pp.net_price) / NULLIF(pp.list_price, 0)";
+                const string legacyDiscountFormula = "ELSE pp.net_price / NULLIF(pp.list_price, 0)";
+                Assert.Single(Regex.Matches(sql, Regex.Escape(currentDiscountFormula)).Cast<Match>());
+                var legacyPriceSql = sql.Replace(currentDiscountFormula, legacyDiscountFormula, StringComparison.Ordinal);
+                await ExecuteAsync(connection, legacyPriceSql);
+                await RecordStartupHistoryAsync(connection, relativePath, ComputeStartupHash(legacyPriceSql));
+                continue;
+            }
+
             var correctedJoin = "sf.\"SaleId\" = slf.\"SaleId\"";
             var legacyJoin = "sf.\"Id\" = slf.\"SaleId\"";
             Assert.Single(Regex.Matches(sql, Regex.Escape(correctedJoin)).Cast<Match>());
@@ -614,6 +633,10 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             connection,
             "analytics_intel.vw_trend_momentum_v1",
             ["article_id", "signal_date", "external_trend_score", "local_sales_acceleration", "trend_entropy"]);
+        await AssertColumnNamesAsync(
+            connection,
+            "analytics_intel.vw_price_intelligence_v1",
+            ["article_id", "price_date", "category", "brand_key", "net_price", "list_price", "cost", "price_index_vs_category", "price_index_vs_brand", "discount_depth", "margin_pct"]);
     }
 
     private static async Task AssertAllCachesReadyForCurrentSqlAsync(NpgsqlConnection connection)

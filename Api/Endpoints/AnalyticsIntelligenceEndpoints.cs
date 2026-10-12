@@ -161,11 +161,12 @@ public static class AnalyticsIntelligenceEndpoints
                 NormalizeText(sortBy),
                 NormalizeText(sortDir));
 
-            var response = await QueryPriceIntelligenceAsync(GetAnalyticsConnectionString(configuration), request, ct);
-            return Results.Ok(response);
+            return await ExecuteCacheQueryAsync(() => QueryPriceIntelligenceAsync(
+                GetAnalyticsConnectionString(configuration), request, ct));
         })
         .WithName("GetAnalyticsIntelligencePriceSignals")
         .Produces<IntelligencePageResponse<PriceIntelligenceItem>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status503ServiceUnavailable)
         .ProducesValidationProblem();
 
         group.MapGet("/trend-momentum", async (
@@ -308,8 +309,8 @@ public static class AnalyticsIntelligenceEndpoints
             "analytics_intel.mv_price_intelligence_v1_cache",
             "price_date",
             null,
-            null,
-            null,
+            "analytics_intel.mv_price_intelligence_v1_cache",
+            "Database/Analytics/Intelligence/023_price_intelligence_v1.sql",
             ct);
 
     internal static Task<IntelligencePageResponse<TrendMomentumItem>> QueryTrendMomentumAsync(

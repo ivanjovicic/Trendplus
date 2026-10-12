@@ -226,13 +226,13 @@ Endpoint design notes:
 - demand and inventory default to the latest available snapshot date and support `historyDays` for short sparkline-style history windows
 - all routes support pagination and whitelisted sort keys
 - filters are applied against the intelligence caches plus latest product/supplier/store dimension snapshots
-- the demand, inventory-risk and trend-momentum routes return `503` while their startup cache is pending, failed, missing or hash-mismatched; they do not present stale rows as a successful empty result. A ready cache containing zero rows remains a valid empty result. Price intelligence keeps its separate refresh contract.
+- the demand, inventory-risk, price-intelligence and trend-momentum routes return `503` while their startup cache is pending, failed, missing or hash-mismatched; they do not present stale rows as a successful empty result. A ready cache containing zero rows remains a valid empty result.
 
 ### Cache freshness operator check
 
-The startup refresh is asynchronous and does not depend on `NightlyAnalyticsRefreshWorker`. For the three caches affected by intelligence SQL changes, `analytics_intel.cache_refresh_state` records each cache's state, expected startup SQL hash, last successful refresh time and safe failure code. The app serves a cache only when it is `ready`, the materialized relation exists, and `expected_script_hash` matches `__StartupSqlScriptHistory.ScriptHash`.
+The startup refresh is asynchronous and does not depend on `NightlyAnalyticsRefreshWorker`. For all four signal caches, `analytics_intel.cache_refresh_state` records each cache's state, expected startup SQL hash, last successful refresh time and safe failure code. The app serves a cache only when it is `ready`, the materialized relation exists, and `expected_script_hash` matches `__StartupSqlScriptHistory.ScriptHash`.
 
-Run this read-only query against the analytics database when one of the three endpoints returns `503`:
+Run this read-only query against the analytics database when one of these endpoints returns `503`:
 
 ```sql
 SELECT
@@ -249,6 +249,7 @@ LEFT JOIN "__StartupSqlScriptHistory" AS history
 WHERE state.cache_name IN (
     'analytics_intel.mv_product_demand_signals_v1_cache',
     'analytics_intel.mv_inventory_risk_signals_v1_cache',
+    'analytics_intel.mv_price_intelligence_v1_cache',
     'analytics_intel.mv_trend_momentum_v1_cache'
 )
 ORDER BY state.cache_name;

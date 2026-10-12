@@ -669,12 +669,13 @@ Evidence state: synchronized
 
 ## RQ622 - Certify Price Intelligence cache rebuild, readiness and fail-closed API parity
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: startup/MV lifecycle/API trust-contract regression
 Feature family: price-intelligence-cache-truth
 Parallel-safe: no; `DatabaseInitializer` overlaps RQ619 and price API/SQL schema may overlap RQ621
-Owner: unassigned
+Owner: Codex
+Local lock: removed before delivery
 Ready after: RQ619 DONE and RQ621 DONE; code proof only, no provider access necessary
 Commit suggestion: fix(analytics): fail closed on stale price intelligence cache
 

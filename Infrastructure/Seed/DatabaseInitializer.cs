@@ -30,6 +30,7 @@ public static class DatabaseInitializer
         {
             ["Database/Analytics/Intelligence/021_product_demand_signals_v1.sql"] = "analytics_intel.mv_product_demand_signals_v1_cache",
             ["Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql"] = "analytics_intel.mv_inventory_risk_signals_v1_cache",
+            ["Database/Analytics/Intelligence/023_price_intelligence_v1.sql"] = "analytics_intel.mv_price_intelligence_v1_cache",
             ["Database/Analytics/Intelligence/024_trend_momentum_v1.sql"] = "analytics_intel.mv_trend_momentum_v1_cache"
         };
 
