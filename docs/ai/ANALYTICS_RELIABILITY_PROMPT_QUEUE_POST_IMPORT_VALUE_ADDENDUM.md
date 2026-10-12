@@ -968,7 +968,7 @@ An existing schema with an already-applied migration but a missing physical prov
 
 ## RQ629 - Guard analytics EF migration discovery and reconcile schema skipped by two undiscoverable classes
 
-Status: PARTIAL
+Status: DONE
 Priority: P2
 Type: backend/migrations/tests
 Feature family: ef-migration-discovery-guard
@@ -991,19 +991,19 @@ RQ588 guarded EF migration discovery for `TrendplusDbContext` only. In the analy
 
 ### Completion note
 - Date: 2026-10-12
-- Status: PARTIAL (pending main push and CI)
+- Status: DONE
 - Checks run: `dotnet build Api.Tests`; migration/refresh/action-item filter, 90 pass. Failures: the 2 known CRLF `DatabaseMigrationOwnershipTests`, plus 3 Testcontainers tests that need Docker, which is unresponsive on the dev machine and runs in CI. Governance validators with/without self-test; `git diff --check`.
-- Completion: implemented and committed; pending main CI evidence.
+- Completion: delivered to main; CI applied all analytics migrations on fresh PostgreSQL and passed.
 - Changed files: `Infrastructure/Migrations/AnalyticsDb/20261012120000_ReconcileUndiscoveredAnalyticsSchema.cs`, `Api.Tests/AnalyticsMigrationDiscoveryContractTests.cs`
 - Contract/runtime behavior changed: migrated analytics DBs gain the two model indexes and model-length refresh-run columns; no data rewritten.
 - Checks not run: local PostgreSQL apply (Docker unresponsive); CI applies all analytics migrations.
 - Run log: `.ai/runs/2026-10-12-RQ629-evidence.md`
-- Evidence state: pending
+- Evidence state: synchronized
 - Delivery mode: direct-main
-- Main commit SHA: pending
-- Main verification: pending
+- Main commit SHA: `8c2d27d818f8542e820e8898edb74de982a26be0`
+- Main verification: fresh `origin/main` equals the SHA; Actions `38235511229` (Analytics Tests & Data Integrity) and `38235511161` (Planning Governance) succeeded.
 - Missed: none known.
-- Follow-up: RQ630 catalog-vs-model drift guard.
+- Follow-up: RQ630 catalog-vs-model drift guard (READY now that RQ629 is DONE).
 - Residual risk: non-concurrent CREATE INDEX briefly locks the small analytics_action_items table on first apply.
 - Prompt defect / scope repair: none.
 
