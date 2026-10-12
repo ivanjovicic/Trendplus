@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ630 primary (IN_PROGRESS; P2 EF catalog-vs-model drift guard; claimed by Codex in worktree `rq630-schema-drift`); RQ631 (READY; P3 telemetry persistence) remains independent. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ631 primary (IN_PROGRESS; active PR #132 by `ivanjovicic`, current head `a5566d6051dc7b84f070fefd2981529aa29c7147`; its checks were running at latest inspection). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1132,7 +1132,7 @@ RQ588 guarded EF migration discovery for `TrendplusDbContext` only. In the analy
 
 ## RQ630 - Fail CI when a migrated analytics database drifts from the EF model
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: tests/CI schema-drift guard
 Feature family: ef-migration-discovery-guard
@@ -1167,18 +1167,46 @@ Removing any model index or narrowing any model column in a migration fails CI; 
 ### Dependencies
 RQ629 DONE; independent of RQ622 and STAB16.
 
+### Delivered
+- Added `Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs`, a disposable PostgreSQL guard for AnalyticsDbContext and TrendplusDbContext model/catalog parity.
+- Applies both EF migration sets directly, compares model columns and named index shape immediately after migration, applies the startup SQL files used by CI, then compares again so startup SQL cannot hide missing migration objects.
+- Keeps exact reviewed allowances for legacy RQ629 differences with reason, owner and sunset validation; unused allowances are permitted when clean migrations already converge the schema.
+
+### Completion note
+- Date: 2026-10-12
+- Status: DONE
+- Completion: catalog guard passed on PR and exact current-main PostgreSQL CI.
+- Changed files: `Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs`, `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-12-RQ630-evidence.md`.
+- Checks run: Release Api.Tests build passed with 0 warnings/errors; PR #131 backend run `38275016017` passed (1,983 passed, 42 classified skips, 0 failures); exact-main backend run `38275050911` passed on `1a1322f8d73d682df3b531047d3eb597b7fd34eb` with the same counts; agent-instruction, queue and planning validators (including self-tests) and `git diff --check` passed. Post-close Planning Governance run `38277164328` is in progress on `3cce486d0e663f8da69f5dc8382b4a26d96292b6`.
+- Checks not run: local PostgreSQL execution was unavailable because Docker was stopped; CI executed the PostgreSQL test. No production DB or deployment was accessed.
+- Run log: `.ai/runs/2026-10-12-RQ630-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request; PRs #129, #130, and #131 merged.
+- Main commit SHA: `1a1322f8d73d682df3b531047d3eb597b7fd34eb`
+- Main verification: refreshed local `main` and `origin/main` both point to `3cce486d0e663f8da69f5dc8382b4a26d96292b6`, which contains implementation SHA `1a1322f8d73d682df3b531047d3eb597b7fd34eb`; exact-main backend run `38275050911` passed.
+- Missed: none within RQ630 acceptance.
+- Follow-up: RQ631 remains READY; its test-host diagnosis is clearer, but a recent unmerged branch overlaps its middleware path and needs owner resolution before same-file work.
+- Residual risk: production/deployed schema was not accessed; RQ631's production telemetry status remains unknown.
+- Post-close routing: RQ631 remains the READY successor; it was not claimed because remote branch `review/http-metric-field-bounds-20261012` contains unique changes to the same middleware file (commit `c5999924`), with no PR/worktree/lock found. Current CI log identifies `SQLSTATE 42P01` (`PerformanceLogs` relation missing) in test hosts; production status remains unproven.
+- Prompt defect / scope repair: bypassed `DatabaseInitializer` self-healing, compared before and after the CI startup SQL, and removed the false requirement that each reviewed allowance be exercised.
+
 ---
 
 ## RQ631 - Classify the recurring "Failed to persist HTTP request performance metric" warning
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P3
 Type: observability/diagnosis
 Feature family: request-performance-telemetry
-Parallel-safe: yes (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs` and its tests; no active lane owns it)
-Owner: unassigned
+Parallel-safe: yes (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs` and its tests; currently owned by PR #132)
+Owner: `ivanjovicic` (active PR #132; Codex worktree not identified)
 Ready after: none (registered by `docs/qa/AGENT_PROMPT_LOG_AUDIT_2026-10-12.md` F5)
 Commit suggestion: `fix(observability): make request performance persistence failures diagnosable`
+
+### Post-close routing note — 2026-10-12
+- Current backend CI run `38275050911` logged `SQLSTATE 42P01: relation "PerformanceLogs" does not exist` from test hosts, which supports RQ631's test-provisioning branch; production status remains unknown.
+- Active PR #132, `https://github.com/ivanjovicic/Trendplus/pull/132`, is authored by `ivanjovicic` from `review/http-metric-field-bounds-20261012` at `a5566d6051dc7b84f070fefd2981529aa29c7147`. Its current diff touches the middleware and three backend test files. At latest inspection, backend run `38276555961`, RQ453 certification, and frontend checks were in progress; SDK pin availability and POS UI checks had passed. Treat this as active RQ631 ownership and do not overlap it from another workspace.
+- PR #132 records the SQLSTATE diagnosis, bounds persisted fields, and disables optional metric capture in two isolated test hosts. Its description says durable counter/readiness evidence and production provisioning remain unproven, so RQ631 acceptance is still open after this PR's current scope.
 
 ### Problem
 `RequestPerformanceLoggingMiddleware` swallows persistence exceptions as a warning (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs:60-65`). Actions run `38236578398` logs it 36 times, each paired with an EF `Failed executing DbCommand` error. It is not known whether only test hosts lack the target table/schema or production telemetry is also silently lost.
@@ -1217,17 +1245,16 @@ Owner (Ivan) chose option (a) on 2026-10-12 15:13: code changes may go directly 
 
 ## RQ633 - Diagnose failed Vercel production deploys and stop deploying docs-only commits
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: frontend deploy/config
 Feature family: vercel-deploy-hygiene
 Parallel-safe: yes (`vercel.json`, `Klijent/clientapp/vercel.json`)
-Owner: unassigned
-Ready after: someone with Vercel access runs `npx vercel inspect dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT --logs` and `npx vercel inspect dpl_GWMNgzfNTGe5338RVEPQJH39C7m6 --logs`
+Owner: Cursor (cloud agent)
 Commit suggestion: `chore(deploy): skip Vercel builds for non-frontend commits`
 
 ### Problem
-Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` (11:12). Both are commits with no frontend change; later deploys succeeded. The root `vercel.json` has no `ignoreCommand`, so every docs/backend commit triggers a production build. `Klijent/clientapp/vercel.json` duplicates the headers/rewrites, so it is unclear which config is authoritative.
+Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` (11:12). Both are commits with no frontend change; later deploys succeeded. The root `vercel.json` had no `ignoreCommand`, so every docs/backend commit triggered a production build. `Klijent/clientapp/vercel.json` duplicates the headers/rewrites, so it was unclear which config is authoritative.
 
 ### Do
 1. Classify both failures from the Vercel logs: transient, concurrency/cancel, or a real build break.
@@ -1235,3 +1262,21 @@ Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` 
 
 ### Acceptance
 Docs-only commits do not create production deployments. Both historic failures are classified with evidence.
+
+### Completion note
+
+- Date: 2026-10-12
+- Agent: Cursor cloud agent
+- Status: DONE
+- Completion: 100%
+- Changed files: `vercel.json`, `scripts/vercel-should-build.sh`, `scripts/vercel-should-build-selftest.sh`, `docs/qa/VERCEL_DEPLOY_FAILURE_CLASSIFICATION_2026-10-12.md`, `docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md` (stale BCI17 header repair), `.github/workflows/analytics-quality-gates.yml`
+- Checks run: `bash scripts/vercel-should-build-selftest.sh` — pass; `git diff --check` — pass; `node scripts/check-prompt-queues.mjs` — pass
+- Checks not run: `npx vercel inspect … --logs` — no Vercel credentials; live Vercel skip-build proof — requires post-merge production push
+- Run log: `.ai/runs/2026-10-12-RQ633-evidence.md`
+- Delivery mode: direct-main
+- Main commit SHA: `33c17219fc78f5485a4b0426f43c04ce005a8b1c`
+- Main verification: `git rev-parse origin/main` -> `33c17219fc78f5485a4b0426f43c04ce005a8b1c`
+- Missed: line-level Vercel deployment log capture
+- Follow-up: owner optional `vercel inspect` on `dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT` and `dpl_GWMNgzfNTGe5338RVEPQJH39C7m6`
+- Residual risk: duplicate `Klijent/clientapp/vercel.json` kept for legacy subdirectory-root Vercel projects only
+- Evidence state: synchronized
