@@ -22,7 +22,7 @@ On claim: fresh `origin/main`, complete canonical RQ/addendum/SQL queue, same-ow
 
 ## RQ608 - Fix exact-main RQ607 current-snapshot CI regression
 
-Status: DONE
+Status: IN_PROGRESS
 Priority: P0
 Type: PostgreSQL/HTTP regression tests
 Feature family: inventory-latest-snapshot-ci
@@ -919,3 +919,46 @@ Price snapshot day is invariant under session TimeZone and consistent with docum
 
 ### Dependencies
 RQ621/RQ622 DONE; avoid simultaneous SQL 023 changes.
+
+---
+
+## RQ628 - Repair missing purchase-cost provenance schema before analytics traffic
+
+Status: DONE
+Priority: P1
+Type: PostgreSQL bootstrap/schema drift regression
+Feature family: purchase-cost-provenance-bootstrap
+Parallel-safe: no (`Infrastructure/Seed/DatabaseInitializer.cs`, migration lifecycle integration proof)
+Owner: Codex
+Commit suggestion: `fix(analytics): repair missing provenance column at startup`
+
+### Problem
+
+Analytics projections read `prodaja_stavke.purchase_cost_provenance`. The canonical EF migration and the full core-schema bootstrap add the nullable column, but an already-ready core schema skips the full bootstrap. When EF migration history says the migration has run while the physical column is absent, initialization can complete and the Shoe Type endpoint fails with PostgreSQL `42703`. Supplier and Color endpoints and other provenance-dependent readers share the same field.
+
+### Evidence
+
+- `Infrastructure/DbContexts/TrendplusDbContext.cs` maps `PurchaseCostProvenance` to `purchase_cost_provenance`.
+- `Infrastructure/Migrations/20261010160000_AddPurchaseCostProvenance.cs` and the full bootstrap define the additive column.
+- `DatabaseInitializer.EnsureTrendplusCoreSchemaAsync` returned early for ready core schemas without independently reconciling this column; EF will not rerun a migration already recorded in `__EFMigrationsHistory`.
+- The incident log reports `42703` at `/api/analytics/shoe-type-sales-stats`. No production database access or mutation was performed, so the reported deployment's exact migration history remains unverified.
+
+### Scope
+
+Add idempotent, additive schema convergence for the nullable provenance column even when the general core bootstrap is skipped. Verify the post-migration schema contract before marking initialization successful. Preserve all stored numeric costs and business rows. No production DB execution or Render deployment.
+
+### Tests
+
+- In the PostgreSQL bootstrap lifecycle test, complete initial bootstrap, drop only the nullable provenance column while leaving its EF migration history row intact, rerun startup initialization, and assert the column is restored before continuing.
+- Preserve existing migration idempotency and cost-provenance tests; run the focused PostgreSQL lifecycle test and backend Release build. CI must execute the mandatory PostgreSQL suite with zero skips.
+- Check supplier, shoe-type, color, Insight Studio, Supplier Decision Hub and other readers sharing this property.
+
+### Acceptance
+
+An existing schema with an already-applied migration but a missing physical provenance column converges safely during startup before analytics requests are admitted. The column remains nullable and addition-only; no sales values or rows are rewritten. The user controls production deployment timing.
+
+### Delivery note
+
+- Implementation and regression test are recorded in `.ai/runs/2026-10-12-RQ628-evidence.md`.
+- PR #123 passed all required CI workflows on implementation head `3cda1f7d0f9b803c11306125b66c1e1069df717c`; final documentation-sync CI is required before squash merge.
+- Exact production drift was not independently inspected. Render `autoDeployTrigger` remains off; no production database was changed.
