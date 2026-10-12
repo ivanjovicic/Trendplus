@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ626 primary (IN_PROGRESS; P2 negative reconstructed-inventory evidence; owner cursor/`bc-bd7c41e3-72e2-4cad-a05c-3fcaa0ebd661`); RQ630 (P2 schema drift) and RQ631 (P3 telemetry persistence) remain independent READY prompts. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; PR backend run `38262164454` passed 1,977 tests with 42 previously classified skips and zero failures, including the cache parity oracle. The first exact-main backend run `38260258785` exposed one cache/view mismatch; PR #126 aligned TrendHistory fixtures and filtering to the canonical DATE contract. Current-main backend run `38262945885` is in progress on the merged SHA. RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ630 primary (READY; P2 EF catalog-vs-model drift guard); RQ631 (P3 telemetry persistence) remains an independent READY prompt. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); signed reconstructed inventory is preserved and stockout_days no longer counts negative proxy days. Local Docker was unavailable for the new PostgreSQL oracle; current-main backend run `38265812357`, quality gates `38265812415` and planning governance `38265812374` are in progress on that SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -838,7 +838,7 @@ RQ619, RQ620, RQ622 DONE; no new product-owner SLAs invented.
 
 ## RQ625 - Separate missing external trend evidence from a measured zero trend score
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: SQL/API/React missing-evidence propagation and signal trust
 Feature family: trend-momentum-external-signal-provenance
@@ -910,7 +910,7 @@ RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is 
 
 ## RQ626 - Audit negative reconstructed inventory and stockout classification instead of silent clamping
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: inventory proxy semantic characterization and SQL/UI safety oracle
 Feature family: reconstructed-stock-negative-evidence
@@ -956,6 +956,26 @@ A fabricated stockout cannot originate solely from clamping a negative historica
 
 ### Dependencies
 RQ620 DONE; RQ610 all-writer proof remains a separate blocked production validation.
+
+### Completion note
+
+- Date: 2026-10-12
+- Status: DONE
+- Completion: SQL 022 no longer clamps reconstructed stock to zero. Signed negative proxies stay inspectable, `stockout_days` counts only exact zeros, and API/UI `stockProxyEvidence` distinguishes missing, negative, zero and positive states so a fabricated stockout cannot originate solely from clamping.
+- Changed files: `Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql`; `Api/Endpoints/AnalyticsIntelligenceEndpoints.cs`; `Api.Tests/AnalyticsIntelligenceNegativeStockProxyTests.cs`; `Api.Tests/StockProxyEvidenceClassificationTests.cs`; `Klijent/clientapp/src/services/analyticsIntelligenceApi.ts`; `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.tsx`; `Klijent/clientapp/src/components/dashboard/IntelligenceSnapshotPanel.spec.tsx`; `Klijent/clientapp/src/services/__tests__/analyticsIntelligenceDerived.spec.ts`; `docs/Analytics/INTELLIGENCE_README.md`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-12-RQ626-evidence.md`.
+- Contract/runtime behavior changed: reconstructed `stock_qty` may be negative; days-of-cover is NULL for negative proxies; stockout/reorder filters no longer treat clamped negatives as measured zeros; clients receive `stockProxyEvidence`.
+- Checks run: Release `Api.Tests` build; `StockProxyEvidenceClassificationTests` 4/4; frontend IntelligenceSnapshotPanel + derived specs 22/22; `check:analytics-guardrails` + typecheck; prompt-queue and planning-architecture validators; `git diff --check`.
+- Checks not run: local disposable PostgreSQL oracle could not start because Docker/Testcontainers is unavailable here; current-main backend run `38265812357` is the first required PostgreSQL proof for `AnalyticsIntelligenceNegativeStockProxyTests`.
+- Run log: `.ai/runs/2026-10-12-RQ626-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request (#127) then fast-forward to `main`
+- Main commit SHA: `a3e621f74f9b3af1391714280fdd20e8b2b6f41a`
+- Main verification: refreshed `origin/main` equals `a3e621f74f9b3af1391714280fdd20e8b2b6f41a`
+- Missed: none known beyond the local Docker residual above.
+- Follow-up: RQ630 promoted to primary READY; RQ631 remains independently READY.
+- Residual risk: current-main Actions backend/quality/governance runs are in progress on the implementation SHA; if the new oracle fails in CI, fix that regression before new queue work.
+- Post-close routing: recovery base `origin/main` `a3e621f74f9b3af1391714280fdd20e8b2b6f41a`; scanned all 13 active Analytics Reliability queue files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`. No task was WAITING solely on RQ626. RQ630 is the primary READY successor; RQ631 remains independent READY. Stale RQ625 header `IN_PROGRESS` was repaired to DONE to match its completion note.
+- Prompt defect / scope repair: RQ625 header status lagged its DONE completion note; synchronized during this close-out.
 
 ---
 
