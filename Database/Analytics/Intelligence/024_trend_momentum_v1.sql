@@ -57,6 +57,7 @@ latest_trend_history AS (
     FROM "TrendHistory" th
     JOIN settings s
       ON th."Date" >= s.as_of_date - s.trend_window_days
+     AND th."Date" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')
 ),
 latest_global_scores AS (
     SELECT
@@ -75,6 +76,7 @@ daily_sales AS (
       ON sf."SaleId" = slf."SaleId"
     JOIN settings s
       ON (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date >= s.as_of_date - s.trend_window_days
+     AND sf."SaleTimestampUtc" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')
     WHERE UPPER(BTRIM(COALESCE(sf."BrojRacuna", ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY
         slf."ProductId",

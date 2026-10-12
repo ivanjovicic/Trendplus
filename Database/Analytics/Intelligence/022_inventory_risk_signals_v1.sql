@@ -76,6 +76,7 @@ daily_sales AS (
       ON sf."SaleId" = slf."SaleId"
     JOIN settings s
       ON (sf."SaleTimestampUtc" AT TIME ZONE 'UTC')::date >= s.as_of_date - s.horizon_days
+     AND sf."SaleTimestampUtc" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')
     WHERE UPPER(BTRIM(COALESCE(sf."BrojRacuna", ''))) NOT IN ('DUG', 'KOREKCIJA')
     GROUP BY
         slf."ProductId",
@@ -112,6 +113,7 @@ daily_non_sale_movements AS (
     FROM "InventoryMovementFacts" imf
     JOIN settings s
       ON imf."Datum" >= ((s.as_of_date - s.horizon_days)::timestamp AT TIME ZONE 'UTC')
+     AND imf."Datum" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')
     WHERE imf."ArtikalId" IS NOT NULL
       AND imf."TipPromene" IN ('Ulaz robe', 'Prenos ulaz', 'Prenos izlaz', 'Povrat kupca')
     GROUP BY
