@@ -5,7 +5,8 @@
 -- Canonical price mapping in this platform:
 -- - net_price  -> ProductsDim.SalePrice (fallback Artikli.ProdajnaCena via sync)
 -- - list_price -> ProductsDim.FirstSalePrice
--- - cost       -> ProductsDim.PurchasePriceRsd, then PurchasePrice
+-- - cost       -> positive ProductsDim.PurchasePriceRsd, then PurchasePrice only when
+--                  PurchasePriceRsd is absent; non-positive/invalid values are unknown
 --
 -- Brand note:
 -- - ProductsDim.Brand exists but is not reliably populated by every ingest path.
@@ -66,7 +67,12 @@ latest_products AS (
         ) AS brand_key,
         COALESCE(pd."SalePrice", 0)::numeric(18,4) AS net_price,
         COALESCE(pd."FirstSalePrice", 0)::numeric(18,4) AS list_price,
-        COALESCE(pd."PurchasePriceRsd", pd."PurchasePrice", 0)::numeric(18,4) AS cost
+        CASE
+            WHEN pd."PurchasePriceRsd" IS NOT NULL THEN
+                CASE WHEN pd."PurchasePriceRsd" > 0 THEN pd."PurchasePriceRsd" END
+            WHEN pd."PurchasePrice" > 0 THEN pd."PurchasePrice"
+            ELSE NULL
+        END::numeric(18,4) AS cost
     FROM "ProductsDim" pd
     LEFT JOIN latest_suppliers ls
       ON ls.supplier_id = pd."SupplierId"
@@ -114,7 +120,7 @@ SELECT
     ) AS discount_depth,
     ROUND(
         CASE
-            WHEN pp.net_price <= 0 THEN NULL
+            WHEN pp.net_price <= 0 OR pp.cost IS NULL THEN NULL
             ELSE (pp.net_price - pp.cost) / NULLIF(pp.net_price, 0)
         END,
         4
@@ -131,7 +137,7 @@ COMMENT ON COLUMN analytics_intel.vw_price_intelligence_v1.discount_depth IS
 'Relative markdown depth calculated as (list_price - net_price) / list_price.';
 
 COMMENT ON COLUMN analytics_intel.vw_price_intelligence_v1.margin_pct IS
-'Gross margin percentage estimated as (net_price - cost) / net_price using ProductsDim purchase cost fields.';
+'Gross margin percentage estimated as (net_price - known positive cost) / net_price using ProductsDim purchase cost fields. Missing, zero or invalid cost is unavailable and remains NULL.';
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_intel.mv_price_intelligence_v1_cache AS
 SELECT *

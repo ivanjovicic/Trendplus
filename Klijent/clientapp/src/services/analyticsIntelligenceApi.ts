@@ -56,7 +56,7 @@ export interface PriceIntelligenceItem {
   priceDate: string;
   netPrice: number;
   listPrice: number;
-  cost: number;
+  cost: number | null;
   priceIndexVsCategory: number | null;
   priceIndexVsBrand: number | null;
   discountDepth: number | null;

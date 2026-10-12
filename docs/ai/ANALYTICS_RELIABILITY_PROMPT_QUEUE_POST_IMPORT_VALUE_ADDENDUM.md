@@ -626,12 +626,12 @@ No future-only article/store creates a misleading historical signal; future even
 
 ## RQ621 - Preserve missing purchase cost instead of reporting a 100% Price Intelligence margin
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: SQL/API/frontend nullability correctness with disposable PostgreSQL oracle
 Feature family: price-intelligence-missing-cost
 Parallel-safe: yes; owns SQL 023 cost/margin calculation, price DTO/types and dedicated tests, not RQ619 initializer or RQ623 SQL 024; coordinate with RQ622 before editing price endpoint
-Owner: unassigned
+Owner: Codex (worktree `rq621-price-cost`, branch `codex/rq621-missing-cost`)
 Ready after: RQ188 DONE and RQ616 DONE; no owner or external samples required for fail-closed missing-cost proof
 Commit suggestion: fix(analytics): preserve unknown cost and margin in price signals
 

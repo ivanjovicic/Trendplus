@@ -258,6 +258,22 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
     expect(result.bands[0]).toMatchObject({ totalUnits: 0, totalStock: 0, avgVelocityPerSku: 0 });
   });
 
+  it("keeps missing price cost unavailable and excludes it from derived price suggestions", () => {
+    const result = buildPriceSensitivityFromSignals(
+      [
+        priceItem({ articleId: 1, category: "Known zero", netPrice: 100, cost: 0, marginPct: 1 }),
+        priceItem({ articleId: 2, category: "Missing", netPrice: 100, cost: null, marginPct: null }),
+      ],
+      [
+        inventoryItem({ articleId: 1, category: "Known zero", avgDailySales30d: 1 }),
+        inventoryItem({ articleId: 2, category: "Missing", avgDailySales30d: 1 }),
+      ],
+    );
+
+    expect(result.bands).toHaveLength(1);
+    expect(result.bands[0]).toMatchObject({ priceBand: "0-3k", skuCount: 1, avgMarginPct: 100 });
+  });
+
   it("does not use demand velocity as a fallback when inventory velocity is missing", () => {
     const result = buildCategoryIntelligenceFromSignals(
       [priceItem({ articleId: 1, category: "Missing inventory rate", netPrice: 100 })],
@@ -290,7 +306,7 @@ describe("buildCategoryIntelligenceFromSignals (RQ39)", () => {
       ],
       [
         priceItem({ articleId: 1, category: "Known", netPrice: 100, cost: 0 }),
-        priceItem({ articleId: 2, category: "Missing", netPrice: 100, cost: null as unknown as number }),
+        priceItem({ articleId: 2, category: "Missing", netPrice: 100, cost: null }),
       ],
     );
 
