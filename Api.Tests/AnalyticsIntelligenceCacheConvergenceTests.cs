@@ -105,6 +105,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date::timestamp;",
             connection);
         var utcToday = DateTime.SpecifyKind((DateTime)(await dateCommand.ExecuteScalarAsync())!, DateTimeKind.Utc);
+        var utcTodayDate = DateOnly.FromDateTime(utcToday);
         var utcYesterdayEnd = utcToday.AddMilliseconds(-1);
         var utcTodayEnd = utcToday.AddDays(1).AddMilliseconds(-1);
         var utcTomorrow = utcToday.AddDays(1);
@@ -151,15 +152,18 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
 
             INSERT INTO "TrendHistory" ("LocalProductId", "FinalGlobalScore", "Date", "CreatedAt")
             VALUES
-                (42, 79, @todayEnd, @todayEnd),
-                (42, 99, @tomorrow, @tomorrow),
-                (42, 100, @day30End, @day30End),
-                (8101, 99, @tomorrow, @tomorrow),
-                (8101, 100, @day30End, @day30End),
-                (8103, 88, @tomorrow, @tomorrow),
-                (8103, 100, @day30End, @day30End);
+                (42, 79, @todayDate, @todayEnd),
+                (42, 99, @tomorrowDate, @tomorrow),
+                (42, 100, @day30Date, @day30End),
+                (8101, 99, @tomorrowDate, @tomorrow),
+                (8101, 100, @day30Date, @day30End),
+                (8103, 88, @tomorrowDate, @tomorrow),
+                (8103, 100, @day30Date, @day30End);
             """, connection))
         {
+            seed.Parameters.AddWithValue("todayDate", NpgsqlDbType.Date, utcTodayDate);
+            seed.Parameters.AddWithValue("tomorrowDate", NpgsqlDbType.Date, DateOnly.FromDateTime(utcTomorrow));
+            seed.Parameters.AddWithValue("day30Date", NpgsqlDbType.Date, DateOnly.FromDateTime(utcDay30));
             seed.Parameters.AddWithValue("todayEnd", utcTodayEnd);
             seed.Parameters.AddWithValue("yesterdayEnd", utcYesterdayEnd);
             seed.Parameters.AddWithValue("tomorrow", utcTomorrow);
@@ -628,7 +632,7 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
                     ],
                 "Database/Analytics/Intelligence/024_trend_momentum_v1.sql" =>
                     [
-                        "AND th.\"Date\" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')",
+                        "AND th.\"Date\" <= s.as_of_date",
                         "AND sf.\"SaleTimestampUtc\" < ((s.as_of_date + 1)::timestamp AT TIME ZONE 'UTC')"
                     ],
                 _ => throw new ArgumentOutOfRangeException(nameof(relativePath))

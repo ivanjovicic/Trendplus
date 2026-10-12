@@ -51,8 +51,8 @@ CREATE TABLE "GlobalTrendScores" (
 CREATE TABLE "TrendHistory" (
     "LocalProductId" integer NOT NULL,
     "FinalGlobalScore" numeric(18,4) NOT NULL,
-    "Date" timestamptz NOT NULL,
-    "CreatedAt" timestamptz NOT NULL
+    "Date" date NOT NULL,
+    "CreatedAt" timestamp without time zone NOT NULL
 );
 
 INSERT INTO "SuppliersDim" ("SupplierId", "Naziv", "UpdatedAt")
@@ -82,4 +82,4 @@ INSERT INTO "GlobalTrendScores" ("LocalProductId", "FinalGlobalScore")
 VALUES (42, 72.5);
 
 INSERT INTO "TrendHistory" ("LocalProductId", "FinalGlobalScore", "Date", "CreatedAt")
-VALUES (42, 78.25, now() - interval '1 day', now());
+VALUES (42, 78.25, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 1, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
