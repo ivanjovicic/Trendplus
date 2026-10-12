@@ -1274,8 +1274,8 @@ Docs-only commits do not create production deployments. Both historic failures a
 - Checks not run: `npx vercel inspect … --logs` — no Vercel credentials; live Vercel skip-build proof — requires post-merge production push
 - Run log: `.ai/runs/2026-10-12-RQ633-evidence.md`
 - Delivery mode: direct-main
-- Main commit SHA: pending until push
-- Main verification: pending until push
+- Main commit SHA: `33c17219fc78f5485a4b0426f43c04ce005a8b1c`
+- Main verification: `git rev-parse origin/main` -> `33c17219fc78f5485a4b0426f43c04ce005a8b1c`
 - Missed: line-level Vercel deployment log capture
 - Follow-up: owner optional `vercel inspect` on `dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT` and `dpl_GWMNgzfNTGe5338RVEPQJH39C7m6`
 - Residual risk: duplicate `Klijent/clientapp/vercel.json` kept for legacy subdirectory-root Vercel projects only
