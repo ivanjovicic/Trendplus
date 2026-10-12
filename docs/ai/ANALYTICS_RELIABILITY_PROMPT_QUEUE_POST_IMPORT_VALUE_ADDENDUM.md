@@ -899,11 +899,11 @@ RQ623/RQ620/RQ627 DONE, separate from STAB16/provider data collection. RQ627 is 
 - Evidence state: synchronized
 - Delivery mode: pull-request (#126; initial implementation `fd2d0fb0242f5c105ef90d01a0e33c0da053c33e`, correction merged as `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`)
 - Main commit SHA: `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`
-- Main verification: refreshed `origin/main` at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; it contains both implementation commits. PR #126's required backend and frontend checks passed before merge.
+- Main verification: refreshed `origin/main` at `72e1bfa2926eb9219d897fd4a831101d80c735ed`; it contains both implementation commits. PR #126's required backend and frontend checks passed before merge.
 - Missed: none known.
 - Follow-up: RQ626 promoted from WAITING to primary READY; RQ630 and RQ631 remain independent READY prompts.
 - Residual risk: exact-main backend run `38262945885` was in progress when this note was prepared; the same merged content passed the full backend suite on PR run `38262164454`. The 42 global skips are previously classified and no RQ625 test was skipped.
-- Post-close routing: refreshed recovery base `origin/main` `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; scanned all 13 active Analytics Reliability queue files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`. RQ626 is the only prompt with a direct `Ready after: RQ625 DONE` dependency; its other dependencies and SQL 022 nullable-baseline contract are already satisfied, and no RQ626 lock, branch or open PR exists. RQ630/RQ631 remain independent READY; no higher-priority runnable BCI/STAB/SQL task was found.
+- Post-close routing: refreshed recovery base `origin/main` `72e1bfa2926eb9219d897fd4a831101d80c735ed`; scanned all 13 active Analytics Reliability queue files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`. RQ626 is the only prompt with a direct `Ready after: RQ625 DONE` dependency; its other dependencies and SQL 022 nullable-baseline contract are already satisfied, and no RQ626 lock, branch or open PR exists. RQ630/RQ631 remain independent READY; no higher-priority runnable BCI/STAB/SQL task was found.
 - Prompt defect / scope repair: the test fixture used `timestamptz` for `TrendHistory.Date`, while the canonical source schema is `DATE`; corrected the fixtures and UTC date comparison after exact-main cache parity exposed session-time-zone-dependent provenance. The initial implementation push also preceded focused backend proof despite the rule already present on the starting `main`; the deviation and corrective PR validation are recorded in the run log.
 
 ---
@@ -921,7 +921,7 @@ Commit suggestion: test(inventory): distinguish negative proxy from verified sto
 
 ### Promotion note — 2026-10-12
 
-- RQ625 is DONE on refreshed `origin/main` `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; all other declared dependencies were already satisfied.
+- RQ625 is DONE on refreshed `origin/main` `72e1bfa2926eb9219d897fd4a831101d80c735ed`; all other declared dependencies were already satisfied.
 - The full active RQ queue/addendum and SQL queue scan found no RQ626 lock, branch or open PR. Its shared API/test paths are released by RQ625's main delivery; RQ630 and RQ631 remain independently READY.
 - Promoted WAITING → READY as the primary RQ successor. No claim was started in this RQ625 close-out.
 
