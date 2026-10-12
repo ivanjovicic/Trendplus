@@ -921,7 +921,7 @@ RQ621/RQ622 DONE; avoid simultaneous SQL 023 changes.
 
 ## RQ628 - Repair missing purchase-cost provenance schema before analytics traffic
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: PostgreSQL bootstrap/schema drift regression
 Feature family: purchase-cost-provenance-bootstrap
@@ -957,4 +957,5 @@ An existing schema with an already-applied migration but a missing physical prov
 ### Delivery note
 
 - Implementation and regression test are recorded in `.ai/runs/2026-10-12-RQ628-evidence.md`.
-- Exact production drift was not independently inspected. Render `autoDeployTrigger` remains off; no production database was changed. Awaiting PR CI before closeout.
+- PR #123 passed all required CI workflows on implementation head `3cda1f7d0f9b803c11306125b66c1e1069df717c`; final documentation-sync CI is required before squash merge.
+- Exact production drift was not independently inspected. Render `autoDeployTrigger` remains off; no production database was changed.
