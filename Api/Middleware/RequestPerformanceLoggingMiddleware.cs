@@ -99,11 +99,11 @@ public sealed class RequestPerformanceLoggingMiddleware
         {
             Timestamp = DateTime.UtcNow,
             RequestType = "HttpRequest",
-            RequestName = requestName,
+            RequestName = Truncate(requestName, 500) ?? string.Empty,
             DurationMs = durationMs,
             RequestData = Truncate(JsonSerializer.Serialize(requestData, JsonOptions), 3900),
             ResponseData = null,
-            ExceptionMessage = exception?.GetBaseException().Message,
+            ExceptionMessage = Truncate(exception?.GetBaseException().Message, 2000),
             IsSuccess = exception is null && statusCode < StatusCodes.Status500InternalServerError
         };
 
@@ -141,9 +141,12 @@ public sealed class RequestPerformanceLoggingMiddleware
         return Random.Shared.NextDouble() < sampleRate;
     }
 
-    private static string? Truncate(string? value, int maxLength)
+    internal static string? Truncate(string? value, int maxLength)
     {
-        if (string.IsNullOrEmpty(value)) return value;
-        return value.Length <= maxLength ? value : value[..maxLength] + "...";
+        ArgumentOutOfRangeException.ThrowIfNegative(maxLength);
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
+        return maxLength <= 3
+            ? value[..maxLength]
+            : value[..(maxLength - 3)] + "...";
     }
 }
