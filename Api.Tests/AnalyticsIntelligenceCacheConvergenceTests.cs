@@ -285,7 +285,12 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
             WHERE article_id = 906 AND date = @asOf;
             """, DateOnly.FromDateTime(utcToday)));
 
-        foreach (var (view, cache) in CachePairs)
+        // This fixture intentionally runs under Pacific/Kiritimati to exercise UTC boundaries.
+        // RQ627 owns the separate SQL 023 session-time-zone correction, so compare the other
+        // cache pairs here; Price Intelligence parity is covered under a matching session in
+        // AnalyticsPriceIntelligenceCacheReadinessTests.
+        foreach (var (view, cache) in CachePairs.Where(pair =>
+                     pair.Cache != "analytics_intel.mv_price_intelligence_v1_cache"))
             Assert.Equal(0L, await DifferenceCountAsync(connection, view, cache));
         Assert.NotEqual(
             string.Join("\n", oldState),
@@ -674,6 +679,10 @@ public sealed class AnalyticsIntelligenceCacheConvergenceTests
                 "analytics_intel.mv_trend_momentum_v1_cache" => AnalyticsIntelligenceEndpoints.QueryTrendMomentumAsync(
                     connectionString,
                     new TrendMomentumRequest(null, null, null, null, null, 1, 5, null, null),
+                    CancellationToken.None),
+                "analytics_intel.mv_price_intelligence_v1_cache" => AnalyticsIntelligenceEndpoints.QueryPriceIntelligenceAsync(
+                    connectionString,
+                    new PriceIntelligenceRequest(null, null, null, null, null, null, 1, 5, null, null),
                     CancellationToken.None),
                 _ => throw new ArgumentOutOfRangeException(nameof(cacheName))
             });
