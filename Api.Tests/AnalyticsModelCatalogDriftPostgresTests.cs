@@ -57,18 +57,12 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
     public async Task MigratedPostgresCatalog_MatchesAnalyticsAndCoreEfModelsExceptReviewedDrift()
     {
         var database = await _fixture.CreateDatabaseAsync("ef_model_catalog_drift");
-        await ApplyCiMigrationsAndStartupSqlAsync(database.ConnectionString);
+        await ApplyCiEfMigrationsAsync(database.ConnectionString);
 
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
             .UseNpgsql(database.ConnectionString)
             .Options;
         await using var analyticsContext = new AnalyticsDbContext(options);
-
-        var failures = new List<string>();
-        var usedColumnAllowlist = new HashSet<SchemaObjectKey>();
-        var usedIndexAllowlist = new HashSet<SchemaObjectKey>();
-        var utcToday = DateOnly.FromDateTime(DateTime.UtcNow);
-        ValidateAllowlistMetadata(utcToday, failures);
 
         var (columns, indexes) = BuildModelContracts(analyticsContext.Model);
         var coreOptions = new DbContextOptionsBuilder<TrendplusDbContext>()
@@ -78,7 +72,31 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
         var (coreColumns, coreIndexes) = BuildModelContracts(coreContext.Model);
         MergeContracts(columns, indexes, coreColumns, coreIndexes);
 
-        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        var migrationFailures = await CompareCatalogAsync(database.ConnectionString, columns, indexes);
+        Assert.True(
+            migrationFailures.Count == 0,
+            "Catalog differs from the EF models immediately after migrations:" +
+            Environment.NewLine + string.Join(Environment.NewLine, migrationFailures));
+
+        await ApplyCiStartupSqlAsync(database.ConnectionString);
+        var startupSqlFailures = await CompareCatalogAsync(database.ConnectionString, columns, indexes);
+        Assert.True(
+            startupSqlFailures.Count == 0,
+            "Catalog differs from the EF models after the CI startup SQL bootstrap:" +
+            Environment.NewLine + string.Join(Environment.NewLine, startupSqlFailures));
+    }
+
+    private static async Task<IReadOnlyList<string>> CompareCatalogAsync(
+        string connectionString,
+        IReadOnlyDictionary<SchemaObjectKey, ColumnContract> columns,
+        IReadOnlyDictionary<SchemaObjectKey, IndexContract> indexes)
+    {
+        var failures = new List<string>();
+        var usedColumnAllowlist = new HashSet<SchemaObjectKey>();
+        var usedIndexAllowlist = new HashSet<SchemaObjectKey>();
+        ValidateAllowlistMetadata(DateOnly.FromDateTime(DateTime.UtcNow), failures);
+
+        await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
 
         var actualColumns = await ReadCatalogColumnsAsync(connection);
@@ -152,10 +170,10 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
         AddUnusedAllowlistFailures(ColumnDriftAllowlist.Keys, usedColumnAllowlist, "column", failures);
         AddUnusedAllowlistFailures(IndexDriftAllowlist.Keys, usedIndexAllowlist, "index", failures);
 
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        return failures;
     }
 
-    private static async Task ApplyCiMigrationsAndStartupSqlAsync(string connectionString)
+    private static async Task ApplyCiEfMigrationsAsync(string connectionString)
     {
         var coreOptions = new DbContextOptionsBuilder<TrendplusDbContext>()
             .UseNpgsql(connectionString)
@@ -169,6 +187,10 @@ public sealed class AnalyticsModelCatalogDriftPostgresTests
         await using (var analyticsContext = new AnalyticsDbContext(analyticsOptions))
             await analyticsContext.Database.MigrateAsync();
 
+    }
+
+    private static async Task ApplyCiStartupSqlAsync(string connectionString)
+    {
         var repositoryRoot = FindRepositoryRoot();
         var startupSqlFiles = new[]
         {
