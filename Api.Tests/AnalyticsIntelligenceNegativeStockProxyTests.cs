@@ -40,7 +40,7 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         var older = DateOnly.FromDateTime(twoDaysAgo);
 
         // Independent signed arithmetic for the inferred-negative article:
-        // current=0, yesterday receipt +10, two-days-ago transfer-out 2 and sale 3.
+        // current=0, as-of-day receipt +10, yesterday transfer-out 2 and sale 3.
         // Walking backward from as-of:
         //   as-of = 0
         //   yesterday = 0 - 10 = -10
@@ -105,7 +105,7 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         Assert.Equal("missing_baseline", AnalyticsIntelligenceEndpoints.ClassifyStockProxyEvidence(missing.StockQty));
 
         // Restock / transfer / return matrix on a positive baseline:
-        // current=20; yesterday: sale 4, Ulaz 8, Prenos ulaz 3, Prenos izlaz 2, Povrat 1
+        // current=20; as-of day: sale 4, Ulaz 8, Prenos ulaz 3, Prenos izlaz 2, Povrat 1
         // as-of = 20
         // yesterday = 20 + 4 + 2 - 8 - 3 - 1 = 14
         var restockAsOf = await ReadInventoryAsync(database, RestockTransferReturnArticleId, asOf);
@@ -241,8 +241,8 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
             INSERT INTO "SuppliersDim" ("SupplierId", "Naziv") VALUES (1, 'Dobavljac');
 
             INSERT INTO "SalesFacts" ("Id", "SaleId", "BrojRacuna", "SaleTimestampUtc", "StoreId", "DataOrigin") VALUES
-                (626101, 626101, 'RQ626-INF-SALE', @twoDaysAgo, 1, 'existing'),
-                (626102, 626102, 'RQ626-RST-SALE', @yesterday, 1, 'existing'),
+                (626101, 626101, 'RQ626-INF-SALE', @yesterday, 1, 'existing'),
+                (626102, 626102, 'RQ626-RST-SALE', @today, 1, 'existing'),
                 (626103, 626103, 'RQ626-MISS-SALE', @yesterday, 1, 'existing');
 
             INSERT INTO "SalesLineFacts" ("SaleId", "ProductId", "Qty") VALUES
@@ -251,12 +251,12 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
                 (626103, @missingBaseline, 1);
 
             INSERT INTO "InventoryMovementFacts" ("ArtikalId", "Datum", "TipPromene", "Kolicina") VALUES
-                (@inferredNegative, @yesterday, 'Ulaz robe', 10),
-                (@inferredNegative, @twoDaysAgo, 'Prenos izlaz', 2),
-                (@restock, @yesterday, 'Ulaz robe', 8),
-                (@restock, @yesterday, 'Prenos ulaz', 3),
-                (@restock, @yesterday, 'Prenos izlaz', 2),
-                (@restock, @yesterday, 'Povrat kupca', 1),
+                (@inferredNegative, @today, 'Ulaz robe', 10),
+                (@inferredNegative, @yesterday, 'Prenos izlaz', 2),
+                (@restock, @today, 'Ulaz robe', 8),
+                (@restock, @today, 'Prenos ulaz', 3),
+                (@restock, @today, 'Prenos izlaz', 2),
+                (@restock, @today, 'Povrat kupca', 1),
                 (@missingBaseline, @yesterday, 'Ulaz robe', 4);
             """, connection);
         schema.Parameters.AddWithValue("observedZero", ObservedZeroArticleId);
@@ -265,6 +265,7 @@ public sealed class AnalyticsIntelligenceNegativeStockProxyTests
         schema.Parameters.AddWithValue("missingBaseline", MissingBaselineArticleId);
         schema.Parameters.AddWithValue("restock", RestockTransferReturnArticleId);
         schema.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, DateTime.UtcNow);
+        schema.Parameters.AddWithValue("today", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(utcToday.AddHours(12), DateTimeKind.Utc));
         schema.Parameters.AddWithValue("yesterday", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(yesterday.AddHours(12), DateTimeKind.Utc));
         schema.Parameters.AddWithValue("twoDaysAgo", NpgsqlDbType.TimestampTz, DateTime.SpecifyKind(twoDaysAgo.AddHours(12), DateTimeKind.Utc));
         await schema.ExecuteNonQueryAsync();
