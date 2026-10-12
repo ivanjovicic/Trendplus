@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -14,11 +15,11 @@ namespace Trendplus2.Tests;
 [Trait("Category", "Integration")]
 [Trait("Suite", "AnalyticsAdversarial")]
 public sealed class AnalyticsCrossScreenRevenueInvariantIntegrationTests
-    : IClassFixture<WebApplicationFactory<global::Program>>
+    : IClassFixture<AnalyticsCrossScreenWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<global::Program> _factory;
+    private readonly AnalyticsCrossScreenWebApplicationFactory _factory;
 
-    public AnalyticsCrossScreenRevenueInvariantIntegrationTests(WebApplicationFactory<global::Program> factory)
+    public AnalyticsCrossScreenRevenueInvariantIntegrationTests(AnalyticsCrossScreenWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -118,5 +119,15 @@ public sealed class AnalyticsCrossScreenRevenueInvariantIntegrationTests
         }
 
         throw new FileNotFoundException($"Could not find repository fixture: {Path.Combine(segments)}");
+    }
+}
+
+public sealed class AnalyticsCrossScreenWebApplicationFactory : WebApplicationFactory<global::Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        // The PostgreSQL fixture validates endpoint contracts after schema setup;
+        // do not make its request order depend on the host's asynchronous warmup.
+        builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
     }
 }
