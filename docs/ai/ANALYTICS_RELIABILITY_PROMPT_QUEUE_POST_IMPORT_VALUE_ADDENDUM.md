@@ -22,7 +22,7 @@ On claim: fresh `origin/main`, complete canonical RQ/addendum/SQL queue, same-ow
 
 ## RQ608 - Fix exact-main RQ607 current-snapshot CI regression
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P0
 Type: PostgreSQL/HTTP regression tests
 Feature family: inventory-latest-snapshot-ci
@@ -1039,3 +1039,69 @@ Removing any model index or narrowing any model column in a migration fails CI; 
 
 ### Dependencies
 RQ629 DONE; independent of RQ622 and STAB16.
+
+---
+
+## RQ631 - Classify the recurring "Failed to persist HTTP request performance metric" warning
+
+Status: READY
+Priority: P3
+Type: observability/diagnosis
+Feature family: request-performance-telemetry
+Parallel-safe: yes (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs` and its tests; no active lane owns it)
+Owner: unassigned
+Ready after: none (registered by `docs/qa/AGENT_PROMPT_LOG_AUDIT_2026-10-12.md` F5)
+Commit suggestion: `fix(observability): make request performance persistence failures diagnosable`
+
+### Problem
+`RequestPerformanceLoggingMiddleware` swallows persistence exceptions as a warning (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs:60-65`). Actions run `38236578398` logs it 36 times, each paired with an EF `Failed executing DbCommand` error. It is not known whether only test hosts lack the target table/schema or production telemetry is also silently lost.
+
+### Do
+1. Reproduce from a CI-equivalent PostgreSQL bootstrap. Capture the exact SQLSTATE and the table it hits.
+2. If test-only, configure the test hosts so the middleware is disabled or provisioned, and stop CI-log noise. If real, fix provisioning additively and idempotently.
+3. Expose a counter or readiness detail for persistence failures; don't log one warning per request.
+
+### Acceptance
+No unexplained persistence warnings in the backend CI log. A production failure is countable rather than silent. No change to request handling.
+
+---
+
+## RQ632 - Stop pushing implementation commits to main before their focused backend tests pass
+
+Status: WAITING
+Priority: P2
+Type: process/governance
+Feature family: direct-main-delivery-hygiene
+Parallel-safe: yes (docs/protocol only)
+Owner: owner decision
+Ready after: owner chooses between (a) the protocol requiring focused PostgreSQL/backend tests for touched test classes before direct-main push, or (b) code changes going through PRs with required checks.
+Commit suggestion: `docs(queue): require focused backend proof before direct-main code push`
+
+### Problem
+Of 12 failed "Analytics Tests & Data Integrity" runs on main from 2026-10-10 to 2026-10-12, 11 were implementation commits repaired by a follow-up test commit. Each one leaves main red for 10-60 minutes and makes concurrent agents' runs ambiguous. Examples: `f55717f2`->`d500304b`, `968e8f30`->`35aabd58`, `116df731`->`d186bde9`, plus `b8e1c08f`, `b691f7d1`, `d7d4caec`, `e5a3f617`, `ca5f9ffc`, `408275c7`, `99a7487b` and `7a23c6d5` (see the audit report table).
+
+### Acceptance
+The protocol has an explicit pre-push rule (or a PR requirement). The validator self-test covers the rule if it is machine-checkable.
+
+---
+
+## RQ633 - Diagnose failed Vercel production deploys and stop deploying docs-only commits
+
+Status: WAITING
+Priority: P3
+Type: frontend deploy/config
+Feature family: vercel-deploy-hygiene
+Parallel-safe: yes (`vercel.json`, `Klijent/clientapp/vercel.json`)
+Owner: unassigned
+Ready after: someone with Vercel access runs `npx vercel inspect dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT --logs` and `npx vercel inspect dpl_GWMNgzfNTGe5338RVEPQJH39C7m6 --logs`
+Commit suggestion: `chore(deploy): skip Vercel builds for non-frontend commits`
+
+### Problem
+Production deploys failed on `f35e5656` (2026-10-12 11:01 UTC+2) and `3a78e062` (11:12). Both are commits with no frontend change; later deploys succeeded. The root `vercel.json` has no `ignoreCommand`, so every docs/backend commit triggers a production build. `Klijent/clientapp/vercel.json` duplicates the headers/rewrites, so it is unclear which config is authoritative.
+
+### Do
+1. Classify both failures from the Vercel logs: transient, concurrency/cancel, or a real build break.
+2. Add an `ignoreCommand` that skips builds when `Klijent/clientapp` and `vercel.json` are unchanged. Keep exactly one authoritative config.
+
+### Acceptance
+Docs-only commits do not create production deployments. Both historic failures are classified with evidence.

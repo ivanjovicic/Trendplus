@@ -12,7 +12,7 @@ This is a newly requested owner-approved work-intake addendum, not evidence that
 - Keep new work local, bounded, isolated and reproducible. Never change production config, migrations, deployment, billing, auth or tenant policy without explicit scope.
 
 ## RQ598 — Analytics regression gap inventory and targeted test proposals
-Status: READY (new owner-requested **audit-only** work; no product changes assumed)
+Status: DONE (historical intake copy; canonical entry `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_TEST_HARDENING_ADDENDUM.md` RQ598 is DONE - corrected by `docs/qa/AGENT_PROMPT_LOG_AUDIT_2026-10-12.md`)
 Priority: P1; Dependencies: none; Owner: RQ
 Scope: existing backend analytics test suites, independent SQL/raw-fact oracle tests, contract tests and frontend analytics tests; current analytics accuracy/value audits.
 Task:
@@ -30,7 +30,7 @@ Task: build a replayable fixture from historical known-good data or sanitized in
 Acceptance: failing regression before bounded fix, passing after; explicit origin/lineage of fixture; no denominator drift or policy reinterpretation.
 
 ## RQ600 — Actionable analytics value/eligibility acceptance matrix
-Status: READY (new owner-requested planning/test-contract audit, no release or recommendation activation)
+Status: DONE (historical intake copy; canonical entry `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_CROSS_SURFACE_ADDENDUM.md` RQ600 is DONE - corrected by `docs/qa/AGENT_PROMPT_LOG_AUDIT_2026-10-12.md`)
 Priority: P1; Dependencies: none; Owner: RQ with product review
 Scope: Product Decision, Inventory, pre/post markdown, Supplier decision surfaces, existing trust/quality/recommendation eligibility contracts and value roadmap.
 Task:

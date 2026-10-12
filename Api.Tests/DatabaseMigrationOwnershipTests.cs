@@ -96,7 +96,8 @@ public sealed class DatabaseMigrationOwnershipTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "Trendplus2.sln")))
             {
-                return File.ReadAllText(Path.Combine(directory.FullName, relativePath));
+                // Normalize line endings so the multi-line anchors match on CRLF (Windows) checkouts too.
+                return File.ReadAllText(Path.Combine(directory.FullName, relativePath)).Replace("\r\n", "\n", StringComparison.Ordinal);
             }
 
             directory = directory.Parent;
