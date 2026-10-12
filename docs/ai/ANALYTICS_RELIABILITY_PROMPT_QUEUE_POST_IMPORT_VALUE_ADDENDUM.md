@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ631 primary (IN_PROGRESS; active PR #132 by `ivanjovicic`, current head `a5566d6051dc7b84f070fefd2981529aa29c7147`; its checks were running at latest inspection). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1194,20 +1194,23 @@ RQ629 DONE; independent of RQ622 and STAB16.
 
 ## RQ631 - Classify the recurring "Failed to persist HTTP request performance metric" warning
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: observability/diagnosis
 Feature family: request-performance-telemetry
-Parallel-safe: yes (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs` and its tests; currently owned by PR #132)
-Owner: `ivanjovicic` (active PR #132; Codex worktree not identified)
+Parallel-safe: yes (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs` and its tests; closed in PR #132)
+Owner: ivanjovicic (completed through PR #132; no ownership transfer)
 Ready after: none (registered by `docs/qa/AGENT_PROMPT_LOG_AUDIT_2026-10-12.md` F5)
 Commit suggestion: `fix(observability): make request performance persistence failures diagnosable`
 
-### Post-close routing note — 2026-10-12
-- Current backend CI run `38275050911` logged `SQLSTATE 42P01: relation "PerformanceLogs" does not exist` from test hosts, which supports RQ631's test-provisioning branch; production status remains unknown.
-- Active PR #132, `https://github.com/ivanjovicic/Trendplus/pull/132`, is authored by `ivanjovicic` from `review/http-metric-field-bounds-20261012` at `a5566d6051dc7b84f070fefd2981529aa29c7147`. Its current diff touches the middleware and three backend test files. At latest inspection, backend run `38276555961`, RQ453 certification, and frontend checks were in progress; SDK pin availability and POS UI checks had passed. Treat this as active RQ631 ownership and do not overlap it from another workspace.
-- PR #132 records the SQLSTATE diagnosis, bounds persisted fields, and disables optional metric capture in two isolated test hosts. Its description says durable counter/readiness evidence and production provisioning remain unproven, so RQ631 acceptance is still open after this PR's current scope.
-
+### Completion note — 2026-10-12
+- Delivered through PR #132. Implementation commit 092a9707397690b2361641f15d8a87abc5478f08 is contained in main; merge commit f8ae875a9e9d464469585b87050773683bac272c was verified on refreshed origin/main.
+- Diagnosis: the five prior SQLSTATE 42P01 warnings came from disposable PostgreSQL test hosts where optional HTTP metric capture was enabled without PerformanceLogs. Those non-telemetry hosts now disable capture; production provisioning was not inspected.
+- Middleware bounds persisted fields, emits trendplus.http.performance.persistence.failures from the Trendplus.Api .NET Meter, throttles repeated warnings per middleware instance until recovery, and preserves request handling.
+- Focused middleware tests passed 12/12. Backend Actions run 38296111833 passed on PR head 060210565fef30b419bf10189dc89b408bd5d328; the completed backend log had 0 target persistence warnings, 0 SQLSTATE 42P01 matches and 0 missing-PerformanceLogs matches. RQ453 passed in the same run. Analytics Quality Gates run 38296111872 passed on that head.
+- Production database/schema and actual production telemetry health remain unknown; the delivered .NET counter makes persistence failures countable, but no production state is claimed.
+- Run log: .ai/runs/2026-10-12-RQ631-evidence.md
+- Evidence state: synchronized.
 ### Problem
 `RequestPerformanceLoggingMiddleware` swallows persistence exceptions as a warning (`Api/Middleware/RequestPerformanceLoggingMiddleware.cs:60-65`). Actions run `38236578398` logs it 36 times, each paired with an EF `Failed executing DbCommand` error. It is not known whether only test hosts lack the target table/schema or production telemetry is also silently lost.
 
