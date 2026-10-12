@@ -1208,6 +1208,7 @@ Commit suggestion: `fix(observability): make request performance persistence fai
 - Diagnosis: the five prior SQLSTATE 42P01 warnings came from disposable PostgreSQL test hosts where optional HTTP metric capture was enabled without PerformanceLogs. Those non-telemetry hosts now disable capture; production provisioning was not inspected.
 - Middleware bounds persisted fields, emits trendplus.http.performance.persistence.failures from the Trendplus.Api .NET Meter, throttles repeated warnings per middleware instance until recovery, and preserves request handling.
 - Focused middleware tests passed 12/12. Backend Actions run 38296111833 passed on PR head 060210565fef30b419bf10189dc89b408bd5d328; the completed backend log had 0 target persistence warnings, 0 SQLSTATE 42P01 matches and 0 missing-PerformanceLogs matches. RQ453 passed in the same run. Analytics Quality Gates run 38296111872 passed on that head.
+- Current-main backend run 38297272059 passed on merge SHA f8ae875a9e9d464469585b87050773683bac272c; full backend suite and RQ453 passed, with 0 target persistence warnings, 0 SQLSTATE 42P01 matches and 0 missing-PerformanceLogs matches.
 - Production database/schema and actual production telemetry health remain unknown; the delivered .NET counter makes persistence failures countable, but no production state is claimed.
 - Run log: .ai/runs/2026-10-12-RQ631-evidence.md
 - Evidence state: synchronized.
