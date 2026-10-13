@@ -18,6 +18,7 @@ Ownership transfer: none
 - Marked 50 discovered PostgreSQL-backed tests with `PostgresRequiredFact`, so no-Docker runs are reported as skipped rather than as false passes. Kept test behavior unchanged when PostgreSQL is available/required.
 - Added an explicit SQL018/history prerequisite assertion to the current SQL029 lifecycle fixture, salvaging the one useful assertion from the stale RQ635 trial branch without replacing its newer fixture layout.
 - Delivered the implementation through merge commit `ee79f7415b0be30287924a99740b54124c9c7bb8` on `main` and pushed it to `origin/main`.
+- Follow-up review confirmed that the delivered SHA is still on `origin/main` and that its exact-head Analytics Tests & Data Integrity workflow is green. Rechecked today’s divergent branches: RQ637, RQ638, RQ645 and supplier-diagnostics source/test changes are already represented by current-main successor commits; the RQ635 trial layouts remain older than the validated fixture.
 
 ## Files changed
 
@@ -49,16 +50,17 @@ Ownership transfer: none
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter "(FullyQualifiedName~NivelacijaReconciliationPackTests|FullyQualifiedName~Rq605LegacySalesPostgresIntegrationTests|FullyQualifiedName~Rq606TransferIdentityPostgresIntegrationTests)" --no-build --no-restore -p:WarningLevel=0` -> real PostgreSQL pass; 11 passed, 0 skipped.
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierWindowedSql029LifecycleTests --no-build --no-restore -p:WarningLevel=0` -> real PostgreSQL pass; 6 passed, 0 skipped.
 - `git diff --check` -> pass before delivery.
-- GitHub Actions `Analytics Tests & Data Integrity` run `38432014732` for `ee79f7415b0be30287924a99740b54124c9c7bb8` -> in progress when inspected after delivery.
+- GitHub Actions `Analytics Tests & Data Integrity` run `38432014732` for `ee79f7415b0be30287924a99740b54124c9c7bb8` -> pass; the complete backend suite and RQ453 Operations analytics certification jobs both completed successfully.
 
 ## Validation not run
 
-- Full backend suite -> not run locally; the changed PostgreSQL contracts and convention executed locally against real Testcontainers PostgreSQL, while the relevant current-main Actions run is in progress.
+- Full backend suite -> not run locally; the changed PostgreSQL contracts and convention executed locally against real Testcontainers PostgreSQL, and the exact-head remote complete backend suite is green.
 
 ## Documentation impact
 
 - No live queue/roadmap status was edited: this is a direct-user-request audit, and RQ648 was not claimed or closed.
 - This durable run log records branch dispositions and the test-integrity repair.
+- PR #146 is closed and PR #147 is a queue/evidence-only branch. Neither provides an unmerged executable change; PR #147 is intentionally left for its owning queue/documentation reconciliation rather than merged as stale direct-user work.
 
 ## What was missed
 
@@ -67,7 +69,7 @@ Ownership transfer: none
 
 ## Risks
 
-- The changed PostgreSQL contracts executed locally; a full backend run was not run locally. GitHub Actions run `38432014732` is in progress and remains residual risk until it completes.
+- The changed PostgreSQL contracts executed locally and the exact-head complete backend workflow is green. No delivery-specific residual risk is known.
 - Old planning/evidence branches intentionally remain; no remote branch cleanup was requested or authorized.
 - Branch names and ancestor counts do not prove missing code after squash/direct-main delivery; future changes require the same content-level comparison.
 
@@ -77,7 +79,7 @@ Ownership transfer: none
 
 ## Next
 
-- Inspect Actions run `38432014732` if it turns red; otherwise no further repository action is required for this direct request.
+- No further repository action is required for this direct request.
 
 ## Branch dispositions
 
