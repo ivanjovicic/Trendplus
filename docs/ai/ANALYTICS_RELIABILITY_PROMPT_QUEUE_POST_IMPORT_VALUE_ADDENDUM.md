@@ -2110,6 +2110,13 @@ Every branch is accounted for in a dated report, with no unsupported claim that 
 
 GitHub read access; no provider/production data authority. Independent of RQ645–RQ647 code paths. Re-check locks/open PRs before starting.
 
+### Verified branch-graph census after PR #143 (no status change)
+
+- Main baseline `c4c20197`: complete GitHub compare of all 97 existing non-main refs gives **71 behind (ahead=0), 1 identical, 25 diverged (ahead>0)**; no comparison errors. This is **commit ancestry only**, not 25 unmerged code features.
+- Some divergent candidates already have exact main blob parity: RQ637 three code/test paths, RQ638 Unicode two paths. The stale RQ635 trial branch has the same named lifecycle test families and a different, older fixture layout; successor fix PR #137 was merged.
+- **Next agent: prioritize content-level review of 25 divergent refs**, classify PR successor/patch parity and any material uniquely useful change. Refresh graph listing only for newly added or moved refs. Do not remerge/overwrite current main or delete any branch without owner approval. Branch report and preliminary evidence: `docs/qa/POST_RQ644_CODE_QUEUE_BRANCH_REVIEW_2026-10-13.md`.
+- RQ648 stays READY for full content-semantic reconciliation; this source-only census is **not** DONE evidence.
+
 ---
 
 ## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
