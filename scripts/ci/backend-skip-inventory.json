@@ -88,11 +88,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ646 adds an isolated PostgreSQL detail proof with known and canonical unknown ShoeType identities.",
+      "proof": {
+        "suite": "isolated-postgresql-shoe-type-contract",
+        "fullyQualifiedName": "Api.Tests.ShoeTypeRemainingContractsPostgresTests.ShoeTypeDetail_PreservesDecisionTrustAndUnknownIdentity",
+        "sourcePath": "Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_AggregatesUnknownTypes",
@@ -230,11 +232,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ646 adds an isolated PostgreSQL golden projection over the reviewed July fixture.",
+      "proof": {
+        "suite": "isolated-postgresql-shoe-type-contract",
+        "fullyQualifiedName": "Api.Tests.ShoeTypeRemainingContractsPostgresTests.ShoeTypeSalesStats_MatchesGoldenSnapshot",
+        "sourcePath": "Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_ProducesDeterministicJson",
@@ -246,11 +250,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ646 repeats the isolated PostgreSQL response after cache eviction while excluding only volatile timestamps.",
+      "proof": {
+        "suite": "isolated-postgresql-shoe-type-contract",
+        "fullyQualifiedName": "Api.Tests.ShoeTypeRemainingContractsPostgresTests.ShoeTypeSalesStats_ProducesDeterministicJson",
+        "sourcePath": "Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_ReturnsValidJsonStructure",
