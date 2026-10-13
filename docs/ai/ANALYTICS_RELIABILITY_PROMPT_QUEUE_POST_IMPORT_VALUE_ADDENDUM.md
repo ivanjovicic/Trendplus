@@ -2433,3 +2433,134 @@ Preset end date equals the business "today" at every hour; decision recorded eit
 ### Dependencies
 
 None. Frontend-only; P3 because the affected window is at most two hours per day.
+
+## RQ655 - Surface swallowed loader errors instead of silent fallback
+
+Status: READY
+Priority: P2
+Type: frontend loader error handling / silent-fallback audit
+Feature family: analytics-error-surface
+Parallel-safe: yes (audit-only; independent frontend files)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `audit(analytics): surface swallowed loader errors and add visible fallback messages`
+
+### Problem
+
+Many analytics pages and helpers call promises and swallow errors with `.catch(() => {})`, `.catch(() => null)`, or `.catch(console.error)`. Examples: `InsightStudioPage.tsx`, trend pages, `InventoryPage.tsx`, `GoogleShoppingTrendsPage.tsx` and several API wrapper `.json().catch(() => null)` usages. Silent swallowing hides transient or systemic failures from users and reduces observability. Some fallbacks are harmless (empty lists), but others plausibly hide degraded state that should render an explicit unavailable/warning UI and a retry affordance.
+
+### Evidence
+
+Search results and code read: `Klijent/clientapp/src/pages/InsightStudioPage.tsx` (multiple `.catch(() => {})` for independent loaders), `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/pages/GoogleShoppingTrendsPage.tsx`, `Klijent/clientapp/src/services/analyticsHttp.ts` and several API handlers using `resp.json().catch(() => null)`.
+
+### Scope
+
+Audit and add targeted visible fallbacks on analytics pages/modules that currently swallow errors without user-visible recovery or telemetry. Do not change low-risk experimental pages without owner review.
+
+### Read first
+
+`Klijent/clientapp/src/pages/InsightStudioPage.tsx`, `Klijent/clientapp/src/pages/InventoryPage.tsx`, `Klijent/clientapp/src/services/analyticsHttp.ts`, `Klijent/clientapp/src/services/*.ts` (json parsing).
+
+### Do
+
+1. Add failing-first tests that assert a loader error produces a visible warning/alert and a retry control.
+2. Replace `.catch(() => {})` on production analytics routes with `catch` that records telemetry and sets an explicit `loadingError` state, reusing existing `aaq-summary-error` / `refresh-banner` patterns where appropriate.
+3. For API `.json().catch(() => null)` sites, distinguish parse-failure from 204/empty-body and log parse errors instead of silently returning null when the response status indicates a body is expected.
+
+### Tests
+
+Focused loader failure specs for each modified page; `npm run check:analytics-guardrails` and `npm run build`.
+
+### Acceptance
+
+Loader failures are visible to users with a retry action and logged for diagnostics; tests cover failure flows.
+
+### Dependencies
+
+Coordination with page owners if an experimental route intentionally swallows errors.
+
+## RQ656 - Audit and fix fake-zero fallbacks across analytics UI
+
+Status: READY
+Priority: P2
+Type: frontend fake-zero / unavailable-value audit
+Feature family: analytics-screen-fake-zero-parity
+Parallel-safe: yes (frontend-only; independent pages)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `audit(analytics): remove coercive '?? 0' fake-zero fallbacks in analytics pages`
+
+### Problem
+
+Many pages coerce optional/nullable backend fields to `0` with `?? 0` or similar `(... ?? 0)` patterns, making an unavailable value appear as `0` or `0,0%`. Examples across `AnalyticsDashboard.tsx`, `SupplierSalesStatsPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`, `InsightStudioPage.tsx`, `InventoryPage.tsx` and `ExecutiveDecisionBoardPage.tsx`. Some uses are legitimate arithmetic guards, others are presentation-level and should let formatters render unavailable fallback (e.g. `fmtNumber(..., fallback)`).
+
+### Evidence
+
+Grepped `?? 0` across `Klijent/clientapp/src` shows many instances in dashboard cards, supplier pages, and charts. Prior fixes (RQ651) targeted a subset; a broader audit is needed.
+
+### Scope
+
+Review each `?? 0` occurrence in analytics pages and decide whether it is a presentation fallback (remove coercion, let formatter show fallback) or a numeric guard required by calculations (keep but document).
+
+### Read first
+
+`Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `SupplierSalesStatsPage.tsx`, `SupplierFootwearAnalyticsPage.tsx`, `InsightStudioPage.tsx`, `InventoryPage.tsx`, `ExecutiveDecisionBoardPage.tsx`.
+
+### Do
+
+1. Create failing-first tests where `null` input produced `0` in the UI previously.
+2. Replace presentation coercions with `fmtNumber`/`fmtPct` fallbacks or conditional rendering that distinguishes unknown vs real zero.
+3. Document each retained numeric guard with an inline comment and a spec proving the numeric necessity.
+
+### Tests
+
+Focused UI tests for affected cards and charts; guardrails and build.
+
+### Acceptance
+
+Unknown values render as unavailable; real zero values still render as `0` / `0,0%`.
+
+### Dependencies
+
+None. Frontend-only.
+
+## RQ657 - Add request-sequence/abort guards where missing to prevent stale-response races
+
+Status: READY
+Priority: P2
+Type: frontend stale-response / request cancellation
+Feature family: analytics-request-race
+Parallel-safe: yes (frontend-only; independent pages)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `fix(analytics): add request-sequence or AbortController guards to loaders missing them`
+
+### Problem
+
+Some analytics pages issue async loaders or multiple overlapping requests without request-sequence refs or AbortController cancellation. This allows slower earlier responses to overwrite newer state (observed and fixed in RQ652). Examples to audit: `InsightStudioPage.tsx`, several trend pages, `SupplierConsolidatedPage.tsx` and `AnalyticsDashboard.tsx` loader sequences.
+
+### Evidence
+
+Grepped for presence/absence of `AbortController` and existing `*RequestSeqRef` patterns. Several pages already implement cancellation; others issue multiple `.then` chains without guard.
+
+### Scope
+
+Audit pages that fetch multiple datasets for overlapping filters and add requestSeqRef or use `useReliableAnalyticsQuery` helper (if appropriate) which centralizes abort/sequence logic.
+
+### Do
+
+1. Failing-first tests where two overlapping requests produce stale UI on the second filter application.
+2. Add `itemsRequestSeqRef`/`countsRequestSeqRef` pattern or wire into `useReliableAnalyticsQuery` where available.
+3. Keep consistent UX: previous-loading placeholder remains until current arrives; failed previous responses must not overwrite current state.
+
+### Tests
+
+Focused loader race tests; `npm run build`.
+
+### Acceptance
+
+No stale overwrites in repeated filter scenarios; tests cover overlapping request flows.
+
+### Dependencies
+
+Use existing `useReliableAnalyticsQuery` helper when appropriate.
