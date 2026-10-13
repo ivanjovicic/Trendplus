@@ -11,7 +11,10 @@ public sealed class AnalyticsFrontendRouteSmokeTests : IClassFixture<WebApplicat
 
     public AnalyticsFrontendRouteSmokeTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        // Readiness is not under test here; with the gate on (non-Development hosts) /api returns 503
+        // before routing, which would race warmup or (route smoke) mask a missing route.
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [Theory]

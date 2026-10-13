@@ -1416,6 +1416,7 @@ Latest successful backend CI still includes recurrent expected test-host excepti
 - Exact merge CI `38301829902` passed 1,998 tests and classified 42 skips but logged three `Failed to save performance log for GetInventoryStatusQuery` warnings from `CachedAnalyticsOperationalFallbackTests.MissingAnalyticsRelationContext`.
 - Same run emitted repeated `Relational-specific methods can only be used when the context is using a relational database provider` errors from `AccessImportJobQueue.ClaimNextAsync` in test hosts. Production also intentionally registers Access import polling every 2 seconds; test-host isolation here does NOT fix the real web cold-start polling concern (owned by RQ637). These are **not** proof of production database failure.
 - RQ631/PR #132 already fixed optional HTTP metric persistence warnings; this is distinct MediatR behavior and worker registration.
+- Re-audit update 2026-10-13: `CachedAnalyticsOperationalFallbackTests` already disables the HTTP metric writer (`a5566d60`) and the readiness gate (`304223ff`). Neither change covers the MediatR `PerformanceLoggingBehavior` warning or the Access-import worker, so the remaining scope is unchanged.
 
 ### Scope
 
@@ -1548,3 +1549,150 @@ MediatR performance persistence cannot exceed defined schema fields through the 
 ### Dependencies
 
 None external; RQ631 delivered. Independent of RQ634/RQ635/RQ636/RQ637 and STAB16 provider work.
+
+---
+
+## RQ639 - Fail loudly instead of returning early in AnalyticsDbInfrastructureTests
+
+Status: READY
+Priority: P3
+Type: backend tests/CI honesty
+Feature family: silent-pass-integration-guards
+Parallel-safe: yes (own `Api.Tests/AnalyticsDbInfrastructureTests.cs` and, if needed, one filter line in `.github/workflows/analytics-tests.yml`; no production code)
+Owner: unassigned
+Ready after: state re-audit 2026-10-13 (`docs/qa/STATE_REAUDIT_2026-10-13.md`)
+Commit suggestion: `test(ci): make analytics DB infrastructure checks explicit skips or real integration proofs`
+
+### Problem
+
+All three tests in `AnalyticsDbInfrastructureTests` start with `if (!IsIntegrationEnabled()) return;`. The unit job does not set `TRENDPLUS_RUN_INTEGRATION_TESTS`. The integration job sets it but runs only named filters, and this class is not among them. So the "critical analytics columns exist", "parallel requests do not crash" and "response-time baseline" checks are counted as **passed** in every CI run without executing. They also do not appear in the BCI17 skip inventory (`scripts/ci/backend-skip-inventory.json`), so the skip accounting understates non-executed proof.
+
+### Evidence
+
+- `Api.Tests/AnalyticsDbInfrastructureTests.cs:30-34` (`IsIntegrationEnabled`), `:42`, `:71` and `:96` (early `return`).
+- `.github/workflows/analytics-tests.yml`: the integration steps use explicit `--filter FullyQualifiedName~...` lists (lines ~334-562), none of which names this class.
+- This is the only class in `Api.Tests` with this silent-return pattern (re-audit grep, 2026-10-13).
+- The gate override was added on 2026-10-13 (re-audit commit), so if the tests are enabled they no longer race startup readiness.
+
+### Scope
+
+`Api.Tests/AnalyticsDbInfrastructureTests.cs`; optionally one integration filter entry and `scripts/ci/backend-skip-inventory.json`. Do not touch other test classes or production code.
+
+### Read first
+
+`Api.Tests/AnalyticsDbInfrastructureTests.cs`; BCI17 skip inventory and its validator; an existing Testcontainers PostgreSQL fixture (for example `SupplierSalesStatsEndpointPostgresParityTests`).
+
+### Do
+
+1. Choose one route and record it: (a) convert the three tests to explicit skips with a reason (`Skip.IfNot`/SkippableFact or equivalent used in the repo) and register them in the BCI17 inventory; or (b) back them with a disposable PostgreSQL fixture and run them in an integration step with zero skips; or (c) delete them if an existing PostgreSQL test already covers the same contract (cite it).
+2. Keep the 30 s response-time assertion out of any required gate unless it runs on a stable fixture.
+
+### Tests
+
+Focused run of the class (shows Skipped or Passed with real execution, never vacuous Passed), BCI17 inventory validator, `git diff --check`, governance validators if docs change.
+
+### Acceptance
+
+No test in the class reports Passed without executing its body. CI skip counts include them, or they execute against PostgreSQL.
+
+### Dependencies
+
+None. Independent of RQ634-RQ638.
+
+---
+
+## RQ640 - Guard that every Api.Tests host sets the startup readiness gate explicitly
+
+Status: READY
+Priority: P2
+Type: backend tests/regression guard
+Feature family: test-host-readiness-gate-guard
+Parallel-safe: yes (new `Api.Tests/TestHostReadinessGateConventionTests.cs`; the two-line override may be added to listed factories, which are not owned by an active lane; skip any file under an active lock)
+Owner: unassigned
+Ready after: state re-audit 2026-10-13
+Commit suggestion: `test(ci): require explicit readiness gate setting in WebApplicationFactory hosts`
+
+### Problem
+
+CI runs `ASPNETCORE_ENVIRONMENT=Testing`, so `StartupReadiness:GateApiTraffic` defaults to **on** (`Api/Program.cs` gate middleware, ~1099-1137). The gate answers 503 for any `/api` path before warmup marks readiness, even before routing. Test hosts that do not set the gate either race warmup (flaky 503, run 38248162958, fixed in `304223ff`) or pass vacuously: `AnalyticsFrontendRouteSmokeTests` asserts only `!= 404`, so a gated 503 hid whether a route was registered at all (fixed in the 2026-10-13 re-audit commit). Nothing prevents a new factory from repeating the mistake.
+
+### Evidence
+
+- `304223ff`: 8 factories received `UseSetting("StartupReadiness:GateApiTraffic", "false")`. The re-audit added it to `AnalyticsDbInfrastructureTests` and `AnalyticsFrontendRouteSmokeTests`.
+- Local repro (2026-10-12): with `Testing` and an unreachable DB, 31 tests in factories without the override failed with 503. After the fix the targeted classes pass.
+- Still without an explicit setting (custom fixtures): `SupplierShoeTypeIndependentOracleIntegrationTests`, `SupplierShoeTypeRq447SeamIntegrationTests`. Verify each.
+- `AnalyticsCrossScreenRevenueInvariantIntegrationTests:193` intentionally sets `true`.
+
+### Scope
+
+New convention test; two-line overrides in factories that lack one. No change to the production gate default or `Program.cs`.
+
+### Read first
+
+`Api/Program.cs` readiness gate block; `Api/Services/Startup/ReadinessWarmupHostedService.cs`; the factories listed above; `304223ff` diff.
+
+### Do
+
+1. Add a source-scanning test: every `WebApplicationFactory<global::Program>` subclass, `IClassFixture<WebApplicationFactory<...>>` consumer or `WithWebHostBuilder` host in `Api.Tests` must mention `StartupReadiness:GateApiTraffic` (either value), or appear in a short allow-list with a reason (readiness-under-test).
+2. Add the override where it is missing, unless the class deliberately tests readiness.
+3. Make the test's failure message name the file and the fix.
+
+### Tests
+
+New convention test plus the touched classes, run with `ASPNETCORE_ENVIRONMENT=Testing` (with `Analytics__AllowLoopbackInProduction=true` locally), then CI on the exact SHA.
+
+### Acceptance
+
+A new host without an explicit gate choice fails CI with an actionable message. No test can pass because of a gated 503.
+
+### Dependencies
+
+None. Do not edit files under an active local task lock (check `.ai/task-locks/`).
+
+---
+
+## RQ641 - Stop main-branch CI cancellation from leaving pushed commits without backend proof
+
+Status: WAITING
+Priority: P2
+Type: CI/workflow config
+Feature family: main-ci-cancellation-gap
+Parallel-safe: yes (`.github/workflows/analytics-tests.yml`, `analytics-quality-gates.yml`, `planning-governance.yml` concurrency blocks only)
+Owner: owner decision
+Ready after: owner chooses (a) never cancel `push` runs on `main` (cancel only PR/branch runs), accepting more CI minutes, or (b) keep cancellation but require every code commit's proof to come from its PR head run, documenting that main tip runs are the only main proof.
+Commit suggestion: `ci: do not cancel in-progress backend runs for pushes to main`
+
+### Problem
+
+All three main workflows use `concurrency: group: <name>-${{ github.ref }}` with `cancel-in-progress: true`. When agents push to `main` within minutes of each other, the earlier commit's run is cancelled. Code commits then reach `main` with **no completed backend run**, and a red-then-fix sequence can be hidden or blamed on the wrong commit.
+
+### Evidence
+
+- `.github/workflows/analytics-tests.yml:20-22`, `analytics-quality-gates.yml:23-25`, `planning-governance.yml:52-54`.
+- Main push runs cancelled 2026-10-12/13 (UTC): `50f196d4` (#129 merge, cancelled by `713cae82`, which then failed), `092a9707`, and six docs commits between 08:04 and 08:08 UTC on 10-13.
+- RQ632 owner rule (`docs/ai/PROMPT_QUEUE_PROTOCOL.md`, `## Main-first delivery`) treats the first CI run as proof when local proof is impossible. A cancelled run gives none.
+
+### Scope
+
+Concurrency blocks of the three workflows; one protocol sentence if (b) is chosen.
+
+### Read first
+
+The three workflow files; `docs/ai/PROMPT_QUEUE_PROTOCOL.md` `## Main-first delivery`; `docs/qa/STATE_REAUDIT_2026-10-13.md` section 3.
+
+### Do
+
+1. (a): use `cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}`, or a per-SHA group for main pushes.
+2. (b): document the rule and add a completion-note field naming the run that proves the code SHA.
+
+### Tests
+
+`actionlint` (or the repo's workflow validation), governance validators, two consecutive docs pushes showing that neither main run is cancelled (option a).
+
+### Acceptance
+
+Every code commit pushed to `main` has a completed backend run, or the protocol explicitly names the alternative proof.
+
+### Dependencies
+
+Owner decision on CI minutes versus proof.
