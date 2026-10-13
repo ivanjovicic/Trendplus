@@ -7,7 +7,7 @@ Delivery target: main — PR #134 squash-merged
 Working branch: `audit/2026-10-13-reliability-prompts`
 Audit base: `6dec862e6449a18a24a26234215bcc9b30705b98`
 Main merge SHA: `dcd445b3d1fc5143dd75d3cdcfd8cbd6bc55844e`
-Main verification: PR #134 merge returned success; repository ref recheck pending in this note
+Main verification: PR #134 is closed/merged; refreshed `main` after squash and evidence commits contains `dcd445b3d1fc5143dd75d3cdcfd8cbd6bc55844e`. Exact-merge Planning Governance `38351175549` succeeded.
 Evidence state: synchronized (docs-only delivery and planning governance proof)
 Ownership transfer: none
 
@@ -33,7 +33,7 @@ Ownership transfer: none
 
 - Read-only GitHub commit/PR/CI metadata, job logs and source content inspected.
 - PR #134 Planning Governance run `38351086583` passed on final PR head `692b4d6f73a4c0de39b7466b0aa96439ec15d897`: agent instructions, queue (758 tasks), and planning architecture all passed.
-- PR #134 was squash-merged into `main` as `dcd445b3d1fc5143dd75d3cdcfd8cbd6bc55844e`. Full backend/frontend PR workflows were still running when merge was issued; do not describe them as completed successes.
+- PR #134 was squash-merged into `main` as `dcd445b3d1fc5143dd75d3cdcfd8cbd6bc55844e`. Full backend/frontend PR workflows were still running when merge was issued; do not describe them as completed successes. Exact-merge Planning Governance `38351175549` passed on `dcd445b3d1fc5143dd75d3cdcfd8cbd6bc55844e`.
 - Local `node scripts/check-prompt-queues.mjs --self-test`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs`, `git diff --check`: **not run** in connector-only environment.
 - No production deploy, Neon DDL/DML, Vercel dashboard, Redis state or fresh Access import performed.
 
