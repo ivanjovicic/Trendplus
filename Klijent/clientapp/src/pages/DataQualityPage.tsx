@@ -774,7 +774,7 @@ export default function DataQualityPage() {
                 Izvorni period: {formatDate(health.observedPeriodFrom)} – {formatDate(health.observedPeriodTo)}
               </span>
               <span>
-                Bez dobavljača: {fmtNumber(health.missingSupplierArticleCount ?? 0, 0, "-")} · bez nabavne cene: {fmtNumber(health.missingCostArticleCount ?? 0, 0, "-")} · bez kategorije: {fmtNumber(health.missingCategoryArticleCount ?? 0, 0, "-")}
+                Bez dobavljača: {fmtNumber(health.missingSupplierArticleCount, 0, "-")} · bez nabavne cene: {fmtNumber(health.missingCostArticleCount, 0, "-")} · bez kategorije: {fmtNumber(health.missingCategoryArticleCount, 0, "-")}
               </span>
               <span>
                 Svežina: {refreshStatus?.dataFreshnessStatus === "critical" ? "kritična" : refreshStatus?.dataFreshnessStatus ?? "nije potvrđena"}

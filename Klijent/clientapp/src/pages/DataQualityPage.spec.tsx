@@ -547,4 +547,25 @@ describe("DataQualityPage", () => {
     );
     expect(screen.getByText("Novi signal")).toBeInTheDocument();
   });
+
+  it("keeps absent master-data counts unavailable instead of rendering zero", async () => {
+    renderPage();
+
+    const meta = await screen.findByLabelText("Svežina i potpunost matičnih podataka");
+    expect(meta).toHaveTextContent("Bez dobavljača: - · bez nabavne cene: - · bez kategorije: -");
+    expect(meta).not.toHaveTextContent("Bez dobavljača: 0");
+  });
+
+  it("renders known master-data counts including real zeros", async () => {
+    vi.mocked(getAnalyticsDataQualityHealth).mockResolvedValue(health({
+      missingSupplierArticleCount: 12,
+      missingCostArticleCount: 0,
+      missingCategoryArticleCount: 3,
+    }));
+
+    renderPage();
+
+    const meta = await screen.findByLabelText("Svežina i potpunost matičnih podataka");
+    expect(meta).toHaveTextContent("Bez dobavljača: 12 · bez nabavne cene: 0 · bez kategorije: 3");
+  });
 });

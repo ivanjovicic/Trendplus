@@ -20,6 +20,10 @@ export interface MarginQualityInfo {
   noCostCoveragePct: number;
 }
 
+function isKnownPct(value: number | null | undefined): value is number {
+  return value != null && Number.isFinite(value);
+}
+
 /** CSS class suffix for the tier badge */
 export function qualityTierClass(tier: MarginQualityTier | string | null | undefined): string {
   switch (tier) {
@@ -68,9 +72,9 @@ export function buildCoverageTooltip(
   snapshotPct?: number | null
 ): string {
   const parts = [
-    `Istorijski trošak sa prodajne stavke: ${fmtPct(historicalPct ?? 0, 1)}`,
-    `Produkt-fallback/procena: ${fmtPct(estimatedPct ?? 0, 1)}`,
-    `Bez troška: ${fmtPct(noCostPct ?? 0, 1)}`,
+    `Istorijski trošak sa prodajne stavke: ${fmtPct(historicalPct, 1)}`,
+    `Produkt-fallback/procena: ${fmtPct(estimatedPct, 1)}`,
+    `Bez troška: ${fmtPct(noCostPct, 1)}`,
   ];
   if (snapshotPct != null && snapshotPct > 0) {
     parts.splice(1, 0, `Tačan snapshot trošak: ${fmtPct(snapshotPct, 1)}`);
@@ -93,12 +97,14 @@ export function buildRecommendationCaveat(
     return "Nabavna cena nije dostupna — preporuka ne sadrži maržni signal.";
   }
 
+  const estimatedShare = isKnownPct(estimatedPct) ? ` (${fmtPct(estimatedPct, 1)} prometa)` : "";
+
   if (tier === "estimated") {
-    return `Marža je dominantno procenjena iz fallback troška artikla (${fmtPct(estimatedPct ?? 0, 1)} prometa). Preporuka može biti manje pouzdana.`;
+    return `Marža je dominantno procenjena iz fallback troška artikla${estimatedShare}. Preporuka može biti manje pouzdana.`;
   }
 
   // partial
-  return `Deo marže (${fmtPct(estimatedPct ?? 0, 1)} prometa) je procenjen iz fallback troška. Preporuku čitajte oprezno.`;
+  return `Deo marže${estimatedShare} je procenjen iz fallback troška. Preporuku čitajte oprezno.`;
 }
 
 /**
@@ -124,12 +130,19 @@ export function buildMarginDetailNote(
     return `Nabavna cena nije dostupna za ovaj red. Maržni doprinos nije moguće obračunati.${snapshotNote}`;
   }
 
+  const historicalClause = isKnownPct(historicalPct) ? `${fmtPct(historicalPct, 1)} prometa ima istorijski trošak` : null;
+  const estimatedClause = isKnownPct(estimatedPct) ? `${fmtPct(estimatedPct, 1)} koristi fallback trošak` : null;
+
   if (tier === "estimated") {
-    return `Marža je dominantno procenjena: istorijski trošak pokriva samo ${fmtPct(historicalPct ?? 0, 1)} prometa, a ${fmtPct(estimatedPct ?? 0, 1)} koristi fallback trošak sa kartice artikla. Nabavna cena nije zamrznuta na prodajnoj stavci, pa se marža za ovaj red može promeniti ako se nabavna cena ažurira.${snapshotNote}`;
+    const coverage = historicalClause && estimatedClause
+      ? `istorijski trošak pokriva samo ${fmtPct(historicalPct, 1)} prometa, a ${fmtPct(estimatedPct, 1)} koristi fallback trošak sa kartice artikla`
+      : [historicalClause, estimatedClause].filter(Boolean).join(", ") || "udeo istorijskog i fallback troška nije dostupan";
+    return `Marža je dominantno procenjena: ${coverage}. Nabavna cena nije zamrznuta na prodajnoj stavci, pa se marža za ovaj red može promeniti ako se nabavna cena ažurira.${snapshotNote}`;
   }
 
   if (tier === "partial") {
-    return `Marža je delimično procenjena: ${fmtPct(historicalPct ?? 0, 1)} prometa ima istorijski trošak, a ${fmtPct(estimatedPct ?? 0, 1)} koristi fallback trošak.${snapshotNote}`;
+    const coverage = [historicalClause, estimatedClause].filter(Boolean).join(", a ") || "udeo istorijskog i fallback troška nije dostupan";
+    return `Marža je delimično procenjena: ${coverage}.${snapshotNote}`;
   }
 
   // confirmed tier but snapshot is active
