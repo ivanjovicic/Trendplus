@@ -618,7 +618,9 @@ export default function AnalyticsActionsPage() {
   const [outcomeModalBusy, setOutcomeModalBusy] = useState(false);
   const [outcomeModalError, setOutcomeModalError] = useState<string | null>(null);
   const [writeAccessMessage, setWriteAccessMessage] = useState<string | null>(null);
+  const [countsUnavailable, setCountsUnavailable] = useState(false);
   const itemsRequestSeqRef = useRef(0);
+  const countsRequestSeqRef = useRef(0);
   const outcomeSummaryRequestSeqRef = useRef(0);
   const statusModalBusyRef = useRef(statusModalBusy);
   const outcomeModalBusyRef = useRef(outcomeModalBusy);
@@ -657,6 +659,7 @@ export default function AnalyticsActionsPage() {
   }, []);
 
   const loadCounts = useCallback(async () => {
+    const requestSeq = ++countsRequestSeqRef.current;
     try {
       const c = await getAnalyticsActionCounts({
         createdFrom: filters.createdFrom,
@@ -665,9 +668,18 @@ export default function AnalyticsActionsPage() {
         priority: filters.priority,
         dataQualityStatus: filters.dataQualityStatus,
       });
+      if (countsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
       setCounts(c);
+      setCountsUnavailable(false);
     } catch {
-      // non-critical
+      if (countsRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      // Previous counts describe other filters; never present them as current.
+      setCounts(null);
+      setCountsUnavailable(true);
     }
   }, [filters.createdFrom, filters.createdTo, filters.sourceType, filters.priority, filters.dataQualityStatus]);
 
@@ -776,6 +788,7 @@ export default function AnalyticsActionsPage() {
         return next;
       });
       void loadCounts();
+      void loadOutcomeSummary(filters);
       return true;
     } catch (e) {
       setWriteAccessMessage(getAnalyticsActionWriteErrorMessage(e));
@@ -891,6 +904,7 @@ export default function AnalyticsActionsPage() {
       setItems((prev) => prev.map((it) => (it.id === result.id ? result : it)));
       setDetailsById((prev) => ({ ...prev, [result.id]: result }));
       setOutcomeModal(null);
+      void loadOutcomeSummary(filters);
     } catch (e) {
       if (isAnalyticsActionWriteForbidden(e)) {
         setOutcomeModalError(getAnalyticsActionWriteErrorMessage(e));
@@ -966,6 +980,11 @@ export default function AnalyticsActionsPage() {
           </div>
         </div>
       )}
+      {!counts && countsUnavailable ? (
+        <div className="aaq-summary-error" role="status">
+          Brojevi po statusu trenutno nisu dostupni za izabrane filtere.
+        </div>
+      ) : null}
 
       <RecommendationMeasurementStatisticsReview
         loading={outcomeSummaryLoading}

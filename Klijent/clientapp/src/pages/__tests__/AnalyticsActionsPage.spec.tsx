@@ -1209,6 +1209,80 @@ describe("AnalyticsActionsPage", () => {
     expect(bar.getByText("3")).toBeInTheDocument();
   });
 
+  it("keeps the newest KPI counts when count requests overlap (RQ652)", async () => {
+    const firstCounts = createDeferred<Record<string, number>>();
+    const secondCounts = createDeferred<Record<string, number>>();
+
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+
+    getAnalyticsActionCountsMock
+      .mockImplementationOnce(() => firstCounts.promise)
+      .mockImplementationOnce(() => secondCounts.promise);
+
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
+    fireEvent.change(screen.getByLabelText("Filter po prioritetu"), { target: { value: "P2" } });
+
+    await waitFor(() => {
+      expect(getAnalyticsActionCountsMock).toHaveBeenCalledTimes(3);
+    });
+
+    secondCounts.resolve({ new: 41, accepted: 0, deferred: 0, rejected: 0, done: 0, p1Open: 0 });
+    await waitFor(() => {
+      expect(document.querySelector(".aaq-kpi-card.kpi-new .kpi-value")?.textContent).toBe("41");
+    });
+
+    firstCounts.resolve({ new: 99, accepted: 0, deferred: 0, rejected: 0, done: 0, p1Open: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector(".aaq-kpi-card.kpi-new .kpi-value")?.textContent).toBe("41");
+  });
+
+  it("does not keep previous-filter KPI counts after a failed counts reload (RQ652)", async () => {
+    getAnalyticsActionCountsMock.mockResolvedValueOnce({
+      new: 17,
+      accepted: 1,
+      deferred: 0,
+      rejected: 0,
+      done: 0,
+      p1Open: 1,
+    });
+
+    render(<AnalyticsActionsPage />);
+
+    await waitFor(() => {
+      expect(document.querySelector(".aaq-kpi-card.kpi-new .kpi-value")?.textContent).toBe("17");
+    });
+
+    getAnalyticsActionCountsMock.mockRejectedValueOnce(new Error("counts down"));
+    fireEvent.change(screen.getByLabelText("Filter po izvoru"), { target: { value: "supplier" } });
+
+    expect(await screen.findByText("Brojevi po statusu trenutno nisu dostupni za izabrane filtere.")).toBeInTheDocument();
+    expect(document.querySelector(".aaq-kpi-bar")).toBeNull();
+  });
+
+  it("reloads the outcome summary after an outcome is saved (RQ652)", async () => {
+    render(<AnalyticsActionsPage />);
+
+    expect(await screen.findByText("Dopuni artikal A")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ažuriraj ishod" }));
+    fireEvent.change(screen.getByLabelText("Ishod"), { target: { value: "negative" } });
+    fireEvent.change(screen.getByLabelText("Merljivi uticaj (RSD)"), { target: { value: "-500" } });
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ažuriraj ishod" }));
+
+    await waitFor(() => {
+      expect(updateAnalyticsActionOutcomeMock).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(getAnalyticsActionOutcomeSummaryMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("removes one active summary filter from the helper links", async () => {
     render(<AnalyticsActionsPage />);
 
