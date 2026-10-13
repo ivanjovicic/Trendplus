@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ636 is the primary READY lane (P2 CI fake-provider host isolation); RQ638 (P2 MediatR performance field bounds) remains an independent READY lane. RQ635 is DONE on implementation SHA `ca5b6c4129ae72cddad9ed4407992e56870ad31c` (read-only SQL 029 preflight + disposable PostgreSQL lifecycle oracle). RQ634 is IN_PROGRESS with Codex close-out on current `main`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ636 is primary READY (P2 CI fake-provider host isolation); RQ638 (P2 MediatR performance field bounds), RQ639 (P3 CI honesty), and RQ640 (P2 test-host readiness-gate convention) also remain READY. RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1290,15 +1290,35 @@ Docs-only commits do not create production deployments. Both historic failures a
 
 ## RQ634 - Certify nonblocking web startup when optional supplier windowed MVs are missing
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend/CI integration test + narrow startup correction
 Feature family: supplier-windowed-cold-start-regression
 Parallel-safe: yes (own new test class and supplier startup gates only; do not edit SQL 029, operator instructions or unrelated health endpoints)
 Owner: Codex (Trendplus2 main checkout)
-Local lock: `.ai/task-locks/RQ634-codex.lock.md`
 Ready after: PR #133 merged on main `1c9158d3e9a74de96c0b7ece60fb0c88f9a18058`
 Commit suggestion: `test(startup): certify optional supplier MV repair cannot gate core readiness`
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: The default web startup path no longer builds populated optional SQL 018 supplier caches with an unbounded timeout; optional SQL 029 caches remain controlled by their explicit setting. Shared database schema initialization is serialized and releases pooled-session advisory locks. Missing optional caches remain unavailable and supplier endpoints fail closed; core readiness is not fabricated or gated by those optional caches.
+- Changed files: `Infrastructure/Seed/DatabaseInitializer.cs`; `Api/Services/Startup/DeferredStartupTasksHostedService.cs`; `Api/Services/Startup/SupplierDecisionSchemaRepairHostedService.cs`; `Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs`; `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`; `Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs`.
+- Checks run: Release focused API tests 54/54; full CI backend test step in run `38387779145` on exact implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882` passed 2,010/2,052 (42 classified skips), including 4/4 new PostgreSQL regressions; governance validators and `git diff --check` passed. Later current-main run `38389785987` was red only in the separate RQ635 SQL 029 lifecycle tests (4 failures from missing fixture relations); all four RQ634 tests passed in that run.
+- Checks not run: local PostgreSQL/Testcontainers execution (Docker unavailable); no production provider or database checks.
+- Run log: `.ai/runs/2026-10-13-RQ634-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`
+- Main verification: fresh `origin/main` contains the implementation SHA; exact-SHA CI backend test step passed as noted above.
+- Missed: no runtime Render/Neon causality or recovery proof; owned by STAB16.
+- Follow-up: RQ636 remains primary READY; RQ638, RQ639 and RQ640 remain READY.
+- Residual risk: production startup configuration, deployed SHA and live supplier cache state remain unverified. Current-main CI run `38389785987` also has four RQ635-owned SQL 029 lifecycle failures caused by missing `__StartupSqlScriptHistory` / `vw_supplier_fullprice_signals` fixture prerequisites; this is outside RQ634 scope and remains an RQ635 follow-up.
+- Post-close routing: RQ636 (primary READY)
+- Prompt defect / scope repair: expanded the prompt's SQL 018 audit finding into bounded optional-cache startup behavior; fixed the pooled advisory-lock release and disposable PostgreSQL fixture configuration failures exposed by CI.
+
+Commit SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882` is contained in current `main`.
 
 ### Problem
 
