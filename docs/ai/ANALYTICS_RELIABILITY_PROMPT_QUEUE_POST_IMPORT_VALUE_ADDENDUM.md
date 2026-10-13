@@ -1311,7 +1311,7 @@ Commit suggestion: `test(startup): certify optional supplier MV repair cannot ga
 - Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`
-- Main verification: fresh `origin/main` contains the implementation SHA; exact-SHA CI backend test step passed as noted above.
+- Main verification: fresh `origin/main` at `6a1e0901e467d80ca481c68849e2775cc0b792be` contains the implementation SHA and synchronized RQ634 closure; exact-SHA CI backend test step passed as noted above.
 - Missed: no runtime Render/Neon causality or recovery proof; owned by STAB16.
 - Follow-up: RQ636 remains primary READY; RQ638, RQ639 and RQ640 remain READY.
 - Residual risk: production startup configuration, deployed SHA and live supplier cache state remain unverified. Current-main CI run `38389785987` also has four RQ635-owned SQL 029 lifecycle failures caused by missing `__StartupSqlScriptHistory` / `vw_supplier_fullprice_signals` fixture prerequisites; this is outside RQ634 scope and remains an RQ635 follow-up.
