@@ -1328,6 +1328,8 @@ PR #133 added `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartu
 5. Preserve existing tests and add a regression that fails if a web startup path bypasses the new gate.
 6. **New confirmed residual (2026-10-13):** separately examine the 018 all-time supplier cache build: prove whether a missing core cache triggers materialized `CREATE` with unbounded command timeout during web startup despite `AllowSupplierDecisionHeavyRefreshInInitializer=false`. If yes, separate required cheap schema contract from the optional populated cache build, or bound and isolate it safely. Preserve cold-start source contract and fail-closed supplier endpoints; do not indiscriminately skip mandatory schema repair, silently mark all-time caches READY or run SQL 018 in parallel. Add focused PostgreSQL/timeout regressions.
 
+7. **Startup owner collision check:** `SupplierDecisionSchemaRepairHostedService` is always registered in a web process (enabled by default, delayed ~8s), while `DeferredStartupTasksHostedService` can be registered when `Database:AutoMigrate=true`. Compare their effective SQL 011–018 and 029 ownership and advisory locks; guard against concurrent initialization of 014/016/018 or retain provably safe serialization when both start on the same database. Test same process, split DB, unified DB and cancellation on disposable PostgreSQL. Do not turn off required migrations by default.
+
 ### Tests
 
 Focused xUnit new cold-start class plus `SupplierDecisionWindowedStartupPolicyTests`, existing `SupplierDecisionSchemaSqlTests` and any touched lifecycle test, Release build, `git diff --check`. Disposable PostgreSQL must execute in CI with zero skipped target tests; run governance validators for queue changes.
