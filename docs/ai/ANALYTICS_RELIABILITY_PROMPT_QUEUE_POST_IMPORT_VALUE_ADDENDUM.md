@@ -2175,12 +2175,12 @@ RQ636/RQ637 DONE. No production credentials, source file import or owner busines
 
 ## RQ651 - Stop rendering unknown data-quality counts and margin-coverage shares as zero
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend analytics trust text / fake-zero regression
 Feature family: analytics-screen-fake-zero-trust-text
 Parallel-safe: yes (frontend-only; disjoint from RQ645-RQ650 backend/test/branch paths and from RQ652-RQ654 files)
-Owner: unassigned
+Owner: Cursor
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Commit suggestion: `fix(analytics): keep unknown data-quality counts and margin coverage unavailable, not zero`
 
@@ -2220,6 +2220,26 @@ Unknown counts/shares render as unavailable; known zeros still render as `0` / `
 ### Dependencies
 
 None. Frontend-only and repository-local.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: `DataQualityPage` no longer coerces absent master-data counts to `0` before `fmtNumber`, so its `"-"` fallback renders. `marginQuality` coverage tooltip, recommendation caveat and margin detail note render unknown shares as "Nije dostupno" or omit the clause instead of `0,0%`. Known values and real zeros are unchanged.
+- Changed files: `Klijent/clientapp/src/pages/DataQualityPage.tsx`; `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`; `Klijent/clientapp/src/utils/marginQuality.ts`; `Klijent/clientapp/src/utils/__tests__/marginQuality.spec.ts` (new); `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-13-RQ651-evidence.md`.
+- Contract/runtime behavior changed: frontend display text only; no API, schema or decision semantics changed.
+- Checks run: failing-first proof showed 4 new regression tests failing before the fix (16 existing passing). After the fix, focused vitest passed 140/140 across 10 files (DataQualityPage, marginQuality, SupplierSalesStatsPage*, ShoeTypeSalesStatsPage* and PilotReadinessPage* specs). `npm run check:analytics-guardrails` passed (baseline-only, 38 known; one unrelated baseline entry in `IntelligenceSnapshotPanel.tsx` reported as removed). `npm run build` (tsc + vite) passed. `node scripts/check-prompt-queues.mjs` and `git diff --check` passed.
+- Checks not run: full frontend test suite and browser visual check, because the change is limited to text fallbacks covered by the focused specs.
+- Run log: `.ai/runs/2026-10-13-RQ651-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `78a9c48748d57c0ca81476c15ddecf6eb48355d2`
+- Main verification: after push, `git merge-base --is-ancestor 78a9c487 origin/main` passed; origin/main was `78a9c48748d57c0ca81476c15ddecf6eb48355d2` (rebased onto Codex's RQ645 merge `6ca11bf9`).
+- Missed: none known within scope. The `hasWarning` boolean in `DataQualityPage` intentionally keeps `?? 0` so unknown counts do not raise a false alarm.
+- Follow-up: RQ652 and RQ653 (P2) remain independently READY; RQ654 (P3) READY.
+- Residual risk: main CI for `78a9c487` had not completed at close; local focused proof is complete.
+- Post-close routing: RQ651 has no dependents. RQ652/RQ653/RQ654 remain READY and path-disjoint. The RQ645 primary pointer is owned by Codex and was not touched.
+- Prompt defect / scope repair: none.
 
 ## RQ652 - Guard action-queue KPI counts against stale responses and refresh the outcome summary after saves
 
