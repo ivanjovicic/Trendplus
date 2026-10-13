@@ -46,16 +46,10 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         Assert.Contains("STAB16", guide, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task MissingBothWindowedCaches_PreflightContinue_Then029_IsIdempotent()
     {
-        var prepared = await TryCreatePreparedDatabaseAsync();
-        if (prepared is null)
-        {
-            return;
-        }
-
-        var connectionString = prepared;
+        var connectionString = await CreatePreparedDatabaseAsync();
         await EnsureSupplierHubWithoutWindowedAsync(connectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -77,16 +71,10 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         await AssertWindowedCachesMatchAllTimeGrainAsync(connection);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Only90dPresent_029Completes180d()
     {
-        var prepared = await TryCreatePreparedDatabaseAsync();
-        if (prepared is null)
-        {
-            return;
-        }
-
-        var connectionString = prepared;
+        var connectionString = await CreatePreparedDatabaseAsync();
         await EnsureSupplierHubWithoutWindowedAsync(connectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -104,16 +92,10 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         Assert.Equal("READY", after.MaintenanceVerdict);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Legacy90dDefinition_029ReplacesRequiredColumnContract()
     {
-        var prepared = await TryCreatePreparedDatabaseAsync();
-        if (prepared is null)
-        {
-            return;
-        }
-
-        var connectionString = prepared;
+        var connectionString = await CreatePreparedDatabaseAsync();
         await EnsureSupplierHubWithoutWindowedAsync(connectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -137,16 +119,10 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         Assert.True(capability.IsReady);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RolledBackTransaction_DoesNotBlockSubsequent029Application()
     {
-        var prepared = await TryCreatePreparedDatabaseAsync();
-        if (prepared is null)
-        {
-            return;
-        }
-
-        var connectionString = prepared;
+        var connectionString = await CreatePreparedDatabaseAsync();
         await EnsureSupplierHubWithoutWindowedAsync(connectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -172,26 +148,39 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         Assert.Equal("READY", after.MaintenanceVerdict);
     }
 
-    private async Task<string?> TryCreatePreparedDatabaseAsync()
+    // These tests only run where PostgreSQL is required (PostgresRequiredFact), so an
+    // unavailable fixture must fail the test instead of returning early as a pass.
+    private async Task<string> CreatePreparedDatabaseAsync(string prefix = "tp_sql029")
     {
         if (!_fixture.IsAvailable)
         {
-            return null;
+            throw new InvalidOperationException("PostgreSQL is required for this test, but the Testcontainers fixture is unavailable.");
         }
 
         var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(
-            $"tp_sql029_{Guid.NewGuid():N}");
-        return string.IsNullOrWhiteSpace(connectionString) ? null : connectionString;
+            $"{prefix}_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("PostgreSQL is required for this test, but an isolated database could not be created.");
+        }
+
+        return connectionString;
     }
 
-    private static async Task EnsureSupplierHubWithoutWindowedAsync(string connectionString)
+    private async Task EnsureSupplierHubWithoutWindowedAsync(string connectionString)
     {
         await SupplierDecisionSchemaReadinessIntegrationTests.SeedSupplierSchemaPrerequisitesAsync(connectionString);
+
+        // The Trendplus (default) database must be a different database. When both
+        // connection strings point at one database, EnsureAnalyticsSupplierDecisionSchemaAsync
+        // takes its unified-database branch and skips SQL 011-018 and the startup SQL history
+        // table, so __StartupSqlScriptHistory and vw_supplier_fullprice_signals never exist.
+        var trendplusConnectionString = await CreatePreparedDatabaseAsync("tp_sql029_core");
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = connectionString,
+                ["ConnectionStrings:DefaultConnection"] = trendplusConnectionString,
                 ["ConnectionStrings:AnalyticsConnection"] = connectionString,
                 ["DatabaseInitialization:BuildSupplierDecisionHubCachesOnStartup"] = "true",
                 ["DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup"] = "false",

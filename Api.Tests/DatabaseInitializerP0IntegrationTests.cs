@@ -517,6 +517,12 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
     public bool IsAvailable { get; private set; }
 
+    /// <summary>
+    /// PostgreSQL proof is mandatory in CI (`CI=true`) or when
+    /// `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`; an unavailable fixture must then fail.
+    /// </summary>
+    public static bool IsRequired => PostgresTestRequirement.IsRequired;
+
     public string AdminConnectionString => _externalConnectionString ?? _container?.GetConnectionString() ?? string.Empty;
 
     public async Task InitializeAsync()
@@ -550,13 +556,10 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
         {
             IsAvailable = false;
 
-            if (string.Equals(
-                    Environment.GetEnvironmentVariable("CI"),
-                    "true",
-                    StringComparison.OrdinalIgnoreCase))
+            if (IsRequired)
             {
                 throw new InvalidOperationException(
-                    "PostgreSQL integration tests are mandatory in CI, but the Testcontainers fixture could not start.",
+                    "PostgreSQL integration tests are mandatory here (CI=true or TRENDPLUS_REQUIRE_POSTGRES_TESTS=true), but the Testcontainers fixture could not start.",
                     ex);
             }
         }

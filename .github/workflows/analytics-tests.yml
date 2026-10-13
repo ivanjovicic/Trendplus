@@ -45,6 +45,7 @@ jobs:
     env:
       CI: "true"
       ASPNETCORE_ENVIRONMENT: Testing
+      TRENDPLUS_REQUIRE_POSTGRES_TESTS: "true"
       Database__AutoMigrate: "false"
       # The backend suite uses the isolated CI PostgreSQL service on loopback.
       # Keep the production resolver fail-closed while declaring this test-only
@@ -250,6 +251,7 @@ jobs:
     env:
       CI: "true"
       ASPNETCORE_ENVIRONMENT: Testing
+      TRENDPLUS_REQUIRE_POSTGRES_TESTS: "true"
       TRENDPLUS_RUN_INTEGRATION_TESTS: "true"
       Database__AutoMigrate: "false"
       # The CI PostgreSQL service is intentionally loopback-only. Testing is
