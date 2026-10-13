@@ -44,10 +44,10 @@ This mitigates a credible startup load source; it does not certify production re
 
 ## Reconciliation on 2026-10-13 (repo proof vs deployment proof)
 
-- PR #133 is **merged** into \`main\` at \`1c9158d3e9a74de96c0b7ece60fb0c88f9a18058\`; targeted schema-source regression and exact-merge backend run \`38301829902\` succeeded (1,998 passed, 42 classified skips). Repository tip at this review was \`6dec862e6449a18a24a26234215bcc9b30705b98\` (evidence-only).
-- The setting \`DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false\` exists in committed Production configuration. It is **not proven** that Render deployed the merge or used that effective value; environment overrides and startup logs were not available.
-- The original log fragment did not show the end of SQL 029 execution or the JSON body of \`/ready\`. Simultaneous 503 and SQL repair indicate contention risk, not a proven singular causal mechanism.
-- A read-only attempt to fetch \`/health\` and \`/ready\` from the assistant environment on 2026-10-13 was **not accessible**. Do not record that as HTTP 503/200 or infer service health from this result.
+- PR #133 is **merged** into `main` at `1c9158d3e9a74de96c0b7ece60fb0c88f9a18058`; targeted schema-source regression and exact-merge backend run `38301829902` succeeded (1,998 passed, 42 classified skips). Repository tip at this review was `6dec862e6449a18a24a26234215bcc9b30705b98` (evidence-only).
+- The setting `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false` exists in committed Production configuration. It is **not proven** that Render deployed the merge or used that effective value; environment overrides and startup logs were not available.
+- The original log fragment did not show the end of SQL 029 execution or the JSON body of `/ready`. Simultaneous 503 and SQL repair indicate contention risk, not a proven singular causal mechanism.
+- A read-only attempt to fetch `/health` and `/ready` from the assistant environment on 2026-10-13 was **not accessible**. Do not record that as HTTP 503/200 or infer service health from this result.
 - The October 14 01:00–02:00 UTC scheduled Render dashboard/API maintenance is distinct; the provider notice says deployed services should not be interrupted by it.
 - Current repo-only next steps are RQ634 (cold-start regression), RQ635 (SQL 029 maintenance preflight), and RQ636 (test-host worker isolation). **STAB16** exclusively owns provider/deployed evidence and production maintenance authority; required original business data / Access batch #23 is not to be re-imported as part of this incident.
 
