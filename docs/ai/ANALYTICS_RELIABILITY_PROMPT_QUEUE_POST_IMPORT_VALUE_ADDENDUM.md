@@ -5,6 +5,8 @@ Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` 
 Current READY prompt: RQ645 primary READY (Supplier trust/cohort/golden deterministic PostgreSQL contracts); RQ646 (ShoeType detail/golden/determinism), RQ647 (performance baselines), RQ648 (branch content-equivalence) and RQ649 (remaining EF InMemory Access worker CI noise) are separate READY lanes registered by the 2026-10-13 15:56 CEST post-RQ644 review on main `c4c20197cf029f36de8623e2de8cb7e9df708a57`. Their ownership is path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized. Historical pointer: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
+Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
+
 ## Baseline and owner decisions
 
 - Batch #23 is already imported and reconciled: 5,530/5,530 receipts, 67,092/67,092 lines, 12,422 Access `Artikli/ProductsDim`, zero source-fact value/quantity/price deltas. Do **not** repeat import, seed, delete, migrate business DB or auto-deploy to obtain a fresh test.
@@ -2168,3 +2170,190 @@ Non-import EF InMemory hosts no longer run unwanted Access import queue polling 
 ### Dependencies
 
 RQ636/RQ637 DONE. No production credentials, source file import or owner business approval needed; check same-file collisions with RQ645/RQ646 before claiming.
+
+## RQ651 - Stop rendering unknown data-quality counts and margin-coverage shares as zero
+
+Status: READY
+Priority: P2
+Type: frontend analytics trust text / fake-zero regression
+Feature family: analytics-screen-fake-zero-trust-text
+Parallel-safe: yes (frontend-only; disjoint from RQ645-RQ650 backend/test/branch paths and from RQ652-RQ654 files)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `fix(analytics): keep unknown data-quality counts and margin coverage unavailable, not zero`
+
+### Problem
+
+Two trust surfaces turn an unknown value into a confident zero, violating the AGENTS.md "no fake zero" invariant:
+
+1. `DataQualityPage.tsx` header ("Odvojeni signali") renders `fmtNumber(health.missingSupplierArticleCount ?? 0, 0, "-")` (same for missing cost/category). The fields are optional in `analyticsResponseSchemas.ts`, and `fmtNumber` already returns its fallback for null/undefined, so `?? 0` makes the `"-"` fallback unreachable. An absent count reads as "Bez dobavljača: 0" while the KPI cards on the same page show it as unavailable.
+2. `utils/marginQuality.ts` `buildCoverageTooltip`, `buildRecommendationCaveat` and `buildMarginDetailNote` pass `historicalPct ?? 0`, `estimatedPct ?? 0`, `noCostPct ?? 0` into `fmtPct`, so unknown coverage reads as e.g. "Bez troška: 0,0%".
+
+### Evidence
+
+`docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md` (RQ651 detail). `fmtNumber`/`fmtPct` in `utils/analyticsFormatters.ts` return the unavailable fallback for null/non-finite input.
+
+### Scope
+
+`Klijent/clientapp/src/pages/DataQualityPage.tsx` (header counts only; the `hasMasterDataIssues`-style boolean may keep `?? 0` because unknown must not raise a false alarm), `Klijent/clientapp/src/utils/marginQuality.ts`, their nearest specs. No backend, schema, formatter or copy-wide sweep.
+
+### Read first
+
+`Klijent/clientapp/src/pages/DataQualityPage.tsx` (~lines 660-860), `Klijent/clientapp/src/pages/DataQualityPage.spec.tsx`, `Klijent/clientapp/src/utils/marginQuality.ts`, `Klijent/clientapp/src/utils/analyticsFormatters.ts`, callers in `SupplierSalesStatsPage.tsx` and `ShoeTypeSalesStatsPage.tsx`.
+
+### Do
+
+1. Add failing-first tests: DataQualityPage health without the three optional counts must not render "Bez dobavljača: 0"; `buildCoverageTooltip(null, null, null, fmtPct)` must not contain "0,0%".
+2. Remove the `?? 0` in front of the formatters so the established unavailable fallback renders; keep real `0` rendering as `0`.
+3. For the margin caveat strings, when the share is unknown, omit the percentage clause or use the existing unavailable label rather than a number.
+
+### Tests
+
+`npm run test -- --run src/pages/DataQualityPage.spec.tsx` plus a focused `marginQuality` spec (new or nearest existing), `npm run check:analytics-guardrails`, `npm run build`.
+
+### Acceptance
+
+Unknown counts/shares render as unavailable; known zeros still render as `0` / `0,0%`; tests fail before and pass after the fix.
+
+### Dependencies
+
+None. Frontend-only and repository-local.
+
+## RQ652 - Guard action-queue KPI counts against stale responses and refresh the outcome summary after saves
+
+Status: READY
+Priority: P2
+Type: frontend analytics workflow state / stale-response regression
+Feature family: analytics-actions-stale-kpi-state
+Parallel-safe: yes (only `AnalyticsActionsPage.tsx` and its specs; disjoint from RQ651/RQ653/RQ654)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `fix(analytics-actions): sequence-guard counts and refresh outcome summary after outcome save`
+
+### Problem
+
+On `/analytics/actions` (`AnalyticsActionsPage.tsx`):
+
+1. `loadItems` and `loadOutcomeSummary` use request-sequence refs, but `loadCounts` does not, so an older counts response can overwrite counts for newer filters.
+2. `loadCounts` swallows all errors (`// non-critical`) and leaves the previous `counts` rendered in the status KPI cards (`new`, `accepted`, `deferred`, `done`, `rejected`, `ignored`, `p1Open`). After a failed reload the cards silently describe the previous filter set.
+3. `submitOutcomeModal` updates the row/detail but never reloads the outcome summary, so realization/measured-sample KPIs stay stale after the user records an outcome on the same page.
+
+### Evidence
+
+`docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md` (RQ652 detail).
+
+### Scope
+
+`Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx` and `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx` (or `src/pages/AnalyticsActionsPage.spec.tsx`). No API/service contract change.
+
+### Read first
+
+`AnalyticsActionsPage.tsx` lines ~585-720 (loaders/effects), ~766-900 (`changeStatus`, `submitOutcomeModal`), ~930-970 (KPI cards); existing action-page specs.
+
+### Do
+
+1. Failing-first tests: (a) a slower first counts response resolving after a faster second one must not win; (b) a counts failure after a filter change must not leave previous counts presented as current; (c) saving an outcome triggers a fresh outcome-summary request.
+2. Add a counts request-sequence ref matching the existing pattern; on failure clear counts or render an explicit unavailable/stale state (reuse existing page error/unavailable styling, no new design).
+3. Reload the outcome summary for the current filters after a successful outcome save (and after a status change if the summary depends on status).
+
+### Tests
+
+Focused action-page specs, `npm run check:analytics-guardrails`, `npm run build`.
+
+### Acceptance
+
+KPI counts always correspond to current filters or are visibly unavailable; outcome summary reflects a just-saved outcome; existing action-page specs stay green.
+
+### Dependencies
+
+None. Frontend-only and repository-local.
+
+## RQ653 - Pilot readiness Actions card must not report zero actions when action counts failed
+
+Status: READY
+Priority: P2
+Type: frontend pilot readiness partial-failure state
+Feature family: pilot-readiness-partial-failure-truth
+Parallel-safe: yes (only `PilotReadinessPage.tsx` and its specs; disjoint from RQ651/RQ652/RQ654)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `fix(pilot-readiness): keep action counts unknown when the counts request fails`
+
+### Problem
+
+`PilotReadinessPage.tsx` loads action counts and the action outcome summary independently (`Promise.allSettled`). `buildActionsCard` returns `unknown` only when both are null. If counts fail and the summary succeeds, `newCount … doneCount` default to `0`; with `sampleSize > 0` the card states "Ukupno 0 akcija, otvorenih 0, završenih 0" as fact and can be classified warning/ready from fabricated zeros.
+
+### Evidence
+
+`docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md` (RQ653 detail).
+
+### Scope
+
+`Klijent/clientapp/src/pages/PilotReadinessPage.tsx` (`buildActionsCard` and, only if the same pattern is proven, the inventory card's `lowStockCount`/`outOfStockCount` defaults), plus `src/pages/__tests__/PilotReadinessPage.spec.tsx` / `PilotReadinessPage.edgeCases.spec.ts`.
+
+### Read first
+
+`PilotReadinessPage.tsx` lines ~420-515 and ~680-780; the two pilot readiness specs above.
+
+### Do
+
+1. Failing-first test: counts null + summary present must not render "0 akcija" and must not produce `ready`.
+2. When counts are missing, describe only what the summary proves (measured sample/coverage) and mark the count portion unavailable with a warning/unknown status.
+3. Keep the existing both-null `unknown` path and the both-present behavior unchanged.
+
+### Tests
+
+Focused pilot readiness specs, `npm run check:analytics-guardrails`, `npm run build`.
+
+### Acceptance
+
+Partial failure never shows fabricated action counts; status is not `ready` on missing counts; existing specs stay green.
+
+### Dependencies
+
+None. Frontend-only and repository-local.
+
+## RQ654 - Align analytics period presets with the business calendar day around local midnight
+
+Status: READY
+Priority: P3
+Type: frontend period provenance / timezone boundary
+Feature family: analytics-period-preset-day-boundary
+Parallel-safe: yes (only `utils/analyticsPeriodPresets.ts` and its spec; disjoint from RQ651-RQ653)
+Owner: unassigned
+Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Commit suggestion: `fix(analytics): resolve period presets on the Europe/Belgrade business day`
+
+### Problem
+
+`getAnalyticsPeriodPresetRange` computes presets with `setUTCDate`/`setUTCHours` and `toISOString().slice(0, 10)`. For `now = 2026-10-14T00:30+02:00` (`22:30Z` on Oct 13), "Poslednjih 30 dana" ends on `2026-10-13`, excluding local "today" for two hours after midnight (one hour in winter). The only spec uses noon UTC and cannot detect this. Used by AnalyticsDashboard, InventoryPage, AnalyticsDetails and `analyticsFormatters.ts`.
+
+### Evidence
+
+`docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md` (RQ654 detail).
+
+### Scope
+
+`Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` and `src/utils/__tests__/analyticsPeriodPresets.spec.ts`. No backend change.
+
+### Read first
+
+The two files above; backend period parsing for one consumer (e.g. dashboard/inventory endpoint `fromDate`/`toDate` handling) to confirm whether sales dates are business-local or UTC; `docs/ai/` period-provenance guidance if present.
+
+### Do
+
+1. First confirm the backend business-day convention. If backend dates are UTC calendar days by contract, close as a documented decision with a boundary test pinning UTC semantics.
+2. Otherwise add failing-first boundary tests (00:30 CEST, 23:30 CEST, winter CET, DST change days) and compute preset dates from the Europe/Belgrade calendar day via `Intl.DateTimeFormat` (no new dependency).
+3. Keep the existing noon-based expectations green.
+
+### Tests
+
+`npm run test -- --run src/utils/__tests__/analyticsPeriodPresets.spec.ts`, dependent page period specs, `npm run build`.
+
+### Acceptance
+
+Preset end date equals the business "today" at every hour; decision recorded either way.
+
+### Dependencies
+
+None. Frontend-only; P3 because the affected window is at most two hours per day.
