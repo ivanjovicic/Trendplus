@@ -3,10 +3,10 @@ Queue: direct-user-request
 Date: 2026-10-13
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/pg-proof-convention-audit / pending
-Main commit SHA: pending
-Main verification: pending - mandatory PostgreSQL CI has not yet run for this branch
-Evidence state: pending mandatory PostgreSQL CI
+Working branch / PR: codex/pg-proof-convention-audit / direct merge
+Main commit SHA: ee79f7415b0be30287924a99740b54124c9c7bb8
+Main verification: passed - refreshed origin/main contains ee79f7415b0be30287924a99740b54124c9c7bb8
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -17,6 +17,7 @@ Ownership transfer: none
 - Repaired a confirmed test-integrity gap: the PostgreSQL convention check now follows same-file helper calls that gate on fixture availability, supports qualified xUnit attributes and collection fixtures, and has regression coverage for those patterns.
 - Marked 50 discovered PostgreSQL-backed tests with `PostgresRequiredFact`, so no-Docker runs are reported as skipped rather than as false passes. Kept test behavior unchanged when PostgreSQL is available/required.
 - Added an explicit SQL018/history prerequisite assertion to the current SQL029 lifecycle fixture, salvaging the one useful assertion from the stale RQ635 trial branch without replacing its newer fixture layout.
+- Delivered the implementation through merge commit `ee79f7415b0be30287924a99740b54124c9c7bb8` on `main` and pushed it to `origin/main`.
 
 ## Files changed
 
@@ -47,11 +48,12 @@ Ownership transfer: none
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter "(FullyQualifiedName~AssortmentNivelacijaOracleTests|FullyQualifiedName~ColorSalesStatsIndependentOracleIntegrationTests|FullyQualifiedName~VendorSalesNivelacijaContractDiagnosticsTests)" --no-build --no-restore -p:WarningLevel=0` -> real PostgreSQL pass; 22 passed, 0 skipped.
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter "(FullyQualifiedName~NivelacijaReconciliationPackTests|FullyQualifiedName~Rq605LegacySalesPostgresIntegrationTests|FullyQualifiedName~Rq606TransferIdentityPostgresIntegrationTests)" --no-build --no-restore -p:WarningLevel=0` -> real PostgreSQL pass; 11 passed, 0 skipped.
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SupplierWindowedSql029LifecycleTests --no-build --no-restore -p:WarningLevel=0` -> real PostgreSQL pass; 6 passed, 0 skipped.
-- `git diff --check` -> pass before the final delivery check; rerun required before commit.
+- `git diff --check` -> pass before delivery.
+- GitHub Actions `Analytics Tests & Data Integrity` run `38432014732` for `ee79f7415b0be30287924a99740b54124c9c7bb8` -> in progress when inspected after delivery.
 
 ## Validation not run
 
-- Full backend suite -> not run; the changed PostgreSQL contracts and convention executed locally against real Testcontainers PostgreSQL, while a full suite is broader than this test-integrity repair.
+- Full backend suite -> not run locally; the changed PostgreSQL contracts and convention executed locally against real Testcontainers PostgreSQL, while the relevant current-main Actions run is in progress.
 
 ## Documentation impact
 
@@ -65,7 +67,7 @@ Ownership transfer: none
 
 ## Risks
 
-- The changed PostgreSQL contracts executed locally; a full backend run and remote CI were not run, so broader unrelated-suite regressions remain outside this focused proof.
+- The changed PostgreSQL contracts executed locally; a full backend run was not run locally. GitHub Actions run `38432014732` is in progress and remains residual risk until it completes.
 - Old planning/evidence branches intentionally remain; no remote branch cleanup was requested or authorized.
 - Branch names and ancestor counts do not prove missing code after squash/direct-main delivery; future changes require the same content-level comparison.
 
@@ -75,7 +77,7 @@ Ownership transfer: none
 
 ## Next
 
-- Commit and merge the locally PostgreSQL-certified branch to `main`, verify the delivered SHA, then synchronize this log.
+- Inspect Actions run `38432014732` if it turns red; otherwise no further repository action is required for this direct request.
 
 ## Branch dispositions
 
