@@ -21,8 +21,9 @@ Ownership transfer: none
 1. Improve diagnostics to inspect supplier scorecard 90d/180d MVs with the canonical capability checker after releasing the first reader. Missing/incorrect/unpopulated MVs emit explicit warning, with no attempt to repair and no change to the core retry/not-ready decision. Add 4 xUnit cases for the new diagnostic status helper.
 2. Expand **RQ634** for the previously overlooked SQL018 all-time populated CREATE/command timeout, without touching SQL029 or promoting an untested production setting.
 3. Add **RQ637** as a separate P1 READY task for nonblocking web Access-import worker waiting on required database readiness before stale recovery/queue claims, with dedicated-worker isolation and lifecycle tests. RQ636 remains test-factory-only and independent.
-4. Refresh `MASTER_ROADMAP.md`, STAB16, curated audit, and this evidence. RQ601/RQ602 still PARTIAL, RQ610 BLOCKED, STAB16 BLOCKED on effective provider evidence. Do not repeat batch #23 or run live SQL.
-5. No edits to `AccessImportBackgroundWorker.cs`, `Database/Migrations/018_*.sql`, `029_*.sql`, production worker config, or persistent production data in this review. Those changes need focused PostgreSQL proofs under queued RQ634/RQ637.
+4. Register **RQ638** (P2) for the confirmed MediatR PerformanceLog VARCHAR(200/500/4000/2000) bounds gap. In the current implementation, RequestType and exception text are unbounded, and a JSON serialization failure returns unbounded `obj.ToString()`; this is separate from RQ631 HTTP middleware and RQ636 missing-table test noise.
+5. Refresh `MASTER_ROADMAP.md`, STAB16, curated audit, and this evidence. RQ601/RQ602 still PARTIAL, RQ610 BLOCKED, STAB16 BLOCKED on effective provider evidence. Do not repeat batch #23 or run live SQL.
+6. No edits to `AccessImportBackgroundWorker.cs`, `Database/Migrations/018_*.sql`, `029_*.sql`, production worker config, or persistent production data in this review. Those changes need focused PostgreSQL proofs under queued RQ634/RQ637.
 
 ## Verification and residuals
 
@@ -32,4 +33,4 @@ Ownership transfer: none
 
 ## Next
 
-After green CI and merge, synchronize exact `origin/main` SHA/evidence; do **not** mark RQ634/RQ635/RQ636/RQ637 DONE for this direct-request slice. Confirm fresh ownership/locks before the next agent claims RQ634 primary or the independent RQ637 P1 lane.
+After green CI and merge, synchronize exact `origin/main` SHA/evidence; do **not** mark RQ634/RQ635/RQ636/RQ637/RQ638 DONE for this direct-request slice. Confirm fresh ownership/locks before the next agent claims RQ634 primary or the independent RQ637 P1 lane.
