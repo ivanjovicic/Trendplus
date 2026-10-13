@@ -62,3 +62,26 @@ Reference: `docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md`, RQ610 comp
 ## 6. Verification gaps
 
 No authorized provider/production logs after 16:50 UTC, no exact runtime fingerprint or DB read-only session, no Vercel dashboard, no local .NET/Node toolchain in this connector-only edit, while PR #134 Planning Governance passed (`38351086583`) and exact-merge Planning Governance also passed (`38351175549`). The optional full backend/frontend PR runs were not yet complete at evidence synchronization. Therefore this document does **not** certify the production API, current supplier windowed caches, all test coverage, all code quality, or an actual future deployment outcome.
+
+
+## 7. Second-pass code findings — 2026-10-13 09:53 CEST
+
+The post-PR134 follow-up confirmed that final PR-head backend `38351086653`, frontend `38351086632` and Planning Governance `38351086583` all succeeded; exact-merge governance `38351175549` also succeeded. Earlier `not complete` CI caveats are superseded **for PR #134**.
+
+### Three under-audited runtime boundaries
+
+1. **SQL 018 remains a potential expensive web cold-start path (RQ634 extended).** `DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync` invokes `BuildSupplierDecisionHubObjectsAsync(...allowHeavyRefresh:false)`. This disables explicit `REFRESH`, but **does not disable** the missing-cache branch that executes `018_AddSupplierDecisionHubViews.sql` with `commandTimeoutSeconds:0` (unbounded), and may build populated materialized caches. The PR133 switch only disables SQL029. Need a disposable PostgreSQL missing-018/029 cache matrix, a bounded/isolated rebuild design, and fail-closed affected endpoints; no automatic blanket disabling of required schema.
+2. **Web Access import worker executes before readiness (new RQ637).** `Api/appsettings.Production.json` opts into `AccessImport:RegisterWorkerInWebProcess=true` and 2-second polling. `AccessImportBackgroundWorker.ExecuteAsync` calls `RecoverStaleBatchesAtStartupAsync` before its main loop, with no check against `StartupReadinessState`. Pending recovery and `ClaimNextAsync` also run independently of API readiness. The user-provided Render log shows `access-import-queue` SQL every ~2s while SQL029 starts and /ready 503s; this is real concurrency, not proof that import polling alone caused the outage.
+3. **Windowed cache diagnostics were blind (source repair in direct-request branch).** `AnalyticsConnectionDiagnosticsHostedService` previously queried/logged only core/all-time objects; missing 90d/180d windows could be omitted from that diagnostic's success/retry decision. The correction uses the canonical `PostgresMaterializedViewCapabilityReader.InspectAsync` contract for both periods, including presence, required columns and populated flags. Windowed failures remain **diagnostic only** and do not initiate web rebuild or block core readiness. This is an additional read-only diagnostic improvement, not production evidence.
+
+### Revised execution order and boundaries
+
+| Task | Repo owner | Priority | Claim |
+|---|---|---|---|
+| RQ634 | SQL018 **and** SQL029 web-startup cache gating / PostgreSQL regression | P1 | READY |
+| RQ637 | Access import **web** worker wait until required DB readiness (stale recovery and claims) | P1 | READY, different files |
+| RQ635 | SQL029 maintenance preflight + disposable PostgreSQL replay matrix | P2 | READY |
+| RQ636 | EF InMemory test-only worker/telemetry isolation | P2 | READY |
+| STAB16 | Exact Render SHA, effective env, /ready body and DB/worker/catalog proof | P0 operational | BLOCKED on authorized provider evidence |
+
+No existing RQ601/602/610 outcome changes. No new import, fake historical stock or autonomous production SQL execution is justified. All CI and code proof must be distinguished from live provider proof.
