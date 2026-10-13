@@ -1296,39 +1296,39 @@ Type: backend/CI integration test + narrow startup correction
 Feature family: supplier-windowed-cold-start-regression
 Parallel-safe: yes (own new test class and supplier startup gates only; do not edit SQL 029, operator instructions or unrelated health endpoints)
 Owner: unassigned
-Ready after: PR #133 merged on main \`1c9158d3e9a74de96c0b7ece60fb0c88f9a18058\`
-Commit suggestion: \`test(startup): certify optional supplier MV repair cannot gate core readiness\`
+Ready after: PR #133 merged on main `1c9158d3e9a74de96c0b7ece60fb0c88f9a18058`
+Commit suggestion: `test(startup): certify optional supplier MV repair cannot gate core readiness`
 
 ### Problem
 
-PR #133 added \`DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false\` for Production, but its focused tests verify configuration values and source snippets, not an end-to-end cold start against a PostgreSQL database missing both supplier 90d/180d materialized views. A future startup refactor could execute SQL 029 again or make optional absence block /ready.
+PR #133 added `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false` for Production, but its focused tests verify configuration values and source snippets, not an end-to-end cold start against a PostgreSQL database missing both supplier 90d/180d materialized views. A future startup refactor could execute SQL 029 again or make optional absence block /ready.
 
 ### Evidence
 
 - Render user-supplied 2026-10-12 16:50 UTC logs: 90d/180d MISSING_OBJECT; forced SQL 029 startup execution; coincident /ready and /api 503 (not proof of sole causality).
-- PR #133 merged; backend suite \`38301829902\` passed on merge SHA. \`SupplierDecisionWindowedStartupPolicyTests\` only checks the switch.
-- \`Infrastructure/Seed/DatabaseInitializer.cs\` has multiple startup/contract-repair call paths, including a Trendplus nivelacija dependent restoration branch.
+- PR #133 merged; backend suite `38301829902` passed on merge SHA. `SupplierDecisionWindowedStartupPolicyTests` only checks the switch.
+- `Infrastructure/Seed/DatabaseInitializer.cs` has multiple startup/contract-repair call paths, including a Trendplus nivelacija dependent restoration branch.
 - Production provider/run-time proof remains STAB16.
 
 ### Scope
 
-\`Infrastructure/Seed/DatabaseInitializer.cs\` (only if needed), \`Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs\` and **new** \`Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs\`. Avoid \`Database/Migrations/029_AddSupplierDecisionWindowedViews.sql\` (RQ635), \`CachedAnalyticsOperationalFallbackTests.cs\` (RQ636), Render/Neon writes, default production deploy changes and unconditional disablement of safety gates.
+`Infrastructure/Seed/DatabaseInitializer.cs` (only if needed), `Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs` and **new** `Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs`. Avoid `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` (RQ635), `CachedAnalyticsOperationalFallbackTests.cs` (RQ636), Render/Neon writes, default production deploy changes and unconditional disablement of safety gates.
 
 ### Read first
 
-\`docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md\`; \`.ai/runs/2026-10-12-PR133-branch-review-evidence.md\`; \`Api/Services/Startup/SupplierDecisionSchemaRepairHostedService.cs\`; \`Api/Services/Startup/ReadinessWarmupHostedService.cs\`; \`Api/Services/Startup/StartupReadinessState.cs\`; the existing supplier schema/readiness PostgreSQL fixture.
+`docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md`; `.ai/runs/2026-10-12-PR133-branch-review-evidence.md`; `Api/Services/Startup/SupplierDecisionSchemaRepairHostedService.cs`; `Api/Services/Startup/ReadinessWarmupHostedService.cs`; `Api/Services/Startup/StartupReadinessState.cs`; the existing supplier schema/readiness PostgreSQL fixture.
 
 ### Do
 
 1. Build an isolated disposable PostgreSQL test with required core schema and deliberately absent supplier 90d/180d MVs. Use effective Production-equivalent configuration with the setting disabled; exercise both full/deferred initializer and background supplier schema repair paths **when safe in isolation**. When the full pipeline cannot be cheaply exercised, provide a narrowly factored and tested decision boundary and report the missing proof instead of fabricating an end-to-end pass.
 2. Instrument/test whether SQL 029 is invoked, whether optional missing MVs are still MISSING_OBJECT, and whether core database readiness is independent of this optional capability. No fake READY and no all-time supplier score fallback.
-3. Test an explicit allowed maintenance override \`true\` separately on disposable PostgreSQL; verify existing behavior and no overlapping/advisory-lock regression.
-4. Capture timing and causal classification of any 503. Verify \`/ready\` response reason, initialization state and Retry-After while required migrations are pending. Do not suppress required provenance checks or fail-fast.
+3. Test an explicit allowed maintenance override `true` separately on disposable PostgreSQL; verify existing behavior and no overlapping/advisory-lock regression.
+4. Capture timing and causal classification of any 503. Verify `/ready` response reason, initialization state and Retry-After while required migrations are pending. Do not suppress required provenance checks or fail-fast.
 5. Preserve existing tests and add a regression that fails if a web startup path bypasses the new gate.
 
 ### Tests
 
-Focused xUnit new cold-start class plus \`SupplierDecisionWindowedStartupPolicyTests\`, existing \`SupplierDecisionSchemaSqlTests\` and any touched lifecycle test, Release build, \`git diff --check\`. Disposable PostgreSQL must execute in CI with zero skipped target tests; run governance validators for queue changes.
+Focused xUnit new cold-start class plus `SupplierDecisionWindowedStartupPolicyTests`, existing `SupplierDecisionSchemaSqlTests` and any touched lifecycle test, Release build, `git diff --check`. Disposable PostgreSQL must execute in CI with zero skipped target tests; run governance validators for queue changes.
 
 ### Acceptance
 
@@ -1346,36 +1346,36 @@ Status: READY
 Priority: P2
 Type: SQL/PostgreSQL migration-quality + operator tooling tests
 Feature family: supplier-windowed-sql029-maintenance-preflight
-Parallel-safe: yes (own SQL 029 / \`tools/supplier-windowed-*\` / new isolated PostgreSQL oracle; avoid RQ634 startup gate files)
+Parallel-safe: yes (own SQL 029 / `tools/supplier-windowed-*` / new isolated PostgreSQL oracle; avoid RQ634 startup gate files)
 Owner: unassigned
 Ready after: PR #133 merged; independent of STAB16 provider access for repository-local implementation
-Commit suggestion: \`test(sql): preflight and idempotency oracle for supplier windowed MV maintenance\`
+Commit suggestion: `test(sql): preflight and idempotency oracle for supplier windowed MV maintenance`
 
 ### Problem
 
-Production analytics is missing \`mv_supplier_decision_score_cache_90d\` and \`_180d\`; code intentionally stopped automatic web startup rebuild. The SQL 029 file creates populated materialized views and has conditional DROP/CREATE logic. Its execution cost, preconditions, idempotence on partial schema, and safe deployment route are not adequately certified for controlled maintenance on a resource-limited Neon database.
+Production analytics is missing `mv_supplier_decision_score_cache_90d` and `_180d`; code intentionally stopped automatic web startup rebuild. The SQL 029 file creates populated materialized views and has conditional DROP/CREATE logic. Its execution cost, preconditions, idempotence on partial schema, and safe deployment route are not adequately certified for controlled maintenance on a resource-limited Neon database.
 
 ### Evidence
 
-- \`Database/Migrations/029_AddSupplierDecisionWindowedViews.sql\` contains \`CREATE MATERIALIZED VIEW IF NOT EXISTS\`, inline rollups, a conditional historical DROP and indexes.
-- Render log stopped after \`Executing startup SQL file ...029\` without completion/error in the supplied excerpt.
-- \`docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md\` explicitly defers recovery to a separate maintenance window.
-- Existing \`SupplierDecisionSchemaSqlTests\` and \`SupplierDecisionSchemaReadinessIntegrationTests\` have some idempotence coverage; do not duplicate those without identifying a missing case.
+- `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` contains `CREATE MATERIALIZED VIEW IF NOT EXISTS`, inline rollups, a conditional historical DROP and indexes.
+- Render log stopped after `Executing startup SQL file ...029` without completion/error in the supplied excerpt.
+- `docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md` explicitly defers recovery to a separate maintenance window.
+- Existing `SupplierDecisionSchemaSqlTests` and `SupplierDecisionSchemaReadinessIntegrationTests` have some idempotence coverage; do not duplicate those without identifying a missing case.
 
 ### Scope
 
-New read-only operator preflight script/report (\`tools/supplier-windowed-mv-preflight.sql\` or equivalent), **new** isolated \`Api.Tests/SupplierWindowedSql029LifecycleTests.cs\`, and SQL 029 only if a reproducible defect is found. Do not modify \`Infrastructure/Seed/DatabaseInitializer.cs\`, worker deployments, live Neon databases, or production connection settings.
+New read-only operator preflight script/report (`tools/supplier-windowed-mv-preflight.sql` or equivalent), **new** isolated `Api.Tests/SupplierWindowedSql029LifecycleTests.cs`, and SQL 029 only if a reproducible defect is found. Do not modify `Infrastructure/Seed/DatabaseInitializer.cs`, worker deployments, live Neon databases, or production connection settings.
 
 ### Read first
 
-SQL 029; \`Database/Migrations/018_AddSupplierDecisionHubViews.sql\`; \`Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs\`; \`Api.Tests/SupplierDecisionSchemaSqlTests.cs\`; supplier capability inspector and NightlyAnalyticsRefreshOptions; Render recovery runbook.
+SQL 029; `Database/Migrations/018_AddSupplierDecisionHubViews.sql`; `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`; `Api.Tests/SupplierDecisionSchemaSqlTests.cs`; supplier capability inspector and NightlyAnalyticsRefreshOptions; Render recovery runbook.
 
 ### Do
 
 1. Build a read-only preflight listing prerequisites, object existence, populated flags, required columns, dependencies, hash history, transaction/lock state indicators and an actionable stop/continue verdict **without** executing DDL. Do not log credentials or database URLs.
 2. Run a disposable PostgreSQL matrix: missing both objects; only 90d present; incomplete/legacy score view; already correct objects; empty inputs; repeat execution; interrupted transaction recovery. Include input fixture parity checks for 90d/180d and ensure no silent all-time substitution.
 3. Verify SQL 029 can fail closed with structured, bounded output on timeout/lock/privilege/dependency errors. If code repair is needed, make it additive/idempotent, non-destructive and test the exact SQL. Do not issue blanket DROP CASCADE or launch concurrent production builds.
-4. Document a separately authorized one-off maintenance sequence, safe cancellation/rollback boundaries, direct connection versus pooler considerations, how to refresh MVs and a read-only postcheck of \`relkind\`, \`relispopulated\`, columns and sampled result grain.
+4. Document a separately authorized one-off maintenance sequence, safe cancellation/rollback boundaries, direct connection versus pooler considerations, how to refresh MVs and a read-only postcheck of `relkind`, `relispopulated`, columns and sampled result grain.
 5. Keep production status BLOCKED/unknown until actual provider owner carries out and verifies the maintenance. This prompt completes with **repository-local** proof only.
 
 ### Tests
@@ -1401,7 +1401,7 @@ Feature family: fake-provider-host-worker-isolation
 Parallel-safe: yes (test-only factory and new isolated tests; do not touch the supplier cold-start or SQL 029 paths)
 Owner: unassigned
 Ready after: RQ631 DONE
-Commit suggestion: \`test(ci): isolate operational fallback host from unrelated workers\`
+Commit suggestion: `test(ci): isolate operational fallback host from unrelated workers`
 
 ### Problem
 
@@ -1409,17 +1409,17 @@ Latest successful backend CI still includes recurrent expected test-host excepti
 
 ### Evidence
 
-- Exact merge CI \`38301829902\` passed 1,998 tests and classified 42 skips but logged three \`Failed to save performance log for GetInventoryStatusQuery\` warnings from \`CachedAnalyticsOperationalFallbackTests.MissingAnalyticsRelationContext\`.
-- Same run emitted repeated \`Relational-specific methods can only be used when the context is using a relational database provider\` errors from \`AccessImportJobQueue.ClaimNextAsync\` in test hosts. These are **not** proof of production database failure.
+- Exact merge CI `38301829902` passed 1,998 tests and classified 42 skips but logged three `Failed to save performance log for GetInventoryStatusQuery` warnings from `CachedAnalyticsOperationalFallbackTests.MissingAnalyticsRelationContext`.
+- Same run emitted repeated `Relational-specific methods can only be used when the context is using a relational database provider` errors from `AccessImportJobQueue.ClaimNextAsync` in test hosts. These are **not** proof of production database failure.
 - RQ631/PR #132 already fixed optional HTTP metric persistence warnings; this is distinct MediatR behavior and worker registration.
 
 ### Scope
 
-\`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs\`, a new host-isolation test if useful, and strictly scoped test-only configuration; \`Application/Behaviors/PerformanceLoggingBehavior.cs\` only if a verified production-independent defect requires it. Do not disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
+`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, a new host-isolation test if useful, and strictly scoped test-only configuration; `Application/Behaviors/PerformanceLoggingBehavior.cs` only if a verified production-independent defect requires it. Do not disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
 
 ### Read first
 
-\`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs\`; \`Api/Config/WorkerRuntimeConfig.cs\`; \`Api/Services/Access/AccessImportJobQueue.cs\`; \`Application/Behaviors/PerformanceLoggingBehavior.cs\`; RQ631 evidence and CI \`38301829902\` logs.
+`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`; `Api/Config/WorkerRuntimeConfig.cs`; `Api/Services/Access/AccessImportJobQueue.cs`; `Application/Behaviors/PerformanceLoggingBehavior.cs`; RQ631 evidence and CI `38301829902` logs.
 
 ### Do
 
@@ -1430,7 +1430,7 @@ Latest successful backend CI still includes recurrent expected test-host excepti
 
 ### Tests
 
-Affected \`CachedAnalyticsOperationalFallbackTests\` and new host-isolation regressions; full backend CI on exact SHA; zero skipped target tests; compare filtered log counts. Verify that production registration/configuration did not change.
+Affected `CachedAnalyticsOperationalFallbackTests` and new host-isolation regressions; full backend CI on exact SHA; zero skipped target tests; compare filtered log counts. Verify that production registration/configuration did not change.
 
 ### Acceptance
 
