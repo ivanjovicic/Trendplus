@@ -82,6 +82,12 @@ The post-PR134 follow-up confirmed that final PR-head backend `38351086653`, fro
 | RQ637 | Access import **web** worker wait until required DB readiness (stale recovery and claims) | P1 | READY, different files |
 | RQ635 | SQL029 maintenance preflight + disposable PostgreSQL replay matrix | P2 | READY |
 | RQ636 | EF InMemory test-only worker/telemetry isolation | P2 | READY |
+| RQ638 | MediatR PerformanceLogs exact varchar caps, including exception/serialization fallback | P2 | READY |
 | STAB16 | Exact Render SHA, effective env, /ready body and DB/worker/catalog proof | P0 operational | BLOCKED on authorized provider evidence |
 
 No existing RQ601/602/610 outcome changes. No new import, fake historical stock or autonomous production SQL execution is justified. All CI and code proof must be distinguished from live provider proof.
+
+
+### Fourth missed code path: MediatR persistence bounds
+
+The existing SQL and EF schema cap `PerformanceLogs.RequestType` at 200 chars, `RequestName` at 500, `RequestData`/`ResponseData` at 4000, and `ExceptionMessage` at 2000. `Application/Behaviors/PerformanceLoggingBehavior.cs` does not cap RequestType or exception text, and `SerializeObject` returns unbounded `obj.ToString()` when JSON serialization fails. RQ631 fixed the separate HTTP middleware, not this writer. This is a **source-verifiable risk**; current CI `42P01` fake-provider errors do not prove a varchar overflow. RQ638 owns a narrow, tested MediatR fix. RQ636 owns only test fixture noise.
