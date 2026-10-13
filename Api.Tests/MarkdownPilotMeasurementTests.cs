@@ -48,7 +48,7 @@ public sealed class MarkdownPilotMeasurementTests : IClassFixture<PostgresContai
 
     public MarkdownPilotMeasurementTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact(DisplayName = "RQ602 query matches independent pre/post, return, exclusion and cost-coverage oracle")]
+    [PostgresRequiredFact(DisplayName = "RQ602 query matches independent pre/post, return, exclusion and cost-coverage oracle")]
     public async Task Query_ProducesDescriptiveMetricsWithoutFakeCostOrMatchedControl()
     {
         var configuredPostgres = Environment.GetEnvironmentVariable("RQ602_TEST_POSTGRES");

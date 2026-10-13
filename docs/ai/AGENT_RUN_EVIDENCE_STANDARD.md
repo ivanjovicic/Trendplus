@@ -116,6 +116,18 @@ Unless the task explicitly names another target branch, agents must land file-ch
 - record CI status separately under `Checks not run`, `Residual risk` or an explicit CI note (`queued`, `running`, `not inspected`, `green`, `red`);
 - use `PARTIAL` when main delivery is unsafe **or the mandatory PostgreSQL PR CI is red, skipped, queued or in progress**; ordinary optional queued CI alone does not prevent DONE.
 
+## Lessons learned 2026-10-13 (mandatory checks)
+
+These rules come from defects found on 2026-10-13 (`docs/qa/STATE_REAUDIT_2026-10-13.md`, RQ635 reopen, PR #137). Apply them before claiming any proof.
+
+1. **A local PostgreSQL `Passed` without Docker counts as `not run`.** Tests that need `PostgresContainerFixture` must use `[PostgresRequiredFact]` or `[PostgresRequiredTheory]` (`Api.Tests/PostgresRequiredFactAttribute.cs`). They report **Skipped** unless `CI=true` or `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`, and when required, an unavailable fixture fails. `PostgresRequiredAttributeConventionTests` enforces this. A completion note must quote the executed count from the exact CI run (for example "6 executed, 0 skipped in run N"), never a local "N/N" for PostgreSQL classes.
+2. **Fixtures must provision the real dependency chain.** Do not point `DefaultConnection` and `AnalyticsConnection` at one database in supplier/analytics initializer tests: `EnsureAnalyticsSupplierDecisionSchemaAsync` then takes its unified-database branch and silently skips SQL 011-018 and `__StartupSqlScriptHistory`. This was the RQ635 root cause.
+3. **Test hosts choose the readiness gate explicitly.** CI runs `ASPNETCORE_ENVIRONMENT=Testing`, where `StartupReadiness:GateApiTraffic` defaults to on, and `/api` answers 503 before routing. Every `WebApplicationFactory` host sets the gate, `false` unless readiness is under test (enforced by RQ640's convention test). A route test asserting only `!= 404` passes vacuously behind the gate.
+4. **DONE requires green proof on the exact SHA.** False closes on 2026-10-13 included RQ635 (closed while every main run failed 4 of its tests), RQ638/RQ642 completion notes missing strict fields (Planning Governance red), and RQ641, which was implemented while it was still WAITING on an owner decision. Before DONE: check the status of the CI run for the delivered SHA, run all three validators, and confirm that the `Ready after` owner gate is satisfied.
+5. **Temp-index commits.** After `git update-ref HEAD <new> <old>`, run `git read-tree HEAD`, or the real index shows the whole change reversed (`MM`). Use `git rev-parse` with one revision per call.
+6. **CRLF and encoding.** Edit repository text with a script that preserves the file's existing EOL (Node `fs`, normalising to the original `\r\n`). PowerShell `Set-Content` and `[regex]::Replace` with a script block can change encoding or EOL and produce a whole-file diff. Always check `git diff --stat` before committing: a one-line change must not show hundreds of lines.
+7. **Main CI is not cancelled for pushes to `main`** (RQ641, owner-confirmed). A cancelled run therefore means a PR/branch run or an outage, and is never proof.
+
 ## Completion gate
 
 Before `DONE`, evidence must identify:

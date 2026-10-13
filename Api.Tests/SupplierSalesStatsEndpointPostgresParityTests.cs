@@ -30,7 +30,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
 
     public SupplierSalesStatsEndpointPostgresParityTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task SupplierEndpoint_PostgresParity_CacheHitAndIntegrityChangePreserveValuesAndRefreshGate()
     {
         if (!_fixture.IsAvailable)
@@ -108,7 +108,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
             metrics => Assert.Equal((2, 1, 1), (metrics.GetCalls, metrics.Hits, metrics.Misses)));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task NivelacijaEndpoints_ExposeTheSameFlatRateEffectAndExplicitBasisAcrossOverviewDimensionsAndPrePost()
     {
         if (!_fixture.IsAvailable)
@@ -171,7 +171,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         Assert.Equal(0m, prePostArticle.GetProperty("changePercent").GetDecimal());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task NivelacijaEndpoints_KeepTheSameNonZeroEffectForOneArticleAndEvent()
     {
         if (!_fixture.IsAvailable)

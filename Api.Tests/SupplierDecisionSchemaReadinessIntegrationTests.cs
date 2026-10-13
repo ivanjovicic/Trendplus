@@ -27,7 +27,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task SupplierDecisionRepair_SeedsPostgres_RepeatsIdempotently_AndPreservesRefreshPrerequisites()
     {
         if (!_fixture.IsAvailable)
@@ -175,7 +175,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.NoConnection, status);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TrendplusNivelacijaContractRepair_MissingRelation_DoesNotCreateObjects()
     {
         if (!_fixture.IsAvailable)
@@ -204,7 +204,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
     // reads still had the 018 compatibility stub of vw_vendor_sales_nivelacija (no
     // change_percent_revenue_semantic), the web process reported database initialization
     // "not_required", and the Pre/Posle nivelacije page stayed on contract_missing.
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TrendplusNivelacijaContractRepair_RebuildsStubView_AndPrePostContractBecomesReady()
     {
         if (!_fixture.IsAvailable)
@@ -305,7 +305,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.Equal(DatabaseInitializer.TrendplusNivelacijaContractRepairStatus.Ready, second);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TrendplusNivelacijaContractRepair_UnknownDependentView_IsNotDroppedAndRepairIsSkipped()
     {
         if (!_fixture.IsAvailable)
@@ -347,7 +347,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         Assert.False(await ColumnExistsAsync(connection, "vw_vendor_sales_nivelacija", "change_percent_revenue_semantic"));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task SupplierMlRanking_IsolatedTransactionSafetyIsExplicit_AndStartupDoesNotExecuteIt()
     {
         var sql = ReadRepoFile("Database/Analytics/015_AddSupplierMlRanking.sql");

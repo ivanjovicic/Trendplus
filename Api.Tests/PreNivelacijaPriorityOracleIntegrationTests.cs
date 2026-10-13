@@ -30,7 +30,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
 
     public PreNivelacijaPriorityOracleIntegrationTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacijaEndpoint_MatchesIndependentPostgresOracle_ForAllStoreAndImportedScopes()
     {
         if (!_fixture.IsAvailable)
@@ -105,7 +105,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             item => Assert.Equal(1, item.GetProperty("storeId").GetInt32()));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacija_AnchorsToRetailSalesHorizon_AndKeepsExcludedStockInSeparateQueues()
     {
         if (!_fixture.IsAvailable)
@@ -163,7 +163,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.False(equipment.GetProperty("recommendationAllowed").GetBoolean());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacijaEndpoint_MarkdownQueryFailureIsNotCached_AndNextRequestRecovers()
     {
         if (!_fixture.IsAvailable)
@@ -194,7 +194,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.True(cache.GetFootprintSnapshot().TrackedKeyCount > 0);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacijaEndpoint_UnknownReceiptAndSalesHistoryIsExplicitlyBlocked()
     {
         if (!_fixture.IsAvailable)
@@ -232,7 +232,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
             .EnumerateArray().Select(code => code.GetString()));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task NivelacijaWrite_ValidatesPriceRequiresAdminAndRecordsChainWideAuditFields()
     {
         if (!_fixture.IsAvailable)
@@ -364,7 +364,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.DoesNotContain("rq538_unavailable_events", failureBody, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task NivelacijeHistory_ListsBothEventTypesAndUsesBelgradeHalfOpenCalendarDays()
     {
         if (!_fixture.IsAvailable)
@@ -699,7 +699,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.True(root.GetProperty("summary").GetProperty("estimatedAvoidableMarkdownLoss").GetDecimal() > 0m);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacijaEndpoint_ConfiguredNewStockAgeThresholdChangesClassification()
     {
         if (!_fixture.IsAvailable)
@@ -719,7 +719,7 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
         Assert.Equal(0, newStock.GetProperty("daysSinceReceipt").GetInt32());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PreNivelacijaEndpoint_ReceiptOlderThanDefaultThresholdIsNotProtectedAsNewStock()
     {
         if (!_fixture.IsAvailable)

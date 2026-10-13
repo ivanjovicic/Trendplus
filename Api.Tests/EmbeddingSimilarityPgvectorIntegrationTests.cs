@@ -21,7 +21,7 @@ public sealed class EmbeddingSimilarityPgvectorIntegrationTests : IClassFixture<
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task FindSimilarProducts_BindsTypedPgvectorParameterAndReturnsNearestRow()
     {
         var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync(

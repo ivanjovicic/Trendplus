@@ -32,3 +32,18 @@ internal sealed class PostgresRequiredFactAttribute : FactAttribute
         }
     }
 }
+
+/// <summary>
+/// Theory counterpart of <see cref="PostgresRequiredFactAttribute"/>.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+internal sealed class PostgresRequiredTheoryAttribute : TheoryAttribute
+{
+    public PostgresRequiredTheoryAttribute()
+    {
+        if (!PostgresTestRequirement.IsRequired)
+        {
+            Skip = "PostgreSQL proof not run: set " + PostgresTestRequirement.RequireVariable + "=true with a working Docker/Testcontainers runtime (always required in CI).";
+        }
+    }
+}

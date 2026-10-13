@@ -25,7 +25,7 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
     }
 
     [Trait("Category", "Integration")]
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RefreshDataQualityAsync_WhenSuccessful_InvalidatesTrustBearingFamiliesAndReports()
     {
         if (!_fixture.IsAvailable)
