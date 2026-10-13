@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
+using System.Linq;
 using System.Net;
 using System.Globalization;
 using System.Text.Json;
+using Api.Services.Access;
 using Application.Artikli.Common.Interfaces;
 using Domain.Model;
 using Domain.Model.Analytics;
@@ -14,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Xunit;
 
@@ -201,6 +206,36 @@ public sealed class CachedAnalyticsOperationalFallbackTests
         Assert.True(refreshed.GetProperty("meta").GetProperty("success").GetBoolean());
     }
 
+    [Fact]
+    public void OperationalFallbackFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        using var factory = new OperationalFallbackFactory();
+        var hostedServices = factory.Services.GetServices<IHostedService>().ToArray();
+
+        Assert.DoesNotContain(hostedServices, service => service is AccessImportBackgroundWorker);
+    }
+
+    [Fact]
+    public async Task OperationalFallbackFactory_DoesNotEmitAccessImportOrMediatrPerformanceWarnings()
+    {
+        var logProvider = new OperationalFallbackLogProvider();
+        await using var factory = new OperationalFallbackFactory(logProvider);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
+            db.Database.EnsureCreated();
+            Seed(db);
+        }
+
+        await GetJsonAsync(factory, "/api/analytics/cached/inventory/status?lowStockThreshold=2");
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        var combined = string.Join(Environment.NewLine, logProvider.Messages);
+        Assert.DoesNotContain("Relational-specific methods can only be used", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("Failed to save performance log", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("AccessImportJobQueue", combined, StringComparison.Ordinal);
+    }
+
     private static OperationalFallbackFactory CreateFactory()
     {
         var factory = new OperationalFallbackFactory();
@@ -300,19 +335,40 @@ public sealed class CachedAnalyticsOperationalFallbackTests
     private sealed class OperationalFallbackFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"cached-analytics-fallback-{Guid.NewGuid():N}";
+        private readonly OperationalFallbackLogProvider? _logProvider;
+
+        public OperationalFallbackFactory(OperationalFallbackLogProvider? logProvider = null)
+        {
+            _logProvider = logProvider;
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
+            builder.UseSetting("Workers:Enabled", "false");
+            builder.UseSetting("AccessImport:WorkerEnabled", "false");
+            builder.UseSetting("AccessImport:RegisterWorkerInWebProcess", "false");
             // This host deliberately models unavailable analytics relations; HTTP metric persistence is out of scope.
             builder.UseSetting("PerformanceLogging:CaptureHttpRequests", "false");
+            if (_logProvider is not null)
+            {
+                builder.ConfigureLogging(logging => logging.AddProvider(_logProvider));
+            }
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
+                services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
+                services.RemoveAll<AnalyticsDbContext>();
                 services.RemoveAll<IAnalyticsDbContext>();
+
+                var analyticsDatabaseName = $"cached-analytics-fallback-analytics-{Guid.NewGuid():N}";
+                services.AddDbContext<AnalyticsDbContext>(options =>
+                    options.UseInMemoryDatabase(analyticsDatabaseName)
+                        .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName)
@@ -322,19 +378,71 @@ public sealed class CachedAnalyticsOperationalFallbackTests
                         .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp =>
                     sp.GetRequiredService<TrendplusDbContext>());
-                services.AddScoped<IAnalyticsDbContext>(_ => new MissingAnalyticsRelationContext());
+                services.AddScoped<IAnalyticsDbContext, OperationalFallbackAnalyticsContext>();
+                RemoveHostedService<AccessImportBackgroundWorker>(services);
             });
+        }
+
+        private static void RemoveHostedService<TWorker>(IServiceCollection services)
+            where TWorker : class, IHostedService
+        {
+            foreach (var descriptor in services.Where(d => d.ImplementationType == typeof(TWorker)).ToList())
+            {
+                services.Remove(descriptor);
+            }
         }
     }
 
-    private sealed class MissingAnalyticsRelationContext : IAnalyticsDbContext
+    private sealed class OperationalFallbackLogProvider : ILoggerProvider
+    {
+        public ConcurrentQueue<string> Messages { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new OperationalFallbackLogger(Messages);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class OperationalFallbackLogger(ConcurrentQueue<string> messages) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Warning;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                if (!IsEnabled(logLevel))
+                {
+                    return;
+                }
+
+                var message = formatter(state, exception);
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    messages.Enqueue(message);
+                }
+
+                if (exception is not null)
+                {
+                    messages.Enqueue(exception.ToString());
+                }
+            }
+        }
+    }
+
+    private sealed class OperationalFallbackAnalyticsContext(AnalyticsDbContext performanceSink) : IAnalyticsDbContext
     {
         private static PostgresException Missing() =>
             new("relation does not exist", "ERROR", "ERROR", PostgresErrorCodes.UndefinedTable);
 
         public DbSet<ProductsDim> ProductsDim => throw Missing();
         public DbSet<StoresDim> StoresDim => throw Missing();
-        public DbSet<PerformanceLog> PerformanceLogs => throw Missing();
+        public DbSet<PerformanceLog> PerformanceLogs => performanceSink.PerformanceLogs;
         public DbSet<SalesFact> SalesFacts => throw Missing();
         public DbSet<SalesLineFact> SalesLineFacts => throw Missing();
         public DbSet<SuppliersDim> SuppliersDim => throw Missing();
@@ -351,6 +459,7 @@ public sealed class CachedAnalyticsOperationalFallbackTests
 
         public DbConnection GetDbConnection() => throw Missing();
 
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw Missing();
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+            performanceSink.SaveChangesAsync(cancellationToken);
     }
 }
