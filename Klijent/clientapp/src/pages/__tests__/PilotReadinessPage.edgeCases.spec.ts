@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPilotReadinessCards, resolveReadinessHeaderContext, type ReadinessPayload } from "../PilotReadinessPage";
 import type {
   AnalyticsActionCounts,
+  AnalyticsActionOutcomeSummaryResponse,
   AnalyticsDashboardBootstrap,
   AnalyticsDataQualityHealth,
   AnalyticsRefreshStatus,
@@ -181,6 +182,13 @@ function supplierReport(overrides: Partial<SupplierDecisionDurableReport> = {}):
   } as SupplierDecisionDurableReport;
 }
 
+function outcomeSummary(sampleSize: number, measuredCount: number): AnalyticsActionOutcomeSummaryResponse {
+  return {
+    meta: { success: true, sampleSize, measuredSampleSize: measuredCount, warnings: [] },
+    totals: { measuredCount, outcomeCoverageRate: sampleSize > 0 ? measuredCount / sampleSize : null },
+  } as unknown as AnalyticsActionOutcomeSummaryResponse;
+}
+
 describe("Pilot readiness edge-state mapping", () => {
   it("describes product decision counts in Serbian, not backend action codes", () => {
     const card = findCard(payload({
@@ -342,6 +350,42 @@ describe("Pilot readiness edge-state mapping", () => {
     expect(unavailable.status).toBe("unknown");
     expect(confirmedEmpty.status).toBe("warning");
     expect(confirmedEmpty.reason).toContain("Red akcija je prazan");
+  });
+
+  it("does not report zero actions when counts failed but the outcome summary loaded (RQ653)", () => {
+    const card = findCard(payload({ actionCounts: null, actionOutcomeSummary: outcomeSummary(5, 2) }), "actions");
+
+    expect(card.status).not.toBe("ready");
+    expect(card.status).toBe("warning");
+    expect(card.reason).not.toMatch(/Ukupno 0 akcija|otvorenih 0|završenih 0/);
+    expect(card.reason).toContain("Broj akcija po statusu nije dostupan");
+    expect(card.reason).toContain("5");
+    expect(card.meta).not.toMatch(/^0 ukupno/);
+  });
+
+  it("does not claim an empty action queue when counts failed and the summary sample is empty (RQ653)", () => {
+    const card = findCard(payload({ actionCounts: null, actionOutcomeSummary: outcomeSummary(0, 0) }), "actions");
+
+    expect(card.status).toBe("warning");
+    expect(card.reason).not.toContain("Red akcija je prazan");
+    expect(card.reason).toContain("Broj akcija po statusu nije dostupan");
+  });
+
+  it("does not report zero measured outcomes when the outcome summary failed (RQ653)", () => {
+    const counts: AnalyticsActionCounts = { new: 2, accepted: 1, deferred: 0, rejected: 1, done: 3, p1Open: 1 };
+    const card = findCard(payload({ actionCounts: counts, actionOutcomeSummary: null }), "actions");
+
+    expect(card.reason).toContain("Ukupno 7 akcija, otvorenih 3, završenih 3");
+    expect(card.reason).not.toContain("mereni na 0");
+    expect(card.reason).toContain("Sažetak ishoda nije dostupan");
+    expect(card.status).toBe("warning");
+  });
+
+  it("keeps the full counts-plus-summary path unchanged (RQ653)", () => {
+    const counts: AnalyticsActionCounts = { new: 2, accepted: 1, deferred: 0, rejected: 1, done: 3, p1Open: 1 };
+    const card = findCard(payload({ actionCounts: counts, actionOutcomeSummary: outcomeSummary(7, 3) }), "actions");
+
+    expect(card.reason).toContain("Ukupno 7 akcija, otvorenih 3, završenih 3");
   });
 
   it("warns on report fallback and blocks critical report quality", () => {

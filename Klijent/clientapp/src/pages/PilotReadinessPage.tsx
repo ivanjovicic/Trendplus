@@ -484,6 +484,23 @@ function buildActionsCard(
     };
   }
 
+  if (!actionCounts && outcomeSummary) {
+    const summarySampleSize = outcomeSummary.meta.sampleSize ?? null;
+    const summaryMeasuredCount = outcomeSummary.totals.measuredCount ?? null;
+    return {
+      key: "actions",
+      index: "07",
+      title: "Akcije kreirane/aktivne",
+      status: "warning",
+      reason: summarySampleSize != null && summarySampleSize > 0
+        ? `Broj akcija po statusu nije dostupan. Sažetak ishoda obuhvata ${formatLoadCount(summarySampleSize)} akcija, a ishodi su mereni na ${formatLoadCount(summaryMeasuredCount)}.`
+        : "Broj akcija po statusu nije dostupan, pa ne možemo da potvrdimo kreirane ili aktivne akcije.",
+      actionLabel: "Otvori Centralne akcije",
+      href: "/analytics/actions",
+      meta: `Pokrivenost ishoda: ${fmtPctFromRatio(outcomeSummary.totals.outcomeCoverageRate, 0, "nije izračunata")}`,
+    };
+  }
+
   const newCount = actionCounts?.new ?? 0;
   const acceptedCount = actionCounts?.accepted ?? 0;
   const deferredCount = actionCounts?.deferred ?? 0;
@@ -491,7 +508,9 @@ function buildActionsCard(
   const doneCount = actionCounts?.done ?? 0;
   const openCount = newCount + acceptedCount + deferredCount;
   const totalCount = newCount + acceptedCount + deferredCount + rejectedCount + doneCount;
-  const measuredCount = outcomeSummary?.totals.measuredCount ?? 0;
+  const outcomeSentence = outcomeSummary
+    ? `Ishodi su mereni na ${formatLoadCount(outcomeSummary.totals.measuredCount)} akcija.`
+    : "Sažetak ishoda nije dostupan.";
   const sampleSize = outcomeSummary?.meta.sampleSize ?? 0;
   const measuredSampleSize = outcomeSummary?.meta.measuredSampleSize ?? 0;
   const hasActions = totalCount > 0 || sampleSize > 0;
@@ -503,7 +522,7 @@ function buildActionsCard(
     title: "Akcije kreirane/aktivne",
     status: hasActions ? (isWarning ? "warning" : "ready") : "warning",
     reason: hasActions
-      ? `Ukupno ${formatLoadCount(totalCount)} akcija, otvorenih ${formatLoadCount(openCount)}, završenih ${formatLoadCount(doneCount)}. Ishodi su mereni na ${formatLoadCount(measuredCount)} akcija.`
+      ? `Ukupno ${formatLoadCount(totalCount)} akcija, otvorenih ${formatLoadCount(openCount)}, završenih ${formatLoadCount(doneCount)}. ${outcomeSentence}`
       : "Red akcija je prazan, pa nema radnih akcija za pilot demo.",
     actionLabel: "Otvori Centralne akcije",
     href: "/analytics/actions",

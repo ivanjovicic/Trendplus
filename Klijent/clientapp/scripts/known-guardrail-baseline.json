@@ -75,12 +75,6 @@
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
-      "file": "src/pages/PilotReadinessPage.tsx",
-      "rule": "fake_zero_fallback",
-      "line": 494,
-      "reason": "Existing pilot-readiness count fallback requires a reviewed unavailable-value exception."
-    },
-    {
       "file": "src/pages/PovracajPage.tsx",
       "rule": "fake_zero_fallback",
       "line": 29,
