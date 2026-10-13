@@ -4,8 +4,10 @@ Task: direct owner request — check completed/forgotten prompt work, branch mer
 Date: 2026-10-13 15:56 CEST
 Audit baseline: `origin/main` `c4c20197cf029f36de8623e2de8cb7e9df708a57`
 Working branch: `audit/rq645-648-coverage-branch-reconciliation-20261013`
-Delivery target: reviewed PR -> main
-Evidence state: pending (full PR CI and main merge truth must be synchronized)
+Delivery target: main via PR #143 squash merge
+PR head SHA: 48ac7e29829e682958532702d3915504e8e307a3
+Main merge SHA: 8de58c80440ca6eb87d343024dea260215927a77
+Evidence state: synchronized (exact-head CI and main merge verified)
 Ownership: no source task claimed; newly authored RQ645–RQ649 are independently READY.
 
 ## Confirmed GitHub state
@@ -18,7 +20,7 @@ Ownership: no source task claimed; newly authored RQ645–RQ649 are independentl
 - Log residual: 113 matching EF InMemory relational-provider log lines from AccessImportJobQueue.ClaimNextAsync across remaining web test hosts; count is log lines, not test failures. RQ649 newly registered; RQ636 stays DONE. The earlier HTTP and MediatR performance persistence warning strings have zero matches.
 - SQL029 negative-case logs and transient bootstrap retries also observed; no new defect inferred without a failing case and causal classification.
 - Branch list at intake contained 98 refs including main, zero open PRs. Comparing RQ637 branch to main showed the three changed source/test file blob SHAs identical; comparing earlier RQ638 Unicode branch showed its two inspected file blobs identical. A separately closed/unmerged RQ635 trial branch still has different SQL029 lifecycle content but equivalent named test family and newer main fixture helper. Historical product plan branch is far behind. No unreviewed branch was merged or deleted.
-- RQ648 owns exhaustive branch census and patch-equivalence; this audit is deliberately a sample, not an all-branches certificate.
+- RQ648 owns remaining exhaustive **content/patch-equivalence**: commit-graph status has now been checked for all 97 baseline refs, but only selected divergent refs have file-level semantic proof. This audit is not an all-branches-content certificate.
 
 ## Changes
 
@@ -31,7 +33,8 @@ Ownership: no source task claimed; newly authored RQ645–RQ649 are independentl
 
 - Repo GitHub source/diff/compare/CI job logs inspected.
 - Local node/dotnet, Docker, checkout git diff check: NOT EXECUTED in connector-only context.
-- Planning Governance and full backend/quality PR workflow: PENDING at document creation.
+- PR #143 exact-head Planning Governance run 38412272800 SUCCESS (771 tasks), Analytics Quality Gates run 38412272013 SUCCESS, full backend/RQ453 run 38412271797 SUCCESS: 2,052 passed, 43 classified skips, 0 failed. PR #143 squash merged to main as 8de58c80440ca6eb87d343024dea260215927a77.
+- Full commit-graph census of all 97 baseline non-main remote branch refs: 71 behind, 1 identical, 25 diverged. Selected divergent RQ637 and RQ638 files match main blobs; RQ648 still owns review of remaining content/PR equivalence. No merge/delete performed.
 - No code, migrations, prod DB, Render/Vercel settings, source Access file, imported batch or unmerged branch was modified.
 - No claim about local uncommitted agent worktrees; no provider/runtime truth can be inferred from CI.
 - PR should not be merged if governance fails; repair and rerun against exact head.
