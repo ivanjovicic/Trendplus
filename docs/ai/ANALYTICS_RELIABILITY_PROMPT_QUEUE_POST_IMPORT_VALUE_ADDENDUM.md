@@ -2,7 +2,9 @@
 
 Date: 2026-10-13
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ646 READY (primary P1; ShoeType detail/golden/determinism); RQ647 (performance baselines), RQ648 (branch content-equivalence), RQ649 (remaining EF InMemory Access worker CI noise), and RQ654 (period preset local-midnight boundary) are independent READY lanes. RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized. Historical pointer: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+
+Post-close note 2026-10-13: RQ646 is DONE on PR #150 squash merge `4dde4c9e878a8efb88963103af1a8236876d1645`; exact-head backend run `38467098912` passed 2,110 / skipped 43 / failed 0, with RQ453 and all three named ShoeType PostgreSQL contracts passing. RQ647 is the current primary P2 READY prompt; RQ648, RQ649 and RQ654 remain independent READY lanes. Run evidence: `.ai/runs/2026-10-13-RQ646-evidence.md`.
+Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence), RQ649 (remaining EF InMemory Access worker CI noise), and RQ654 (period preset local-midnight boundary) are independent READY lanes. RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -1984,13 +1986,12 @@ RQ644 DONE and existing RQ453/Testcontainers. STAB16 provider access and RQ601 o
 
 ## RQ646 - Certify remaining ShoeType detail trust, golden snapshot and deterministic output
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend ShoeType analytics contract/PostgreSQL integration tests
 Feature family: shoe-type-legacy-uncovered-fixture-parity
 Parallel-safe: yes for ShoeType-only fixtures/tests; isolated database and no RQ645 Supplier file overlap
-Owner: Codex
-Local lock: `.ai/task-locks/RQ646-codex.lock.md`
+Owner: unassigned
 Ready after: RQ644 DONE; RQ453 seeded PostgreSQL route/oracle framework available
 Claim note: 2026-10-13 - claimed after refreshing `origin/main` to `40089fa424e30d4c7c6f90f72fb29808e6e0e042`. RQ645 is DONE with synchronized evidence; no active ShoeType product/test branch, PR or lock was found. Scope is restricted to the named ShoeType PostgreSQL proof and its inventory entries.
 Commit suggestion: `test(analytics): certify three shoe-type trust and golden contracts`
@@ -2035,6 +2036,25 @@ Each of three formerly uncovered ShoeType contracts has a named passing PostgreS
 ### Dependencies
 
 RQ644 and local/CI disposable PostgreSQL only. Independent of Supplier contract RQ645 and non-gating performance RQ647.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: Added three named isolated PostgreSQL replacements for the remaining ShoeType detail-trust, golden-projection and deterministic-output contracts; only the matching legacy inventory entries are now `legacy-superseded`.
+- Changed files: `Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs`; `scripts/ci/backend-skip-inventory.json`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-13-RQ646-evidence.md`.
+- Checks run: local Release API.Tests build passed with 0 warnings/errors; local required PostgreSQL class passed 3/3 with 0 skips; exact PR-head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4` backend run `38467098912` passed 2,110 / skipped 43 / failed 0, including the three RQ646 PostgreSQL tests; skip inventory reported 43 known skips and 0 new/missing/reason-changed skips; RQ453 certification, planning governance, frontend analytics, POS UI, JavaScript SDK and Vercel checks passed.
+- Checks not run: none required after exact-head CI.
+- Run log: `.ai/runs/2026-10-13-RQ646-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request
+- Main commit SHA: `4dde4c9e878a8efb88963103af1a8236876d1645`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` equals the PR #150 squash merge and contains implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`.
+- Missed: none known.
+- Follow-up: RQ647 is the primary READY task; RQ648, RQ649 and RQ654 remain independent READY lanes.
+- Residual risk: local full-suite execution previously stalled after unrelated RQ601/RQ610 failures, but exact-head required backend CI completed green with the full suite and inventory validator.
+- Post-close routing: RQ647 promoted as primary READY after the post-delivery scan; several independent READY lanes remain, so no Zero-READY proof applies.
+- Prompt defect / scope repair: none.
 
 ---
 
