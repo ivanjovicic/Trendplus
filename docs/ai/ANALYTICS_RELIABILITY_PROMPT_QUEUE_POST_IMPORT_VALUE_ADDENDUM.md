@@ -1420,14 +1420,15 @@ No production connection/authority for code work. STAB16 owns provider configura
 
 ## RQ636 - Isolate EF InMemory test hosts from Access-import polling and MediatR telemetry noise
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend test-host isolation/observability regression
 Feature family: fake-provider-host-worker-isolation
 Parallel-safe: yes (test-only factory and new isolated tests; do not touch the supplier cold-start or SQL 029 paths)
-Owner: unassigned
+Owner: cursor-cloud (2026-10-13)
 Ready after: RQ631 DONE
 Commit suggestion: `test(ci): isolate operational fallback host from unrelated workers`
+Completion note 2026-10-13: `OperationalFallbackFactory` disables web worker registration, removes `AccessImportBackgroundWorker`, and uses `OperationalFallbackAnalyticsContext` so MediatR optional performance persistence no longer warns while analytics relations remain missing. Added host-isolation regressions. `CachedAnalyticsOperationalFallbackTests` 8/8; `git diff --check` pass. Delivered on `main` at `794c808431b9bdddb0be21edb1d6bb02c8148c25`. Run log: `.ai/runs/2026-10-13-RQ636-evidence.md`. Evidence state: synchronized. No production code paths changed.
 
 ### Problem
 
