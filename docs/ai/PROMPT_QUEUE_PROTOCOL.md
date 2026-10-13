@@ -308,14 +308,14 @@ focused local proof → merge/push to main → verify origin/main SHA → synchr
 Rules:
 
 - branch/PR-only state is transport, not completion;
-- do not wait for CI to finish before merging/pushing to `main`;
+- do not wait for CI to finish for changes with complete local required proof; **mandatory exception:** if required PostgreSQL/Testcontainers tests cannot execute locally, branch/PR first, green exact-head focused PostgreSQL and relevant backend PR CI **before** merge;
 - do not subscribe or poll CI as a default close step;
 - record CI honestly as residual risk or `Checks not run`; CI does not replace main SHA verification;
-- use `PARTIAL` only when `main` cannot be updated safely, never merely because CI is queued/running.
+- use `PARTIAL` when main delivery is unsafe or mandatory PostgreSQL PR checks are not yet green; ordinary non-mandatory queued/running CI alone is not a `PARTIAL` reason.
 
 Pre-push backend proof for direct-main code changes (owner decision 2026-10-12, RQ632):
 
-- code changes may be pushed directly to `main`; a PR is not required;
+- code changes with fully executable local required proof may be pushed directly to `main`; this does **not** override the PostgreSQL/Testcontainers PR merge gate below;
 - before pushing any commit that changes backend code or backend tests, the focused backend tests for every touched test class and for the classes covering the touched production code must pass locally; a red-then-fix pair of pushes is not an acceptable close path;
 - owner decision 2026-10-13 14:24 (supersedes the earlier "first CI run is the proof" allowance): a change whose required proof needs PostgreSQL/Testcontainers that cannot run locally must go through a PR on a branch and be merged only after the focused PostgreSQL tests and the relevant backend CI pass on that PR. A local `Passed` from a PostgreSQL test while Docker is unavailable is not proof, because such tests may return early. Report it as `not run`. If main still goes red, fixing main takes priority over new queue work;
 - docs-only commits need only the validators listed in `## Validation`.
