@@ -2118,6 +2118,16 @@ GitHub read access; no provider/production data authority. Independent of RQ645â
 - **Next agent: prioritize content-level review of 25 divergent refs**, classify PR successor/patch parity and any material uniquely useful change. Refresh graph listing only for newly added or moved refs. Do not remerge/overwrite current main or delete any branch without owner approval. Branch report and preliminary evidence: `docs/qa/POST_RQ644_CODE_QUEUE_BRANCH_REVIEW_2026-10-13.md`.
 - RQ648 stays READY for full content-semantic reconciliation; this source-only census is **not** DONE evidence.
 
+
+
+### Fresh 2026-10-13 branch-comparison evidence (RQ648 still READY)
+
+- A second complete GitHub compare against **main `a5604874`** covers all 97 non-main refs: **74 ancestor/behind (ahead=0), 23 divergent (ahead>0), 0 identical, no errors**. The older 71/1/25 snapshot was accurate for its former base, but is now superseded as a *current branch count*.
+- Exact matching source blobs: RQ637 import worker/gate/lifecycle (three), RQ638 Unicode helper/tests (two), RQ635 corrected lifecycle test (one; different from abandoned trial helper), owner Decision Pulse contract and some product/policy source docs. `RQ481` URL-ID fail-closed and negative-Access cases exist on current main but its frontend blobs have additional newer changes.
+- Remaining source-evolution spots need **substantive diff** review before RQ648 may close: old `audit/rq616-null-stock-20261012` SQL022 and population fixture, `codex/product-value-plan-refinement` dated value audit (vision/business roadmap blobs exact), `fix/rq635-real-postgres-ci-oracle-20261013` extra prerequisite assertion, `fix/rq481-invalid-filter-id-failclosed-20261008` non-identity UI differences, and earlier RQ628/RQ630 evolved startup/oracle files. Record proven missing behavior as a narrow follow-up, not a branch merge.
+- The complete named 23-row inventory and evidence grades are in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md`. Branch graph classification is complete; **patch/semantic equivalence is not complete**, so RQ648 stays READY. No branch was merged or deleted.
+- Open PR #145 appeared *during* this audit for RQ645. Respect its ownership and require exact-head PostgreSQL CI before updating RQ645 DONE; do not let an old queue header cause a duplicate claim.
+
 ---
 
 ## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
@@ -2168,3 +2178,55 @@ Non-import EF InMemory hosts no longer run unwanted Access import queue polling 
 ### Dependencies
 
 RQ636/RQ637 DONE. No production credentials, source file import or owner business approval needed; check same-file collisions with RQ645/RQ646 before claiming.
+
+### New baseline after PR #144 (still READY)
+
+- Exact latest main backend workflow `38417745428`, job `115366590795`: **2053 passed, 43 skipped, 0 failed**, plus **111** `Relational-specific methods can only be used when the context is using a relational database provider` matching log lines. This is a fresh log-line baseline, not a test failure count or proof of distinct worker iterations. The previously recorded 113 matches belong to older SHA `4bd4b9b2`. Fix only the owning non-import InMemory test factories and prove the diff on an exact target CI SHA.
+
+---
+
+## RQ650 - Close PostgreSQL-required test convention detection blind spots after PR #144
+
+Status: READY
+Priority: P2
+Type: backend CI test-quality/skip-honesty convention
+Feature family: postgres-test-attribute-enforcement
+Parallel-safe: yes (only `Api.Tests/PostgresRequiredAttributeConventionTests.cs`, new dedicated convention self-test fixture, and necessary narrowly scoped helpers; do not touch Supplier RQ645, ShoeType RQ646, Access import RQ649 or the global RQ/roadmap during execution except serialized closeout)
+Owner: unassigned
+Ready after: PR #144 merged on `a560487446af5e2ca3b778d79ae3068a271c6917`; exact-main backend run `38417745428` green
+Commit suggestion: `test(ci): enforce truthful postgres test attributes across fixture shapes`
+
+### Problem
+
+PR #144 correctly changed many `[Fact]`/`[Theory]` PostgreSQL tests so a local machine without Docker reports `Skipped` rather than incorrectly `Passed`, while CI requires the actual PostgreSQL execution. However its new `PostgresRequiredAttributeConventionTests` searches only C# files containing literal `IClassFixture<PostgresContainerFixture>` and uses a simple `[Fact]`/`[Theory]` token regex. The checker can miss tests using wrapped/collection/inherited fixtures, direct PostgreSQL container creation or namespaced fact attributes. This **enforcement scope is demonstrably limited** by source; it is not proof of a currently hidden false-pass test.
+
+### Evidence
+
+- PR #144 merged with `Api.Tests/PostgresRequiredFactAttribute.cs` and `Api.Tests/PostgresRequiredAttributeConventionTests.cs`.
+- Convention source filters on `text.Contains("IClassFixture<PostgresContainerFixture>")`, then `Regex(@"^[ \\t]*\\[(Fact|Theory)\\b")`. This cannot cover all fixture acquisitions/attribute spellings.
+- Latest main Actions `38417745428` passed **2053 tests, 43 skipped**; the old 43 BCI17 skip reasons are deliberate and must not be confused with new local no-Docker PostgreSQL skips.
+- The actual same-CI local/Docker absent vs present semantics need explicit self-tests, not a passing static grep of production code.
+
+### Scope
+
+`Api.Tests/PostgresRequiredAttributeConventionTests.cs`, new hermetic test-only fixture strings/source examples or a small Roslyn-backed analyzer only if already available. `Api.Tests/PostgresRequiredFactAttribute.cs` only for a reproduced gate bug. No changes to `scripts/ci/backend-skip-inventory.json` without TRX evidence; no reclassification of RQ645/RQ646/RQ647 skips, no work on the active Supplier PR #145, no production configuration or database changes.
+
+### Do
+
+1. Enumerate current PostgreSQL test acquisition patterns under `Api.Tests` and `Tests`: direct `IClassFixture`, `ICollectionFixture`, inherited/base harness, `TryCreateDatabaseConnectionStringAsync`, `PostgresContainerFixture` used indirectly, namespaced fact/theory attributes and conditional early-returns. Record which *actually exist* and which are only prospective tests.
+2. Refactor the convention check to be method-specific and avoid both false negatives and false positives; add **negative self-tests** that inject an unguarded actual PostgreSQL-dependent test declaration and must fail, including at least one alternate fixture acquisition and namespaced `Fact` syntax. No broad `[Fact]` => `[PostgresRequiredFact]` mass replacement.
+3. Verify `CI=true` or `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true` never reports PostgreSQL unavailable as Passed; with neither flag, unavailable Docker tests report **Skipped**, not fake Passed. Keep real isolated Postgres proof required by CI and make the test skip reason explicit.
+4. Reconcile expected skip inventories separately: 43 historical skips remain governed by BCI17; only update machine-readable counts from exact TRX when genuinely changed, and never mark a skipped source contract as certified.
+5. Run focused convention/self-tests, real required-PostgreSQL CI on the exact PR SHA, full backend suite, and queue/roadmap governance after any status edit. Preserve unrelated tests and already-merged PR #144 correctness.
+
+### Tests
+
+Unit negative-canary fixture shapes, attribute/environment behavior test matrix, actual PostgreSQL CI, full `Api.Tests` coverage, check-prompt-queues and skip-inventory validators, `git diff --check`. Zero skipped mandatory target tests in CI.
+
+### Acceptance
+
+The checker demonstrably fails for both direct and non-direct unguarded PostgreSQL tests, while normal non-PostgreSQL tests are unaffected. Local unavailable PostgreSQL proof is visibly skipped; CI required PostgreSQL proof runs or fails. No new fake-green test, no production DB write, no regression to RQ645â€“RQ649 acceptance.
+
+### Dependencies
+
+Code-only; no provider/owner business decision. Branch/agent ownership must be refreshed before claiming. This task is separate from RQ645 Supplier contract certification and RQ649 fake-provider worker pollution.
