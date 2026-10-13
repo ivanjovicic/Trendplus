@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ634 primary READY (P1 startup/optional supplier MV isolation); RQ635 (P2 controlled SQL 029 maintenance preflight) and RQ636 (P2 CI fake-provider worker isolation) are independent READY lanes after the 2026-10-13 review on base `6dec862e6449a18a24a26234215bcc9b30705b98`. These are NEW repo-local tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ634 primary READY (P1 startup/optional supplier MV and 018 heavy-build isolation); RQ637 (P1 web Access-import readiness polling guard), RQ635 (P2 controlled SQL 029 maintenance preflight), RQ636 (P2 CI fake-provider host isolation), and RQ638 (P2 MediatR performance field bounds) are independent READY lanes after the 2026-10-13 deeper code review on base `6dec862e6449a18a24a26234215bcc9b30705b98`. These are NEW repo-local tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1301,18 +1301,19 @@ Commit suggestion: `test(startup): certify optional supplier MV repair cannot ga
 
 ### Problem
 
-PR #133 added `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false` for Production, but its focused tests verify configuration values and source snippets, not an end-to-end cold start against a PostgreSQL database missing both supplier 90d/180d materialized views. A future startup refactor could execute SQL 029 again or make optional absence block /ready.
+PR #133 added `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false` for Production, but its focused tests verify configuration values and source snippets, not an end-to-end cold start against a PostgreSQL database missing both supplier 90d/180d materialized views. The earlier audit overlooked the separate **018 all-time supplier hub cache build**, which may run with `commandTimeoutSeconds: 0`, and independently contend for the same analytics database. A future startup refactor could execute SQL 029 again or make optional absence block /ready.
 
 ### Evidence
 
 - Render user-supplied 2026-10-12 16:50 UTC logs: 90d/180d MISSING_OBJECT; forced SQL 029 startup execution; coincident /ready and /api 503 (not proof of sole causality).
 - PR #133 merged; backend suite `38301829902` passed on merge SHA. `SupplierDecisionWindowedStartupPolicyTests` only checks the switch.
 - `Infrastructure/Seed/DatabaseInitializer.cs` has multiple startup/contract-repair call paths, including a Trendplus nivelacija dependent restoration branch.
+- `EnsureAnalyticsSupplierDecisionSchemaAsync` invokes `BuildSupplierDecisionHubObjectsAsync(... allowHeavyRefresh: false)` even when SQL029 rebuild is disabled; if 018 materialized caches are missing, `BuildSupplierDecisionHubObjectsAsync` builds them with no SQL command timeout. `allowHeavyRefresh: false` skips explicit REFRESH, not the initial populated CREATE.
 - Production provider/run-time proof remains STAB16.
 
 ### Scope
 
-`Infrastructure/Seed/DatabaseInitializer.cs` (only if needed), `Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs` and **new** `Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs`. Avoid `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` (RQ635), `CachedAnalyticsOperationalFallbackTests.cs` (RQ636), Render/Neon writes, default production deploy changes and unconditional disablement of safety gates.
+`Infrastructure/Seed/DatabaseInitializer.cs` (only if needed), `Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs` and **new** `Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs`. Avoid `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` (RQ635), `AccessImportBackgroundWorker.cs` (RQ637), `CachedAnalyticsOperationalFallbackTests.cs` (RQ636), Render/Neon writes, default production deploy changes and unconditional disablement of safety gates.
 
 ### Read first
 
@@ -1325,6 +1326,9 @@ PR #133 added `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartu
 3. Test an explicit allowed maintenance override `true` separately on disposable PostgreSQL; verify existing behavior and no overlapping/advisory-lock regression.
 4. Capture timing and causal classification of any 503. Verify `/ready` response reason, initialization state and Retry-After while required migrations are pending. Do not suppress required provenance checks or fail-fast.
 5. Preserve existing tests and add a regression that fails if a web startup path bypasses the new gate.
+6. **New confirmed residual (2026-10-13):** separately examine the 018 all-time supplier cache build: prove whether a missing core cache triggers materialized `CREATE` with unbounded command timeout during web startup despite `AllowSupplierDecisionHeavyRefreshInInitializer=false`. If yes, separate required cheap schema contract from the optional populated cache build, or bound and isolate it safely. Preserve cold-start source contract and fail-closed supplier endpoints; do not indiscriminately skip mandatory schema repair, silently mark all-time caches READY or run SQL 018 in parallel. Add focused PostgreSQL/timeout regressions.
+
+7. **Startup owner collision check:** `SupplierDecisionSchemaRepairHostedService` is always registered in a web process (enabled by default, delayed ~8s), while `DeferredStartupTasksHostedService` can be registered when `Database:AutoMigrate=true`. Compare their effective SQL 011–018 and 029 ownership and advisory locks; guard against concurrent initialization of 014/016/018 or retain provably safe serialization when both start on the same database. Test same process, split DB, unified DB and cancellation on disposable PostgreSQL. Do not turn off required migrations by default.
 
 ### Tests
 
@@ -1332,7 +1336,7 @@ Focused xUnit new cold-start class plus `SupplierDecisionWindowedStartupPolicyTe
 
 ### Acceptance
 
-Web cold start does not run SQL 029 with the setting false; core readiness is neither faked nor gated only by optional supplier 90d/180d absence. Supplier capability reports unavailable. Explicit maintenance override remains functional, and focused PostgreSQL CI proof exists on the exact code SHA.
+Web cold start does not run SQL 029 with the setting false **and does not inadvertently build an unbounded optional 018 supplier materialized cache on the web path**; core readiness is neither faked nor gated only by optional supplier 90d/180d absence. Supplier capability reports unavailable. Explicit maintenance override remains functional, and focused PostgreSQL CI proof exists on the exact code SHA.
 
 ### Dependencies
 
@@ -1410,12 +1414,12 @@ Latest successful backend CI still includes recurrent expected test-host excepti
 ### Evidence
 
 - Exact merge CI `38301829902` passed 1,998 tests and classified 42 skips but logged three `Failed to save performance log for GetInventoryStatusQuery` warnings from `CachedAnalyticsOperationalFallbackTests.MissingAnalyticsRelationContext`.
-- Same run emitted repeated `Relational-specific methods can only be used when the context is using a relational database provider` errors from `AccessImportJobQueue.ClaimNextAsync` in test hosts. These are **not** proof of production database failure.
+- Same run emitted repeated `Relational-specific methods can only be used when the context is using a relational database provider` errors from `AccessImportJobQueue.ClaimNextAsync` in test hosts. Production also intentionally registers Access import polling every 2 seconds; test-host isolation here does NOT fix the real web cold-start polling concern (owned by RQ637). These are **not** proof of production database failure.
 - RQ631/PR #132 already fixed optional HTTP metric persistence warnings; this is distinct MediatR behavior and worker registration.
 
 ### Scope
 
-`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, a new host-isolation test if useful, and strictly scoped test-only configuration; `Application/Behaviors/PerformanceLoggingBehavior.cs` only if a verified production-independent defect requires it. Do not disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
+`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, a new host-isolation test if useful, and strictly scoped test-only configuration; Do not modify `Application/Behaviors/PerformanceLoggingBehavior.cs` (RQ638 owns production MediatR telemetry bounds). Do not modify `Api/Services/Access/AccessImportBackgroundWorker.cs` (RQ637), disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
 
 ### Read first
 
@@ -1439,3 +1443,108 @@ Expected operational fallback tests pass unchanged, with no unrelated Access imp
 ### Dependencies
 
 RQ631 DONE and PR #132 merged. No provider secrets or Render/Neon access. Independent of RQ634, RQ635 and STAB16.
+
+---
+
+## RQ637 - Wait for required database readiness before web-process Access import polling
+
+Status: READY
+Priority: P1
+Type: backend/worker startup isolation + PostgreSQL integration tests
+Feature family: web-access-import-readiness-gate
+Parallel-safe: yes (own `Api/Services/Access/AccessImportBackgroundWorker.cs` and worker-specific tests; do not change RQ634 initializer or RQ636 fake-host factory)
+Owner: unassigned
+Ready after: existing Access-import queue and startup readiness services on main; independent of STAB16 provider access for code/testing
+Commit suggestion: `fix(import): defer web queue claims until startup readiness`
+
+### Problem
+
+Production registers `AccessImportBackgroundWorker` in the web process and polls the database every two seconds. The worker calls `RecoverStaleBatchesAtStartupAsync` **before any readiness check**, and `ClaimNextAsync` continues polling while required database initialization may be running. This competes with SQL schema repair/Neon connections on a Render free cold start and produces errors under EF InMemory test providers.
+
+### Evidence
+
+- `Api/appsettings.Production.json` sets `AccessImport:WorkerEnabled=true`, `RegisterWorkerInWebProcess=true`, `PollingIntervalSeconds=2`.
+- `Api/Program.cs` registers the web-hosted import worker when flags permit.
+- `Api/Services/Access/AccessImportBackgroundWorker.cs` runs stale-batch recovery immediately, then claims jobs and performs periodic pending-recovery; it has no startup readiness wait.
+- Supplied Render log at 2026-10-12 16:50 UTC emits `access-import-queue` SQL every ~2s while SQL 029 executes and /ready returns 503. Concurrent timing is proven; responsibility for all 503s is not.
+- Exact-merge backend CI `38301829902` logs repeated fake-provider queue failures (test-host case is separately RQ636).
+
+### Scope
+
+`Api/Services/Access/AccessImportBackgroundWorker.cs`, any narrow `AccessImportOptions` configuration required, and **new or existing** import worker startup lifecycle tests. No edits to `Infrastructure/Seed/DatabaseInitializer.cs` (RQ634), `Database/Migrations/029_AddSupplierDecisionWindowedViews.sql` (RQ635), or `Api.Tests/CachedAnalyticsOperationalFallbackTests.cs` (RQ636). No automatic resubmission/import of batch #23, data mutation, queue record deletion, or production worker disable.
+
+### Read first
+
+`Api/Program.cs`; `Api/Config/WorkerRuntimeConfig.cs`; `Api/Services/Startup/StartupReadinessState.cs`; `Api/Services/Access/AccessImportBackgroundWorker.cs`; `Api/Services/Access/AccessImportJobQueue.cs`; `Api/appsettings.Production.json`; RQ634/636 and STAB16; tests of pending/stale/retry queue claim behavior.
+
+### Do
+
+1. Identify correct **web-process** readiness dependency for import startup; do not block hosted-service startup synchronously or conflate `/health`, cache refresh and required schema readiness. Dedicated `PROCESS_TYPE=worker` has a different lifecycle: do not deadlock or disable it.
+2. Defer **both** stale-batch recovery and `ClaimNextAsync` until the required business schema is usable in the web process. Honor cancellation, fail-fast terminal initialization, optional startup migration policy and explicit worker pause/off flags. Use cancellable async nonbusy waiting with bounded log cadence.
+3. After readiness, guarantee existing pending jobs, stale-recovery and manual-run semantics resume unchanged. Never discard/auto-complete jobs, fabricate readiness or re-import a completed batch.
+4. Test web before-ready (zero queue SQL), transition to ready (exactly eligible claim/recovery), cancellation/shutdown, worker-process path, disabled worker and an unreachable/failed DB. Verify no cyclical wait with deferred initializer.
+5. Record before/after real-PostgreSQL or test-host claim counts, latency and log classification; do not claim reduced production 503 without STAB16 provider evidence.
+
+### Tests
+
+Focused import queue and worker lifecycle tests (including disposable PostgreSQL if a queue mutation is exercised), full backend regression, Release build, `git diff --check`, queue validators if docs updated; zero skipped target tests. Existing import idempotency and recovery tests must remain green.
+
+### Acceptance
+
+Web startup produces **no queue claim or stale-recovery DB traffic before its required database readiness**, resumes safely when ready and preserves import behavior. Dedicated worker startup remains functional, cancellation is prompt and no completed Access import is replayed. No false readiness or provider/deployment assertion.
+
+### Dependencies
+
+Only code/test ownership; no production credentials. STAB16 owns Render measurement and any provider configuration decision. RQ636 isolates the EF InMemory factory and is path-disjoint.
+
+---
+
+## RQ638 - Bound MediatR performance metrics to the existing PostgreSQL schema contract
+
+Status: READY
+Priority: P2
+Type: backend/telemetry schema safety + targeted regression tests
+Feature family: mediatr-performance-log-column-bounds
+Parallel-safe: yes (own `Application/Behaviors/PerformanceLoggingBehavior.cs` and new telemetry boundary tests only; RQ636 owns test-host fixture config)
+Owner: unassigned
+Ready after: RQ631 DONE / PR #132 merged; same `PerformanceLogs` table, separate MediatR writer
+Commit suggestion: `fix(telemetry): enforce MediatR PerformanceLogs varchar limits`
+
+### Problem
+
+RQ631 fixed the HTTP middleware's field caps, but `Application/Behaviors/PerformanceLoggingBehavior.cs` also persists `PerformanceLog` records without enforcing several database column boundaries. A slow/failed MediatR request with a long type name, exception or serialization fallback can yield a database rejection that the behavior hides behind `Failed to save performance log`.
+
+### Evidence
+
+- `Database/Migrations/002_CreatePerformanceLogsTable.sql`: `RequestType VARCHAR(200)`, `RequestName VARCHAR(500)`, `RequestData/ResponseData VARCHAR(4000)`, `ExceptionMessage VARCHAR(2000)`.
+- `PerformanceLoggingBehavior.Handle` writes `typeof(TRequest).FullName` as unbounded RequestType and `exception?.Message` as unbounded ExceptionMessage, and does not directly bound RequestName.
+- `SerializeObject` truncates a successful JSON serialization at 3900 **plus** `...` (3903, still below 4000), but its `catch { return obj.ToString(); }` fallback has no maximum length; it could exceed 4000.
+- RQ631 addressed `Api/Middleware/RequestPerformanceLoggingMiddleware.cs` only. The 3 separate CI fake-provider `42P01` warnings are RQ636's concern, not proof that these length overflows occurred.
+
+### Scope
+
+`Application/Behaviors/PerformanceLoggingBehavior.cs`, new `Api.Tests/PerformanceLoggingBehaviorColumnBoundsTests.cs`, potentially a narrow shared Application helper. No production DB changes, global removal of MediatR pipeline behaviors, or modifications to RQ631 HTTP metric writer and RQ636's test-host factory.
+
+### Read first
+
+`Database/Migrations/002_CreatePerformanceLogsTable.sql`; `Domain/Model/PerformanceLog.cs`; `Infrastructure/DbContexts/AnalyticsDbContext.cs`; `Application/Behaviors/PerformanceLoggingBehavior.cs`; `Api/Middleware/RequestPerformanceLoggingMiddleware.cs`; RQ631 evidence and RQ636 test isolation spec.
+
+### Do
+
+1. Ensure **every** persisted field respects exact PostgreSQL max lengths, including ellipsis characters. Preserve NULL distinction for absent exception/response; never silently convert a failed operation into success.
+2. Cover long fully qualified MediatR request names, long messages, long JSON serialization, serialization-failure `ToString()` fallback and surrogate-pair/Unicode boundaries where relevant. Never throw another exception from telemetry persistence while handling a prior request failure.
+3. Add isolated deterministic xUnit boundary tests for exactly-at-cap, one-over, far-over, null, empty, serialization failure and context failure. Prefer testing the actual mapped `PerformanceLog` record via a fake EF/test context over string-only source assertions; use disposable PostgreSQL when testing strict `varchar` behavior.
+4. Ensure cancellations and slow requests cannot stall indefinitely on optional performance persistence; preserve current logging semantics and explicit cancellation behavior or document any bounded best-effort policy change separately.
+5. Do not claim the RQ636 missing-table errors are solved by trimming text. Keep diagnostic classification and proof separate.
+
+### Tests
+
+Focused behavior/serialization tests, existing HTTP metric regression tests for non-regression, optional disposable PostgreSQL column-limits oracle, backend CI on exact SHA; zero skipped target tests, Release build and diff checks.
+
+### Acceptance
+
+MediatR performance persistence cannot exceed defined schema fields through the normal or fallback serialization path. Request failure still propagates, telemetry failure remains isolated, and tests prove the exact column-cap contract. No changes to business queries or production DB.
+
+### Dependencies
+
+None external; RQ631 delivered. Independent of RQ634/RQ635/RQ636/RQ637 and STAB16 provider work.
