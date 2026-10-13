@@ -192,7 +192,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
     // Real PostgreSQL: startup view 014 and the bounded scoped source SQL.
     // ------------------------------------------------------------------
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task StartupView_MatchesOracleRowForRow()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_view");
@@ -210,7 +210,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             await ReadViewRowsAsync(db.Connection));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task StartupView_SeparatesMeasuredZeroFromMissingRevenueBaseline()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_nullability");
@@ -311,7 +311,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(("markup", -25m, false, false, null, 2), semantics[5]);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task StartupView_ReappliesOverLegacyPlainNumericPostRevenue()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_legacy_type");
@@ -356,7 +356,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             await ReadViewRowsAsync(db.Connection));
     }
 
-    [Theory]
+    [PostgresRequiredTheory]
     [InlineData(null)]
     [InlineData(1)]
     public async Task ScopedSource_MatchesOracleRowForRow(int? storeId)
@@ -376,7 +376,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
             await ReadScopedRowsAsync(db.Connection, storeId));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ScopedSource_KeepsNullStoreDistinctFromRealNegativeOneStore()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_negative_store_sentinel");
@@ -414,7 +414,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(2, EndpointDedup([negativeVendor, missingVendor]).Count);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task BoundedScopedSource_IsValueEquivalentToUnboundedViewAfterEndpointDedup()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_bounded");
@@ -442,7 +442,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Equal(Serialize(fromOracle, db.Anchor), Serialize(fromScoped, db.Anchor));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task LegacyPercentColumns_DivergeOnlyForImmatureRowsWithoutPostSales()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_legacy_pct");
@@ -463,7 +463,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Null(scoped[17]);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task DidControlAndOptionalMappers_ArePinnedAgainstRealPostgresFixture()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_did_oracle");

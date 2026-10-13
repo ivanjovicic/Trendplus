@@ -2564,3 +2564,48 @@ No stale overwrites in repeated filter scenarios; tests cover overlapping reques
 ### Dependencies
 
 Use existing `useReliableAnalyticsQuery` helper when appropriate.
+
+## RQ658 - Close remaining local false-pass PostgreSQL tests and convention traversal gap
+
+Status: IN PROGRESS
+Priority: P1
+Type: test reliability / CI proof
+Feature family: postgres-proof-convention
+Parallel-safe: yes (test-only)
+Owner: grok
+Ready after: RQ638 / PR #144 on main `a5604874`
+Commit suggestion: `test(ci): close PostgreSQL convention helper traversal gap`
+
+### Problem
+
+16 tests in `AssortmentNivelacijaOracleTests`, `SupplierReconciliationPackTests` and `SupplierScorecardOracleTests` used plain `[Fact]`/`[Theory]` and returned early when a helper (`TryCreateDatabaseAsync`, `TryCreateScorecardDatabaseAsync`) yielded null because `PostgresContainerFixture.IsAvailable` was false, so they reported Passed locally without Docker. `PostgresRequiredAttributeConventionTests.ReachesPostgresAvailabilityGuard` missed them: it added every member to `visitedMembers` before checking whether the body calls it, so a guard helper was marked visited during traversal of an unrelated helper and never inspected.
+
+### Evidence
+
+On main `87e1f687`, with the traversal fixed, the convention test fails listing exactly those 16 tests (Assortment 195/213/314/359/379/417/445/466, Reconciliation 31/92/130, Scorecard 130/353/401/461/499).
+
+### Scope
+
+Test-only: attribute swap on the 16 tests, traversal fix plus regression self-test. No assertions removed or weakened, no production code.
+
+### Read first
+
+`Api.Tests/PostgresRequiredFactAttribute.cs`, `Api.Tests/PostgresRequiredAttributeConventionTests.cs`, `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` lessons learned.
+
+### Do
+
+1. Check the call before `visitedMembers.Add` in `ReachesPostgresAvailabilityGuard`.
+2. Add self-test `Convention_finds_a_guard_helper_called_after_another_helper`.
+3. Convert the 16 tests to `[PostgresRequiredFact]`/`[PostgresRequiredTheory]`.
+
+### Tests
+
+Local Testing env: convention + 3 classes = 42 total, 24 passed, 18 skipped (PostgreSQL proof not run), 0 failed. CI backend must show these tests executed against PostgreSQL.
+
+### Acceptance
+
+Convention test green; no plain `[Fact]`/`[Theory]` test reaches a PostgreSQL availability guard; PR merged on green backend + governance CI.
+
+### Dependencies
+
+RQ638.
