@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ634 primary READY (P1 startup/optional supplier MV isolation); RQ635 (P2 controlled SQL 029 maintenance preflight) and RQ636 (P2 CI fake-provider worker isolation) are independent READY lanes after the 2026-10-13 review on base `6dec862e6449a18a24a26234215bcc9b30705b98`. These are NEW repo-local tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1284,3 +1284,158 @@ Docs-only commits do not create production deployments. Both historic failures a
 - Follow-up: owner optional `vercel inspect` on `dpl_HTdAhWqwZDDBRu6QxrnVQxgocGGT` and `dpl_GWMNgzfNTGe5338RVEPQJH39C7m6`
 - Residual risk: duplicate `Klijent/clientapp/vercel.json` kept for legacy subdirectory-root Vercel projects only
 - Evidence state: synchronized
+
+
+---
+
+## RQ634 - Certify nonblocking web startup when optional supplier windowed MVs are missing
+
+Status: READY
+Priority: P1
+Type: backend/CI integration test + narrow startup correction
+Feature family: supplier-windowed-cold-start-regression
+Parallel-safe: yes (own new test class and supplier startup gates only; do not edit SQL 029, operator instructions or unrelated health endpoints)
+Owner: unassigned
+Ready after: PR #133 merged on main \`1c9158d3e9a74de96c0b7ece60fb0c88f9a18058\`
+Commit suggestion: \`test(startup): certify optional supplier MV repair cannot gate core readiness\`
+
+### Problem
+
+PR #133 added \`DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup=false\` for Production, but its focused tests verify configuration values and source snippets, not an end-to-end cold start against a PostgreSQL database missing both supplier 90d/180d materialized views. A future startup refactor could execute SQL 029 again or make optional absence block /ready.
+
+### Evidence
+
+- Render user-supplied 2026-10-12 16:50 UTC logs: 90d/180d MISSING_OBJECT; forced SQL 029 startup execution; coincident /ready and /api 503 (not proof of sole causality).
+- PR #133 merged; backend suite \`38301829902\` passed on merge SHA. \`SupplierDecisionWindowedStartupPolicyTests\` only checks the switch.
+- \`Infrastructure/Seed/DatabaseInitializer.cs\` has multiple startup/contract-repair call paths, including a Trendplus nivelacija dependent restoration branch.
+- Production provider/run-time proof remains STAB16.
+
+### Scope
+
+\`Infrastructure/Seed/DatabaseInitializer.cs\` (only if needed), \`Api.Tests/SupplierDecisionWindowedStartupPolicyTests.cs\` and **new** \`Api.Tests/SupplierDecisionWindowedColdStartRegressionTests.cs\`. Avoid \`Database/Migrations/029_AddSupplierDecisionWindowedViews.sql\` (RQ635), \`CachedAnalyticsOperationalFallbackTests.cs\` (RQ636), Render/Neon writes, default production deploy changes and unconditional disablement of safety gates.
+
+### Read first
+
+\`docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md\`; \`.ai/runs/2026-10-12-PR133-branch-review-evidence.md\`; \`Api/Services/Startup/SupplierDecisionSchemaRepairHostedService.cs\`; \`Api/Services/Startup/ReadinessWarmupHostedService.cs\`; \`Api/Services/Startup/StartupReadinessState.cs\`; the existing supplier schema/readiness PostgreSQL fixture.
+
+### Do
+
+1. Build an isolated disposable PostgreSQL test with required core schema and deliberately absent supplier 90d/180d MVs. Use effective Production-equivalent configuration with the setting disabled; exercise both full/deferred initializer and background supplier schema repair paths **when safe in isolation**. When the full pipeline cannot be cheaply exercised, provide a narrowly factored and tested decision boundary and report the missing proof instead of fabricating an end-to-end pass.
+2. Instrument/test whether SQL 029 is invoked, whether optional missing MVs are still MISSING_OBJECT, and whether core database readiness is independent of this optional capability. No fake READY and no all-time supplier score fallback.
+3. Test an explicit allowed maintenance override \`true\` separately on disposable PostgreSQL; verify existing behavior and no overlapping/advisory-lock regression.
+4. Capture timing and causal classification of any 503. Verify \`/ready\` response reason, initialization state and Retry-After while required migrations are pending. Do not suppress required provenance checks or fail-fast.
+5. Preserve existing tests and add a regression that fails if a web startup path bypasses the new gate.
+
+### Tests
+
+Focused xUnit new cold-start class plus \`SupplierDecisionWindowedStartupPolicyTests\`, existing \`SupplierDecisionSchemaSqlTests\` and any touched lifecycle test, Release build, \`git diff --check\`. Disposable PostgreSQL must execute in CI with zero skipped target tests; run governance validators for queue changes.
+
+### Acceptance
+
+Web cold start does not run SQL 029 with the setting false; core readiness is neither faked nor gated only by optional supplier 90d/180d absence. Supplier capability reports unavailable. Explicit maintenance override remains functional, and focused PostgreSQL CI proof exists on the exact code SHA.
+
+### Dependencies
+
+PR #133 code already merged; no Render credentials, fresh import, owner price decision or production database mutation required. STAB16 remains the sole owner for actual deployment recovery.
+
+---
+
+## RQ635 - Make supplier SQL 029 recovery preflight and replay safe outside the web service
+
+Status: READY
+Priority: P2
+Type: SQL/PostgreSQL migration-quality + operator tooling tests
+Feature family: supplier-windowed-sql029-maintenance-preflight
+Parallel-safe: yes (own SQL 029 / \`tools/supplier-windowed-*\` / new isolated PostgreSQL oracle; avoid RQ634 startup gate files)
+Owner: unassigned
+Ready after: PR #133 merged; independent of STAB16 provider access for repository-local implementation
+Commit suggestion: \`test(sql): preflight and idempotency oracle for supplier windowed MV maintenance\`
+
+### Problem
+
+Production analytics is missing \`mv_supplier_decision_score_cache_90d\` and \`_180d\`; code intentionally stopped automatic web startup rebuild. The SQL 029 file creates populated materialized views and has conditional DROP/CREATE logic. Its execution cost, preconditions, idempotence on partial schema, and safe deployment route are not adequately certified for controlled maintenance on a resource-limited Neon database.
+
+### Evidence
+
+- \`Database/Migrations/029_AddSupplierDecisionWindowedViews.sql\` contains \`CREATE MATERIALIZED VIEW IF NOT EXISTS\`, inline rollups, a conditional historical DROP and indexes.
+- Render log stopped after \`Executing startup SQL file ...029\` without completion/error in the supplied excerpt.
+- \`docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md\` explicitly defers recovery to a separate maintenance window.
+- Existing \`SupplierDecisionSchemaSqlTests\` and \`SupplierDecisionSchemaReadinessIntegrationTests\` have some idempotence coverage; do not duplicate those without identifying a missing case.
+
+### Scope
+
+New read-only operator preflight script/report (\`tools/supplier-windowed-mv-preflight.sql\` or equivalent), **new** isolated \`Api.Tests/SupplierWindowedSql029LifecycleTests.cs\`, and SQL 029 only if a reproducible defect is found. Do not modify \`Infrastructure/Seed/DatabaseInitializer.cs\`, worker deployments, live Neon databases, or production connection settings.
+
+### Read first
+
+SQL 029; \`Database/Migrations/018_AddSupplierDecisionHubViews.sql\`; \`Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs\`; \`Api.Tests/SupplierDecisionSchemaSqlTests.cs\`; supplier capability inspector and NightlyAnalyticsRefreshOptions; Render recovery runbook.
+
+### Do
+
+1. Build a read-only preflight listing prerequisites, object existence, populated flags, required columns, dependencies, hash history, transaction/lock state indicators and an actionable stop/continue verdict **without** executing DDL. Do not log credentials or database URLs.
+2. Run a disposable PostgreSQL matrix: missing both objects; only 90d present; incomplete/legacy score view; already correct objects; empty inputs; repeat execution; interrupted transaction recovery. Include input fixture parity checks for 90d/180d and ensure no silent all-time substitution.
+3. Verify SQL 029 can fail closed with structured, bounded output on timeout/lock/privilege/dependency errors. If code repair is needed, make it additive/idempotent, non-destructive and test the exact SQL. Do not issue blanket DROP CASCADE or launch concurrent production builds.
+4. Document a separately authorized one-off maintenance sequence, safe cancellation/rollback boundaries, direct connection versus pooler considerations, how to refresh MVs and a read-only postcheck of \`relkind\`, \`relispopulated\`, columns and sampled result grain.
+5. Keep production status BLOCKED/unknown until actual provider owner carries out and verifies the maintenance. This prompt completes with **repository-local** proof only.
+
+### Tests
+
+Focused real PostgreSQL lifecycle tests (no skipped oracle), schema source tests, SQL script static checks, rebuild in Release, code/SQL diff check. Performance budget measured locally, not extrapolated to Neon free-tier.
+
+### Acceptance
+
+Reproducible non-production recovery and fail-closed preflight exist; partial and repeat execution are safe under tested conditions; maintenance guide is precise. No claim that production 90d/180d MVs are populated and no live database writes.
+
+### Dependencies
+
+No production connection/authority for code work. STAB16 owns provider configuration and execution of the approved production maintenance step. RQ634 is path-disjoint.
+
+---
+
+## RQ636 - Isolate EF InMemory test hosts from Access-import polling and MediatR telemetry noise
+
+Status: READY
+Priority: P2
+Type: backend test-host isolation/observability regression
+Feature family: fake-provider-host-worker-isolation
+Parallel-safe: yes (test-only factory and new isolated tests; do not touch the supplier cold-start or SQL 029 paths)
+Owner: unassigned
+Ready after: RQ631 DONE
+Commit suggestion: \`test(ci): isolate operational fallback host from unrelated workers\`
+
+### Problem
+
+Latest successful backend CI still includes recurrent expected test-host exceptions even though all assertions pass. These exceptions obscure real failures and waste test resources: background Access import polling receives an EF InMemory provider, and MediatR performance logging hits a deliberately missing analytics interface.
+
+### Evidence
+
+- Exact merge CI \`38301829902\` passed 1,998 tests and classified 42 skips but logged three \`Failed to save performance log for GetInventoryStatusQuery\` warnings from \`CachedAnalyticsOperationalFallbackTests.MissingAnalyticsRelationContext\`.
+- Same run emitted repeated \`Relational-specific methods can only be used when the context is using a relational database provider\` errors from \`AccessImportJobQueue.ClaimNextAsync\` in test hosts. These are **not** proof of production database failure.
+- RQ631/PR #132 already fixed optional HTTP metric persistence warnings; this is distinct MediatR behavior and worker registration.
+
+### Scope
+
+\`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs\`, a new host-isolation test if useful, and strictly scoped test-only configuration; \`Application/Behaviors/PerformanceLoggingBehavior.cs\` only if a verified production-independent defect requires it. Do not disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
+
+### Read first
+
+\`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs\`; \`Api/Config/WorkerRuntimeConfig.cs\`; \`Api/Services/Access/AccessImportJobQueue.cs\`; \`Application/Behaviors/PerformanceLoggingBehavior.cs\`; RQ631 evidence and CI \`38301829902\` logs.
+
+### Do
+
+1. Map which factory registers Access import polling and why a fake EF provider reaches its relational-only queue claim. Stop only unrelated workers in the isolated test host, retaining the endpoint behaviors under test.
+2. Address optional MediatR performance persistence in the intentionally missing analytics host with a narrow fixture-side substitute/opt-out when that path does not test metrics. Retain exceptions when a test expressly verifies missing relations or request success.
+3. Add targeted assertions for zero unexpected background worker iterations/telemetry warnings and the original operational fallback responses; do not suppress failures emitted by a real PostgreSQL fixture.
+4. Review CI logs for remaining distinct warnings, classify them instead of broad suppressions, and record before/after counts.
+
+### Tests
+
+Affected \`CachedAnalyticsOperationalFallbackTests\` and new host-isolation regressions; full backend CI on exact SHA; zero skipped target tests; compare filtered log counts. Verify that production registration/configuration did not change.
+
+### Acceptance
+
+Expected operational fallback tests pass unchanged, with no unrelated Access import relational-provider loops or MediatR optional-telemetry warnings in the target host. No production behavior change and no hiding legitimate SQL failures.
+
+### Dependencies
+
+RQ631 DONE and PR #132 merged. No provider secrets or Render/Neon access. Independent of RQ634, RQ635 and STAB16.
