@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ634 primary READY (P1 startup/optional supplier MV and 018 heavy-build isolation); RQ637 (P1 web Access-import readiness polling guard), RQ635 (P2 controlled SQL 029 maintenance preflight), and RQ636 (P2 CI fake-provider host isolation) are independent READY lanes after the 2026-10-13 deeper code review on base `6dec862e6449a18a24a26234215bcc9b30705b98`. These are NEW repo-local tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ634 primary READY (P1 startup/optional supplier MV and 018 heavy-build isolation); RQ637 (P1 web Access-import readiness polling guard), RQ635 (P2 controlled SQL 029 maintenance preflight), RQ636 (P2 CI fake-provider host isolation), and RQ638 (P2 MediatR performance field bounds) are independent READY lanes after the 2026-10-13 deeper code review on base `6dec862e6449a18a24a26234215bcc9b30705b98`. These are NEW repo-local tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1419,7 +1419,7 @@ Latest successful backend CI still includes recurrent expected test-host excepti
 
 ### Scope
 
-`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, a new host-isolation test if useful, and strictly scoped test-only configuration; `Application/Behaviors/PerformanceLoggingBehavior.cs` only if a verified production-independent defect requires it. Do not modify `Api/Services/Access/AccessImportBackgroundWorker.cs` (RQ637), disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
+`Api.Tests/CachedAnalyticsOperationalFallbackTests.cs`, a new host-isolation test if useful, and strictly scoped test-only configuration; Do not modify `Application/Behaviors/PerformanceLoggingBehavior.cs` (RQ638 owns production MediatR telemetry bounds). Do not modify `Api/Services/Access/AccessImportBackgroundWorker.cs` (RQ637), disable real production workers or suppress/log-filter all database exceptions globally. Do not reopen RQ631.
 
 ### Read first
 
@@ -1496,3 +1496,55 @@ Web startup produces **no queue claim or stale-recovery DB traffic before its re
 ### Dependencies
 
 Only code/test ownership; no production credentials. STAB16 owns Render measurement and any provider configuration decision. RQ636 isolates the EF InMemory factory and is path-disjoint.
+
+---
+
+## RQ638 - Bound MediatR performance metrics to the existing PostgreSQL schema contract
+
+Status: READY
+Priority: P2
+Type: backend/telemetry schema safety + targeted regression tests
+Feature family: mediatr-performance-log-column-bounds
+Parallel-safe: yes (own `Application/Behaviors/PerformanceLoggingBehavior.cs` and new telemetry boundary tests only; RQ636 owns test-host fixture config)
+Owner: unassigned
+Ready after: RQ631 DONE / PR #132 merged; same `PerformanceLogs` table, separate MediatR writer
+Commit suggestion: `fix(telemetry): enforce MediatR PerformanceLogs varchar limits`
+
+### Problem
+
+RQ631 fixed the HTTP middleware's field caps, but `Application/Behaviors/PerformanceLoggingBehavior.cs` also persists `PerformanceLog` records without enforcing several database column boundaries. A slow/failed MediatR request with a long type name, exception or serialization fallback can yield a database rejection that the behavior hides behind `Failed to save performance log`.
+
+### Evidence
+
+- `Database/Migrations/002_CreatePerformanceLogsTable.sql`: `RequestType VARCHAR(200)`, `RequestName VARCHAR(500)`, `RequestData/ResponseData VARCHAR(4000)`, `ExceptionMessage VARCHAR(2000)`.
+- `PerformanceLoggingBehavior.Handle` writes `typeof(TRequest).FullName` as unbounded RequestType and `exception?.Message` as unbounded ExceptionMessage, and does not directly bound RequestName.
+- `SerializeObject` truncates a successful JSON serialization at 3900 **plus** `...` (3903, still below 4000), but its `catch { return obj.ToString(); }` fallback has no maximum length; it could exceed 4000.
+- RQ631 addressed `Api/Middleware/RequestPerformanceLoggingMiddleware.cs` only. The 3 separate CI fake-provider `42P01` warnings are RQ636's concern, not proof that these length overflows occurred.
+
+### Scope
+
+`Application/Behaviors/PerformanceLoggingBehavior.cs`, new `Api.Tests/PerformanceLoggingBehaviorColumnBoundsTests.cs`, potentially a narrow shared Application helper. No production DB changes, global removal of MediatR pipeline behaviors, or modifications to RQ631 HTTP metric writer and RQ636's test-host factory.
+
+### Read first
+
+`Database/Migrations/002_CreatePerformanceLogsTable.sql`; `Domain/Model/PerformanceLog.cs`; `Infrastructure/DbContexts/AnalyticsDbContext.cs`; `Application/Behaviors/PerformanceLoggingBehavior.cs`; `Api/Middleware/RequestPerformanceLoggingMiddleware.cs`; RQ631 evidence and RQ636 test isolation spec.
+
+### Do
+
+1. Ensure **every** persisted field respects exact PostgreSQL max lengths, including ellipsis characters. Preserve NULL distinction for absent exception/response; never silently convert a failed operation into success.
+2. Cover long fully qualified MediatR request names, long messages, long JSON serialization, serialization-failure `ToString()` fallback and surrogate-pair/Unicode boundaries where relevant. Never throw another exception from telemetry persistence while handling a prior request failure.
+3. Add isolated deterministic xUnit boundary tests for exactly-at-cap, one-over, far-over, null, empty, serialization failure and context failure. Prefer testing the actual mapped `PerformanceLog` record via a fake EF/test context over string-only source assertions; use disposable PostgreSQL when testing strict `varchar` behavior.
+4. Ensure cancellations and slow requests cannot stall indefinitely on optional performance persistence; preserve current logging semantics and explicit cancellation behavior or document any bounded best-effort policy change separately.
+5. Do not claim the RQ636 missing-table errors are solved by trimming text. Keep diagnostic classification and proof separate.
+
+### Tests
+
+Focused behavior/serialization tests, existing HTTP metric regression tests for non-regression, optional disposable PostgreSQL column-limits oracle, backend CI on exact SHA; zero skipped target tests, Release build and diff checks.
+
+### Acceptance
+
+MediatR performance persistence cannot exceed defined schema fields through the normal or fallback serialization path. Request failure still propagates, telemetry failure remains isolated, and tests prove the exact column-cap contract. No changes to business queries or production DB.
+
+### Dependencies
+
+None external; RQ631 delivered. Independent of RQ634/RQ635/RQ636/RQ637 and STAB16 provider work.
