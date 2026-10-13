@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -29,21 +28,13 @@ public class AnalyticsDbInfrastructureTests : IClassFixture<WebApplicationFactor
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
-    private static bool IsIntegrationEnabled()
-        => string.Equals(
-            Environment.GetEnvironmentVariable("TRENDPLUS_RUN_INTEGRATION_TESTS"),
-            "true",
-            StringComparison.OrdinalIgnoreCase);
-
     /// <summary>
     /// Verifies that all columns used in the analytics queries exist in the database.
     /// This prevents "Column not found" 500 errors during runtime.
     /// </summary>
-    [Fact(DisplayName = "Critical analytics columns must exist in DB schema")]
+    [OperationsIntegrationFact(DisplayName = "Critical analytics columns must exist in DB schema")]
     public async Task AnalyticsSchema_CriticalColumnsExist()
     {
-        if (!IsIntegrationEnabled()) return;
-
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TrendplusDbContext>();
 
@@ -68,11 +59,9 @@ public class AnalyticsDbInfrastructureTests : IClassFixture<WebApplicationFactor
     /// Simulates multiple concurrent users hitting the analytics endpoint.
     /// Ensures EF Core context pooling or thread safety isn't violated.
     /// </summary>
-    [Fact(DisplayName = "Endpoint handles concurrent requests without crashing")]
+    [OperationsIntegrationFact(DisplayName = "Endpoint handles concurrent requests without crashing")]
     public async Task AnalyticsEndpoint_HandlesParallelRequests()
     {
-        if (!IsIntegrationEnabled()) return;
-
         var client = _factory.CreateClient();
         var url = "/api/analytics/supplier-sales-stats?sezonaId=1";
 
@@ -93,11 +82,9 @@ public class AnalyticsDbInfrastructureTests : IClassFixture<WebApplicationFactor
     /// Performance Baseline Guard: Verifies the endpoint doesn't exceed 3 seconds on standard test data.
     /// Useful for catching unintended N+1 query regressions.
     /// </summary>
-    [Fact(DisplayName = "Analytics response time is within acceptable limits")]
+    [OperationsIntegrationFact(DisplayName = "Analytics response time is within acceptable limits")]
     public async Task AnalyticsEndpoint_ResponseTimeBaseline()
     {
-        if (!IsIntegrationEnabled()) return;
-
         var client = _factory.CreateClient();
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
