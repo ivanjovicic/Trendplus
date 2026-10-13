@@ -30,7 +30,7 @@ public sealed class ColorSalesStatsIndependentOracleIntegrationTests : IClassFix
         _postgres = postgres;
     }
 
-    [Fact(DisplayName = "Color buckets match the independent raw-fact oracle across data scopes")]
+    [PostgresRequiredFact(DisplayName = "Color buckets match the independent raw-fact oracle across data scopes")]
     public async Task SharedFixture_ColorBucketsMatchOracleAcrossScopesAndUnknownColor()
     {
         var connectionString = await CreateSeededDatabaseAsync("rq597_color_scope");
@@ -53,7 +53,7 @@ public sealed class ColorSalesStatsIndependentOracleIntegrationTests : IClassFix
         Assert.Contains(importedBuckets.Keys, key => key == ColorIdentityPolicy.Key("Plava"));
     }
 
-    [Fact(DisplayName = "Color buckets preserve half-open boundaries and exclude DUG/KOREKCIJA receipts")]
+    [PostgresRequiredFact(DisplayName = "Color buckets preserve half-open boundaries and exclude DUG/KOREKCIJA receipts")]
     public async Task SharedFixture_ColorBucketsMatchOracleForReceiptAndDateBoundaries()
     {
         var connectionString = await CreateSeededDatabaseAsync("rq597_color_bounds");

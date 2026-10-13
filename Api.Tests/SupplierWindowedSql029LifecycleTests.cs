@@ -195,6 +195,28 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
             services,
             configuration,
             NullLogger.Instance);
+
+        // SQL029 maintenance must start from the full SQL018/history contract, not
+        // merely from a database where the initializer returned without throwing.
+        // That makes a missing prerequisite a precise fixture failure instead of a
+        // later, misleading SQL029 error.
+        await using var verify = new NpgsqlConnection(connectionString);
+        await verify.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT
+                to_regclass('public."__StartupSqlScriptHistory"') IS NOT NULL
+                AND to_regclass('public.vw_supplier_fullprice_signals') IS NOT NULL
+                AND to_regclass('public.vw_supplier_markdown_dependency') IS NOT NULL
+                AND to_regclass('public.vw_supplier_decision_score') IS NOT NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache_90d') IS NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache_180d') IS NULL;
+            """,
+            verify);
+        Assert.True(
+            (bool?)await command.ExecuteScalarAsync() == true,
+            "SQL029 fixture requires initialized SQL018/history prerequisites and absent windowed caches.");
     }
 
     private static async Task ApplySql029Async(NpgsqlConnection connection)

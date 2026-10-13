@@ -18,7 +18,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ClaimNextAsync_ClaimsPendingBatch_WithSourceFilePath()
     {
         await using var db = await CreateDatabaseAsync();
@@ -39,7 +39,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.NotNull(updated.LastHeartbeatUtc);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ClaimNextAsync_AllowsOnlyOneRunningImportAcrossConcurrentWorkers()
     {
         await using var db = await CreateDatabaseAsync();
@@ -61,7 +61,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Equal(1, await db.DataImportBatches.CountAsync(x => x.Status == "pending"));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ClaimNextAsync_ClaimsPendingBatch_WithSourceStorageKey()
     {
         await using var db = await CreateDatabaseAsync();
@@ -81,7 +81,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Equal("running", updated.Status);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ClaimNextAsync_DoesNotClaimCancelledBatch()
     {
         await using var db = await CreateDatabaseAsync();
@@ -98,7 +98,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Equal("pending", updated.Status);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ClaimNextAsync_DoesNotClaimCompletedBatch()
     {
         await using var db = await CreateDatabaseAsync();
@@ -118,7 +118,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.True(Math.Abs((updated.CompletedAtUtc.Value - completedAtUtc).TotalSeconds) < 1);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RecoverStalePendingAsync_DetectsAndRefreshesClaimablePendingBatch()
     {
         await using var db = await CreateDatabaseAsync();
@@ -140,7 +140,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.True(updated.LastHeartbeatUtc > queuedAtUtc);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RefreshBatchStatusesAsync_FinalizesStaleRunningBatchAfterWorkerRestart()
     {
         await using var db = await CreateDatabaseAsync();
@@ -168,7 +168,7 @@ public sealed class AccessImportJobQueueTests : IClassFixture<PostgresContainerF
         Assert.Contains("stale recovery window", updated.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task GetEnqueueDiagnosticsAsync_ReturnsUsefulReason_WhenSourceIsMissing()
     {
         await using var db = await CreateDatabaseAsync();

@@ -22,7 +22,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
         _fixture = fixture;
     }
 
-    [Fact(DisplayName = "RQ606 transfer re-import preserves distinct documents and repeated article lines")]
+    [PostgresRequiredFact(DisplayName = "RQ606 transfer re-import preserves distinct documents and repeated article lines")]
     public async Task TransferImport_UsesSourceDocumentAndLineMultiset_AndIsIdempotent()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq606_transfer");
@@ -73,7 +73,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
             row => row.SourceTableKey == "prenosrobe" && row.SourceRowId != null));
     }
 
-    [Fact(DisplayName = "RQ606 negative transfer source ID repairs a missing side without duplicating the pair")]
+    [PostgresRequiredFact(DisplayName = "RQ606 negative transfer source ID repairs a missing side without duplicating the pair")]
     public async Task TransferImport_NegativeSourceId_IsStableAndRepairsMissingSide()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq606_negative");
@@ -131,7 +131,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
             .CountAsync(row => row.SourceTableKey == "prenosrobe" && row.SourceRowId == -3001));
     }
 
-    [Fact(DisplayName = "RQ606 transfer import cancellation leaves no pending movement rows")]
+    [PostgresRequiredFact(DisplayName = "RQ606 transfer import cancellation leaves no pending movement rows")]
     public async Task TransferImport_CancellationBeforeWrite_DoesNotPersistRows()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq606_cancel");
@@ -152,7 +152,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
         Assert.Equal(0, await db.DnevnikPromena.AsNoTracking().CountAsync());
     }
 
-    [Fact(DisplayName = "RQ606 cancellation after transfer flush rolls back and retry persists exactly once")]
+    [PostgresRequiredFact(DisplayName = "RQ606 cancellation after transfer flush rolls back and retry persists exactly once")]
     public async Task TransferImport_CancellationAfterWrite_RollsBackAndRetryIsIdempotent()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq606_rollback");

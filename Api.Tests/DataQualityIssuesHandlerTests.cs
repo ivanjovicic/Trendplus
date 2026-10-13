@@ -17,7 +17,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_ReturnsMissingSupplier_Items()
     {
         var contexts = await TryCreateContextsAsync();
@@ -81,7 +81,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         }
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_ReturnsMissingShoeType_Items()
     {
         var contexts = await TryCreateContextsAsync();
@@ -128,7 +128,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         }
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_ReturnsInvalidName_Items()
     {
         var contexts = await TryCreateContextsAsync();
@@ -192,7 +192,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         }
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_FiltersLowRevenueNoise_WhenMinSalesSpecified()
     {
         var contexts = await TryCreateContextsAsync();
@@ -255,7 +255,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         }
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_ScopesSales30dByDataScope()
     {
         var contexts = await TryCreateContextsAsync();
@@ -409,7 +409,7 @@ public sealed class DataQualityIssuesHandlerTests : IClassFixture<PostgresContai
         }
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Handle_SupportsPagination_AndSorting()
     {
         var contexts = await TryCreateContextsAsync();
