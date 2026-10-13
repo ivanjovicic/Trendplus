@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Application.Artikli.Common.Interfaces;
 using Application.Config;
 using Application.Logging;
+using Application.Performance;
 using Domain.Model;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -127,8 +128,12 @@ namespace Application.Behaviors
                         var performanceLog = new PerformanceLog
                         {
                             Timestamp = DateTime.UtcNow,
-                            RequestType = typeof(TRequest).FullName ?? requestName,
-                            RequestName = requestName,
+                            RequestType = PerformanceLogColumnBounds.BoundRequired(
+                                typeof(TRequest).FullName ?? requestName,
+                                PerformanceLogColumnBounds.RequestTypeMaxLength),
+                            RequestName = PerformanceLogColumnBounds.BoundRequired(
+                                requestName,
+                                PerformanceLogColumnBounds.RequestNameMaxLength),
                             DurationMs = durationMs,
                             RequestData = SerializeObject(new
                             {
@@ -136,7 +141,9 @@ namespace Application.Behaviors
                                 sqlExecutions = capturedSqlExecutions
                             }),
                             ResponseData = response != null ? SerializeObject(response) : null,
-                            ExceptionMessage = exception?.Message,
+                            ExceptionMessage = PerformanceLogColumnBounds.Truncate(
+                                exception?.Message,
+                                PerformanceLogColumnBounds.ExceptionMessageMaxLength),
                             IsSuccess = isSuccess
                         };
 
@@ -163,12 +170,13 @@ namespace Application.Behaviors
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
 
-                // Truncate if too long
-                return json.Length > 3900 ? json.Substring(0, 3900) + "..." : json;
+                return PerformanceLogColumnBounds.Truncate(json, PerformanceLogColumnBounds.SerializedJsonMaxLength);
             }
             catch
             {
-                return obj.ToString();
+                return PerformanceLogColumnBounds.Truncate(
+                    obj.ToString(),
+                    PerformanceLogColumnBounds.PayloadMaxLength);
             }
         }
     }
