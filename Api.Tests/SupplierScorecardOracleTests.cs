@@ -127,7 +127,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Equal(0m, scores[108].Input.PostSignalCoverage);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task WindowedScorecard_ExcludesImmatureNoSaleMarkdownFromDeadStockAndKeepsMissingDidNull()
     {
         await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_immature_markdown");
@@ -350,7 +350,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
     // Real PostgreSQL: oracle vs 018/029 SQL on the golden fixture.
     // ------------------------------------------------------------------
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ScorecardViews_MatchIndependentOracle_ForGoldenFixture()
     {
         await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle");
@@ -398,7 +398,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.True(mismatches.Count == 0, string.Join(Environment.NewLine, mismatches));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ScorecardInputRepairs_AreAppliedBySql_Rq521()
     {
         await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_repairs");
@@ -458,7 +458,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
         Assert.Contains(1061, (await ReadArticleSignalsAsync(db.Connection, "vw_supplier_fullprice_signals_180d")).Keys);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task AddingUnrelatedSupplier_ChangesExistingSqlScore_DocumentsN14()
     {
         await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_relative");
@@ -496,7 +496,7 @@ public sealed class SupplierScorecardOracleTests : IClassFixture<PostgresContain
             "Adding an unrelated supplier should move at least one relative Alfa output.");
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task StaleWindowedCaches_AreRecreated_AndRepairedCoreViewsPassStartupReadiness()
     {
         await using var db = await TryCreateScorecardDatabaseAsync("tp_supplier_oracle_upgrade");

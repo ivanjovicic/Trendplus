@@ -81,6 +81,35 @@ public sealed class PostgresRequiredAttributeConventionTests
     }
 
     [Fact]
+    public void Convention_finds_a_guard_helper_called_after_another_helper()
+    {
+        const string source = """
+            public sealed class Sample : IClassFixture<PostgresContainerFixture>
+            {
+                private readonly PostgresContainerFixture _fixture;
+
+                [Fact]
+                public async Task UsesPostgres()
+                {
+                    await using var db = await TryCreateDatabaseAsync();
+                    if (db is null) return;
+                    await SeedAsync(db);
+                }
+
+                private async Task SeedAsync(object db) => await Task.CompletedTask;
+
+                private async Task<object?> TryCreateDatabaseAsync()
+                {
+                    if (!_fixture.IsAvailable) return null;
+                    return await Task.FromResult<object?>(new object());
+                }
+            }
+            """;
+
+        Assert.Equal("Sample.cs:5", Assert.Single(FindViolations("Sample.cs", source)));
+    }
+
+    [Fact]
     public void Convention_does_not_flag_a_required_attribute_or_a_fixture_free_test()
     {
         const string source = """
@@ -184,8 +213,10 @@ public sealed class PostgresRequiredAttributeConventionTests
 
         foreach (var member in memberBodies)
         {
-            if (!visitedMembers.Add(member.Key)
-                || !Regex.IsMatch(body, $@"\b{Regex.Escape(member.Key)}\s*\("))
+            // Check the call first: marking every member visited before testing the call hid a
+            // guard helper once another helper had been traversed (RQ658).
+            if (!Regex.IsMatch(body, $@"\b{Regex.Escape(member.Key)}\s*\(")
+                || !visitedMembers.Add(member.Key))
             {
                 continue;
             }

@@ -28,7 +28,7 @@ public sealed class SupplierReconciliationPackTests : IClassFixture<PostgresCont
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task AdversarialFixture_ProducesExpectedVerdictForEveryCheck_AndStaysReadOnly()
     {
         await using var db = await TryCreateDatabaseAsync("tp_sup_pack_adversarial");
@@ -89,7 +89,7 @@ public sealed class SupplierReconciliationPackTests : IClassFixture<PostgresCont
         Assert.Equal("immature_no_post=1; mature_no_post=2; violations=0", results["SUP-016"].Observed);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task MissingSchemaObjects_ReportOwnedFailuresInsteadOfAbortingThePack()
     {
         await using var db = await TryCreateDatabaseAsync("tp_sup_pack_missing");
@@ -127,7 +127,7 @@ public sealed class SupplierReconciliationPackTests : IClassFixture<PostgresCont
         AssertVerdict(results, "SUP-016", "EXPLAINED", "RQ520");
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TamperedAssortmentView_FailsComparableTotalsAndFakeZeroImmatureContract()
     {
         await using var db = await TryCreateDatabaseAsync("tp_sup_pack_tampered");
