@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: RQ645 primary READY (Supplier trust/cohort/golden deterministic PostgreSQL contracts); RQ646 (ShoeType detail/golden/determinism), RQ647 (performance baselines) and RQ648 (branch content-equivalence and safe reconciliation) are separate READY lanes registered by the 2026-10-13 15:56 CEST post-RQ644 review on main `c4c20197cf029f36de8623e2de8cb7e9df708a57`. Their ownership is path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized. Historical pointer: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ645 primary READY (Supplier trust/cohort/golden deterministic PostgreSQL contracts); RQ646 (ShoeType detail/golden/determinism), RQ647 (performance baselines), RQ648 (branch content-equivalence) and RQ649 (remaining EF InMemory Access worker CI noise) are separate READY lanes registered by the 2026-10-13 15:56 CEST post-RQ644 review on main `c4c20197cf029f36de8623e2de8cb7e9df708a57`. Their ownership is path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized. Historical pointer: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -2109,3 +2109,54 @@ Every branch is accounted for in a dated report, with no unsupported claim that 
 ### Dependencies
 
 GitHub read access; no provider/production data authority. Independent of RQ645–RQ647 code paths. Re-check locks/open PRs before starting.
+
+---
+
+## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
+
+Status: READY
+Priority: P2
+Type: backend test-host worker registration and targeted CI logging
+Feature family: remaining-fake-provider-worker-noise
+Parallel-safe: yes for scoped test host/factory paths; avoid RQ645 Supplier, RQ646 ShoeType and RQ647 benchmark fixtures
+Owner: unassigned
+Ready after: RQ636 DONE and RQ637 DONE; latest exact-main backend CI 38407849758 exposed a distinct residual
+Commit suggestion: test(ci): isolate remaining InMemory API hosts from Access import polling
+
+### Problem
+
+RQ636 fixed CachedAnalyticsOperationalFallbackTests, but other in-memory WebApplicationFactory hosts still register AccessImportBackgroundWorker. In a successful full backend suite, these hosts start the worker with 2s polling and call relational-only AccessImportJobQueue.ClaimNextAsync on EF InMemory, repeatedly logging errors. These are test-host faults, not proof that production is failing. Do not disable real workers globally.
+
+### Evidence
+
+- Main Actions run 38407849758, backend job 115332057225: 2,052 passed; 43 classified skips; zero failed; **113 matching log lines** with the phrase "Relational-specific methods can only be used when the context is using a relational database provider" and stack frames inside AccessImportJobQueue/AccessImportBackgroundWorker. The 113 are log-line matches, NOT 113 distinct failed tests.
+- The same log has zero "Failed to save performance log for" and zero "Failed to persist HTTP request performance metric" matches. RQ631, RQ636 and RQ638 stay DONE.
+- Api.Tests/CachedAnalyticsOperationalFallbackTests.cs already uses explicit narrow opt-out. Other in-memory factories remain unqualified. Candidate log-adjacent suites include AdminConfigOperationalReadsAuthorizationTests and AnalyticsCriticalRouteMappingsTests; log adjacency alone does not identify the worker's owning host.
+
+### Scope
+
+Affected non-import WebApplicationFactory fixtures and targeted registration assertions. No edits to Api/Services/Access/AccessImportBackgroundWorker.cs, Api/Config/WorkerRuntimeConfig.cs, production settings, Supplier/ShoeType suites owned by RQ645/RQ646, RQ647 benchmark harness, global logger filters or the PostgreSQL migrations.
+
+### Read first
+
+Api.Tests/CachedAnalyticsOperationalFallbackTests.cs, Api.Tests/AdminConfigOperationalReadsAuthorizationTests.cs, Api.Tests/AnalyticsCriticalRouteMappingsTests.cs, Api/Program.cs, Api/Config/WorkerRuntimeConfig.cs, Api.Tests/AccessImportBackgroundWorkerStartupLifecycleTests.cs, docs/qa/STATE_REAUDIT_2026-10-13.md, and CI backend job 115332057225.
+
+### Do
+
+1. Identify the precise test factories that instantiate unrelated Access import hosted workers against EF InMemory. Instrument test-only worker registration assertions, not a generic global opt-out.
+2. Configure supported test-only AccessImport:RegisterWorkerInWebProcess=false with correct precedence, or remove the hosted-service descriptor only in isolated non-import hosts. Verify effective Program registration, not merely configuration text.
+3. Add regression: zero background claim/recovery calls in non-import host; endpoint request actually reaches its handler (not an early 503/404); explicit real Access import worker lifecycle fixtures still opt in and pass.
+4. Run exact affected host tests and full backend suite; record before/after matching log-line counts and owning test factory names. Do not automatically call all expected SQL029 negative-fixture SqlFailed logs defects or suppress unrelated exceptions.
+5. If a host genuinely requires the worker, use a real disposable relational PostgreSQL fixture rather than hiding exceptions. Preserve the production registration and RQ637 web startup readiness semantics.
+
+### Tests
+
+Affected API-host routes, AccessImportBackgroundWorkerStartupLifecycleTests, new registration assertions, full backend CI, governance/inventory validator if touched, diff check. All target tests run without skip; no global exception swallowing.
+
+### Acceptance
+
+Non-import EF InMemory hosts no longer run unwanted Access import queue polling or produce its relational-provider errors; production web and dedicated worker behavior is unchanged. Exact CI before/after counts and named host evidence recorded.
+
+### Dependencies
+
+RQ636/RQ637 DONE. No production credentials, source file import or owner business approval needed; check same-file collisions with RQ645/RQ646 before claiming.
