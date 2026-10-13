@@ -1,0 +1,35 @@
+# Trendplus reliability code second pass — 2026-10-13
+
+Task ID: DIRECT-RELIABILITY-SECOND-PASS-2026-10-13
+Queue: direct user request, with new RQ637 and expanded RQ634 (not claimed)
+Agent/tool: ChatGPT GitHub connector
+Audit base: `23c8c1765d7a161f465094db46f4bbc5da3815a1`
+Working branch: `fix/2026-10-13-supplier-diagnostics-reliability`
+Evidence state: pending until merge/main verification
+Ownership transfer: none
+
+## Verified post-PR134 state
+
+- No newer `main` implementation commits at audit start; PR #134 merged into the audited tip. PR final head workflows `38351086653` backend and `38351086632` quality gates are now **success**; `38351086583` governance and exact-merge `38351175549` governance also **success**.
+- User-provided Render log, Oct 12 16:50 UTC: missing supplier 90d and 180d MVs, SQL029 startup invocation, /ready/API 503s; **no SQL completion/outcome or readiness JSON supplied**. Browser-tool `/health` and `/ready` requests from this assistant environment returned `not accessible`, NOT an HTTP 503 or HTTP 200. Do not assert live recovery/outage.
+- Independent application startup paths remain: `BuildSupplierDecisionHubObjectsAsync(...allowHeavyRefresh:false)` can execute expensive SQL018 cache CREATE with **CommandTimeout=0** when missing; PR #133 only guards SQL029 windowed creation.
+- Production `Api/appsettings.Production.json`: `AccessImport:RegisterWorkerInWebProcess=true`, `WorkerEnabled=true`, polling interval 2s; `AccessImportBackgroundWorker.ExecuteAsync` performs stale-batch recovery and queue polling before any startup-readiness gating. Supplied logs show polling concurrent with startup SQL. Causality for API 503 not independently proven.
+- `AnalyticsConnectionDiagnosticsHostedService` previously checks only core/all-time supplier tables/views; its optional supplier 90d/180d status was invisible. `PostgresMaterializedViewCapabilityReader.InspectAsync` already encodes required-column/populated/existence semantics.
+
+## Changes delivered in this PR
+
+1. Improve diagnostics to inspect supplier scorecard 90d/180d MVs with the canonical capability checker after releasing the first reader. Missing/incorrect/unpopulated MVs emit explicit warning, with no attempt to repair and no change to the core retry/not-ready decision. Add 4 xUnit cases for the new diagnostic status helper.
+2. Expand **RQ634** for the previously overlooked SQL018 all-time populated CREATE/command timeout, without touching SQL029 or promoting an untested production setting.
+3. Add **RQ637** as a separate P1 READY task for nonblocking web Access-import worker waiting on required database readiness before stale recovery/queue claims, with dedicated-worker isolation and lifecycle tests. RQ636 remains test-factory-only and independent.
+4. Refresh `MASTER_ROADMAP.md`, STAB16, curated audit, and this evidence. RQ601/RQ602 still PARTIAL, RQ610 BLOCKED, STAB16 BLOCKED on effective provider evidence. Do not repeat batch #23 or run live SQL.
+5. No edits to `AccessImportBackgroundWorker.cs`, `Database/Migrations/018_*.sql`, `029_*.sql`, production worker config, or persistent production data in this review. Those changes need focused PostgreSQL proofs under queued RQ634/RQ637.
+
+## Verification and residuals
+
+- GitHub PR Actions: pending at evidence creation; use exact SHA CI result to close. No local dotnet/Node runtimes in GitHub connector path, so no local build or xUnit executed.
+- Existing canonical supplier capability reader has PostgreSQL tests elsewhere. New unit tests cover the service's warning decision; a full integration proof of logged optional availability after real PostgreSQL startup is **not claimed**.
+- Missing effective Render config, deployed runtime SHA, final SQL018/029 outcome, /ready JSON, actual Neon view state, dedicated worker status and Vercel dashboard. Remain STAB16 external acceptance.
+
+## Next
+
+After green CI and merge, synchronize exact `origin/main` SHA/evidence; do **not** mark RQ634/RQ635/RQ636/RQ637 DONE for this direct-request slice. Confirm fresh ownership/locks before the next agent claims RQ634 primary or the independent RQ637 P1 lane.
