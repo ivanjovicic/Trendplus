@@ -240,7 +240,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.Null(immatureWithoutPostEvidence.ChangePercentRevenueSemantic);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task SemanticRevenueContract_IsDetectablyMissingWhenViewOrColumnIsMissing()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_missing_contract");
@@ -263,7 +263,7 @@ public sealed class AssortmentNivelacijaOracleTests : IClassFixture<PostgresCont
         Assert.False(await HasSemanticRevenueColumnAsync(db.Connection));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task EventSemantics_ExposeDirectionOverlapSameDayCountAndPostMaturity()
     {
         await using var db = await TryCreateDatabaseAsync("tp_assortment_event_semantics");

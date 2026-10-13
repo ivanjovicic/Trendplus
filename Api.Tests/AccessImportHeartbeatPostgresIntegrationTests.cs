@@ -22,7 +22,7 @@ public sealed class AccessImportHeartbeatPostgresIntegrationTests : IClassFixtur
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task HeartbeatAdvancesDuringLongPostgresImportTransaction_WithoutBatchRowLock()
     {
         var connectionString = await CreateDatabaseAsync("tp_access_heartbeat");
@@ -83,7 +83,7 @@ public sealed class AccessImportHeartbeatPostgresIntegrationTests : IClassFixtur
         Assert.Equal(1, probeValue);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task HeartbeatSkipsContendedBatchRowWithinBoundedTimeout()
     {
         var connectionString = await CreateDatabaseAsync("tp_access_heartbeat_lock");
@@ -139,7 +139,7 @@ public sealed class AccessImportHeartbeatPostgresIntegrationTests : IClassFixtur
         await lockTransaction.RollbackAsync();
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RetriableImportTransactionRollsBackOnCancellation()
     {
         var connectionString = await CreateDatabaseAsync("tp_access_heartbeat_cancel");

@@ -18,7 +18,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task FlushTrendWritesAsync_SkipsPendingProdajaStavke_WhenParentMissingAndSkipInvalidForeignKeysEnabled()
     {
         var database = await CreateDatabaseAsync();
@@ -43,7 +43,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal(0, await db.ProdajaStavke.AsNoTracking().CountAsync());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task FlushTrendWritesAsync_ThrowsClearImporterError_WhenParentMissingAndSkipInvalidForeignKeysDisabled()
     {
         var database = await CreateDatabaseAsync();
@@ -69,7 +69,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal(0, await db.ProdajaStavke.AsNoTracking().CountAsync());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task FlushTrendWritesAsync_SavesPendingProdajaHeaderAndLineTogether()
     {
         var database = await CreateDatabaseAsync();

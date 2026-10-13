@@ -17,7 +17,7 @@ public sealed class LostSalesValidationScopePostgresIntegrationTests : IClassFix
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task BuildLostSalesValidation_UsesRequestDataScopeInFallbackPath()
     {
         await using var db = await CreateDatabaseAsync();
@@ -42,7 +42,7 @@ public sealed class LostSalesValidationScopePostgresIntegrationTests : IClassFix
         Assert.NotEqual(imported.LostSalesEstimate, existing.LostSalesEstimate);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task BuildAdvancedDashboard_UsesSnakeCaseSalesOriginColumnForScopedFallbacks()
     {
         await using var db = await CreateDatabaseAsync();

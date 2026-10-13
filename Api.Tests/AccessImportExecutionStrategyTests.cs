@@ -14,7 +14,7 @@ public sealed class AccessImportExecutionStrategyTests : IClassFixture<PostgresC
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task BeginTransactionAsync_OutsideExecutionStrategy_Throws_WhenRetryStrategyEnabled()
     {
         var database = await CreateDatabaseAsync();
@@ -34,7 +34,7 @@ public sealed class AccessImportExecutionStrategyTests : IClassFixture<PostgresC
         Assert.Contains("does not support user-initiated transactions", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RetriableDbContextTransaction_CommitsSaveChangesAndExecuteSqlRaw_WhenRetryStrategyEnabled()
     {
         var database = await CreateDatabaseAsync();
@@ -71,7 +71,7 @@ public sealed class AccessImportExecutionStrategyTests : IClassFixture<PostgresC
         Assert.Equal(42, persisted.RowsWritten);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RetriableDbContextTransaction_RollsBack_WhenOperationFails()
     {
         var database = await CreateDatabaseAsync();

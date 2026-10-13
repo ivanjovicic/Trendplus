@@ -18,7 +18,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task IssuesHandler_ExecutesRealSqlAndHonorsSearchScopeAndRevenueThreshold()
     {
         await using var db = await CreateDatabaseAsync();
@@ -52,7 +52,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(20, result.PageSize);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task IssuesHandler_PaginatesAndUsesStableRevenueOrdering()
     {
         await using var db = await CreateDatabaseAsync();
@@ -94,7 +94,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.NotEqual(firstPage.Items[0].ProductId, secondPage.Items[0].ProductId);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task IssuesHandler_ClassifiesMissingShoeTypeAndInvalidNameAfterSupplierValidation()
     {
         await using var db = await CreateDatabaseAsync();
@@ -130,7 +130,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(DataQualityIssueTypes.InvalidName, nameItem.IssueType);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_ComputesRevenueImpactPercentOrderingAndActionUrl()
     {
         await using var db = await CreateDatabaseAsync();
@@ -160,7 +160,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal($"/artikli/{items[0].ProductId}/edit", items[0].ActionUrl);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_ImportedScopeDoesNotLeakExistingRowsAndHonorsLimit()
     {
         await using var db = await CreateDatabaseAsync();
@@ -185,7 +185,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(100d, item.RevenueImpactPct);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_ExistingScopeExcludesImportedHeaderSalesOnExistingArticle()
     {
         await using var db = await CreateDatabaseAsync();
@@ -225,7 +225,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(1_000m, item.Sales30d);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_AllScopeStillIncludesCrossOriginSalesTotals()
     {
         await using var db = await CreateDatabaseAsync();
@@ -264,7 +264,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.Equal(10_000m, item.RevenueImpactRsd);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_MissingCost_ReturnsProductsWithoutPurchaseCost_EvenWithSupplier()
     {
         await using var db = await CreateDatabaseAsync();
@@ -323,7 +323,7 @@ public sealed class DataQualityPostgresIntegrationTests : IClassFixture<Postgres
         Assert.DoesNotContain(items, row => row.Sku == "DQ-HAS-COST");
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TopOffenders_UnknownIssueType_ThrowsInsteadOfSilentSupplierFallback()
     {
         await using var db = await CreateDatabaseAsync();

@@ -18,7 +18,7 @@ public sealed class NivelacijaReconciliationPackTests : IClassFixture<PostgresCo
 
     public NivelacijaReconciliationPackTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task PassingFixture_ReportsEvidenceForEveryCheck_AndLeavesSourceUntouched()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_recon_pass");
@@ -38,7 +38,7 @@ public sealed class NivelacijaReconciliationPackTests : IClassFixture<PostgresCo
         Assert.Contains("select_privilege=", results["NV-P1-R9"].Observed);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task AdverseFixture_ReportsEachDataAnomalyWithoutWriting()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_recon_adverse");
@@ -79,7 +79,7 @@ public sealed class NivelacijaReconciliationPackTests : IClassFixture<PostgresCo
         Assert.Contains("sales_22_00_to_02_00_local=1", results["NV-P1-R7"].Observed);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task MissingVendorView_IsAStableR9Failure()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_recon_missing_view");
@@ -95,7 +95,7 @@ public sealed class NivelacijaReconciliationPackTests : IClassFixture<PostgresCo
         Assert.Contains("view_exists=f;", parity.Observed);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task TamperedProjection_FailsR6IndependentThirtyDayParity()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_recon_tampered_view");
@@ -109,7 +109,7 @@ public sealed class NivelacijaReconciliationPackTests : IClassFixture<PostgresCo
         Assert.Contains("pre_qty_mismatches=1", result.Observed);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task UnprivilegedCaller_IsAStableR9Failure()
     {
         await using var db = await TryCreateDatabaseAsync("tp_nivelacija_recon_no_select");

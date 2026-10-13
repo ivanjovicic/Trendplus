@@ -31,7 +31,7 @@ public sealed class Rq605LegacySalesPostgresIntegrationTests : IClassFixture<Pos
         _fixture = fixture;
     }
 
-    [Fact(DisplayName = "RQ605 cached sales and comparison match the independent PostgreSQL operational oracle")]
+    [PostgresRequiredFact(DisplayName = "RQ605 cached sales and comparison match the independent PostgreSQL operational oracle")]
     public async Task CachedLegacySales_UsesScopeReceiptPolicySignedReturnsAndScopedCacheKeys()
     {
         var connectionString = await CreateDatabaseAsync("tp_rq605_sales");

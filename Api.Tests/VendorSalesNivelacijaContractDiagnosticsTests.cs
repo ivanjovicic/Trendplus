@@ -27,7 +27,7 @@ public sealed class VendorSalesNivelacijaContractDiagnosticsTests : IClassFixtur
 
     public VendorSalesNivelacijaContractDiagnosticsTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ContractInspector_UsesSearchPathAndClassifiesMissingSchemaColumnAndPrivilege()
     {
         await using var database = await TryCreateDatabaseAsync("tp_rq545_contract");
@@ -100,7 +100,7 @@ public sealed class VendorSalesNivelacijaContractDiagnosticsTests : IClassFixtur
         Assert.Equal("privilege", privilegeIssue.ToDto().MissingPart);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task AdminDiagnostic_RequiresAdminKeyAndReturnsResolvedRelationEvidence()
     {
         await using var database = await TryCreateDatabaseAsync("tp_rq545_admin_diag");
