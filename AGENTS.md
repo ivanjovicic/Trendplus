@@ -152,11 +152,11 @@ Rules:
 
 - treat branch/PR work as transport only; opening or updating a PR is not completion;
 - merge or fast-forward to `main` and push when repository policy allows it;
-- do **not** wait for GitHub/Origin CI to finish before delivering to `main`;
+- do **not** wait for GitHub/Origin CI for work fully validated locally; **exception:** PostgreSQL/Testcontainers-required changes without executable local PostgreSQL must use a PR with green focused PostgreSQL and relevant backend CI on its exact head SHA **before** merge;
 - do **not** subscribe, poll indefinitely or block closure on CI unless the assigned prompt explicitly makes a named check part of acceptance;
 - after delivery, if a relevant current-main Actions run was already triggered and is discoverable, inspect and classify it before final evidence; record its run id/SHA and state as `queued`, `in_progress`, `green` or `red` rather than using `not inspected` as a shortcut;
 - a queued/in-progress run is residual risk, but an already-red current-main run must have its failing job/step classified; fix a proven in-scope regression before claiming `DONE`, or record the concrete pre-existing/unrelated/environment classification;
-- use `PARTIAL` only when `main` cannot be updated safely (branch protection, merge conflict outside scope, missing permissions). Never use `PARTIAL` merely because CI is still running.
+- use `PARTIAL` when `main` cannot be updated safely, **including when mandatory PostgreSQL PR CI is queued, running, failed or has skipped the required oracle**. For ordinary locally proven changes, queued CI alone does not mandate `PARTIAL`.
 
 ## 8. Validation discipline
 
@@ -181,7 +181,7 @@ Rules:
 - a skipped command is `not run` with a reason, never inferred as passing;
 - CI that is queued has not proved anything yet;
 - do not claim GitHub/remote validation without inspecting the relevant result;
-- CI completion is not required before delivering to `main`; deliver after focused local proof unless a prompt explicitly blocks on a named remote check.
+- CI completion is not required before delivering to `main` **only if local required proof actually executed**. The 2026-10-13 owner decision makes a green, exact-head PostgreSQL + relevant backend PR CI result mandatory before merging changes whose required PostgreSQL proof could not run locally. A local `Passed` caused by a test returning early without Docker is `not run`, not a pass; never classify that as `DONE`.
 
 Typical commands are examples, not mandatory checklists:
 
