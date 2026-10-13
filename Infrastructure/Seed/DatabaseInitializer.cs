@@ -472,7 +472,7 @@ public static class DatabaseInitializer
         return false;
     }
 
-    internal static async Task<NpgsqlConnection> AcquireSupplierDecisionSchemaInitializationLockAsync(
+    internal static async Task<SupplierDecisionSchemaInitializationLockLease> AcquireSupplierDecisionSchemaInitializationLockAsync(
         string connectionString,
         ILogger logger,
         CancellationToken cancellationToken = default)
@@ -495,12 +495,56 @@ public static class DatabaseInitializer
                     TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds));
             }
 
-            return connection;
+            return new SupplierDecisionSchemaInitializationLockLease(connection, logger);
         }
         catch
         {
             await connection.DisposeAsync();
             throw;
+        }
+    }
+
+    internal sealed class SupplierDecisionSchemaInitializationLockLease : IAsyncDisposable
+    {
+        private readonly NpgsqlConnection _connection;
+        private readonly ILogger _logger;
+
+        internal SupplierDecisionSchemaInitializationLockLease(NpgsqlConnection connection, ILogger logger)
+        {
+            _connection = connection;
+            _logger = logger;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    return;
+                }
+
+                await using var unlockCommand = new NpgsqlCommand("SELECT pg_advisory_unlock(@key);", _connection);
+                unlockCommand.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
+                unlockCommand.Parameters.AddWithValue("key", SupplierDecisionSchemaInitializationLockKey);
+                var released = (bool?)await unlockCommand.ExecuteScalarAsync() ?? false;
+                if (!released)
+                {
+                    _logger.LogWarning(
+                        "Supplier decision schema initialization lock {Key} was not held when its lease was disposed.",
+                        SupplierDecisionSchemaInitializationLockKey);
+                }
+            }
+            catch
+            {
+                // A failed unlock must not return a session-level advisory lock to the pool.
+                NpgsqlConnection.ClearPool(_connection);
+                throw;
+            }
+            finally
+            {
+                await _connection.DisposeAsync();
+            }
         }
     }
 

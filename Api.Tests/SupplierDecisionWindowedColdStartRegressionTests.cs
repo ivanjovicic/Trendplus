@@ -1,5 +1,6 @@
 using Api.Services.Startup;
 using Infrastructure.Analytics;
+using Infrastructure.Database;
 using Infrastructure.DbContexts;
 using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -73,14 +74,21 @@ public sealed class SupplierDecisionWindowedColdStartRegressionTests
 
         var readiness = new StartupReadinessState();
         readiness.MarkDatabaseInitializationNotRequired();
+        Assert.Null(await PurchaseCostProvenanceSchemaContract.ValidateAsync(defaultDb.ConnectionString));
+        var readinessLogs = new CapturingLoggerProvider();
+        using var readinessLoggerFactory = LoggerFactory.Create(builder => builder.AddProvider(readinessLogs));
         using var warmup = new ReadinessWarmupHostedService(
             configuration,
             readiness,
-            NullLogger<ReadinessWarmupHostedService>.Instance);
+            readinessLoggerFactory.CreateLogger<ReadinessWarmupHostedService>());
         await warmup.StartAsync(CancellationToken.None);
         await warmup.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(15));
 
-        Assert.True(readiness.IsReady);
+        Assert.True(
+            readiness.IsReady,
+            $"reason={readiness.Reason}; defaultDbOk={readiness.DefaultDb.Ok} defaultError={readiness.DefaultDb.Error}; " +
+            $"analyticsDbOk={readiness.AnalyticsDb.Ok} analyticsError={readiness.AnalyticsDb.Error}; " +
+            $"initialization={readiness.DatabaseInitialization.State}; logs={string.Join(" | ", readinessLogs.Messages)}");
         Assert.Equal("ready", readiness.Reason);
         Assert.Equal("not_required", readiness.DatabaseInitialization.State);
         Assert.True(readiness.DefaultDb.Ok);
@@ -188,13 +196,17 @@ public sealed class SupplierDecisionWindowedColdStartRegressionTests
     {
         var unifiedDb = await _fixture.CreateDatabaseAsync("rq634_lock_unified");
         var splitAnalyticsDb = await _fixture.CreateDatabaseAsync("rq634_lock_split");
+        var pooledUnifiedConnectionString = new NpgsqlConnectionStringBuilder(unifiedDb.ConnectionString)
+        {
+            Pooling = true
+        }.ConnectionString;
         var logger = NullLogger.Instance;
 
         var initializerLock = await DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
-            unifiedDb.ConnectionString,
+            pooledUnifiedConnectionString,
             logger);
         var repairLockTask = DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
-            unifiedDb.ConnectionString,
+            pooledUnifiedConnectionString,
             logger);
         var splitDatabaseLock = await DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
             splitAnalyticsDb.ConnectionString,
@@ -207,18 +219,18 @@ public sealed class SupplierDecisionWindowedColdStartRegressionTests
         await repairLock.DisposeAsync();
 
         var lockHolder = await DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
-            unifiedDb.ConnectionString,
+            pooledUnifiedConnectionString,
             logger);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
-                unifiedDb.ConnectionString,
+                pooledUnifiedConnectionString,
                 logger,
                 cancellation.Token));
         await lockHolder.DisposeAsync();
 
         var afterCancellation = await DatabaseInitializer.AcquireSupplierDecisionSchemaInitializationLockAsync(
-            unifiedDb.ConnectionString,
+            pooledUnifiedConnectionString,
             logger).WaitAsync(TimeSpan.FromSeconds(5));
         await afterCancellation.DisposeAsync();
     }
@@ -237,6 +249,7 @@ public sealed class SupplierDecisionWindowedColdStartRegressionTests
             ["DatabaseInitialization:RunFullSupplierDecisionHubOnStartup"] = "false",
             ["DatabaseInitialization:BuildSupplierDecisionHubCachesOnStartup"] = buildSupplierCaches.ToString(),
             ["DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup"] = buildWindowedViews.ToString(),
+            ["Analytics:AllowLoopbackInProduction"] = "true",
             ["StartupReadiness:MaxWarmupAttempts"] = "1",
             ["StartupReadiness:RetryDelaySeconds"] = "1"
         })
