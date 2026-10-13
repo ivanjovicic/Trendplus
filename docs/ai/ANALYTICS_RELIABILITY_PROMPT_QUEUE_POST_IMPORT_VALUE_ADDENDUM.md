@@ -2049,7 +2049,7 @@ RQ644 and local/CI disposable PostgreSQL only. Independent of Supplier contract 
 - Evidence state: synchronized
 - Delivery mode: pull-request
 - Main commit SHA: `4dde4c9e878a8efb88963103af1a8236876d1645`
-- Main verification: fresh `git fetch origin` confirmed `origin/main` equals the PR #150 squash merge and contains implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`.
+- Main verification: fresh `git fetch origin` confirmed PR #150 squash merge `4dde4c9e878a8efb88963103af1a8236876d1645` on `origin/main`; the implementation paths have no diff from implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`.
 - Missed: none known.
 - Follow-up: RQ647 is the primary READY task; RQ648, RQ649 and RQ654 remain independent READY lanes.
 - Residual risk: local full-suite execution previously stalled after unrelated RQ601/RQ610 failures, but exact-head required backend CI completed green with the full suite and inventory validator.
