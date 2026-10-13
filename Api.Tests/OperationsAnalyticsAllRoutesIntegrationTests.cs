@@ -37,7 +37,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
         _output = output;
     }
 
-    [Fact(DisplayName = "PERF19 measures full Decision Board cold and warm HTTP composition")]
+    [global::Api.Tests.PostgresRequiredFact(DisplayName = "PERF19 measures full Decision Board cold and warm HTTP composition")]
     public async Task DecisionBoardHttp_ProfilesColdWarmAndPreservesBusinessPayload()
     {
         Assert.True(_postgres.IsAvailable, "PERF19 requires its disposable PostgreSQL Testcontainer.");
@@ -144,7 +144,7 @@ public sealed class OperationsAnalyticsAllRoutesIntegrationTests
     private static double Percentile(double[] orderedValues, double percentile) =>
         orderedValues[Math.Clamp((int)Math.Ceiling(percentile * orderedValues.Length) - 1, 0, orderedValues.Length - 1)];
 
-    [Fact(DisplayName = "RQ561 certifies the six current Operations screens against one adversarial fixture")]
+    [global::Api.Tests.PostgresRequiredFact(DisplayName = "RQ561 certifies the six current Operations screens against one adversarial fixture")]
     public async Task SharedFixture_ReconcilesSixCurrentScreensAndEmitsRouteVerdicts()
     {
         Assert.True(_postgres.IsAvailable, "The RQ561 certification requires its disposable PostgreSQL Testcontainer.");

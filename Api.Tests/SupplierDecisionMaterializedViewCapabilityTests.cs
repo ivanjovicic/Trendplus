@@ -14,7 +14,7 @@ public sealed class SupplierDecisionMaterializedViewCapabilityTests : IClassFixt
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task InspectAsync_DistinguishesReadyMissingColumnsUnpopulatedAndMissingObject()
     {
         if (!_fixture.IsAvailable)

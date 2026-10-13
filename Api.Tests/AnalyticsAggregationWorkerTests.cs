@@ -24,7 +24,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     }
 
     [Trait("Category", "Integration")]
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RefreshAnalyticsAsync_WhenSuccessful_InvalidatesDashboardAndAggregateBackedPrefixes()
     {
         if (!_fixture.IsAvailable)
@@ -157,7 +157,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     }
 
     [Trait("Category", "Integration")]
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RefreshAnalyticsAsync_WhenAggregateTableIsMissing_DoesNotInvalidateCache()
     {
         if (!_fixture.IsAvailable)
@@ -183,7 +183,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     }
 
     [Trait("Category", "Integration")]
-    [Fact]
+    [PostgresRequiredFact]
     public async Task AggregateReplacementTransaction_WhenInsertFails_RollsBackDelete()
     {
         if (!_fixture.IsAvailable)
@@ -235,7 +235,7 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
     }
 
     [Trait("Category", "Integration")]
-    [Fact]
+    [PostgresRequiredFact]
     public async Task DimensionalAggregates_IncludeOrphanSalesLines_AndReconcileWithDailyTotal()
     {
         if (!_fixture.IsAvailable)

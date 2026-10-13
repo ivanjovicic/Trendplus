@@ -101,7 +101,7 @@ public sealed class SalesLineFactSourceLineKeyTests : IClassFixture<PostgresCont
         Assert.DoesNotContain(statements, s => s.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Migrations_ApplyOnRepeatedLines_AndReimportNeverDoublesRows()
     {
         if (!_fixture.IsAvailable)

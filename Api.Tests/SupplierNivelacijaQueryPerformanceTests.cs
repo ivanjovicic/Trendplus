@@ -22,7 +22,7 @@ public sealed class SupplierNivelacijaQueryPerformanceTests : IClassFixture<Post
         _output = output;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task FirstNivelacijaQuery_BaselineAndArticleBoundedVariants_PreserveRequestedArticleResults()
     {
         if (!_fixture.IsAvailable)

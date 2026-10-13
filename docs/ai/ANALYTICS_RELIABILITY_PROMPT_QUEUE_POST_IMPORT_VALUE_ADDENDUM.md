@@ -1538,6 +1538,7 @@ Ready after: RQ631 DONE / PR #132 merged; same `PerformanceLogs` table, separate
 Commit suggestion: `fix(telemetry): enforce MediatR PerformanceLogs varchar limits`
 
 Completion note (2026-10-13): `PerformanceLogColumnBounds` enforces RequestType/RequestName/ExceptionMessage/RequestData/ResponseData caps in `PerformanceLoggingBehavior`; 18 xUnit tests in `PerformanceLoggingBehaviorColumnBoundsTests`. Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`. Main SHA: `da352033` (implementation `fd9e452f`).
+Follow-up 2026-10-13: PR #141 "avoid splitting UTF-16 surrogate pairs" (head `2b2a631d`), merged as `d7d29f7bac307c886413aedf0071fab286017c33`. PR checks green (backend `38399426259`, quality `38399426590`). Main backend on the merge SHA: `38400296623` success. Status remains DONE.
 
 ### Problem
 

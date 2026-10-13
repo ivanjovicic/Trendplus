@@ -11,7 +11,7 @@ public sealed class MarkdownPilotShadowControlSqlTests : IClassFixture<PostgresC
 
     public MarkdownPilotShadowControlSqlTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact(DisplayName = "RQ612 shadow screen requires nonzero matched demand and keeps unknown availability unqualified")]
+    [PostgresRequiredFact(DisplayName = "RQ612 shadow screen requires nonzero matched demand and keeps unknown availability unqualified")]
     public async Task ShadowQuery_RejectsZeroUnmatchedConfoundedAndReusedControls()
     {
         Assert.True(_fixture.IsAvailable,

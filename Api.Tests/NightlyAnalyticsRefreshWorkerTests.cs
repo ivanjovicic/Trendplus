@@ -51,7 +51,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         Assert.True((bool)method.Invoke(null, [new[] { "public.completed_mv" }])!);
     }
 
-    [Theory]
+    [PostgresRequiredTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task RunNightlyRefreshAsync_RecordsIntelligenceCacheGenerationForSameAndSeparateDatabase(bool separateAnalyticsDatabase)
@@ -119,7 +119,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         Assert.Equal(DateOnly.FromDateTime(reader.GetDateTime(1)), DateOnly.FromDateTime(reader.GetDateTime(7)));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RunNightlyRefreshAsync_RecordsFailedIntelligenceAttemptAndPreservesLastSuccess()
     {
         if (!_fixture.IsAvailable)
@@ -174,7 +174,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-1)), DateOnly.FromDateTime(reader.GetDateTime(3)));
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RunNightlyRefreshAsync_WhenSomeViewsCompleteBeforeFailure_InvalidatesCache()
     {
         if (!_fixture.IsAvailable)
@@ -202,7 +202,7 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
             harness.Cache.RemovedPrefixes);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task RunNightlyRefreshAsync_WhenNoViewCompletes_DoesNotInvalidateCache()
     {
         if (!_fixture.IsAvailable)

@@ -47,7 +47,7 @@ public sealed class OutboxProcessorWorkerConcurrencyTests : IClassFixture<Postgr
         Assert.Contains("CountDeadLetterMessagesAsync", worker, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task ConcurrentTransactionsClaimPendingMessageOnlyOnce()
     {
         if (!_fixture.IsAvailable)

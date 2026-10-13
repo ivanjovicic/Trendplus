@@ -18,7 +18,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
         _fixture = fixture;
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task SchemaGuard_CreatesWorkerRuntimeSettings_WithExpectedColumnsAndUniqueWorkerName()
     {
         if (!_fixture.IsAvailable)
@@ -87,7 +87,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task GetPolicyAsync_CreatesDefaults_WhenRowDoesNotExist()
     {
         if (!_fixture.IsAvailable)
@@ -114,7 +114,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
         Assert.True(row.IsScheduleEnabled);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task GetPolicyAsync_BlocksWorker_WhenManuallyStopped()
     {
         if (!_fixture.IsAvailable)
@@ -150,7 +150,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
         Assert.Contains("ru", policy.PauseReason!, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task MissingTable_DoesNotCrashAndRecovers_WhenSchemaWasDropped()
     {
         if (!_fixture.IsAvailable)
@@ -185,7 +185,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
         Assert.Equal("RecoveredWorker", second.WorkerName);
     }
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task MissingRelationDetection_RecognizesPostgres42P01_ForWorkerRuntimeSettings()
     {
         if (!_fixture.IsAvailable)

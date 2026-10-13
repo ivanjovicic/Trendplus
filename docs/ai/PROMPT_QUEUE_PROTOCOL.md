@@ -320,6 +320,8 @@ Pre-push backend proof for direct-main code changes (owner decision 2026-10-12, 
 - owner decision 2026-10-13 14:24 (supersedes the earlier "first CI run is the proof" allowance): a change whose required proof needs PostgreSQL/Testcontainers that cannot run locally must go through a PR on a branch and be merged only after the focused PostgreSQL tests and the relevant backend CI pass on that PR. A local `Passed` from a PostgreSQL test while Docker is unavailable is not proof, because such tests may return early. Report it as `not run`. If main still goes red, fixing main takes priority over new queue work;
 - docs-only commits need only the validators listed in `## Validation`.
 
+Lessons learned 2026-10-13 (PostgreSQL `not run`, fixture dependency chain, readiness gate in test hosts, false DONE, temp-index/CRLF pitfalls) are mandatory: see `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md` `## Lessons learned 2026-10-13`.
+
 Canonical owner for the full policy: `AGENTS.md` section 7 and `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
 
 ## Collision rules

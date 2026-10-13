@@ -12,7 +12,7 @@ public sealed class NivelacijaEventNormalizationTests : IClassFixture<PostgresCo
 
     public NivelacijaEventNormalizationTests(PostgresContainerFixture fixture) => _fixture = fixture;
 
-    [Fact]
+    [PostgresRequiredFact]
     public async Task Normalization_UsesExplicitMappings_LogsUnmappedValues_AndIgnoresOversizedReceiptIds()
     {
         Assert.True(_fixture.IsAvailable, "PostgreSQL Testcontainers fixture is required for this regression proof.");
