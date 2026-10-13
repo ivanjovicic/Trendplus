@@ -1788,12 +1788,17 @@ RQ639 DONE, PR #137 merged and RQ635 PostgreSQL tests green. STAB16 provider gat
 - Completion: Added `AnalyticsDbInfrastructurePostgresIntegrationTests` with two `PostgresRequiredFact` proofs (critical EF column selects + ten concurrent successful supplier-sales HTTP calls on isolated migrated PostgreSQL). Removed superseded OperationsIntegrationFact methods; kept response-time baseline skip. BCI17 inventory `expectedKnownSkippedCount` 45 → 43.
 - Changed files: `Api.Tests/AnalyticsDbInfrastructurePostgresIntegrationTests.cs`, `Api.Tests/AnalyticsDbInfrastructureTests.cs`, `scripts/ci/backend-skip-inventory.json`, `.ai/runs/2026-10-13-RQ642-evidence.md`
 - Contract/runtime behavior changed: no
-- Checks run: Release build; local filter `AnalyticsDbInfrastructure` (3 skipped without Docker); `node scripts/check-prompt-queues.mjs`
-- Checks not run: full backend TRX skip-inventory validation (pending exact-main CI after push)
+- Checks run: Release build; local filter `AnalyticsDbInfrastructure` (3 skipped without Docker); `node scripts/check-prompt-queues.mjs`; exact-main Analytics Tests `38403990864`
+- Checks not run: none material after exact-main green CI
 - Run log: `.ai/runs/2026-10-13-RQ642-evidence.md`
-- Evidence state: pending exact-main CI SHA
-- Delivery mode: direct-main (target)
-- Post-close routing: `Current READY` → none; post-close cascade pending fresh `origin/main` scan
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `cfb66628a0910387dd1663ef7868f9975a72355c`
+- Main verification: `origin/main` contains `cfb66628`; Analytics Tests `38403990864` success (2042 passed, 43 skipped, 0 failed); both RQ642 tests Passed
+- Missed: none known
+- Follow-up: RQ643 readiness status mapping
+- Residual risk: `AnalyticsEndpoint_ResponseTimeBaseline` remains a classified skip
+- Post-close routing: `Current READY` → none after RQ642; RQ643 registered from no-READY ladder
 
 
 ## RQ643 - Keep /ready status=failed for schema-contract rejection
