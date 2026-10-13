@@ -280,11 +280,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesDetail_ExposesRecommendationTrustAndReferenceCohort",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows",
@@ -296,11 +300,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_DataQualityIncludesMissingCostInfo",
@@ -348,11 +356,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_DeclaresRecommendationReferenceCohort",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ExposesMarginQualityAndNonNegativeNoCost",
@@ -382,11 +394,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_HandlesMissingSchemaGracefully",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidPeriod_ReturnsBadRequest",
@@ -434,11 +450,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_MatchesGoldenSnapshot",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_MetricsMatchFixtureValues",
@@ -484,11 +504,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_ProducesDeterministicJson",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ReturnsValidJsonWithAllFields",
@@ -572,11 +596,15 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Legacy shared-source test remains opt-in; the exact Supplier contract now has a deterministic isolated PostgreSQL proof required in CI.",
+      "owner": "Analytics Reliability (RQ645 isolated Supplier fixture).",
+      "proof": {
+        "suite": "supplier-remaining-contracts-postgres",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesRemainingContractsPostgresTests.SupplierSalesStats_UsesWeightedMarginBenchmark",
+        "sourcePath": "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeIndependentOracleIntegrationTests.SharedFixture_AttributionFrozenAfterMasterMutation",
