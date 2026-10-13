@@ -1830,6 +1830,14 @@ Unit mapping tests pass; focused readiness tests compile; conflict markers absen
 - Completion: Extracted `StartupReadinessEndpoints.ResolvePublicStatus`; schema-incompatible / schema_contract_incompatible always maps to `failed`. Wait helper and unit tests updated. Removed conflict markers from `MASTER_ROADMAP.md` and synchronized RQ642 SHA.
 - Changed files: `Api/Services/Startup/StartupReadinessEndpoints.cs`, `Api/Services/Startup/ReadinessWarmupHostedService.cs`, `Api.Tests/StartupReadinessStatusMappingTests.cs`, `Api.Tests/PurchaseCostProvenanceReadinessPostgresIntegrationTests.cs`, `MASTER_ROADMAP.md`, this queue, `.ai/runs/2026-10-13-RQ643-evidence.md`
 - Contract/runtime behavior changed: yes — `/ready` status for schema rejection is stably `failed`
+- Checks run: `StartupReadinessStatusMappingTests` 8/8; `node scripts/check-prompt-queues.mjs`; conflict-marker scan on `MASTER_ROADMAP.md`
+- Checks not run: full backend suite / PostgreSQL provenance integration (no Docker in agent VM); exact-main CI after push
 - Run log: `.ai/runs/2026-10-13-RQ643-evidence.md`
+- Evidence state: pending exact-main SHA
 - Delivery mode: direct-main
+- Main commit SHA: pending
+- Main verification: pending
+- Missed: none known for this slice
+- Follow-up: none; STAB16 / RQ610 / RQ601 / RQ602 remain external or business-gated
+- Residual risk: other readiness failure categories still rely on `initialization.State == failed` or reason text
 - Post-close routing: `Current READY` → none pending cascade
