@@ -3,7 +3,7 @@
   "inventoryId": "backend-operations-skipped-tests-bci17",
   "sourceRun": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379",
   "sourceSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7",
-  "expectedKnownSkippedCount": 45,
+  "expectedKnownSkippedCount": 43,
   "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
   "entries": [
     {
@@ -731,38 +731,6 @@
         "fullyQualifiedName": "Trendplus2.Tests.SupplierShoeTypeRq447SeamIntegrationTests.Op214_PeriodMetadata_ReflectsRequestedAndEffectiveWindow",
         "workflowJobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38178775379/job/114586754585"
       }
-    },
-    {
-      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsDbInfrastructureTests.AnalyticsSchema_CriticalColumnsExist",
-      "displayName": "Critical analytics columns must exist in DB schema",
-      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
-      "source": {
-        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38392996677",
-        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38392996677",
-        "artifact": "analytics-backend-test-results/analytics-tests.trx",
-        "headSha": "9d9f534cb0f8c062d14cae5d4b8bae1ac74082fa"
-      },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "Legacy WebApplicationFactory guard against shared/populated source DB schema drift; not included in named integration filters and has no disposable fixture certification today.",
-      "owner": "Analytics Reliability (RQ639); route (a) explicit skip inventory registration.",
-      "unblockEvent": "Add a named integration workflow filter with deterministic source DB fixture, or replace with an existing PostgreSQL schema-drift oracle.",
-      "proof": null
-    },
-    {
-      "fullyQualifiedName": "Trendplus2.Tests.AnalyticsDbInfrastructureTests.AnalyticsEndpoint_HandlesParallelRequests",
-      "displayName": "Endpoint handles concurrent requests without crashing",
-      "skipReason": "TRENDPLUS_RUN_INTEGRATION_TESTS=true is required for live Operations proof.",
-      "source": {
-        "runUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38392996677",
-        "jobUrl": "https://github.com/ivanjovicic/Trendplus/actions/runs/38392996677",
-        "artifact": "analytics-backend-test-results/analytics-tests.trx",
-        "headSha": "9d9f534cb0f8c062d14cae5d4b8bae1ac74082fa"
-      },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "Legacy concurrency smoke against shared host DB; not included in named integration filters.",
-      "owner": "Analytics Reliability (RQ639).",
-      "unblockEvent": "Run under a stable disposable fixture in a named integration step, or supersede with an existing route concurrency oracle.",
-      "proof": null
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsDbInfrastructureTests.AnalyticsEndpoint_ResponseTimeBaseline",
