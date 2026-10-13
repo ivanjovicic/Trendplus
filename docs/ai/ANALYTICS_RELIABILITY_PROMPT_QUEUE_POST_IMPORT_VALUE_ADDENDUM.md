@@ -2567,7 +2567,7 @@ Use existing `useReliableAnalyticsQuery` helper when appropriate.
 
 ## RQ658 - Close remaining local false-pass PostgreSQL tests and convention traversal gap
 
-Status: IN PROGRESS
+Status: DONE
 Priority: P1
 Type: test reliability / CI proof
 Feature family: postgres-proof-convention
@@ -2609,3 +2609,19 @@ Convention test green; no plain `[Fact]`/`[Theory]` test reaches a PostgreSQL av
 ### Dependencies
 
 RQ638.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: 100%
+- Changed files: Api.Tests/PostgresRequiredAttributeConventionTests.cs, Api.Tests/AssortmentNivelacijaOracleTests.cs, Api.Tests/SupplierReconciliationPackTests.cs, Api.Tests/SupplierScorecardOracleTests.cs, docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md
+- Checks run: local Testing env convention + 3 classes (42 total, 24 passed, 18 skipped, 0 failed; convention failed with the 16 violations before conversion); node scripts/check-prompt-queues.mjs, check-planning-architecture.mjs, check-agent-instructions.mjs with and without --self-test; git diff --check; PR #148 CI: Complete backend analytics suite run 38449578209 pass, planning governance run 38449578180 pass, frontend run 38449578205 pass
+- Checks not run: smoke tests and Development environment (owner rule)
+- Run log: .ai/runs/2026-10-13-RQ658-postgres-convention-evidence.md
+- Delivery mode: PR #148 merged with --merge after green CI
+- Main commit SHA: c094c3ceed6609993344e8beaeaa9aa9a15b0d98
+- Main verification: git rev-parse origin/main -> c094c3ceed6609993344e8beaeaa9aa9a15b0d98
+- Missed: traversal bug shipped in ee79f741 let 16 tests pass locally without Docker
+- Follow-up: none
+- Residual risk: convention remains source-regex based; unusual guard shapes (e.g. guards through other classes) may still escape detection
