@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none in post-import addendum after RQ641 close-out (route a: main push runs are not cancelled). RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ642 (P2 deterministic PostgreSQL schema/concurrency smoke reproof) after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1731,3 +1731,52 @@ Every code commit pushed to `main` has a completed backend run, or the protocol 
 ### Dependencies
 
 Owner decision on CI minutes versus proof.
+
+## RQ642 - Replace two AnalyticsDbInfrastructureTests skips with deterministic CI PostgreSQL proof
+
+Status: READY
+Priority: P2
+Type: targeted backend PostgreSQL/API integration-test recovery
+Feature family: analytics-infrastructure-uncovered-smokes
+Parallel-safe: yes (own Api.Tests/AnalyticsDbInfrastructureTests.cs and new isolated fixture/tests; do not edit supplier SQL029 or RQ635 lifecycle tests)
+Owner: unassigned
+Ready after: RQ639 classification DONE and RQ635 corrective PR #137 green/merged
+Commit suggestion: `test(analytics): certify infrastructure schema and route concurrency in disposable PostgreSQL`
+
+### Problem
+
+RQ639 transparently classified three formerly vacuous tests as skipped and raised BCI17 to 45. Two of those tests exercise deterministic business safety properties (critical analytics schema columns and parallel supplier-sales HTTP requests), but a skip inventory is not actual proof. A third response-time baseline is environment-sensitive and should not become a flaky required gate without independent benchmarking design.
+
+### Evidence
+
+- RQ639 code SHA `cab5b0d7afabbe1e9e92a8c73df936e708968146`: `AnalyticsDbInfrastructureTests.AnalyticsSchema_CriticalColumnsExist` and `AnalyticsEndpoint_HandlesParallelRequests` were changed to `[OperationsIntegrationFact]` and classified as `genuinely-uncovered` in `scripts/ci/backend-skip-inventory.json`.
+- RQ639 also classifies `AnalyticsEndpoint_ResponseTimeBaseline` as a third environment-sensitive skip; leave it separate.
+- Corrected RQ635 PR-head `38397641969` ran 2,039 tests and classified 45 skips, demonstrating the two target tests still have no required CI proof.
+
+### Scope
+
+Target only the first two RQ639 skip entries and their deterministic fixture/path. Build isolated disposable PostgreSQL/HTTP setup using existing test infrastructure and retained source contract, not user data. Do not change product analytics formulas or request semantics, suppress 503 via API gate bypass without documenting the tested state, rename other Operations smoke families, or remove skip inventory entries before exact CI proof.
+
+### Read first
+
+`Api.Tests/AnalyticsDbInfrastructureTests.cs`; `Api.Tests/OperationsIntegrationFactAttribute.cs` (locate actual attribute path by code search); `Api.Tests/DatabaseInitializerP0IntegrationTests.cs`; `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`; `scripts/ci/backend-skip-inventory.json`; `Api/Services/Startup/StartupReadinessState.cs`; RQ639 evidence.
+
+### Do
+
+1. Reconcile the exact two skip identities and enumerate their true assertions. Determine if existing PostgreSQL lifecycle/catalog checks already supersede the schema-column test; if so, link explicit actual executed proof and only remove redundant skip after verifying semantic parity.
+2. For remaining unique semantics, move tests to a stable isolated PostgreSQL fixture with required migrations + deterministic sales facts and bounded startup, and use a named CI filter that really executes them. No shared mutable test DB or live credentials.
+3. For concurrent HTTP assertions, prove multiple overlapping requests really reach the handler (not only simultaneous 503, early middleware or a sequentially serialized fake); verify success and correct scoping, with safe disposal, transaction/connection isolation, timeouts and no hidden retries.
+4. Record before/after exact test names, total skipped count and CI log proof. Update BCI17 skip inventory only after successful target execution on the exact head SHA. Do not count a local no-Docker early return as passing.
+5. Keep `AnalyticsEndpoint_ResponseTimeBaseline` explicitly skipped/independently owned unless a stable, non-gating performance measurement infrastructure is designed; no arbitrary 3-second gate in GitHub shared runners.
+
+### Tests
+
+Two focused named PostgreSQL/HTTP integration tests must execute in CI with zero target skips; complete relevant backend suite and diagnostics; no regression to SQL029 RQ635 tests; guarded skip-inventory check, `git diff --check`, governance validators if queue/evidence files change.
+
+### Acceptance
+
+Two missing deterministic analytics-infrastructure proof contracts have actual CI results, no false success via 503 or skipped DB checks, and skip inventory matches the real TRX. Environment-sensitive performance baseline remains transparently classified. Delivered code/test SHA on main with evidence; no production dependency.
+
+### Dependencies
+
+RQ639 DONE, PR #137 merged and RQ635 PostgreSQL tests green. STAB16 provider gate is not a start dependency for isolated code tests. Avoid colliding with unrelated active test-host ownership; rescan locks/PRs before claim.
