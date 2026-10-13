@@ -260,6 +260,18 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
             && success.ValueKind == JsonValueKind.True);
     }
 
+    [Fact(DisplayName = "Invalid season returns not found on in-memory host")]
+    public async Task SupplierSalesStats_InvalidSeason_ReturnsNotFound_InMemory()
+    {
+        await using var factory = new SupplierSalesInMemoryFactory();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/supplier-sales-stats?sezonaId=999999");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(body));
+    }
+
     [OperationsIntegrationFact(DisplayName = "Supplier SharePct invariant: all shares sum to 100%")]
     public async Task SupplierSalesStats_SharesSumTo100()
     {

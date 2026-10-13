@@ -212,11 +212,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ644 adds an in-memory host test for invalid sezonaId without shared source DB dependency.",
+      "proof": {
+        "suite": "in-memory-input-validation",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_InvalidSeason_ReturnsNotFound_InMemory",
+        "sourcePath": "Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsShoeTypeSalesIntegrationTests.ShoeTypeSalesStats_MatchesGoldenSnapshot",
@@ -396,11 +398,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "The invalid-period contract also has an in-memory host test with no external database dependency (parity with ShoeType RQ644).",
+      "proof": {
+        "suite": "in-memory-input-validation",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidPeriod_ReturnsBadRequest_InMemory",
+        "sourcePath": "Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidSeason_ReturnsNotFound",
@@ -412,11 +416,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ644 adds an in-memory host test for invalid sezonaId without shared source DB dependency.",
+      "proof": {
+        "suite": "in-memory-input-validation",
+        "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_InvalidSeason_ReturnsNotFound_InMemory",
+        "sourcePath": "Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_MatchesGoldenSnapshot",
@@ -494,11 +500,13 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
-      "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "classification": "legacy-superseded",
+      "prerequisite": "Required supplier response shape (suppliers/totals/dataQuality/meta.success) is asserted by disposable PostgreSQL parity proof AssertFullSupplierContract.",
+      "proof": {
+        "suite": "supplier-postgres-parity",
+        "fullyQualifiedName": "Api.Tests.SupplierSalesStatsEndpointPostgresParityTests.SupplierEndpoint_PostgresParity_CacheHitAndIntegrityChangePreserveValuesAndRefreshGate",
+        "sourcePath": "Api.Tests/SupplierSalesStatsEndpointPostgresParityTests.cs"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_SharesSumTo100",

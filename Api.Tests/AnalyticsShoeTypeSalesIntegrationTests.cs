@@ -100,6 +100,18 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
             && success.ValueKind == JsonValueKind.True);
     }
 
+    [Fact(DisplayName = "Invalid season returns not found on in-memory host")]
+    public async Task ShoeTypeSalesStats_InvalidSeason_ReturnsNotFound_InMemory()
+    {
+        await using var factory = new ShoeTypeSalesInMemoryFactory();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/api/analytics/shoe-type-sales-stats?sezonaId=999999");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(body));
+    }
+
     [OperationsIntegrationFact(DisplayName = "ShoeType endpoint correctly aggregates 'Nepoznato' for null/empty types")]
     public async Task ShoeTypeSalesStats_AggregatesUnknownTypes()
     {
