@@ -1984,13 +1984,15 @@ RQ644 DONE and existing RQ453/Testcontainers. STAB16 provider access and RQ601 o
 
 ## RQ646 - Certify remaining ShoeType detail trust, golden snapshot and deterministic output
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend ShoeType analytics contract/PostgreSQL integration tests
 Feature family: shoe-type-legacy-uncovered-fixture-parity
 Parallel-safe: yes for ShoeType-only fixtures/tests; isolated database and no RQ645 Supplier file overlap
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/RQ646-codex.lock.md`
 Ready after: RQ644 DONE; RQ453 seeded PostgreSQL route/oracle framework available
+Claim note: 2026-10-13 - claimed after refreshing `origin/main` to `40089fa424e30d4c7c6f90f72fb29808e6e0e042`. RQ645 is DONE with synchronized evidence; no active ShoeType product/test branch, PR or lock was found. Scope is restricted to the named ShoeType PostgreSQL proof and its inventory entries.
 Commit suggestion: `test(analytics): certify three shoe-type trust and golden contracts`
 
 ### Problem
