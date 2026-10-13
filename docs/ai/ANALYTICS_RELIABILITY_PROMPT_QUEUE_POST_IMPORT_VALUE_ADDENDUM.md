@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none after RQ642 close-out (disposable PostgreSQL schema + concurrent supplier-sales proof; BCI17 inventory 43). RQ642 is DONE pending exact-main SHA. Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: none after RQ643 close-out (`/ready` schema-failure status must be `failed`). RQ643 is DONE pending exact-main SHA. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1794,3 +1794,42 @@ RQ639 DONE, PR #137 merged and RQ635 PostgreSQL tests green. STAB16 provider gat
 - Evidence state: pending exact-main CI SHA
 - Delivery mode: direct-main (target)
 - Post-close routing: `Current READY` → none; post-close cascade pending fresh `origin/main` scan
+
+
+## RQ643 - Keep /ready status=failed for schema-contract rejection
+
+Status: DONE
+Priority: P2
+Type: readiness-contract/unit-test hardening
+Feature family: startup-readiness-status
+Parallel-safe: yes (StartupReadinessEndpoints + focused tests; no SQL029/STAB16)
+Owner: Cursor
+Ready after: RQ642 DONE with green exact-main CI; observed intermittent PurchaseCostProvenance readiness status mismatch on main run `38401068403`
+Commit suggestion: `fix(readiness): map schema contract rejection to failed status`
+
+### Problem
+
+Intermediate main backend run `38401068403` failed `PurchaseCostProvenanceReadinessPostgresIntegrationTests.AutoMigrationDisabled_MissingContractKeepsReadyEndpointUnavailableWithoutDdl` with reason=`schema_incompatible` but public status=`warming_up`. Operators and tests must treat required schema rejection as terminal `failed`, not warmup.
+
+### Scope
+
+- Map schema-contract / schema-verification failure reasons and failure categories to public status `failed`.
+- Harden the readiness wait helper to require status=`failed` together with reason=`schema_incompatible`.
+- Add Docker-free unit coverage for the status mapping.
+- Repair accidental git conflict markers left in `MASTER_ROADMAP.md` on main during RQ642 routing sync.
+- Do not change STAB16 provider gates, SQL029 lifecycle tests, or purchase-cost business formulas.
+
+### Acceptance
+
+Unit mapping tests pass; focused readiness tests compile; conflict markers absent from `MASTER_ROADMAP.md`; delivered on main with evidence.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: Extracted `StartupReadinessEndpoints.ResolvePublicStatus`; schema-incompatible / schema_contract_incompatible always maps to `failed`. Wait helper and unit tests updated. Removed conflict markers from `MASTER_ROADMAP.md` and synchronized RQ642 SHA.
+- Changed files: `Api/Services/Startup/StartupReadinessEndpoints.cs`, `Api/Services/Startup/ReadinessWarmupHostedService.cs`, `Api.Tests/StartupReadinessStatusMappingTests.cs`, `Api.Tests/PurchaseCostProvenanceReadinessPostgresIntegrationTests.cs`, `MASTER_ROADMAP.md`, this queue, `.ai/runs/2026-10-13-RQ643-evidence.md`
+- Contract/runtime behavior changed: yes — `/ready` status for schema rejection is stably `failed`
+- Run log: `.ai/runs/2026-10-13-RQ643-evidence.md`
+- Delivery mode: direct-main
+- Post-close routing: `Current READY` → none pending cascade

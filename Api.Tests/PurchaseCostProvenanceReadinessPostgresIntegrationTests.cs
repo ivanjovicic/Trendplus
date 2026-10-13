@@ -119,8 +119,14 @@ public sealed class PurchaseCostProvenanceReadinessPostgresIntegrationTests
             if (expectedReady && ready)
                 return (response.StatusCode, root);
 
-            if (!expectedReady && string.Equals(reason, "schema_incompatible", StringComparison.Ordinal))
+            // Require both reason and public status so a transitional warming_up payload
+            // cannot satisfy the wait and then fail the status assertion (RQ643).
+            if (!expectedReady
+                && string.Equals(reason, "schema_incompatible", StringComparison.Ordinal)
+                && string.Equals(root.GetProperty("status").GetString(), "failed", StringComparison.Ordinal))
+            {
                 return (response.StatusCode, root);
+            }
 
             await Task.Delay(TimeSpan.FromMilliseconds(20), timeout.Token);
         }

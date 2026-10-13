@@ -87,12 +87,15 @@ public sealed class ReadinessWarmupHostedService : BackgroundService
 
     private void MarkSchemaVerificationFailure(string category)
     {
+        // Keep failure category, failed init state and public reason consistent in one
+        // transition so /ready cannot observe schema_incompatible with status=warming_up.
         _readiness.BeginDatabaseInitializationAttempt();
         _readiness.RecordDatabaseInitializationFailure(category, "purchase_cost_provenance");
         _readiness.MarkDatabaseInitializationFailed();
-        _readiness.MarkNotReady(category == "schema_contract_incompatible"
+        var reason = category == "schema_contract_incompatible"
             ? "schema_incompatible"
-            : "schema_verification_failed");
+            : "schema_verification_failed";
+        _readiness.MarkNotReady(reason);
     }
 
     private async Task<bool> ProbeConfiguredDatabasesAsync(CancellationToken stoppingToken)

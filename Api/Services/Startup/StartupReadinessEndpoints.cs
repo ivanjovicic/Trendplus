@@ -13,14 +13,7 @@ public static class StartupReadinessEndpoints
             var initialization = readiness.DatabaseInitialization;
             var isReady = readiness.IsReady;
             var isDegradedSuccess = initialization.State == "completed_with_errors";
-            var status = isReady
-                ? isDegradedSuccess ? "degraded" : "healthy"
-                : initialization.State == "failed"
-                    ? "failed"
-                : readiness.Reason.Contains("warmup", StringComparison.OrdinalIgnoreCase)
-                    || readiness.Reason.Contains("starting", StringComparison.OrdinalIgnoreCase)
-                    ? "warming_up"
-                    : "degraded";
+            var status = ResolvePublicStatus(isReady, isDegradedSuccess, initialization, readiness.Reason);
             var retryAfterSeconds = isReady ? (int?)null : 5;
             if (!isReady)
             {
@@ -59,6 +52,42 @@ public static class StartupReadinessEndpoints
                 : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
         }).AllowAnonymous();
     }
+
+    /// <summary>
+    /// Maps internal readiness state to the public <c>/ready</c> status vocabulary.
+    /// Schema-contract failures must surface as <c>failed</c>, never as <c>warming_up</c>.
+    /// </summary>
+    internal static string ResolvePublicStatus(
+        bool isReady,
+        bool isDegradedSuccess,
+        StartupReadinessState.DatabaseInitializationSnapshot initialization,
+        string reason)
+    {
+        if (isReady)
+            return isDegradedSuccess ? "degraded" : "healthy";
+
+        if (IsSchemaContractFailure(initialization, reason)
+            || string.Equals(initialization.State, "failed", StringComparison.Ordinal))
+        {
+            return "failed";
+        }
+
+        if (reason.Contains("warmup", StringComparison.OrdinalIgnoreCase)
+            || reason.Contains("starting", StringComparison.OrdinalIgnoreCase))
+        {
+            return "warming_up";
+        }
+
+        return "degraded";
+    }
+
+    private static bool IsSchemaContractFailure(
+        StartupReadinessState.DatabaseInitializationSnapshot initialization,
+        string reason) =>
+        string.Equals(reason, "schema_incompatible", StringComparison.Ordinal)
+        || string.Equals(reason, "schema_verification_failed", StringComparison.Ordinal)
+        || string.Equals(initialization.FailureCategory, "schema_contract_incompatible", StringComparison.Ordinal)
+        || string.Equals(initialization.FailureCategory, "schema_verification_failed", StringComparison.Ordinal);
 
     private static long? ResolveProbeLatency(long? defaultLatencyMs, long? analyticsLatencyMs)
     {
