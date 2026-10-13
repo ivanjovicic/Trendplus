@@ -20,7 +20,8 @@ public sealed class SupplierShoeTypeRq447SeamIntegrationTests
 
     public SupplierShoeTypeRq447SeamIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [OperationsIntegrationFact(DisplayName = "RQ447 OP2-01 date boundaries use the same half-open certified window")]

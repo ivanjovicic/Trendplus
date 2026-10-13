@@ -25,7 +25,8 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
     private readonly WebApplicationFactory<global::Program> _factory;
     public AnalyticsSupplierSalesIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [OperationsIntegrationFact(DisplayName = "Endpoint returns valid JSON with required fields")]

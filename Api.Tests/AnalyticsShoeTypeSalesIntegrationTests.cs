@@ -26,7 +26,8 @@ public class AnalyticsShoeTypeSalesIntegrationTests : IClassFixture<WebApplicati
     private readonly WebApplicationFactory<global::Program> _factory;
     public AnalyticsShoeTypeSalesIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [OperationsIntegrationFact(DisplayName = "ShoeType endpoint returns valid JSON structure")]

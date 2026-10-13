@@ -20,7 +20,8 @@ public sealed class SupplierShoeTypeIndependentOracleIntegrationTests
 
     public SupplierShoeTypeIndependentOracleIntegrationTests(WebApplicationFactory<global::Program> factory)
     {
-        _factory = factory;
+        _factory = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("StartupReadiness:GateApiTraffic", "false"));
     }
 
     [OperationsIntegrationFact(DisplayName = "Supplier and Shoe Type endpoints reconcile to the raw-fact oracle (RQ407 fixture, all scope)")]
