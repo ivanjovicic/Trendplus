@@ -2,7 +2,7 @@
 
 Date: 2026-10-12
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
-Current READY prompt: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
+Current READY prompt: RQ645 primary READY (Supplier trust/cohort/golden deterministic PostgreSQL contracts); RQ646 (ShoeType detail/golden/determinism), RQ647 (performance baselines), RQ648 (branch content-equivalence) and RQ649 (remaining EF InMemory Access worker CI noise) are separate READY lanes registered by the 2026-10-13 15:56 CEST post-RQ644 review on main `c4c20197cf029f36de8623e2de8cb7e9df708a57`. Their ownership is path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized. Historical pointer: none after RQ644 close-out (Supplier/ShoeType invalid-input skip reconciliation). RQ644 is DONE on `4bd4b9b2`. RQ643 is DONE on `723814c2`. RQ642 is DONE on `cfb66628` (Analytics Tests `38403990864`: 2042 passed / 43 skipped). Prior primary: RQ642 after RQ641; unrelated RQ635 correction is DONE on PR #137/main SHA `bae9b0b6` with exact PR + post-merge green CI. RQ641 is DONE on `6dea05a2`. RQ640 is DONE on `034790d5`. RQ639 is DONE on `32e3723c` (explicit OperationsIntegrationFact skips; BCI17 inventory 45). RQ638 is DONE on `da352033` (MediatR PerformanceLogs varchar bounds). Evidence: `.ai/runs/2026-10-13-RQ638-evidence.md`, `.ai/runs/2026-10-13-RQ639-evidence.md` (pending SHA). RQ636 is DONE on `794c808431b9bdddb0be21edb1d6bb02c8148c25` (operational fallback test-host worker/MediatR noise isolation). RQ634 is DONE on implementation SHA `a4bd52e4576593f2317a12b9ecc4dbc1e9a55882`; its exact-SHA backend test step in run `38387779145` passed 2,010 tests with 42 classified skips, including all four PostgreSQL cold-start regressions. RQ635 is DONE on `ca5b6c4129ae72cddad9ed4407992e56870ad31c`; RQ637 is DONE on `c7cda8037ef824a9566fcee77962cf973a1a6176`. Evidence: `.ai/runs/2026-10-13-RQ634-evidence.md`, `.ai/runs/2026-10-13-RQ635-evidence.md`, `.ai/runs/2026-10-13-RQ636-evidence.md`, `.ai/runs/2026-10-13-RQ637-evidence.md`. These are repo-local code tasks, not claims of completed production recovery. STAB16 alone owns authorized Render/Neon runtime evidence and real maintenance; RQ610 remains BLOCKED and RQ601/RQ602 remain PARTIAL. Historical pointer before this review: none after RQ631 DONE on main at f8ae875a (PR #132; implementation 092a9707). RQ630 is DONE on main at `1a1322f8d73d682df3b531047d3eb597b7fd34eb` (PRs #129-#131); exact-main backend run `38275050911` succeeded with 1,983 passed, 42 classified skips, and 0 failures. RQ626 is DONE on main at `a3e621f74f9b3af1391714280fdd20e8b2b6f41a` (PR #127); its new PostgreSQL oracle exposed a fixture date error, corrected on main at `560f4a91d6962e64c305448df256d4ec8e73b75e`. Exact-main backend re-proof `38267997036` succeeded on the correction SHA. RQ625 is DONE on main at `e96f9329a3760eb7d940f4d5ae69dfc6637d5135`; RQ627 is DONE on main at `84d90ed44bcdba916aa795f707dbf7c96dec1468`; RQ624 is DONE at `4970b6a2bd22e39f8ca5798815803f2b39d5a2c1`; RQ621 is DONE on d500304bdc767f32de773e07d534a3a50a0b12ae; RQ620 is DONE on 876ed0aaa52c5526ffb0ed343e46fb8a39b1a2c1; RQ619 is DONE on a9281ba4d8f7b119fdf6ba10df623a7b4d7dfa3f; RQ623 is DONE on d20b75a6db69b05aea8d8a908614831b6fce07e9. RQ610 remains BLOCKED; RQ601/RQ602 remain PARTIAL.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 ## Baseline and owner decisions
@@ -1892,3 +1892,271 @@ New in-memory Facts pass; skip inventory classifications match real proofs; queu
 - Follow-up: remaining 12 genuinely-uncovered Supplier/ShoeType/perf contracts need dedicated fixture prompts
 - Residual risk: PostgresParity early-return outside CI if Docker unavailable; CI still executes the named proof
 - Post-close routing: `Current READY` → none; see `.ai/runs/2026-10-13-RQ644-evidence.md`
+
+
+---
+
+## RQ645 - Certify remaining Supplier trust/cohort/golden contract skips on isolated PostgreSQL
+
+Status: READY
+Priority: P1
+Type: backend supplier analytics contract/PostgreSQL integration tests
+Feature family: supplier-legacy-uncovered-fixture-parity
+Parallel-safe: yes for unique Supplier test/fixture paths (never share files or mutable test database with RQ646/RQ647)
+Owner: unassigned
+Ready after: RQ644 DONE on main `4bd4b9b2`; RQ453 PostgreSQL certification and RQ642 isolated fixture already available
+Commit suggestion: `test(analytics): certify seven supplier trust and golden contracts`
+
+### Problem
+
+The backend suite is green but `scripts/ci/backend-skip-inventory.json` still marks **seven exact Supplier/Supplier Detail business contracts** `genuinely-uncovered`. Their old `OperationsIntegrationFact` methods read a populated/shared source database, are skipped by default, and cannot alone certify current Supplier endpoint trust/golden semantics. RQ644 deliberately left these intact.
+
+### Evidence
+
+- Current-main BCI17 inventory: expectedKnownSkippedCount 43, `isolated-postgresql-runnable=13`, `legacy-superseded=18`, `genuinely-uncovered=12`. Exactly 7 are this prompt's Supplier contract group, 3 ShoeType (RQ646) and 2 performance (RQ647).
+- `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs` legacy methods:
+  `SupplierSalesDetail_ExposesRecommendationTrustAndReferenceCohort`,
+  `SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows`,
+  `SupplierSalesStats_DeclaresRecommendationReferenceCohort`,
+  `SupplierSalesStats_HandlesMissingSchemaGracefully`,
+  `SupplierSalesStats_MatchesGoldenSnapshot`,
+  `SupplierSalesStats_ProducesDeterministicJson`,
+  `SupplierSalesStats_UsesWeightedMarginBenchmark`.
+- RQ453 `OperationsAnalyticsAllRoutesIntegrationTests` and raw-fact oracle already prove **some** overlapping totals and scopes but the seven specific cohort, golden, deterministic and fail-closed contracts remain classified uncovered. Do not claim overlap equals equivalent coverage without method-level assertions.
+
+### Scope
+
+New `Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs` and isolated Supplier fixture(s) (or equivalent descriptive name), the Supplier-specific snapshot fixture if reproducibly justified, and only these seven `scripts/ci/backend-skip-inventory.json` classifications. Touch `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs` only to add an explicit exact proof pointer or remove demonstrably superseded methods. No changes to ShoeType legacy tests (RQ646), performance benchmark test (RQ647), business endpoint formulas, source SQL or production databases. Avoid shared mutable global test DB.
+
+### Read first
+
+`Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`, `Api.Tests/OperationsAnalyticsAllRoutesIntegrationTests.cs`, `Api.Tests/OperationsAnalyticsRawFactOracleIntegrationTests.cs`, `Api.Tests/SupplierDecisionSchemaReadinessIntegrationTests.cs`, `Api.Tests/PostgresRequiredFactAttribute.cs`, `scripts/ci/backend-skip-inventory.json`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, RQ644 evidence.
+
+### Do
+
+1. Map each of **all seven FQNs** to its exact endpoint, inputs, field assertions and current runnable overlapping proof; record a before matrix. Do not use `!=404` or responses gated at 503 as evidence that a route works.
+2. Use isolated disposable PostgreSQL/Testcontainers with explicit schema, only necessary deterministic sales/cost/nivelacija/unknown-supplier facts and safe startup-readiness setup. Positive known/unknown supplier, imported/existing scope, return-signed quantities and absent cost must be identifiable in seed and independent SQL oracle.
+3. Prove supplier detail `recommendationAllowed` gating, provenance/reference cohort, row-to-total comparable pre/post, weighted margin denominator (not mean-of-means), missing-schema fail-closed error contract, stable canonical JSON excluding volatile timestamps, and intentional golden contract projection.
+4. **Missing-schema case** must mutate/drop objects only within its own disposable DB, with no race against adjacent tests; assert the documented safe error code/status and prevent fallback to all-time or fake-zero recommendation. Golden snapshots must be reviewed against independent business expectations, not rubber-stamped by updating expected files to match any actual value.
+5. Match each newly passing real PostgreSQL test to the original skip. Reclassify `genuinely-uncovered -> legacy-superseded` **only** with an exact named running proof in inventory; keep `expectedKnownSkippedCount` at 43 unless TRX truly changes. Leave remaining three ShoeType + two performance skips untouched. Record no-Docker local restrictions transparently.
+
+### Tests
+
+Focused 7 named isolated PostgreSQL assertions with `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true` in PR CI (zero target skips); complete backend suite, RQ453 certification, golden determinism repeated runs, `node scripts/check-prompt-queues.mjs`, skip inventory checker, `git diff --check`, exact-head CI before merge.
+
+### Acceptance
+
+All seven formerly uncovered Supplier contracts have deterministic isolated real-PostgreSQL CI proof and independently reviewed golden/weighted truth. No fake green from shared DB/early-return/503. Inventory classifications point to exact proved test names; no production data/schema changes, and no weakened trust contract.
+
+### Dependencies
+
+RQ644 DONE and existing RQ453/Testcontainers. STAB16 provider access and RQ601 original purchase calculations are **not code start gates**; unresolved real cost remains unknown. Do not alter RQ646/RQ647 files or steal an active test/fixture lock.
+
+---
+
+## RQ646 - Certify remaining ShoeType detail trust, golden snapshot and deterministic output
+
+Status: READY
+Priority: P1
+Type: backend ShoeType analytics contract/PostgreSQL integration tests
+Feature family: shoe-type-legacy-uncovered-fixture-parity
+Parallel-safe: yes for ShoeType-only fixtures/tests; isolated database and no RQ645 Supplier file overlap
+Owner: unassigned
+Ready after: RQ644 DONE; RQ453 seeded PostgreSQL route/oracle framework available
+Commit suggestion: `test(analytics): certify three shoe-type trust and golden contracts`
+
+### Problem
+
+Three exact ShoeType `OperationsIntegrationFact` methods remain in the BCI17 `genuinely-uncovered` bucket even though the shared-populated DB tests are skipped in normal CI. They guard business trust, canonical unknown identity, expected golden projection and response determinism; prior cross-screen tests do not automatically prove those detailed contracts.
+
+### Evidence
+
+- `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs` legacy methods:
+  `ShoeTypeDetail_PreservesDecisionTrustAndUnknownIdentity`,
+  `ShoeTypeSalesStats_MatchesGoldenSnapshot`,
+  `ShoeTypeSalesStats_ProducesDeterministicJson`.
+- RQ644 covered only invalid input; the remaining BCI17 inventory still marks these three exact FQNs `genuinely-uncovered`.
+- ShoeType detail accesses `/api/analitika/shoe-type-sales-stats/{id}`, recommendation/reasonCodes, provenance and unknown identity. It must be proved with deterministic known + unknown types and real output, not a 503 route smoke.
+
+### Scope
+
+New `Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs`, ShoeType-only isolated fixture/golden projection, targeted inventory entries. Touch old ShoeType test only for explicit supersession pointer if needed. No Supplier endpoint/test edits (RQ645), benchmark files (RQ647), analytics formulas or production database.
+
+### Read first
+
+Current ShoeType legacy integration tests, RQ453 seeded six-screen route proof and PostgreSQL fact oracle, `Api.Tests/PostgresRequiredFactAttribute.cs`, golden fixture helper, BCI17 JSON entries, RQ644 evidence.
+
+### Do
+
+1. Build method-by-method assertion map and a disposable PostgreSQL deterministic fixture with known + unknown ShoeType identities, signed sales, period and origin inputs.
+2. Assert both known and unknown detail route contracts (recommendationAllowed, reasonCodes, provenance population/source, canonical unknown identity) and that wrong identity/scope cannot broaden to `all`. Ensure readiness middleware is explicitly in tested state and real handler executes.
+3. Construct reviewable business-grounded golden projection (stable sorted rows, units/percentages/NULL), and repeat requests for determinism with only explicitly excluded volatile fields. Do not golden-master a broken response.
+4. Add named focused CI tests which actually run, compare them with the three original methods and reclassify exactly those inventory entries only after parity. Preserve RQ645/RQ647 entries.
+5. Record fixture/contract limitations and exact target test output.
+
+### Tests
+
+Three isolated PostgreSQL contract families including known/unknown detail, stable snapshot and repeated JSON; require PostgreSQL in CI, zero target skips, full backend/RQ453; inventory and governance validators.
+
+### Acceptance
+
+Each of three formerly uncovered ShoeType contracts has a named passing PostgreSQL CI replacement with nonvacuous route/trust/golden checks. No production mutation, no reduction of safeguards, inventory and queue evidence synchronized.
+
+### Dependencies
+
+RQ644 and local/CI disposable PostgreSQL only. Independent of Supplier contract RQ645 and non-gating performance RQ647.
+
+---
+
+## RQ647 - Replace two untrusted Operations performance skips with reproducible non-gating measurements
+
+Status: READY
+Priority: P2
+Type: performance/CI measurement baseline; no production SLA gate
+Feature family: supplier-shoetype-performance-measurement
+Parallel-safe: yes for new isolated benchmark harness/CI measurement paths (do not edit legacy Supplier/ShoeType tests owned by RQ645/RQ646 during implementation)
+Owner: unassigned
+Ready after: RQ639/RQ642 DONE; inventory explicitly classifies both remaining benchmark skips
+Commit suggestion: `test(perf): add non-gating isolated analytics endpoint baseline`
+
+### Problem
+
+Two `genuinely-uncovered` backend skip entries test response-time thresholds on a shared/populated and environment-sensitive database. A green shared-runner time assertion would be flaky and could mask cold start, source population, DB setup, fetch versus handler time and cache policy. A useful performance baseline should measure actual latency and query pressure on a reproducible fixture, without turning a generic 30-second threshold into an unconditional release blocker.
+
+### Evidence
+
+- `AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_PerformanceWithinThreshold` legacy skip.
+- `AnalyticsDbInfrastructureTests.AnalyticsEndpoint_ResponseTimeBaseline` legacy skip (asserts `sw.ElapsedMilliseconds < 30000`, against shared data; no stable fixture).
+- BCI17 counts both among the 12 truly uncovered; RQ639/RQ642 intentionally left the infrastructure performance case outside mandatory test gates; `PERF19` separately measured a Decision Board scenario, not these two routes.
+
+### Scope
+
+New `Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs` and/or isolated measurement script/workflow, dedicated small/medium deterministic dataset and a standalone performance-report artifact. No modification of RQ645/RQ646 legacy contract tests while parallel; no supplier formula rewrite, automated production load, endpoint SLO claim, or mandatory 3s/30s CI gate.
+
+### Read first
+
+The two legacy benchmark methods, `docs/roadmaps/PERFORMANCE_ROADMAP.md`, `docs/ai/PLATFORM_EVOLUTION_PROMPT_QUEUE.md` PERF evidence, BCI17 inventory, RQ453 fixtures and `Api/Services/Startup/StartupReadinessState.cs`.
+
+### Do
+
+1. Isolate real API handler latency from cold start and SQL setup; document warmup, data rows, query count/latency, cache state, host parameters, concurrency and measurement clock.
+2. Run several samples with medians/p95, serialize reproducible JSON report and compare to an explicit baseline from the same fixture; capture regression deltas **without** auto-blocking merges for host noise.
+3. Test Supplier stats and ShoeType stats, including empty and moderately populated scopes with same input semantics. No proxy 503/404 and no early-return should count as a successful measurement.
+4. Preserve both legacy skips or classify them separately as superseded with a named non-gating job **only** when equivalent business/performance measurement is proven. Do not silently reduce `expectedKnownSkippedCount` without TRX proof.
+5. Give maintainers a reproducible locally runnable command or GitHub `workflow_dispatch` (not scheduled high-frequency job) and clear thresholds requiring manual investigation rather than asserting a new provider SLA.
+
+### Tests
+
+Smoke/run benchmark against disposable PostgreSQL when opted in; verify sample completeness and p95 calculation, no 503 responses, no reliance on live Neon or Vercel. CI quality and governance checks, report data schema self-test.
+
+### Acceptance
+
+Two exact performance gaps are represented by reproducible non-gating baseline proof with explicit fixture/hardware methodology. No flaky mandatory perf gate, no false production SLO and no claim of deployed provider throughput.
+
+### Dependencies
+
+No STAB16 access. RQ645/RQ646 may execute in parallel if unique benchmark files stay isolated; performance ownership is separate from correctness ownership.
+
+---
+
+## RQ648 - Reconcile remote agent branches against main by patch/content equivalence, not name or ancestry alone
+
+Status: READY
+Priority: P2
+Type: git branch/PR lineage + exact-code reconciliation audit
+Feature family: repository-branch-safety
+Parallel-safe: yes for read-only branch comparisons and a unique audit report path; canonical queue/roadmap final status edits must be serialized after other agent closeouts
+Owner: unassigned
+Ready after: no open PRs at 2026-10-13 15:56 CEST; RQ634-RQ644 code delivered and latest main CI green
+Commit suggestion: `docs(git): prove current remote branch equivalence and classify residual diffs`
+
+### Problem
+
+A snapshot of 2026-10-13 remote branch listing contains **97 non-main refs** and zero open PRs, but this does NOT prove every branch's unique code is on main. Direct-main pushes and squash/rebased PRs often leave old branch commits diverged although their file content is already merged. A blanket merge of old `cursor/*`/`codex/*` branches can overwrite current queue/statuses or reintroduce stale SQL/analytics behavior.
+
+### Evidence
+
+- Fresh main tip at intake: `c4c20197cf029f36de8623e2de8cb7e9df708a57`, latest completed tasks RQ634–RQ644, no open PR.
+- `cursor/rq637-access-import-readiness-gate-28d8` compares as diverged (one unique commit), **but all three changed code/test files have identical Git blob SHAs on current main**. This is an example of delivered code that is *not* safe to remerge.
+- `fix/rq638-unicode-truncation-boundary-20261013` also compares as diverged; both inspected source/test blobs are identical to main. PR #139 closed unmerged, successor #141 merged.
+- `fix/rq635-real-postgres-ci-oracle-20261013` has one ahead commit and a different legacy lifecycle-test blob; PR #138 closed unmerged while corrective PR #137 merged. Difference requires semantic coverage comparison, **not** blind cherry-pick.
+- `codex/product-value-plan-refinement` is old and hundreds of main commits behind; it has uniquely authored historical product documents, not a current-authority queue.
+
+### Scope
+
+New `docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md` plus optional machine-readable per-branch inventory. Do not create a replacement implementation PR for every branch. No production mutation, rebase/force-push, automatic branch deletion, merge, branch renaming or checkout/worktree deletion.
+
+### Read first
+
+`MASTER_ROADMAP.md`, `docs/ai/PROMPT_QUEUE_PROTOCOL.md` branch/ownership rules, GitHub PR #136–#142 and status, latest backend/quality CI, `.ai/runs/2026-10-13-RQ634-evidence.md` through RQ644, `docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md` (only if old product branch has unique business decision).
+
+### Do
+
+1. Enumerate **all current** remote branches and open/closed PRs, not only the first page when pagination is present. Capture main SHA and branch commit SHA/time.
+2. For every branch, classify `ancestor/behind`, `identical`, `diverged-but-content-in-main`, `diverged-and-superseded-by-later-fix`, `unique-unreviewed`, or `active-owner/lock-unknown`. Git commit `ahead_by>0` alone is NOT evidence of an unmerged product fix after squash; compare changed-file blob SHAs, code semantics and successor PR patches on **fresh main**.
+3. Spend extra review on RQ635 SQL029 lifecycle oracle branch, RQ637 import startup branch, RQ638 Unicode branch and the old product-value plan branch. Check local lock/agent ownership if accessible; a GitHub-only view must explicitly report that it cannot inspect other agents' uncommitted local worktrees.
+4. For genuinely unique and safe product changes, create **separate reviewed follow-up prompts/PR recommendations** with tested acceptance and dependency gates. Do not silently modify current main or forward-merge stale docs. If product changes require owner choice, mark WAITING with exact decision.
+5. Deliver a table with branch -> related PR/commit -> equivalence evidence -> disposition. Classify `no open PR` separately from `all work merged`. Recommend cleanup only with owner approval and no active use; no deletion is authorized by this task.
+
+### Tests
+
+Read-only GitHub compare/file patch inventory for every branch, PR linkage and SHA verification, queue/roadmap validators if statuses updated, `git diff --check`. Re-review on any changed main head before treating classification final.
+
+### Acceptance
+
+Every branch is accounted for in a dated report, with no unsupported claim that all old refs are merged, no lost safe unique work, and no unsafe automatic merge/deletion. High-confidence actionable deltas become individually owned, testable prompt(s) rather than resurrecting an obsolete branch.
+
+### Dependencies
+
+GitHub read access; no provider/production data authority. Independent of RQ645–RQ647 code paths. Re-check locks/open PRs before starting.
+
+---
+
+## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
+
+Status: READY
+Priority: P2
+Type: backend test-host worker registration and targeted CI logging
+Feature family: remaining-fake-provider-worker-noise
+Parallel-safe: yes for scoped test host/factory paths; avoid RQ645 Supplier, RQ646 ShoeType and RQ647 benchmark fixtures
+Owner: unassigned
+Ready after: RQ636 DONE and RQ637 DONE; latest exact-main backend CI 38407849758 exposed a distinct residual
+Commit suggestion: test(ci): isolate remaining InMemory API hosts from Access import polling
+
+### Problem
+
+RQ636 fixed CachedAnalyticsOperationalFallbackTests, but other in-memory WebApplicationFactory hosts still register AccessImportBackgroundWorker. In a successful full backend suite, these hosts start the worker with 2s polling and call relational-only AccessImportJobQueue.ClaimNextAsync on EF InMemory, repeatedly logging errors. These are test-host faults, not proof that production is failing. Do not disable real workers globally.
+
+### Evidence
+
+- Main Actions run 38407849758, backend job 115332057225: 2,052 passed; 43 classified skips; zero failed; **113 matching log lines** with the phrase "Relational-specific methods can only be used when the context is using a relational database provider" and stack frames inside AccessImportJobQueue/AccessImportBackgroundWorker. The 113 are log-line matches, NOT 113 distinct failed tests.
+- The same log has zero "Failed to save performance log for" and zero "Failed to persist HTTP request performance metric" matches. RQ631, RQ636 and RQ638 stay DONE.
+- Api.Tests/CachedAnalyticsOperationalFallbackTests.cs already uses explicit narrow opt-out. Other in-memory factories remain unqualified. Candidate log-adjacent suites include AdminConfigOperationalReadsAuthorizationTests and AnalyticsCriticalRouteMappingsTests; log adjacency alone does not identify the worker's owning host.
+
+### Scope
+
+Affected non-import WebApplicationFactory fixtures and targeted registration assertions. No edits to Api/Services/Access/AccessImportBackgroundWorker.cs, Api/Config/WorkerRuntimeConfig.cs, production settings, Supplier/ShoeType suites owned by RQ645/RQ646, RQ647 benchmark harness, global logger filters or the PostgreSQL migrations.
+
+### Read first
+
+Api.Tests/CachedAnalyticsOperationalFallbackTests.cs, Api.Tests/AdminConfigOperationalReadsAuthorizationTests.cs, Api.Tests/AnalyticsCriticalRouteMappingsTests.cs, Api/Program.cs, Api/Config/WorkerRuntimeConfig.cs, Api.Tests/AccessImportBackgroundWorkerStartupLifecycleTests.cs, docs/qa/STATE_REAUDIT_2026-10-13.md, and CI backend job 115332057225.
+
+### Do
+
+1. Identify the precise test factories that instantiate unrelated Access import hosted workers against EF InMemory. Instrument test-only worker registration assertions, not a generic global opt-out.
+2. Configure supported test-only AccessImport:RegisterWorkerInWebProcess=false with correct precedence, or remove the hosted-service descriptor only in isolated non-import hosts. Verify effective Program registration, not merely configuration text.
+3. Add regression: zero background claim/recovery calls in non-import host; endpoint request actually reaches its handler (not an early 503/404); explicit real Access import worker lifecycle fixtures still opt in and pass.
+4. Run exact affected host tests and full backend suite; record before/after matching log-line counts and owning test factory names. Do not automatically call all expected SQL029 negative-fixture SqlFailed logs defects or suppress unrelated exceptions.
+5. If a host genuinely requires the worker, use a real disposable relational PostgreSQL fixture rather than hiding exceptions. Preserve the production registration and RQ637 web startup readiness semantics.
+
+### Tests
+
+Affected API-host routes, AccessImportBackgroundWorkerStartupLifecycleTests, new registration assertions, full backend CI, governance/inventory validator if touched, diff check. All target tests run without skip; no global exception swallowing.
+
+### Acceptance
+
+Non-import EF InMemory hosts no longer run unwanted Access import queue polling or produce its relational-provider errors; production web and dedicated worker behavior is unchanged. Exact CI before/after counts and named host evidence recorded.
+
+### Dependencies
+
+RQ636/RQ637 DONE. No production credentials, source file import or owner business approval needed; check same-file collisions with RQ645/RQ646 before claiming.
