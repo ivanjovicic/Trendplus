@@ -2243,12 +2243,12 @@ None. Frontend-only and repository-local.
 
 ## RQ652 - Guard action-queue KPI counts against stale responses and refresh the outcome summary after saves
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend analytics workflow state / stale-response regression
 Feature family: analytics-actions-stale-kpi-state
 Parallel-safe: yes (only `AnalyticsActionsPage.tsx` and its specs; disjoint from RQ651/RQ653/RQ654)
-Owner: unassigned
+Owner: Cursor
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Commit suggestion: `fix(analytics-actions): sequence-guard counts and refresh outcome summary after outcome save`
 
@@ -2289,6 +2289,31 @@ KPI counts always correspond to current filters or are visibly unavailable; outc
 ### Dependencies
 
 None. Frontend-only and repository-local.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: `loadCounts` now uses `countsRequestSeqRef` like the items/summary loaders, so an older counts response cannot overwrite newer filters. A failed counts reload clears previous-filter counts and renders "Brojevi po statusu trenutno nisu dostupni za izabrane filtere." with the existing `aaq-summary-error` style. The outcome summary reloads after a successful outcome save and after a status change, since its open/closed totals depend on status.
+- Changed files: `Klijent/clientapp/src/pages/AnalyticsActionsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/AnalyticsActionsPage.spec.tsx`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-13-RQ652-evidence.md`.
+- Contract/runtime behavior changed: frontend state handling only; no API contract change.
+- Checks run: failing-first proof showed 3 new tests failing for the exact defects ("99" overwrote "41"; no unavailable notice; summary called 1x instead of 2x), with 23 existing tests passing. After the fix:
+  - both action-page specs plus PilotReadiness specs passed 55/55 in 4 files;
+  - AppAnalyticsRoutes, analyticsPresentationPass2 and analyticsTrustStateProof passed 43/43;
+  - `npm run check:analytics-guardrails` passed (baseline-only, 38 known);
+  - `npm run build` passed (exit 0);
+  - `node scripts/check-prompt-queues.mjs` and `git diff --check` passed.
+- Checks not run: full frontend suite and browser check, because the change is bounded to one page's loader state and covered by the focused and route specs.
+- Run log: `.ai/runs/2026-10-13-RQ652-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d0b33f79868d4a1a37ec8fcc909184dcf3831d63`
+- Main verification: after push, `git merge-base --is-ancestor d0b33f79 origin/main` passed; origin/main was `d0b33f79868d4a1a37ec8fcc909184dcf3831d63`.
+- Missed: none known. While new counts load after a filter change, the previous counts remain visible until the response arrives; this is the established loading behavior, and failure no longer leaves them.
+- Follow-up: RQ653 (P2) and RQ654 (P3) remain READY.
+- Residual risk: main CI for `d0b33f79` had not completed at close.
+- Post-close routing: RQ652 has no dependents. RQ653/RQ654 remain READY and path-disjoint. The RQ645 primary pointer stays with its owner (Codex).
+- Prompt defect / scope repair: the prompt named only the outcome save. The status-change summary reload was included under its step 3 ("and after a status change if the summary depends on status"), because the summary's open/closed totals do depend on status.
 
 ## RQ653 - Pilot readiness Actions card must not report zero actions when action counts failed
 
