@@ -1,7 +1,6 @@
 using Application.Artikli.Common.Interfaces;
-using Domain.Model;
-using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
+using Npgsql;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -115,79 +114,49 @@ public sealed class AnalyticsDbInfrastructurePostgresIntegrationTests : IClassFi
 
     private static async Task SeedCriticalColumnFixtureAsync(string connectionString)
     {
-        await using var db = CreateTrendDb(connectionString);
-        db.Artikli.Add(new Artikli
-        {
-            Id = 642001,
-            PLU = "RQ642-SCHEMA",
-            Naziv = "RQ642 schema probe",
-            IDDobavljac = 642001,
-            IDTipObuce = 1,
-            NabavnaCenaDin = 10m,
-            DataOrigin = "existing",
-            UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
-        });
-        db.Dobavljaci.Add(new Dobavljac { Id = 642001, Naziv = "RQ642 supplier", DataOrigin = "existing" });
-        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
-        {
-            Id = 642001,
-            BrojRacuna = "RQ642-1",
-            DatumProdaje = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
-            IDObjekat = 1,
-            DataOrigin = "access"
-        });
-        db.ProdajaStavke.Add(new ProdajaStavka
-        {
-            Id = 642001,
-            IdProdaja = 642001,
-            IdArtikal = 642001,
-            Kolicina = 1,
-            Cena = 25m,
-            NabavnaCena = 10m
-        });
-        db.DnevnikPromena.Add(new DnevnikPromena
-        {
-            Id = 642001,
-            ArtikalId = 642001,
-            Datum = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
-            TipPromene = "nivelacija"
-        });
-        await db.SaveChangesAsync();
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            INSERT INTO "Dobavljaci" ("Id", "Naziv", "DataOrigin")
+            VALUES (642001, 'RQ642 supplier', 'existing');
+
+            INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "IDDobavljac", "IDTipObuce", "NabavnaCenaDin", "UpdatedAt", "DataOrigin")
+            VALUES (642001, 'RQ642-SCHEMA', 'RQ642 schema probe', 642001, 1, 10, '2026-10-01T00:00:00Z', 'existing');
+
+            INSERT INTO prodaja_zaglavlje (id, broj_racuna, datum_prodaje, id_objekat, data_origin)
+            VALUES (642001, 'RQ642-1', '2026-10-20T00:00:00Z', 1, 'access');
+
+            INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena)
+            VALUES (642001, 642001, 642001, 1, 25, 10);
+
+            INSERT INTO "DnevnikPromena" ("Id", "ArtikalId", "Datum", "TipPromene", "DataOrigin")
+            VALUES (642001, 642001, '2026-10-20T00:00:00Z', 'nivelacija', 'existing');
+            """,
+            connection);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task SeedParallelRouteFixtureAsync(string connectionString)
     {
-        await using var db = CreateTrendDb(connectionString);
-        db.Dobavljaci.Add(new Dobavljac { Id = 642002, Naziv = "RQ642 parallel supplier", DataOrigin = "existing" });
-        db.Artikli.Add(new Artikli
-        {
-            Id = 642002,
-            PLU = "RQ642-PAR",
-            Naziv = "RQ642 parallel article",
-            IDDobavljac = 642002,
-            IDTipObuce = 1,
-            NabavnaCenaDin = 5m,
-            DataOrigin = "access",
-            UpdatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
-        });
-        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
-        {
-            Id = 642002,
-            BrojRacuna = "RQ642-PAR",
-            DatumProdaje = new DateTime(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc),
-            IDObjekat = 1,
-            DataOrigin = "access"
-        });
-        db.ProdajaStavke.Add(new ProdajaStavka
-        {
-            Id = 642002,
-            IdProdaja = 642002,
-            IdArtikal = 642002,
-            Kolicina = 2,
-            Cena = 50m,
-            NabavnaCena = 5m
-        });
-        await db.SaveChangesAsync();
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            INSERT INTO "Dobavljaci" ("Id", "Naziv", "DataOrigin")
+            VALUES (642002, 'RQ642 parallel supplier', 'existing');
+
+            INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "IDDobavljac", "IDTipObuce", "NabavnaCenaDin", "UpdatedAt", "DataOrigin")
+            VALUES (642002, 'RQ642-PAR', 'RQ642 parallel article', 642002, 1, 5, '2026-10-01T00:00:00Z', 'access');
+
+            INSERT INTO prodaja_zaglavlje (id, broj_racuna, datum_prodaje, id_objekat, data_origin)
+            VALUES (642002, 'RQ642-PAR', '2026-10-21T12:00:00Z', 1, 'access');
+
+            INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena)
+            VALUES (642002, 642002, 642002, 2, 50, 5);
+            """,
+            connection);
+        await command.ExecuteNonQueryAsync();
     }
 }
 
