@@ -45,13 +45,24 @@ public sealed class PerformanceLoggingBehaviorColumnBoundsTests
     }
 
     [Fact]
-    public void Truncate_PreservesSurrogatePairBoundaryWithoutThrowing()
+    public void Truncate_PreservesSurrogatePairBoundary_WhenEllipsisWouldSplitPair()
     {
-        var emoji = new string('a', PerformanceLogColumnBounds.RequestTypeMaxLength - 4) + "😀";
-        var truncated = PerformanceLogColumnBounds.Truncate(emoji, PerformanceLogColumnBounds.RequestTypeMaxLength);
+        const int maxLength = PerformanceLogColumnBounds.RequestTypeMaxLength;
+        // Truncation would stop at UTF-16 offset 197, i.e. after the high
+        // surrogate of this emoji, unless the boundary is corrected.
+        var value = new string('a', maxLength - 4) + "😀" + new string('x', 20);
+        var truncated = PerformanceLogColumnBounds.Truncate(value, maxLength);
 
-        Assert.NotNull(truncated);
-        Assert.True(truncated.Length <= PerformanceLogColumnBounds.RequestTypeMaxLength);
+        Assert.Equal(new string('a', maxLength - 4) + "...", truncated);
+        Assert.True(truncated.Length <= maxLength);
+    }
+
+    [Fact]
+    public void Truncate_TinyColumn_DoesNotPersistHalfOfSupplementaryCharacter()
+    {
+        Assert.Equal(string.Empty, PerformanceLogColumnBounds.Truncate("😀long", 1));
+        Assert.Equal("😀", PerformanceLogColumnBounds.Truncate("😀long", 2));
+        Assert.Equal("😀l", PerformanceLogColumnBounds.Truncate("😀long", 3));
     }
 
     [Fact]
