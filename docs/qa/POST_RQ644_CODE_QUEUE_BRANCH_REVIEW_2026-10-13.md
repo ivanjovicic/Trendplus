@@ -54,3 +54,10 @@ New prompts must run target tests **for real** in CI and never reclassify BCI17 
 ## Confidence and remaining limits
 
 Review reads the exact latest GitHub main, queue source, BCI17 classifications, recent Actions jobs/logs, and sampled branch compares and blob hashes. It **does not** inspect all 97 branch patches in this turn, local uncommitted worktrees, provider logs, or production DB. RQ648 tracks exhaustive branch accounting; absence of an open PR does not imply all legacy branch code was delivered. Re-check current main, locks and PRs before claim or merge.
+
+## Delivery and complete commit-graph census (post-PR #143)
+
+- PR #143 was squash-merged to main on `8de58c80440ca6eb87d343024dea260215927a77`. Its exact-head `48ac7e29829e682958532702d3915504e8e307a3` passed Planning Governance `38412272800` (771 tasks), Analytics Quality Gates `38412272013`, and backend `38412271797` (2,052 passed, 43 classified skips, zero failed; RQ453 certification succeeded). This validates the new queue and docs, **not** production Render/Neon deployment.
+- The read-only GitHub commit-graph comparison was subsequently completed for **all 97 pre-audit non-main branch refs** against main baseline `c4c20197`: **71 behind (ahead=0), 1 identical, 25 diverged (ahead>0)**. Thus every baseline branch has now been graph-classified, but **only selected divergent branches have content/patch equivalence proof**. RQ648 should focus on the 25 divergent branches' substantive patch equivalence; refresh the list first because branches can change.
+- Some diverged branches are known already delivered despite ahead commits: RQ637's three changed code/test blobs and RQ638's inspected Unicode code/test blobs are identical on main. Other old branches (including `fix/rq481-invalid-filter-id-failclosed-20261008`) have source files differing from main because main has subsequent work; do not use an old branch as the preferred version.
+- No stale branch was merged, deleted, rebased or force-pushed. No automatic code salvage conclusion is made for the remaining divergent set. RQ645/RQ646/RQ647/RQ648/RQ649 continue as READY; DONE tasks are not reopened.
