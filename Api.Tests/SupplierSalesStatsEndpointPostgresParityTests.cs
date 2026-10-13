@@ -260,7 +260,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         await views.ExecuteNonQueryAsync();
     }
 
-    private static async Task<JsonElement> GetSuccessfulJsonAsync(HttpClient client, string path)
+    internal static async Task<JsonElement> GetSuccessfulJsonAsync(HttpClient client, string path)
     {
         using var response = await client.GetAsync(path);
         var body = await response.Content.ReadAsStringAsync();
@@ -284,7 +284,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         Assert.Equal(eventSelection, GetPropertyIgnoreCase(basis, "eventSelection").GetString());
     }
 
-    private static void SetBoundSupplierEvidence(
+    internal static void SetBoundSupplierEvidence(
         OperationsAnalyticsIntegrityRegistry registry,
         string status,
         string evidenceId,
@@ -318,7 +318,7 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
         });
     }
 
-    private static async Task CreateFixtureAsync(string connectionString)
+    internal static async Task CreateFixtureAsync(string connectionString)
     {
         await using (var db = new TrendplusDbContext(
                          new DbContextOptionsBuilder<TrendplusDbContext>().UseNpgsql(connectionString).Options))
