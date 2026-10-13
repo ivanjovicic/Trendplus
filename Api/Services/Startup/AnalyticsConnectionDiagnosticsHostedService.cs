@@ -1,3 +1,4 @@
+using Infrastructure.Analytics;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -131,13 +132,53 @@ public sealed class AnalyticsConnectionDiagnosticsHostedService : BackgroundServ
             supplierMlPredictions,
             supplierMlLatestPredictions);
 
-        return supplierSignalsView == "<missing>"
+        var missingCoreObjects = supplierSignalsView == "<missing>"
             || decisionScoreView == "<missing>"
             || recommendationsView == "<missing>"
             || markdownDependencyCache == "<missing>"
             || decisionScoreCache == "<missing>"
             || recommendationsCache == "<missing>";
+
+        // The same connection cannot execute a second command while a data reader is active.
+        // Diagnose both windowed caches through the endpoint's canonical MV capability contract,
+        // not to_regclass alone: a present but unpopulated/stale-column MV is NOT ready.
+        await reader.DisposeAsync();
+        var score90 = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_decision_score_cache_90d",
+            SupplierDecisionMaterializedViewContract.DecisionScoreRequiredColumns,
+            cancellationToken: stoppingToken);
+        var score180 = await PostgresMaterializedViewCapabilityReader.InspectAsync(
+            connection,
+            "mv_supplier_decision_score_cache_180d",
+            SupplierDecisionMaterializedViewContract.DecisionScoreRequiredColumns,
+            cancellationToken: stoppingToken);
+
+        if (HasUnavailableSupplierWindowedCache(score90, score180))
+        {
+            _logger.LogWarning(
+                "Supplier decision windowed cache capability: 90d={Window90Status} missingColumns={Window90MissingColumns}; 180d={Window180Status} missingColumns={Window180MissingColumns}. These optional views are unavailable; do not substitute all-time data. This diagnostic does not trigger a rebuild.",
+                score90.ErrorCode ?? "READY",
+                string.Join(",", score90.MissingColumns),
+                score180.ErrorCode ?? "READY",
+                string.Join(",", score180.MissingColumns));
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Supplier decision windowed cache capability: 90d=READY 180d=READY.");
+        }
+
+        // Keep the retry decision confined to the core supplier objects. Missing optional
+        // windowed MVs are visible in logs, but must not force eight more diagnostic retries
+        // during a Render cold start when web-side SQL 029 repair is intentionally disabled.
+        return missingCoreObjects;
     }
+
+    internal static bool HasUnavailableSupplierWindowedCache(
+        MaterializedViewCapabilityResult score90,
+        MaterializedViewCapabilityResult score180) =>
+        !score90.IsReady || !score180.IsReady;
 
     private static string SummarizeConnection(string connectionString)
     {
