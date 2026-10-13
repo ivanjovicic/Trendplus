@@ -317,7 +317,7 @@ Pre-push backend proof for direct-main code changes (owner decision 2026-10-12, 
 
 - code changes may be pushed directly to `main`; a PR is not required;
 - before pushing any commit that changes backend code or backend tests, the focused backend tests for every touched test class and for the classes covering the touched production code must pass locally; a red-then-fix pair of pushes is not an acceptable close path;
-- when a focused class needs infrastructure that is not available locally (for example Testcontainers/PostgreSQL without Docker), say so in the completion note, run every focused class that can run, and treat the first CI run as the proof: if it fails, fixing main takes priority over new queue work;
+- owner decision 2026-10-13 14:24 (supersedes the earlier "first CI run is the proof" allowance): a change whose required proof needs PostgreSQL/Testcontainers that cannot run locally must go through a PR on a branch and be merged only after the focused PostgreSQL tests and the relevant backend CI pass on that PR. A local `Passed` from a PostgreSQL test while Docker is unavailable is not proof, because such tests may return early. Report it as `not run`. If main still goes red, fixing main takes priority over new queue work;
 - docs-only commits need only the validators listed in `## Validation`.
 
 Canonical owner for the full policy: `AGENTS.md` section 7 and `docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md`.
