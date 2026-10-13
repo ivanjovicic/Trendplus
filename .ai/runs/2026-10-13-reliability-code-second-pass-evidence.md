@@ -5,7 +5,9 @@ Queue: direct user request, with new RQ637 and expanded RQ634 (not claimed)
 Agent/tool: ChatGPT GitHub connector
 Audit base: `23c8c1765d7a161f465094db46f4bbc5da3815a1`
 Working branch: `fix/2026-10-13-supplier-diagnostics-reliability`
-Evidence state: pending until merge/main verification
+Merge commit SHA: `99ba3baed3af0c316cd68dc830342114660bf124` (PR #135 squash)
+Main verification: passed — fresh `main` ref returned exact merge SHA above
+Evidence state: synchronized
 Ownership transfer: none
 
 ## Verified post-PR134 state
@@ -27,10 +29,10 @@ Ownership transfer: none
 
 ## Verification and residuals
 
-- GitHub PR Actions: pending at evidence creation; use exact SHA CI result to close. No local dotnet/Node runtimes in GitHub connector path, so no local build or xUnit executed.
-- Existing canonical supplier capability reader has PostgreSQL tests elsewhere. New unit tests cover the service's warning decision; a full integration proof of logged optional availability after real PostgreSQL startup is **not claimed**.
+- PR exact-head SHA `0639ea52bf2d98044d47b187f9a76952775eec08`: backend workflow `38367308954` **SUCCESS** (2,002 passed, 42 classified skips, zero failures), including all four `AnalyticsConnectionDiagnosticsCapabilityTests`, and RQ453 certification; frontend quality gates `38367309021` **SUCCESS**; Planning Governance `38367309107` **SUCCESS**. PR #135 was squash-merged on `99ba3baed3af0c316cd68dc830342114660bf124`; fresh `main` ref matched. No local dotnet/Node runtimes in GitHub connector path, so no local build or xUnit execution claimed.
+- Existing canonical supplier capability reader has PostgreSQL tests elsewhere. Four new focused unit cases passed within the full backend workflow; a full integration proof of emitted diagnostic log values after real PostgreSQL startup is **not claimed**.
 - Missing effective Render config, deployed runtime SHA, final SQL018/029 outcome, /ready JSON, actual Neon view state, dedicated worker status and Vercel dashboard. Remain STAB16 external acceptance.
 
 ## Next
 
-After green CI and merge, synchronize exact `origin/main` SHA/evidence; do **not** mark RQ634/RQ635/RQ636/RQ637/RQ638 DONE for this direct-request slice. Confirm fresh ownership/locks before the next agent claims RQ634 primary or the independent RQ637 P1 lane.
+Exact PR CI and main SHA synchronized. RQ634/RQ635/RQ636/RQ637/RQ638 remain READY for their own independent acceptance, not DONE for this direct-request slice. Confirm fresh ownership/locks before the next agent claims RQ634 primary or the independent RQ637 P1 lane.
