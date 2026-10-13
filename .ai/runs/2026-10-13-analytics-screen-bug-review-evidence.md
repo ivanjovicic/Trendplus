@@ -4,9 +4,9 @@ Date: 2026-10-13
 Agent/tool: Cursor agent
 Delivery target: main
 Working branch / PR: direct to main
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 47feddc19c8e72de058409489c97d52546054b24
+Main verification: passed - `git merge-base --is-ancestor 47feddc1 origin/main` after push; origin/main = 47feddc19c8e72de058409489c97d52546054b24
+Evidence state: synchronized
 Ownership transfer: none
 
 ## What was done
@@ -23,8 +23,8 @@ Ownership transfer: none
 - .ai/runs/2026-10-13-analytics-screen-bug-review-evidence.md
 
 ## Validation run
-- node scripts/check-prompt-queues.mjs -> see delivery commit
-- git diff --check -> see delivery commit
+- node scripts/check-prompt-queues.mjs -> pass (775 tasks)
+- git diff --check (roadmap + addendum) -> pass; CRLF preserved (0 bare LF)
 
 ## Validation not run
 - Frontend tests/build: not run because this is a docs-only change; each prompt requires a failing-first test when implemented.
