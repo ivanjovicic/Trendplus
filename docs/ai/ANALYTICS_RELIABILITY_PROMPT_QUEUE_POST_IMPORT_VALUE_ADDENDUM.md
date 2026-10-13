@@ -1367,7 +1367,7 @@ PR #133 code already merged; no Render credentials, fresh import, owner price de
 
 ## RQ635 - Make supplier SQL 029 recovery preflight and replay safe outside the web service
 
-Status: PARTIAL
+Status: DONE
 Priority: P2
 Type: SQL/PostgreSQL migration-quality + operator tooling tests
 Feature family: supplier-windowed-sql029-maintenance-preflight
@@ -1377,6 +1377,7 @@ Ready after: PR #133 merged; independent of STAB16 provider access for repositor
 Commit suggestion: `test(sql): preflight and idempotency oracle for supplier windowed MV maintenance`
 Completion note 2026-10-13: added read-only `tools/supplier-windowed-mv-preflight.sql`, maintenance guide `docs/qa/SUPPLIER_WINDOWED_SQL029_MAINTENANCE.md`, and `SupplierWindowedSql029LifecycleTests` (preflight verdict matrix, idempotent 029 replay, partial 90d, legacy definition replacement, rolled-back transaction). Focused tests 6/6; `git diff --check` pass. Delivered on `main` at `ca5b6c4129ae72cddad9ed4407992e56870ad31c`. Run log: `.ai/runs/2026-10-13-RQ635-evidence.md`. Evidence state: synchronized. No production Neon/Render maintenance performed.
 Reopened 2026-10-13 14:24 (owner instruction, P0): status DONE -> PARTIAL. The "Focused tests 6/6" claim was not real PostgreSQL proof (Docker was unavailable locally, so the tests returned early). Every completed main backend run since delivery fails the same 4 tests in `SupplierWindowedSql029LifecycleTests` with `42P01`: relations `__StartupSqlScriptHistory` and `vw_supplier_fullprice_signals` do not exist. Runs: `38389785987` (`ca5b6c41`), `38391716311` (`794c8084`), `38393842455` (`32e3723c`). The fixture does not provision the startup SQL history table or the SQL 029 prerequisite views. Fix is delivered through a PR with green PostgreSQL CI, per owner decision (a).
+Re-close 2026-10-13: status PARTIAL -> DONE. Root cause: the test pointed DefaultConnection and AnalyticsConnection at one database, so `EnsureAnalyticsSupplierDecisionSchemaAsync` took its unified-database branch and skipped SQL 011-018 and `__StartupSqlScriptHistory`. Fix in PR #137 (branch commit `38dd152f`, merged as `bae9b0b691efe94f3c1e2f2e6ed4ad3a340a345b`): the Trendplus DB is a separate isolated database; `PostgresRequiredFact` reports Skipped (not Passed) unless `CI=true` or `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`; when required, an unavailable fixture fails (verified locally without Docker); CI backend jobs set the flag explicitly. No test removed and no assertion weakened. PR CI `38397641969`: all 6 `SupplierWindowedSql029LifecycleTests` executed and passed (0 skipped), full backend suite green. Main CI on the merge SHA: `38398763696` success. Covers the RQ639 fail-closed intent for PostgreSQL fixtures. Evidence state: synchronized.
 
 ### Problem
 
