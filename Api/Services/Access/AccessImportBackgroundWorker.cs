@@ -1,8 +1,10 @@
 using Api.Config;
+using Api.Services.Startup;
 using Application.Common.Interfaces;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -24,6 +26,8 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
     private readonly WorkerRuntimePolicyService _runtimePolicyService;
     private readonly IFileStorage _fileStorage;
     private readonly AccessImportOptions _options;
+    private readonly StartupReadinessState _readiness;
+    private readonly bool _gateQueueUntilStartupReadiness;
 
     public AccessImportBackgroundWorker(
         IServiceProvider serviceProvider,
@@ -32,7 +36,9 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         WorkerRuntimeControlService controlService,
         WorkerRuntimePolicyService runtimePolicyService,
         IFileStorage fileStorage,
-        IOptions<AccessImportOptions> options)
+        IOptions<AccessImportOptions> options,
+        StartupReadinessState readiness,
+        IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -41,6 +47,10 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         _runtimePolicyService = runtimePolicyService;
         _fileStorage = fileStorage;
         _options = options.Value;
+        _readiness = readiness;
+        var processType = WorkerRuntimeConfig.ResolveProcessType(configuration, out _);
+        _gateQueueUntilStartupReadiness =
+            AccessImportWorkerStartupGate.ShouldGateQueueOperationsOnStartupReadiness(processType);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -61,6 +71,24 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
         var nextPendingRecoveryUtc = DateTime.MinValue;
         var runningJobs = new List<Task>(capacity: maxConcurrentJobs);
         var paused = false;
+        var readinessWaitLogInterval = TimeSpan.FromSeconds(30);
+        var readinessWaitLogCadence = new ReadinessWaitLogCadence();
+
+        if (_gateQueueUntilStartupReadiness)
+        {
+            _logger.LogInformation(
+                "{WorkerName} will defer queue claims and stale recovery until web startup readiness is satisfied.",
+                WorkerName);
+        }
+
+        if (!await WaitForStartupReadinessBeforeQueueWorkAsync(
+                stoppingToken,
+                readinessWaitLogInterval,
+                readinessWaitLogCadence))
+        {
+            _healthService.ReportStopped(WorkerName, "Startup database initialization failed.");
+            return;
+        }
 
         await RecoverStaleBatchesAtStartupAsync(stoppingToken);
 
@@ -155,6 +183,25 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
             try
             {
+                if (!AccessImportWorkerStartupGate.CanPerformQueueOperations(_gateQueueUntilStartupReadiness, _readiness))
+                {
+                    if (AccessImportWorkerStartupGate.IsTerminalStartupFailure(_readiness))
+                    {
+                        _healthService.ReportStopped(WorkerName, "Startup database initialization failed.");
+                        break;
+                    }
+
+                    if (!await DelayUntilStartupReadinessAsync(
+                            stoppingToken,
+                            readinessWaitLogInterval,
+                            readinessWaitLogCadence))
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
                 runningJobs.RemoveAll(t => t.IsCompleted);
 
                 if (DateTime.UtcNow >= nextPendingRecoveryUtc)
@@ -221,6 +268,67 @@ public sealed class AccessImportBackgroundWorker : BackgroundService
 
         _healthService.ReportStopped(WorkerName, "Graceful shutdown");
         _logger.LogInformation("Access import background worker stopped.");
+    }
+
+    private async Task<bool> WaitForStartupReadinessBeforeQueueWorkAsync(
+        CancellationToken stoppingToken,
+        TimeSpan logInterval,
+        ReadinessWaitLogCadence logCadence)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            if (AccessImportWorkerStartupGate.CanPerformQueueOperations(_gateQueueUntilStartupReadiness, _readiness))
+            {
+                return true;
+            }
+
+            if (AccessImportWorkerStartupGate.IsTerminalStartupFailure(_readiness))
+            {
+                _logger.LogWarning(
+                    "{WorkerName} stopping before queue work because required database initialization failed.",
+                    WorkerName);
+                return false;
+            }
+
+            if (!await DelayUntilStartupReadinessAsync(stoppingToken, logInterval, logCadence))
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<bool> DelayUntilStartupReadinessAsync(
+        CancellationToken stoppingToken,
+        TimeSpan logInterval,
+        ReadinessWaitLogCadence logCadence)
+    {
+        if (DateTime.UtcNow >= logCadence.NextUtc)
+        {
+            _logger.LogInformation(
+                "{WorkerName} waiting for startup readiness. Reason={Reason}. DatabaseInitializationState={DatabaseInitializationState}.",
+                WorkerName,
+                _readiness.Reason,
+                _readiness.DatabaseInitialization.State);
+            logCadence.NextUtc = DateTime.UtcNow.Add(logInterval);
+        }
+
+        var delay = TimeSpan.FromSeconds(Math.Max(1, _options.PollingIntervalSeconds));
+        try
+        {
+            await Task.Delay(delay, stoppingToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    private sealed class ReadinessWaitLogCadence
+    {
+        public DateTime NextUtc { get; set; } = DateTime.UtcNow;
     }
 
     private async Task RecoverStaleBatchesAtStartupAsync(CancellationToken stoppingToken)
