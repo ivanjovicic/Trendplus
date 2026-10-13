@@ -56,7 +56,7 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         }
 
         var connectionString = prepared;
-        await EnsureSupplierHubWithoutWindowedAsync(connectionString);
+        await EnsureSupplierHubWithoutWindowedAsync(connectionString, _fixture.AdminConnectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -87,7 +87,7 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         }
 
         var connectionString = prepared;
-        await EnsureSupplierHubWithoutWindowedAsync(connectionString);
+        await EnsureSupplierHubWithoutWindowedAsync(connectionString, _fixture.AdminConnectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -114,7 +114,7 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         }
 
         var connectionString = prepared;
-        await EnsureSupplierHubWithoutWindowedAsync(connectionString);
+        await EnsureSupplierHubWithoutWindowedAsync(connectionString, _fixture.AdminConnectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -147,7 +147,7 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         }
 
         var connectionString = prepared;
-        await EnsureSupplierHubWithoutWindowedAsync(connectionString);
+        await EnsureSupplierHubWithoutWindowedAsync(connectionString, _fixture.AdminConnectionString);
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -184,14 +184,17 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
         return string.IsNullOrWhiteSpace(connectionString) ? null : connectionString;
     }
 
-    private static async Task EnsureSupplierHubWithoutWindowedAsync(string connectionString)
+    private static async Task EnsureSupplierHubWithoutWindowedAsync(string connectionString, string adminConnectionString)
     {
         await SupplierDecisionSchemaReadinessIntegrationTests.SeedSupplierSchemaPrerequisitesAsync(connectionString);
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = connectionString,
+                // Use the distinct fixture admin database so repair takes the analytics
+                // split-database path. Unified databases deliberately skip 018 core/cache
+                // construction, which made this SQL029 oracle fail with 42P01 in CI.
+                ["ConnectionStrings:DefaultConnection"] = adminConnectionString,
                 ["ConnectionStrings:AnalyticsConnection"] = connectionString,
                 ["DatabaseInitialization:BuildSupplierDecisionHubCachesOnStartup"] = "true",
                 ["DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup"] = "false",
@@ -206,6 +209,26 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
             services,
             configuration,
             NullLogger.Instance);
+
+        // SQL029 maintenance assumes SQL018 core + all-time caches and a durable SQL
+        // history table. Fail immediately on a missing prerequisite rather than
+        // emitting a misleading SQL029 failure or a green no-Docker local result.
+        await using var verify = new NpgsqlConnection(connectionString);
+        await verify.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            """
+            SELECT
+                to_regclass('public."__StartupSqlScriptHistory"') IS NOT NULL
+                AND to_regclass('public.vw_supplier_fullprice_signals') IS NOT NULL
+                AND to_regclass('public.vw_supplier_markdown_dependency') IS NOT NULL
+                AND to_regclass('public.vw_supplier_decision_score') IS NOT NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache') IS NOT NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache_90d') IS NULL
+                AND to_regclass('public.mv_supplier_decision_score_cache_180d') IS NULL;
+            """,
+            verify);
+        Assert.True((bool?)await command.ExecuteScalarAsync() == true,
+            "SQL029 fixture requires fully initialized SQL018/history prerequisites and missing windowed MVs.");
     }
 
     private static async Task ApplySql029Async(NpgsqlConnection connection)
