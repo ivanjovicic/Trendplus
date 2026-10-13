@@ -51,7 +51,8 @@ public sealed class SupplierDecisionSchemaRepairHostedService : BackgroundServic
                 await DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync(
                     _serviceProvider,
                     _configuration,
-                    _logger);
+                    _logger,
+                    stoppingToken);
 
                 _logger.LogInformation(
                     "Supplier decision schema repair succeeded. Attempt {Attempt}/{MaxRetries}.",

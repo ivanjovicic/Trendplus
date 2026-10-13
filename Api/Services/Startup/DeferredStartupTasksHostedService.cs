@@ -154,7 +154,7 @@ public sealed class DeferredStartupTasksHostedService : IHostedService, IDisposa
                     var logger = services.GetRequiredService<ILogger<Program>>();
                     var configuration = services.GetRequiredService<IConfiguration>();
 
-                    var outcome = await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger);
+                    var outcome = await DatabaseInitializer.InitializeDatabasesAsync(services, configuration, logger, ct);
                     _readiness.MarkDatabaseInitializationCompleted(outcome);
                     _logger.LogInformation("Database initialization succeeded on deferred attempt {Attempt}/{MaxRetries}.", attempt, maxRetries);
                     break;

@@ -18,6 +18,7 @@ public static class DatabaseInitializer
     private const long AdvisoryLockKey = 987654321L;
     private const long SupplierDecisionHubBuildLockKey = 987654322L;
     private const long AnalyticsIntelligenceBuildLockKey = 987654323L;
+    private const long SupplierDecisionSchemaInitializationLockKey = 987654324L;
     private const int AdvisoryLockCommandTimeoutSeconds = 10;
     private const int AdvisoryLockRetryDelaySeconds = 2;
     private const int AdvisoryLockMaxWaitSeconds = 120;
@@ -25,6 +26,8 @@ public static class DatabaseInitializer
     private const int StartupSqlLockTimeoutSeconds = 15;
     private const int SupplierDecisionHubCoreBatchCount = 5;
     private const int SupplierDecisionHubCacheStartBatchNumber = SupplierDecisionHubCoreBatchCount + 1;
+    private const int SupplierDecisionHubCoreCommandTimeoutSeconds = 30;
+    private const int SupplierDecisionHubCacheCommandTimeoutSeconds = 300;
     private static readonly IReadOnlyDictionary<string, string> AnalyticsIntelligenceCacheBySqlFile =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -76,7 +79,8 @@ public static class DatabaseInitializer
     public static async Task<DatabaseInitializationOutcome> InitializeDatabasesAsync(
         IServiceProvider services,
         IConfiguration configuration,
-        ILogger logger)
+        ILogger logger,
+        CancellationToken cancellationToken = default)
     {
         logger.LogInformation("=== DATABASE INITIALIZATION START ===");
 
@@ -93,7 +97,7 @@ public static class DatabaseInitializer
         await using var connection = new NpgsqlConnection(defaultConnection);
         try
         {
-            await connection.OpenAsync();
+            await connection.OpenAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -109,7 +113,8 @@ public static class DatabaseInitializer
             logger,
             AdvisoryLockKey,
             TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds),
-            TimeSpan.FromSeconds(AdvisoryLockRetryDelaySeconds));
+            TimeSpan.FromSeconds(AdvisoryLockRetryDelaySeconds),
+            cancellationToken);
 
         if (!lockAcquired)
         {
@@ -139,8 +144,12 @@ public static class DatabaseInitializer
         {
             try
             {
-                await InitializeTrendplusDbAsync(services, configuration, logger);
+                await InitializeTrendplusDbAsync(services, configuration, logger, cancellationToken);
                 trendplusInitialized = true;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (StartupMigrationSequenceException ex)
             {
@@ -164,8 +173,12 @@ public static class DatabaseInitializer
 
             try
             {
-                await InitializeAnalyticsDbAsync(services, configuration, logger);
+                await InitializeAnalyticsDbAsync(services, configuration, logger, cancellationToken);
                 analyticsInitialized = true;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (DatabaseMigrationFailureException ex)
             {
@@ -250,12 +263,20 @@ public static class DatabaseInitializer
     public static async Task EnsureAnalyticsSupplierDecisionSchemaAsync(
         IServiceProvider services,
         IConfiguration configuration,
-        ILogger logger)
+        ILogger logger,
+        CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting analytics supplier decision schema repair.");
 
         await using var scope = services.CreateAsyncScope();
         var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+
+        await using var trendplusSchemaLock = string.IsNullOrWhiteSpace(defaultConnectionString)
+            ? null
+            : await AcquireSupplierDecisionSchemaInitializationLockAsync(
+                defaultConnectionString,
+                logger,
+                cancellationToken);
 
         // /api/analytics/vendor-sales-nivelacija reads vw_vendor_sales_nivelacija through
         // TrendplusDbContext (DefaultConnection), not AnalyticsConnection. When the web
@@ -267,7 +288,8 @@ public static class DatabaseInitializer
         var trendplusNivelacijaStatus = await EnsureTrendplusVendorSalesNivelacijaContractAsync(
             trendplusConnectionString,
             logger,
-            ShouldBuildSupplierDecisionWindowedViewsAtStartup(configuration));
+            ShouldBuildSupplierDecisionWindowedViewsAtStartup(configuration),
+            ShouldBuildSupplierDecisionHubCachesAtStartup(configuration));
         logger.LogInformation(
             "Trendplus vendor sales nivelacija contract check finished with status {Status}.",
             trendplusNivelacijaStatus);
@@ -288,9 +310,17 @@ public static class DatabaseInitializer
         if (unifiedDb)
         {
             logger.LogInformation("Analytics supplier decision schema repair skipped: analytics and trendplus share the same database.");
+            cancellationToken.ThrowIfCancellationRequested();
             await EnsureSupplierDecisionWindowedViewsAtStartupAsync(connectionString, configuration, logger, "supplier-decision-repair");
             return;
         }
+
+        await using var analyticsSchemaLock = await AcquireSupplierDecisionSchemaInitializationLockAsync(
+            connectionString,
+            logger,
+            cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/011_AddDataOriginColumns.sql", logger);
         await ExecuteSqlFileAsync(connectionString, "Database/Analytics/012_AddNabavnaCenaToSalesLineFacts.sql", logger);
@@ -311,7 +341,9 @@ public static class DatabaseInitializer
             logger,
             "analytics",
             "supplier-decision-repair",
-            allowHeavyRefresh: false);
+            allowHeavyRefresh: false,
+            allowCacheBuild: ShouldBuildSupplierDecisionHubCachesAtStartup(configuration));
+        cancellationToken.ThrowIfCancellationRequested();
         await EnsureSupplierDecisionWindowedViewsAtStartupAsync(connectionString, configuration, logger, "supplier-decision-repair");
 
         logger.LogInformation("Analytics supplier decision schema repair completed.");
@@ -411,7 +443,8 @@ public static class DatabaseInitializer
         ILogger logger,
         long key,
         TimeSpan maxWait,
-        TimeSpan retryDelay)
+        TimeSpan retryDelay,
+        CancellationToken cancellationToken = default)
     {
         var startedAt = DateTime.UtcNow;
 
@@ -421,7 +454,7 @@ public static class DatabaseInitializer
             lockCmd.CommandTimeout = AdvisoryLockCommandTimeoutSeconds;
             lockCmd.Parameters.AddWithValue("key", key);
 
-            var acquired = (bool?)await lockCmd.ExecuteScalarAsync() ?? false;
+            var acquired = (bool?)await lockCmd.ExecuteScalarAsync(cancellationToken) ?? false;
             if (acquired)
             {
                 logger.LogInformation("Acquired advisory startup lock with key {Key}.", key);
@@ -433,10 +466,42 @@ public static class DatabaseInitializer
                 key,
                 retryDelay.TotalSeconds);
 
-            await Task.Delay(retryDelay);
+            await Task.Delay(retryDelay, cancellationToken);
         }
 
         return false;
+    }
+
+    internal static async Task<NpgsqlConnection> AcquireSupplierDecisionSchemaInitializationLockAsync(
+        string connectionString,
+        ILogger logger,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = new NpgsqlConnection(connectionString);
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+            var acquired = await TryAcquireAdvisoryLockAsync(
+                connection,
+                logger,
+                SupplierDecisionSchemaInitializationLockKey,
+                TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds),
+                TimeSpan.FromSeconds(AdvisoryLockRetryDelaySeconds),
+                cancellationToken);
+            if (!acquired)
+            {
+                throw new DatabaseInitializationLockTimeoutException(
+                    SupplierDecisionSchemaInitializationLockKey,
+                    TimeSpan.FromSeconds(AdvisoryLockMaxWaitSeconds));
+            }
+
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
     private static async Task<bool> TryAcquireSingleRunAdvisoryLockAsync(
@@ -508,16 +573,15 @@ public static class DatabaseInitializer
         ILogger logger,
         string databaseLabel)
     {
-        var runFullOnStartup = configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
         var allowHeavyRefresh = configuration.GetValue<bool?>("DatabaseInitialization:AllowSupplierDecisionHeavyRefreshInInitializer") ?? false;
-
-        if (runFullOnStartup)
-        {
-            await BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "startup", allowHeavyRefresh);
-            return;
-        }
-
-        _ = Task.Run(() => BuildSupplierDecisionHubObjectsAsync(connectionString, logger, databaseLabel, "background", allowHeavyRefresh));
+        var allowCacheBuild = ShouldBuildSupplierDecisionHubCachesAtStartup(configuration);
+        await BuildSupplierDecisionHubObjectsAsync(
+            connectionString,
+            logger,
+            databaseLabel,
+            "startup",
+            allowHeavyRefresh,
+            allowCacheBuild);
     }
 
     private static async Task BuildSupplierDecisionHubObjectsAsync(
@@ -525,7 +589,8 @@ public static class DatabaseInitializer
         ILogger logger,
         string databaseLabel,
         string mode,
-        bool allowHeavyRefresh)
+        bool allowHeavyRefresh,
+        bool allowCacheBuild)
     {
         await using var lockConnection = new NpgsqlConnection(connectionString);
         var lockAcquired = false;
@@ -563,7 +628,7 @@ public static class DatabaseInitializer
                     connectionString,
                     "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
                     logger,
-                    commandTimeoutSeconds: 0,
+                    commandTimeoutSeconds: SupplierDecisionHubCoreCommandTimeoutSeconds,
                     useTransaction: false,
                     maxBatchCount: SupplierDecisionHubCoreBatchCount,
                     historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
@@ -582,39 +647,49 @@ public static class DatabaseInitializer
                     return;
                 }
 
-                logger.LogInformation(
-                    "[{Mode}] Supplier decision hub materialized caches are missing in {DatabaseLabel}. Building supplier decision stack.",
-                    mode,
-                    databaseLabel);
-                await DeleteAppliedStartupSqlHistoryAsync(
-                    connectionString,
-                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-
-                await ExecuteSqlFileAsync(
-                    connectionString,
-                    "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                    logger,
-                    commandTimeoutSeconds: 0,
-                    useTransaction: false,
-                    startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
-                    historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-
-                logger.LogInformation(
-                    "[{Mode}] Supplier decision hub SQL build completed for {DatabaseLabel}.",
-                    mode,
-                    databaseLabel);
-
-                if (allowHeavyRefresh)
+                if (!allowCacheBuild)
                 {
-                    await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
-                    cachesRefreshed = true;
+                    logger.LogWarning(
+                        "[{Mode}] Supplier decision hub materialized caches are missing in {DatabaseLabel}; optional 018 populated-cache creation is disabled for startup. Supplier scorecard endpoints remain fail-closed until an explicit cache build is run.",
+                        mode,
+                        databaseLabel);
                 }
                 else
                 {
                     logger.LogInformation(
-                        "[{Mode}] Supplier decision cache refresh skipped for {DatabaseLabel}: heavy refresh is disabled in initializer. NightlyAnalyticsRefreshWorker is the refresh owner.",
+                        "[{Mode}] Supplier decision hub materialized caches are missing in {DatabaseLabel}. Building supplier decision stack with a bounded command timeout.",
                         mode,
                         databaseLabel);
+                    await DeleteAppliedStartupSqlHistoryAsync(
+                        connectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                    await ExecuteSqlFileAsync(
+                        connectionString,
+                        "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
+                        logger,
+                        commandTimeoutSeconds: SupplierDecisionHubCacheCommandTimeoutSeconds,
+                        useTransaction: false,
+                        startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
+                        historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
+
+                    logger.LogInformation(
+                        "[{Mode}] Supplier decision hub SQL build completed for {DatabaseLabel}.",
+                        mode,
+                        databaseLabel);
+
+                    if (allowHeavyRefresh)
+                    {
+                        await RefreshSupplierDecisionHubCachesAsync(lockConnection, logger, databaseLabel, mode);
+                        cachesRefreshed = true;
+                    }
+                    else
+                    {
+                        logger.LogInformation(
+                            "[{Mode}] Supplier decision cache refresh skipped for {DatabaseLabel}: heavy refresh is disabled in initializer. NightlyAnalyticsRefreshWorker is the refresh owner.",
+                            mode,
+                            databaseLabel);
+                    }
                 }
             }
             else
@@ -845,6 +920,10 @@ public static class DatabaseInitializer
     internal static bool ShouldBuildSupplierDecisionWindowedViewsAtStartup(IConfiguration configuration) =>
         configuration.GetValue<bool?>("DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup") ?? true;
 
+    internal static bool ShouldBuildSupplierDecisionHubCachesAtStartup(IConfiguration configuration) =>
+        configuration.GetValue<bool?>("DatabaseInitialization:BuildSupplierDecisionHubCachesOnStartup")
+        ?? configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
+
     private static async Task EnsureSupplierDecisionWindowedViewsAtStartupAsync(
         string connectionString,
         IConfiguration configuration,
@@ -966,7 +1045,8 @@ public static class DatabaseInitializer
     internal static async Task<string> EnsureTrendplusVendorSalesNivelacijaContractAsync(
         string? connectionString,
         ILogger logger,
-        bool buildSupplierWindowedViews = true)
+        bool buildSupplierWindowedViews = true,
+        bool buildSupplierDecisionHubCaches = false)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -1062,7 +1142,8 @@ public static class DatabaseInitializer
                 logger,
                 "trendplus",
                 "nivelacija-contract-repair",
-                allowHeavyRefresh: false);
+                allowHeavyRefresh: false,
+                allowCacheBuild: buildSupplierDecisionHubCaches);
 
             if (buildSupplierWindowedViews && dependentsBefore.Any(name => TrendplusNivelacijaWindowedDependents.Contains(name)))
             {
@@ -1354,6 +1435,20 @@ public static class DatabaseInitializer
     private static async Task InitializeTrendplusDbAsync(
         IServiceProvider services,
         IConfiguration configuration,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = GetValidatedConnectionString(configuration, "DefaultConnection", logger);
+        await using var schemaLock = await AcquireSupplierDecisionSchemaInitializationLockAsync(
+            connectionString,
+            logger,
+            cancellationToken);
+        await InitializeTrendplusDbCoreAsync(services, configuration, logger);
+    }
+
+    private static async Task InitializeTrendplusDbCoreAsync(
+        IServiceProvider services,
+        IConfiguration configuration,
         ILogger logger)
     {
         logger.LogInformation("Initializing Trendplus database...");
@@ -1507,174 +1602,12 @@ public static class DatabaseInitializer
             "Database/Migrations/026_CreatePerformanceExplainTemplates.sql",
             logger);
 
-        // Fire-and-forget: startup now builds only the core supplier decision views from 018.
-        // The heavy supplier materialized caches are intentionally deferred so API startup can
-        // complete promptly and endpoints can fall back to live views on first run.
-        // Each statement auto-commits so partial progress is preserved if the process is killed.
-        var bg018ConnectionString = connectionString;
-        var bg018Logger = logger;
-
-        var runFullOnStartup = configuration.GetValue<bool>("DatabaseInitialization:RunFullSupplierDecisionHubOnStartup");
-
-        if (runFullOnStartup)
-        {
-            // Execute the 018 build synchronously during startup (blocking). This can increase
-            // startup time significantly; enable only when desired via configuration.
-            await using var lockConnection = new NpgsqlConnection(bg018ConnectionString);
-            try
-            {
-                await lockConnection.OpenAsync();
-
-                if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
-                {
-                    bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because another instance is already building supplier decision hub views.");
-                }
-                else
-                {
-                    var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
-                    var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
-
-                    if (!coreViewsReady)
-                    {
-                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing or outdated. Forcing re-execution of the core-view batch...");
-                        await DeleteAppliedStartupSqlHistoryAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-
-                        bg018Logger.LogInformation("[BG] Starting execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
-                        await ExecuteSqlFileAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                            bg018Logger,
-                            commandTimeoutSeconds: 0,
-                            useTransaction: false,
-                            maxBatchCount: SupplierDecisionHubCoreBatchCount,
-                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-                        coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
-                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
-                    }
-
-                    if (!cachesReady)
-                    {
-                        if (!coreViewsReady)
-                        {
-                            bg018Logger.LogWarning("[BG] Supplier decision hub materialized caches cannot be built because core views are still missing after repair.");
-                            return;
-                        }
-
-                        bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
-                        await DeleteAppliedStartupSqlHistoryAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-
-                        bg018Logger.LogInformation("[BG] Starting materialized cache build for 018_AddSupplierDecisionHubViews.sql (startup)...");
-                        await ExecuteSqlFileAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                            bg018Logger,
-                            commandTimeoutSeconds: 0,
-                            useTransaction: false,
-                            startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
-                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
-                    }
-                    else
-                    {
-                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub build failed when running on startup. Views may be unavailable until next startup.");
-            }
-            finally
-            {
-                if (lockConnection.State == System.Data.ConnectionState.Open)
-                {
-                    await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
-                }
-            }
-        }
-        else
-        {
-            _ = Task.Run(async () =>
-            {
-                await using var lockConnection = new NpgsqlConnection(bg018ConnectionString);
-                try
-                {
-                    await lockConnection.OpenAsync();
-
-                    if (!await TryAcquireSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey))
-                    {
-                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because another instance is already building supplier decision hub views.");
-                        return;
-                    }
-
-                    var coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
-                    var cachesReady = coreViewsReady && await AreSupplierDecisionHubCachesReadyAsync(bg018ConnectionString);
-                    if (!coreViewsReady)
-                    {
-                        bg018Logger.LogInformation("[BG] Supplier decision hub core views are missing or outdated. Forcing re-execution of the core-view batch...");
-                        await DeleteAppliedStartupSqlHistoryAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-
-                        bg018Logger.LogInformation("[BG] Starting async execution of 018_AddSupplierDecisionHubViews.sql core views (startup-safe mode)...");
-                        await ExecuteSqlFileAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                            bg018Logger,
-                            commandTimeoutSeconds: 0,
-                            useTransaction: false,
-                            maxBatchCount: SupplierDecisionHubCoreBatchCount,
-                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#core-views");
-                        coreViewsReady = await AreSupplierDecisionHubCoreViewsReadyAsync(bg018ConnectionString);
-                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql core views completed successfully.");
-                    }
-
-                    if (!cachesReady)
-                    {
-                        if (!coreViewsReady)
-                        {
-                            bg018Logger.LogWarning("[BG] Supplier decision hub materialized caches cannot be built because core views are still missing after repair.");
-                            return;
-                        }
-
-                        bg018Logger.LogInformation("[BG] Supplier decision hub materialized caches are missing. Forcing re-execution of the cache batches...");
-                        await DeleteAppliedStartupSqlHistoryAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-
-                        bg018Logger.LogInformation("[BG] Starting background materialized cache build for 018_AddSupplierDecisionHubViews.sql...");
-                        await ExecuteSqlFileAsync(
-                            bg018ConnectionString,
-                            "Database/Migrations/018_AddSupplierDecisionHubViews.sql",
-                            bg018Logger,
-                            commandTimeoutSeconds: 0,
-                            useTransaction: false,
-                            startBatchNumber: SupplierDecisionHubCacheStartBatchNumber,
-                            historyIdentifier: "Database/Migrations/018_AddSupplierDecisionHubViews.sql#full-build");
-                        bg018Logger.LogInformation("[BG] 018_AddSupplierDecisionHubViews.sql materialized caches completed successfully.");
-                    }
-                    else
-                    {
-                        bg018Logger.LogInformation("[BG] Skipping 018_AddSupplierDecisionHubViews.sql because supplier decision hub materialized views already exist.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    bg018Logger.LogWarning(ex, "[BG] 018 supplier decision hub core-view build failed. Views may be unavailable until next startup.");
-                }
-                finally
-                {
-                    if (lockConnection.State == System.Data.ConnectionState.Open)
-                    {
-                        await ReleaseSingleRunAdvisoryLockAsync(lockConnection, SupplierDecisionHubBuildLockKey);
-                    }
-                }
-            });
-        }
+        // Required core views are verified/created before deferred database initialization
+        // completes. Populated supplier caches are optional startup work and remain disabled
+        // unless explicitly opted into with BuildSupplierDecisionHubCachesOnStartup (or the
+        // legacy full-on-startup switch). Holding the same schema lock through this work keeps
+        // the repair hosted service from racing 018 against the initializer's 011-016 DDL.
+        await EnsureSupplierDecisionHubObjectsAsync(connectionString, configuration, logger, "trendplus");
 
         // Check if data seeding is required
         if (!await context.Artikli.AnyAsync())
@@ -2724,6 +2657,20 @@ public static class DatabaseInitializer
     }
 
     private static async Task InitializeAnalyticsDbAsync(
+        IServiceProvider services,
+        IConfiguration configuration,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = GetValidatedConnectionString(configuration, "AnalyticsConnection", logger);
+        await using var schemaLock = await AcquireSupplierDecisionSchemaInitializationLockAsync(
+            connectionString,
+            logger,
+            cancellationToken);
+        await InitializeAnalyticsDbCoreAsync(services, configuration, logger);
+    }
+
+    private static async Task InitializeAnalyticsDbCoreAsync(
         IServiceProvider services,
         IConfiguration configuration,
         ILogger logger)

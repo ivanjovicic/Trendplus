@@ -50,7 +50,8 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
                 // Keep the analytics DB split from the default DB so the
                 // compatibility layer is exercised rather than skipped.
                 ["ConnectionStrings:DefaultConnection"] = _fixture.AdminConnectionString,
-                ["ConnectionStrings:AnalyticsConnection"] = connectionString
+                ["ConnectionStrings:AnalyticsConnection"] = connectionString,
+                ["DatabaseInitialization:BuildSupplierDecisionHubCachesOnStartup"] = "true"
             })
             .Build();
 
@@ -392,7 +393,7 @@ public sealed class SupplierDecisionSchemaReadinessIntegrationTests : IClassFixt
         await transaction.RollbackAsync();
     }
 
-    private static async Task SeedSupplierSchemaPrerequisitesAsync(string connectionString)
+    internal static async Task SeedSupplierSchemaPrerequisitesAsync(string connectionString)
     {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
