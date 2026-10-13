@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: analytics-backend-tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 jobs:
   test:

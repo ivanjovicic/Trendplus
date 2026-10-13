@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: analytics-quality-gates-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 jobs:
   javascript-sdk-pins:

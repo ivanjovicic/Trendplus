@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   group: planning-governance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 jobs:
   validate-planning:
