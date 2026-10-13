@@ -3,7 +3,7 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB15` is DONE; `STAB16` is BLOCKED on read-only production DB/provider deploy access)
+Current READY prompt: none (`STAB15` DONE; `STAB16` BLOCKED on authorized provider deployment/read and production audit evidence; 2026-10-13 PR #133 / Render 503 addendum below). Repo-local followups RQ634-RQ636 are owned by RQ, not STAB.
 Current gate verdict: the first 2026-08-27 live audit found Render behind current `main`; a same-day API-only recheck now shows the canonical Render API at runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`, but no dedicated worker process or durable refresh proof is visible yet. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` and `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ## Goal
@@ -1714,3 +1714,25 @@ The canonical production API reports a runtime SHA contained in current `main`, 
 - Before any database access, the owner can check three settings in the Render dashboard in about three minutes: (1) effective `Database__AutoMigrate`, `DatabaseInitialization__FailFast` and `StartupTasks__RunDatabaseInitialization` on `trendplus-api`; (2) whether a `trendplus-worker` service from `render.yaml:81-147` exists and runs; (3) the startup log after the next restart.
 - Reason: retained live `/ready` is `ready=true` (since 2026-10-04 21:39:00 CEST) while startup-owned objects are missing. Code strongly indicates the effective runtime did not follow the expected strict initialization path, but provider config/startup logs are required to distinguish AutoMigrate-off, non-strict error completion, alternate effective config/connection, or post-readiness schema drift (RQ545/RQ587). `refresh-status` on the web process proves six job families have no durable run evidence visible to the API; it does **not** prove the separate worker service is absent. Pulse/supplier materializations are currently missing/empty and must be correlated with the worker service and its durable run history.
 - If the owner changes effective startup policy to strict/fail-fast, the next restart can remain `not ready` until the schema issue is repaired; treat that as an intentional visibility change and schedule it operationally. First capture current effective config and logs before changing anything. RQ587 makes startup outcome readable without claiming current schema certification. Source: `docs/qa/ANALYTICS_RELIABILITY_VALUE_NEXT_WAVE_AUDIT_2026-10-04.md` §4.2, §22.
+
+
+### Addendum 2026-10-13 — PR #133 merged, runtime/maintenance proof still external
+
+- Source milestone: PR #133 (`fix(render): defer supplier windowed MV rebuild outside web cold start`) merged to `main` on `1c9158d3e9a74de96c0b7ece60fb0c88f9a18058`. Exact merge-SHA backend run `38301829902` passed (1,998 passed, 42 classified skips). The subsequent current repo tip for this review is `6dec862e6449a18a24a26234215bcc9b30705b98` (evidence-only after merge). This is **CI evidence only**, not provider/runtime verification.
+- Render user log excerpt from 2026-10-12 16:50 UTC proves missing supplier 90d/180d MVs, a forced execution of SQL 029 and simultaneous API/readiness 503s; it does **not** include the eventual SQL success/error or `/ready` JSON. Do not assert SQL 029 was the sole cause of all 503s.
+- Production config in `Api/appsettings.Production.json` now disables `DatabaseInitialization:BuildSupplierDecisionWindowedViewsOnStartup`; check effective Render environment overrides. Without deployment access, actual production setting is UNKNOWN. Do not set `StartupReadiness:GateApiTraffic=false` or bypass purchase-cost provenance schema enforcement.
+- Public `/health` and `/ready` requests made from the assistant's environment on 2026-10-13 were **not accessible**; this is NOT an observed 503 and is NOT evidence of recovery or outage. The scheduled Render maintenance on Oct 14 01:00–02:00 UTC is separate from the Oct 12 503 incident.
+- RQ634/RQ635/RQ636 are independent **repository-local** reliability tasks; they do not own or certify Render runtime, production worker registration, provider config, Vercel dashboard or Neon state. STAB16 remains the exclusive provider/deployed-proof owner.
+
+#### Operator-ready minimum evidence packet (no credentials in Git)
+
+1. Render Dashboard for service `trendplus-api`: effective runtime/build SHA, deploy finished timestamp, `ASPNETCORE_ENVIRONMENT`, `PROCESS_TYPE`, `Database__AutoMigrate`, `DatabaseInitialization__FailFast`, `StartupTasks__RunDatabaseInitialization`, `DatabaseInitialization__BuildSupplierDecisionWindowedViewsOnStartup`, worker registration flags and startup task flags. Capture values only, never connection-string values or secrets.
+2. Consecutive `GET /health`, `GET /ready` with response status, sanitized JSON (`reason`, initialization `state/failureCategory/failureStage`, DB probes), and timings after cold start; if /ready is red, classify DB connection, schema contract, initialization, lock/timeout or optional analytics before proposing a mitigation.
+3. Logs from the **same exact deploy**, from process start through post-ready: SQL 029 attempted/skipped, any transaction timeout/lock SQLSTATE, startup outcome and state transitions; don't equate `/health=200` with full schema health.
+4. Separate Render worker service identity and `PROCESS_TYPE=worker` effective config, refresh job execution history, per-family last successful timestamp, and diagnostics from `/api/analytics/refresh-status?dataScope=all`; do not infer the worker service is absent from `web` process's worker list.
+5. Supplier 90d/180d catalog verification **read-only**: existence, `relispopulated`, required columns, last refresh/run source. If missing, leave supplier capability unavailable and schedule SQL 029 maintenance only after explicit authorization, backup and review (RQ635 can first certify local preflight). Never run manual SQL 029 from the live web process during traffic.
+6. Vercel deploy verification for RQ633 with authoritative project-root setting, ignoreCommand outcome on docs-only vs frontend commits and concrete provider IDs/errors; repo source changes alone do not prove dashboard configuration.
+7. Only then perform bounded read-only production reconciliation and promote STAB16 when real provider/audit access is present. Do not reopen RQ630/RQ631, repeat Access import #23, or declare 90d/180d ready based on green GitHub CI.
+
+**Unblock event:** authorized provider read/deploy access plus read-only analytics audit connection or equivalent scrubbed operator evidence. Repository-only tests may proceed independently under RQ634-RQ636; the STAB16 production status remains BLOCKED until its full acceptance is proven.
+
