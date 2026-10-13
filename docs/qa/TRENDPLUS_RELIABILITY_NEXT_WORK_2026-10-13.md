@@ -91,3 +91,11 @@ No existing RQ601/602/610 outcome changes. No new import, fake historical stock 
 ### Fourth missed code path: MediatR persistence bounds
 
 The existing SQL and EF schema cap `PerformanceLogs.RequestType` at 200 chars, `RequestName` at 500, `RequestData`/`ResponseData` at 4000, and `ExceptionMessage` at 2000. `Application/Behaviors/PerformanceLoggingBehavior.cs` does not cap RequestType or exception text, and `SerializeObject` returns unbounded `obj.ToString()` when JSON serialization fails. RQ631 fixed the separate HTTP middleware, not this writer. This is a **source-verifiable risk**; current CI `42P01` fake-provider errors do not prove a varchar overflow. RQ638 owns a narrow, tested MediatR fix. RQ636 owns only test fixture noise.
+
+## 8. Second-pass delivery closure — PR #135
+
+- PR #135 (`fix(diagnostics): expose windowed supplier MV state and register missed startup/telemetry work`) was **squash-merged** to `main` at `99ba3baed3af0c316cd68dc830342114660bf124` on 2026-10-13. Fresh main ref verification passed.
+- Exact PR-head `0639ea52bf2d98044d47b187f9a76952775eec08` checks: backend `38367308954` **SUCCESS** (2,002 passed, 42 classified skips, zero failures; new 4 diagnostic tests passed), frontend `38367309021` **SUCCESS**, Planning Governance `38367309107` **SUCCESS**. This is CI proof of the code change, **not** Render deployment proof.
+- Implemented scope: `AnalyticsConnectionDiagnosticsHostedService` reports real 90d/180d populated/column-capability status through the canonical PostgreSQL reader; optional inspector exceptions leave core diagnostic retries intact and do not mark the global API ready or start SQL 029.
+- Still **not delivered** in code: RQ634 startup 018/029/concurrent owner fix, RQ637 Access import web-readiness guard, RQ635 controlled SQL029 maintenance preflight, RQ636 fake-provider isolation, RQ638 MediatR persistence column bounds. These stay READY with independent ownership; do not use PR135 success to close them.
+- Still **not proven**: effective Render runtime SHA, /ready state, SQL 018/029 outcome, Neon supplier 90/180d MVs or dedicated analytics refresh worker. STAB16 remains BLOCKED on authorized provider/audit evidence. RQ601/RQ602 PARTIAL and RQ610 BLOCKED remain unchanged.
