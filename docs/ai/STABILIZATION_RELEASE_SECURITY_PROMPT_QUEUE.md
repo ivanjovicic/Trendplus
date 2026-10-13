@@ -3,7 +3,7 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-Current READY prompt: none (`STAB15` DONE; `STAB16` BLOCKED on authorized provider deployment/read and production audit evidence; 2026-10-13 PR #133 / Render 503 addendum below). Repo-local followups RQ634-RQ636 are owned by RQ, not STAB.
+Current READY prompt: none (`STAB15` DONE; `STAB16` BLOCKED on authorized provider deployment/read and production audit evidence; 2026-10-13 PR #133 / Render 503 addendum below). Repo-local followups RQ634-RQ637 are owned by RQ, not STAB.
 Current gate verdict: the first 2026-08-27 live audit found Render behind current `main`; a same-day API-only recheck now shows the canonical Render API at runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`, but no dedicated worker process or durable refresh proof is visible yet. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` and `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ## Goal
@@ -1736,3 +1736,15 @@ The canonical production API reports a runtime SHA contained in current `main`, 
 
 **Unblock event:** authorized provider read/deploy access plus read-only analytics audit connection or equivalent scrubbed operator evidence. Repository-only tests may proceed independently under RQ634-RQ636; the STAB16 production status remains BLOCKED until its full acceptance is proven.
 
+
+
+### Addendum 2026-10-13 — second-pass cold-start concurrency review (no status change)
+
+- **New source-confirmed residual:** SQL 029 is not the only potentially expensive startup path. `EnsureAnalyticsSupplierDecisionSchemaAsync` still calls `BuildSupplierDecisionHubObjectsAsync(...allowHeavyRefresh:false)`; when SQL 018 supplier caches are missing, the code can execute their populated build with `commandTimeoutSeconds:0`. The flag only skips an explicit refresh. RQ634 now owns the repository-only cold-start/018 regression and safety fix, with exact PostgreSQL tests. **Do not disable mandatory base schema validation** to bypass slow rebuild.
+- The web process is **not truly worker-free**: Production settings opt into `AccessImportBackgroundWorker` and 2-second polling. Its immediate stale-batch recovery and subsequent claim loop have no required-readiness wait, consistent with the user's observed import-queue SQL during /ready 503. New RQ637 owns repository-local gating and lifecycle tests, while STAB16 owns effective Render settings and live resource/probe measurements. Do not simply disable Access imports permanently or replay completed batch #23.
+- Startup AnalyticsConnectionDiagnostics previously probed core/all-time supplier objects but omitted 90d/180d. The direct-request code correction adds read-only canonical MV capability diagnostics (missing object, missing required columns, unpopulated), without treating optional cache unavailability as global API readiness failure or repeatedly rebuilding on web.
+- PR #134 final-head backend/quality/governance runs `38351086653`, `38351086632` and `38351086583` all succeeded; merged planning run `38351175549` succeeded. This is source/CI truth only; effective deployed Render runtime is still unknown.
+- Verify **separately** in authorized Render logs: (a) required DB init state; (b) SQL018 or SQL029 start/completion and lock/timeout; (c) API /ready reason and post-start response; (d) import worker first stale recovery/poll before/after readiness; (e) 90/180d canonical capability. The worker's mere existence in web logs does not prove a dedicated analytics-refresh service exists.
+- The 2026-10-14 Render maintenance notice is about dashboard/API/one-off-job availability, not a demonstrated source for the earlier Oct 12 app 503. Do not put secrets or connection strings in evidence.
+
+**STAB16 stays BLOCKED on authorized provider read/deploy and production audit access**. RQ634/RQ637 (P1) and RQ635/RQ636 (P2) remain independently runnable in the repository, subject to refreshed locks and PR ownership.
