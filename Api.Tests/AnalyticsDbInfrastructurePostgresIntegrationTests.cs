@@ -130,8 +130,8 @@ public sealed class AnalyticsDbInfrastructurePostgresIntegrationTests : IClassFi
             INSERT INTO prodaja_stavke (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena)
             VALUES (642001, 642001, 642001, 1, 25, 10);
 
-            INSERT INTO "DnevnikPromena" ("Id", "ArtikalId", "Datum", "TipPromene", "DataOrigin")
-            VALUES (642001, 642001, '2026-10-20T00:00:00Z', 'nivelacija', 'existing');
+            INSERT INTO "DnevnikPromena" ("Id", "ArtikalId", "Datum", "TipPromene", "Iznos", "DataOrigin")
+            VALUES (642001, 642001, '2026-10-20T00:00:00Z', 'nivelacija', 0, 'existing');
             """,
             connection);
         await command.ExecuteNonQueryAsync();
