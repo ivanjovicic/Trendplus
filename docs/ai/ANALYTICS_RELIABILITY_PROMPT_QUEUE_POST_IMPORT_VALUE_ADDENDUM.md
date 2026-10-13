@@ -2317,12 +2317,12 @@ None. Frontend-only and repository-local.
 
 ## RQ653 - Pilot readiness Actions card must not report zero actions when action counts failed
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: frontend pilot readiness partial-failure state
 Feature family: pilot-readiness-partial-failure-truth
 Parallel-safe: yes (only `PilotReadinessPage.tsx` and its specs; disjoint from RQ651/RQ652/RQ654)
-Owner: unassigned
+Owner: Cursor
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Commit suggestion: `fix(pilot-readiness): keep action counts unknown when the counts request fails`
 
@@ -2359,6 +2359,35 @@ Partial failure never shows fabricated action counts; status is not `ready` on m
 ### Dependencies
 
 None. Frontend-only and repository-local.
+
+### Completion note
+
+- Date: 2026-10-13
+- Status: DONE
+- Completion: `buildActionsCard` covers both partial-failure cases.
+  - Counts missing, summary present: the card returns `warning` with "Broj akcija po statusu nije dostupan…". It describes only what the summary proves (sample size, measured outcomes, coverage) and never reports "Ukupno 0 akcija" or "Red akcija je prazan".
+  - Counts present, summary missing: "Ishodi su mereni na 0 akcija" is replaced by "Sažetak ishoda nije dostupan."
+  - The both-null `unknown` path and the full counts+summary path are unchanged.
+  - The reviewed `fake_zero_fallback` baseline entry for `PilotReadinessPage.tsx` (`measuredCount ?? 0`) was fixed and removed, so the baseline went from 38 to 37.
+- Changed files: `Klijent/clientapp/src/pages/PilotReadinessPage.tsx`; `Klijent/clientapp/src/pages/__tests__/PilotReadinessPage.edgeCases.spec.ts`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-13-RQ653-evidence.md`.
+- Contract/runtime behavior changed: frontend readiness card text and status only; no API change.
+- Checks run:
+  - Failing-first: 2 new counts-missing tests failed with the exact defects ("Ukupno 0 akcija…"; "Red akcija je prazan"), and the summary-missing test failed with "mereni na 0". The unchanged-path test passed.
+  - After the fix: PilotReadiness specs (edgeCases, spec, integration) plus AppAnalyticsRoutes and analyticsTrustStateProof passed 57/57 in 5 files.
+  - `npm run check:analytics-guardrails` passed (baseline-only, 37 known). The first run flagged the shifted baseline line as NEW; it was fixed rather than re-baselined.
+  - `npm run build` passed (exit 0).
+  - `node scripts/check-prompt-queues.mjs` and `git diff --check` passed.
+- Checks not run: full frontend suite and browser check, because the change is bounded to one pure card builder covered by unit and integration specs.
+- Run log: `.ai/runs/2026-10-13-RQ653-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `5dd902bed9c9fe58097b8a7af5e632c181379d54`
+- Main verification: after push, `git merge-base --is-ancestor 5dd902be origin/main` passed; origin/main was `5dd902bed9c9fe58097b8a7af5e632c181379d54`.
+- Missed: none known. The inventory card was checked and not changed: it renders counts only after `hasInventorySignals` confirms the bootstrap inventory source, so the same partial-failure pattern is not proven there.
+- Follow-up: RQ654 (P3) remains READY.
+- Residual risk: main CI for `5dd902be` had not completed at close.
+- Post-close routing: RQ653 has no dependents. RQ654 remains READY. The RQ645 primary pointer stays with its owner (Codex).
+- Prompt defect / scope repair: the summary-missing variant (`measuredCount ?? 0`) on the same card and the same fake-zero class was fixed in scope. This was required because the guardrail flagged its shifted baseline line.
 
 ## RQ654 - Align analytics period presets with the business calendar day around local midnight
 
