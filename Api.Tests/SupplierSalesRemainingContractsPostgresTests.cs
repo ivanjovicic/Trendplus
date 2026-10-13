@@ -61,7 +61,7 @@ public sealed class SupplierSalesRemainingContractsPostgresTests : IClassFixture
     public async Task SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows()
     {
         await using var session = await CreateSessionAsync(nameof(SupplierSalesStats_ComparablePrePostTotalsMatchSupplierRows));
-        const string comparisonPath = "/api/analytics/supplier-sales-stats?fromDate=2026-07-01&toDate=2026-08-10&dataScope=all";
+        const string comparisonPath = "/api/analytics/supplier-sales-stats?fromDate=2026-07-20&toDate=2026-08-13&dataScope=all";
         var root = await GetRootAsync(session.Client, comparisonPath);
         var suppliers = root.GetProperty("suppliers").EnumerateArray().ToArray();
         var totals = root.GetProperty("totals");
