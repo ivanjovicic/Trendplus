@@ -4,7 +4,7 @@ Date: 2026-10-13
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-13: RQ646 is DONE on PR #150 squash merge `4dde4c9e878a8efb88963103af1a8236876d1645`; exact-head backend run `38467098912` passed 2,110 / skipped 43 / failed 0, with RQ453 and all three named ShoeType PostgreSQL contracts passing. RQ647 is the current primary P2 READY prompt; RQ648, RQ649 and RQ654 remain independent READY lanes. Run evidence: `.ai/runs/2026-10-13-RQ646-evidence.md`.
-Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence), RQ649 (remaining EF InMemory Access worker CI noise), and RQ654 (period preset local-midnight boundary) are independent READY lanes. RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
+Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence) and RQ654 (period preset local-midnight boundary) are independent READY lanes. RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2173,13 +2173,12 @@ GitHub read access; no provider/production data authority. Independent of RQ645â
 
 ## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend test-host worker registration and targeted CI logging
 Feature family: remaining-fake-provider-worker-noise
 Parallel-safe: yes for scoped test host/factory paths; avoid RQ645 Supplier, RQ646 ShoeType and RQ647 benchmark fixtures
 Owner: Cursor
-Local lock: `.ai/task-locks/RQ649-cursor.lock.md`
 Ready after: RQ636 DONE and RQ637 DONE; latest exact-main backend CI 38407849758 exposed a distinct residual
 Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `e7d7e4532b1d677d4ca7c3b18d67087cc68d5292`. No RQ649 branch, lock or open PR exists; RQ636/RQ637 are DONE. Cursor had concurrently started RQ647 from `1dba9adf`, but Codex's RQ647 claim and implementation (PR #153) reached main first, so Cursor released RQ647 without pushing and kept its alternative only on an unpushed local branch.
 Commit suggestion: test(ci): isolate remaining InMemory API hosts from Access import polling
@@ -2221,6 +2220,25 @@ Non-import EF InMemory hosts no longer run unwanted Access import queue polling 
 ### Dependencies
 
 RQ636/RQ637 DONE. No production credentials, source file import or owner business approval needed; check same-file collisions with RQ645/RQ646 before claiming.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: Six EF InMemory `WebApplicationFactory<Program>` hosts (`FailureFactory`, `CachedAnalyticsFactory`, `LegacyInsightStudioFactory`, `DailySalesWebApplicationFactory`, `ShoeTypeSalesInMemoryFactory`, `SupplierSalesInMemoryFactory`) now remove the `AccessImportBackgroundWorker` hosted-service descriptor through `Api.Tests/AccessImportTestHostIsolation.cs`. A test-only `UseSetting("AccessImport:RegisterWorkerInWebProcess", "false")` was proven ineffective because `appsettings.json` outranks host settings, so descriptor removal is the effective guard (RQ636's identical `UseSetting` lines are likewise inert; its descriptor removal is what works). Each host has a registration assertion against the built service provider, and a convention test fails any future InMemory Program host without descriptor removal.
+- Changed files: `Api.Tests/AccessImportTestHostIsolation.cs`; `Api.Tests/InMemoryTestHostAccessImportWorkerConventionTests.cs`; `Api.Tests/CachedAnalyticsFailureContractTests.cs`; `Api.Tests/CachedAnalyticsCriticalEndpointsIntegrationTests.cs`; `Api.Tests/InsightStudioLegacyEndpointsContractTests.cs`; `Api.Tests/DailySalesStatsIntegrationTests.cs`; `Api.Tests/AnalyticsShoeTypeSalesIntegrationTests.cs`; `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ649-evidence.md`.
+- Checks run: local Release build 0 errors; registration/convention/RQ640/PostgresRequired/worker lifecycle/WorkerRuntimeConfig set passed 32/32; six affected classes passed 72 / skipped 29 / failed 0 with worker starts 63 before -> 0 after; exact-main run `38537132751` (backend job `115762635022`) passed 2,076 / skipped 43 / failed 0, RQ453 passed, skip inventory 43 known. Relational-provider log lines: 113 (job `115332057225`, 100 worker-attributed) -> 34 (0 worker-attributed; all 34 from `AnalyticsConnectionDiagnosticsHostedService`).
+- Checks not run: none required.
+- Run log: `.ai/runs/2026-10-14-RQ649-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `d8429e9d92fa08ed2d16bd06090a2469a2d54138`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `d8429e9d92fa08ed2d16bd06090a2469a2d54138` after push.
+- Missed: none known in scope.
+- Follow-up: `AnalyticsConnectionDiagnosticsHostedService` still logs 34 relational-provider lines on InMemory hosts; it is a separate hosted service outside RQ649 scope and needs its own prompt if the noise matters.
+- Residual risk: 13 worker starts remain in CI on hosts not using EF InMemory (relational fixtures/lifecycle tests); none produced relational-provider errors.
+- Post-close routing: RQ649 has no dependents; RQ648 and RQ654-RQ657 remain READY and RQ647 remains Codex-owned IN_PROGRESS, so no Zero-READY proof applies.
+- Prompt defect / scope repair: the scope excluded the Supplier/ShoeType suites only while RQ645/RQ646 were active; both are DONE, so the two legacy files received only the factory guard and registration assertion. Do step 2 suggested a `RegisterWorkerInWebProcess=false` setting, which is overridden by `appsettings.json`; descriptor removal was used instead.
 
 ## RQ651 - Stop rendering unknown data-quality counts and margin-coverage shares as zero
 
