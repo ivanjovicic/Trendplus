@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: none.
+Current READY prompt: **RQ666 (P1, Product Decision source/action/store scope identity)**. Independent READY: **RQ667 (P1, Inventory store/compareStore scope validation)**. No prompt is claimed; require fresh shared main reservation, lock/worktree/PR check, and path-safe sequencing. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates.
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -3185,6 +3185,72 @@ None. Sharing one internal service provider across hosts was rejected: it requir
 - Missed: 11 factories lacked the opt-out used by 20+ others
 - Follow-up: none
 - Residual risk: convention matches only lambda-style AddDbContext registrations; Vercel check was rate-limited (non-required)
+
+
+---
+
+## RQ666 - Product Decision Center: source-scoped action identity and store filter lineage
+
+Status: READY
+Priority: P1
+Type: frontend/action-identity + filter-trust regression
+Feature family: product-decision-datascope-action-identity
+Parallel-safe: yes with RQ667 only when its Inventory paths and shared services are disjoint; no parallel ProductDecisionCenterPage owner
+Owner: unassigned
+Ready after: RQ660 DONE, RQ662 DONE, RQ657 DONE; current local Analytics Quality Gates success `38587580206`
+Commit suggestion: `fix(analytics): prevent cross-dataset Product Decision action and store identity leakage`
+
+### Source-verified risk and exact boundaries
+
+In `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `buildSourceKey(row,actionKind,fromDate,toDate,storeId,supplierId)` omits `dataScope`. The same key is used for central-action upsert, source-status lookup, queued button state and evidence snapshot state. The API queries themselves pass `dataScope` to `getProductDecisionCenter` and `getSupplierFilters`. Therefore two data-scope views with identical product, store/supplier and period can map to one persisted action identity; the code is not sufficient to prove this collision is intended. The store options are fetched once by bare `getStores()` and persist across dataScope changes, whereas core Supplier/Daily/Shoe/Color pages have scope-aware store validation. Do not claim a live duplicate/corrupted database without a reproducer; classify the business intent and old records first.
+
+### Do
+
+1. Inspect `ProductDecisionCenterPage.tsx`, its `queueStatus` / `signalQueue` / `actionStatusFallback` specs, `getAnalyticsActionSourceStatuses` and `upsertAnalyticsActionWithResult` API/DB idempotency contracts, and the current RQ660/RQ662/RQ585 status/source context semantics. Compare how Inventory/Decision Pulse source keys encode dataScope. Scope identity must be a **stable semantic decision**: if the server explicitly treats one action across imported/existing/all as intentional, prove it in a contract test and record an owner decision before changing the key.
+2. Failing-first: same productId/actionKind/store/supplier/period under `imported` and `existing` with distinct source data. Verify status lookup, queued badge, upsert, evidence snapshot and URL/filters do not apply a prior dataset's decision silently. Include legitimate reuse within the *same* dataScope. Verify that old persisted source keys are not mistaken for new-scope proof; do not bulk rewrite action rows.
+3. If distinct dataset identity is required, implement a **versioned, normalized** source key and matching status/upsert path. Plan backwards compatibility for existing `product:...` legacy keys (read-only legacy visibility, explicit migration policy or qualified unknown); no automatic replay/re-enqueue, false duplicates, schema rewrite or silent hiding of customer actions. Persist `dataScope` in safely approved metadata/context where the existing API contract supports it.
+4. Fetch store options using the same effective dataScope as the Product Decision payload (if supported by the authoritative stores API), invalidate previous-scope options immediately, and verify/store the selected store ID against the current-scope list before allowing scoped requests/actions. On discovery failure show an explicit stale/failed state and prevent cross-scope action commits. Handle signed/negative IDs, invalid/deep-link store IDs, rapid flips, retries and stale async responses. Preserve supplier filter fallback and RQ657 request sequences.
+5. Keep changes within Product Decision frontend/test/source-key utility and narrow API tests **only if a demonstrable contract fix requires them**. Do not touch InventoryPage, SQL/product score formulas, source import, production data or any live action mutations. Before changing server idempotency shape, write the compatibility matrix and verify owner/current architecture contract.
+
+### Acceptance
+
+- Failing-first regression before fix; same-scope retains idempotency; cross-scope never wrongly shows `Već dodato` nor shares evidence snapshot; historical action keys remain retrievable and aren't duplicated by an automatic migration.
+- Store selection only after scope-appropriate options load; previous or unknown store ID cannot be sent as an accepted, trusted new-scope filter/action. Document the chosen explicit fallback if the stores API really has global store semantics.
+- Focused PDC tests and API source-status/upsert contract tests where required; `npm run check:analytics-guardrails`, `npm run build`, exact SHA Actions validation and `node scripts/check-prompt-queues.mjs`. No skipped requirement counts as PASS.
+- Evidence: `.ai/runs/2026-10-14-RQ666-evidence.md` with same/cross/legacy key matrix and exact main SHA. If the key proves intentionally global, close with verified `OBSOLETE` classification **for the key portion** while still completing any demonstrated store-scope defect; do not invent a fix.
+
+---
+
+## RQ667 - Inventory: preserve verified store/compare-store context when dataScope changes
+
+Status: READY
+Priority: P1
+Type: frontend/store filter provenance + inventory comparison tests
+Feature family: inventory-scope-filter-validity
+Parallel-safe: yes with RQ666 (InventoryPage only); no parallel Inventory page/filter owner
+Owner: unassigned
+Ready after: RQ607 DONE (latest snapshot semantics), RQ662 DONE (scoped store-filter precedent), RQ626 DONE; no RQ610 stock-mutation gate
+Commit suggestion: `fix(analytics): validate inventory store filters per dataset scope`
+
+### Source-verified risk and exact boundaries
+
+`InventoryPage.tsx` fetches `getStores(true)` once with `storesReloadNonce`, unlike scoped `getStores(true, dataScope)` used on Daily Sales/Supplier/Shoe Type/Color. Its global `trendplus:data-scope-changed` event clears `selectedSupplierId` but retains `selectedStoreId` and `compareStoreIds`, while inventory balance/list/insights/comparison/forecast/actions all use the **new** `inventoryDataScope` with the retained IDs. The select is disabled on `storesLoadError` but not on a pending new-scope validation. No evidence shows that every store is valid in every imported/existing population. Test this rather than assuming the old list is safe or declaring it a production bug.
+
+### Do
+
+1. Create a failing-first test, in a new focused Inventory scope/filter spec if needed, using divergent imported/existing store fixtures, the same-store-present-in-both counterexample, and route query `storeId`/`compareStores` inputs. Ensure the test isolates `getStores(true,dataScope)` / `getInventoryStoreComparison` contracts without refetching real business data.
+2. On scope transition mark old store and compare selections **unverified**, load scope-appropriate stores, validate each ID and suppress stale filters/compare sets until verified. Do not send an unverified prior-scope `storeId`/comparison to `getInventoryBalance`, `getInventoryList`, report export, action generation, inventory insights or rebalance. Keep legitimately shared IDs only after the new response proves membership.
+3. On failed load, show an explicit unavailable/stale state and retry. A failed/empty store discovery is not a measured no-store dataset; do not silently coerce to all-stores and display apparently valid money or stock actions. Handle signed store IDs, duplicate human names, rapid scope flips and delayed responses without clearing a newly confirmed list.
+4. Preserve existing `latest available inventory snapshot` vs `historical as-of` truth, signed returns, RQ626 proxies, true zero versus unknown, user URL intent and report/export scope. Reuse `AnalyticsFilterLoadNotice`, `storeFilterFallbackState` and RQ662 patterns where appropriate; no change to RQ610 scheduling, inventory SQL, source import or product score.
+5. Bound edits to `InventoryPage.tsx`, focused Inventory scope/filter specs and only directly required shared presentation helpers. Account for compareStore default selection on the *new* verified store list; don't resurrect stale default comparisons after a failed reload.
+
+### Acceptance
+
+- Two-way imported/existing transitions, valid shared ID, stale URL ID, comparison set with one missing store, error, retry, same-scope refresh and rapid async race; failing-first reproducer and passing after patch.
+- All dependent list/balance/summary/comparison/export requests align to the effective dataScope/store/compare-store tuple; stale/unknown provenance is visible and cannot trigger an actionable inventory recommendation.
+- Focused Inventory integration tests, frontend `npm run check:analytics-guardrails` and `npm run build`, exact SHA Analytics Quality Gates and queue validator; no unrelated backend/deployed proof required.
+- Evidence: `.ai/runs/2026-10-14-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
+
 
 ## RQ668 - Fix small analytics frontend correctness, language and accessibility defects from the 2026-10-14 audit
 
