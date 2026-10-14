@@ -157,6 +157,53 @@ describe("SupplierSalesStatsPage scope reload", () => {
     expect(screen.queryByText("Uvezeni Alfa")).not.toBeInTheDocument();
   });
 
+  it("ignores a late store-list response from the previous scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    let resolveImported: ((value: Awaited<ReturnType<typeof getStores>>) => void) | undefined;
+    let resolveExisting: ((value: Awaited<ReturnType<typeof getStores>>) => void) | undefined;
+    vi.mocked(getStores)
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveImported = resolve;
+      }))
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveExisting = resolve;
+      }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => {
+      expect(getStores).toHaveBeenLastCalledWith(true, "existing");
+    });
+
+    await act(async () => {
+      resolveExisting?.([
+        { storeId: 2, storeName: "Postojeci objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>);
+    });
+
+    const storeSelect = await screen.findByRole("combobox", { name: "Objekat" });
+    expect(await screen.findByRole("option", { name: "Postojeci objekat" })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveImported?.([
+        { storeId: 1, storeName: "Uvezeni objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>);
+    });
+
+    expect(storeSelect).toHaveValue("");
+    expect(screen.getByRole("option", { name: "Postojeci objekat" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Uvezeni objekat" })).not.toBeInTheDocument();
+  });
+
   it("uses shared parent scope in embedded mode instead of the global event", async () => {
     const onTrustMetadataChange = vi.fn();
 

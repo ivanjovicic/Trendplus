@@ -1023,16 +1023,22 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   ]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadStores = async () => {
       try {
         const items = await getStores(true, activeDataScope);
+        if (cancelled) return;
         setStores(items);
       } catch {
+        if (cancelled) return;
         // Preserve the last known store list on transient failures instead of faking an empty filter set.
       }
     };
 
     void loadStores();
+    return () => {
+      cancelled = true;
+    };
   }, [activeDataScope]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
