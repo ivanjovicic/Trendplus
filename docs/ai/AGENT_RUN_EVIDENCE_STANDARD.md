@@ -37,6 +37,14 @@ Evidence synchronization is a separate field:
 Evidence state: synchronized | pending | fallback <reason>
 ```
 
+Formal queue work also records its shared claim proof:
+
+```text
+Claim reservation: inspected origin/main <SHA>; pushed claim <SHA>; owner/worktree/branch <value>; remote branch/PR query <result>
+```
+
+Direct user work records `Claim reservation: direct-user-request/not applicable` unless the user explicitly requested queue/governance repair.
+
 Delivery/evidence facts do not grant queue ownership. An implementation SHA on `main`, green validation or synchronized evidence does not release another owner's `IN_PROGRESS` claim; claim lifecycle and takeover remain exclusively governed by `PROMPT_QUEUE_PROTOCOL.md`.
 
 Rules:
@@ -74,6 +82,7 @@ For a queue task, use this minimum shape:
 - Checks not run:
 - Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md OR fallback <reason>
 - Evidence state: synchronized | pending | fallback <reason>
+- Claim reservation: direct-user-request/not applicable | inspected origin/main SHA + pushed claim SHA + owner/worktree/branch
 - Delivery mode: pull-request | direct-main | connector-write | none
 - Main commit SHA: <full sha or pending>
 - Main verification: <exact evidence or skipped reason>
@@ -144,6 +153,7 @@ Before `DONE`, evidence must identify:
 - for formal queue work, **post-close routing recovery from the post-delivery `origin/main` SHA**;
 - when next is `none`, a durable **Zero-READY proof** listing active queue/addendum files scanned, plausible non-terminal candidates, blocker class/start-gate classification, **unblock action attempted and result**, safe/disjoint-slice result, why no safe split exists and exact unblock event;
 - prompt defect/scope repair when one occurred.
+- for formal queue work, a **Claim reservation** record with the inspected base SHA, pushed claim SHA, owner/worktree/branch and remote branch/PR query; direct-user work records `direct-user-request/not applicable`.
 - when ownership changed during the task, an **Ownership transfer** record naming the previous owner, authoritative handoff/release source, evidence location/date, new owner/workspace and treatment of existing branch/PR/worktree artifacts.
 
 Missing required completion evidence means `PARTIAL` or `BLOCKED`, not a new status.

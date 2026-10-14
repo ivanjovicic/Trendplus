@@ -21,6 +21,7 @@ Main commit SHA:
 Main verification:
 Evidence state: synchronized | pending | fallback <reason>
 Ownership transfer: none | <previous owner> -> <new owner>; authority/evidence: <source>
+Claim reservation: direct-user-request/not applicable | inspected origin/main SHA + pushed claim SHA + owner/worktree/branch
 ```
 
 ## Required sections
@@ -53,6 +54,7 @@ Use each exactly once:
 - `Main commit SHA` is the implementation/delivery SHA that current `main` was freshly verified to contain; use `pending` until that proof exists.
 - `Evidence state` is separate from queue status and never creates a new queue status.
 - `Ownership transfer` stays `none` unless ownership actually changed. When used, it must match the explicit handoff/release contract in `PROMPT_QUEUE_PROTOCOL.md`; inferred inactivity/missing lock/branch/PR is not authority.
+- `Claim reservation` is required for formal queue work and records the inspected `origin/main` SHA, pushed claim SHA, owner/worktree/branch and remote branch/PR query. Direct-user work records `direct-user-request/not applicable` unless it explicitly repairs queue governance.
 - A delivered implementation SHA or synchronized evidence **does not release another owner's active claim**; queue ownership/takeover is governed only by `PROMPT_QUEUE_PROTOCOL.md`.
 
 ## Queue completion-note backlink
@@ -62,6 +64,7 @@ When a queue prompt is moved to `DONE`, `PARTIAL` or `BLOCKED`, the completion n
 ```text
 Run log: .ai/runs/<yyyy-mm-dd>-<task-id>-evidence.md
 Evidence state: synchronized | pending | fallback <reason>
+Claim reservation: direct-user-request/not applicable | inspected origin/main SHA + pushed claim SHA + owner/worktree/branch
 ```
 
 If a durable run log could not be created safely, keep the same keys and use `fallback <reason>`.

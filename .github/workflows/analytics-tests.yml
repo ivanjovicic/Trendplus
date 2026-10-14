@@ -139,6 +139,15 @@ jobs:
           --results-directory TestResults
           --logger "trx;LogFileName=analytics-tests.trx"
 
+      - name: Upload RQ647 endpoint benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rq647-analytics-endpoint-benchmark-${{ github.run_id }}
+          path: TestResults/rq647-analytics-endpoint-benchmark.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Classify backend skipped-test inventory
         if: always()
         run: >-

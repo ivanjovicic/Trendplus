@@ -1,6 +1,6 @@
 # Prompt Queue Protocol
 
-Updated: 2026-10-07
+Updated: 2026-10-14
 Repo: `ivanjovicic/Trendplus`
 
 This protocol defines live prompt-queue governance. Cross-program routing lives in `MASTER_ROADMAP.md`; feature/product lifecycle lives in `docs/planning/FEATURE_LIFECYCLE.md`.
@@ -33,6 +33,21 @@ Future planning programs:
 5. Start only a prompt whose status is READY, whose dependencies are satisfied, and whose feature-family/path/owner/gate collision checks are clear. Prefer the `Current READY` pointer for a simple `next` request, but do not serialize unrelated READY lanes behind it.
 6. Do not resurrect a DONE/PARTIAL/WAITING prompt because an older addendum says it was once next.
 7. A future planning READY (`DEX/RL/DT/PERF/OBS/SEC`) authorizes only its documented planning/contract scope. It does not authorize runtime implementation or outrank higher-priority gates.
+
+## Shared reservation before queue implementation
+
+A local lock protects one checkout; it is **not** shared coordination and cannot reserve a task from another agent. A branch name, created worktree, unpushed commit, or chat statement is likewise not a shared claim.
+
+For every formal queue prompt, complete read-only selection first, then publish a shared reservation before creating a worktree, branch, implementation commit, or source edit:
+
+1. Fetch `origin`, record the inspected `origin/main` SHA, reread the canonical status/owner, and inspect remote branches and open PRs for the task.
+2. Make the smallest canonical queue change from `READY` to `IN_PROGRESS`: name the owner, intended worktree/branch, bounded paths, and a `Claim reservation` with the inspected base SHA.
+3. Commit and push that reservation to `main` through the normal fast-forward path; record the resulting claim-commit SHA. A rejected or non-fast-forward push means the agent lost the race: fetch and reread before doing any implementation work, and do not start if the task is now claimed.
+4. Only after the reservation is visible on fresh `origin/main` may the agent create its local lock/worktree and begin implementation. The local lock remains a checkout guard, while the queue remains authoritative.
+
+If unpublished same-task work is discovered after another agent's reservation, do not push or merge it. Preserve it only on an explicit user-owned local branch; otherwise, after recording a release/handoff, remove the clean worktree and branch. Never reset, stash, delete, or overwrite another owner's uncommitted work.
+
+The claim note and durable run log must identify the inspected `origin/main` SHA, claim-commit SHA, owner/worktree/branch, bounded path family, and remote branch/PR query. Direct user work needs no queue reservation unless the user explicitly asks for queue/governance repair.
 
 ## Idle recovery when there is no READY prompt
 
@@ -410,6 +425,7 @@ A completed or partially completed prompt records at minimum:
 - Delivery mode:
 - Main commit SHA:
 - Main verification:
+- Claim reservation: direct-user-request/not applicable | inspected `origin/main` SHA + pushed claim SHA + owner/worktree/branch
 - Missed:
 - Follow-up:
 - Residual risk:
@@ -434,6 +450,7 @@ All new or actively refreshed completion notes use the current evidence contract
 
 - `Run log:` is mandatory and points to durable `.ai/runs/...` evidence or `fallback <reason>`;
 - `Evidence state:` is mandatory and is separate from queue status;
+- `Claim reservation:` is mandatory for formal queue work and identifies the inspected base SHA, pushed claim SHA, owner/worktree/branch and remote branch/PR query; direct-user work records `direct-user-request/not applicable`;
 - `Delivery mode:`, `Main commit SHA:` and `Main verification:` are mandatory for file-changing work;
 - older completion notes remain historical evidence and are not retroactively normalized unless a task is actively refreshing them.
 

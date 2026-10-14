@@ -494,11 +494,17 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "4c6038d5aaadd2118489a96d84ff3f2352f7b8b7"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "This legacy test reads the shared/populated source test database and has no deterministic isolated fixture or equivalent CI certification today.",
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ647 supplies a deterministic disposable-PostgreSQL Supplier baseline with 600 added sale lines, ten warm samples and an explicit CI report artifact; it deliberately records measurements rather than enforcing a flaky latency threshold.",
       "owner": "Analytics Reliability (Supplier/Shoe Type endpoint contract); fixture migration is not assigned by BCI17.",
-      "unblockEvent": "Add a deterministic fixture proof for this exact contract, or provide an explicitly approved isolated source-data fixture.",
-      "proof": null
+      "unblockEvent": "Completed by RQ647's isolated benchmark proof.",
+      "proof": {
+        "suite": "rq647-isolated-endpoint-benchmark",
+        "fullyQualifiedName": "Api.Tests.AnalyticsEndpointBenchmarkPostgresTests.SupplierAndShoeTypeEndpoints_ProduceReproducibleBaselineReport",
+        "sourcePath": "Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run",
+        "artifact": "rq647-analytics-endpoint-benchmark-<run-id>/rq647-analytics-endpoint-benchmark.json"
+      }
     },
     {
       "fullyQualifiedName": "Trendplus2.Tests.AnalyticsSupplierSalesIntegrationTests.SupplierSalesStats_ProducesDeterministicJson",
@@ -784,11 +790,17 @@
         "artifact": "analytics-backend-test-results/analytics-tests.trx",
         "headSha": "9d9f534cb0f8c062d14cae5d4b8bae1ac74082fa"
       },
-      "classification": "genuinely-uncovered",
-      "prerequisite": "Environment-sensitive 30s baseline against shared test data; intentionally excluded from required CI gates per RQ639.",
+      "classification": "legacy-superseded",
+      "prerequisite": "RQ647 supplies a deterministic disposable-PostgreSQL ShoeType baseline with 600 added sale lines, ten warm samples and an explicit CI report artifact; it deliberately records measurements rather than enforcing a flaky latency threshold.",
       "owner": "Analytics Reliability (RQ639).",
-      "unblockEvent": "Promote only behind a stable fixture and explicit non-gating perf job, or delete if superseded.",
-      "proof": null
+      "unblockEvent": "Completed by RQ647's isolated benchmark proof.",
+      "proof": {
+        "suite": "rq647-isolated-endpoint-benchmark",
+        "fullyQualifiedName": "Api.Tests.AnalyticsEndpointBenchmarkPostgresTests.SupplierAndShoeTypeEndpoints_ProduceReproducibleBaselineReport",
+        "sourcePath": "Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs",
+        "execution": "PostgresRequiredFact in the complete Api.Tests CI run",
+        "artifact": "rq647-analytics-endpoint-benchmark-<run-id>/rq647-analytics-endpoint-benchmark.json"
+      }
     }
   ]
 }

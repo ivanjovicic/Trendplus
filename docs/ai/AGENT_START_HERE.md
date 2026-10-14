@@ -181,7 +181,7 @@ This is an entrypoint summary only. **All queue mechanics live in `docs/ai/PROMP
 
 1. Resolve cross-program priority from `MASTER_ROADMAP.md`, then read the current owner queue for task status/owner/dependencies.
 2. Refuse same-task takeover while another owner is `IN_PROGRESS`. That ownership survives implementation delivery through validation/evidence/status close-out; commit-on-main, missing lock and absent branch/PR are not release signals.
-3. Select/claim only through the canonical protocol. `Current READY` is the primary/default pointer, not the only possible READY lane.
+3. Select/claim only through the canonical protocol. Publish its shared `origin/main` reservation before creating a worktree, branch, or source edit; a local lock is only a checkout guard. `Current READY` is the primary/default pointer, not the only possible READY lane.
 4. If READY is `none`, run the protocol's **Mandatory no-READY action ladder** before any no-work result: repair stale routing, execute authorized repo-local unblock/proof work, split a meaningful disjoint slice when permitted, then try the next eligible program.
 5. Implement/validate/deliver the smallest owned change through `docs/ai/VALIDATION_SELECTOR.md` and the evidence standard.
 6. After terminal delivery, refresh post-delivery `origin/main` and run the protocol's **Post-close dependency cascade**; promote newly runnable work instead of copying an older `Next: none`.

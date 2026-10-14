@@ -116,6 +116,7 @@ Non-negotiable invariants:
 
 - `MASTER_ROADMAP.md` owns cross-program priority/current routing data; the current owner queue owns task status, named owner, dependencies and the program's READY set. The protocol owns **how** those states may be changed.
 - `Current READY` is the primary/default pointer, not a global mutex. One agent/workspace owns one claimed prompt at a time; independent top-level agents may work different collision-safe READY prompts.
+- A local lock, branch, worktree, or chat message is not a cross-agent claim. Before implementation of a formal queue prompt, publish the protocol's shared reservation on refreshed `origin/main`; do not begin same-task code work until that reservation is visible.
 - **Same-task ownership remains exclusive through close-out.** Another owner's `IN_PROGRESS` task is not released by a runtime commit on `main`, a missing local lock, or an absent branch/PR. Only explicit handoff/release or the protocol's independently proven stale-takeover path permits takeover.
 - When no READY task exists, run the protocol's **Mandatory no-READY action ladder**. Repair stale gates, perform authorized repo-local proof/unblock work, split a meaningful path-disjoint slice when permitted, and try the next eligible program before concluding no work exists.
 - After a terminal transition, refresh post-delivery `origin/main` and run the protocol's **Post-close dependency cascade**. A previous `none` conclusion is not durable.

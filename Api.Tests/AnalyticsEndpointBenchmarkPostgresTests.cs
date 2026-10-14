@@ -19,6 +19,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -33,6 +34,7 @@ namespace Api.Tests;
 public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<PostgresContainerFixture>
 {
     private const int SampleCount = 10;
+    private const int ModerateSaleLineCount = 600;
     private const string ModerateFromDate = "2026-07-01";
     private const string ModerateToDate = "2026-07-07";
     private const string EmptyFromDate = "2026-12-01";
@@ -56,7 +58,11 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
         var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"rq647_{Guid.NewGuid():N}");
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
         await SupplierSalesStatsEndpointPostgresParityTests.CreateFixtureAsync(connectionString!);
+        await AddModerateFixtureSalesAsync(connectionString!);
         var fixtureRows = await CountFixtureRowsAsync(connectionString!);
+        Assert.True(
+            fixtureRows["salesLines"] >= ModerateSaleLineCount,
+            $"RQ647 moderate fixture requires at least {ModerateSaleLineCount} sale lines.");
 
         var registry = new OperationsAnalyticsIntegrityRegistry();
         SupplierSalesStatsEndpointPostgresParityTests.SetBoundSupplierEvidence(
@@ -65,7 +71,7 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
             "rq647-benchmark-fixture",
             blocksDecisionSignals: false,
             trigger: "rq647_fixture_verified",
-            summary: "RQ647 uses the deterministic all-routes PostgreSQL fixture.");
+            summary: "RQ647 uses the deterministic all-routes PostgreSQL fixture with a 600-sale-line moderate expansion.");
 
         var cache = new DisabledAnalyticsCacheService();
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -109,12 +115,11 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
         var report = new BenchmarkReport(
             "rq647-analytics-endpoint-baseline-v1",
             DateTime.UtcNow,
-            "PostgreSQL Testcontainer; operations-analytics-all-routes-seed.sql",
+            "PostgreSQL Testcontainer; operations-analytics-all-routes-seed.sql plus deterministic 600-sale-line moderate expansion",
             "disabled (IAnalyticsCacheService and per-request IMemoryCache clear)",
             "Stopwatch.GetTimestamp via HttpClient; one unmeasured warmup; sequential concurrency=1; EF command interceptor records query count and duration",
             SampleCount,
             new BenchmarkEnvironment(
-                Environment.MachineName,
                 RuntimeInformation.OSDescription,
                 RuntimeInformation.FrameworkDescription,
                 Environment.ProcessorCount,
@@ -139,6 +144,9 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
         using var reportDocument = JsonDocument.Parse(json);
         Assert.Equal("rq647-analytics-endpoint-baseline-v1", reportDocument.RootElement.GetProperty("reportId").GetString());
         Assert.Equal(4, reportDocument.RootElement.GetProperty("cases").GetArrayLength());
+        Assert.False(reportDocument.RootElement.GetProperty("environment").TryGetProperty("machineName", out _));
+        Assert.True(
+            reportDocument.RootElement.GetProperty("fixtureRows").GetProperty("salesLines").GetInt32() >= ModerateSaleLineCount);
         Assert.All(reports, result =>
         {
             Assert.Equal(SampleCount, result.SamplesMs.Count);
@@ -249,6 +257,45 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
         };
     }
 
+    private static async Task AddModerateFixtureSalesAsync(string connectionString)
+    {
+        const int idOffset = 647_000;
+        const string sql = """
+            INSERT INTO prodaja_zaglavlje
+                (id, broj_racuna, datum_prodaje, id_objekat, korisnik_ime, data_origin)
+            SELECT
+                @idOffset + n,
+                'RQ647-MODERATE-' || n,
+                '2026-07-01T12:00:00Z'::timestamptz + ((n - 1) % 7) * interval '1 day',
+                CASE WHEN n % 2 = 0 THEN 1 ELSE 2 END,
+                'rq647',
+                CASE WHEN n % 2 = 0 THEN 'existing' ELSE 'access' END
+            FROM generate_series(1, @saleLineCount) AS n;
+
+            INSERT INTO prodaja_stavke
+                (id, id_prodaja, id_artikal, kolicina, cena, nabavna_cena,
+                 supplier_id_at_sale, shoe_type_id_at_sale, attribution_basis)
+            SELECT
+                @idOffset + n,
+                @idOffset + n,
+                CASE WHEN n % 2 = 0 THEN 1 ELSE 2 END,
+                1 + (n % 3),
+                CASE WHEN n % 2 = 0 THEN 100 ELSE 130 END,
+                CASE WHEN n % 2 = 0 THEN 50 ELSE 65 END,
+                CASE WHEN n % 2 = 0 THEN 1 ELSE 2 END,
+                CASE WHEN n % 2 = 0 THEN 1 ELSE 2 END,
+                'sale_snapshot'
+            FROM generate_series(1, @saleLineCount) AS n;
+            """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("idOffset", idOffset);
+        command.Parameters.AddWithValue("saleLineCount", ModerateSaleLineCount);
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static double Percentile(IReadOnlyList<double> ordered, double quantile)
     {
         var rank = Math.Max(1, (int)Math.Ceiling(quantile * ordered.Count));
@@ -298,7 +345,6 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
         IReadOnlyList<BenchmarkCaseReport> Cases);
 
     private sealed record BenchmarkEnvironment(
-        string MachineName,
         string OsDescription,
         string Runtime,
         int LogicalProcessors,
