@@ -10,6 +10,18 @@ Current code, focused tests and executable tooling override stale prose **about 
 
 Product scope: [analytics-first](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md). Stop new eBay, Amazon, Google Shopping, scraper, runtime scoring, model-training, Insight Studio and demo/test-feature work. Preserve regression tests for **real analytics**. Do not claim stale experimental prompts; old DONE evidence is historical, not a fresh task. Only an explicit owner reversal can reactivate excluded work. RQ655/RQ656 are DONE; RQ657 is restricted to core retail analytics. Scope changes do not override exclusive claim or queue protocol semantics.
 
+## 0A. Product-value acceleration rule (owner decision 2026-10-14)
+
+Canonical product prioritization: [current business progress and decisions](docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md). This is a **priority rule**, not a second queue or an override of shared task claims.
+
+1. Max **two** independent active code/evidence feature-family tasks; complete current P1 correctness (`RQ666`, `RQ667`) before starting opportunistic P3 formatting/lint. External-source operator approvals are separate and never simulated.
+2. An agent must state the concrete retailer decision protected or enabled, the source grain, a negative test/counterexample, and the nearest DONE owner. If there is no changed value, no reproducible defect and no owner gate opening, **do not manufacture an RQ task or an audit report**.
+3. Keep the pilot-facing route set small: sales/day, supplier, latest inventory, markdown history/priorities, actions/digest. Do not spend cycles on frozen experimental Insight Studio, OpenTraining, RuntimeScoring, marketplace, speculative forecasts or bulk i18n while product P1/production blockers remain.
+4. Source truth and measured customer usage trump documentation volume. `CI green` ≠ production current; `historical source parity` ≠ cost provenance; `action created` ≠ measured gain. Never record an unauthenticated/synthetic browser rehearsal as deployed evidence.
+5. For a normal code task write **one compact run log** with test counts, exact SHA and limits; update canonical queue and existing parent if routing changes. No new duplicate plan/audit/adendum for the same fact. No rewrite of formulas, automatic inventory backdating or real markdown execution.
+6. When blocked on a provider, original cost document or customer/operator, record the precise external owner/request once; move to an independently READY task instead of repeating zero-READY scans and documentation-only commits. Existing protocol still determines claim/recovery.
+7. P0 safety/financial correctness, cross-scope action identity or release-red CI always overrides this focus rule. A P3 bug can be promoted only with a concrete operator-blocking reproducer and checked ownership.
+
 ## 1. Mission and non-negotiable product outcome
 
 Trendplus should become a reliable pilot/sales product for footwear/apparel retail.

@@ -6,7 +6,7 @@ Read this after `AGENTS.md` and `.github/copilot-instructions.md`.
 
 ## Current product selection (2026-10-14)
 
-For product/value prompts use `docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md` and `docs/product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md` **after** checking the owner queue. These specify the buyer problem and evidence tier, not queue statuses. RQ585 is DONE and must not be rebuilt. RQ659 hides experimental navigation; RQ661 independently removes fake static business facts from Home. Never treat older KPI/Decision OS roadmap proposals as READY; keep core analytics tests, real retail-source import and shipped compatibility while freezing marketplace, scrapers and test-feature development.
+For product/value prompts use `docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md` and `docs/product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md` **after** checking the owner queue. These specify the buyer problem and evidence tier, not queue statuses. RQ585 is DONE and must not be rebuilt. RQ659 (navigation), RQ660 (nullable counters), RQ661 (home false claims), RQ662–RQ668 (core filter/trust/test/UX corrections) are DONE on main; no old feature gets reopened because a dated plan names it as next. Active P1 RQ666/RQ667 guard source/action and Inventory scope. Product prioritization, WIP≤2 and operator proof: [business progress and decisions](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md). Never treat older KPI/Decision OS roadmap proposals as READY; keep core analytics tests, real retail-source import and shipped compatibility while freezing marketplace, scrapers and test-feature development.
 
 ## Repo mission
 

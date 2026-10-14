@@ -1,5 +1,12 @@
 # Trendplus Master Roadmap
 
+## Aktuelna poslovna odluka / razvojni fokus — 2026-10-14
+
+**P0:** STAB16/RQ448/RQ565 produkciona svežina i source dokaz (samo uz ovlašćen pristup); RQ601 originalne kalkulacije (owner), RQ610 pouzdana stock-change generacija (owner/source). **Repo-local P1:** RQ666 (Product Decision `dataScope` → action/store identity) i nezavisan RQ667 (Inventory store/compareScope filteri) su READY, ne claimed. **P3 kozmetika i wholesale lint nisu pilot gate:** RQ669/670/671 WAITING uz jasno odložene start uslove. Posle P1, jedna stvarna operator sesija i RQ592 pre-registracija tek kada je svežina potvrđena. Repo tests ≠ live customer business impact. Nema novih eksperimentalnih ekrana, AI, scraping, novih „dashboard” familija niti novog sveobuhvatnog audita.
+
+**Poslovna ocena i odluke:** [TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14](docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md). Product owner cap WIP ≤2 disjoint engineering tasks; P0 production access/source blockers have separate named owner and do not authorize fabricated synthetic proof. Older dated `Current READY` sections are historical; task truth is canonical owner queue, refresh now. Existing `RQ585` owner digest and `RQ659–RQ668` completed work are not to be reimplemented.
+
+
 ## Ready after verified cross-surface audit — 2026-10-14
 
 **Primary RQ666 READY (P1):** Product Decision Center source/action status key omits `dataScope` even though the list API is dataScope-qualified, and its `getStores()` call is unscoped. Bounded failing-first action-key/legacy compatibility and scoped store filter task; no customer/action row migration without explicit source proof. **Independent RQ667 READY (P1):** InventoryPage retains store/compare IDs when `inventoryDataScope` changes while fetching unscoped store options; prove cross-dataset validity and fail closed on invalid selection. Both are repository-local, disjoint page owners; neither was claimed. See [post-import RQ queue](docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md) and `.ai/runs/2026-10-14-post-RQ665-routing-recovery.md`.

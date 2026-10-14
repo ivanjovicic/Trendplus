@@ -82,6 +82,9 @@ Existing Decision Pulse/Actions implement **parts** of this loop. Run one realis
 
 ## 8. Roadmap / capacity management: no more 50-prompt cycles
 
+**14.10 current execution decision:** see [business progress and focus](TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md). RQ666/RQ667 are the only immediate P1 core frontend work; RQ669/670/671 P3 work is paused, and any separate operator session is *external business evidence*, not an invented agent test. Preserve the already shipped RQ585 digest and RQ659–RQ668; judge the next sprint by correct decisions, freshness and owner-observed usability, not prompt closures.
+
+
 **Wave A — remove deception & simplify (existing tasks first):** RQ659 hide experiment navigation; RQ661 replace fake business facts on `/`; RQ660 null-count contract proof only if real; RQ657 only when an actual race is reproduced. Preserve core API/compatibility, tests, import history. No blanket deletion.
 
 **Wave B — make core trustworthy:** STAB16 deployed currentness independent of historical formula proof; cost provenance RQ601; inventory generation RQ610; metadata/coverage defects only when a specific financial or decision claim is at risk. Don't recreate RQ585 or the completed RQ593/594/595/596/651–656 work.
