@@ -2173,13 +2173,15 @@ GitHub read access; no provider/production data authority. Independent of RQ645â
 
 ## RQ649 - Stop unintended Access import worker polling in remaining EF InMemory API test hosts
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend test-host worker registration and targeted CI logging
 Feature family: remaining-fake-provider-worker-noise
 Parallel-safe: yes for scoped test host/factory paths; avoid RQ645 Supplier, RQ646 ShoeType and RQ647 benchmark fixtures
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ649-cursor.lock.md`
 Ready after: RQ636 DONE and RQ637 DONE; latest exact-main backend CI 38407849758 exposed a distinct residual
+Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `e7d7e4532b1d677d4ca7c3b18d67087cc68d5292`. No RQ649 branch, lock or open PR exists; RQ636/RQ637 are DONE. Cursor had concurrently started RQ647 from `1dba9adf`, but Codex's RQ647 claim and implementation (PR #153) reached main first, so Cursor released RQ647 without pushing and kept its alternative only on an unpushed local branch.
 Commit suggestion: test(ci): isolate remaining InMemory API hosts from Access import polling
 
 ### Problem
