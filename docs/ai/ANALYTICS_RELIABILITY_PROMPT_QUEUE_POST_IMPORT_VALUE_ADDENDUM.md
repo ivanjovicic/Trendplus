@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ664 (P2, repository-local browser/export proof starter for WAITING RQ448)**. RQ663 is **IN_PROGRESS** with Codex on the Daily Sales evidence and quality-badge paths; RQ665 is an independent active test-only CI repair. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
+Current READY prompt: **RQ664 (P2, repository-local browser/export proof starter for WAITING RQ448)**. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
@@ -3028,15 +3028,35 @@ Commit suggestion: `fix(analytics): prevent stale supplier store options across 
 
 ## RQ663 - Make Daily Sales shift trust and quality badge reflect unavailable source evidence
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/evidence-semantics/tests
 Feature family: daily-sales-shift-trust-completeness
 Parallel-safe: yes with RQ662/RQ664; no with another DailySalesStatsPage / dailyShiftSummary owner
 Owner: Codex / worktree `rq663-daily-sales-quality`
 Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `7aae619cda7a73e7b50f5fbcd047dbc78823faf8`; no matching RQ663/DailySalesStatsPage lock, branch, worktree or open PR was found. Published reservation commit on `main`; planned branch `codex/rq663-daily-sales-quality-20261014`; bounded paths are `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`, `Klijent/clientapp/src/utils/dailyShiftSummary.ts`, their focused tests, the guardrail baseline line references if source insertion shifts them, this queue and `.ai/runs/2026-10-14-RQ663-evidence.md`. RQ665 is independent test-only work and is not touched.
+Local lock: removed after done close
 Ready after: current-main commits `86691925`, `7f1c3fac`, `1b116e4e`; frontend CI `38557709870` SUCCESS
 Commit suggestion: `fix(analytics): align Daily Sales quality counts with shift-source availability`
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE.
+- Completion: Daily Sales now classifies complete, missing, partial and unavailable shift evidence separately. Unavailable days are counted explicitly and included in the incomplete-coverage total without being relabeled as missing or partial; periods without day evidence render `Nije dostupno`. Untrusted numeric shift columns remain unavailable across KPI, chart and export helpers, measured zero and signed returns remain valid, and stale/partial/unknown trust metadata cannot produce a green quality proof. Sale totals, revenue formulas, ratio formulas, time boundaries and backend SQL are unchanged.
+- Changed files: `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/DailySalesStatsPage.premium.spec.tsx`; `Klijent/clientapp/src/utils/dailyShiftSummary.ts`; `Klijent/clientapp/src/utils/__tests__/dailyShiftSummary.spec.ts`; `Klijent/clientapp/scripts/known-guardrail-baseline.json` (one unchanged baseline line moved from 986 to 985 after import-line deletion); this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ663-evidence.md`.
+- Checks run: focused Daily Sales unit/numeric/premium/integration specs (63 passed, 0 failed, no skips); `npm run check:analytics-guardrails` (pass: encoding, self-test, 36 known baseline violations, typecheck); `npm run build` (pass); `git diff --check` (pass); queue validator after closeout (pending in this closeout commit); exact-main GitHub Actions `38567960925` on merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3` (success: SDK pin, POS UI audit/build, frontend analytics tests, guardrails, UI program gates, client build, bundle budget/lazy charts).
+- Checks not run: full local frontend suite and `npm run lint` (not required after focused proof and exact-main Actions); backend/PostgreSQL tests (no backend or SQL changes).
+- Run log: `.ai/runs/2026-10-14-RQ663-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `7aae619cda7a73e7b50f5fbcd047dbc78823faf8`; pushed claim `f2c8f37282cd6b0d3ee786616adcc277b502ae37`; owner/worktree/branch Codex / `C:\Users\Ivan\.codex\worktrees\rq663-daily-sales-quality\Trendplus2` / `codex/rq663-daily-sales-quality-20261014`; transport implementation `11fc16bafc7044e140825e7439c70a23673ca996`; remote branch/PR query found no prior RQ663/DailySales owner or open PR.
+- Delivery mode: direct-main via fast-forward to claim base and merge of transport branch.
+- Main commit SHA: `275d1c307bca979e369023e88b87b08ff83d13e3`
+- Main verification: fresh `git fetch origin`; `git rev-parse origin/main` returned `275d1c307bca979e369023e88b87b08ff83d13e3`; `git merge-base --is-ancestor 11fc16bafc7044e140825e7439c70a23673ca996 origin/main` passed.
+- Missed: none in owned scope
+- Follow-up: RQ664 remains the primary READY prompt; RQ665 is DONE and no RQ663-dependent prompt was found.
+- Residual risk: GitHub Actions emitted existing Node.js 20 deprecation annotations; all named jobs and steps were successful. Full local frontend suite and lint were not run because the focused proof plus exact-main Actions passed.
+- Post-close routing: post-delivery `origin/main` `275d1c307bca979e369023e88b87b08ff83d13e3` scan covered all active `ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` addenda and `SQL_ANALYTICS_PROMPT_QUEUE.md`; no other RQ663 references or dependents were found. RQ664 is dependency-complete and collision-safe as the successor; no Zero-READY proof applies.
 
 ### Verified gap / don't undo existing fix
 
