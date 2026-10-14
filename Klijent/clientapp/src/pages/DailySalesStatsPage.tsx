@@ -68,6 +68,7 @@ import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
 import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import type { PreviousPeriodComparisonState } from "../utils/supplierPreviousPeriodComparison";
 import {
+  describeShiftEvidenceCoverage,
   hasMissingShiftSummary,
   hasPartialShiftSummary,
   periodHasIncompleteShiftEvidence,
@@ -1253,14 +1254,14 @@ export default function DailySalesStatsPage() {
     { key: "unknownSupplierPct", label: "Udeo nepoznatih dobavljača %", value: data?.metadata.unknownSupplierPct ?? null },
     { key: "firstShiftHeader", label: "Prva smena", value: FIRST_SHIFT_LABEL },
     { key: "secondShiftHeader", label: "Druga smena", value: SECOND_SHIFT_LABEL },
-    { key: "shiftEvidence", label: "Smenska evidencija", value: incompleteShiftCount > 0 ? `Nepotpuna (${incompleteShiftCount} dana)` : "Potpuna" },
+    { key: "shiftEvidence", label: "Smenska evidencija", value: describeShiftEvidenceCoverage(chronologicalChartRows, shiftAssignmentStatus) },
     { key: "incompleteDailyAggregates", label: "Nepotpuni dnevni zbirovi", value: incompleteDailyAggregateCount },
     { key: "diagnosticsDataScope", label: "Opseg dijagnostike", value: dataScopeLabel(normalizeDataScope(data?.metadata.diagnosticsDataScope ?? data?.dataScope)) },
     { key: "availabilityDataScope", label: "Opseg dostupnosti", value: dataScopeLabel(normalizeDataScope(data?.metadata.availabilityDataScope ?? data?.dataScope)) },
     { key: "supplierAttributionBasis", label: "Osnov atribucije dobavljača", value: data?.meta?.attributionBasis ?? "nije dostupno" },
     { key: "supplierAttributionCoveragePct", label: "Pokrivenost atribucijom %", value: data?.meta?.attributionCoveragePct ?? null },
     { key: "warnings", label: "Upozorenja", value: data?.metadata.warnings?.join(" | ") ?? "" },
-  ], [data?.dataScope, data?.meta?.attributionBasis, data?.meta?.attributionCoveragePct, data?.metadata.availabilityDataScope, data?.metadata.diagnosticsDataScope, data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, incompleteDailyAggregateCount, incompleteShiftCount]);
+  ], [data?.dataScope, data?.meta?.attributionBasis, data?.meta?.attributionCoveragePct, data?.metadata.availabilityDataScope, data?.metadata.diagnosticsDataScope, data?.metadata.totalDays, data?.metadata.unknownSupplierPct, data?.metadata.warnings, data?.requestedFrom, data?.requestedTo, chronologicalChartRows, incompleteDailyAggregateCount, shiftAssignmentStatus]);
 
 
   const chronologicalTrendData = useMemo<TrendPoint[]>(() => (
@@ -1633,7 +1634,7 @@ export default function DailySalesStatsPage() {
     const total = problemSignals.length;
     if (dangerCount > 0) return { tone: "danger" as const, label: `\u26a0 ${total} problem${total === 1 ? "" : "a"} u podacima`, count: total };
     if (total > 0) return { tone: "warning" as const, label: `\u26a0 ${total} upozorenje${total === 1 ? "" : "a"}`, count: total };
-    return { tone: "good" as const, label: "\u2713 Podaci u redu", count: 0 };
+    return { tone: "good" as const, label: "\u2713 Nema registrovanih upozorenja", count: 0 };
   }, [qualitySignals]);
 
   const heuristicInsights = useMemo<InsightCard[]>(() => {
@@ -1727,9 +1728,9 @@ export default function DailySalesStatsPage() {
 
     if (insights.length === 0) {
       insights.push({
-        title: "Stabilan pregled",
-        detail: "Nema jakog negativnog signala u periodu. Fokus prebaci na trend, weekday obrazac i top dobavljače.",
-        tone: "good",
+        title: "Nema izdvojenog heurističkog signala",
+        detail: "Postavljeni pragovi nisu izdvojili signal. To nije dokaz stabilne prodaje, potpune evidencije niti preporuka za akciju.",
+        tone: "info",
       });
     }
 
@@ -2011,8 +2012,8 @@ export default function DailySalesStatsPage() {
   return (
     <div className="daily-sales-page">
       <AnalyticsTrustHeader
-        title="Prodaja po smenama"
-        description="Dnevni promet, komadi i raspodela rezultata po smenama."
+        title="Dnevna prodaja"
+        description="Dnevni promet, komadi i dobavljači; podela po smenama samo kada je satnica potvrđena."
         periodFrom={data?.requestedFrom ?? activeFilters.fromDate}
         periodTo={toInclusiveCalendarDate(data?.requestedTo) ?? activeFilters.toDate}
         observedPeriodFrom={responseMeta?.observedPeriodFromUtc}
@@ -2116,7 +2117,7 @@ export default function DailySalesStatsPage() {
 
       {!loading && !error && data && !noDataInPeriod ? (
         <>
-          <section className="daily-sales-kpis daily-sales-kpis--primary" aria-label="Ključni pokazatelji prodaje po smenama">
+          <section className="daily-sales-kpis daily-sales-kpis--primary" aria-label="Ključni pokazatelji dnevne prodaje">
             <article>
               <span>Ukupan prihod <InfoTip text="Suma prihoda od prodaje za sve dane u izabranom opsegu i prodavnici. Prihod / dan je prosek po broju kalendarskih dana u opsegu." /></span>
               <strong>{fmtRsd(currentSummary.totalRevenue, 2)}</strong>

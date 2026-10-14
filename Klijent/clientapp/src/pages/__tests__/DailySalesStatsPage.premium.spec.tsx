@@ -328,7 +328,7 @@ describe("DailySalesStatsPage premium controls", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Prodaja po smenama");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Dnevna prodaja");
     await waitFor(() => {
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-last-refresh-at", "2026-07-01T08:00:00Z");
       expect(screen.getByTestId("analytics-trust-header")).toHaveAttribute("data-quality", "good");
@@ -380,7 +380,7 @@ describe("DailySalesStatsPage premium controls", () => {
 
     const disclosure = await screen.findByTestId("daily-sales-table-disclosure");
     expect(disclosure).not.toHaveAttribute("open");
-    const primaryKpis = screen.getByRole("region", { name: "Ključni pokazatelji prodaje po smenama" }).textContent;
+    const primaryKpis = screen.getByRole("region", { name: "Ključni pokazatelji dnevne prodaje" }).textContent;
     const chartOrder = screen.getByTestId("line-chart").getAttribute("data-order");
 
     fireEvent.click(disclosure.querySelector("summary")!);
@@ -406,7 +406,7 @@ describe("DailySalesStatsPage premium controls", () => {
     });
     expect(within(table).getAllByRole("row")).toHaveLength(15);
     expect(within(table).getAllByRole("row")[1].textContent).not.toBe(firstPageDate);
-    expect(screen.getByRole("region", { name: "Ključni pokazatelji prodaje po smenama" }).textContent).toBe(primaryKpis);
+    expect(screen.getByRole("region", { name: "Ključni pokazatelji dnevne prodaje" }).textContent).toBe(primaryKpis);
     expect(screen.getByTestId("line-chart")).toHaveAttribute("data-order", chartOrder);
     expect(screen.getByTestId("analytics-toolbar")).toHaveTextContent("daily-sales-stats: 30 rows");
     expect(screen.getByTestId("analytics-toolbar")).toHaveAttribute(

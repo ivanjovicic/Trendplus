@@ -100,7 +100,7 @@ describe("DailySalesStatsPage (integration)", () => {
       </MemoryRouter>
     );
 
-    const title = screen.getByText(/Prodaja po smenama/i);
+    const title = screen.getByText(/^Dnevna prodaja$/i);
     expect(title).toBeInTheDocument();
   });
 

@@ -5,8 +5,8 @@ import { useBackendStatus } from "../context/useBackendStatus";
 
 const CORE_ANALYTICS_LINKS = [
   { to: "/analytics", title: "Pregled poslovanja", subtitle: "Prodaja, marža i zalihe za izabrani period", icon: BarChart3 },
-  { to: "/analytics/daily-sales", title: "Dnevna prodaja", subtitle: "Prodaja po danima, radnjama i smenama", icon: CalendarDays },
-  { to: "/analytics/inventory", title: "Analitika zaliha", subtitle: "Stanje, obrt i roba koja stoji", icon: Store },
+  { to: "/analytics/daily-sales", title: "Dnevna prodaja", subtitle: "Prodaja po danima, radnjama i dobavljačima", icon: CalendarDays },
+  { to: "/analytics/inventory", title: "Analitika zaliha", subtitle: "Raspoložive zalihe i roba koja stoji", icon: Store },
   { to: "/analytics/supplier", title: "Prodaja po dobavljačima", subtitle: "Prodaja i marža po dobavljaču", icon: Microscope },
   { to: "/analytics/pre-nivelacija-prioriteti", title: "Prioriteti nivelacije", subtitle: "Artikli za proveru pre promene cena", icon: AlertTriangle },
   { to: "/analytics/decision-pulse", title: "Puls odluka", subtitle: "Otvorene odluke i njihova pouzdanost", icon: Sparkles },

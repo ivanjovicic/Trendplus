@@ -14,6 +14,7 @@ import {
   summarizePeriod,
 } from "../DailySalesStatsPage";
 import type { DailySalesRow, DailySalesTableResponse } from "../../services/dailySalesStatsApi";
+import { describeShiftEvidenceCoverage } from "../../utils/dailyShiftSummary";
 import { ApiHttpError } from "../../services/analyticsHttp";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
 
@@ -75,6 +76,22 @@ describe("Daily Sales numeric evidence states", () => {
     expect(summary.totalVisibleItems).toBeNull();
     expect(summary.avgRevenuePerDay).toBeNull();
     expect(summary.avgRevenuePerItem).toBeNull();
+  });
+
+  it("never calls an empty or unverified shift period complete", () => {
+    const measured = row({ totalItemsSold: 2, firstShiftTotalItems: 1, secondShiftTotalItems: 1 });
+    expect(describeShiftEvidenceCoverage([], "measured")).toBe("Nije dostupno");
+    expect(describeShiftEvidenceCoverage([measured], null)).toBe("Nije dostupno");
+    expect(describeShiftEvidenceCoverage([measured], "unavailable")).toBe("Nije dostupno");
+    expect(describeShiftEvidenceCoverage([measured], "no_time_fallback")).toBe("Nije dostupno");
+  });
+
+  it("distinguishes complete, incomplete and partial shift evidence", () => {
+    const measured = row({ totalItemsSold: 2, firstShiftTotalItems: 1, secondShiftTotalItems: 1 });
+    const missingShift = row({ date: "2026-07-02", totalItemsSold: 2, firstShiftTotalItems: 1, secondShiftTotalItems: null });
+    expect(describeShiftEvidenceCoverage([measured], "measured")).toBe("Potpuna");
+    expect(describeShiftEvidenceCoverage([measured, missingShift], "measured")).toBe("Nepotpuna (1 dan)");
+    expect(describeShiftEvidenceCoverage([measured], "partial")).toBe("Nepotpuna (1 dan)");
   });
 
   it("surfaces validation issue paths instead of hiding them behind a generic format error", () => {

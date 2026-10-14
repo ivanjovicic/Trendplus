@@ -197,3 +197,23 @@ export function periodHasIncompleteShiftEvidence(
   if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") return true;
   return rows.some((row) => hasIncompleteShiftEvidence(row, assignmentStatus));
 }
+
+/**
+ * An absence of negative shift rows does not prove complete shift evidence.
+ * The daily export must never call an empty/untested period "Potpuna".
+ */
+export function describeShiftEvidenceCoverage(
+  rows: DailySalesRow[],
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): string {
+  if (rows.length === 0 || !isTrustedShiftAssignment(assignmentStatus)) {
+    return "Nije dostupno";
+  }
+
+  const incompleteDays = rows.filter((row) => hasIncompleteShiftEvidence(row, assignmentStatus)).length;
+  if (incompleteDays > 0) {
+    return `Nepotpuna (${incompleteDays} ${incompleteDays === 1 ? "dan" : "dana"})`;
+  }
+
+  return assignmentStatus === "measured" ? "Potpuna" : "Delimično potvrđena";
+}
