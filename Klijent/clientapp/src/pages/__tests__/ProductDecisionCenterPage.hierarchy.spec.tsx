@@ -202,4 +202,34 @@ describe("ProductDecisionCenterPage hierarchy", () => {
     expect(why).toHaveAttribute("aria-expanded", "true");
     expect(document.getElementById("product-decision-why-101")).not.toBeNull();
   });
+
+  it("shows missing blocked/insufficient counts as unavailable, not zero", async () => {
+    const partial = buildResponse();
+    partial.summary.actionableCount = 3;
+    delete partial.summary.blockedCount;
+    delete partial.summary.insufficientEvidenceCount;
+    getProductDecisionCenterMock.mockResolvedValue(partial);
+
+    render(<ProductDecisionCenterPage />);
+
+    const line = await screen.findByText(/Akcione preporuke dozvoljene backend-om/);
+    expect(line).toHaveTextContent(
+      "Akcione preporuke dozvoljene backend-om: 3; blokirano ili nedostupno: Nije dostupno; nedovoljno dokaza: Nije dostupno.",
+    );
+  });
+
+  it("keeps backend-returned zero blocked/insufficient counts as literal zero", async () => {
+    const zero = buildResponse();
+    zero.summary.actionableCount = 1;
+    zero.summary.blockedCount = 0;
+    zero.summary.insufficientEvidenceCount = 0;
+    getProductDecisionCenterMock.mockResolvedValue(zero);
+
+    render(<ProductDecisionCenterPage />);
+
+    const line = await screen.findByText(/Akcione preporuke dozvoljene backend-om/);
+    expect(line).toHaveTextContent(
+      "Akcione preporuke dozvoljene backend-om: 1; blokirano ili nedostupno: 0; nedovoljno dokaza: 0.",
+    );
+  });
 });

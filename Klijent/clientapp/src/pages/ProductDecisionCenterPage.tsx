@@ -1330,7 +1330,7 @@ export default function ProductDecisionCenterPage() {
     : null;
 
   const actionabilitySummary = payload && typeof payload.summary.actionableCount === "number"
-    ? `Akcione preporuke dozvoljene backend-om: ${payload.summary.actionableCount}; blokirano ili nedostupno: ${payload.summary.blockedCount ?? 0}; nedovoljno dokaza: ${payload.summary.insufficientEvidenceCount ?? 0}.`
+    ? `Akcione preporuke dozvoljene backend-om: ${payload.summary.actionableCount}; blokirano ili nedostupno: ${fmtNumber(payload.summary.blockedCount, 0, ANALYTICS_UNAVAILABLE_LABEL)}; nedovoljno dokaza: ${fmtNumber(payload.summary.insufficientEvidenceCount, 0, ANALYTICS_UNAVAILABLE_LABEL)}.`
     : null;
 
   const handlePeriodPresetChange = (value: PeriodPreset) => {
