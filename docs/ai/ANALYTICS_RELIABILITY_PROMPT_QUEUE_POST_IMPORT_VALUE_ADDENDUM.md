@@ -3254,7 +3254,7 @@ Commit suggestion: `fix(analytics): validate inventory store filters per dataset
 
 ## RQ668 - Fix small analytics frontend correctness, language and accessibility defects from the 2026-10-14 audit
 
-Status: IN PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend correctness / a11y / i18n
 Feature family: analytics-frontend-ux-audit-2026-10-14
@@ -3302,6 +3302,21 @@ Tests above pass; frontend, backend and governance CI green on the PR; merged vi
 
 None. Does not overlap RQ655-RQ657 loader/fake-zero/race lanes.
 
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AnalyticsDashboard.tsx, InsightStudioPage.tsx, SupplierConsolidatedPage.tsx, src/components/inventory/SKUDetailModal.tsx and specs; docs/qa/ANALYTICS_FRONTEND_UX_AUDIT_2026-10-14.md; this queue
+- Checks run: test:analytics 161 files / 1225 tests; typecheck; build; analytics guardrails + self-test; ui-ratchets; chart accessibility; encoding; queue validators with and without --self-test; git diff --check; PR #160 backend 38593693504, frontend 38593693825, governance 38593693791 pass
+- Checks not run: smoke tests and Development environment (owner rule); full eslint gate (pre-existing 120 errors, RQ671)
+- Run log: .ai/runs/2026-10-14-RQ668-analytics-frontend-ux-audit-evidence.md
+- Delivery mode: PR #160 merged with --merge after green CI
+- Main commit SHA: b1b3484854208ac8820b1d686efc9cd05980bb4a
+- Main verification: git rev-parse origin/main -> b1b3484854208ac8820b1d686efc9cd05980bb4a
+- Missed: none known
+- Follow-up: RQ669, RQ670, RQ671
+- Residual risk: Insight Studio quadrant buttons have no dedicated spec (screen is experimental; covered by typecheck/build and RQ669)
 
 ## RQ669 - Bring Experimental Insight Studio to the minimum accessibility, language and number-format bar before any re-exposure
 
