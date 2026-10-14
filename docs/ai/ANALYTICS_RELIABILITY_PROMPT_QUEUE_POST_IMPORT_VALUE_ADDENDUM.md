@@ -2134,13 +2134,15 @@ No STAB16 access. RQ645/RQ646 may execute in parallel if unique benchmark files 
 
 ## RQ648 - Reconcile remote agent branches against main by patch/content equivalence, not name or ancestry alone
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: git branch/PR lineage + exact-code reconciliation audit
 Feature family: repository-branch-safety
 Parallel-safe: yes for read-only branch comparisons and a unique audit report path; canonical queue/roadmap final status edits must be serialized after other agent closeouts
-Owner: unassigned
-Ready after: PR #147 closed without merge on 2026-10-14; no open PR at latest GitHub check; RQ634–RQ661 relevant owner work has been closed as recorded on main. A fresh cross-agent lock/claim/branch/PR review is mandatory before claiming; this note is not a reservation.
+Owner: Codex
+Local lock: `.ai/task-locks/RQ648-codex.lock.md` (created only after this reservation is visible on fresh `origin/main`)
+Ready after: PR #147 closed without merge on 2026-10-14; no open PR at latest GitHub check; RQ634–RQ661 relevant owner work has been closed as recorded on main.
+Claim reservation: 2026-10-14 - direct user instruction explicitly assigns RQ648 to Codex for fresh current-branch comparison and semantic review. Inspected `origin/main` `049c17c2ae14044f29f894203fee8f2756f75f4e`; PR #147 is closed without merge; no RQ648 branch, lock or open PR found; the only active task lock is RQ660 owned by Cursor on disjoint PDC paths. Planned worktree `C:\Users\Ivan\.codex\worktrees\rq648-branch-parity`, branch `codex/rq648-branch-parity-20261014`. Bounded paths: `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md`, `.ai/runs/2026-10-14-RQ648-evidence.md`, this queue and `MASTER_ROADMAP.md`; SQL029 implementation/tests are explicitly excluded because the additional check is already on `main`.
 Commit suggestion: `docs(git): prove current remote branch equivalence and classify residual diffs`
 
 ### Problem
