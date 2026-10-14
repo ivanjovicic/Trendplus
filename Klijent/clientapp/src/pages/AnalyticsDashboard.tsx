@@ -122,21 +122,21 @@ const EXECUTIVE_OVERVIEW_METRIC_KEYS: AnalyticsMetricKey[] = [
 ];
 
 const HELP: Record<string, string> = {
-  promet: "Ukupan novac od prodaje u izabranom periodu.",
-  transakcije: "Broj izvornih prodajnih dokumenata; njihova jednakost sa računima kupaca nije potvrđena.",
+  promet: "Ukupan promet u izabranom periodu.",
+  transakcije: "Broj izvornih prodajnih dokumenata; njihova usklađenost sa računima kupaca nije potvrđena.",
   jedinice: "Ukupan broj prodatih komada.",
   sku: "Jedinstvena interna šifra artikla.",
   velocity: ANALYTICS_VELOCITY_HELP,
-  oos: "Out of stock: artikal je rasprodat i nije dostupan za prodaju.",
+  oos: "Rasprodat: artikal nije dostupan za prodaju.",
   pareto: "Koliko mali broj artikala pravi većinu prometa.",
   ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend. Prikazuje se tek kada postoji svih 7 dnevnih tačaka.",
   ma30: "30-dnevni pokretni prosek prikazuje se tek kada postoji svih 30 dnevnih tačaka; kraća istorija ostaje nedostupna umesto da se prikaže kao lažni MA30.",
   momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
   elasticnost: "Pokazuje koliko se tražnja menja kada se menja cena.",
   completeness: "Da li artikli imaju ključna polja (naziv, šifra, kategorija).",
-  freshness: "Koliko je vremena prošlo od poslednjeg osvežavanja podataka.",
+  freshness: "Vreme od poslednjeg osvežavanja podataka.",
   margin: "Procenjeni uticaj na maržu (prodajna - nabavna cena).",
-  trend: "Smer promene u odnosu na prethodni uporediv period.",
+  trend: "Smer promene u odnosu na prethodni uporedivi period.",
 };
 
 export type DashboardMovingStats = {
@@ -194,10 +194,10 @@ const topProductColumns: AnalyticsTableColumn<TopProductAdvancedItem>[] = [
   { key: "sku", header: "SKU", dataType: "text" },
   { key: "productName", header: "Artikal", dataType: "text" },
   { key: "revenue", header: "Promet", dataType: "currency" },
-  { key: "units", header: "Kom", dataType: "number" },
+  { key: "units", header: "Kom.", dataType: "number" },
   { key: "velocityUnitsPerDay", header: ANALYTICS_VELOCITY_LABEL, dataType: "number" },
   { key: "marginImpact", header: "Uticaj na maržu", dataType: "currency" },
-  { key: "trendPct", header: "Trend %", dataType: "percent" },
+  { key: "trendPct", header: "Promena (%)", dataType: "percent" },
   { key: "stockStatus", header: "Status zalihe", dataType: "text" },
 ];
 
@@ -350,7 +350,7 @@ function topProductTrustDetail(row: Pick<TopProductAdvancedItem, "marginQualityT
     return `Razlozi: ${row.reasonCodes.map(recommendationReasonLabel).join(", ")}`;
   }
   if (row.marginImpact == null || row.dataQualityStatus === "insufficient_data") {
-    return "Nabavna cena nije dostupna, pa margin signal nije potvrđen.";
+    return "Nabavna cena nije dostupna; signal marže nije potvrđen.";
   }
   return null;
 }
