@@ -1,0 +1,2058 @@
+{
+  "main_sha": "aafc7e2fefb15167331e98471ba98982314fd04a",
+  "generated_at": "2026-10-14T11:24:51.737111+00:00",
+  "branch_count": 109,
+  "pr_count": 156,
+  "rows": [
+    {
+      "branch": "audit/2026-10-13-branch-review-reconciled-rq650",
+      "tip": "4949102fded172627f1f5c534db0cf403b023e7f",
+      "commit_date": "2026-10-13T17:32:01+02:00",
+      "behind": 53,
+      "ahead": 4,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-branch-semantic-review-queue-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-branch-semantic-review-queue-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md"
+      ],
+      "prs": [
+        {
+          "number": 147,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "docs(queue): reconcile 97 branches, add RQ650 and preserve RQ645/RQ651â€“654"
+        }
+      ]
+    },
+    {
+      "branch": "audit/2026-10-13-branch-semantic-queue-rq650",
+      "tip": "056cc0178d428934d73d49fdbd3bec08d90782a6",
+      "commit_date": "2026-10-13T17:19:18+02:00",
+      "behind": 56,
+      "ahead": 4,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-branch-semantic-review-queue-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-branch-semantic-review-queue-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/BRANCH_PARITY_REVIEW_2026-10-13.md"
+      ],
+      "prs": [
+        {
+          "number": 146,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "docs(queue): verify 97 legacy branches and add RQ650 PostgreSQL test gate"
+        }
+      ]
+    },
+    {
+      "branch": "audit/2026-10-13-reliability-prompts",
+      "tip": "692b4d6f73a4c0de39b7466b0aa96439ec15d897",
+      "commit_date": "2026-10-13T07:22:48+02:00",
+      "behind": 114,
+      "ahead": 11,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-reliability-next-work-audit-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
+        "docs/qa/RENDER_SUPPLIER_MV_STARTUP_503_2026-10-12.md",
+        "docs/qa/TRENDPLUS_RELIABILITY_NEXT_WORK_2026-10-13.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-reliability-next-work-audit-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
+        "docs/qa/TRENDPLUS_RELIABILITY_NEXT_WORK_2026-10-13.md"
+      ],
+      "prs": [
+        {
+          "number": 134,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T05:23:52Z",
+          "title": "docs(reliability): refresh Render/CI truth and register RQ634-RQ636"
+        }
+      ]
+    },
+    {
+      "branch": "audit/intelligence-reliability-followups-20261012",
+      "tip": "1fd5587c77d59e06e4988eeaa1e3f049440356fe",
+      "commit_date": "2026-10-12T00:46:24+02:00",
+      "behind": 182,
+      "ahead": 3,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-intelligence-second-pass-audit.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 122,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-11T22:47:26Z",
+          "title": "docs(analytics): register seven verified intelligence reliability followups RQ621â€“RQ627"
+        }
+      ]
+    },
+    {
+      "branch": "audit/rq616-null-stock-20261012",
+      "tip": "2daba7ad82a80113141ef9c82b784ff48e513d64",
+      "commit_date": "2026-10-12T00:21:21+02:00",
+      "behind": 183,
+      "ahead": 6,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        "Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs",
+        "Api/Endpoints/AllEndpoints.cs",
+        "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md"
+      ],
+      "different_paths": [
+        "Api.Tests/AnalyticsIntelligenceRetailPopulationTests.cs",
+        "Database/Analytics/Intelligence/022_inventory_risk_signals_v1.sql",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/ai/BACKEND_CI_REPAIR_PROMPT_QUEUE.md"
+      ],
+      "prs": [
+        {
+          "number": 121,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-11T22:28:24Z",
+          "title": "fix(analytics): preserve NULL inventory baseline; audit CI skips and future dates"
+        }
+      ]
+    },
+    {
+      "branch": "audit/rq645-648-coverage-branch-reconciliation-20261013",
+      "tip": "48ac7e29829e682958532702d3915504e8e307a3",
+      "commit_date": "2026-10-13T16:14:55+02:00",
+      "behind": 62,
+      "ahead": 5,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-post-RQ644-queue-refill-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/POST_RQ644_CODE_QUEUE_BRANCH_REVIEW_2026-10-13.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-post-RQ644-queue-refill-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/POST_RQ644_CODE_QUEUE_BRANCH_REVIEW_2026-10-13.md"
+      ],
+      "prs": [
+        {
+          "number": 143,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T14:28:16Z",
+          "title": "docs(queue): restore executable RQ645â€“RQ649 coverage and branch-review work"
+        }
+      ]
+    },
+    {
+      "branch": "codex/product-value-plan-refinement",
+      "tip": "3bcab208b26f5b3bcd671b9f31022eb2e4a87d5b",
+      "commit_date": "2026-10-07T18:48:39+02:00",
+      "behind": 452,
+      "ahead": 2,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-07-product-value-plan-refinement-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md",
+        "docs/product/PRODUCT_VISION.md",
+        "docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md",
+        "docs/roadmaps/BUSINESS_ROADMAP.md"
+      ],
+      "different_paths": [
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_NIVELACIJA_AUDIT_ADDENDUM.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_SUPPLIER_AUDIT_ADDENDUM.md",
+        "docs/product/PRODUCT_VISION.md",
+        "docs/product/TRENDPLUS_PRODUCT_ANALYTICS_VALUE_AUDIT_2026-10-07.md",
+        "docs/roadmaps/BUSINESS_ROADMAP.md"
+      ],
+      "prs": [
+        {
+          "number": 111,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T16:49:34Z",
+          "title": "Refine product-value plan: freshness gates currentness, not truth"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq626-ci-fixture-correction",
+      "tip": "ae74df418982146fe1a4e3578c030b81ba59239e",
+      "commit_date": "2026-10-12T17:01:03+02:00",
+      "behind": 139,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ626-ci-correction-evidence.md",
+        "Api.Tests/AnalyticsIntelligenceNegativeStockProxyTests.cs"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ626-ci-correction-evidence.md",
+        "Api.Tests/AnalyticsIntelligenceNegativeStockProxyTests.cs"
+      ],
+      "prs": [
+        {
+          "number": 128,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "test(inventory): align negative proxy fixture dates"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq628-purchase-provenance-bootstrap",
+      "tip": "ba256ba8f849bfe50eded4dddd679d5c3556afa8",
+      "commit_date": "2026-10-12T11:03:29+02:00",
+      "behind": 168,
+      "ahead": 3,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ628-evidence.md",
+        "Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs",
+        "Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs",
+        "Infrastructure/Seed/DatabaseInitializer.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ628-evidence.md",
+        "Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs",
+        "Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs",
+        "Infrastructure/Seed/DatabaseInitializer.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 123,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T09:12:04Z",
+          "title": "fix(analytics): repair missing provenance column at startup"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq628-readiness-rq453-followup",
+      "tip": "30e7249f5b10b232d958a71a3fef3a461bcf045d",
+      "commit_date": "2026-10-12T11:54:45+02:00",
+      "behind": 163,
+      "ahead": 3,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ628-evidence.md",
+        "Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs",
+        "Api.Tests/DatabaseMigrationBootstrapLifecycleSmokeTests.cs",
+        "Api.Tests/PurchaseCostProvenanceReadinessPostgresIntegrationTests.cs",
+        "Api.Tests/StartupReadinessEndpointTests.cs",
+        "Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.cs",
+        "Api/Program.cs",
+        "Api/Services/Startup/ReadinessWarmupHostedService.cs",
+        "Api/Services/Startup/StartupReadinessEndpoints.cs",
+        "Infrastructure/Database/PurchaseCostProvenanceSchemaContract.cs",
+        "Infrastructure/Seed/DatabaseInitializer.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        "Api.Tests/PurchaseCostProvenanceReadinessPostgresIntegrationTests.cs",
+        "Api.Tests/SupplierShoeTypeIndependentOracleIntegrationTests.cs",
+        "Api/Services/Startup/ReadinessWarmupHostedService.cs",
+        "Api/Services/Startup/StartupReadinessEndpoints.cs",
+        "Infrastructure/Seed/DatabaseInitializer.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 125,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T10:02:48Z",
+          "title": "fix(analytics): enforce provenance readiness contract"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq630-allowlist-clean-migration",
+      "tip": "786324fb437a241bde802632ecddc7568c53a0ec",
+      "commit_date": "2026-10-12T18:05:44+02:00",
+      "behind": 134,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md",
+        "Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md"
+      ],
+      "prs": [
+        {
+          "number": 131,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T16:06:12Z",
+          "title": "test(analytics): allow exact migrated catalog matches"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq630-analytics-schema-drift",
+      "tip": "e83c936d26a64f97615957dbd51724777146325a",
+      "commit_date": "2026-10-12T17:46:58+02:00",
+      "behind": 137,
+      "ahead": 2,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md",
+        "Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md",
+        "Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 129,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T15:47:31Z",
+          "title": "test(analytics): guard catalog against EF model drift"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq630-pre-startup-drift-check",
+      "tip": "c929abac08d0e219fa232090902fae970449f244",
+      "commit_date": "2026-10-12T17:53:42+02:00",
+      "behind": 135,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md",
+        "Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ630-evidence.md",
+        "Api.Tests/AnalyticsModelCatalogDriftPostgresTests.cs"
+      ],
+      "prs": [
+        {
+          "number": 130,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T15:54:19Z",
+          "title": "test(analytics): check catalog before startup SQL repair"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq645-closeout-20261013",
+      "tip": "b15f53dcebaf8d13f2bb8ffa681f7229e08de76e",
+      "commit_date": "2026-10-13T22:32:42+02:00",
+      "behind": 39,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-RQ645-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 149,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T20:34:31Z",
+          "title": "docs(queue): close RQ645 with delivered PostgreSQL evidence"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq645-supplier-contracts-20261013",
+      "tip": "2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42",
+      "commit_date": "2026-10-13T17:19:14+02:00",
+      "behind": 56,
+      "ahead": 2,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-RQ645-evidence.md",
+        "Api.Tests/SupplierSalesRemainingContractsPostgresTests.cs",
+        "Api.Tests/SupplierSalesStatsEndpointPostgresParityTests.cs",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "scripts/ci/backend-skip-inventory.json"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-RQ645-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "scripts/ci/backend-skip-inventory.json"
+      ],
+      "prs": [
+        {
+          "number": 145,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T15:28:03Z",
+          "title": "test(analytics): certify seven supplier trust and golden contracts"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq646-closeout-20261013",
+      "tip": "e856d279ce0243fcde5335c7f47081c54c6f77bc",
+      "commit_date": "2026-10-13T23:15:20+02:00",
+      "behind": 37,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-RQ646-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-RQ646-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 151,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T21:15:45Z",
+          "title": "docs(analytics): close RQ646 delivery evidence"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq646-shoetype-contracts-20261013",
+      "tip": "66cdc06ee9e64c50754cc1bc62403fa5ffa830f4",
+      "commit_date": "2026-10-13T22:58:36+02:00",
+      "behind": 38,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-RQ646-evidence.md",
+        "Api.Tests/ShoeTypeRemainingContractsPostgresTests.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "scripts/ci/backend-skip-inventory.json"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-RQ646-evidence.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "scripts/ci/backend-skip-inventory.json"
+      ],
+      "prs": [
+        {
+          "number": 150,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T21:09:52Z",
+          "title": "test(analytics): certify three shoe-type trust and golden contracts"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq646-verification-20261013",
+      "tip": "924a1aae1fc9eff7d65b2be9ae4cb5875ad60dd8",
+      "commit_date": "2026-10-13T23:16:39+02:00",
+      "behind": 36,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-RQ646-evidence.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 152,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T21:17:03Z",
+          "title": "docs(analytics): clarify RQ646 squash verification"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq647-performance-20261014",
+      "tip": "396e12534ec40fd45f6c947cdf6726204316077b",
+      "commit_date": "2026-10-14T10:10:18+02:00",
+      "behind": 35,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-14-RQ647-evidence.md",
+        ".ai/runs/2026-10-14-RQ647-report.json",
+        "Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "scripts/ci/run-analytics-benchmark.ps1"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-14-RQ647-evidence.md",
+        ".ai/runs/2026-10-14-RQ647-report.json",
+        "Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 153,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-14T08:10:47Z",
+          "title": "test(perf): add non-gating isolated analytics endpoint baseline"
+        }
+      ]
+    },
+    {
+      "branch": "codex/rq657-request-race-20261014",
+      "tip": "2b23ce5c5433e789ba60114fa63795397b7ee73a",
+      "commit_date": "2026-10-14T12:39:54+02:00",
+      "behind": 14,
+      "ahead": 1,
+      "graph_class": "diverged-but-content-in-main",
+      "changed_paths": [
+        "Klijent/clientapp/scripts/known-guardrail-baseline.json",
+        "Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx",
+        "Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.scopeReload.spec.tsx"
+      ],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 156,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-14T10:44:07Z",
+          "title": "fix(analytics): ignore stale supplier store responses"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/bci15-action-constants-tests-7269",
+      "tip": "51fc9d6e2302d9aedaf82d8138e8204f0a805d40",
+      "commit_date": "2026-10-08T15:49:36Z",
+      "behind": 380,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 115,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T15:40:03Z",
+          "title": "test(ci): align action constants coverage with Unranked/Ignored"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/commit-audit-governance-rq564-48f5",
+      "tip": "d8313e15ee7fac1c588dc71b1f6dc348fed2118d",
+      "commit_date": "2026-10-04T16:26:18Z",
+      "behind": 847,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 96,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-04T16:26:50Z",
+          "title": "fix(governance): zero-READY validator + RQ564 Nivelacija integrity"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/main-audit-reconcile-0634",
+      "tip": "2f7b17f01fe8422386b9a3ba87d58f85ae8fba12",
+      "commit_date": "2026-10-04T16:22:06Z",
+      "behind": 846,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-24-responsive-baseline-51d0",
+      "tip": "ba7ad26887c4f58dc9611836b74b920f9c1d769a",
+      "commit_date": "2026-10-01T12:35:32Z",
+      "behind": 1071,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 91,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-01T12:34:27Z",
+          "title": "test(ui): add responsive browser baseline"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-25-responsive-foundation-51d0",
+      "tip": "fe49830765ddd009c50e6416d15a8ff65f1deeb6",
+      "commit_date": "2026-10-01T12:57:49Z",
+      "behind": 1059,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 92,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-01T12:56:32Z",
+          "title": "feat(ui): add responsive control and type foundations"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-26-responsive-shell-51d0",
+      "tip": "9792d7688820c92dbea41ba80777e737b9395297",
+      "commit_date": "2026-10-01T13:17:17Z",
+      "behind": 1053,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-27-responsive-primitives-51d0",
+      "tip": "a601a1bc462ac6047ac04d6169142a43ae97c6ff",
+      "commit_date": "2026-10-01T13:21:48Z",
+      "behind": 1050,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-38-responsive-ui-regression-gates-7269",
+      "tip": "290ffebebe1737fcb5b0c52f58f69116d033662b",
+      "commit_date": "2026-10-08T15:36:19Z",
+      "behind": 383,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 114,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T15:31:45Z",
+          "title": "test(ui): enforce P-UI-38 responsive/theme regression gates"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-50-close-7269",
+      "tip": "7e91723d07fb394e1bf8568c6e8345e551060614",
+      "commit_date": "2026-10-08T15:25:30Z",
+      "behind": 387,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-50-evidence-finalize-7269",
+      "tip": "2d55e843d0f1652c19605151c26c0e9579c0fdd0",
+      "commit_date": "2026-10-08T15:25:56Z",
+      "behind": 386,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-50-evidence-tip-7269",
+      "tip": "7e91723d07fb394e1bf8568c6e8345e551060614",
+      "commit_date": "2026-10-08T15:25:30Z",
+      "behind": 387,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/p-ui-50-product-decision-hierarchy-7269",
+      "tip": "67deb8fb6acb6363d428c0ae3400cc24e8a27a32",
+      "commit_date": "2026-10-08T15:23:54Z",
+      "behind": 389,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 113,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T15:24:04Z",
+          "title": "feat(ui): Product Decision hierarchy for blocked recommendations (P-UI-50)"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-build-evidence-61ea",
+      "tip": "18906d51319022585b43de90671f9cd4453ffedc",
+      "commit_date": "2026-10-07T10:25:20Z",
+      "behind": 542,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 107,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T10:24:53Z",
+          "title": "docs: record P-UI-52 production build evidence"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-close-61ea",
+      "tip": "40fdd440bf621a1b8ffbc6e6d98d4d9fbad2166f",
+      "commit_date": "2026-10-07T10:18:31Z",
+      "behind": 550,
+      "ahead": 2,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-07-P-UI-52-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-07-P-UI-52-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md"
+      ],
+      "prs": [
+        {
+          "number": 102,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "docs(queue): close P-UI-52 navigation and copy claim"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-final-evidence-61ea",
+      "tip": "6ad2bf5e45ac2d2afa01c5029138d4596593ae84",
+      "commit_date": "2026-10-07T10:22:48Z",
+      "behind": 545,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 105,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T10:23:02Z",
+          "title": "docs(evidence): verify P-UI-52 final main SHA"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-final-sha-61ea",
+      "tip": "577dbfdc1f9a60bef0d050015b2c47e9ebc57c23",
+      "commit_date": "2026-10-07T10:23:24Z",
+      "behind": 544,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 106,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T10:23:47Z",
+          "title": "docs(evidence): record final P-UI-52 delivery SHA"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-recovery-61ea",
+      "tip": "948e8e87c44500a735330903541ec317f1dff598",
+      "commit_date": "2026-10-07T10:21:09Z",
+      "behind": 549,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-07-P-UI-52-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-07-P-UI-52-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md"
+      ],
+      "prs": [
+        {
+          "number": 103,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "docs(queue): synchronize P-UI-52 post-close recovery"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-52-status-sync-61ea",
+      "tip": "7d491cd9c7e22a0158d169d3b42a60cb8b598c95",
+      "commit_date": "2026-10-07T10:22:08Z",
+      "behind": 546,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 104,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T10:22:25Z",
+          "title": "docs(queue): reconcile P-UI-52 terminal status"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/p-ui-54-ratchet-61ea",
+      "tip": "e0d23700232944e6dc8fa2147031e4536aba6fab",
+      "commit_date": "2026-10-07T11:54:59Z",
+      "behind": 495,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 109,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T11:47:47Z",
+          "title": "test(ui): ratchet stable theme invariants"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/post-audit-queue-reconciliation-e37c",
+      "tip": "cc332a21b0e618a9d93a572c18253863b3b4a9df",
+      "commit_date": "2026-10-04T16:21:46Z",
+      "behind": 847,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/post-rq564-audit-48f5",
+      "tip": "a572045953826c8413af1ce31c1991fe3c630543",
+      "commit_date": "2026-10-04T16:30:14Z",
+      "behind": 839,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/q83-nivelacija-nullability-51d0",
+      "tip": "91f73d7cdc2cc8cbf65386764c984e0b699462c5",
+      "commit_date": "2026-10-01T10:25:00Z",
+      "behind": 1110,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 89,
+          "state": "closed",
+          "base": "cursor/rq474-supplier-overview-error-51d0",
+          "merged_at": "",
+          "title": "fix(analytics): preserve nivelacija aggregate nullability"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/queue-idle-recovery-1156-61ea",
+      "tip": "f622a4d19e7970c6b4bc884601e576ae18499a72",
+      "commit_date": "2026-10-08T17:15:24Z",
+      "behind": 485,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-08-queue-idle-recovery-final-evidence.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-08-queue-idle-recovery-final-evidence.md"
+      ],
+      "prs": [
+        {
+          "number": 116,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "docs(queue): record zero-READY proof and idle recovery completion"
+        },
+        {
+          "number": 110,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T11:59:21Z",
+          "title": "docs(queue): record fresh zero-ready recovery"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/queue-idle-recovery-61ea",
+      "tip": "ce60d3120e9d4b1e456d10e0ceeb8820f5ce8756",
+      "commit_date": "2026-10-07T10:31:51Z",
+      "behind": 535,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 108,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-07T10:31:10Z",
+          "title": "docs(queue): record current zero-ready recovery"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/queue-zero-ready-recovery-7269",
+      "tip": "a9ea060e5a04f825fece1dbcb3b192d8290f40b7",
+      "commit_date": "2026-10-09T09:35:53Z",
+      "behind": 332,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 120,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-09T09:35:43Z",
+          "title": "docs(queue): independent Zero-READY recovery on current main"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/review-recertify-daily-e050",
+      "tip": "e12655fd1b6208411cad8783f77b031f45f950b0",
+      "commit_date": "2026-10-05T19:20:35Z",
+      "behind": 646,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 101,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-05T18:45:34Z",
+          "title": "Align frontend specs with collapsed trust details"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq-daily-sales-negative-supplier-id-51d0",
+      "tip": "9fe45917233472d35adc75d56aa8c684f6718fcd",
+      "commit_date": "2026-10-01T14:28:33Z",
+      "behind": 1041,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 93,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-01T14:28:21Z",
+          "title": "fix(analytics): accept negative Access supplier IDs on Daily Sales"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq319-operations-filter-apply-61ea",
+      "tip": "9caa3e16768dddb2bea9364c6c4fff26d3ec5e71",
+      "commit_date": "2026-10-08T18:04:47Z",
+      "behind": 363,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 118,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T18:05:01Z",
+          "title": "fix(analytics): unify operations filter apply behavior - explicit Apply for all screens"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq453-certification-ci-e050",
+      "tip": "337fcb42ed0d195976aadc1abc7a48206b2717cb",
+      "commit_date": "2026-10-05T12:52:34Z",
+      "behind": 761,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq474-supplier-overview-error-51d0",
+      "tip": "cb3eb7e19938e37ece929a2507ef53e69eca2eeb",
+      "commit_date": "2026-10-01T10:12:24Z",
+      "behind": 1116,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 88,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-01T10:11:39Z",
+          "title": "fix(analytics): preserve Supplier overview failure states"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq48-action-duplicate-pagination-e050",
+      "tip": "e84b3f0909dfa84937db83a0f0da110ce2c2c85e",
+      "commit_date": "2026-10-05T15:30:36Z",
+      "behind": 707,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq498-supplier-metric-semantics-78b0",
+      "tip": "d00fde9c14fc4309ee8f1182051ec03d306ff6c8",
+      "commit_date": "2026-10-02T11:16:59Z",
+      "behind": 1016,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq499-supplier-trust-provenance-78b0",
+      "tip": "7bc796ad02b0064d1c1a8904f9c5e98de9f5dcb1",
+      "commit_date": "2026-10-02T11:21:39Z",
+      "behind": 1012,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq500-supplier-info-hierarchy-78b0",
+      "tip": "5645c0ebeafe3bc751bdb28b7c7c53d12cd04b6b",
+      "commit_date": "2026-10-02T11:27:50Z",
+      "behind": 1005,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq518-mv-capability-51d0",
+      "tip": "7071f69ea7bd69eae20205c398a24152f5bbba8b",
+      "commit_date": "2026-09-30T16:34:25Z",
+      "behind": 1186,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 83,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-09-30T19:27:32Z",
+          "title": "docs(analytics): close Supplier MV capability prompt"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq519-nivelacija-lifecycle-78b0",
+      "tip": "c8a7e1fe602f6ad8f4ae2a6ab9b557611ddf0153",
+      "commit_date": "2026-09-30T16:54:14Z",
+      "behind": 1180,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 85,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-09-30T16:54:54Z",
+          "title": "fix(analytics): harden nivelacija schema lifecycle"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq519-reentry-78b0",
+      "tip": "fc956cb95b04e9f7a01a6d194fe0abd7f84c8e09",
+      "commit_date": "2026-09-30T17:15:41Z",
+      "behind": 1171,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 87,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-09-30T17:14:58Z",
+          "title": "fix(build): unblock RQ519 focused lifecycle tests"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq520-assortment-semantics-78b0",
+      "tip": "f187d59e557e164f2103e125ab0fc66cdcf89fac",
+      "commit_date": "2026-09-30T17:52:03Z",
+      "behind": 1165,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq523-supplier-frontend-residuals-78b0",
+      "tip": "ab89dcd01162aa09164bd414fb473083eb5fa557",
+      "commit_date": "2026-10-02T11:33:08Z",
+      "behind": 1002,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq524-fixture-proof-78b0",
+      "tip": "d3e2c33a5269a5049ecc6450ffcf40ceb3fb5ad0",
+      "commit_date": "2026-09-30T16:34:41Z",
+      "behind": 1187,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 84,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-09-30T16:36:34Z",
+          "title": "test(analytics): execute RQ524 supplier reconciliation pack"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq524-pack-extend-78b0",
+      "tip": "b73bb83849a98139aa292f35bddbb9521c521773",
+      "commit_date": "2026-09-30T17:38:09Z",
+      "behind": 1168,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq525-docker-proof-78b0",
+      "tip": "e2916baadc89dc2e3d3d1eefc85079a93d72843c",
+      "commit_date": "2026-09-30T17:42:39Z",
+      "behind": 1167,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq525-schema-harness-78b0",
+      "tip": "650858e6c6d969eb3332e4f30264f4c5402d8132",
+      "commit_date": "2026-09-30T17:06:13Z",
+      "behind": 1176,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 86,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-09-30T17:05:59Z",
+          "title": "test(analytics): add Supplier schema readiness harness"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq529-supplier-a11y-formatting-78b0",
+      "tip": "db064b9206fd8468253ddf7fb8cf8d06edb6730e",
+      "commit_date": "2026-10-02T11:37:38Z",
+      "behind": 997,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq530-supplier-buying-value-78b0",
+      "tip": "d61297cd2b9af7d4180a66352821efeed8df25f6",
+      "commit_date": "2026-10-02T12:23:56Z",
+      "behind": 978,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 95,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "feat(supplier): RQ530 partial buying panel and evidence contract"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq532-supplier-size-curve-78b0",
+      "tip": "b054e787d04a17102953ab147a429d1e00247398",
+      "commit_date": "2026-10-02T12:18:41Z",
+      "behind": 981,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 94,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-02T11:45:40Z",
+          "title": "docs(queue): verify RQ532 supplier size-curve availability"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq536-scorecard-explainability-51d0",
+      "tip": "d623c9f0c351a2746ef774c6dc69b6a75c9a27e3",
+      "commit_date": "2026-10-01T12:13:45Z",
+      "behind": 1078,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 90,
+          "state": "closed",
+          "base": "cursor/rq474-supplier-overview-error-51d0",
+          "merged_at": "",
+          "title": "feat(analytics): expose supplier scorecard model explanation"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq552-nivelacija-cost-e050",
+      "tip": "463d42df94e4573c777757090a62693e795920ba",
+      "commit_date": "2026-10-05T12:01:11Z",
+      "behind": 765,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq553-nivelacija-copy-e050",
+      "tip": "e20fdb50d62f59d7a1a5f32f9192606800d3b24f",
+      "commit_date": "2026-10-05T12:45:48Z",
+      "behind": 763,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq575-dimension-coverage-e050",
+      "tip": "6084eec14f212fa95b377c416e68d2f8e00dfd7f",
+      "commit_date": "2026-10-05T11:34:43Z",
+      "behind": 770,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq576-inventory-valuation-e050",
+      "tip": "e5e2dc83bf73eee8b34f0b7e3565afa272625535",
+      "commit_date": "2026-10-05T11:55:10Z",
+      "behind": 768,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq578-data-quality-health-e050",
+      "tip": "9f25bf8e0577489d490d53dbcc05c945080455dd",
+      "commit_date": "2026-10-05T13:03:05Z",
+      "behind": 757,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq579-integrity-nonvacuous-e050",
+      "tip": "1107df2dc3594703576be5d8588e71b40c65090c",
+      "commit_date": "2026-10-05T13:12:44Z",
+      "behind": 753,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 97,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-05T13:13:56Z",
+          "title": "fix(analytics): require non-empty integrity comparisons"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq580-supplier-period-label-e050",
+      "tip": "46d23356246f170a1804ce879de22dc0b7b90bc2",
+      "commit_date": "2026-10-05T13:22:43Z",
+      "behind": 749,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 98,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-05T13:21:40Z",
+          "title": "fix(analytics): label explicit Supplier report ranges by their dates"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq581-insight-studio-encoding-e050",
+      "tip": "fd713653639413812d526fbbae4a0721f3e00984",
+      "commit_date": "2026-10-05T13:27:09Z",
+      "behind": 746,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 99,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-05T13:26:04Z",
+          "title": "fix(analytics): repair Serbian encoding in Insight Studio"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq583-freshness-sla-alert-e050",
+      "tip": "e5cf224749d2965b2cc62fcf9c78c55faa3ab7bf",
+      "commit_date": "2026-10-05T13:38:43Z",
+      "behind": 739,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 100,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-05T13:39:45Z",
+          "title": "feat(analytics): add durable freshness SLA and import alert"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq590-legacy-advanced-cert-e050",
+      "tip": "bee31756282966915ba4014801e5621c1f132576",
+      "commit_date": "2026-10-05T15:20:38Z",
+      "behind": 718,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq591-insight-studio-trust-e050",
+      "tip": "e6bdedd544f92dc5b127c8f872b4dbb0f8fa8b13",
+      "commit_date": "2026-10-05T15:28:10Z",
+      "behind": 713,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq626-ci-proof-d661",
+      "tip": "b0b55582d78e262e97b02119dcf99841eaf9ec49",
+      "commit_date": "2026-10-12T15:25:46Z",
+      "behind": 136,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq626-closeout-d661",
+      "tip": "bf964a1bac405a8e16510c60442622759eb7d4f2",
+      "commit_date": "2026-10-12T14:52:03Z",
+      "behind": 139,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq626-evidence-sync-d661",
+      "tip": "6a287b97cf73a1dbd63d070566b8a4bd167a8b6b",
+      "commit_date": "2026-10-12T15:08:19Z",
+      "behind": 137,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq626-negative-inventory-d661",
+      "tip": "a3e621f74f9b3af1391714280fdd20e8b2b6f41a",
+      "commit_date": "2026-10-12T14:49:50Z",
+      "behind": 140,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 127,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T14:50:13Z",
+          "title": "fix(inventory): RQ626 preserve negative reconstructed stock proxy evidence"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq626-oracle-fix-d661",
+      "tip": "560f4a91d6962e64c305448df256d4ec8e73b75e",
+      "commit_date": "2026-10-12T15:08:01Z",
+      "behind": 138,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq633-ci-selftest-61ea",
+      "tip": "56432564bc9e528cb82f7fc71db963b546ec7dd5",
+      "commit_date": "2026-10-12T19:11:01Z",
+      "behind": 127,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq633-vercel-ignore-61ea",
+      "tip": "33c17219fc78f5485a4b0426f43c04ce005a8b1c",
+      "commit_date": "2026-10-12T19:06:32Z",
+      "behind": 129,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq635-sql029-preflight-28d8",
+      "tip": "eb73f1d2b92e0a01856b09f4634516244f6bf3ba",
+      "commit_date": "2026-10-13T11:23:00Z",
+      "behind": 97,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq637-access-import-readiness-gate-28d8",
+      "tip": "084a33558cedc9f5d8e30076786ec1d6fc33855b",
+      "commit_date": "2026-10-13T11:16:22Z",
+      "behind": 104,
+      "ahead": 1,
+      "graph_class": "diverged-but-content-in-main",
+      "changed_paths": [
+        "Api.Tests/AccessImportBackgroundWorkerStartupLifecycleTests.cs",
+        "Api/Services/Access/AccessImportBackgroundWorker.cs",
+        "Api/Services/Access/AccessImportWorkerStartupGate.cs"
+      ],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 136,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "RQ637: defer web Access import polling until startup readiness"
+        }
+      ]
+    },
+    {
+      "branch": "cursor/rq638-performance-log-bounds-28d8",
+      "tip": "da352033ee660c4867fdbfaa9b0d3e1e0244be2d",
+      "commit_date": "2026-10-13T11:50:13Z",
+      "behind": 91,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq639-analytics-db-infra-skips-28d8",
+      "tip": "32e3723c8508bb90cdc8fada378064e95e0d29da",
+      "commit_date": "2026-10-13T11:57:37Z",
+      "behind": 88,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq640-readiness-gate-convention-28d8",
+      "tip": "034790d56f26a2fc2c764985c82d1e89d4491129",
+      "commit_date": "2026-10-13T12:19:42Z",
+      "behind": 85,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq641-main-ci-no-cancel-28d8",
+      "tip": "6dea05a2a4ec9847f4656af85411a1badea19241",
+      "commit_date": "2026-10-13T12:21:59Z",
+      "behind": 82,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq642-infrastructure-postgres-proof-28d8",
+      "tip": "92eb5736624ad01ab8a66e4287c641b450348a7b",
+      "commit_date": "2026-10-13T12:56:25Z",
+      "behind": 72,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq643-ready-schema-status-28d8",
+      "tip": "1a468f7e0203a4b267e5a9527ca91598acea6b16",
+      "commit_date": "2026-10-13T13:35:51Z",
+      "behind": 64,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq644-invalid-input-skip-reconcile-28d8",
+      "tip": "c4c20197cf029f36de8623e2de8cb7e9df708a57",
+      "commit_date": "2026-10-13T13:47:40Z",
+      "behind": 62,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "cursor/rq88-closed-kpi-split-e050",
+      "tip": "42255134a7a698e07fcf85bf216658d1be7496b7",
+      "commit_date": "2026-10-05T15:33:46Z",
+      "behind": 705,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": []
+    },
+    {
+      "branch": "docs/2026-10-13-pg-ci-merge-guardrail",
+      "tip": "983c7a3155b5d7659d42692d47da9f8e6d081158",
+      "commit_date": "2026-10-13T14:39:33+02:00",
+      "behind": 79,
+      "ahead": 3,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        "AGENTS.md",
+        "docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md",
+        "docs/ai/PROMPT_QUEUE_PROTOCOL.md"
+      ],
+      "different_paths": [
+        "AGENTS.md",
+        "docs/ai/AGENT_RUN_EVIDENCE_STANDARD.md",
+        "docs/ai/PROMPT_QUEUE_PROTOCOL.md"
+      ],
+      "prs": [
+        {
+          "number": 140,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T12:40:53Z",
+          "title": "docs(governance): make PostgreSQL PR CI gate override main-first delivery"
+        }
+      ]
+    },
+    {
+      "branch": "docs/2026-10-13-rq635-ci-truth-rq642",
+      "tip": "ac29a9b6d9cd24d83a40e4a657d2a3c08b1d0f46",
+      "commit_date": "2026-10-13T14:49:51+02:00",
+      "behind": 78,
+      "ahead": 6,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-rq635-ci-correction-rq642-recovery-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 142,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T12:51:15Z",
+          "title": "docs(queue): close RQ635 with real PostgreSQL proof; promote RQ642"
+        }
+      ]
+    },
+    {
+      "branch": "docs/owner-decisions-rq481-rq319-20261008",
+      "tip": "ecef7f9dd49bac3b1f3148cc7569b848f5f3bbb8",
+      "commit_date": "2026-10-08T19:29:36+02:00",
+      "behind": 369,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-08-RQ481-RQ319-owner-decision-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/product/OWNER_DECISIONS_2026-10-08_PULSE_OPERATIONS_FILTERS.md"
+      ],
+      "different_paths": [
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md"
+      ],
+      "prs": [
+        {
+          "number": 117,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T17:30:44Z",
+          "title": "docs(analytics): approve RQ481 period/scope and Operations explicit Apply"
+        }
+      ]
+    },
+    {
+      "branch": "docs/rq628-main-sha",
+      "tip": "8d7abadfafbf66527f205188c1af8ceb6080c67e",
+      "commit_date": "2026-10-12T11:12:35+02:00",
+      "behind": 164,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-12-RQ628-evidence.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-12-RQ628-evidence.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md"
+      ],
+      "prs": [
+        {
+          "number": 124,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T09:20:05Z",
+          "title": "docs(analytics): sync RQ628 main delivery evidence"
+        }
+      ]
+    },
+    {
+      "branch": "fix/2026-10-13-supplier-diagnostics-reliability",
+      "tip": "0639ea52bf2d98044d47b187f9a76952775eec08",
+      "commit_date": "2026-10-13T10:08:56+02:00",
+      "behind": 110,
+      "ahead": 14,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".ai/runs/2026-10-13-reliability-code-second-pass-evidence.md",
+        "Api.Tests/AnalyticsConnectionDiagnosticsCapabilityTests.cs",
+        "Api/Services/Startup/AnalyticsConnectionDiagnosticsHostedService.cs",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md",
+        "docs/qa/TRENDPLUS_RELIABILITY_NEXT_WORK_2026-10-13.md"
+      ],
+      "different_paths": [
+        ".ai/runs/2026-10-13-reliability-code-second-pass-evidence.md",
+        "MASTER_ROADMAP.md",
+        "docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md",
+        "docs/qa/TRENDPLUS_RELIABILITY_NEXT_WORK_2026-10-13.md"
+      ],
+      "prs": [
+        {
+          "number": 135,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T08:17:45Z",
+          "title": "fix(diagnostics): expose windowed supplier MV state and register missed startup/telemetry work"
+        }
+      ]
+    },
+    {
+      "branch": "fix/analytics-013-dependent-materialized-view",
+      "tip": "b772ba6fe06f59a64d11e771ffebae8a2abc09a2",
+      "commit_date": "2026-10-08T13:55:31+02:00",
+      "behind": 400,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 112,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T18:26:17Z",
+          "title": "fix(analytics): keep dependent return materialized view intact"
+        }
+      ]
+    },
+    {
+      "branch": "fix/postgres-convention-helper-traversal",
+      "tip": "137bfa83a7e2f76294ddef2a4350ef0543f17114",
+      "commit_date": "2026-10-13T20:47:04+02:00",
+      "behind": 41,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 148,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T18:55:58Z",
+          "title": "test(ci): close PostgreSQL convention helper traversal gap (RQ658)"
+        }
+      ]
+    },
+    {
+      "branch": "fix/postgres-tests-skip-not-pass-locally",
+      "tip": "3eea768707d9240a29892c4cb437fc175093c942",
+      "commit_date": "2026-10-13T16:46:39+02:00",
+      "behind": 57,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 144,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T14:56:41Z",
+          "title": "test(ci): PostgreSQL tests report Skipped, not Passed, without required PostgreSQL"
+        }
+      ]
+    },
+    {
+      "branch": "fix/rq481-invalid-filter-id-failclosed-20261008",
+      "tip": "5f9459cbed283d8ade7646a89b53600b571ad292",
+      "commit_date": "2026-10-08T20:40:34+02:00",
+      "behind": 348,
+      "ahead": 10,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        "Klijent/clientapp/src/pages/DecisionPulsePage.tsx",
+        "Klijent/clientapp/src/pages/__tests__/DecisionPulsePage.spec.tsx"
+      ],
+      "different_paths": [
+        "Klijent/clientapp/src/pages/DecisionPulsePage.tsx",
+        "Klijent/clientapp/src/pages/__tests__/DecisionPulsePage.spec.tsx"
+      ],
+      "prs": [
+        {
+          "number": 119,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-08T18:47:09Z",
+          "title": "fix(analytics): fail closed for invalid Decision Pulse store/supplier URL filters"
+        }
+      ]
+    },
+    {
+      "branch": "fix/rq635-real-postgres-ci-oracle-20261013",
+      "tip": "caec734886c15e458db59cc9a0bdc5c7fb5d6642",
+      "commit_date": "2026-10-13T14:29:59+02:00",
+      "behind": 80,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        "Api.Tests/SupplierWindowedSql029LifecycleTests.cs"
+      ],
+      "different_paths": [
+        "Api.Tests/SupplierWindowedSql029LifecycleTests.cs"
+      ],
+      "prs": [
+        {
+          "number": 138,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "test(rq635): bootstrap real PostgreSQL supplier prerequisites for SQL029"
+        }
+      ]
+    },
+    {
+      "branch": "fix/rq635-sql029-postgres-fixture",
+      "tip": "38dd152f1508a014042cceb651fb5d51e8ad26aa",
+      "commit_date": "2026-10-13T14:29:02+02:00",
+      "behind": 80,
+      "ahead": 1,
+      "graph_class": "unique-unreviewed",
+      "changed_paths": [
+        ".github/workflows/analytics-tests.yml",
+        "Api.Tests/DatabaseInitializerP0IntegrationTests.cs",
+        "Api.Tests/PostgresRequiredFactAttribute.cs",
+        "Api.Tests/SupplierWindowedSql029LifecycleTests.cs"
+      ],
+      "different_paths": [
+        ".github/workflows/analytics-tests.yml",
+        "Api.Tests/PostgresRequiredFactAttribute.cs",
+        "Api.Tests/SupplierWindowedSql029LifecycleTests.cs"
+      ],
+      "prs": [
+        {
+          "number": 137,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T12:38:14Z",
+          "title": "test(sql): provision real SQL 029 prerequisites and fail closed without PostgreSQL (RQ635)"
+        }
+      ]
+    },
+    {
+      "branch": "fix/rq638-unicode-boundary-rebased-on-rq635-20261013",
+      "tip": "2b2a631d19a80fce2a4b106504f56791a9ca953f",
+      "commit_date": "2026-10-13T14:43:19+02:00",
+      "behind": 78,
+      "ahead": 2,
+      "graph_class": "diverged-but-content-in-main",
+      "changed_paths": [
+        "Api.Tests/PerformanceLoggingBehaviorColumnBoundsTests.cs",
+        "Application/Performance/PerformanceLogColumnBounds.cs"
+      ],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 141,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-13T12:50:30Z",
+          "title": "fix(telemetry): avoid splitting UTF-16 surrogate pairs on current PostgreSQL CI baseline"
+        }
+      ]
+    },
+    {
+      "branch": "fix/rq638-unicode-truncation-boundary-20261013",
+      "tip": "1ece401401bbf291dddf96347bb2e8ac1c80b796",
+      "commit_date": "2026-10-13T14:34:35+02:00",
+      "behind": 80,
+      "ahead": 2,
+      "graph_class": "diverged-but-content-in-main",
+      "changed_paths": [
+        "Api.Tests/PerformanceLoggingBehaviorColumnBoundsTests.cs",
+        "Application/Performance/PerformanceLogColumnBounds.cs"
+      ],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 139,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "",
+          "title": "fix(telemetry): preserve Unicode surrogate pairs when bounding PerformanceLogs"
+        }
+      ]
+    },
+    {
+      "branch": "review/http-metric-field-bounds-20261012",
+      "tip": "060210565fef30b419bf10189dc89b408bd5d328",
+      "commit_date": "2026-10-12T21:12:11+02:00",
+      "behind": 121,
+      "ahead": 0,
+      "graph_class": "ancestor/behind",
+      "changed_paths": [],
+      "different_paths": [],
+      "prs": [
+        {
+          "number": 132,
+          "state": "closed",
+          "base": "main",
+          "merged_at": "2026-10-12T19:22:54Z",
+          "title": "fix(observability): count HTTP metric persistence failures"
+        }
+      ]
+    }
+  ],
+  "non_main_branch_count": 109
+}
