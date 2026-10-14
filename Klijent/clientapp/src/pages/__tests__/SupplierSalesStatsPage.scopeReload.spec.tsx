@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SupplierSalesStatsPage from "../SupplierSalesStatsPage";
@@ -202,6 +202,123 @@ describe("SupplierSalesStatsPage scope reload", () => {
     expect(storeSelect).toHaveValue("");
     expect(screen.getByRole("option", { name: "Postojeci objekat" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Uvezeni objekat" })).not.toBeInTheDocument();
+  });
+
+  it("hides previous-scope stores while loading, exposes retry on failure, and handles the inverse transition", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    let rejectExisting: ((reason?: unknown) => void) | undefined;
+    let resolveImportedRetry: ((value: Awaited<ReturnType<typeof getStores>>) => void) | undefined;
+    vi.mocked(getStores)
+      .mockResolvedValueOnce([
+        { storeId: 1, storeName: "Uvezeni objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>)
+      .mockImplementationOnce(() => new Promise((_, reject) => {
+        rejectExisting = reject;
+      }))
+      .mockResolvedValueOnce([
+        { storeId: 2, storeName: "Postojeci objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>)
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveImportedRetry = resolve;
+      }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("option", { name: "Uvezeni objekat" })).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => expect(getStores).toHaveBeenLastCalledWith(true, "existing"));
+    expect(screen.queryByRole("option", { name: "Uvezeni objekat" })).not.toBeInTheDocument();
+
+    await act(async () => {
+      rejectExisting?.(new Error("existing scope unavailable"));
+    });
+
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("Lista prodavnica nije osvežena");
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+    expect(await screen.findByRole("option", { name: "Postojeci objekat" })).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    await act(async () => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => expect(getStores).toHaveBeenLastCalledWith(true, "imported"));
+    expect(screen.queryByRole("option", { name: "Postojeci objekat" })).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveImportedRetry?.([
+        { storeId: 1, storeName: "Uvezeni objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>);
+    });
+    expect(await screen.findByRole("option", { name: "Uvezeni objekat" })).toBeInTheDocument();
+  });
+
+  it("does not send a stale URL store id before scope validation, then preserves a signed id found in that scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    let resolveStores: ((value: Awaited<ReturnType<typeof getStores>>) => void) | undefined;
+    vi.mocked(getStores).mockImplementationOnce(() => new Promise((resolve) => {
+      resolveStores = resolve;
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats?dataScope=imported&storeId=-7"]}>
+        <SupplierSalesStatsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getStores).toHaveBeenLastCalledWith(true, "imported"));
+    expect(vi.mocked(getSupplierSalesStats).mock.calls.some(([params]) => params?.storeId === -7)).toBe(false);
+
+    await act(async () => {
+      resolveStores?.([
+        { storeId: -7, storeName: "Uvezeni potpisani objekat", city: null, region: null },
+      ] as Awaited<ReturnType<typeof getStores>>);
+    });
+
+    await waitFor(() => {
+      expect(getSupplierSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
+        dataScope: "imported",
+        storeId: -7,
+      }));
+    });
+  });
+
+  it("validates an embedded shared store before requesting its scoped supplier data", async () => {
+    vi.mocked(getStores).mockResolvedValueOnce([
+      { storeId: -7, storeName: "Ugrađeni objekat", city: null, region: null },
+    ] as Awaited<ReturnType<typeof getStores>>);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/supplier-sales-stats"]}>
+        <SupplierSalesStatsPage
+          embedded
+          sharedFilters={{
+            periodPreset: "30d",
+            fromDate: "2026-06-01",
+            toDate: "2026-06-30",
+            dataScope: "existing",
+            storeId: -7,
+            supplierId: null,
+          }}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getSupplierSalesStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      dataScope: "existing",
+      storeId: -7,
+    })));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("uses shared parent scope in embedded mode instead of the global event", async () => {

@@ -22,6 +22,7 @@ import { ApiHttpError } from "../services/analyticsHttp";
 import type { InventoryBalance, InventoryInsights, StoreOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
 import AnalyticsControlBar, {
   type AnalyticsControlBarChip,
   type AnalyticsControlBarField,
@@ -46,6 +47,11 @@ import { formatMetricDisplayValue } from "../utils/analyticsMetricValue";
 import { buildSupplierSalesStatsTrustProjection } from "../utils/supplierSalesStatsTrust";
 import { AnalyticsMetaError } from "../utils/analyticsResponseMeta";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
+import {
+  resolveStoreFilterFallbackState,
+  resolveStoreFilterLoadFailure,
+  STORE_FILTER_SCOPE_LOADING_MESSAGE,
+} from "../utils/storeFilterFallbackState";
 import {
   analyticsMetricDescriptions,
   buildPopMetricDescription,
@@ -929,6 +935,19 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
   });
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoadError, setStoresLoadError] = useState<string | null>(null);
+  const [storesWarning, setStoresWarning] = useState<string | null>(null);
+  const [storesStale, setStoresStale] = useState(false);
+  const [storesScope, setStoresScope] = useState<DataScope | null>(null);
+  const [storesReloadNonce, setStoresReloadNonce] = useState(0);
+  const [storeValidationNonce, setStoreValidationNonce] = useState(0);
+  const pendingStoreIdRef = useRef<number | null>(null);
+  const storesStateRef = useRef<{ scope: DataScope | null; stale: boolean; loadError: string | null }>({
+    scope: null,
+    stale: false,
+    loadError: null,
+  });
+  storesStateRef.current = { scope: storesScope, stale: storesStale, loadError: storesLoadError };
   const duplicateStoreNames = useMemo(() => {
     const counts = new Map<string, number>();
     stores.forEach((store) => counts.set(store.storeName, (counts.get(store.storeName) ?? 0) + 1));
@@ -956,6 +975,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     if (urlDataScopeParam) return normalizeDataScope(urlDataScopeParam);
     return persistedDataScope;
   }, [persistedDataScope, sharedFilters?.dataScope, urlDataScopeParam]);
+  const hasSharedFilters = sharedFilters != null;
+  const sharedStoreId = sharedFilters?.storeId ?? null;
 
   useEffect(() => {
     if (sharedFilters?.dataScope || urlDataScopeParam) return;
@@ -973,6 +994,20 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setDataTrustRequestKey(null);
     setError(null);
   }, [activeDataScope]);
+
+  useEffect(() => {
+    if (storesScope == null || storesScope === activeDataScope) return;
+    pendingStoreIdRef.current = pendingStoreIdRef.current ?? storeId;
+    if (storeId == null) return;
+    setStoreId(null);
+    setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
+    setSearchParams((current) => {
+      if (!current.has("storeId")) return current;
+      const next = new URLSearchParams(current);
+      next.delete("storeId");
+      return next;
+    }, { replace: true });
+  }, [activeDataScope, setSearchParams, storeId, storesScope]);
   const includeUnknown = useMemo(
     () => (searchParams.get("includeUnknown") ?? "true").toLowerCase() !== "false",
     [searchParams]
@@ -1024,14 +1059,63 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
 
   useEffect(() => {
     let cancelled = false;
+    const previousStores = stores;
+    const requestedStoreId = pendingStoreIdRef.current ?? storeId;
+    const shouldRefreshAnalytics = requestedStoreId != null
+      || (storesScope != null && storesScope !== activeDataScope);
+    const showScopeLoadingNotice = previousStores.length > 0 || requestedStoreId != null || storesScope != null;
+    setStores([]);
+    setStoresWarning(showScopeLoadingNotice ? STORE_FILTER_SCOPE_LOADING_MESSAGE : null);
+    setStoresStale(true);
+    setStoresLoadError(null);
     const loadStores = async () => {
       try {
         const items = await getStores(true, activeDataScope);
         if (cancelled) return;
-        setStores(items);
+        const resolved = resolveStoreFilterFallbackState(items, previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(resolved.isStale);
+        setStoresScope(activeDataScope);
+        setStoresLoadError(null);
+        pendingStoreIdRef.current = null;
+        setStoreId(resolved.selectedStoreId);
+        setActiveFilters((current) => current.storeId === resolved.selectedStoreId
+          ? current
+          : { ...current, storeId: resolved.selectedStoreId });
+        if (!hasSharedFilters) {
+          setSearchParams((current) => {
+            const currentStoreId = parseNullableInt(current.get("storeId"));
+            if (currentStoreId === resolved.selectedStoreId) return current;
+            const next = new URLSearchParams(current);
+            if (resolved.selectedStoreId == null) next.delete("storeId");
+            else next.set("storeId", String(resolved.selectedStoreId));
+            return next;
+          }, { replace: true });
+        }
+        if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);
       } catch {
         if (cancelled) return;
-        // Preserve the last known store list on transient failures instead of faking an empty filter set.
+        const resolved = resolveStoreFilterLoadFailure(previousStores, requestedStoreId);
+        setStores(resolved.stores);
+        setStoresWarning(resolved.warning);
+        setStoresStale(true);
+        setStoresScope(activeDataScope);
+        setStoresLoadError("stores_load_failed");
+        pendingStoreIdRef.current = requestedStoreId;
+        setStoreId(null);
+        setActiveFilters((current) => current.storeId == null ? current : { ...current, storeId: null });
+        setData(null);
+        setDataTrustRequestKey(null);
+        if (!hasSharedFilters) {
+          setSearchParams((current) => {
+            if (!current.has("storeId")) return current;
+            const next = new URLSearchParams(current);
+            next.delete("storeId");
+            return next;
+          }, { replace: true });
+        }
+        if (shouldRefreshAnalytics) setStoreValidationNonce((value) => value + 1);
       }
     };
 
@@ -1039,7 +1123,7 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     return () => {
       cancelled = true;
     };
-  }, [activeDataScope]);
+  }, [activeDataScope, hasSharedFilters, setSearchParams, sharedStoreId, storesReloadNonce]);
 
   const load = useCallback(async (filters: ActiveFilters, signal?: AbortSignal) => {
     if (invalidRange) return;
@@ -1058,13 +1142,18 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
     setLoading(true);
     setError(null);
 
+    const { scope: loadedStoreScope, stale: storesAreStale, loadError: storeLoadError } = storesStateRef.current;
+    const scopedStoreId = loadedStoreScope === activeDataScope && !storesAreStale && storeLoadError == null
+      ? filters.storeId
+      : null;
+
     try {
       const currentRange = toUtcRange(filters.fromDate, filters.toDate);
 
       const currentResult = await getSupplierSalesStats({
         ...currentRange,
         sezonaId: filters.sezonaId,
-        storeId: filters.storeId,
+        storeId: scopedStoreId,
         dataScope: activeDataScope,
         signal,
       });
@@ -1084,13 +1173,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
       setLoading(false);
       setError(toSupplierSalesStatsError(reason));
     }
-  }, [activeDataScope, invalidRange, sharedFilters, trustRequestKey]);
+  }, [activeDataScope, invalidRange, sharedFilters, storeValidationNonce, trustRequestKey]);
 
   useEffect(() => {
+    if (storesScope !== activeDataScope && activeFilters.storeId != null) return;
     const controller = new AbortController();
     void load(activeFilters, controller.signal);
     return () => controller.abort();
-  }, [activeFilters, load]);
+  }, [activeDataScope, activeFilters, load]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1919,7 +2009,8 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
         label: "Objekat",
         control: (
           <select
-            value={storeId ?? ""}
+            value={storesScope === activeDataScope && !storesStale && storesLoadError == null ? storeId ?? "" : ""}
+            disabled={storesLoadError != null || storesStale || storesScope !== activeDataScope}
             onChange={(event) => {
               const newStore = event.target.value ? Number(event.target.value) : null;
               setStoreId(newStore);
@@ -1982,6 +2073,14 @@ export default function SupplierSalesStatsPage({ embedded = false, sharedFilters
           compact
         />
       ) : null}
+
+      {storesWarning || (storesScope != null && storesScope !== activeDataScope) || (storesScope == null && activeFilters.storeId != null)
+        ? <AnalyticsFilterLoadNotice
+            onRetry={() => setStoresReloadNonce((value) => value + 1)}
+            message={storesWarning ?? STORE_FILTER_SCOPE_LOADING_MESSAGE}
+            stale={storesStale || storesScope !== activeDataScope || storesScope == null}
+          />
+        : null}
 
       {!embedded ? (
         <AnalyticsControlBar
