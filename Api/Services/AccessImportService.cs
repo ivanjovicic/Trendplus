@@ -5366,6 +5366,9 @@ using NpgsqlTypes;
                 if (!overwriteExisting) continue;
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_stavke", row))
                     continue;
+                if (e.IdProdaja != idProdaja.Value)
+                    throw new InvalidOperationException(
+                        "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
 
                 e.IdProdaja = idProdaja.Value;
                 e.IdArtikal = idArtikal.Value;
@@ -5378,10 +5381,7 @@ using NpgsqlTypes;
                 }
                 ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
                 ApplyAccessSaleLineSourceLineage(e, sourceTableKey, sourceId, row);
-                if (_trendDb.Entry(e).State == EntityState.Detached)
-                    _trendDb.ProdajaStavke.Update(e);
-                else
-                    _trendDb.ProdajaStavke.Update(e);
+                _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
                 TrackTrendWrite();
             }
@@ -5693,8 +5693,12 @@ using NpgsqlTypes;
 
             if (line is not null)
             {
-                if (!overwriteExisting)
+                if (!overwriteExisting || ShouldSkipStaleOrUnchangedAccessOverwrite(line, lineSourceTableKey, row))
                     continue;
+                // Never silently reassign an already-mapped source line to a different receipt.
+                if (line.IdProdaja != zaglavlje.Id)
+                    throw new InvalidOperationException(
+                        "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
                 line.IdProdaja = zaglavlje.Id;
                 line.IdArtikal = idArtikal.Value;
                 line.Kolicina = qty;
@@ -5705,6 +5709,9 @@ using NpgsqlTypes;
                 _trendDb.ProdajaStavke.Update(line);
                 result.ProdajaStavkeUpdated++;
                 TrackTrendWrite();
+                // Updates must flush too; otherwise a large re-import retains every tracked
+                // line until the final forced flush, exhausting memory on real datasets.
+                await FlushTrendWritesAsync(force: false, ct);
                 continue;
             }
 
@@ -7144,6 +7151,13 @@ using NpgsqlTypes;
                         continue;
                     }
 
+                    if (stavka.IdProdaja != zaglavlje.Id)
+                        throw new InvalidOperationException(
+                            "duplicate_sale_line_identity: a synthesized source line resolves to a different sale header.");
+                    if (d.SourceUpdatedAtUtc.HasValue && stavka.SourceUpdatedAtUtc.HasValue &&
+                        stavka.SourceUpdatedAtUtc.Value > d.SourceUpdatedAtUtc.Value)
+                        continue;
+
                     stavka.IdProdaja = zaglavlje.Id;
                     stavka.IdArtikal = d.ArtikalId!.Value;
                     stavka.Kolicina = stavkaQty;
@@ -7156,6 +7170,7 @@ using NpgsqlTypes;
                     _trendDb.ProdajaStavke.Update(stavka);
                     result.ProdajaStavkeUpdated++;
                     TrackTrendWrite();
+                    await FlushTrendWritesAsync(force: false, ct);
                     continue;
                 }
 
