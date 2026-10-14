@@ -2677,12 +2677,13 @@ None. Frontend-only.
 
 ## RQ657 - Add request-sequence/abort guards where missing to prevent stale-response races
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend stale-response / request cancellation
 Feature family: analytics-request-race
 Parallel-safe: yes (frontend-only; independent pages)
-Owner: unassigned
+Owner: Codex / worktree `C:\Users\Ivan\.codex\worktrees\rq657-request-race`
+Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `ee151a6f30b298145f4a399da576f2c9de97b74b`. Planned branch `codex/rq657-request-race-20261014`; bounded paths are core retail analytics loaders and focused specs plus this queue/evidence. Remote branch/PR query found no RQ657 branch, lock or open PR; active RQ659 is Cursor-owned navigation work on disjoint paths, and open PR #147 is the separate RQ650 branch audit.
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Commit suggestion: `fix(analytics): add request-sequence or AbortController guards to loaders missing them`
 
