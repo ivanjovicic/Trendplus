@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ661 READY (P1 HomePage false KPI removal)**. RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept). RQ660 READY (P2 PDC conditional count truth); RQ657 **IN_PROGRESS, Codex-owned** (core analytics race only; no concurrent claim); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **RQ661 READY (P1 HomePage false KPI removal)**. RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept). RQ660 READY (P2 PDC conditional count truth); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2677,12 +2677,12 @@ None. Frontend-only.
 
 ## RQ657 - Add request-sequence/abort guards where missing to prevent stale-response races
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend stale-response / request cancellation
 Feature family: analytics-request-race
 Parallel-safe: yes (frontend-only; independent pages)
-Owner: Codex / worktree `C:\Users\Ivan\.codex\worktrees\rq657-request-race`
+Owner: Codex
 Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `ee151a6f30b298145f4a399da576f2c9de97b74b`. Planned branch `codex/rq657-request-race-20261014`; bounded paths are core retail analytics loaders and focused specs plus this queue/evidence. Remote branch/PR query found no RQ657 branch, lock or open PR; active RQ659 is Cursor-owned navigation work on disjoint paths, and open PR #147 is the separate RQ650 branch audit.
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Commit suggestion: `fix(analytics): add request-sequence or AbortController guards to loaders missing them`
@@ -2716,6 +2716,27 @@ No stale overwrites in repeated filter scenarios; tests cover overlapping reques
 ### Dependencies
 
 Use existing `useReliableAnalyticsQuery` helper when appropriate.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: 100%
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.scopeReload.spec.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ657-evidence.md`
+- Checks run: failing-first focused race test reproduced the stale overwrite; fixed focused test passed 4/4; exact-head frontend CI run `38551171537`, job `115809208883`, passed tests, guardrails, UI gates, client build, bundle budget and lazy-chart checks; Vercel deployment passed; POS UI and JavaScript SDK checks passed; local `npm run check:analytics-guardrails`, `npm run typecheck`, `npm run build`, encoding check and `git diff --check` passed
+- Checks not run: complete backend analytics suite and RQ453 certification were not required for this frontend-only scope and remained pending at closeout
+- Run log: `.ai/runs/2026-10-14-RQ657-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `ee151a6f30b298145f4a399da576f2c9de97b74b`; pushed claim `3362e1183ddd62eb275670f9dd9929aeaf13a08f`; owner/worktree/branch Codex / `C:\Users\Ivan\.codex\worktrees\rq657-request-race` / `codex/rq657-request-race-20261014`; remote branch/PR query was clear at claim
+- Delivery mode: PR #156 merged after exact-head frontend CI passed
+- Delivery: PR #156 merged; implementation head `2b23ce5c5433e789ba60114fa63795397b7ee73a`
+- Main commit SHA: `5a4a15f647166d53dffafe2354b3649680527dc2`
+- Main verification: fresh `origin/main` contains the PR #156 merge SHA
+- Missed: no other core-route race was changed because the audit found existing cancellation/request-sequence guards; excluded trend, scraper, marketplace and Insight Studio paths remain outside RQ657
+- What was missed: no additional core-route race was changed because Supplier Consolidated and the other audited core pages already had cancellation/request-sequence guards; excluded trend, scraper, marketplace and Insight Studio paths remain outside RQ657
+- Follow-up: RQ661 remains the primary P1 READY lane; RQ660 is independently READY; RQ648 remains READY with open PR #147 overlap
+- Residual risk: unrelated backend/RQ453 CI was still pending; no backend behavior changed
+- Post-close routing: refreshed current `origin/main`, scanned the active RQ queue/addenda, roadmap, locks, worktrees and open PRs; RQ657 has no dependents and no new promotion was needed
 
 ## RQ658 - Close remaining local false-pass PostgreSQL tests and convention traversal gap
 
