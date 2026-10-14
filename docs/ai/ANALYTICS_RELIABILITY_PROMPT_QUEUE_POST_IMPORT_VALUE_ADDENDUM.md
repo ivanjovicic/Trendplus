@@ -2060,13 +2060,15 @@ RQ644 and local/CI disposable PostgreSQL only. Independent of Supplier contract 
 
 ## RQ647 - Replace two untrusted Operations performance skips with reproducible non-gating measurements
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: performance/CI measurement baseline; no production SLA gate
 Feature family: supplier-shoetype-performance-measurement
 Parallel-safe: yes for new isolated benchmark harness/CI measurement paths (do not edit legacy Supplier/ShoeType tests owned by RQ645/RQ646 during implementation)
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/RQ647-codex.lock.md`
 Ready after: RQ639/RQ642 DONE; inventory explicitly classifies both remaining benchmark skips
+Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `1dba9adf9462459fd307ac60356ee12ebbd065ef`. RQ647 has no active matching branch, lock or PR; its benchmark artifact is a same-prompt output, not a start dependency. Scope remains isolated benchmark/report/workflow work and does not edit RQ645/RQ646 legacy contract files.
 Commit suggestion: `test(perf): add non-gating isolated analytics endpoint baseline`
 
 ### Problem
