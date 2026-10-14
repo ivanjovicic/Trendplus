@@ -8,6 +8,7 @@
 - Remote refs: **110 non-main branches** after `git fetch origin --prune`; the inventory excludes the `main` sentinel.
 - Historical GitHub PR records inspected: **157**; current open PRs at review: **0**.
 - Graph class is ancestry/content evidence only. A branch with ahead commits is not treated as an unmerged product change until its changed blobs and successor patch are checked.
+- The machine-readable inventory stores the first 25 paths per list plus `changed_path_count`/`different_path_count`; the table shows a compact first-five preview and total overflow for reviewability.
 - GitHub cannot see another agent's uncommitted local worktree or local lock; only this worktree's RQ648 lock was available for inspection.
 - SQL029 implementation and tests were not re-run or reimplemented. The current-main prerequisite proof is recorded below because the user explicitly said it is already delivered.
 
