@@ -1,8 +1,16 @@
-import { Activity, Boxes, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, BarChart3, Boxes, CalendarDays, Microscope, ShieldCheck, Sparkles, Store } from "lucide-react";
 import DashboardCards from "../components/dashboard/DashboardCards";
-import TrendModelList from "../components/dashboard/TrendModelList";
 import { useBackendStatus } from "../context/useBackendStatus";
-import SeasonalImageCarousel from "../components/trendshoes/SeasonalImageCarousel";
+
+const CORE_ANALYTICS_LINKS = [
+  { to: "/analytics", title: "Pregled poslovanja", subtitle: "Prodaja, marža i zalihe za izabrani period", icon: BarChart3 },
+  { to: "/analytics/daily-sales", title: "Dnevna prodaja", subtitle: "Prodaja po danima, radnjama i smenama", icon: CalendarDays },
+  { to: "/analytics/inventory", title: "Analitika zaliha", subtitle: "Stanje, obrt i roba koja stoji", icon: Store },
+  { to: "/analytics/supplier", title: "Prodaja po dobavljačima", subtitle: "Prodaja i marža po dobavljaču", icon: Microscope },
+  { to: "/analytics/pre-nivelacija-prioriteti", title: "Prioriteti nivelacije", subtitle: "Artikli za proveru pre promene cena", icon: AlertTriangle },
+  { to: "/analytics/decision-pulse", title: "Puls odluka", subtitle: "Otvorene odluke i njihova pouzdanost", icon: Sparkles },
+];
 
 function MetricTile({
   label,
@@ -42,22 +50,50 @@ export default function HomePage() {
       <section className="rounded-2xl border border-muted surface p-5 shadow-lg shadow-black/20">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-contrast">Trendplus Dashboard</h2>
+            <h2 className="text-2xl font-semibold text-contrast">Trendplus</h2>
             <p className="mt-2 max-w-2xl text-sm text-muted">
-              Centralni pregled za prodaju, inventar, analitiku i trend scraping tokove.
-              Izaberi sekciju iz levog menija ili pokreni brzu akciju ispod.
+              Polazna tačka za maloprodajnu analitiku: prodaja, marža, zalihe, dobavljači i nivelacije.
+              Brojke se prikazuju samo na izveštajima, uz period i stanje podataka na kojem se zasnivaju.
             </p>
           </div>
-          <div className="rounded-xl border border-info bg-info/10 px-3 py-2 text-xs text-info">
-            Trendplus Core
+          <div className="min-w-[12rem]">
+            <MetricTile label="Backend status" value={backendValue} tone={backendTone} />
           </div>
         </div>
+      </section>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricTile label="Backend status" value={backendValue} tone={backendTone} />
-          <MetricTile label="Aktivne sekcije" value="32" />
-          <MetricTile label="Import jobs" value="5" tone="warning" />
-          <MetricTile label="Trend signal" value="+12.8%" tone="positive" />
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
+          <BarChart3 size={16} className="text-info" />
+          Analitika
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {CORE_ANALYTICS_LINKS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="group rounded-2xl border border-muted surface-elevated p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-[var(--info)] hover:bg-[var(--surface-light)]"
+              >
+                <div className="mb-3 inline-flex rounded-lg border border-muted bg-[var(--surface-darker)] p-2 text-[var(--info)] transition group-hover:border-secondary group-hover:opacity-80">
+                  <Icon size={18} />
+                </div>
+                <h3 className="text-base font-semibold text-contrast">{item.title}</h3>
+                <p className="mt-1 text-sm text-muted">{item.subtitle}</p>
+              </Link>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-muted surface-elevated p-4 text-sm text-muted">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-info" />
+          <p className="flex-1">
+            Istorijski izveštaji važe za period koji prikazuju. Preporuke za današnje odluke imaju smisla tek kada su
+            podaci sveži, a svaki izveštaj navodi datum poslednjeg uvoza i kvalitet podataka.{" "}
+            <Link to="/analytics/data-quality" className="font-medium text-info underline-offset-2 hover:underline">
+              Proveri svežinu i kvalitet podataka
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -68,45 +104,6 @@ export default function HomePage() {
         </div>
         <DashboardCards />
       </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <TrendModelList />
-
-        <div className="space-y-4 rounded-2xl border border-muted surface-elevated p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted">
-            <TrendingUp size={16} className="text-info" />
-            Insight Pulse
-          </div>
-          <div className="grid gap-3">
-            <div className="rounded-xl border border-muted bg-surface p-3">
-              <div className="mb-2 flex items-center gap-2 text-contrast">
-                <Activity size={14} className="text-success" />
-                <span className="text-sm font-medium">Najveci rast</span>
-              </div>
-              <p className="text-sm text-muted">Google Shopping trend score je porastao 18% u poslednja 24h.</p>
-            </div>
-            <div className="rounded-xl border border-muted bg-surface p-3">
-              <div className="mb-2 flex items-center gap-2 text-contrast">
-                <Activity size={14} className="text-error" />
-                <span className="text-sm font-medium">Potencijalni rizik</span>
-              </div>
-              <p className="text-sm text-muted">3 SKU artikla imaju nizak stock i visoku prodajnu dinamiku.</p>
-            </div>
-            <div className="rounded-xl border border-muted bg-surface p-3">
-              <div className="mb-2 flex items-center gap-2 text-contrast">
-                <Activity size={14} className="text-info" />
-                <span className="text-sm font-medium">Preporuka</span>
-              </div>
-              <p className="text-sm text-muted">Pokreni “Nivelacija cena” za top 10 artikala pre sledece kampanje.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="w-full" data-testid="home-seasonal-carousel">
-        <SeasonalImageCarousel />
-      </section>
     </div>
   );
 }
-

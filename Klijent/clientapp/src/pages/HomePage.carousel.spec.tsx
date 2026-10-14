@@ -71,7 +71,7 @@ describe("seasonal carousel route ownership", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows carousel on home and loads seasonal images", async () => {
+  it("does not mount carousel or fetch seasonal images on home", async () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <AppLayout>
@@ -80,9 +80,10 @@ describe("seasonal carousel route ownership", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId("home-seasonal-carousel")).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/trends/seasonal-images"))).toBe(true);
+    expect(await screen.findByText("Backend status")).toBeInTheDocument();
+    expect(screen.queryByTestId("home-seasonal-carousel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("carousel-strip")).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/trends/seasonal-images"))).toBe(false);
   });
 
   it("does not mount carousel or fetch seasonal images on analytics routes", async () => {
