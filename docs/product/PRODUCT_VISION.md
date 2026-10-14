@@ -9,6 +9,10 @@ Trendplus exists to turn fragmented retail operational data into trustworthy, ex
 
 The product is not successful when it merely shows more charts. It is successful when an operator can make a better decision with less manual reconciliation and can later audit whether that decision worked.
 
+## Owner analytics-first narrowing (2026-10-14)
+
+Canonical current scope: [ANALYTICS_FIRST_SCOPE_2026-10-14](ANALYTICS_FIRST_SCOPE_2026-10-14.md). Develop sales statistics, trustworthy margins, stock, supplier analytics and markdown decisions, not Amazon/eBay/Google Shopping scrapers, trend demos, model training or other test features. This freezes future work, **not** essential automated regression testing or shipped compatibility. De-emphasize experimental routes in the navigation, but do not delete schema/API history without a separate review.
+
 ## Near-term product focus (owner refinement 2026-10-07)
 
 Trendplus now runs **two parallel lanes**. Freshness is not a prerequisite for proving formula correctness or historical analytical value.

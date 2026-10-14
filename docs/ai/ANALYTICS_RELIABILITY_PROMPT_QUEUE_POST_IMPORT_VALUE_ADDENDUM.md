@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: RQ648 READY (primary P2 branch-content-equivalence audit; re-check its overlap with open PR #147 before claim). RQ657 (frontend request-race audit) is the remaining independent READY lane; RQ655 and RQ656 are DONE on main. RQ655 is DONE on main at `ab20a4fb13b181ce8c82f8b67b934e792b7da845`; RQ656 is DONE on main at `06c9c9f35e79d97ccd0cb8814dd5c8da8e1eb840`. RQ647 is DONE on main at `408d1b81062e5d4c114960d69ab51d4d239407e4`; RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day); RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ645/RQ646 and RQ651-RQ654 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
+Current READY prompt: RQ659 READY (primary P1 analytics-first navigation). RQ660 READY (independent P2 PDC summary accuracy); RQ657 READY (core analytics race audit only); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655 and RQ656 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2688,7 +2688,7 @@ Commit suggestion: `fix(analytics): add request-sequence or AbortController guar
 
 ### Problem
 
-Some analytics pages issue async loaders or multiple overlapping requests without request-sequence refs or AbortController cancellation. This allows slower earlier responses to overwrite newer state (observed and fixed in RQ652). Examples to audit: `InsightStudioPage.tsx`, several trend pages, `SupplierConsolidatedPage.tsx` and `AnalyticsDashboard.tsx` loader sequences.
+Some analytics pages issue async loaders or multiple overlapping requests without request-sequence refs or AbortController cancellation. This allows slower earlier responses to overwrite newer state (observed and fixed in RQ652). Examples in the **active core retail scope**: `SupplierConsolidatedPage.tsx` and other proven retail analytics loaders; `AnalyticsDashboard.tsx` only when no active overlapping claim. Insight Studio, trend, scraper and marketplace pages are excluded by owner directive.
 
 ### Evidence
 
@@ -2696,7 +2696,7 @@ Grepped for presence/absence of `AbortController` and existing `*RequestSeqRef` 
 
 ### Scope
 
-Audit pages that fetch multiple datasets for overlapping filters and add requestSeqRef or use `useReliableAnalyticsQuery` helper (if appropriate) which centralizes abort/sequence logic.
+Audit **core retail analytics pages only** for a demonstrated overlapping-filter response race and add requestSeqRef or the existing `useReliableAnalyticsQuery` helper if appropriate. No Insight Studio/trend/marketplace pages; avoid any paths owned by another IN_PROGRESS task.
 
 ### Do
 
@@ -2776,3 +2776,60 @@ RQ638.
 - Missed: traversal bug shipped in ee79f741 let 16 tests pass locally without Docker
 - Follow-up: none
 - Residual risk: convention remains source-regex based; unusual guard shapes (e.g. guards through other classes) may still escape detection
+
+---
+
+## Owner analytics-first routing correction — 2026-10-14
+
+Owner decision: `docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md` freezes eBay, Amazon, Google Shopping, other scrapers, trend/model training, Insight Studio and experimental/test features. RQ655 and RQ656 are already DONE; do not reopen or extend them into marketplace work. RQ657 may work **only on core retail analytics** (Supplier Consolidated and other demonstrably exposed retail routes), not trend/scraper/Insight Studio routes. Preserve historical DONE evidence and required core regression tests. Any stale old READY for an experiment is out of the current product scope and must not be claimed.
+
+## RQ659 - Analytics-first main navigation; hide experimental/test links
+
+Status: READY
+Priority: P1
+Type: bounded frontend UX/tests
+Feature family: analytics-first-navigation
+Parallel-safe: yes; own `Klijent/clientapp/src/layout/navConfig.ts` and nearest nav/sidebar specs only
+Owner: unassigned
+Ready after: owner product focus decision 2026-10-14; no provider or other task dependency
+Commit suggestion: `fix(nav): prioritize retail analytics and hide test modules`
+
+### Proven gap
+
+`navConfig.ts` exposes test entries `/trend-dashboard`, `/runtime-scoring`, `/open-training`; an entire "Trendovi i scraperi" group with `/global-trends`, `/scraper-hub`, `/deichmann`, `/aboutyou`, `/humanic`, `/amazon-shoes`, `/ebay-shoes`, `/google-shopping`; and `/image-upload-test` in Admin. Meanwhile useful analytics is split across sections. The `/analytics/daily-sales` item is misleadingly labeled "Prodaja po smenama" even though shift source coverage can be unavailable.
+
+### Scope and steps
+
+1. Read `Klijent/clientapp/src/layout/navConfig.ts`, `layout/__tests__/navConfig.spec.ts`, `layout/components/__tests__/Sidebar.spec.tsx`, `App.tsx`. Add failing-first tests for the listed links being absent from visible `NAV_GROUPS`, nonempty groups, and core `/analytics`, `/analytics/daily-sales`, `/analytics/inventory`, `/analytics/supplier`, `/analytics/products`, `/analytics/pre-nivelacija-prioriteti` remaining visible.
+2. Remove only nav entries and now-empty test groups/icons; relabel daily sales to "Dnevna prodaja". Keep core operational/admin support and imported source mapping. **Do not remove legacy routes, controllers, migrations, models, DB tables or evidence.**
+3. Assert existing deep-link routes still resolve, Sidebar and mobile layouts are usable, and route smoke tests still pass.
+
+### Tests / completion
+
+Focused nav/sidebar/App layout and analytics route specs, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. All genuine core decision links must remain. Main SHA/evidence required for DONE. Do not start scraping or marketplace repair as a side quest.
+
+## RQ660 - PDC action summary: unknown blocked count must not become zero
+
+Status: READY
+Priority: P2
+Type: bounded analytics correctness/frontend tests
+Feature family: product-decision-actionability-null-counts
+Parallel-safe: yes; own `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` and nearest PDC specs only, no Dashboard/Supplier/Inventory files
+Owner: unassigned
+Ready after: owner product focus decision 2026-10-14; confirm fresh collision-free files before claim
+Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavailable`
+
+### Verified code candidate (validate backend contract first)
+
+`ProductDecisionCenterPage.tsx` correctly keeps `kpis.blockedCount` and `kpis.insufficientEvidenceCount` nullable, but `actionabilitySummary` currently formats `payload.summary.blockedCount ?? 0` and `payload.summary.insufficientEvidenceCount ?? 0` when `actionableCount` is known. If either field can be missing this is a fake zero. It is **not proven** that the live backend actually emits a missing value.
+
+### Steps and acceptance
+
+1. Inspect source API response type/service mapping and PDC tests. First classify whether these two fields can be nullable, omitted, or are guaranteed present. Check completed fake-zero fixes to avoid overlap.
+2. If missing is permitted, add failing-first spec for actionable count present + blocked/insufficient missing, and a separate true-zero case. Use unavailable label for missing only, keep literal 0 when returned, with no new scoring or API semantics.
+3. Check no error/loading state promotes a partly missing summary to complete, and that existing exports/detail semantics remain consistent.
+4. If the backend strictly guarantees nonnull fields and validation rejects missing input, mark this prompt `OBSOLETE` with an exact test/DTO code proof; **do not fabricate a bug or change contracts**.
+
+### Tests / completion
+
+Nearest PDC test files, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. DONE only if a real patch is delivered on verified main with evidence; a no-change classification is not DONE.

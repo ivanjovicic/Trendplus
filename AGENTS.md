@@ -6,6 +6,10 @@ This is the repository-level rulebook for Codex, Copilot agent mode and other AI
 
 Current code, focused tests and executable tooling override stale prose **about implementation facts**. They do not override named ownership, queue status or claim/takeover policy. When agent documents disagree, use the canonical owner table below instead of combining conflicting rules.
 
+## 0. Owner priority: retail analytics first (2026-10-14)
+
+Product scope: [analytics-first](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md). Stop new eBay, Amazon, Google Shopping, scraper, runtime scoring, model-training, Insight Studio and demo/test-feature work. Preserve regression tests for **real analytics**. Do not claim stale experimental prompts; old DONE evidence is historical, not a fresh task. Only an explicit owner reversal can reactivate excluded work. RQ655/RQ656 are DONE; RQ657 is restricted to core retail analytics. Scope changes do not override exclusive claim or queue protocol semantics.
+
 ## 1. Mission and non-negotiable product outcome
 
 Trendplus should become a reliable pilot/sales product for footwear/apparel retail.

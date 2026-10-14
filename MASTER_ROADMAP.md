@@ -1,5 +1,9 @@
 # Trendplus Master Roadmap
 
+## Current product priority (owner 2026-10-14)
+
+**Retail analytics/statistics first, not external marketplace experiments.** Read [current owner scope](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md). RQ659 P1 READY simplifies analytics navigation; RQ660 P2 READY checks a specific Product Decision unknown-count candidate; RQ657 P2 remains only for verified core-route response races. RQ655/RQ656 are DONE; no new eBay/Amazon/Google Shopping/scraper/test-feature work. RQ648 remains a separate P2 branch safety audit; open PR #147 may overlap it. Do not reopen DONE work or duplicate STAB16/RQ601/RQ602/RQ610/RQ585/RQ592. Preserve real regression tests.
+
 ## Active RQ post-import execution (updated 2026-10-13)
 
 **Current RQ correction 2026-10-14:** RQ647 is DONE on `408d1b81062e5d4c114960d69ab51d4d239407e4`; exact-main Analytics Tests `38542983060` are green (2,076 passed / 43 skipped / 0 failed), and the named RQ647 report artifact is available as `rq647-analytics-endpoint-benchmark-38542983060` (ID `11884041409`). BCI17 now records 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / **0 genuinely-uncovered** skips: the two former performance gaps are measured on a deterministic 624-line fixture without a production-SLO gate. RQ648 is the primary READY P2 branch-equivalence audit, subject to its fresh PR #147 overlap check; RQ655 and RQ656 are DONE (`ab20a4fb13b181ce8c82f8b67b934e792b7da845` and `06c9c9f35e79d97ccd0cb8814dd5c8da8e1eb840`), while RQ657 remains independently READY. RQ649's uncommitted duplicate worktree and branch were explicitly discarded after its direct-main completion; the user's RQ647 local alternative branch remains untouched.
