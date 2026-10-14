@@ -29,7 +29,7 @@
     {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 985,
+      "line": 986,
       "reason": "Store-filter discovery failure must clear stale store-scoped rows before falling back to the all-stores scope."
     },
     {
@@ -145,12 +145,6 @@
       "rule": "swallowed_fetch_failure",
       "line": 83,
       "reason": "Existing worker-panel fallback requires a reviewed operational-state exception."
-    },
-    {
-      "file": "src/components/dashboard/IntelligenceSnapshotPanel.tsx",
-      "rule": "fake_zero_fallback",
-      "line": 274,
-      "reason": "Existing intelligence snapshot fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/components/inventory/InventoryPriorityPanels.tsx",
