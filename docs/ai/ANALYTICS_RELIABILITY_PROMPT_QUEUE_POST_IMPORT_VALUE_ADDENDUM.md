@@ -4,7 +4,8 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ648 READY (P2 targeted branch-content delta; PR #147 closed without merge after review 2026-10-14; no open PRs at review).** Refresh origin/main, remote branch refs, locks/worktrees and PRs before claiming; historical census must not be repeated without changed evidence. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f` (missing PDC blocked/insufficient counts render as unavailable, not zero). RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2; former PR #147 collision cleared, fresh owner checks still required). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **none after branch-audit closeout.**
+RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2134,16 +2135,28 @@ No STAB16 access. RQ645/RQ646 may execute in parallel if unique benchmark files 
 
 ## RQ648 - Reconcile remote agent branches against main by patch/content equivalence, not name or ancestry alone
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: git branch/PR lineage + exact-code reconciliation audit
 Feature family: repository-branch-safety
 Parallel-safe: yes for read-only branch comparisons and a unique audit report path; canonical queue/roadmap final status edits must be serialized after other agent closeouts
 Owner: Codex
-Local lock: `.ai/task-locks/RQ648-codex.lock.md` (created only after this reservation is visible on fresh `origin/main`)
+Local lock: `.ai/task-locks/RQ648-codex.lock.md` (removed after delivery)
 Ready after: PR #147 closed without merge on 2026-10-14; no open PR at latest GitHub check; RQ634–RQ661 relevant owner work has been closed as recorded on main.
-Claim reservation: 2026-10-14 - direct user instruction explicitly assigns RQ648 to Codex for fresh current-branch comparison and semantic review. Inspected `origin/main` `049c17c2ae14044f29f894203fee8f2756f75f4e`; PR #147 is closed without merge; no RQ648 branch, lock or open PR found; the only active task lock is RQ660 owned by Cursor on disjoint PDC paths. Planned worktree `C:\Users\Ivan\.codex\worktrees\rq648-branch-parity`, branch `codex/rq648-branch-parity-20261014`. Bounded paths: `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md`, `.ai/runs/2026-10-14-RQ648-evidence.md`, this queue and `MASTER_ROADMAP.md`; SQL029 implementation/tests are explicitly excluded because the additional check is already on `main`.
+Claim reservation: 2026-10-14 - direct user instruction explicitly assigns RQ648 to Codex for fresh current-branch comparison and semantic review. Inspected `origin/main` `049c17c2ae14044f29f894203fee8f2756f75f4e`; PR #147 is closed without merge; no RQ648 branch, lock or open PR found; the only active task lock was RQ660 on disjoint PDC paths. Published the shared claim at `aafc7e2fefb15167331e98471ba98982314fd04a0`. Worktree `C:\Users\Ivan\.codex\worktrees\rq648-branch-parity`, branch `codex/rq648-branch-parity-20261014`. Bounded paths: `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md`, `.ai/runs/2026-10-14-RQ648-evidence.md`, this queue and `MASTER_ROADMAP.md`; SQL029 implementation/tests were explicitly excluded because the additional check is already on `main`.
 Commit suggestion: `docs(git): prove current remote branch equivalence and classify residual diffs`
+
+### Completion note — 2026-10-14
+
+- Status: DONE.
+- Completion: refreshed to current `origin/main` `f667eda91b90103fd242e9e4f32e4e866a2d3cbb`, compared all 110 non-main remote branches and 157 historical PR records, and reconciled SQL022/RQ481/old business documentation. No safe unique product delta remained. SQL029 was verified as already present on main and not repeated.
+- Changed files: `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md`, `.ai/runs/2026-10-14-RQ648-branch-inventory.json`, `.ai/runs/2026-10-14-RQ648-evidence.md`, this queue and `MASTER_ROADMAP.md`.
+- Delivery mode: PR #157 merged; audit head `4947aa6446d57ca6de59d3ed8573416c34fff7a1`, merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`.
+- Main verification: fresh fetch confirms `origin/main` contains merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`.
+- Checks: prompt queue validator, planning/instruction validators and `git diff --check` are run on the closeout commit; runtime/backend/frontend/PostgreSQL tests were not required for this audit-only scope.
+- Missed: GitHub cannot inspect other agents' uncommitted worktrees or local locks; no production/provider state was changed.
+- Follow-up: post-close cascade and Zero-READY proof are recorded in `.ai/runs/2026-10-14-RQ648-evidence.md`.
+- Residual risk: visible remote branch refs may remain as historical transport; this task does not delete them.
 
 ### Problem
 
