@@ -513,7 +513,7 @@ export default function SupplierConsolidatedPage() {
         ) : null}
 
         <div className="supplier-consolidated-actions">
-          <button type="button" className="secondary" onClick={resetFilters}>Reset</button>
+          <button type="button" className="secondary" onClick={resetFilters}>Resetuj filtere</button>
         </div>
         </div>
       </details>

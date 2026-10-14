@@ -3185,7 +3185,7 @@ None. Sharing one internal service provider across hosts was rejected: it requir
 - Missed: 11 factories lacked the opt-out used by 20+ others
 - Follow-up: none
 - Residual risk: convention matches only lambda-style AddDbContext registrations; Vercel check was rate-limited (non-required)
- 
+
 
 ---
 
@@ -3251,3 +3251,199 @@ Commit suggestion: `fix(analytics): validate inventory store filters per dataset
 - Focused Inventory integration tests, frontend `npm run check:analytics-guardrails` and `npm run build`, exact SHA Analytics Quality Gates and queue validator; no unrelated backend/deployed proof required.
 - Evidence: `.ai/runs/2026-10-14-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
 
+
+## RQ668 - Fix small analytics frontend correctness, language and accessibility defects from the 2026-10-14 audit
+
+Status: IN PROGRESS
+Priority: P2
+Type: frontend correctness / a11y / i18n
+Feature family: analytics-frontend-ux-audit-2026-10-14
+Parallel-safe: yes (frontend-only, five files plus tests)
+Owner: grok
+Ready after: audit on main `a159d579`
+Commit suggestion: `fix(analytics): correct momentum windows, unknown trend tone, labels and formats`
+
+### Problem
+
+Audit `docs/qa/ANALYTICS_FRONTEND_UX_AUDIT_2026-10-14.md` found small, low-risk defects: Dashboard 7-day momentum/elasticity computed against an incomplete previous window; unknown momentum rendered with the green `trend up` tone; English `Reset` label on the supplier consolidated page; minimum coverage ratio shown with `.` decimals; Insight Studio quadrant filter cards were mouse-only `div`s.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:157-178` (prev7 = `slice(-14,-7)` used with fewer than 7 rows), `:2742-2746` (null momentum -> `trend up`).
+- `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx:516` (`Reset`).
+- `Klijent/clientapp/src/components/inventory/SKUDetailModal.tsx:136` (`toFixed(2)x`).
+- `Klijent/clientapp/src/pages/InsightStudioPage.tsx:1211-1230` (clickable `div`s without keyboard access).
+
+### Scope
+
+Only the five files above and their specs. No redesign, no API or formula change beyond requiring two full 7-row windows.
+
+### Read first
+
+`docs/ai/FRONTEND_UX_STANDARDS.md`, `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`.
+
+### Do
+
+1. Require `last7.length === 7 && prev7.length === 7` for momentum and elasticity.
+2. Render unknown momentum with the neutral `trend` class.
+3. Rename `Reset` to `Resetuj filtere`.
+4. Format coverage ratio with `sr-RS` two decimals.
+5. Convert quadrant cards to `button type="button"` with `aria-pressed`.
+
+### Tests
+
+Regression tests in `analyticsIndicatorRegression.spec.ts` and `SKUDetailModal.spec.tsx`; updated `SupplierConsolidatedPage.spec.tsx`; `npm run test:analytics`, typecheck, build, analytics guardrails, UI ratchets.
+
+### Acceptance
+
+Tests above pass; frontend, backend and governance CI green on the PR; merged via PR.
+
+### Dependencies
+
+None. Does not overlap RQ655-RQ657 loader/fake-zero/race lanes.
+
+
+## RQ669 - Bring Experimental Insight Studio to the minimum accessibility, language and number-format bar before any re-exposure
+
+Status: WAITING
+Priority: P3
+Type: frontend a11y / i18n / formatting
+Feature family: insight-studio-experimental
+Parallel-safe: yes (only `InsightStudioPage.tsx` and its specs)
+Owner: unassigned
+Ready after: owner decision to keep Insight Studio reachable or re-expose it (route is behind the `Eksperimentalno` flag; see `docs/ai/ANALYTICS_UX_UI_AUDIT_2026-10-04.md`)
+Commit suggestion: `fix(insight-studio): keyboard rows, Serbian labels and sr-RS numbers`
+
+### Problem
+
+Insight Studio still has a mouse-only clickable supplier row, English labels, `.`-decimal numbers and 10px key text. RQ668 fixed only the quadrant filter cards.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/InsightStudioPage.tsx:892` `<tr onClick>` with no keyboard path.
+- English labels: `:823` `Velocity`, `:888` `Risk`, `:1222` `Volume Trap`.
+- `toFixed` in visible UI: `:803`, `:806`, `:837`, `:909`, `:1035`, `:1134`, `:1254`, `:1555-1556`, `:1773`, `:1944`.
+- 10px key values: `:1212-1229`, `:1407`, `:1509`; 2026-10-04 measurement: 67 text elements below 12px at 360px.
+
+### Scope
+
+`InsightStudioPage.tsx` and its specs only. No data or formula change, no responsive migration (that remains a re-exposure prerequisite).
+
+### Read first
+
+`docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE.md` Insight Studio owner decision, `docs/ai/ANALYTICS_DESIGN_SYSTEM.md`.
+
+### Do
+
+1. Give the supplier row a keyboard path (a row button or `tabIndex` + Enter/Space) with an accessible name.
+2. Translate the English labels.
+3. Replace visible `toFixed` with the shared `sr-RS` formatters.
+4. Raise key numbers to at least 12px.
+
+### Tests
+
+Spec for keyboard selection and Serbian labels; `npm run test:analytics`, typecheck, build, UI ratchets.
+
+### Acceptance
+
+No mouse-only interactive element, no English UI label, no `.`-decimal visible number on the page.
+
+### Dependencies
+
+Owner decision on Insight Studio reachability. If the screen is shut down instead, close this as obsolete.
+
+
+## RQ670 - Unify sr-RS number formatting and remove residual English labels on operational and admin screens
+
+Status: READY
+Priority: P3
+Type: frontend i18n / formatting
+Feature family: frontend-number-format-consistency
+Parallel-safe: yes (page-local display code; check same-file locks first)
+Owner: unassigned
+Ready after: 2026-10-14 analytics frontend audit
+Commit suggestion: `fix(ui): sr-RS number formatting and Serbian labels on operational screens`
+
+### Problem
+
+Several screens print money and percentages with `toFixed` (dot decimals, no grouping) next to pages that use `sr-RS` formatters, and a few admin screens still show English labels.
+
+### Evidence
+
+- `toFixed`: `Klijent/clientapp/src/pages/NivelacijaCenaPage.tsx:261`, `PovracajPage.tsx:185`, `DnevnikPromenaPage.tsx:448-449`, `ArtikliListPage.tsx:505-506`, `PerformanceDashboard.tsx:268`, `RuntimeScoringPage.tsx:547,557,656`.
+- English: `OutboxDashboard.tsx:277` `Total`, `:446` `Retry`; `OutboxMessagesPage.tsx:395` `Retry`; `ReleaseCalendar.tsx:55` `Loading...`; `LogsPage.tsx:270` option label `Error`.
+- Locale-less `toLocaleString()`: `OpenTrainingPage.tsx:40`, `ConfigurationPage.tsx:809`.
+
+### Scope
+
+Display-only changes in the listed files and their specs. Do not change CSV/export number formats, API values or the `LogsPage` filter values (only labels).
+
+### Read first
+
+`docs/ai/FRONTEND_UX_STANDARDS.md`; existing formatters in `src/components/inventory/inventoryUtils.ts` and analytics `fmtNumber`/`fmtRsd`.
+
+### Do
+
+1. Replace visible `toFixed` with shared `sr-RS` formatters (keep digits).
+2. Translate the listed labels; keep option values.
+3. Pass `sr-RS` to locale-less `toLocale*` calls.
+
+### Tests
+
+Update affected specs; add one formatter assertion per page family; `npm run test:analytics`, typecheck, build.
+
+### Acceptance
+
+Listed lines use `sr-RS` output and Serbian labels; exports unchanged.
+
+### Dependencies
+
+None.
+
+
+## RQ671 - Pay down clientapp ESLint errors and gate lint in CI
+
+Status: READY
+Priority: P3
+Type: frontend tooling / code health
+Feature family: clientapp-lint-gate
+Parallel-safe: no for touched pages (many files); split per directory and check locks
+Owner: unassigned
+Ready after: 2026-10-14 analytics frontend audit
+Commit suggestion: `chore(clientapp): fix eslint errors and gate lint in CI`
+
+### Problem
+
+`npm run lint` fails on main with 120 errors, so no workflow runs it and new lint regressions go unnoticed. Some are real-risk patterns (`react-hooks/refs`: writing refs during render).
+
+### Evidence
+
+- `npx eslint .` on main `a159d579`: 120 errors: `react-refresh/only-export-components` 91, `react-hooks/refs` 15, `no-useless-escape` 5, `@typescript-eslint/no-unused-expressions` 3, `@typescript-eslint/no-empty-object-type` 2, `no-unsafe-finally` 1, `no-irregular-whitespace` 1, `react-hooks/immutability` 1, `prefer-const` 1.
+- Example: `Klijent/clientapp/src/pages/SupplierConsolidatedPage.tsx:102` and `:149` assign `ref.current` during render.
+- No `.github/workflows/*.yml` step runs `npm run lint`.
+
+### Scope
+
+Lint fixes without behavior change; move exported helpers out of component files where `only-export-components` fires (keep import paths stable via re-export only if needed for tests). Add a CI lint step once at zero errors (or with a ratchet).
+
+### Read first
+
+`Klijent/clientapp/eslint.config.js`, `.github/workflows/analytics-quality-gates.yml`.
+
+### Do
+
+1. Fix the non-`only-export-components` errors first, with tests for any `react-hooks/refs` change.
+2. Extract pure helpers (e.g. `calculateDashboardMovingStats`) into sibling modules.
+3. Add a lint ratchet or a strict lint step to the frontend workflow.
+
+### Tests
+
+`npm run lint` passes (or ratchet passes); `npm run test:analytics`, typecheck, build.
+
+### Acceptance
+
+Lint is enforced in CI; error count is zero or ratcheted below 120 and cannot grow.
+
+### Dependencies
+
+Coordinate with active frontend lanes (RQ655-RQ657, RQ669, RQ670) to avoid same-file conflicts.

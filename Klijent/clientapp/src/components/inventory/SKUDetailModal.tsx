@@ -133,7 +133,7 @@ export function SKUDetailModal({
               ["Minimalna količina", detailMinimum == null ? "Nije dostupno" : formatNumber(detailMinimum)],
               ["Gap do minimuma", detailGap == null ? "Nije dostupno" : formatNumber(detailGap)],
               ["Nabavna cena", detailUnitCost == null ? "Nije dostupno" : formatCurrency(detailUnitCost)],
-              ["Pokriće minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toFixed(2)}x`],
+              ["Pokriće minimuma", detailCoverageRatio == null ? "Nije dostupno" : `${detailCoverageRatio.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`],
               ["Poslednje kretanje", formatDateTime(detailData?.lastMovementAt)],
               ["Dana bez kretanja", detailData ? formatNumber(detailData.daysSinceMovement) : "Učitavanje..."],
               ["Kretanja u izabranom periodu", detailData ? formatNumber(detailData.movementCount) : "Učitavanje..."],

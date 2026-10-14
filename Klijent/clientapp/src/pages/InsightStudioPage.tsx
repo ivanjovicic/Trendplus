@@ -1208,26 +1208,26 @@ function MatrixTab({
       <SectionHeader title="Matrica brzine i marže (Velocity × Marža)" subtitle="Svaki artikal pozicioniran po brzini prodaje i profitabilnosti" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>
-          <div className="text-[10px] uppercase text-[var(--text-primary)]">⭐ Zvezde</div>
-          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.stars}</div>
-          <div className="text-[10px] text-[var(--text-primary)]">Visoka vel. + visoka marža</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "NICHE_GEM" ? "ALL" : "NICHE_GEM")}>
-          <div className="text-[10px] uppercase text-[var(--text-primary)]">💎 Niša Dragulje</div>
-          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.nicheGems}</div>
-          <div className="text-[10px] text-[var(--text-primary)]">Niska vel. + visoka marža</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "VOLUME_TRAP" ? "ALL" : "VOLUME_TRAP")}>
-          <div className="text-[10px] uppercase text-[var(--text-primary)]">⚡ Volume Trap</div>
-          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.volumeTraps}</div>
-          <div className="text-[10px] text-[var(--text-primary)]">Visoka vel. + niska marža</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer" onClick={() => setQuadFilter(quadFilter === "DEAD_WEIGHT" ? "ALL" : "DEAD_WEIGHT")}>
-          <div className="text-[10px] uppercase text-[var(--text-primary)]">⚠ Mrtav Teg</div>
-          <div className="text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.deadWeight}</div>
-          <div className="text-[10px] text-[var(--text-primary)]">Niska vel. + niska marža</div>
-        </div>
+        <button type="button" aria-pressed={quadFilter === "STAR"} className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer text-left" onClick={() => setQuadFilter(quadFilter === "STAR" ? "ALL" : "STAR")}>
+          <span className="block text-[10px] uppercase text-[var(--text-primary)]">⭐ Zvezde</span>
+          <span className="block text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.stars}</span>
+          <span className="block text-[10px] text-[var(--text-primary)]">Visoka vel. + visoka marža</span>
+        </button>
+        <button type="button" aria-pressed={quadFilter === "NICHE_GEM"} className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer text-left" onClick={() => setQuadFilter(quadFilter === "NICHE_GEM" ? "ALL" : "NICHE_GEM")}>
+          <span className="block text-[10px] uppercase text-[var(--text-primary)]">💎 Niša Dragulje</span>
+          <span className="block text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.nicheGems}</span>
+          <span className="block text-[10px] text-[var(--text-primary)]">Niska vel. + visoka marža</span>
+        </button>
+        <button type="button" aria-pressed={quadFilter === "VOLUME_TRAP"} className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer text-left" onClick={() => setQuadFilter(quadFilter === "VOLUME_TRAP" ? "ALL" : "VOLUME_TRAP")}>
+          <span className="block text-[10px] uppercase text-[var(--text-primary)]">⚡ Volume Trap</span>
+          <span className="block text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.volumeTraps}</span>
+          <span className="block text-[10px] text-[var(--text-primary)]">Visoka vel. + niska marža</span>
+        </button>
+        <button type="button" aria-pressed={quadFilter === "DEAD_WEIGHT"} className="rounded-xl border border-[var(--border-default)]/20 bg-[var(--surface-elevated)]/5 px-3 py-2 cursor-pointer text-left" onClick={() => setQuadFilter(quadFilter === "DEAD_WEIGHT" ? "ALL" : "DEAD_WEIGHT")}>
+          <span className="block text-[10px] uppercase text-[var(--text-primary)]">⚠ Mrtav Teg</span>
+          <span className="block text-xl font-bold text-[var(--text-primary)]">{quadrantCounts.deadWeight}</span>
+          <span className="block text-[10px] text-[var(--text-primary)]">Niska vel. + niska marža</span>
+        </button>
       </div>
 
       {/* Scatter chart */}

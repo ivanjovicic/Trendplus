@@ -188,3 +188,25 @@ describe("SKUDetailModal size-curve tab", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+describe("SKUDetailModal number formatting", () => {
+  it("formats the minimum coverage ratio with the Serbian decimal separator", () => {
+    render(
+      <SKUDetailModal
+        detailRow={buildPlaceholderRow({ contextStatus: undefined, quantity: 3, minimum: 2 })}
+        detailData={null}
+        detailLoading={false}
+        detailError={null}
+        detailTab="overview"
+        detailSizeCurve={null}
+        detailSizeCurveLoading={false}
+        onClose={vi.fn()}
+        onRetry={vi.fn()}
+        onTabChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1,50x")).toBeInTheDocument();
+    expect(screen.queryByText("1.50x")).not.toBeInTheDocument();
+  });
+});
