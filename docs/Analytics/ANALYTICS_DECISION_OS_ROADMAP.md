@@ -1,6 +1,11 @@
 # Analytics Decision OS Roadmap
 
-Updated: 2026-06-19
+Updated: 2026-06-19 (historical design baseline); **reviewed 2026-10-14**
+
+> **NOT AN ACTIVE ROUTER.** The 2026-06 "live smoke passed" and "current state" assertions below are old snapshots, not today's production certification. Current product scope and execution: [analytics-first](../product/ANALYTICS_FIRST_SCOPE_2026-10-14.md), [retail playbook](../product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md), `MASTER_ROADMAP.md` and owning queues.
+>
+> `RQ585` already delivered the existing Decision Pulse owner digest (2026-10-08). Do not implement this plan's Phase C/D as new tasks simply because they are written in future tense. STAB16 deployed freshness/worker/schema truth, RQ601 cost, RQ602 cohort maturity, RQ610 inventory history remain distinct limits. Phase F forecasting/simulation and any marketplace/model-training expansion are **frozen** by current owner scope. Historical phases below are retained for architectural context, not auto-promotion.
+
 
 ## Purpose
 

@@ -2,7 +2,9 @@
 
 ## Current product priority (owner 2026-10-14)
 
-**Retail analytics/statistics first, not external marketplace experiments.** Read [current owner scope](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md). RQ659 P1 READY simplifies analytics navigation; RQ660 P2 READY checks a specific Product Decision unknown-count candidate; RQ657 P2 remains only for verified core-route response races. RQ655/RQ656 are DONE; no new eBay/Amazon/Google Shopping/scraper/test-feature work. RQ648 remains a separate P2 branch safety audit; open PR #147 may overlap it. Do not reopen DONE work or duplicate STAB16/RQ601/RQ602/RQ610/RQ585/RQ592. Preserve real regression tests.
+**Retail analytics/statistics first, not external marketplace experiments.** Read [current owner scope](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md). RQ659 P1 READY simplifies analytics navigation; **RQ661 P1 READY removes hard-coded HomePage business claims** on an independent path; RQ660 P2 READY checks a Product Decision unknown-count *candidate*; RQ657 P2 remains only for verified core-route response races. RQ655/RQ656 are DONE; no new eBay/Amazon/Google Shopping/scraper/test-feature work. RQ648 remains a separate P2 branch safety audit; open PR #147 may overlap it. Do not reopen DONE work or duplicate STAB16/RQ601/RQ602/RQ610/RQ585/RQ592. Preserve real regression tests.
+
+Canonical business execution detail: [Retail Analytics product playbook](docs/product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md). **RQ585 owner digest is DONE** (2026-10-08); do not promote/rebuild it. Historic KPI/Decision OS roadmaps are not READY routers. STAB16 is not unlocked by GitHub CI. Product homepage `/` contains hard-coded business claims and requires RQ661 in addition to RQ659.
 
 ## Active RQ post-import execution (updated 2026-10-13)
 

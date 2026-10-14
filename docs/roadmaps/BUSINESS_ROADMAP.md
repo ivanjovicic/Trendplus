@@ -1,9 +1,16 @@
 # Trendplus Business Roadmap
 
-Updated: 2026-08-15
+Updated: 2026-08-15 (milestone structure); product focus reaffirmed 2026-10-14
 Status: canonical business milestone map
 
 This roadmap maps commercial/product milestones to existing technical planning programs. It does not create a second implementation backlog.
+
+**Current product proof correction (2026-10-14):** [analytics-first scope](../product/ANALYTICS_FIRST_SCOPE_2026-10-14.md) and [operator/customer playbook](../product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md) are the current product lens. Do not infer pilot/commercial readiness from completed test infrastructure, old dated "live" reports or a successful Access line reconciliation. `RQ585` digest is already DONE; its adoption and deployed currency remain unproven. Product release must separately demonstrate: **historically correct -> current trustworthy -> operator-used -> outcome measured -> commercially valuable**. A gap in one step cannot be disguised by more screens.
+
+Before calling Milestone 1/2 customer-ready, show one actual operator can (a) select a store and bounded period, (b) reconcile sold units/revenue to source, (c) distinguish unknown/estimated cost and historical/current stock, (d) understand source/date and why a recommendation is blocked, (e) review the existing digest, take or decline one valid action and follow evidence into detail/export. If an outcome is not mature/controlled, record `not_measured`, not ROI. One-deployment-per-customer remains acceptable for the first validated pilot. Pricing, sales conversion and customer demand are **unverified hypotheses** until customer evidence is recorded.
+
+External Amazon/eBay/Shopping/trend experiments and test-feature UI are out of current product scope; legitimate source mapping/import needed for a paying retailer is **not** automatically out of scope.
+
 
 ## Milestone 0 - Decision Truth + Currentness
 

@@ -1,5 +1,25 @@
 # Retail Analytics KPI Roadmap
 
+> **Currentness correction, 2026-10-14:** This file is a historical **candidate/definition catalogue**, not a ship-ready list or a queue router. The older "moze brzo" and P0 tags below **do not** prove that source history, cost, product attributes or release evidence exist. Prioritization and owner gates: [current scope](../product/ANALYTICS_FIRST_SCOPE_2026-10-14.md), [product playbook](../product/RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md), `MASTER_ROADMAP.md`. Formula definitions below are **proposals**, not permission to replace existing certified backend business contracts.
+
+## Critical feasibility correction — apply before any KPI implementation
+
+| Candidate | Current claim allowed | Required before full KPI/recommendation |
+|---|---|---|
+| Revenue/units by store, supplier and footwear type | Proven bounded historical aggregates, explicit signed returns and dataScope | source horizon/period parity, live freshness for "today" |
+| Confirmed gross margin and capital at cost | Partial; report provenance and cost-covered revenue; master backfill is an estimate | RQ601 original cost verification, explicit tax/discount basis, all cost paths checked |
+| Sell-through / inventory turns / GMROI | **Not generally verified historically**: latest stock is not opening/average stock | dated received/sold/opening or observed-stock series at SKU × store grain, reliable purchase cost for money versions |
+| Days of cover, lost sales, OOS duration | **Proxy/conditional**; signed or negative reconstructed stock not a historic observation | observed stock movement lineage RQ610, maturity and demand assumptions |
+| Aging / slow stock capital | Last receipt/inbound age only when proven; no age from import timestamp or last sale | authoritative inbound receipt chain + coverage, good cost valuation |
+| Size/color availability | Conditional; absence of attribute source must remain unknown | actual size/color identifiers and store stock granularity |
+| Shift/hour and basket/receipt statistics | **Unsupported unless time and customer receipt grain proven** | source clock/receipt identity, no mixed document vs customer transaction grain |
+| Supplier negotiation | Descriptive existing facts and explicit limits, not guaranteed ROI | source consistency, confirmed cost and inventory capital by supplier |
+| Markdown efficacy/elasticity | Historical descriptive pre/post only; measured outcomes only when matured | per-store/day source coverage, matched controls, RQ602/RQ592 signoff and outcome ledger |
+
+**Semantic warning:** the example sell-through `sold/(opening+inbound)` differs from retail conventions that use receipts or `sold/(sold+on-hand)`. Neither is universally correct for Trendplus until the **named stock population, period and denominator** are observed and oracle-tested. Do not apply thresholds ("good"/"bad") or rebuild SQL formulas based solely on this roadmap.
+
+**Current implementation vs ideas:** `RQ585` Decision Pulse digest is DONE; `RQ593/RQ594/RQ595/RQ596` are not fresh new tasks; `RQ659` nav and `RQ661` static Home factual UI are READY. New feature proposals here require a validated buyer problem, source proof, cost of wrong decisions, and a gap not already owned.
+
 Status: planning-only dokument, bez runtime promena, bez migracija.
 Namena: definisati sledeci nivo retail analytics KPI-jeva i decision flow logike tako da Trendplus podrzi ozbiljne odluke o prodaji, zalihama, dobavljacima i snizenjima.
 

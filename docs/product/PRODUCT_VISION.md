@@ -1,6 +1,6 @@
 # Trendplus Product Vision
 
-Updated: 2026-08-08  
+Updated: 2026-10-14  
 Status: canonical product direction
 
 ## Why Trendplus exists
@@ -12,6 +12,8 @@ The product is not successful when it merely shows more charts. It is successful
 ## Owner analytics-first narrowing (2026-10-14)
 
 Canonical current scope: [ANALYTICS_FIRST_SCOPE_2026-10-14](ANALYTICS_FIRST_SCOPE_2026-10-14.md). Develop sales statistics, trustworthy margins, stock, supplier analytics and markdown decisions, not Amazon/eBay/Google Shopping scrapers, trend demos, model training or other test features. This freezes future work, **not** essential automated regression testing or shipped compatibility. De-emphasize experimental routes in the navigation, but do not delete schema/API history without a separate review.
+
+**2026-10-14 execution truth:** Existing `RQ585` Decision Pulse digest was delivered on 2026-10-08 (implementation `739815e36f9ca...`). The earlier "compose owner digest" item below is a **historical plan**, not a new READY task. RQ593/RQ594/RQ595/RQ596 have delivery evidence and must not be cloned. New product P1 defects are RQ659 navigation and RQ661 hard-coded Home KPI copy. Product evidence tiers and operator acceptance are specified in [Retail Analytics product playbook](RETAIL_ANALYTICS_PRODUCT_PLAYBOOK_2026-10-14.md).
 
 ## Near-term product focus (owner refinement 2026-10-07)
 

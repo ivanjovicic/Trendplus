@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: RQ659 READY (primary P1 analytics-first navigation). RQ660 READY (independent P2 PDC summary accuracy); RQ657 READY (core analytics race audit only); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655 and RQ656 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: RQ659 READY (primary P1 analytics-first navigation). **RQ661 READY (independent P1 HomePage false KPI removal)**; RQ660 READY (P2 PDC conditional count truth); RQ657 READY (core analytics race only); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2835,3 +2835,33 @@ Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavai
 ### Tests / completion
 
 Nearest PDC test files, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. DONE only if a real patch is delivered on verified main with evidence; a no-change classification is not DONE.
+## RQ661 - Replace hard-coded Home dashboard business claims with an honest retail starting point
+
+Status: READY
+Priority: P1
+Type: frontend analytics truth/landing UX + focused tests
+Feature family: home-business-truth
+Parallel-safe: yes; exclusively `Klijent/clientapp/src/pages/HomePage.tsx` and new focused home-page specs; do not touch RQ659-owned `navConfig.ts` or shared nav/router files without explicit path release
+Owner: unassigned
+Ready after: current-owner 2026-10-14 analytics-first direction; no provider access or sales import required for repository-local repair
+Commit suggestion: `fix(home): remove hardcoded business KPIs and prioritize retail analytics`
+
+### Proven defect, distinct from RQ659
+
+`HomePage.tsx` renders literal tiles "Aktivne sekcije 32", "Import jobs 5", "Trend signal +12.8%" and an Insight Pulse panel asserting Google Shopping increased 18% in 24h, three SKU have high demand/low stock and an actionable top-ten markdown suggestion. These are hard-coded in JSX, not derived from API/period/source evidence, yet read like measured business facts. It also advertises "trend scraping tokove", imports `TrendModelList` (forecast evaluation) and displays a seasonal carousel. RQ659 fixes **menu** only. RQ585 already ships a separate digest; never rebuild the digest here.
+
+### Scope / sequence
+
+1. Read `HomePage.tsx`, `DashboardCards.tsx`, `TrendModelList.tsx`, existing homepage/layout test patterns, backend status contract and `/analytics`/Decision Pulse route behavior. Add failing-first render tests that prove every listed hard-coded business number/promise appears in the unchanged component (and fails new no-fake-business-fact assertions).
+2. Remove those static business KPI and recommendation claims. Keep the current **real** backend status with its checking/recovering/offline cases. Replace the experimental headline/panel with short **navigation** to existing `/analytics`, `/analytics/daily-sales`, `/analytics/inventory`, `/analytics/supplier`, `/analytics/pre-nivelacija-prioriteti` and optionally shipped `/analytics/decision-pulse`. Do not create new KPI endpoints or fetch financial data merely to make Home look full.
+3. Remove the `TrendModelList` block from Home and the promotional/experimental carousel **on Home only** unless there is a proven real-business decision use; leave their component files, other routes and API behavior unchanged. Core `DashboardCards` operational quick actions may remain, but check that none claims an unverified fact.
+4. Add a concise link explaining historical "as of" vs current decisions through the existing analytics trust surface. No static dates, freshness figures, business values or user counts disguised as live data.
+5. Preserve `/` routing, keyboard navigation, small viewport layout and offline/backend-recovering UX. Do not redirect root (which might break bookmarks), change POS/auth/production configuration or delete experiment code/data.
+
+### Tests / acceptance
+
+- Render spec proves absent literal `+12.8%`, `Import jobs 5`, `32`-tile, Google Shopping `18%`, unverified `3 SKU` and fabricated markdown candidate; no trend/scraper claims as current business evidence.
+- Real backend status is still correctly represented for checking/online/offline/recovering; links to core reports resolve, and the root does not crash when the backend is down.
+- Verify no extra root/Home component renders a misleading hard-coded financial claim; if verified outside owned Home path, register a **separate bounded finding**, do not silently widen this task.
+- Focused Home render specs, App routing/navigation specs needed for `/`, `npm run check:analytics-guardrails` and client build; `node scripts/check-prompt-queues.mjs`. Complete via exact-main code+test evidence, not only a screenshot. No external-provider proof or new import is required.
+- Coordination: RQ659 owns `navConfig.ts`; this task only owns `HomePage.tsx` and new Home tests. Serial queue header/status edits according to protocol.
