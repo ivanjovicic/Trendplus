@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Text.Json;
 using Api.Services;
 using Application.Artikli.Common.Interfaces;
@@ -272,7 +273,7 @@ internal sealed class Rq605EndpointFactory : WebApplicationFactory<global::Progr
             services.RemoveAll<TrendplusDbContext>();
             services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
             services.RemoveAll<ITrendplusDbContext>();
-            services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString));
+            services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
             services.AddScoped<TrendplusDbContext>(provider =>
                 provider.GetRequiredService<IDbContextFactory<TrendplusDbContext>>().CreateDbContext());
             services.AddScoped<ITrendplusDbContext>(provider => provider.GetRequiredService<TrendplusDbContext>());
@@ -280,7 +281,7 @@ internal sealed class Rq605EndpointFactory : WebApplicationFactory<global::Progr
             services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
             services.RemoveAll<AnalyticsDbContext>();
             services.RemoveAll<IAnalyticsDbContext>();
-            services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(_connectionString));
+            services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
             services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
 
             services.RemoveAll<IAnalyticsCacheService>();

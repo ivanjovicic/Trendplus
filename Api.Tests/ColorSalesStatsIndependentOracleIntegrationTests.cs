@@ -1,4 +1,5 @@
 using System.Net.Http;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Text.Json;
 using Api.Tests;
 using Application.Analytics;
@@ -212,14 +213,14 @@ public sealed class ColorSalesStatsIndependentOracleIntegrationTests : IClassFix
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
-                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
+                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<TrendplusDbContext>(provider =>
                     provider.GetRequiredService<IDbContextFactory<TrendplusDbContext>>().CreateDbContext());
                 services.AddScoped<ITrendplusDbContext>(provider => provider.GetRequiredService<TrendplusDbContext>());
                 services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
                 services.RemoveAll<AnalyticsDbContext>();
                 services.RemoveAll<IAnalyticsDbContext>();
-                services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString));
+                services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
             });
         }

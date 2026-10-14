@@ -3064,3 +3064,47 @@ Commit suggestion: `test(analytics): add deterministic Supplier Shoe render-expo
 - A reproducible browser execution (not only static inspection) confirms seeded fixture → rendered and downloaded values and detects one deliberately tampered mismatch. No hidden browser missing/CI skip may be PASS.
 - Repo-focused tests, `npm run check:analytics-guardrails`, `npm run build`, queue validator, and relevant GitHub Actions evidence. Separate synthetic/local verdict from actual deployed/runtime verdict.
 - Record precise artifact names, commands, case counts and blockers in `.ai/runs/2026-10-14-RQ664-evidence.md`.
+
+## RQ665 - Stop order-dependent EF ManyServiceProvidersCreatedWarning failures in test hosts
+
+Status: IN PROGRESS
+Priority: P1
+Type: backend CI flakiness
+Feature family: test-host-ef-configuration
+Parallel-safe: yes (test-only)
+Owner: grok
+Ready after: PR #147 closed 2026-10-14 (its backend failure was this flake)
+Commit suggestion: `test(ci): opt test-host DbContexts out of ManyServiceProvidersCreatedWarning`
+
+### Problem
+
+Backend runs `38422963322` (docs-only PR #147, base `6ca11bf9`) and `38419332741` (`babd557d`) failed three `SupplierSalesStatsEndpointPostgresParityTests` with `InvalidOperationException` for `ManyServiceProvidersCreatedWarning`, while the same base passed on main (`38422316417`). Each `WebApplicationFactory` host has its own application service provider, which is part of EF Core's internal service-provider cache key, so every host adds one internal provider to a process-wide count; once it passes twenty the warning throws in whichever test happens to come next.
+
+### Evidence
+
+Over 20 existing test factories already set `ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))`; 11 factories (including the failing parity factory) did not.
+
+### Scope
+
+Test-only: add the opt-out to the 11 remaining test-host registrations and a source convention test with self-tests. No production DbContext configuration, no assertion change.
+
+### Read first
+
+`Api.Tests/SupplierSalesStatsEndpointPostgresParityTests.cs`, `Api.Tests/AnalyticsSupplierSalesIntegrationTests.cs` (existing pattern).
+
+### Do
+
+1. Add the warning opt-out to every DbContext registration in in-process test hosts lacking it.
+2. Add `TestHostDbContextWarningConventionTests` that fails on any such registration without the opt-out.
+
+### Tests
+
+Convention tests and affected classes locally (Testing env); full backend CI on the PR.
+
+### Acceptance
+
+No test host registration without the opt-out; backend + governance CI green; merged via PR.
+
+### Dependencies
+
+None. Sharing one internal service provider across hosts was rejected: it requires `UseInternalServiceProvider`, which bypasses each host's logging/interceptor integration (e.g. benchmark command recorder) and would change test semantics.

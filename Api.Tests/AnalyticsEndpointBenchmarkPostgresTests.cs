@@ -484,7 +484,7 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
                 services.AddDbContextFactory<TrendplusDbContext>(options => options
-                    .UseNpgsql(_connectionString)
+                    .UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))
                     .AddInterceptors(_commandRecorder));
                 services.AddScoped<TrendplusDbContext>(provider =>
                     provider.GetRequiredService<IDbContextFactory<TrendplusDbContext>>().CreateDbContext());
@@ -494,7 +494,7 @@ public sealed class AnalyticsEndpointBenchmarkPostgresTests : IClassFixture<Post
                 services.RemoveAll<AnalyticsDbContext>();
                 services.RemoveAll<IAnalyticsDbContext>();
                 services.AddDbContext<AnalyticsDbContext>(options => options
-                    .UseNpgsql(_connectionString)
+                    .UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))
                     .AddInterceptors(_commandRecorder));
                 services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
 

@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Net.Http.Json;
@@ -883,13 +884,13 @@ public sealed class PreNivelacijaPriorityOracleIntegrationTests : IClassFixture<
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
-                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString));
-                services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(_connectionString));
+                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(provider => provider.GetRequiredService<TrendplusDbContext>());
                 services.RemoveAll<DbContextOptions<AnalyticsDbContext>>();
                 services.RemoveAll<AnalyticsDbContext>();
                 services.RemoveAll<IAnalyticsDbContext>();
-                services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(_connectionString));
+                services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<IAnalyticsDbContext>(provider => provider.GetRequiredService<AnalyticsDbContext>());
                 services.RemoveAll<IAnalyticsCacheService>();
                 services.AddSingleton<IAnalyticsCacheService>(_cache);
