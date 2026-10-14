@@ -1113,7 +1113,7 @@ export default function AnalyticsDashboard() {
   const executiveDataQualityHighlights = useMemo(() => {
     const summary = executive?.dataQualitySummary;
     if (!summary)
-      return [] as Array<{ key: string; label: string; value: number }>;
+      return [] as Array<{ key: string; label: string; value: number | null }>;
 
     const hasRefreshWarning =
       normalizeDataQualityStatus(refreshStatus?.dataFreshnessStatus) !== "good";
@@ -1122,35 +1122,46 @@ export default function AnalyticsDashboard() {
       {
         key: "missingSupplierCount",
         label: "Bez dobavlja\u010Da",
-        value: summary.missingSupplierCount ?? 0,
+        value: summary.missingSupplierCount,
       },
       {
         key: "missingCostCount",
         label: "Bez nabavne cene",
-        value: summary.missingCostCount ?? 0,
+        value: summary.missingCostCount,
       },
       {
         key: "insufficientSignalCount",
         label: "Nedovoljni signali",
-        value: summary.insufficientSignalCount ?? 0,
+        value: summary.insufficientSignalCount,
       },
       {
         key: "ignoredRowsCount",
         label: "Ignorisani redovi",
-        value: summary.ignoredRowsCount ?? 0,
+        value: summary.ignoredRowsCount,
       },
       {
         key: "zeroRevenueRowsCount",
         label: "Nulti prihod",
-        value: summary.zeroRevenueRowsCount ?? 0,
+        value: summary.zeroRevenueRowsCount ?? null,
       },
       {
         key: "refreshWarning",
         label: "Refresh warning",
         value: hasRefreshWarning ? 1 : 0,
       },
-    ].filter((item) => item.value > 0);
+    ].filter((item) => item.value != null && item.value > 0);
   }, [executive?.dataQualitySummary, refreshStatus?.dataFreshnessStatus]);
+  const executiveDataQualityHasUnknownCount = useMemo(() => {
+    const summary = executive?.dataQualitySummary;
+    if (!summary) return false;
+    return [
+      summary.missingSupplierCount,
+      summary.missingCostCount,
+      summary.insufficientSignalCount,
+      summary.ignoredRowsCount,
+      summary.zeroRevenueRowsCount,
+    ].some((value) => typeof value !== "number" || !Number.isFinite(value));
+  }, [executive?.dataQualitySummary]);
   const dashboardLastRefreshAt =
     dashboardMeta?.lastRefreshAtUtc ??
     refreshStatus?.lastSuccessfulRefreshAtUtc ??
@@ -1367,10 +1378,15 @@ export default function AnalyticsDashboard() {
     ] as const;
   }, [executive?.dataQualitySummary]);
   const executiveLossHighlights = useMemo(() => {
-    const missingDataIssues = executive?.dataQualitySummary
-      ? executive.dataQualitySummary.missingCostCount +
-        executive.dataQualitySummary.missingSupplierCount
-      : null;
+    const missingCostCount = executive?.dataQualitySummary?.missingCostCount;
+    const missingSupplierCount = executive?.dataQualitySummary?.missingSupplierCount;
+    const missingDataIssues =
+      typeof missingCostCount === "number" &&
+      Number.isFinite(missingCostCount) &&
+      typeof missingSupplierCount === "number" &&
+      Number.isFinite(missingSupplierCount)
+        ? missingCostCount + missingSupplierCount
+        : null;
 
     return [
       {
@@ -1503,7 +1519,7 @@ export default function AnalyticsDashboard() {
     return DEFAULT_WEEKDAYS.map((dayName, dayOfWeek) => ({
       dayOfWeek,
       dayName: byDay.get(dayOfWeek)?.dayName ?? dayName,
-      totalRevenue: byDay.get(dayOfWeek)?.totalRevenue ?? 0,
+      totalRevenue: byDay.get(dayOfWeek)?.totalRevenue ?? null,
     }));
   }, [weekdayData]);
 
@@ -1513,7 +1529,7 @@ export default function AnalyticsDashboard() {
     return Array.from({ length: 24 }, (_, hour) => ({
       hour,
       label: `${String(hour).padStart(2, "0")}:00`,
-      totalRevenue: byHour.get(hour)?.totalRevenue ?? 0,
+      totalRevenue: byHour.get(hour)?.totalRevenue ?? null,
     }));
   }, [hourData]);
 
@@ -2164,9 +2180,15 @@ export default function AnalyticsDashboard() {
                     </div>
                   </div>
                   {executiveDataQualityHighlights.length === 0 &&
+                  !executiveDataQualityHasUnknownCount &&
                   !showMetaWarning ? (
                     <div className="analytics-empty success">
                       Nema kritičnih count signala u ovom preseku.
+                    </div>
+                  ) : null}
+                  {executiveDataQualityHasUnknownCount && !showMetaWarning ? (
+                    <div className="analytics-empty warning" role="status">
+                      Count signali kvaliteta podataka nisu u potpunosti dostupni; nije bezbedno prikazati ih kao nulu.
                     </div>
                   ) : null}
                   {showMetaWarning ? (
