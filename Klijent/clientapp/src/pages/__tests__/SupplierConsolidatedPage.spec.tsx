@@ -141,7 +141,7 @@ describe("SupplierConsolidatedPage", () => {
     expect(screen.getByText("Minimalni prihod skorkarte")).toBeInTheDocument();
     expect(screen.getByLabelText("Samo visoka pouzdanost skorkarte")).toBeInTheDocument();
     expect(screen.getByLabelText("Isključi artikle bez zaliha pre sniženja iz skorkarte")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resetuj filtere" })).toBeInTheDocument();
   });
 
   it("renders consolidated trust header and shows fallback banner when child reports fallback", async () => {

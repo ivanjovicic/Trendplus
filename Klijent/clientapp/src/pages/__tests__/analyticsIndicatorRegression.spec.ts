@@ -35,6 +35,24 @@ describe("analytics indicator regression guards", () => {
     expect(calculateDashboardMovingStats(rows).ma30Revenue).toBeNull();
   });
 
+  it("keeps week-over-week momentum and elasticity unknown without two full 7-row windows", () => {
+    const rows = Array.from({ length: 10 }, (_, index) => ({
+      date: `2026-08-${String(index + 1).padStart(2, "0")}`,
+      totalRevenue: 1000 + index * 10,
+      transactionCount: 1,
+      totalUnits: 2 + (index % 3),
+    }));
+
+    expect(calculateDashboardMovingStats(rows)).toMatchObject({ momentumPct: null, elasticity: null });
+    const full = Array.from({ length: 14 }, (_, index) => ({
+      date: `2026-08-${String(index + 1).padStart(2, "0")}`,
+      totalRevenue: index < 7 ? 1000 : 1100,
+      transactionCount: 1,
+      totalUnits: 2,
+    }));
+    expect(calculateDashboardMovingStats(full).momentumPct).toBe(10);
+  });
+
   it("does not turn a missing detail summary into zero per-day KPIs", () => {
     expect(deriveAnalyticsDetailMetrics(null, "2026-08-01T00:00", "2026-08-30T23:59")).toMatchObject({
       days: 30,

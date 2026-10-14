@@ -164,7 +164,9 @@ export function calculateDashboardMovingStats(dailySales: DailySale[]): Dashboar
   const prevUnits = sumUnits(prev7);
   const ma7Revenue = last7.length >= 7 ? lastRevenue / 7 : null;
   const ma30Revenue = last30.length >= 30 ? last30Revenue / 30 : null;
-  const momentumPct = prevRevenue > 0
+  // Week-over-week signals need two complete 7-row windows; a short previous window inflates them.
+  const hasTwoFullWeeks = last7.length === 7 && prev7.length === 7;
+  const momentumPct = hasTwoFullWeeks && prevRevenue > 0
     ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2))
     : null;
   const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : null;
@@ -173,7 +175,7 @@ export function calculateDashboardMovingStats(dailySales: DailySale[]): Dashboar
   const priceChange = prevPrice != null && prevPrice > 0 && lastPrice != null
     ? (lastPrice - prevPrice) / prevPrice
     : null;
-  const elasticity = prevUnits > 0 && priceChange != null && priceChange !== 0 && qtyChange != null
+  const elasticity = hasTwoFullWeeks && prevUnits > 0 && priceChange != null && priceChange !== 0 && qtyChange != null
     ? Number((qtyChange / priceChange).toFixed(2))
     : null;
 
@@ -2739,10 +2741,11 @@ export default function AnalyticsDashboard() {
                     <span>Momentum 7d</span>
                     <strong
                       className={
-                        movingStats.momentumPct != null &&
-                        movingStats.momentumPct < 0
-                          ? "trend down"
-                          : "trend up"
+                        movingStats.momentumPct == null
+                          ? "trend"
+                          : movingStats.momentumPct < 0
+                            ? "trend down"
+                            : "trend up"
                       }
                     >
                       {fmtPct(movingStats.momentumPct, 1, "Nije dostupno")}
