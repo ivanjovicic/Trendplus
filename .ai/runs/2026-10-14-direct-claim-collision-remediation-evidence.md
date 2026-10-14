@@ -7,9 +7,9 @@ Date: 2026-10-14
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: main / direct delivery
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: 408d1b81062e5d4c114960d69ab51d4d239407e4
+Main verification: passed - fresh origin/main contains 408d1b81062e5d4c114960d69ab51d4d239407e4; exact-main Analytics Tests 38542983060 are green
+Evidence state: synchronized
 Ownership transfer: Codex RQ647 close-out -> current direct agent; authority/evidence: explicit user instruction of 2026-10-14 to repair the collision and its incomplete RQ647 evidence
 Claim reservation: direct-user-request/not applicable
 ```
@@ -21,6 +21,8 @@ Claim reservation: direct-user-request/not applicable
 - Repaired RQ647's benchmark: its moderate population is now the shared July fixture plus 600 deterministic sale lines, the report excludes the machine name, and CI has a named benchmark-report artifact.
 - Reclassified the two RQ647 performance skips from `genuinely-uncovered` to `legacy-superseded` with their executable benchmark and CI-artifact proof.
 - Re-ran the real PostgreSQL/Testcontainers benchmark and refreshed its committed JSON evidence.
+- Removed the confirmed clean abandoned RQ649 worktree, its local branch, and its remote branch only after confirming that the direct-main RQ649 delivery was complete and no open PR existed.
+- Inspected exact-main Analytics Tests `38542983060`: 2,076 passed, 43 skipped, 0 failed; benchmark artifact `rq647-analytics-endpoint-benchmark-38542983060` (ID `11884041409`) uploaded successfully.
 
 ## Files changed
 
@@ -34,16 +36,20 @@ Claim reservation: direct-user-request/not applicable
 - `scripts/ci/backend-skip-inventory.json`
 - `.ai/runs/2026-10-14-RQ647-report.json`
 - `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`
+- `.ai/runs/2026-10-14-RQ647-evidence.md`
+- `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`
+- `MASTER_ROADMAP.md`
 
 ## Validation run
 
 - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --disable-build-servers -m:1 -clp:ErrorsOnly` — pass (0 warnings, 0 errors).
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true; TRENDPLUS_BENCHMARK_REPORT_PATH=TestResults/rq647-analytics-endpoint-benchmark-remediated.json; dotnet test Api.Tests/Api.Tests.csproj --no-build --no-restore --configuration Release --filter FullyQualifiedName~AnalyticsEndpointBenchmarkPostgresTests` — pass (1 passed, 0 skipped, 0 failed); the report has 624 sales headers/lines and no `machineName` field.
+- Exact-main GitHub Actions Analytics Tests `38542983060` on `408d1b81062e5d4c114960d69ab51d4d239407e4` — pass (2,076 passed, 43 skipped, 0 failed); RQ453 certification passed and artifact `11884041409` contains the explicit RQ647 report.
+- Governance validators — pass: agent instruction self-test + validation, prompt-queue self-test + validation, and planning architecture self-test + validation.
 
 ## Validation not run
 
-- Current-main CI and its named RQ647 artifact — pending delivery of this change.
-- Governance validators — pending the queue/roadmap close-out edits that follow the current-main CI result.
+- Production/provider latency and load validation — intentionally out of scope for a deterministic non-gating benchmark.
 
 ## Documentation impact
 
@@ -51,7 +57,7 @@ Claim reservation: direct-user-request/not applicable
 
 ## What was missed
 
-- RQ647 queue status/evidence synchronization and RQ649 abandoned-worktree removal remain pending exact-main CI inspection and targeted cleanup.
+- none known.
 
 ## Risks
 
@@ -59,8 +65,8 @@ Claim reservation: direct-user-request/not applicable
 
 ## Post-close routing recovery
 
-- not applicable until the direct remediation is delivered; RQ647's formal queue close-out will be refreshed from post-delivery `origin/main`.
+- not applicable for direct-user-request work; the RQ647 formal post-close cascade is recorded in `.ai/runs/2026-10-14-RQ647-evidence.md`.
 
 ## Next
 
-- Deliver the remediation to `main`, inspect the exact-main CI report artifact, synchronize RQ647 closure, and remove only the confirmed clean abandoned RQ649 worktree/branch.
+- none; subsequent formal queue work must begin with the new pushed shared-reservation sequence.

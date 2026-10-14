@@ -1,10 +1,10 @@
 # Analytics Reliability RQ queue — post-import correctness and business value
 
-Date: 2026-10-13
+Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
-Post-close note 2026-10-13: RQ646 is DONE on PR #150 squash merge `4dde4c9e878a8efb88963103af1a8236876d1645`; exact-head backend run `38467098912` passed 2,110 / skipped 43 / failed 0, with RQ453 and all three named ShoeType PostgreSQL contracts passing. RQ647 is the current primary P2 READY prompt; RQ648, RQ649 and RQ654 remain independent READY lanes. Run evidence: `.ai/runs/2026-10-13-RQ646-evidence.md`.
-Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence; overlaps open PR #147) and RQ655-RQ657 (frontend error/fake-zero/request-race audits) are independent READY lanes. RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day). RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
+Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
+Current READY prompt: RQ648 READY (primary P2 branch-content-equivalence audit; re-check its overlap with open PR #147 before claim). RQ655-RQ657 (frontend error/fake-zero/request-race audits) are independent READY lanes. RQ647 is DONE on main at `408d1b81062e5d4c114960d69ab51d4d239407e4`; RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day); RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ645/RQ646 and RQ651-RQ654 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2060,15 +2060,15 @@ RQ644 and local/CI disposable PostgreSQL only. Independent of Supplier contract 
 
 ## RQ647 - Replace two untrusted Operations performance skips with reproducible non-gating measurements
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: performance/CI measurement baseline; no production SLA gate
 Feature family: supplier-shoetype-performance-measurement
 Parallel-safe: yes for new isolated benchmark harness/CI measurement paths (do not edit legacy Supplier/ShoeType tests owned by RQ645/RQ646 during implementation)
-Owner: Codex
-Local lock: `.ai/task-locks/RQ647-codex.lock.md`
+Owner: Codex; corrective close-out by direct user authorization
+Local lock: removed after done close
 Ready after: RQ639/RQ642 DONE; inventory explicitly classifies both remaining benchmark skips
-Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `1dba9adf9462459fd307ac60356ee12ebbd065ef`. RQ647 has no active matching branch, lock or PR; its benchmark artifact is a same-prompt output, not a start dependency. Scope remains isolated benchmark/report/workflow work and does not edit RQ645/RQ646 legacy contract files.
+Claim note: 2026-10-14 - historical claim refreshed `origin/main` to `1dba9adf9462459fd307ac60356ee12ebbd065ef`; it predates the shared-reservation protocol and therefore has no pushed reservation record. The explicit user instruction on 2026-10-14 authorized corrective close-out after the PR #153 delivery collision. The corrective work is direct-user-request scope, not a competing queue claim.
 Commit suggestion: `test(perf): add non-gating isolated analytics endpoint baseline`
 
 ### Problem
@@ -2108,6 +2108,27 @@ Two exact performance gaps are represented by reproducible non-gating baseline p
 ### Dependencies
 
 No STAB16 access. RQ645/RQ646 may execute in parallel if unique benchmark files stay isolated; performance ownership is separate from correctness ownership.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: Corrected the undersized fixture and machine-identifying report field, made the CI artifact path explicit, and closed both legacy performance skips with a reproducible non-gating PostgreSQL baseline.
+- Changed files: `Api.Tests/AnalyticsEndpointBenchmarkPostgresTests.cs`, `.github/workflows/analytics-tests.yml`, `scripts/ci/backend-skip-inventory.json`, `.ai/runs/2026-10-14-RQ647-report.json`, `.ai/runs/2026-10-14-RQ647-evidence.md`, the direct remediation log, queue/roadmap pointers, and canonical claim/evidence instructions.
+- Contract/runtime behavior changed: no product endpoint or production SLA changed; the benchmark now uses the deterministic July fixture plus 600 added sale lines and emits no machine name.
+- Checks run: local Release build passed with 0 errors; focused real-PostgreSQL benchmark passed 1/1 with 624 sale headers/lines and no `machineName`; governance self-tests and validators passed; exact-main Analytics Tests `38542983060` passed 2,076 / skipped 43 / failed 0; RQ453 certification passed; artifact `rq647-analytics-endpoint-benchmark-38542983060` (ID `11884041409`) uploaded successfully.
+- Checks not run: production/provider latency or throughput validation — intentionally outside this non-gating fixture benchmark.
+- Run log: `.ai/runs/2026-10-14-RQ647-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: pull-request then corrective direct-main
+- Main commit SHA: `408d1b81062e5d4c114960d69ab51d4d239407e4` (PR #153 initial squash merge `e7d7e4532b1d677d4ca7c3b18d67087cc68d5292`)
+- Main verification: fresh `origin/main` contains `408d1b81062e5d4c114960d69ab51d4d239407e4`; exact-main run `38542983060` is green and artifact URL is `https://github.com/ivanjovicic/Trendplus/actions/runs/38542983060/artifacts/11884041409`.
+- Claim reservation: historical RQ647 claim predates the protocol; corrective work is `direct-user-request/not applicable` under the explicit user authorization recorded in the run log.
+- Missed: none known.
+- Follow-up: RQ648 is the primary READY task; RQ655-RQ657 remain independent READY lanes.
+- Residual risk: fixture p50/p95 values are reproducible diagnostics, not a production or provider latency SLO.
+- Post-close routing: refreshed delivery base `origin/main` `408d1b81062e5d4c114960d69ab51d4d239407e4`; scanned the root RQ queue, all active RQ addenda, the SQL analytics queue, current RQ READY/IN_PROGRESS rows, branches/worktrees and open PR #147. No task depends on RQ647. RQ648 remains the primary READY P2 lane but must re-check its open-PR overlap; RQ655-RQ657 are independent READY lanes. No Zero-READY proof applies.
+- Prompt defect / scope repair: the original 24-row moderate fixture and host-name report field were insufficient; the corrective delivery added the 600-line expansion, omission assertion, explicit artifact path and current-main artifact proof without adding a flaky threshold.
 
 ---
 
