@@ -1,6 +1,8 @@
 using System.Net;
+using System.Linq;
 using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
+using Api.Services.Access;
 using Infrastructure.DbContexts;
 using Infrastructure.Services.Caching;
 using Microsoft.AspNetCore.Hosting;
@@ -8,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Api.Tests;
@@ -15,6 +18,16 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class CachedAnalyticsFailureContractTests
 {
+    [Fact]
+    public async Task FailureFactory_DoesNotRegisterAccessImportWorker()
+    {
+        await using var factory = new FailureFactory(new InvalidOperationException("registration check"));
+
+        Assert.DoesNotContain(
+            factory.Services.GetServices<IHostedService>(),
+            service => service is AccessImportBackgroundWorker);
+    }
+
     [Fact]
     public async Task SalesSummary_UnexpectedFailureReturnsUnavailableKpis()
     {
@@ -167,6 +180,7 @@ public sealed class CachedAnalyticsFailureContractTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                RemoveAccessImportWorker(services);
                 services.RemoveAll<IAnalyticsCacheService>();
                 services.AddSingleton<IAnalyticsCacheService>(new ThrowingAnalyticsCacheService(_exception));
 
@@ -181,6 +195,14 @@ public sealed class CachedAnalyticsFailureContractTests
                     options.UseInMemoryDatabase(_databaseName));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             });
+        }
+
+        private static void RemoveAccessImportWorker(IServiceCollection services)
+        {
+            foreach (var descriptor in services.Where(d => d.ImplementationType == typeof(AccessImportBackgroundWorker)).ToList())
+            {
+                services.Remove(descriptor);
+            }
         }
     }
 

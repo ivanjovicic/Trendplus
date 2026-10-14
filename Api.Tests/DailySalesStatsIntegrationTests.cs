@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Api.Services.Access;
 using Api.Models;
 using Domain.Model;
 using Domain.Model.Prodaja;
@@ -13,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Trendplus2.Tests;
 using Xunit;
 
@@ -21,6 +23,16 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class DailySalesStatsIntegrationTests
 {
+    [Fact]
+    public async Task DailySalesFactory_DoesNotRegisterAccessImportWorker()
+    {
+        await using var factory = CreateFactory();
+
+        Assert.DoesNotContain(
+            factory.Services.GetServices<IHostedService>(),
+            service => service is AccessImportBackgroundWorker);
+    }
+
     [Fact(DisplayName = "Daily sales endpoint returns valid JSON contract")]
     public async Task DailySalesStats_ReturnsValidJsonContract()
     {
@@ -495,6 +507,7 @@ public sealed class DailySalesStatsIntegrationTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
@@ -508,6 +521,14 @@ public sealed class DailySalesStatsIntegrationTests
                         .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<Application.Artikli.Common.Interfaces.ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             });
+        }
+
+        private static void RemoveAccessImportWorker(IServiceCollection services)
+        {
+            foreach (var descriptor in services.Where(d => d.ImplementationType == typeof(AccessImportBackgroundWorker)).ToList())
+            {
+                services.Remove(descriptor);
+            }
         }
     }
 }

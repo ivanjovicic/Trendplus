@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
+using Api.Services.Access;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Api.Tests;
@@ -17,6 +19,16 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class InsightStudioLegacyEndpointsContractTests
 {
+    [Fact]
+    public async Task LegacyInsightStudioFactory_DoesNotRegisterAccessImportWorker()
+    {
+        await using var factory = CreateFactory();
+
+        Assert.DoesNotContain(
+            factory.Services.GetServices<IHostedService>(),
+            service => service is AccessImportBackgroundWorker);
+    }
+
     [Fact]
     public async Task KpiSnapshot_DateOnlyUpperBound_IncludesSalesOnFinalCalendarDay()
     {
@@ -402,6 +414,7 @@ public sealed class InsightStudioLegacyEndpointsContractTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
@@ -416,6 +429,14 @@ public sealed class InsightStudioLegacyEndpointsContractTests
                 services.AddScoped<ITrendplusDbContext>(sp =>
                     sp.GetRequiredService<TrendplusDbContext>());
             });
+        }
+
+        private static void RemoveAccessImportWorker(IServiceCollection services)
+        {
+            foreach (var descriptor in services.Where(d => d.ImplementationType == typeof(AccessImportBackgroundWorker)).ToList())
+            {
+                services.Remove(descriptor);
+            }
         }
     }
 }

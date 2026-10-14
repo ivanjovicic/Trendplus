@@ -2178,8 +2178,10 @@ Priority: P2
 Type: backend test-host worker registration and targeted CI logging
 Feature family: remaining-fake-provider-worker-noise
 Parallel-safe: yes for scoped test host/factory paths; avoid RQ645 Supplier, RQ646 ShoeType and RQ647 benchmark fixtures
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/RQ649-codex.lock.md`
 Ready after: RQ636 DONE and RQ637 DONE; latest exact-main backend CI 38407849758 exposed a distinct residual
+Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `e7d7e4532b1d677d4ca7c3b18d67087cc68d5292`. RQ649 has no active matching branch, lock or PR; its scoped test-host files are disjoint from the active RQ647 benchmark and the open RQ648 audit PR.
 Commit suggestion: test(ci): isolate remaining InMemory API hosts from Access import polling
 
 ### Problem

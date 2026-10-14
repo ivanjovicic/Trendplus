@@ -5,6 +5,7 @@ using Application.Artikli.Common.Interfaces;
 using Application.Common.Interfaces;
 using Application.Inventory.Models;
 using Api.Services;
+using Api.Services.Access;
 using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
@@ -15,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Trendplus2.Endpoints;
 using Xunit;
 
@@ -23,6 +25,19 @@ namespace Api.Tests;
 [Trait("Category", "Integration")]
 public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
 {
+    [Fact]
+    public async Task CachedAnalyticsFactory_DisablesAccessImportWorkerAndServesRoute()
+    {
+        await using var factory = CreateFactory();
+        var hostedServices = factory.Services.GetServices<IHostedService>().ToArray();
+
+        Assert.DoesNotContain(hostedServices, service => service is AccessImportBackgroundWorker);
+
+        using var response = await factory.CreateClient().GetAsync(
+            "/api/analytics/cached/inventory/status?lowStockThreshold=2");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task SalesSummary_ReturnsExactScopedTotalsAndHealthyMeta()
     {
@@ -1228,6 +1243,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
@@ -1254,6 +1270,14 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
                 services.AddScoped<IAnalyticsDbContext>(sp =>
                     sp.GetRequiredService<AnalyticsDbContext>());
             });
+        }
+
+        private static void RemoveAccessImportWorker(IServiceCollection services)
+        {
+            foreach (var descriptor in services.Where(d => d.ImplementationType == typeof(AccessImportBackgroundWorker)).ToList())
+            {
+                services.Remove(descriptor);
+            }
         }
     }
 }
