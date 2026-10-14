@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ662 (P1, Supplier store-scope filter trust)**. Independent path-safe candidates: **RQ663 (P1, Daily Sales evidence and quality badge)** and **RQ664 (P2, repository-local browser/export proof starter for WAITING RQ448)**. No task is claimed; before claim check current `origin/main`, locks, active branch/worktree and PR paths. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
+Current READY prompt: **RQ663 (P1, Daily Sales evidence and quality badge)**. Independent path-safe candidate: **RQ664 (P2, repository-local browser/export proof starter for WAITING RQ448)**. No task is claimed; before claim check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
@@ -2977,16 +2977,35 @@ Commit suggestion: `fix(home): remove hardcoded business KPIs and prioritize ret
 
 ## RQ662 - Fail closed for stale Supplier store options across dataScope transitions
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/filter-lineage/tests
 Feature family: supplier-sales-store-filter-scope
 Parallel-safe: yes with RQ663/RQ664; no with another Supplier Sales filter/store-discovery owner
 Owner: Codex
 Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `b1da501c66a9daf135ee2c5f20034d3d26b096e7`. Planned worktree `C:\Users\Ivan\.codex\worktrees\rq662-supplier-scope`; planned branch `codex/rq662-supplier-scope-20261014`. Remote branch/PR/lock collision query found no RQ662 owner or Supplier store-discovery owner; RQ663 and RQ664 remain independently READY on disjoint paths.
-Local lock: `.ai/task-locks/RQ662-codex.lock.md` (created after reservation commit)
 Ready after: RQ657 DONE, RQ659 DONE; no provider/database or product-owner gate
 Commit suggestion: `fix(analytics): prevent stale supplier store options across scope switches`
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: Supplier store options now fail closed during dataScope transitions, slow or failed discovery, stale URL/shared store IDs and embedded rendering. Previous-scope options are hidden while loading; failed discovery keeps an explicit retry state; only a store confirmed in the active scope is sent to Supplier Sales analytics. Signed IDs and cancellation protection remain intact.
+- Changed files: `Klijent/clientapp/src/pages/SupplierSalesStatsPage.tsx`; `Klijent/clientapp/src/pages/__tests__/SupplierSalesStatsPage.scopeReload.spec.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json` (line references only for unchanged reviewed violations shifted by the source insertion)
+- Checks run: focused scope/premium/fallback tests (48 passed); `npm run check:analytics-guardrails` (pass: encoding, self-test, 36 known violations only, typecheck); `npm run build` (pass); `node scripts/check-prompt-queues.mjs` (785 tasks pass); exact-main GitHub Actions run `38566240717` for `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3` (success: frontend analytics tests, guardrails, UI program gates, build, bundle budget/lazy charts, POS UI audit and SDK pin jobs)
+- Checks not run: full local frontend test suite; `npm run lint` (not required by the focused acceptance and exact-main Actions covered the named frontend gates)
+- Run log: `.ai/runs/2026-10-14-RQ662-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `b1da501c66a9daf135ee2c5f20034d3d26b096e7`; pushed claim `02505f69b7862012078ff43a797459057aca19b9`; owner/worktree/branch `Codex / C:\Users\Ivan\.codex\worktrees\rq662-supplier-scope / codex/rq662-supplier-scope-20261014`; remote branch query had no prior RQ662 or Supplier store-discovery owner, and no open PR before claim
+- Delivery mode: direct-main
+- Main commit SHA: `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`
+- Main verification: fresh `git fetch origin`; `git rev-parse origin/main` returned `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`, and `git merge-base --is-ancestor` confirmed the implementation is on `main`
+- Missed: none in owned scope
+- Follow-up: RQ663 is the next `Current READY` prompt; RQ664 remains independently READY
+- Residual risk: no known product risk in the owned scope; full local frontend suite was not run because the exact-main Actions gate passed
+- Post-close routing: fresh post-delivery `origin/main` scan found no RQ662 dependents to unblock; RQ663 was selected as the next P1 primary READY prompt and RQ664 remains a disjoint P2 READY candidate. No Zero-READY proof applies.
+- Prompt defect / scope repair: the existing guardrail baseline keys are line-based; three SupplierSales entries were updated only to their new line locations after the required source insertion, with no new exception or allowlist rule.
 
 ### Verified gap / not duplicate RQ657
 
