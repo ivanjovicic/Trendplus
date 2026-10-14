@@ -3078,14 +3078,16 @@ The just-shipped shared `dailyShiftSummary.ts` correctly refuses to treat a shif
 
 ## RQ664 - Establish repository-local Supplier/Shoe browser-to-export proof as a starter for RQ448
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: test/harness/evidence
 Feature family: supplier-shoetype-browser-certification-starter
 Parallel-safe: yes with RQ662/RQ663 only when no shared Supplier/Shoe page, CI harness or queue mutations are concurrent
-Owner: unassigned
+Owner: Codex / worktree `rq664-browser-export`
 Ready after: RQ447 and RQ453 DONE, RQ561/RQ567/RQ568 DONE; no authorized production environment needed for this **repository-only starter**
 Commit suggestion: `test(analytics): add deterministic Supplier Shoe render-export smoke proof`
+
+Owner claim reservation 2026-10-14: refreshed `origin/main` at `5d5d72b1d7198c7f0ead30017a11799735b1deeb`; collision checks found no RQ664 lock, branch, open PR or attached worktree, and the existing Supplier/Shoe worktrees are historical or unrelated. The bounded paths are `Klijent/clientapp/scripts/qa/rq448-fixture-smoke.*`, its focused synthetic fixture/artifact contract, this queue section, the dated run log and the RQ664 deliverable. Reservation is published on `main` before creating the isolated worktree; local lock `.ai/task-locks/RQ664-codex.lock.md` will be created only after that reservation.
 
 ### Historical blocker and authorized split
 
