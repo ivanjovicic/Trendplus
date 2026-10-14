@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ660 READY (P2 PDC conditional count truth)**. RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **RQ648 READY (P2 branch equivalence, verify PR #147 overlap)**; RQ660 IN_PROGRESS, Cursor-owned (P2 PDC conditional count truth). RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2852,13 +2852,15 @@ Focused nav/sidebar/App layout and analytics route specs, `npm run check:analyti
 
 ## RQ660 - PDC action summary: unknown blocked count must not become zero
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: bounded analytics correctness/frontend tests
 Feature family: product-decision-actionability-null-counts
 Parallel-safe: yes; own `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` and nearest PDC specs only, no Dashboard/Supplier/Inventory files
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ660-cursor.lock.md`
 Ready after: owner product focus decision 2026-10-14; confirm fresh collision-free files before claim
+Claim reservation: inspected origin/main `e74d055c110c7cd8073f29cf6aacaa58ac59f178`; pushed claim = the `docs(queue): claim RQ660 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ660 branch, worktree, lock or open PR (open PRs: #147 RQ650 branch audit). Claim paths: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx` and nearest PDC specs only.
 Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavailable`
 
 ### Verified code candidate (validate backend contract first)
