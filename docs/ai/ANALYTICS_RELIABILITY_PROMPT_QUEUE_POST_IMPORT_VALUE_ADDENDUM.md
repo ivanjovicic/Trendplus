@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ648 READY (P2 branch equivalence, verify PR #147 overlap)**; RQ660 IN_PROGRESS, Cursor-owned (P2 PDC conditional count truth). RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **RQ648 READY (P2 branch equivalence, verify PR #147 overlap)**. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f` (missing PDC blocked/insufficient counts render as unavailable, not zero). RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2852,7 +2852,7 @@ Focused nav/sidebar/App layout and analytics route specs, `npm run check:analyti
 
 ## RQ660 - PDC action summary: unknown blocked count must not become zero
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: bounded analytics correctness/frontend tests
 Feature family: product-decision-actionability-null-counts
@@ -2877,6 +2877,25 @@ Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavai
 ### Tests / completion
 
 Nearest PDC test files, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. DONE only if a real patch is delivered on verified main with evidence; a no-change classification is not DONE.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: classification - backend `ProductDecisionCenterSummaryDto` emits all three counts as non-nullable `int` from one builder, but the frontend type declares them optional and `productDecisionCenterSummarySchema` does not validate them, so missing input is accepted (OBSOLETE condition not met). The actionability line now uses `fmtNumber(..., ANALYTICS_UNAVAILABLE_LABEL)` for `blockedCount`/`insufficientEvidenceCount`: missing renders "Nije dostupno", backend `0` stays `0`. No scoring, API, schema or export change.
+- Changed files: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`; `pages/__tests__/ProductDecisionCenterPage.hierarchy.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ660-evidence.md`; `.ai/runs/2026-10-14-RQ661-evidence.md` (CI result).
+- Checks run: failing-first missing-count case failed before (rendered 0), true-zero counterexample passed before/after; PDC + readiness regression + API contract specs 74/74 pass; analytics guardrails and `npm run build` pass.
+- Checks not run: backend tests (no backend change); e2e (no suite); exact-main Analytics Quality Gates run `38553160658` queued at close.
+- Run log: `.ai/runs/2026-10-14-RQ660-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `6b9041f93e4652732fee4ac3812147daf252270f`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `6b9041f93e4652732fee4ac3812147daf252270f` after push.
+- Missed: frontend schema still does not require the three counts; tightening it changes the API contract and is out of scope.
+- Follow-up: RQ648 (P2) is the only remaining READY prompt here; verify PR #147 overlap before claim.
+- Residual risk: latent defect only (no live backend path proven to omit the counts); exact-main CI queued at close.
+- Post-close routing: RQ660 has no dependents; RQ648 READY (PR #147 overlap), RQ657/RQ659/RQ661 DONE. No Zero-READY proof applies.
+- Prompt defect / scope repair: none.
 ## RQ661 - Replace hard-coded Home dashboard business claims with an honest retail starting point
 
 Status: DONE
