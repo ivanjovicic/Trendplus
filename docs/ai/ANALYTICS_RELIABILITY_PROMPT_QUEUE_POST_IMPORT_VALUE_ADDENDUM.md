@@ -2545,13 +2545,16 @@ None. Frontend-only; P3 because the affected window is at most two hours per day
 
 ## RQ655 - Surface swallowed loader errors instead of silent fallback
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend loader error handling / silent-fallback audit
 Feature family: analytics-error-surface
 Parallel-safe: yes (audit-only; independent frontend files)
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ655-cursor.lock.md`
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Claim reservation: inspected origin/main `05c7d05461781d1004a5c15e8c8827664ffee2e2`; pushed claim = the `docs(queue): claim RQ655 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ655 branch, worktree, lock or open PR (only open PR #147 is RQ650/branch audit).
+Claim paths: `Klijent/clientapp/src/pages/GoogleShoppingTrendsPage.tsx`, `AmazonShoesTrendsPage.tsx`, `EbayShoesTrendsPage.tsx` and their specs under `src/pages/__tests__/`; audit-only review of `services/analyticsHttp.ts` / `services/analyticsApi.ts` JSON error-body parsing. InsightStudio stays out of scope (experimental route, owner review required).
 Commit suggestion: `audit(analytics): surface swallowed loader errors and add visible fallback messages`
 
 ### Problem
