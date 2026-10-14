@@ -4,7 +4,8 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ664 (P2, repository-local browser/export proof starter for WAITING RQ448)**. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
+Current READY prompt: none.
+Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
@@ -3078,7 +3079,7 @@ The just-shipped shared `dailyShiftSummary.ts` correctly refuses to treat a shif
 
 ## RQ664 - Establish repository-local Supplier/Shoe browser-to-export proof as a starter for RQ448
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: test/harness/evidence
 Feature family: supplier-shoetype-browser-certification-starter
@@ -3087,7 +3088,7 @@ Owner: Codex / worktree `rq664-browser-export`
 Ready after: RQ447 and RQ453 DONE, RQ561/RQ567/RQ568 DONE; no authorized production environment needed for this **repository-only starter**
 Commit suggestion: `test(analytics): add deterministic Supplier Shoe render-export smoke proof`
 
-Owner claim reservation 2026-10-14: refreshed `origin/main` at `5d5d72b1d7198c7f0ead30017a11799735b1deeb`; collision checks found no RQ664 lock, branch, open PR or attached worktree, and the existing Supplier/Shoe worktrees are historical or unrelated. The bounded paths are `Klijent/clientapp/scripts/qa/rq448-fixture-smoke.*`, its focused synthetic fixture/artifact contract, this queue section, the dated run log and the RQ664 deliverable. Reservation is published on `main` before creating the isolated worktree; local lock `.ai/task-locks/RQ664-codex.lock.md` will be created only after that reservation.
+Owner claim reservation 2026-10-14: refreshed `origin/main` at `5d5d72b1d7198c7f0ead30017a11799735b1deeb`; collision checks found no RQ664 lock, branch, open PR or attached worktree, and the existing Supplier/Shoe worktrees are historical or unrelated. The bounded paths are `Klijent/clientapp/scripts/qa/rq448-fixture-smoke.*`, its focused synthetic fixture/artifact contract, this queue section, the dated run log and the RQ664 deliverable. Reservation was published on `main` before creating the isolated worktree; local lock `.ai/task-locks/RQ664-codex.lock.md` was created after that reservation and removed before the implementation commit.
 
 ### Historical blocker and authorized split
 
@@ -3106,6 +3107,24 @@ Owner claim reservation 2026-10-14: refreshed `origin/main` at `5d5d72b1d7198c7f
 - A reproducible browser execution (not only static inspection) confirms seeded fixture → rendered and downloaded values and detects one deliberately tampered mismatch. No hidden browser missing/CI skip may be PASS.
 - Repo-focused tests, `npm run check:analytics-guardrails`, `npm run build`, queue validator, and relevant GitHub Actions evidence. Separate synthetic/local verdict from actual deployed/runtime verdict.
 - Record precise artifact names, commands, case counts and blockers in `.ai/runs/2026-10-14-RQ664-evidence.md`.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: 100% of the repository-local RQ664 scope. The built client was driven in an actual headless Puppeteer browser through `/analytics/supplier` and `/analytics/shoe-type-sales-stats`, with one canonical period/store/dataScope, synthetic intercepted Supplier/Shoe responses, rendered KPI/table assertions, real downloaded CSV assertions, empty/error/negative-ID/unknown-attribution cases and deliberate tampered-total mismatch detection. The result is explicitly `synthetic_fixture_only`; it is not production, deployed or customer certification.
+- Changed files: `Klijent/clientapp/package.json`, `Klijent/clientapp/scripts/qa/rq448-fixture.json`, `Klijent/clientapp/scripts/qa/rq448-fixture-smoke.mjs`, `docs/qa/RQ664_LOCAL_BROWSER_PROOF_2026-10-14.md`, `docs/qa/RQ664_LOCAL_BROWSER_FIXTURE_VERDICT_2026-10-14.json`, `.ai/runs/2026-10-14-RQ664-evidence.md`.
+- Checks run: local `npm ci --no-audit --no-fund`; `npm run build`; `npm run qa:rq448-fixture-smoke` (2 browser routes, 2 CSV downloads, 2 state cases, 1 tampered mismatch, 0 unexpected API calls); focused Vitest (3 files, 25 tests); `npm run check:analytics-guardrails`; instruction, prompt-queue and planning-architecture validators plus self-tests; syntax/JSON parsing and `git diff --check`; exact-head Analytics Quality Gates run `38571518142` on `c3751208b3736c1dc7f418a725504726cc130745` completed `success` with all three jobs green.
+- Checks not run: authenticated staging/production browser, PostgreSQL/source-line reconciliation, deployed screenshots/downloads, protected credentials, customer acceptance and full frontend/backend suites; these are outside RQ664 and remain RQ448-family acceptance work.
+- Run log: `.ai/runs/2026-10-14-RQ664-evidence.md`
+- Evidence state: implementation artifact, local proof, delivery, exact-head Actions result and post-close routing are synchronized; final closeout SHA is recorded in the run log.
+- Delivery mode: direct-main; implementation transport branch `codex/rq664-browser-export-20261014` fast-forwarded to `main`.
+- Implementation commit SHA: `c3751208b3736c1dc7f418a725504726cc130745`
+- Main commit SHA: `c3751208b3736c1dc7f418a725504726cc130745` at implementation delivery; final closeout SHA is recorded in the run log.
+- Main verification: `git rev-parse origin/main` -> `c3751208b3736c1dc7f418a725504726cc130745` at implementation delivery; final closeout SHA is recorded in the run log.
+- Missed: RQ448's authenticated deployed/source-line/customer evidence remains unexecuted by design.
+- Follow-up: keep `RQ448`, `RQ451`, `RQ452`, `RQ454`, `RQ455`, `RQ565` and `RQ566` WAITING; do not promote or mark them DONE from this synthetic rehearsal.
+- Residual risk: synthetic fixture parity cannot prove production database lineage, deployed build behavior, freshness, schema state or customer acceptance.
 
 ## RQ665 - Stop order-dependent EF ManyServiceProvidersCreatedWarning failures in test hosts
 
