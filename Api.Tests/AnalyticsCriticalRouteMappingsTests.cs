@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Text.Json;
 using Api.Endpoints;
 using Api.Services;
@@ -214,9 +215,9 @@ public sealed class AnalyticsCriticalRouteMappingsTests
                 ["ConnectionStrings:DefaultConnection"] = BuildConnectionString(trendDbName),
                 ["ConnectionStrings:AnalyticsConnection"] = BuildConnectionString(analyticsDbName)
             });
-            builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(trendDbName));
+            builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(trendDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
             builder.Services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
-            builder.Services.AddDbContext<AnalyticsDbContext>(options => options.UseInMemoryDatabase(analyticsDbName));
+            builder.Services.AddDbContext<AnalyticsDbContext>(options => options.UseInMemoryDatabase(analyticsDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
             builder.Services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             builder.Services.AddRateLimiter(options =>
             {
@@ -309,14 +310,14 @@ public sealed class AnalyticsCriticalRouteMappingsTests
 
                 services.AddMemoryCache();
                 services.AddDistributedMemoryCache();
-                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseInMemoryDatabase(_trendDbName));
-                services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(_trendDbName));
+                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseInMemoryDatabase(_trendDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase(_trendDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
-                services.AddDbContextFactory<AnalyticsDbContext>(options => options.UseInMemoryDatabase(_analyticsDbName));
-                services.AddDbContext<AnalyticsDbContext>(options => options.UseInMemoryDatabase(_analyticsDbName));
+                services.AddDbContextFactory<AnalyticsDbContext>(options => options.UseInMemoryDatabase(_analyticsDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<AnalyticsDbContext>(options => options.UseInMemoryDatabase(_analyticsDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
-                services.AddDbContextFactory<OpenProductTrainingDbContext>(options => options.UseInMemoryDatabase(_trainingDbName));
-                services.AddDbContext<OpenProductTrainingDbContext>(options => options.UseInMemoryDatabase(_trainingDbName));
+                services.AddDbContextFactory<OpenProductTrainingDbContext>(options => options.UseInMemoryDatabase(_trainingDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<OpenProductTrainingDbContext>(options => options.UseInMemoryDatabase(_trainingDbName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
             });
         }
 

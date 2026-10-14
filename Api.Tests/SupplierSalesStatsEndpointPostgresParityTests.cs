@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Application.Analytics;
@@ -501,8 +502,8 @@ public sealed class SupplierSalesStatsEndpointPostgresParityTests : IClassFixtur
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
                 services.RemoveAll<ITrendplusDbContext>();
-                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString));
-                services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(_connectionString));
+                services.AddDbContextFactory<TrendplusDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
+                services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(_connectionString).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(provider => provider.GetRequiredService<TrendplusDbContext>());
 
                 services.RemoveAll<IAnalyticsCacheService>();

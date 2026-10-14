@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Text.Json;
 using Application.Artikli.Common.Interfaces;
 using Infrastructure.DbContexts;
@@ -185,9 +186,9 @@ public sealed class CachedAnalyticsFailureContractTests
                 services.RemoveAll<ITrendplusDbContext>();
 
                 services.AddDbContextFactory<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddDbContext<TrendplusDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                    options.UseInMemoryDatabase(_databaseName).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
                 services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             });
         }
