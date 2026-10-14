@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { MarketplaceLoadErrorNotice } from "../components/trendshoes/MarketplaceLoadErrorNotice";
 import {
     syncEbayShoes,
     getEbayShoesByType,
@@ -238,10 +239,19 @@ export default function EbayShoesTrendsPage() {
     const [sortBy, setSortBy]             = useState("score");
     const [brandFilter, setBrandFilter]   = useState("all");
 
+    const [categoriesError, setCategoriesError] = useState(false);
+    const [itemsError, setItemsError]           = useState(false);
+    const [loadMoreError, setLoadMoreError]     = useState(false);
+    const [itemsRetryCounter, setItemsRetryCounter] = useState(0);
+
     const reloadCategories = useCallback(() => {
         getEbayShoeCategories()
-            .then(setCategories)
-            .catch(() => setCategories([]));
+            .then((next) => { setCategories(next); setCategoriesError(false); })
+            .catch((error: unknown) => {
+                console.error("eBay categories failed to load", error);
+                setCategories([]);
+                setCategoriesError(true);
+            });
     }, []);
 
     useEffect(() => { reloadCategories(); }, [reloadCategories]);
@@ -249,25 +259,35 @@ export default function EbayShoesTrendsPage() {
     useEffect(() => {
         if (!selectedType) return;
         setLoadingItems(true);
+        setItemsError(false);
+        setLoadMoreError(false);
         setItems([]);
         setHasMore(false);
         setNextPage(2);
         getEbayShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, 1, pageSize)
             .then(r => { setItems(r.items); setTotal(r.total); setHasMore(1 < r.pages); })
-            .catch(() => { setItems([]); setTotal(0); setHasMore(false); })
+            .catch((error: unknown) => {
+                console.error("eBay products failed to load", error);
+                setItems([]); setTotal(0); setHasMore(false);
+                setItemsError(true);
+            })
             .finally(() => setLoadingItems(false));
-    }, [selectedType, browseGender, sortBy, pageSize, syncCounter]);
+    }, [selectedType, browseGender, sortBy, pageSize, syncCounter, itemsRetryCounter]);
 
     const handleLoadMore = () => {
         if (loadingMore || !hasMore) return;
         setLoadingMore(true);
+        setLoadMoreError(false);
         getEbayShoesByType(selectedType, browseGender === "all" ? null : browseGender, sortBy, nextPage, pageSize)
             .then(r => {
                 setItems(prev => [...prev, ...r.items]);
                 setHasMore(nextPage < r.pages);
                 setNextPage(p => p + 1);
             })
-            .catch(() => {})
+            .catch((error: unknown) => {
+                console.error("eBay next page failed to load", error);
+                setLoadMoreError(true);
+            })
             .finally(() => setLoadingMore(false));
     };
 
@@ -414,12 +434,16 @@ export default function EbayShoesTrendsPage() {
 
                 {/* Sidebar */}
                 <div style={{ width: 220, flexShrink: 0 }}>
-                    <CategoryPanel
-                        categories={categories}
-                        selected={selectedType}
-                        onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); setBrandFilter("all"); }}
-                        onDelete={handleDelete}
-                    />
+                    {categoriesError ? (
+                        <MarketplaceLoadErrorNotice message="Kategorije trenutno nisu dostupne." onRetry={reloadCategories} />
+                    ) : (
+                        <CategoryPanel
+                            categories={categories}
+                            selected={selectedType}
+                            onSelect={(c) => { setSelectedType(c); setBrowseGender("all"); setSortBy("score"); setBrandFilter("all"); }}
+                            onDelete={handleDelete}
+                        />
+                    )}
                 </div>
 
                 {/* Main */}
@@ -480,7 +504,14 @@ export default function EbayShoesTrendsPage() {
                         </div>
                     )}
 
-                    {!selectedType && categories.length === 0 && (
+                    {itemsError && (
+                        <MarketplaceLoadErrorNotice
+                            message="Proizvodi trenutno nisu dostupni."
+                            onRetry={() => setItemsRetryCounter((c) => c + 1)}
+                        />
+                    )}
+
+                    {!selectedType && categories.length === 0 && !categoriesError && (
                         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--c-9ca3af, var(--theme-color-9ca3af, #9ca3af))" }}>
                             <div style={{ fontSize: 40 }}>🛒</div>
                             <div style={{ fontWeight: 600, marginTop: 12 }}>Još nema podataka</div>
@@ -500,7 +531,7 @@ export default function EbayShoesTrendsPage() {
                                         {displayedItems.map((shoe) => <EbayShoeCard key={shoe.id} shoe={shoe} />)}
                                     </div>
                                 )}
-                                {displayedItems.length === 0 && selectedType && !loadingItems && (
+                                {displayedItems.length === 0 && selectedType && !loadingItems && !itemsError && (
                                     <div style={{ textAlign: "center", padding: 40, background: "var(--c-f9fafb, var(--theme-color-f9fafb, #f9fafb))", borderRadius: 14, color: "var(--c-6b7280, var(--theme-color-6b7280, #6b7280))" }}>
                                         <div style={{ fontSize: 32 }}>💭</div>
                                         {brandFilter !== "all"
@@ -514,6 +545,11 @@ export default function EbayShoesTrendsPage() {
                     })()}
 
                     {/* Load More */}
+                    {hasMore && loadMoreError && (
+                        <div style={{ marginTop: 24 }}>
+                            <MarketplaceLoadErrorNotice message="Dodatni proizvodi nisu učitani." onRetry={handleLoadMore} />
+                        </div>
+                    )}
                     {hasMore && (
                         <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
                             <button
