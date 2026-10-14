@@ -54,6 +54,7 @@ import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import ExecutiveKpiRow from "../components/analytics/ExecutiveKpiRow";
 import MetricMethodologyPanel from "../components/analytics/MetricMethodologyPanel";
 import InfoTip from "../components/ui/InfoTip";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import {
   buildAnalyticsDetailSnapshot,
   saveAnalyticsDetailSnapshot,
@@ -1039,7 +1040,16 @@ export default function AnalyticsDashboard() {
   const showMetaWarning =
     !loading && !hasFatalLoadError && isAnalyticsMetaWarning(dashboardMeta);
   const emptyVariant = useMemo(() => {
-    if (loading || hasFatalLoadError) return null;
+  if (hasFatalLoadError) return null;
+  if (loading) {
+    return (
+      <div className="analytics-dashboard-loading" role="status" aria-live="polite">
+        <div className="mx-auto my-8 max-w-xl">
+          <UltraSpinner size="lg" label="Učitavanje dashboarda" />
+        </div>
+      </div>
+    );
+  }
     if (shouldShowAnalyticsEmptyState(dashboardMeta, dashboardRowCount)) {
       return isAnalyticsMetaInsufficient(dashboardMeta)
         ? ("insufficient_data" as const)

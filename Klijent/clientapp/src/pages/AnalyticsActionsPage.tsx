@@ -15,6 +15,7 @@ import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import AnalyticsDataTable from "../components/analytics/AnalyticsDataTable";
 import RecommendationMeasurementStatisticsReview from "../components/analytics/RecommendationMeasurementStatisticsReview";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import Modal from "../components/Modal";
 import type {
   AnalyticsActionItem,
@@ -1316,7 +1317,9 @@ export default function AnalyticsActionsPage() {
       {writeAccessMessage ? <div className="aaq-error" role="status">{writeAccessMessage}</div> : null}
 
       {loading ? (
-        <div className="aaq-loading">Učitavanje...</div>
+        <div className="aaq-loading" role="status" aria-live="polite">
+          <UltraSpinner size="md" label="Učitavanje podataka" />
+        </div>
       ) : error ? null : items.length === 0 ? (
         <div className="aaq-empty">
           <p>Nema akcija.</p>
