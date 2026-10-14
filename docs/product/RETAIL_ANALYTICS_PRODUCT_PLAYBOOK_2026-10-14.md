@@ -78,7 +78,7 @@ If a required dimension is missing, lower the claim level rather than forcing an
 4. **Decide with human:** accept, defer, reject or investigate. Don't auto-write price, transfer, order or inventory state to customer systems.
 5. **Close outcome:** log action date, who acted, scope, baseline, observation window, execution evidence, then observed result. Label no outcome as `not_measured`. Historical changes without controls are descriptive, not causal lift.
 
-Existing Decision Pulse/Actions implement **parts** of this loop. Run one realistic operator walkthrough before inventing a new board/score.
+Existing Decision Pulse/Actions implement **parts** of this loop. Use the [20-minute operator value card](../pilot/RETAIL_OPERATOR_VALUE_SESSION_2026-10-14.md) for a real, observed run; empty forms remain NOT RUN, not customer proof. Do not invent a new board/score first.
 
 ## 8. Roadmap / capacity management: no more 50-prompt cycles
 

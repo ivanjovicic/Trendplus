@@ -85,3 +85,11 @@ Koristi postojeći runbook i playbook; ne generiši lažni razgovor niti lažne 
 ## Ponovni pregled
 
 Posle RQ666/RQ667 i prve stvarne operator sesije, uporediti da li postojeći ekran omogućava odluku bez dodatnog razvoja. Ako ne, registrovati **najviše jedan** novi P1 prompt sa stvarnim reprodukovanim trenjem i izmerljivim acceptance uslovima, umesto sledeće velike liste AI-audita.
+
+## Poslovni proof pack za prvi rezultat (14.10.2026)
+
+Odluka: prvo validirati **jednog stvarnog korisnika, jedan izvor i tri korisne odluke**, umesto trećeg paralelnog developer zadatka ili novog dashboarda. Izvršiv [formular od 20 minuta](../pilot/RETAIL_OPERATOR_VALUE_SESSION_2026-10-14.md) sadrži kriterijume, evidence zapis i tri delegabilna prompta: OP-PREP, COST-INPUT, PROVIDER-INPUT. Nijedan nije novi RQ niti sme da preglasa RQ666/RQ667.
+
+**Ponuda za proveru:** datirani read-only pregled prometa, dobavljača i sporih zaliha sa jasnim uslovima izvora; ne "AI optimizer" niti ROI. Prvo dokazati samostalnost trgovca i razliku u odnosu na POS/Excel. Ako je problem samo nejasan ekran, registrovati *jedan* fokusiran P1 posle stvarnog posmatranja. Ako nedostaju originalne kalkulacije ili aktuelni provider dokaz, od vlasnika tražiti upravo te ulaze, a ne praviti novi generički audit.
+
+**KPI razvoja držati odvojeno:** izvršeni testovi, izvorno potvrđeni redovi, stvarne korisničke odluke, izmereni poslovni ishodi. Prva dva mogu biti visoka dok poslednja dva nisu dokazani. Dokumentacija ne sme da sabira ove kategorije kao "procent završenosti proizvoda".

@@ -23,7 +23,7 @@ They should treat it as a decision-support workflow with explicit warnings, fres
 
 ## Current Pilot Reality
 
-The current analytics pilot is usable, but it is intentionally conservative.
+This runbook documents a historically tested procedure, not certified current production usability. The shortest actual business-value walkthrough is the [20-minute observed session](RETAIL_OPERATOR_VALUE_SESSION_2026-10-14.md); its empty result must remain NOT RUN.
 
 Known truths from the evidence docs:
 

@@ -21,6 +21,7 @@ Canonical product prioritization: [current business progress and decisions](docs
 5. For a normal code task write **one compact run log** with test counts, exact SHA and limits; update canonical queue and existing parent if routing changes. No new duplicate plan/audit/adendum for the same fact. No rewrite of formulas, automatic inventory backdating or real markdown execution.
 6. When blocked on a provider, original cost document or customer/operator, record the precise external owner/request once; move to an independently READY task instead of repeating zero-READY scans and documentation-only commits. Existing protocol still determines claim/recovery.
 7. P0 safety/financial correctness, cross-scope action identity or release-red CI always overrides this focus rule. A P3 bug can be promoted only with a concrete operator-blocking reproducer and checked ownership.
+8. A repository agent may prepare the [real-operator validation card](docs/pilot/RETAIL_OPERATOR_VALUE_SESSION_2026-10-14.md) but cannot claim the session happened, invent customer feedback, record willingness-to-pay or upgrade measured outcome from an API fixture. Customer interview, original invoices and provider authorization are business-owner inputs, not READY engineering tasks. After current P1, avoid speculative replacement work until an observed operator blocker or distinct decision-safety defect is proven.
 
 ## 1. Mission and non-negotiable product outcome
 
