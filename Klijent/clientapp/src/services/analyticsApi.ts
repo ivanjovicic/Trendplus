@@ -891,7 +891,7 @@ export async function getProductDecisionTimeline(options?: {
   return fetchJson(
     "/api/analytics/cached/products/decision-center/timeline",
     params,
-    "Greska pri ucitavanju Decision Timeline pregleda"
+    "Greška pri učitavanju vremenske linije odluka"
   );
 }
 
@@ -917,17 +917,17 @@ export async function getProductDecisionTimelineExportCsv(options?: {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const payload = (await response.json()) as ProductDecisionTimelineExportResponse;
-    assertAnalyticsMetaSuccess(payload, "Decision Timeline export trenutno nije dostupan.");
-    throw new Error("Decision Timeline export nije vratio CSV dokument.");
+    assertAnalyticsMetaSuccess(payload, "Izvoz vremenske linije odluka trenutno nije dostupan.");
+    throw new Error("Izvoz vremenske linije odluka nije vratio CSV dokument.");
   }
 
   if (!response.ok) {
-    throw new Error(await parseApiError(response, "Decision Timeline export trenutno nije dostupan."));
+    throw new Error(await parseApiError(response, "Izvoz vremenske linije odluka trenutno nije dostupan."));
   }
 
   const csv = await response.text();
   if (/^# success=false/m.test(csv)) {
-    throw new AnalyticsMetaError("Decision Timeline export trenutno nije dostupan.");
+    throw new AnalyticsMetaError("Izvoz vremenske linije odluka trenutno nije dostupan.");
   }
 
   return csv;

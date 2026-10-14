@@ -582,10 +582,10 @@ function buildReportsCard(
     reason: pilotReport && supplierReport
       ? status === "blocked" || status === "warning"
         ? `Pilot i supplier izveštaj postoje, ali kvalitet podataka je ${qualityLabel.toLowerCase()}${hasFallback ? " i korišćen je rezervni izvor" : ""}. ${status === "blocked" ? "Preporuke iz izveštaja ostaju blokirane." : "Proverite ih pre pilot prezentacije."}`
-        : `Pilot report (${pilotReport.reportTitle ?? pilotReport.title ?? "pilot-intake"}) i supplier report (${supplierReport.reportTitle ?? supplierReport.title ?? "supplier-decision"}) su dostupni.`
+        : `Pilot izveštaj (${pilotReport.reportTitle ?? pilotReport.title ?? "pilot-intake"}) i izveštaj dobavljača (${supplierReport.reportTitle ?? supplierReport.title ?? "supplier-decision"}) su dostupni.`
       : pilotReport
-        ? `Pilot report je dostupan, ali supplier report još nije potvrđen.`
-        : `Supplier report je dostupan, ali pilot report još nije potvrđen.`,
+        ? `Pilot izveštaj je dostupan, ali izveštaj dobavljača još nije potvrđen.`
+        : `Izveštaj dobavljača je dostupan, ali pilot izveštaj još nije potvrđen.`,
     actionLabel: "Otvori pilot izveštaj",
     href: "/analytics/reports/pilot-intake",
     meta: qualityStatus
@@ -705,12 +705,12 @@ export default function PilotReadinessPage() {
       { key: "bootstrap", request: getDashboardBootstrap(undefined, undefined, true), assign: (value) => { nextPayload.bootstrap = value as AnalyticsDashboardBootstrap; }, fallback: "Dashboard bootstrap nije dostupan." },
       { key: "refreshStatus", request: getAnalyticsRefreshStatus(), assign: (value) => { nextPayload.refreshStatus = value as AnalyticsRefreshStatus; }, fallback: "Status osvežavanja nije dostupan." },
       { key: "dataQualityHealth", request: getAnalyticsDataQualityHealth(), assign: (value) => { nextPayload.dataQualityHealth = value as AnalyticsDataQualityHealth; }, fallback: "Health kvaliteta podataka nije dostupan." },
-      { key: "intakeReport", request: getPilotDataQualityIntakeReport({}), assign: (value) => { nextPayload.intakeReport = value as PilotDataQualityIntakeReport; }, fallback: "Pilot intake report nije dostupan." },
+      { key: "intakeReport", request: getPilotDataQualityIntakeReport({}), assign: (value) => { nextPayload.intakeReport = value as PilotDataQualityIntakeReport; }, fallback: "Pilot intake izveštaj nije dostupan." },
       { key: "productDecisionCenter", request: getProductDecisionCenter({ top: 100 }), assign: (value) => { nextPayload.productDecisionCenter = value as ProductDecisionCenterResponse; }, fallback: "Odluke o proizvodima nisu dostupne." },
       { key: "actionCounts", request: getAnalyticsActionCounts(), assign: (value) => { nextPayload.actionCounts = value as AnalyticsActionCounts; }, fallback: "Action counts nisu dostupni." },
       { key: "actionOutcomeSummary", request: getAnalyticsActionOutcomeSummary(), assign: (value) => { nextPayload.actionOutcomeSummary = value as AnalyticsActionOutcomeSummaryResponse; }, fallback: "Action outcome summary nije dostupan." },
-      { key: "pilotReport", request: getPilotIntakeDurableReport({}), assign: (value) => { nextPayload.pilotReport = value as PilotIntakeDurableReport; }, fallback: "Pilot report nije dostupan." },
-      { key: "supplierReport", request: getSupplierDecisionDurableReport({}), assign: (value) => { nextPayload.supplierReport = value as SupplierDecisionDurableReport; }, fallback: "Supplier report nije dostupan." },
+      { key: "pilotReport", request: getPilotIntakeDurableReport({}), assign: (value) => { nextPayload.pilotReport = value as PilotIntakeDurableReport; }, fallback: "Pilot izveštaj nije dostupan." },
+      { key: "supplierReport", request: getSupplierDecisionDurableReport({}), assign: (value) => { nextPayload.supplierReport = value as SupplierDecisionDurableReport; }, fallback: "Izveštaj dobavljača nije dostupan." },
     ];
 
     const results = await Promise.allSettled(tasks.map((task) => task.request));
@@ -824,7 +824,7 @@ export default function PilotReadinessPage() {
 
       <section className={`pilot-readiness-overview pilot-readiness-overview-${overallStatus}`}>
         <div className="pilot-readiness-overview-copy">
-          <p className="pilot-readiness-overline">Pilot readiness checklist</p>
+          <p className="pilot-readiness-overline">Lista provere spremnosti za pilot</p>
           <h2>{overallStatus === "ready" ? "Spremno za demo" : overallStatus === "warning" ? "Spremno uz upozorenja" : overallStatus === "blocked" ? "Pilot nije spreman" : "Spremnost nije potvrđena"}</h2>
           <p>
             {summaryMessage} Nepoznato nikad ne znači zeleno.
@@ -911,7 +911,7 @@ export default function PilotReadinessPage() {
         </section>
       ) : null}
 
-      <section className="pilot-readiness-checklist" aria-label="Pilot readiness checklist">
+      <section className="pilot-readiness-checklist" aria-label="Lista provere spremnosti za pilot">
         {cards.map((card) => (
           <article key={card.key} className={`pilot-readiness-card ${statusToneClass(card.status)}`}>
             <div className="pilot-readiness-card-head">

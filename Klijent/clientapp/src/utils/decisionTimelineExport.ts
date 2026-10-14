@@ -1,7 +1,7 @@
 export function assertHonestDecisionTimelineExportCsv(csv: string): string {
   const normalized = csv?.trim() ?? "";
   if (!normalized || /^# success=false/m.test(normalized)) {
-    throw new Error("Decision Timeline export trenutno nije dostupan.");
+    throw new Error("Izvoz vremenske linije odluka trenutno nije dostupan.");
   }
 
   return csv;

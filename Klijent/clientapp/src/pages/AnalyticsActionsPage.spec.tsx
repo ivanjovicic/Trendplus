@@ -299,7 +299,7 @@ describe("AnalyticsActionsPage", () => {
     await screen.findByText("Dopuni kritičan artikal");
 
     expect(getAnalyticsActions).toHaveBeenCalledWith(expect.objectContaining({ sourceType: "inventory", page: 1, pageSize: 50 }));
-    expect(screen.getByRole("link", { name: "Otvori Inventory Analytics" })).toHaveAttribute("href", "/analytics/inventory");
+    expect(screen.getByRole("link", { name: "Otvori analitiku zaliha" })).toHaveAttribute("href", "/analytics/inventory");
   });
 
   it("applies outcome-summary bucket filters to the action list", async () => {

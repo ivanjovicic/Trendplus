@@ -1375,7 +1375,7 @@ export default function ProductDecisionCenterPage() {
         return;
       }
       setTimelineByProductId((current) => ({ ...current, [row.productId]: null }));
-      setTimelineError(err instanceof Error ? err.message : "Decision Timeline nije dostupan.");
+      setTimelineError(err instanceof Error ? err.message : "Vremenska linija odluka nije dostupna.");
     } finally {
       if (timelineRequestSeqRef.current === requestSeq) {
         setTimelineLoadingProductId((current) => (current === row.productId ? null : current));
@@ -1402,7 +1402,7 @@ export default function ProductDecisionCenterPage() {
         csv,
       );
     } catch (err) {
-      setTimelineExportError(err instanceof Error ? err.message : "Decision Timeline export trenutno nije dostupan.");
+      setTimelineExportError(err instanceof Error ? err.message : "Izvoz vremenske linije odluka trenutno nije dostupan.");
     } finally {
       setTimelineExportingProductId((current) => (current === row.productId ? null : current));
     }

@@ -43,7 +43,7 @@ const GENDER_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-    { value: "score",      label: "🔥 Trend Score" },
+    { value: "score",      label: "🔥 Ocena trenda" },
     { value: "rating",     label: "⭐ Rating" },
     { value: "popular",   label: "💬 Reviews" },
     { value: "price_asc",  label: "💰 Cena ↑" },

@@ -943,7 +943,7 @@ export default function AnalyticsActionsPage() {
         </p>
         {filters.sourceType === "inventory" && (
           <p className="aaq-subtitle">
-            <a href="/analytics/inventory" className="action-link">Otvori Inventory Analytics</a>
+            <a href="/analytics/inventory" className="action-link">Otvori analitiku zaliha</a>
           </p>
         )}
       </div>

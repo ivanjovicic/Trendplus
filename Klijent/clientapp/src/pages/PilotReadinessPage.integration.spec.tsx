@@ -384,7 +384,7 @@ describe("PilotReadinessPage", () => {
     expect(getPilotIntakeDurableReport).toHaveBeenCalledWith({});
     expect(getSupplierDecisionDurableReport).toHaveBeenCalledWith({});
 
-    const checklist = screen.getByRole("region", { name: "Pilot readiness checklist" });
+    const checklist = screen.getByRole("region", { name: "Lista provere spremnosti za pilot" });
     expect(within(checklist).getAllByRole("article")).toHaveLength(8);
     expect(within(checklist).getAllByText("Spremno")).toHaveLength(8);
     expect(within(checklist).queryByText("/analytics")).not.toBeInTheDocument();

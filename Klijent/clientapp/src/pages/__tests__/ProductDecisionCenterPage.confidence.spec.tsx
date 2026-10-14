@@ -444,7 +444,7 @@ describe("ProductDecisionCenterPage confidence contract", () => {
   });
 
   it("keeps the timeline visible when CSV export fails and does not show fake zero rates", async () => {
-    getProductDecisionTimelineExportCsvMock.mockRejectedValue(new Error("Decision Timeline export trenutno nije dostupan."));
+    getProductDecisionTimelineExportCsvMock.mockRejectedValue(new Error("Izvoz vremenske linije odluka trenutno nije dostupan."));
 
     render(<ProductDecisionCenterPage />);
 
