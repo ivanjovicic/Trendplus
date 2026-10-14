@@ -3467,7 +3467,7 @@ Current P1 RQ666/RQ667 are the relevant live owners (RQ655–RQ657 DONE). Re-ent
 
 ## RQ672 - Detect a running Access import after page reload or from another session
 
-Status: IN PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend state / operator safety
 Feature family: access-import-ui
@@ -3515,6 +3515,21 @@ A reload or second session shows the active import and can cancel it; frontend, 
 
 None. Server-side atomic start guard is RQ673.
 
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AccessImportPage.tsx, src/services/accessImportApi.ts, new specs; AnalyticsDashboard.tsx, MetricMethodologyPanel.tsx, scripts/known-guardrail-baseline.json (main unblock); docs/qa/ACCESS_IMPORT_AUDIT_2026-10-14.md; this queue
+- Checks run: test:analytics 163 files / 1233 tests; typecheck; build; analytics guardrails; ui-program-gates; bundle budget; queue validators with and without --self-test; git diff --check; PR #161 backend 38629637640, frontend 38629637233, governance 38629637630 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule)
+- Run log: .ai/runs/2026-10-14-RQ672-access-import-active-run-evidence.md
+- Delivery mode: PR #161 merged with --merge after green CI
+- Main commit SHA: d75f6c1b3fdba1ce33a66942bd1acbc7fd1528ae
+- Main verification: git rev-parse origin/main -> d75f6c1b3fdba1ce33a66942bd1acbc7fd1528ae
+- Missed: none known
+- Follow-up: RQ673, RQ674, RQ675, RQ676, RQ677
+- Residual risk: without admin access a new tab still needs the key before it can see the run (RQ675)
 
 ## RQ673 - Make the Access import concurrent-start guard atomic
 
