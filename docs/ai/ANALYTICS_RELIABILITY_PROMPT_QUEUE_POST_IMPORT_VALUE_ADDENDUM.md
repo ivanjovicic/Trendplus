@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ661 READY (P1 HomePage false KPI removal)**. RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept). RQ660 READY (P2 PDC conditional count truth); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **RQ660 READY (P2 PDC conditional count truth)**. RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` (Home without hard-coded business claims; core analytics links). RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept); RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2` (late supplier store-list responses are ignored after a data-scope change); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2877,7 +2877,7 @@ Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavai
 Nearest PDC test files, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. DONE only if a real patch is delivered on verified main with evidence; a no-change classification is not DONE.
 ## RQ661 - Replace hard-coded Home dashboard business claims with an honest retail starting point
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend analytics truth/landing UX + focused tests
 Feature family: home-business-truth
@@ -2907,3 +2907,22 @@ Commit suggestion: `fix(home): remove hardcoded business KPIs and prioritize ret
 - Verify no extra root/Home component renders a misleading hard-coded financial claim; if verified outside owned Home path, register a **separate bounded finding**, do not silently widen this task.
 - Focused Home render specs, App routing/navigation specs needed for `/`, `npm run check:analytics-guardrails` and client build; `node scripts/check-prompt-queues.mjs`. Complete via exact-main code+test evidence, not only a screenshot. No external-provider proof or new import is required.
 - Coordination: RQ659 owns `navConfig.ts`; this task only owns `HomePage.tsx` and new Home tests. Serial queue header/status edits according to protocol.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: Home no longer renders the hard-coded "Aktivne sekcije 32", "Import jobs 5", "Trend signal +12.8%" tiles, the Insight Pulse claims (Google Shopping 18%, "3 SKU", top-10 markdown recommendation), the "trend scraping" headline, `TrendModelList` or the seasonal carousel. It keeps the real backend status (PROVERA/BUDI SE/ONLINE/OFFLINE) and `DashboardCards` quick actions, and adds links to `/analytics`, `/analytics/daily-sales`, `/analytics/inventory`, `/analytics/supplier`, `/analytics/pre-nivelacija-prioriteti`, `/analytics/decision-pulse` plus a historical-vs-current note linking `/analytics/data-quality`. Component files, routes and APIs unchanged.
+- Changed files: `Klijent/clientapp/src/pages/HomePage.tsx`; `pages/HomePage.truth.spec.tsx` (new); `pages/HomePage.carousel.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ661-evidence.md`.
+- Checks run: failing-first Home truth spec 7/7 failed before; Home + App + layout specs 42/42 pass after; analytics guardrails and `npm run build` pass.
+- Checks not run: e2e route smoke (no e2e suite in `Klijent/clientapp`); exact-main Analytics Quality Gates run `38551797215` pending at close.
+- Run log: `.ai/runs/2026-10-14-RQ661-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6` after push.
+- Missed: none in owned scope; root-surface scan found no other hard-coded business figures (`DashboardCards`, `DashboardFooter`, `HeaderStatus`).
+- Follow-up: RQ660 (P2) is the next unclaimed READY prompt.
+- Residual risk: exact-main CI pending at close; hidden experimental components remain reachable via their own routes by design.
+- Post-close routing: RQ661 has no dependents; RQ660 READY, RQ648 READY with PR #147 overlap; RQ657 closed by Codex in parallel (`0c96b156`). No Zero-READY proof applies.
+- Prompt defect / scope repair: existing `HomePage.carousel.spec.tsx` first case (carousel expected on Home) inverted to the new contract, required by acceptance step 3; claim text said "new Home specs" only.
