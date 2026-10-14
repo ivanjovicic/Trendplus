@@ -2856,13 +2856,15 @@ Commit suggestion: `fix(analytics): preserve missing PDC action counts as unavai
 Nearest PDC test files, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. DONE only if a real patch is delivered on verified main with evidence; a no-change classification is not DONE.
 ## RQ661 - Replace hard-coded Home dashboard business claims with an honest retail starting point
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend analytics truth/landing UX + focused tests
 Feature family: home-business-truth
 Parallel-safe: yes; exclusively `Klijent/clientapp/src/pages/HomePage.tsx` and new focused home-page specs; do not touch RQ659-owned `navConfig.ts` or shared nav/router files without explicit path release
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ661-cursor.lock.md`
 Ready after: current-owner 2026-10-14 analytics-first direction; no provider access or sales import required for repository-local repair
+Claim reservation: inspected origin/main `ed2f26882c1cdc6d9e193fcbd72b0481f73509c7`; pushed claim = the `docs(queue): claim RQ661 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ661 branch, worktree, lock or open PR (open PRs: #147 RQ650 branch audit, #156 Codex RQ657). Claim paths: `Klijent/clientapp/src/pages/HomePage.tsx` and new Home specs only.
 Commit suggestion: `fix(home): remove hardcoded business KPIs and prioritize retail analytics`
 
 ### Proven defect, distinct from RQ659
