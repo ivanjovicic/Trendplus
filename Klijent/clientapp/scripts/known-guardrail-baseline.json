@@ -23,7 +23,7 @@
     {
       "file": "src/pages/AnalyticsDashboard.tsx",
       "rule": "page_reduce_kpi",
-      "line": 158,
+      "line": 159,
       "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
     },
     {
@@ -35,13 +35,13 @@
     {
       "file": "src/pages/DataQualityPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 405,
+      "line": 406,
       "reason": "Existing data-quality fallback requires a reviewed unavailable-value exception."
     },
     {
       "file": "src/pages/DataQualityPage.tsx",
       "rule": "refetch_setData_null",
-      "line": 524,
+      "line": 525,
       "reason": "Existing data-quality refetch transition predates the shared reliable-query lifecycle."
     },
     {
@@ -65,7 +65,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 949,
+      "line": 950,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
