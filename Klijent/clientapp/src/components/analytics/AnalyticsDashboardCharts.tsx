@@ -44,12 +44,12 @@ type NamedRevenue = {
 
 type WeekdayChartPoint = {
   dayName: string;
-  totalRevenue: number;
+  totalRevenue: number | null;
 };
 
 type HourChartPoint = {
   label: string;
-  totalRevenue: number;
+  totalRevenue: number | null;
 };
 
 type Props = {
@@ -223,7 +223,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
         <section className="analytics-panel">
           <h3>Prodaja po danima u nedelji</h3>
           <p className="section-note">Koji dan u nedelji pravi najviše prihoda.</p>
-          {weekdayChartData.every((item) => item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
+          {weekdayChartData.every((item) => item.totalRevenue == null || item.totalRevenue === 0) ? <div className="analytics-empty">Nema podataka po danima.</div> : (
             <div className="chart-wrap">
               <AnalyticsChartAccessibility title="Prodaja po danima u nedelji" summary={describeChartProjection(weekdayChartData, "po danima u nedelji", ['prihod'])}>
               <ResponsiveContainer width="100%" height="100%">
@@ -249,7 +249,7 @@ export default function AnalyticsDashboardCharts(props: Props) {
             "hour",
             "Sat prodaje",
             dimensionCoverage,
-            hourChartData.every((item) => item.totalRevenue === 0),
+            hourChartData.every((item) => item.totalRevenue == null || item.totalRevenue === 0),
             "Nema podataka po satima.",
             <div className="chart-wrap">
               <AnalyticsChartAccessibility title="Prodaja po satima" summary={describeChartProjection(hourChartData, "po satima", ['prihod'])}>

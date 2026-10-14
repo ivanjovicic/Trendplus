@@ -90,6 +90,73 @@ describe("AnalyticsDashboard operational fallback", () => {
     expect(screen.queryByText("Nema kritičnih count signala u ovom preseku.")).not.toBeInTheDocument();
   });
 
+  it("does not turn nullable executive quality counts into a trusted zero", async () => {
+    vi.mocked(analyticsApi.getDashboardBootstrap).mockResolvedValue({
+      summary: {
+        totalRevenue: 12345,
+        totalTransactions: 12,
+        totalUnits: 8,
+      },
+      inventory: {
+        totalSkuCount: 100,
+        totalOnHand: 40,
+        outOfStockCount: 5,
+        lowStockCount: 10,
+        usedOperationalFallback: false,
+      },
+      dailySales: [],
+      categoryData: [],
+      genderData: [],
+      supplierData: [],
+      supplierOptions: [],
+      weekdayData: [],
+      hourData: [],
+      paymentData: [],
+      quickInsights: null,
+      transactionStats: null,
+      advanced: null,
+      topAdvanced: null,
+      validationCompleteness: null,
+      validationFreshness: null,
+      validationLostSales: null,
+      executive: {
+        totalMarginContributionRsd: null,
+        inventoryDangerValueRsd: null,
+        topSuppliers: [],
+        topMarginProducts: [],
+        topMarginCategories: [],
+        negativeSignals: [],
+        dataQualitySummary: {
+          missingSupplierCount: null,
+          missingCostCount: null,
+          insufficientSignalCount: null,
+          ignoredRowsCount: null,
+          zeroRevenueRowsCount: null,
+          freshnessStatus: "unknown",
+        },
+      },
+      decisionActions: [],
+      errors: [],
+      meta: {
+        success: true,
+        dataQualityStatus: "good",
+      },
+    } as never);
+
+    render(
+      <MemoryRouter>
+        <AnalyticsDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Count signali kvaliteta podataka nisu u potpunosti dostupni; nije bezbedno prikazati ih kao nulu.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Nema kritičnih count signala u ovom preseku.")).not.toBeInTheDocument();
+  });
+
   it("renders dashboard action trust payloads without collapsing them into one legacy fallback", async () => {
     vi.mocked(analyticsApi.getDashboardBootstrap).mockResolvedValue({
       summary: {
