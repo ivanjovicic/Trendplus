@@ -934,25 +934,16 @@ using NpgsqlTypes;
         return result;
     }
 
-    private ProdajaStavka? ResolveAccessSaleLineBySource(
-        Dictionary<int, ProdajaStavka> existingByTargetId,
-        Dictionary<string, ProdajaStavka> existingBySource,
+    private static ProdajaStavka? ResolveAccessSaleLineBySource(
+        IReadOnlyDictionary<string, ProdajaStavka> existingBySource,
         string sourceTableKey,
         long sourceRowId)
     {
+        // The Access source ID and the PostgreSQL target ID are unrelated.
+        // A matching target ID (including a POS line ID) must not reject a new
+        // Access source row. Only a durable source-line mapping permits updates.
         var sourceKey = BuildAccessSaleLineSourceKey(sourceTableKey, sourceRowId);
-        if (existingBySource.TryGetValue(sourceKey, out var mappedLine))
-            return mappedLine;
-
-        if (sourceRowId <= int.MaxValue && existingByTargetId.TryGetValue((int)sourceRowId, out var conflictingLine))
-        {
-            throw new InvalidOperationException(
-                "duplicate_sale_line_identity: Access sale-line source identity " +
-                $"'{sourceKey}' cannot use target id {conflictingLine.Id.ToString(CultureInfo.InvariantCulture)}. " +
-                "The import was stopped before an existing POS or legacy line could be reassigned.");
-        }
-
-        return null;
+        return existingBySource.TryGetValue(sourceKey, out var mappedLine) ? mappedLine : null;
     }
 
     private void ApplyAccessSaleLineSourceLineage(
@@ -5252,7 +5243,6 @@ using NpgsqlTypes;
     private async Task ImportProdajaStavkeAsync(IAccessDataReaderSession session, string table, string? parentTable, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existingLines = _trendDb.ProdajaStavke.AsNoTracking().ToList();
-        var existing = ToFirstDictionary(existingLines, x => x.Id);
         var existingBySource = BuildAccessSaleLinesBySource(existingLines);
         var attributionByArticleId = await _trendDb.Artikli
             .AsNoTracking()
@@ -5370,7 +5360,7 @@ using NpgsqlTypes;
 
             const string sourceTableKey = "prodaja_stavke";
             var sourceId = id.Value;
-            var e = ResolveAccessSaleLineBySource(existing, existingBySource, sourceTableKey, sourceId);
+            var e = ResolveAccessSaleLineBySource(existingBySource, sourceTableKey, sourceId);
             if (e is not null)
             {
                 if (!overwriteExisting) continue;
@@ -5593,7 +5583,6 @@ using NpgsqlTypes;
             .ToDictionary(x => x.Id, x => x);
 
         var existingLineRows = _trendDb.ProdajaStavke.AsNoTracking().ToList();
-        var existingLinesByTargetId = ToFirstDictionary(existingLineRows, x => x.Id);
         var existingLinesBySource = BuildAccessSaleLinesBySource(existingLineRows);
         var pendingHeadersByBusinessKey = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
         var pendingHeaderIdsByBusinessKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -5698,7 +5687,6 @@ using NpgsqlTypes;
 
             const string lineSourceTableKey = "prodaja_stavke";
             var line = ResolveAccessSaleLineBySource(
-                existingLinesByTargetId,
                 existingLinesBySource,
                 lineSourceTableKey,
                 sourceLineId.Value);
@@ -7053,7 +7041,6 @@ using NpgsqlTypes;
             .ToList();
 
         var existingLineRows = await _trendDb.ProdajaStavke.AsNoTracking().ToListAsync(ct);
-        var existingLinesByTargetId = ToFirstDictionary(existingLineRows, x => x.Id);
         var existingLinesBySource = BuildAccessSaleLinesBySource(existingLineRows);
 
         var insertedProdaja = 0;
@@ -7146,7 +7133,6 @@ using NpgsqlTypes;
 
                 const string lineSourceTableKey = "dnevnik_promena";
                 var stavka = ResolveAccessSaleLineBySource(
-                    existingLinesByTargetId,
                     existingLinesBySource,
                     lineSourceTableKey,
                     d.Id);
