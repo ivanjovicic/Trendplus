@@ -4,7 +4,7 @@ Date: 2026-10-13
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-13: RQ646 is DONE on PR #150 squash merge `4dde4c9e878a8efb88963103af1a8236876d1645`; exact-head backend run `38467098912` passed 2,110 / skipped 43 / failed 0, with RQ453 and all three named ShoeType PostgreSQL contracts passing. RQ647 is the current primary P2 READY prompt; RQ648, RQ649 and RQ654 remain independent READY lanes. Run evidence: `.ai/runs/2026-10-13-RQ646-evidence.md`.
-Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence) and RQ654 (period preset local-midnight boundary) are independent READY lanes. RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
+Current READY prompt: RQ647 READY (primary P2; reproducible non-gating performance baselines); RQ648 (branch content-equivalence; overlaps open PR #147) and RQ655-RQ657 (frontend error/fake-zero/request-race audits) are independent READY lanes. RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day). RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ646 and RQ651-RQ653 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. RQ645 is DONE on main at `6ca11bf95b6c7eb0f948bce475a688d633c66dae` (PR #145; implementation head `2f98416bdf20d1f9b6fd5508d37c07bfc7e69d42`; exact-head backend run `38421051691` passed 2,060 tests with 43 classified skips and 0 failures; RQ453 passed). RQ646 is DONE on main at `4dde4c9e878a8efb88963103af1a8236876d1645` (PR #150; implementation head `66cdc06ee9e64c50754cc1bc62403fa5ffa830f4`; exact-head backend run `38467098912` passed 2,110 tests with 43 classified skips and 0 failures; RQ453 passed). The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2458,13 +2458,12 @@ None. Frontend-only and repository-local.
 
 ## RQ654 - Align analytics period presets with the business calendar day around local midnight
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: frontend period provenance / timezone boundary
 Feature family: analytics-period-preset-day-boundary
 Parallel-safe: yes (only `utils/analyticsPeriodPresets.ts` and its spec; disjoint from RQ651-RQ653)
 Owner: Cursor
-Local lock: `.ai/task-locks/RQ654-cursor.lock.md`
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `72494d35672dd6d3b644dae36748e0d39e3decf9`. No RQ654 branch, lock, worktree or open PR exists. The primary pointer RQ647 is Codex-owned IN_PROGRESS; RQ648 is not taken because open PR #147 overlaps its branch-reconciliation scope and gate.
 Commit suggestion: `fix(analytics): resolve period presets on the Europe/Belgrade business day`
@@ -2502,6 +2501,26 @@ Preset end date equals the business "today" at every hour; decision recorded eit
 ### Dependencies
 
 None. Frontend-only; P3 because the affected window is at most two hours per day.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Decision: the backend business day is Europe/Belgrade (`BelgradeCalendarDatePolicy` maps requested `DateOnly` bounds to Belgrade midnight; RQ485 already uses Belgrade-local Product Decision presets), so UTC preset days were a defect, not a contract.
+- Completion: `getAnalyticsPeriodPresetRange` takes "today" from the Europe/Belgrade calendar via `Intl.DateTimeFormat` and counts preset days back with UTC-noon arithmetic; an unknown select value keeps the previous non-throwing single-day range.
+- Changed files: `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts`; `Klijent/clientapp/src/utils/__tests__/analyticsPeriodPresets.spec.ts`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ654-evidence.md`.
+- Checks run: failing-first boundary cases (00:30/23:30 CEST, winter CET, both DST change days, 90/180/365-day lengths) 5 failed before the fix; preset spec 12/12 after; dependent page specs 8 files / 129 tests pass; analytics guardrails (baseline-only) and `npm run build` pass; `git diff --check` pass.
+- Checks not run: local full frontend suite on the final implementation; exact-main Analytics Quality Gates run `38541146808` (frontend tests, guardrails and build) passed instead.
+- Run log: `.ai/runs/2026-10-14-RQ654-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `239dfcbbd181c39e5defeac4e4451cceec8c7898`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `239dfcbbd181c39e5defeac4e4451cceec8c7898` after push.
+- Missed: none known.
+- Follow-up: RQ655 is the next unclaimed P2 READY lane; RQ656/RQ657 remain READY.
+- Residual risk: pages that build default dates outside the shared preset helper are not covered by this fix.
+- Post-close routing: RQ654 has no dependents; RQ655-RQ657 remain READY and unclaimed, RQ648 remains READY but overlaps open PR #147, RQ647 remains Codex-owned IN_PROGRESS. No Zero-READY proof applies.
+- Prompt defect / scope repair: none; the fix stayed inside the two scoped files.
 
 ## RQ655 - Surface swallowed loader errors instead of silent fallback
 
