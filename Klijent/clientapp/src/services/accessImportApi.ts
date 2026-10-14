@@ -4,6 +4,10 @@ import { apiUrl } from "../utils/apiUrl";
 
 const BATCHES_DEBUG_PREFIX = "[access-import][batches]";
 let batchesInFlightPromise: Promise<AccessImportBatchDto[]> | null = null;
+// Only share an in-flight request between callers with the same credential; a keyless mount request must not
+// swallow the result of a request made right after the operator entered the admin key.
+let batchesInFlightAdminKey: string | undefined;
+let batchesInFlightRequestId = 0;
 let batchesRequestSeq = 0;
 
 export interface AccessImportTablePreview {
@@ -121,6 +125,36 @@ export interface AccessImportBatchDto {
     dataOrigin: string;
 }
 
+const ACCESS_IMPORT_ACTIVE_STATUSES = new Set(["running", "pending"]);
+/** Heartbeat age after which an active batch is shown as possibly interrupted; matches the server's minimum stale window. */
+export const ACCESS_IMPORT_STALE_HEARTBEAT_MS = 15 * 60 * 1000;
+
+export interface ActiveAccessImportBatch {
+    batch: AccessImportBatchDto;
+    stale: boolean;
+}
+
+/**
+ * Finds the batch that is currently queued or running on the server, so any session or a page reload
+ * can attach to it instead of relying on in-memory state from the tab that started it.
+ */
+export function findActiveAccessImportBatch(
+    rows: readonly AccessImportBatchDto[],
+    nowMs: number = Date.now(),
+): ActiveAccessImportBatch | null {
+    const active = rows
+        .filter((row) => ACCESS_IMPORT_ACTIVE_STATUSES.has((row.status ?? "").toLowerCase()) && !row.completedAtUtc)
+        .sort((a, b) => Date.parse(b.startedAtUtc || b.queuedAtUtc) - Date.parse(a.startedAtUtc || a.queuedAtUtc));
+    const batch = active.find((row) => row.status.toLowerCase() === "running") ?? active[0];
+    if (!batch) return null;
+
+    const lastSignal = Date.parse(batch.lastHeartbeatUtc || batch.startedAtUtc || batch.queuedAtUtc);
+    const stale = batch.status.toLowerCase() === "running"
+        && Number.isFinite(lastSignal)
+        && nowMs - lastSignal > ACCESS_IMPORT_STALE_HEARTBEAT_MS;
+    return { batch, stale };
+}
+
 export interface AccessImportLogDto {
     id: number;
     batchId: number;
@@ -213,7 +247,7 @@ export async function getAccessImportBatches(
     reason = "unspecified",
     adminKey?: string,
 ): Promise<AccessImportBatchDto[]> {
-    if (batchesInFlightPromise) {
+    if (batchesInFlightPromise && batchesInFlightAdminKey === adminKey) {
         console.debug(`${BATCHES_DEBUG_PREFIX} request deduped`, { reason, take });
         return batchesInFlightPromise;
     }
@@ -258,11 +292,15 @@ export async function getAccessImportBatches(
             });
             throw error;
         } finally {
-            batchesInFlightPromise = null;
+            if (batchesInFlightRequestId === requestId) {
+                batchesInFlightPromise = null;
+            }
         }
     })();
 
     batchesInFlightPromise = requestPromise;
+    batchesInFlightAdminKey = adminKey;
+    batchesInFlightRequestId = requestId;
     return requestPromise;
 }
 

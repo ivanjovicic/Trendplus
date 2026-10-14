@@ -1040,16 +1040,7 @@ export default function AnalyticsDashboard() {
   const showMetaWarning =
     !loading && !hasFatalLoadError && isAnalyticsMetaWarning(dashboardMeta);
   const emptyVariant = useMemo(() => {
-  if (hasFatalLoadError) return null;
-  if (loading) {
-    return (
-      <div className="analytics-dashboard-loading" role="status" aria-live="polite">
-        <div className="mx-auto my-8 max-w-xl">
-          <UltraSpinner size="lg" label="Učitavanje dashboarda" />
-        </div>
-      </div>
-    );
-  }
+    if (loading || hasFatalLoadError) return null;
     if (shouldShowAnalyticsEmptyState(dashboardMeta, dashboardRowCount)) {
       return isAnalyticsMetaInsufficient(dashboardMeta)
         ? ("insufficient_data" as const)

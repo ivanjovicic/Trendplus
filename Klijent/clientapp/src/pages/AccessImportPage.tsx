@@ -10,6 +10,7 @@ import {
     runAccessImport,
     previewCleanupNonAccess,
     executeCleanupNonAccess,
+    findActiveAccessImportBatch,
     type AccessImportBatchDto,
     type AccessImportCoverageMetric,
     type AccessImportPreviewResponse,
@@ -130,6 +131,7 @@ export default function AccessImportPage() {
     const batchPollInFlightRef = useRef(false);
     const lastPollWarningAtRef = useRef(0);
     const adminKeyRef = useRef<string | null>(null);
+    const [activeRunCheck, setActiveRunCheck] = useState<"pending" | "needsKey" | "done">("pending");
 
     // --- data loading ---
 
@@ -138,6 +140,7 @@ export default function AccessImportPage() {
         try {
             const rows = await getAccessImportBatches(50, reason, key);
             setBatches(rows);
+            setActiveRunCheck("done");
             if (key) {
                 try {
                     setRuntimeStatus(await getAccessImportRuntimeStatus(key));
@@ -148,6 +151,11 @@ export default function AccessImportPage() {
             return rows;
         } catch (error) {
             if (isUnauthorizedError(error)) {
+                if (reason === "mount") {
+                    // A fresh tab has no admin key yet; ask for it instead of showing an error.
+                    setActiveRunCheck("needsKey");
+                    return [] as AccessImportBatchDto[];
+                }
                 setError("Pregled import istorije zahteva važeći admin key.");
                 return [] as AccessImportBatchDto[];
             }
@@ -230,6 +238,28 @@ export default function AccessImportPage() {
         );
     };
 
+    // Detect an import that is already queued or running on the server (page reload, another session).
+    useEffect(() => {
+        void refreshBatches("mount");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const activeServerBatch = useMemo(() => findActiveAccessImportBatch(batches), [batches]);
+
+    useEffect(() => {
+        if (!activeServerBatch || runningBatchId !== null || loadingImport) return;
+        setRunningBatchId(activeServerBatch.batch.id);
+        setRunResult(hydrateRunResultFromBatch(activeServerBatch.batch, includeAnalytics));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeServerBatch]);
+
+    const trackedBatch = runningBatchId !== null
+        ? batches.find((row) => row.id === runningBatchId) ?? null
+        : null;
+    const trackedBatchStale = activeServerBatch !== null
+        && activeServerBatch.batch.id === runningBatchId
+        && activeServerBatch.stale;
+
     // Keep "root file" and "manual file" mutually exclusive (reduces confusion).
     useEffect(() => {
         if (!useRootFile) return;
@@ -248,10 +278,12 @@ export default function AccessImportPage() {
     // elapsed timer while importing
     useEffect(() => {
         if (!importBusy) { setImportElapsed(0); return; }
-        const t0 = Date.now();
+        // Count from the server start time so a reload or second session shows the real duration.
+        const serverStart = runResult?.startedAtUtc ? Date.parse(runResult.startedAtUtc) : Number.NaN;
+        const t0 = Number.isFinite(serverStart) && serverStart <= Date.now() ? serverStart : Date.now();
         const id = setInterval(() => setImportElapsed(Math.floor((Date.now() - t0) / 1000)), 500);
         return () => clearInterval(id);
-    }, [importBusy]);
+    }, [importBusy, runResult?.startedAtUtc]);
 
     useEffect(() => {
         if (runningBatchId === null) return;
@@ -539,6 +571,23 @@ export default function AccessImportPage() {
             {/* ---- Global error ---- */}
             {error && <div className="accimport-error">{error}</div>}
 
+            {activeRunCheck === "needsKey" && !importBusy && (
+                <div className="accimport-error" role="status">
+                    Nije provereno da li je import već pokrenut u drugoj sesiji (potreban je admin key).{" "}
+                    <button
+                        type="button"
+                        className="accimport-btn accimport-btn-secondary"
+                        onClick={() => {
+                            const key = promptAdminKey("Provera aktivnog importa");
+                            if (!key) return;
+                            void refreshBatches("active-run-check", key);
+                        }}
+                    >
+                        Proveri status importa
+                    </button>
+                </div>
+            )}
+
             {runtimeBlocksImport && (
                 <div className="accimport-error">
                     {runtimeStatus?.detail ??
@@ -554,7 +603,11 @@ export default function AccessImportPage() {
                         <div className="accimport-progress-bar-fill" style={{ width: "100%", animation: "pulse 1.5s ease-in-out infinite" }} />
                     </div>
                     <div className="accimport-progress-meta">
-                        <span>Status: {runResult?.status ?? "running"}</span>
+                        <span>Status: {trackedBatch?.status ?? runResult?.status ?? "running"}</span>
+                        {runningBatchId !== null && <span>Batch #{runningBatchId}</span>}
+                        {trackedBatch?.currentStep && <span>Korak: {trackedBatch.currentStep}</span>}
+                        {trackedBatch?.currentTable && <span>Tabela: {trackedBatch.currentTable}</span>}
+                        {typeof trackedBatch?.progressPercent === "number" && <span>Napredak: {trackedBatch.progressPercent.toLocaleString("sr-RS", { maximumFractionDigits: 0 })}%</span>}
                         <span>Proteklo: {importElapsed}s</span>
                         <button
                             type="button"
@@ -562,9 +615,14 @@ export default function AccessImportPage() {
                             onClick={() => void handleCancelImport()}
                             disabled={runningBatchId === null || cancellingImport}
                         >
-                            {cancellingImport ? "Saljem cancel..." : "Cancel import"}
+                            {cancellingImport ? "Šaljem otkazivanje..." : "Otkaži import"}
                         </button>
                     </div>
+                    {trackedBatchStale && (
+                        <div className="accimport-error" role="status">
+                            Import duže od 15 minuta ne javlja napredak. Moguće je da je server restartovan; server će ovakav batch označiti kao prekinut pri sledećem oporavku.
+                        </div>
+                    )}
                 </div>
             )}
 

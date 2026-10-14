@@ -3464,3 +3464,283 @@ Lint is enforced in CI; error count is zero or ratcheted below 120 and cannot gr
 ### Dependencies
 
 Current P1 RQ666/RQ667 are the relevant live owners (RQ655–RQ657 DONE). Re-enter only after P1 closeout and a narrow lint strategy is owner-approved, or after a directly reproduced correctness/safety defect; check all same-file locks at claim.
+
+## RQ672 - Detect a running Access import after page reload or from another session
+
+Status: IN PROGRESS
+Priority: P1
+Type: frontend state / operator safety
+Feature family: access-import-ui
+Parallel-safe: yes (frontend-only: AccessImportPage, accessImportApi and specs)
+Owner: grok
+Ready after: audit on main `292b6957`
+Commit suggestion: `fix(access-import): attach to the server-side active run on load`
+
+### Problem
+
+After a reload, or in a second browser session, the Access import screen showed an idle state while an import was running, so the operator could not see progress or cancel it, and could try to start another one. The server already reuses the active batch (`PreventConcurrentRuns`), so the defect was in the client.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AccessImportPage.tsx:115` `runningBatchId` is only set by `handleImport` (`:338`) in the tab that started the run; no code derives it from server batches.
+- No mount-time load: `refreshBatches` is called only after actions or manual refresh (`:335,363,386,422,431,1150`).
+- `/api/access-import/batches` is admin-only (`Api/Endpoints/AccessImportEndpoints.cs:65-80`) and the admin key lives only in `adminKeyRef` memory (`Klijent/clientapp/src/pages/AccessImportPage.tsx:132,182-184`), so a new tab has no way to read state.
+- `getAccessImportBatches` shared one in-flight request regardless of the admin key, and an older finishing request cleared a newer in-flight slot (`Klijent/clientapp/src/services/accessImportApi.ts:6,246-295`).
+
+### Scope
+
+Frontend only. No API, schema or worker change.
+
+### Read first
+
+`Api/Services/AccessImportService.cs` `GetActiveRunningBatchAsync`, `BuildExistingRunningBatchResponseAsync`.
+
+### Do
+
+1. Load batches on mount; on 401/403 show a `Proveri status importa` prompt instead of an error.
+2. Add `findActiveAccessImportBatch` and attach to the running/pending batch (status, step, table, percent, server-based elapsed time, cancel).
+3. Warn when the running batch has no heartbeat for 15 minutes (server minimum stale window).
+4. Share in-flight batch requests only for the same admin key and keep newer requests in the slot.
+5. Translate the cancel button.
+
+### Tests
+
+`accessImportActiveBatch.spec.ts` (helper and request sharing), `AccessImportPage.spec.tsx` (attach after reload, admin-key prompt); `npm run test:analytics`, typecheck, build.
+
+### Acceptance
+
+A reload or second session shows the active import and can cancel it; frontend, backend and governance CI green; merged via PR.
+
+### Dependencies
+
+None. Server-side atomic start guard is RQ673.
+
+
+## RQ673 - Make the Access import concurrent-start guard atomic
+
+Status: READY
+Priority: P2
+Type: backend concurrency / data integrity
+Feature family: access-import-start-guard
+Parallel-safe: no (AccessImportService start path and DataImportBatches schema)
+Owner: unassigned
+Ready after: RQ672
+Commit suggestion: `fix(access-import): serialize batch creation with a database guard`
+
+### Problem
+
+Starting an import checks for an active batch and then inserts a new `pending` batch in separate statements. Two simultaneous starts (double click across two sessions, or two API instances) can both pass the check and queue two batches. The worker runs them one after another, so the second one silently re-imports the same data.
+
+### Evidence
+
+- `Api/Services/AccessImportService.cs:2291-2299` and `:2477-2485`: `GetActiveRunningBatchAsync` read, then `CreateImportBatchAsync` insert, with no lock or transaction.
+- `Database/Migrations/012_AddAccessImportSupport.sql:16-17`: only non-unique indexes on `DataImportBatches`; no partial unique index on active statuses.
+- Worker claim is serialized (`Api/Services/Access/AccessImportJobQueue.cs:298-355` `FOR UPDATE SKIP LOCKED`), which limits damage but does not prevent duplicate queued batches.
+
+### Scope
+
+Either a transaction-scoped `pg_advisory_xact_lock` around check+insert, or a partial unique index on active batches (schema change: needs owner approval and a Neon migration). Keep the existing reuse response for the loser.
+
+### Read first
+
+`docs/ops` Neon migration records; `Api.Tests/AccessImportEnqueueTests.cs`, `AccessImportHeartbeatPostgresIntegrationTests.cs`.
+
+### Do
+
+1. Write a failing PostgreSQL test that starts two imports concurrently and expects one batch.
+2. Add the guard; the second caller gets the existing-batch response.
+3. Keep stale batches (past the stale window) from blocking a new start.
+
+### Tests
+
+New `[PostgresRequiredFact]` concurrency test; full backend suite.
+
+### Acceptance
+
+Concurrent starts create exactly one batch; CI green with PostgreSQL.
+
+### Dependencies
+
+Owner approval if the index option (schema change) is chosen.
+
+
+## RQ674 - Do not return an empty Access import history when the batch query times out
+
+Status: READY
+Priority: P3
+Type: backend error surfacing
+Feature family: access-import-pipeline
+Parallel-safe: yes (AccessImportEndpoints batch list/detail fallbacks)
+Owner: unassigned
+Ready after: RQ672
+Commit suggestion: `fix(access-import): report batch history timeouts instead of an empty list`
+
+### Problem
+
+When the batch query exceeds 8 seconds and no cached copy exists, the endpoint returns `200 []`. The screen then shows "no imports" and can lose track of a running batch, which is wrong while the database is merely slow.
+
+### Evidence
+
+- `Api/Endpoints/AccessImportEndpoints.cs:1089`, `:1104`, `:1119`, `:1134` return `Results.Ok(Array.Empty<AccessImportBatchDto>())` on timeout/transient fallbacks.
+
+### Scope
+
+Return `503` with `Retry-After` (or a flagged payload) when no cached rows exist; the client keeps previous rows and shows a transient warning.
+
+### Read first
+
+`Klijent/clientapp/src/pages/AccessImportPage.tsx` `refreshBatches`.
+
+### Do
+
+1. Change the no-cache fallback responses.
+2. Make the client keep the last good rows and show a retry hint.
+
+### Tests
+
+Endpoint test with a slow fake service; frontend test for keeping rows.
+
+### Acceptance
+
+A slow database never renders as an empty history.
+
+### Dependencies
+
+None.
+
+
+## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
+
+Status: WAITING
+Priority: P2
+Type: security / UX decision
+Feature family: access-import-ui
+Parallel-safe: yes
+Owner: Ivan (decision)
+Ready after: owner decision
+Commit suggestion: `feat(access-import): persistent admin session for import operations`
+
+### Problem
+
+The admin key is asked via `window.prompt` (plain text) and kept only in page memory, so every reload or new tab must re-enter it before it can even see whether an import is running. RQ672 makes this explicit but does not change the trust model.
+
+### Evidence
+
+- `Klijent/clientapp/src/pages/AccessImportPage.tsx:171-184` (`window.prompt`, `adminKeyRef`).
+- `Api/Endpoints/AdminAccessControl.cs` `GetDecision`: authenticated users in role `Admin` pass without the key; otherwise `X-Admin-Key` is required.
+
+### Scope
+
+Options: (a) keep as is; (b) keep the key in `sessionStorage` for the tab session; (c) require login with the `Admin` role for this screen; (d) expose a minimal, non-sensitive "import active" status without the key.
+
+### Read first
+
+`docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` admin key handling on Configuration.
+
+### Do
+
+Implement the chosen option with tests; replace `window.prompt` with an accessible password field.
+
+### Tests
+
+Frontend tests for the chosen flow; endpoint auth tests if (d).
+
+### Acceptance
+
+Owner-approved flow; no key in logs or URLs.
+
+### Dependencies
+
+Owner decision.
+
+
+## RQ676 - Serbian text and diacritics on the Access import screen and its server messages
+
+Status: READY
+Priority: P3
+Type: frontend/backend i18n
+Feature family: access-import-ui
+Parallel-safe: yes (display strings only)
+Owner: unassigned
+Ready after: RQ672
+Commit suggestion: `fix(access-import): Serbian messages with diacritics`
+
+### Problem
+
+The screen mixes Serbian without diacritics with English server messages that are shown to operators verbatim.
+
+### Evidence
+
+- Missing diacritics: `Klijent/clientapp/src/pages/AccessImportPage.tsx:319` `Greska pri analizi`, `:348` `Greska pri importu.`, `:1153` `Osvezi`, `:52` `Prosirenje`.
+- English warnings shown in the UI: `Api/Endpoints/AccessImportEndpoints.cs:25-31` (schema analysis), `Api/Services/AccessImportService.cs:2395` (`... is already running since ...`), `:2405`.
+
+### Scope
+
+Display strings only; keep log messages in English; do not change status codes or API field names.
+
+### Read first
+
+`docs/ai/FRONTEND_UX_STANDARDS.md`.
+
+### Do
+
+1. Fix diacritics in the page.
+2. Translate user-facing warnings returned by the API.
+
+### Tests
+
+Update affected backend/frontend assertions.
+
+### Acceptance
+
+No English or diacritic-less operator text on the screen.
+
+### Dependencies
+
+None.
+
+
+## RQ677 - Verify and surface the maximum Access upload size
+
+Status: WAITING
+Priority: P3
+Type: backend limits / error surfacing
+Feature family: access-import-pipeline
+Parallel-safe: yes
+Owner: unassigned
+Ready after: owner confirms the largest expected .accdb size
+Commit suggestion: `fix(access-import): explicit upload limit and clear 413 message`
+
+### Problem
+
+No explicit request-size limit is configured for `/api/access-import/run` and `/preview`, so the Kestrel default (about 30 MB) applies. A larger `.accdb` fails with a generic error before any batch exists.
+
+### Evidence
+
+- No `MaxRequestBodySize`, `RequestSizeLimit` or `MultipartBodyLengthLimit` under `Api/` (git grep, 2026-10-14).
+- `Klijent/clientapp/src/services/accessImportApi.ts` `runAccessImport` posts the whole file in one request and surfaces only `parseError(res)`.
+
+### Scope
+
+Set an explicit limit per endpoint from options, return a clear 413 message, and show the limit next to the file picker.
+
+### Read first
+
+`Api/Config/AccessImportOptions.cs`, hosting proxy limits (Render/Fly).
+
+### Do
+
+1. Confirm the real largest file size with the owner.
+2. Add the limit and message; test with a synthetic oversized request (no real import).
+
+### Tests
+
+Endpoint test for 413; frontend message test.
+
+### Acceptance
+
+Oversized uploads fail fast with a clear Serbian message.
+
+### Dependencies
+
+Owner input on maximum size.
