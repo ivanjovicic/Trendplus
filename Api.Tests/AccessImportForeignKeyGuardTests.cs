@@ -104,6 +104,48 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal(1, await db.ProdajaStavke.AsNoTracking().CountAsync());
     }
 
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_ConvertsSaleHeaderPrimaryKeyCollisionToStableImportFailure()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "POS-7",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "ACCESS-7",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 2,
+            DataOrigin = "access",
+            SourceTableKey = "prodaja_zaglavlje",
+            SourceRowId = 7
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+
+        Assert.StartsWith("duplicate_sale_header_identity:", ex.Message, StringComparison.Ordinal);
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        var persisted = await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync();
+        Assert.Equal("POS-7", persisted.BrojRacuna);
+        Assert.Equal("existing", persisted.DataOrigin);
+    }
+
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
     {
         if (!_fixture.IsAvailable)
