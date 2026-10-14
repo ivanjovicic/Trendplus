@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ661 READY (P1 HomePage false KPI removal)**. RQ659 is **IN_PROGRESS, owned by Cursor** on its separate navigation paths; do not claim, transfer or touch its nav/sidebar files. RQ660 READY (P2 PDC conditional count truth); RQ657 **IN_PROGRESS, Codex-owned** (core analytics race only; no concurrent claim); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
+Current READY prompt: **RQ661 READY (P1 HomePage false KPI removal)**. RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0` (analytics-first navigation; experimental/scraper/test links hidden, routes kept). RQ660 READY (P2 PDC conditional count truth); RQ657 **IN_PROGRESS, Codex-owned** (core analytics race only; no concurrent claim); RQ648 READY (P2 branch equivalence, verify PR #147 overlap). RQ655/RQ656 and RQ585 DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2786,13 +2786,12 @@ Owner decision: `docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md` freezes eBay,
 
 ## RQ659 - Analytics-first main navigation; hide experimental/test links
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: bounded frontend UX/tests
 Feature family: analytics-first-navigation
 Parallel-safe: yes; own `Klijent/clientapp/src/layout/navConfig.ts` and nearest nav/sidebar specs only
 Owner: Cursor
-Local lock: `.ai/task-locks/RQ659-cursor.lock.md`
 Ready after: owner product focus decision 2026-10-14; no provider or other task dependency
 Claim reservation: inspected origin/main `72357d084b71c1cd77276e29af6cd061f8299855`; pushed claim = the `docs(queue): claim RQ659 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ659 branch, worktree, lock or open PR (only open PR #147, RQ650 branch audit). Claim paths: `Klijent/clientapp/src/layout/navConfig.ts`, `layout/__tests__/navConfig.spec.ts`, `layout/components/__tests__/Sidebar.spec.tsx` and directly affected nav/route specs.
 Commit suggestion: `fix(nav): prioritize retail analytics and hide test modules`
@@ -2810,6 +2809,25 @@ Commit suggestion: `fix(nav): prioritize retail analytics and hide test modules`
 ### Tests / completion
 
 Focused nav/sidebar/App layout and analytics route specs, `npm run check:analytics-guardrails`, `npm run build`, `node scripts/check-prompt-queues.mjs`. All genuine core decision links must remain. Main SHA/evidence required for DONE. Do not start scraping or marketplace repair as a side quest.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: `navConfig.ts` no longer shows `/trend-dashboard`, `/runtime-scoring`, `/open-training`, the "Trendovi i scraperi" group (`/global-trends`, `/scraper-hub`, `/deichmann`, `/aboutyou`, `/humanic`, `/amazon-shoes`, `/ebay-shoes`, `/google-shopping`) or `/image-upload-test`; `/analytics/daily-sales` is labelled "Dnevna prodaja". Routes stay registered in `App.tsx`; no route, page, service, controller, migration or evidence was removed. The owner-approved eight primary / nine secondary analytics links are unchanged apart from that label.
+- Changed files: `Klijent/clientapp/src/layout/navConfig.ts`; `layout/__tests__/navConfig.spec.ts`; `layout/components/__tests__/Sidebar.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ659-evidence.md`.
+- Checks run: failing-first nav spec 3 failed before; layout specs 28/28 and nav/header/App route specs pass after (also after rebasing onto `db559270`); analytics guardrails (baseline-only) and `npm run build` pass; `git diff --check` pass; exact-main Analytics Quality Gates run `38550949174` green.
+- Checks not run: e2e route smoke (no e2e suite in `Klijent/clientapp`).
+- Run log: `.ai/runs/2026-10-14-RQ659-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `2472df857e48397a8b0a16076b66e9dd5a04bfd0`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `2472df857e48397a8b0a16076b66e9dd5a04bfd0` after push.
+- Missed: the Daily Sales page title (`DailySalesStatsPage.tsx`) still reads "Prodaja po smenama"; navigation-only scope.
+- Follow-up: RQ661 (P1) is the next unclaimed READY prompt; RQ660 (P2) also READY.
+- Residual risk: hidden pages remain reachable by URL by design.
+- Post-close routing: RQ659 has no dependents; RQ661/RQ660 READY, RQ657 Codex-owned IN_PROGRESS, RQ648 READY with PR #147 overlap. No Zero-READY proof applies.
+- Prompt defect / scope repair: none.
 
 ## RQ660 - PDC action summary: unknown blocked count must not become zero
 
