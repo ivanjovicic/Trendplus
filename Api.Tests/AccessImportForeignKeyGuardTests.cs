@@ -146,6 +146,56 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal("existing", persisted.DataOrigin);
     }
 
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_ConvertsSaleLinePrimaryKeyCollisionToStableImportFailure()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "POS-7",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 11,
+            IdProdaja = 7,
+            IdArtikal = 100,
+            Kolicina = 2,
+            Cena = 99m
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaStavke.Add(new ProdajaStavka
+        {
+            Id = 11,
+            IdProdaja = 7,
+            IdArtikal = 200,
+            Kolicina = 1,
+            Cena = 123m,
+            SourceTableKey = "prodaja_stavke",
+            SourceRowId = 11
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+
+        Assert.StartsWith("duplicate_sale_line_identity:", ex.Message, StringComparison.Ordinal);
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        var persisted = await verifyDb.ProdajaStavke.AsNoTracking().SingleAsync();
+        Assert.Equal(100, persisted.IdArtikal);
+        Assert.Equal(2, persisted.Kolicina);
+        Assert.Equal(99m, persisted.Cena);
+    }
+
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
     {
         if (!_fixture.IsAvailable)
