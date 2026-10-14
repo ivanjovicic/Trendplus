@@ -85,7 +85,7 @@ export default function MetricMethodologyPanel({
               <section className="metric-methodology-section metric-methodology-formula">
                 <h4>Formula</h4>
                 <pre className="metric-methodology-formula-block" style={{ whiteSpace: "pre-wrap", overflowX: "auto", padding: 8, background: "var(--surface-darker)", borderRadius: 6 }}>
-                  <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace", fontSize: "0.95rem", color: "var(--text-contrast)" }}>
+                  <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace", fontSize: "0.95rem", color: "var(--text-contrast, var(--text-primary))" }}>
                     {item.formula}
                   </code>
                 </pre>
