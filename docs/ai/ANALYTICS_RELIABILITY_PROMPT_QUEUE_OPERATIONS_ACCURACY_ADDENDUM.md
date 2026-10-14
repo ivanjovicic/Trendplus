@@ -1697,7 +1697,7 @@ Completion note 2026-09-29: RQ447 is DONE after changing the certification filte
 Status: WAITING
 Ready after: RQ447 has a runnable fixture and authenticated test browser/API environment
 
-Repo-local path to unblock (2026-10-14): `RQ664 READY` in the post-import value addendum owns an **independent fixture-based Supplier/Shoe browser/render/export smoke rehearsal** using existing RQ447/RQ453 tests. It may execute without production/provider access. This **does not** waive this task's authenticated deployed/browser and real source reconciliation gate, nor automatically satisfy RQ451/RQ452/RQ565. When RQ664 is DONE, re-evaluate this task using actual local/staging authenticated browser access; retain WAITING if it is still unavailable.
+Repo-local evidence update (2026-10-14): `RQ664 DONE` in the post-import value addendum delivered a **synthetic, repository-local** Supplier/Shoe browser/render/CSV rehearsal. Its downloaded CSV/export payload can be compared to independent fixture-row revenue and quantity expectations (hardening PR review in progress); this still does **not** prove raw database lineage, authenticated staging/production API/browser behavior, deployment SHA, screenshot/detail/evidence-ID continuity or customer acceptance. Keep `RQ448 WAITING` until an authenticated environment and an approved source-reconciliation window are actually available. RQ451/RQ452/RQ565 do not become READY from this local rehearsal.
 Priority: P0
 Type: e2e/browser/export/tests
 Feature family: supplier-shoetype-browser-reconciliation

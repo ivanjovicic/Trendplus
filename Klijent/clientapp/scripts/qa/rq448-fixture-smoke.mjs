@@ -81,14 +81,42 @@ function makeEmptyResponse(response) {
   return empty;
 }
 
-function assertCsvMatchesFixture(csv, response, tableKey) {
-  const lines = csv.trim().split(/\r?\n/);
-  assert.ok(lines.length >= 3, `${tableKey}: CSV has header and two fixture rows`);
-  const expectedRevenue = String(response.totals.ukupanPromet);
+function assertExportPayloadMatchesFixture(payload, response, tableKey) {
+  assert.equal(payload.tableKey, tableKey, `${tableKey}: exported table identity`);
+  const isSupplier = tableKey === "supplier-sales-stats";
+  const rows = isSupplier ? response.suppliers : response.shoeTypes;
+  const nameKey = isSupplier ? "dobavljacNaziv" : "tipObuceNaziv";
+  assert.equal(payload.columns[0]?.key, nameKey, `${tableKey}: exported entity column`);
+  assert.equal(payload.rows.length, rows.length, `${tableKey}: exported row count`);
+
+  // Independent source-response expectations, not values copied from the generated CSV.
+  // Sort by revenue/quantity so a legitimate table sort does not alter the verdict.
+  const signature = (row) => [Number(row.ukupanPromet), Number(row.ukupnaKolicina)];
+  const byValues = (a, b) => a[0] - b[0] || a[1] - b[1];
+  const expected = rows.map(signature).sort(byValues);
+  const actual = payload.rows.map(signature).sort(byValues);
+  assert.deepEqual(actual, expected, `${tableKey}: exported revenue/quantity rows mismatch`);
+  assert.equal(rows.reduce((sum, row) => sum + row.ukupanPromet, 0), response.totals.ukupanPromet,
+    `${tableKey}: fixture rows do not match the declared revenue total`);
+  assert.equal(payload.rows.reduce((sum, row) => sum + Number(row.ukupanPromet), 0), response.totals.ukupanPromet,
+    `${tableKey}: exported rows do not match the declared revenue total`);
+  assert.equal(payload.rows.reduce((sum, row) => sum + Number(row.ukupnaKolicina), 0), response.totals.ukupnaKolicina,
+    `${tableKey}: exported rows do not match the declared quantity total`);
+  assert.ok(payload.rows.every((row) => typeof row[nameKey] === "string" && row[nameKey].length > 0),
+    `${tableKey}: exported entity names must be present`);
+}
+
+function assertCsvMatchesFixture(csv, response, tableKey, payload) {
+  assertExportPayloadMatchesFixture(payload, response, tableKey);
+  // This mocked document endpoint serializes the actual frontend export payload;
+  // compare downloaded bytes to that payload, then assert the payload against
+  // independently supplied fixture rows above.
+  assert.equal(csv, buildCsv(payload), `${tableKey}: downloaded CSV differs from export payload`);
+  const lines = csv.trimEnd().split(/\r?\n/);
+  assert.equal(lines.length, payload.rows.length + 1, `${tableKey}: downloaded CSV row count`);
   assert.match(csv, /Promet/);
   assert.match(csv, /Negativni/);
   assert.match(csv, /Nepoznato|Nepoznat/);
-  assert.ok(csv.includes(expectedRevenue) || csv.includes("150"), `${tableKey}: CSV contains fixture revenue values`);
   return { lineCount: lines.length, header: lines[0], rows: lines.length - 1 };
 }
 
@@ -126,7 +154,7 @@ function assertTrustBody(bodyText, tableTitle) {
   assert.match(bodyText, /Postoje upozorenja|Upozorenje/);
 }
 
-async function runRenderedCase({ page, fixture, baseUrl, kind, downloadDir }) {
+async function runRenderedCase({ page, fixture, baseUrl, kind, downloadDir, exportPayloads }) {
   const isSupplier = kind === "supplier";
   const route = isSupplier ? "supplier" : "shoe-type-sales-stats";
   const tableKey = isSupplier ? "supplier-sales-stats" : "shoe-type-sales-stats";
@@ -168,7 +196,9 @@ async function runRenderedCase({ page, fixture, baseUrl, kind, downloadDir }) {
   });
   const downloadedPath = await waitForDownload(downloadDir, before);
   const csv = await readFile(downloadedPath, "utf8");
-  const csvSummary = assertCsvMatchesFixture(csv, response, tableKey);
+  const payload = exportPayloads.at(-1);
+  assert.ok(payload, `${tableKey}: missing intercepted export payload`);
+  const csvSummary = assertCsvMatchesFixture(csv, response, tableKey, payload);
   return {
     kind,
     route: `/analytics/${route}`,
@@ -317,10 +347,10 @@ async function main() {
 
   const results = [];
   state.mode = "canonical";
-  results.push(await runRenderedCase({ page, fixture, baseUrl, kind: "supplier", downloadDir }));
+  results.push(await runRenderedCase({ page, fixture, baseUrl, kind: "supplier", downloadDir, exportPayloads: state.exportPayloads }));
   assert.equal(state.exportPayloads.at(-1)?.rows.length, 2);
   state.mode = "canonical";
-  results.push(await runRenderedCase({ page, fixture, baseUrl, kind: "shoeType", downloadDir }));
+  results.push(await runRenderedCase({ page, fixture, baseUrl, kind: "shoeType", downloadDir, exportPayloads: state.exportPayloads }));
   assert.equal(state.exportPayloads.at(-1)?.rows.length, 2);
 
   state.mode = "empty";
@@ -328,16 +358,19 @@ async function main() {
   state.mode = "error";
   results.push(await runStateCase({ page, fixture, baseUrl, mode: "error", kind: "supplier" }));
 
-  const canonical = results.filter((item) => item.rendered);
-  const tampered = { ...canonical[0].rendered, totalRevenue: canonical[0].rendered.totalRevenue + 1 };
+  // Corrupt a real captured export payload and require the same reconciliation
+  // checker used for downloaded CSV to reject the altered source row.
+  const tampered = structuredClone(state.exportPayloads[0]);
+  tampered.rows[0].ukupanPromet = Number(tampered.rows[0].ukupanPromet) + 1;
   let tamperedMismatchDetected = false;
   try {
-    assert.equal(tampered.totalRevenue, fixture.supplier.totals.ukupanPromet, "deliberately tampered total must not reconcile");
+    assertExportPayloadMatchesFixture(tampered, fixture.supplier, "supplier-sales-stats");
   } catch (error) {
+    assert.match(error.message, /exported revenue\/quantity rows mismatch/);
     tamperedMismatchDetected = true;
     results.push({ mode: "tampered", state: "mismatch_detected", message: error.message });
   }
-  assert.equal(tamperedMismatchDetected, true);
+  assert.equal(tamperedMismatchDetected, true, "corrupted export row must fail source-response parity");
   assert.equal(state.unexpectedApi.length, 0, `unexpected API calls: ${JSON.stringify(state.unexpectedApi)}`);
   assert.equal(state.exportPayloads.length, 2, "both routes sent one CSV export payload");
 
