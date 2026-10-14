@@ -16,6 +16,7 @@ import { parseEntityIdParam } from "../validation/entityId";
 import { dataQualityStatusLabel } from "../utils/analyticsQuality";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
+import UltraSpinner from "../components/ui/UltraSpinner";
 
 function freshnessLabel(value: string | null | undefined): string {
   switch ((value ?? "").trim().toLowerCase()) {
@@ -325,8 +326,8 @@ export default function DecisionPulsePage() {
           onRetry={() => setReloadToken((current) => current + 1)}
         />
       ) : loading ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          Učitavam pregled odluka...
+        <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted" role="status" aria-live="polite">
+          <UltraSpinner size="md" label="Učitavanje pregleda odluka" />
         </div>
       ) : items.length === 0 ? (
         <AnalyticsEmptyState

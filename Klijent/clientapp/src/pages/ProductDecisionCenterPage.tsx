@@ -7,6 +7,7 @@ import AnalyticsTableToolbar from "../components/analytics/AnalyticsTableToolbar
 import AnalyticsTrustHeader from "../components/analytics/AnalyticsTrustHeader";
 import KpiExplainButton from "../components/analytics/KpiExplainButton";
 import InfoTip from "../components/ui/InfoTip";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import {
   AnalyticsMetaError,
   getAnalyticsActionSourceStatuses,
@@ -1886,7 +1887,11 @@ export default function ProductDecisionCenterPage() {
           Prikazujemo prethodno učitane podatke. Novi upit nije uspeo.
         </div>
       ) : null}
-      {loading ? <div className="product-decision-message">Učitavanje podataka za Odluke o proizvodima...</div> : null}
+      {loading ? (
+        <div className="product-decision-message" role="status" aria-live="polite">
+          <UltraSpinner size="md" label="Učitavanje podataka za Odluke o proizvodima" />
+        </div>
+      ) : null}
       {hasBlockingError ? (
         <AnalyticsErrorState
           title="Podaci trenutno nisu dostupni"

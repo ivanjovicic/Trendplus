@@ -6,6 +6,7 @@ import { AnalyticsMetaError, createInventoryReportSchedule, exportInventoryRepor
 import { downloadExport, resolveApiUrl, waitForExport } from "../services/exportApi";
 import type { AnalyticsActionDataQualityStatus, AnalyticsResponseMeta, ForecastDto, InventoryActionDatasetContext, InventoryActionSuggestion, InventoryActionWorkflow, InventoryAlertListDto, InventoryBalance, InventoryInsights, InventoryItemDetail, InventoryPagedResponse, InventoryReportSchedule, InventoryReportScheduleInput, InventoryStoreComparison, RebalanceListDto, SizeCurveDto, StoreOption, SupplierFilterOption } from "../types/analytics";
 import AnalyticsEmptyState from "../components/analytics/AnalyticsEmptyState";
+import UltraSpinner from "../components/ui/UltraSpinner";
 import AnalyticsErrorState from "../components/analytics/AnalyticsErrorState";
 import AnalyticsControlBar from "../components/analytics/AnalyticsControlBar";
 import AnalyticsFilterLoadNotice from "../components/analytics/AnalyticsFilterLoadNotice";
@@ -1676,8 +1677,14 @@ export default function InventoryPage() {
   };
 
   const blockingState = loading && !pageData && !balance
-    ? <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted">Učitavanje bilansa zaliha...</div>
-    : error && (!pageData || !balance)
+    ? (
+      <div className="rounded-3xl border border-muted surface-light p-8 text-center text-muted" role="status" aria-live="polite">
+        <div className="mx-auto max-w-md">
+          <UltraSpinner size="lg" label="Učitavanje bilansa zaliha" />
+        </div>
+      </div>
+    )
+  : error && (!pageData || !balance)
       ? (
           <AnalyticsErrorState
             title="Podaci trenutno nisu dostupni"

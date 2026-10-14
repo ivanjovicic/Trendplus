@@ -41,6 +41,7 @@ import {
   isAnalyticsMetaWarning,
 } from "../utils/analyticsResponseMeta";
 import "./DataQualityPage.css";
+import UltraSpinner from "../components/ui/UltraSpinner";
 
 const ISSUE_TABS: Array<{ key: DataQualityIssueType; label: string; tone: "danger" | "warning" | "neutral" }> = [
   { key: "missingSupplier", label: "Nedostajući dobavljač", tone: "danger" }, { key: "missingCost", label: "Nedostaje nabavna cena", tone: "warning" },
@@ -1045,7 +1046,11 @@ export default function DataQualityPage() {
           detail={healthError}
         />
       ) : null}
-      {viewMode === "issues" && loading ? <div className="data-quality-loading">Učitavam probleme kvaliteta podataka...</div> : null}
+      {viewMode === "issues" && loading ? (
+        <div className="data-quality-loading" role="status" aria-live="polite">
+          <UltraSpinner size="md" label="Učitavanje problema kvaliteta podataka" />
+        </div>
+      ) : null}
 
       {viewMode === "issues" && !loading && (data || issueType === "missingCost") ? <TopOffendersPanel issueType={issueType} dataScope={contextDataScope} /> : null}
 
