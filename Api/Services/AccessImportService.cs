@@ -5248,10 +5248,17 @@ using NpgsqlTypes;
             .AsNoTracking()
             .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
             .ToDictionaryAsync(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce), ct);
-            var saleIds = (await _trendDb.ProdajaZaglavlja
-                    .AsNoTracking()
-                    .Select(x => x.Id)
-                    .ToListAsync(ct))
+            // A matching FK value is not proof that the parent is an Access receipt.
+            // Never attach imported sale lines to POS/existing headers whose numeric
+            // PostgreSQL IDs happen to equal the source sale IDs.
+            var persistedSaleHeaders = await _trendDb.ProdajaZaglavlja
+                .AsNoTracking()
+                .Select(x => new { x.Id, x.DataOrigin })
+                .ToListAsync(ct);
+            var saleIds = persistedSaleHeaders.Select(x => x.Id).ToHashSet();
+            var nonAccessSaleIds = persistedSaleHeaders
+                .Where(x => !string.Equals(x.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+                .Select(x => x.Id)
                 .ToHashSet();
             // Include any prodaja_zaglavlje entities that were added to the current DbContext
             // but not yet flushed to the database (pending parents created earlier in this import).
@@ -5340,6 +5347,14 @@ using NpgsqlTypes;
 
                 await FlushTrendWritesAsync(force: false, ct);
                 continue;
+            }
+
+            if (nonAccessSaleIds.Contains(idProdaja.Value))
+            {
+                throw new InvalidOperationException(
+                    "duplicate_sale_header_identity: an Access sale line references a POS/existing sale header " +
+                    $"with an unrelated target id {idProdaja.Value.ToString(CultureInfo.InvariantCulture)}. " +
+                    "The import was stopped before the line could be attached to the wrong receipt.");
             }
 
             MarkAccepted(result, "prodaja_stavke");
