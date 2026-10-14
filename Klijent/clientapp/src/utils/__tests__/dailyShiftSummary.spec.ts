@@ -24,20 +24,20 @@ function row(overrides: Partial<DailySalesRow> = {}): DailySalesRow {
 
 describe("dailyShiftSummary", () => {
   it("classifies complete, missing, partial and unavailable shift evidence", () => {
-    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 6, secondShiftTotalItems: 4 }))).toBe("complete");
-    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }))).toBe("missing");
-    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: null, secondShiftTotalItems: null }))).toBe("missing");
-    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 5, secondShiftTotalItems: null }))).toBe("partial");
-    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: null, secondShiftTotalItems: 0 }))).toBe("partial");
+    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 6, secondShiftTotalItems: 4 }), "measured")).toBe("complete");
+    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }), "measured")).toBe("missing");
+    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: null, secondShiftTotalItems: null }), "measured")).toBe("missing");
+    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: 5, secondShiftTotalItems: null }), "measured")).toBe("partial");
+    expect(classifyDailyShiftSummary(row({ totalItemsSold: 10, firstShiftTotalItems: null, secondShiftTotalItems: 0 }), "measured")).toBe("partial");
   });
 
   it("keeps measured zero visible while unknown shifts stay unavailable in charts", () => {
     const partial = row({ totalItemsSold: 12, firstShiftTotalItems: 0, secondShiftTotalItems: 12 });
 
-    expect(hasPartialShiftSummary(partial)).toBe(false);
-    expect(hasMissingShiftSummary(row({ totalItemsSold: 12, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }))).toBe(true);
-    expect(resolveShiftChartValue(partial, "first")).toBe(0);
-    expect(resolveShiftChartValue(row({ totalItemsSold: 12, firstShiftTotalItems: null, secondShiftTotalItems: 4 }), "first")).toBeNull();
+    expect(hasPartialShiftSummary(partial, "measured")).toBe(false);
+    expect(hasMissingShiftSummary(row({ totalItemsSold: 12, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }), "measured")).toBe(true);
+    expect(resolveShiftChartValue(partial, "first", "measured")).toBe(0);
+    expect(resolveShiftChartValue(row({ totalItemsSold: 12, firstShiftTotalItems: null, secondShiftTotalItems: 4 }), "first", "measured")).toBeNull();
   });
 
   it("keeps negative return quantities as measured signed shift evidence", () => {
@@ -47,9 +47,9 @@ describe("dailyShiftSummary", () => {
       totalItemsSold: -5,
     });
 
-    expect(classifyDailyShiftSummary(returns)).toBe("complete");
-    expect(resolveShiftChartValue(returns, "first")).toBe(-3);
-    expect(summarizeShiftItems([returns], "second")).toEqual({ value: -2, state: "complete" });
+    expect(classifyDailyShiftSummary(returns, "measured")).toBe("complete");
+    expect(resolveShiftChartValue(returns, "first", "measured")).toBe(-3);
+    expect(summarizeShiftItems([returns], "second", "measured")).toEqual({ value: -2, state: "complete" });
   });
 
   it("sums available shift values while marking partial period evidence", () => {
@@ -59,9 +59,28 @@ describe("dailyShiftSummary", () => {
       row({ totalItemsSold: 5, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }),
     ];
 
-    expect(sumShiftColumn(rows, "firstShiftTotalItems")).toEqual({ sum: 7, isPartial: true });
-    expect(sumShiftColumn(rows, "secondShiftTotalItems")).toEqual({ sum: 6, isPartial: true });
-    expect(summarizeShiftItems(rows, "second")).toEqual({ value: 6, state: "partial" });
+    expect(sumShiftColumn(rows, "firstShiftTotalItems", "measured")).toEqual({ sum: 7, isPartial: true });
+    expect(sumShiftColumn(rows, "secondShiftTotalItems", "measured")).toEqual({ sum: 6, isPartial: true });
+    expect(summarizeShiftItems(rows, "second", "measured")).toEqual({ value: 6, state: "partial" });
+  });
+
+  it("fails closed when the API omits an authoritative shift-assignment status", () => {
+    const measuredLookingRow = row({
+      totalItemsSold: 10,
+      firstShiftTotalItems: 6,
+      secondShiftTotalItems: 4,
+    });
+    expect(classifyDailyShiftSummary(measuredLookingRow)).toBe("unavailable");
+    expect(classifyDailyShiftSummary(measuredLookingRow, "unknown")).toBe("unavailable");
+    expect(resolveShiftChartValue(measuredLookingRow, "first")).toBeNull();
+    expect(summarizeShiftItems([measuredLookingRow], "first")).toEqual({
+      value: null,
+      state: "unavailable",
+    });
+    expect(sumShiftColumn([measuredLookingRow], "secondShiftTotalItems")).toEqual({
+      sum: null,
+      isPartial: true,
+    });
   });
 
   it("treats no-time fallback assignment as unavailable shift shares", () => {

@@ -27,7 +27,7 @@ export function classifyDailyShiftSummary(
   row: DailySalesRow,
   assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): DailyShiftSummaryState {
-  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") {
+  if (!isTrustedShiftAssignment(assignmentStatus)) {
     return "unavailable";
   }
 
@@ -168,7 +168,7 @@ export function summarizeShiftItems(
   assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): { value: number | null; state: DailyShiftEvidenceState } {
   if (rows.length === 0) return { value: null, state: "unavailable" };
-  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") {
+  if (!isTrustedShiftAssignment(assignmentStatus)) {
     return { value: null, state: "unavailable" };
   }
 
@@ -194,7 +194,7 @@ export function periodHasIncompleteShiftEvidence(
   rows: DailySalesRow[],
   assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): boolean {
-  if (assignmentStatus === "no_time_fallback" || assignmentStatus === "unavailable") return true;
+  if (!isTrustedShiftAssignment(assignmentStatus)) return true;
   return rows.some((row) => hasIncompleteShiftEvidence(row, assignmentStatus));
 }
 
