@@ -24,7 +24,7 @@ This file describes **why, for whom and how to prioritize**. It is **not** a tas
 | Which price changes merit review, and what followed? | `/analytics/pre-nivelacija-prioriteti`, `/analytics/nivelacije-pre-post` | descriptive markdown candidates, measured historical outcomes if eligible | event time, source store/day coverage, costs, returns and sample/maturity gates |
 | What are this week's highest-priority *eligible* actions? | `/analytics/decision-pulse`, `/analytics/actions` | decision digest and accepted/deferred/rejected action with reason | **RQ585 is already DONE**; validate existing UX/adoption, don't rebuild; fresh/current claims remain gated |
 
-The app's `/` home must guide users to these jobs and **never display manually typed business numbers as real KPIs**. Source-confirmed issue on 2026-10-14: `HomePage.tsx` contains fixed `32` sections, `5` import jobs, `+12.8%` trend signal, Google Shopping `+18%` and `3 SKU` statements. Owning follow-up **RQ661**; RQ659 only removes navigation clutter and does not close this defect.
+The app's `/` home must guide users to these jobs and **never display manually typed business numbers as real KPIs**. The previously confirmed fixed-count/trend/Google Shopping claims were removed by **RQ661 DONE** (`dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`); **RQ659 DONE** separately removed experimental primary navigation. These are completed corrections, not an open implementation plan.
 
 ## 3. Four decision-proof levels (one indicator may be at a different level in each store/period)
 
@@ -45,7 +45,7 @@ Facts in dated repository evidence, **not a new live-provider check**:
 - RQ610 needs reliable SKU × store stock-mutation generation; current inventory snapshot cannot be backdated into historical OOS, GMROI or turnover as-of.
 - STAB16 still owns **provider/deployed** freshness, schema, worker/refresh and supplier MV proof. Verified GitHub CI ≠ verified Render/Neon/Vercel business result.
 - RQ585 owner digest **implemented on main (2026-10-08, `739815e36f9c...`)** with up to ten eligible items, dated context and action disposition. Next work is usability/adoption and operational proof, **not reimplementing a five-item digest**.
-- RQ655 and RQ656 are DONE. RQ657 remains scoped to genuine core-analytics request races; RQ659 navigation READY; RQ660 must first prove nullable backend counts; RQ661 home fake facts READY.
+- RQ655–RQ665 relevant closed frontend/test tasks are DONE, including RQ657 race guards, RQ659 navigation, RQ660 nullable PDC counters, RQ661 homepage truth, RQ662 supplier store-scope filters, RQ663 daily shift evidence and RQ664 synthetic browser/export rehearsal. PR #159 hardened the rehearsal; it does not certify production. Next distinct source-reviewed frontend risks are RQ666 PDC dataScope/action identity and RQ667 Inventory store/compare-scope selection (both READY, not claimed).
 
 **Do not** use the older 2026-06 Decision OS roadmap's past "live smoke passed" sentence as evidence that production is healthy in October.
 

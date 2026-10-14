@@ -16,7 +16,7 @@ Every meaningful metric must state period, last observed source horizon, scope/s
 
 No further eBay, Amazon Shoes, Google Shopping, Deichmann, About You, Humanic, Scraper Hub, global trend or competition-price scraping; no new provider connectors/sync, test/demo feature screens, runtime scoring, Open Training, Insight Studio, speculative forecast models, or marketplace-specific debugging/polish/tests. The **marketplace UI work already delivered** in RQ655 is historical DONE and must not be reopened. RQ656 fake-zero audit is DONE; do not repeat.
 
-Do **not** interpret "test functionality" as unit/integration/regression tests! Tests of canonical retail analytics remain essential. Do not delete shipped API routes, database entities/tables/SQL migrations, import readers, compatibility behavior or historical evidence simply because a feature is frozen. For now remove only experimental **primary-navigation links** (RQ659); removing legacy runtime requires a separate dependency/migration/rollback review. No production data/schema/credential/deploy changes.
+Do **not** interpret "test functionality" as unit/integration/regression tests! Tests of canonical retail analytics remain essential. Do not delete shipped API routes, database entities/tables/SQL migrations, import readers, compatibility behavior or historical evidence simply because a feature is frozen. Experimental **primary-navigation links were removed by RQ659 DONE**; removing legacy runtime still requires a separate dependency/migration/rollback review. No production data/schema/credential/deploy changes.
 
 Old queue files are historical evidence unless named as a live owner by `MASTER_ROADMAP.md`; do not delete dated evidence. Any historical marketplace prompt is `DEFERRED_OUT_OF_SCOPE` by owner decision, **not automatically READY**, regardless of stale prose. This label is a product-scope classification, not a new queue-status enum. Reactivation requires an explicit new owner decision.
 
@@ -25,7 +25,8 @@ Old queue files are historical evidence unless named as a live owner by `MASTER_
 | Now / later | Result | Canonical owner |
 |---|---|---|
 | NOW P0 | Production correctness and stale/unknown warnings; confirmed sales totals and real cost provenance | existing RQ/STAB16, RQ601 |
-| NOW P1 | Remove experiment navigation (RQ659) **and misleading hard-coded home metrics (RQ661)**; RQ660 only if backend-null contract proves defect | RQ659/RQ661 P1, RQ660 P2; avoid shipped RQ593–RQ596/RQ651–RQ656 |
+| SHIPPED | Experiment navigation (RQ659), misleading Home facts (RQ661) and nullable PDC counter display (RQ660) corrected, with completed regression proofs | RQ659–RQ661 DONE; do not reimplement | 
+| NEXT P1 | Verify Product Decision action/store identity against `dataScope`; validate Inventory store and compare-store filters on dataset changes | RQ666 and RQ667 READY; no customer data writes or new import |
 | SHIPPED / VERIFY USE | RQ585 owner digest already shipped 2026-10-08 (up to ten eligible items, as-of wording); verify real operator adoption, don't build it again | RQ585 DONE; operational gate STAB16 |
 | NEXT when evidence allows | Historical markdown cohorts and eventual action→outcome loop, with sample/coverage gates | RQ602, RQ592 |
 | BLOCKED on real source evidence | Verified purchase costs, stock history and fresh production recommendations | RQ601 original 20 calculations, RQ610 mutation generation, STAB16 release/worker/import |
@@ -39,7 +40,7 @@ One named business question; exact existing owner and source grain; one verified
 ## Important refinements — 2026-10-14 second-pass audit
 
 - `RQ585` is **DONE**, not a pending feature. Test adoption/currentness of its shipped digest before expanding it.
-- `HomePage.tsx` currently prints hardcoded business-looking values (`32` sections, `5` import jobs, `+12.8%` trend signal, Google Shopping `+18%`, `3 SKU`); hiding navigation alone leaves a false promise. **RQ661 P1** owns replacing the static panel, independently from RQ659.
+- Historical Home finding (fixed `32`/`5`/`+12.8%`, Google Shopping `18%`, `3 SKU`) is resolved by **RQ661 DONE**. RQ659 separately shipped the primary-navigation cleanup. The next repository-local priorities are evidence-correct action and store scope (RQ666/RQ667), not new Home marketing.
 - Raw amount-present ≠ confirmed purchase cost; latest stock ≠ historically observed stock. Conditional KPIs (sell-through, turns, GMROI, OOS lost sales, markdown uplift, size/shift/basket) need named source/evidence gates, not "we have data" defaults.
 - Existing `/`, routes, workflows and sources stay compatible; no root redirect or wholesale delete until operator usability and collision/rollback have been assessed.
 - Provider-neutral *retailer sales/stock import* remains in product scope when essential for a real customer; the freeze applies to **marketplace/commercial scraping/experimental connectors**, not legitimate Access-to-analytics correctness.
