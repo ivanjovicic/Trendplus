@@ -84,7 +84,18 @@ export default function MetricMethodologyPanel({
               <p>{item.shortDescription}</p>
               <section className="metric-methodology-section metric-methodology-formula">
                 <h4>Formula</h4>
-                <p>{item.formula}</p>
+                <pre className="metric-methodology-formula-block" style={{ whiteSpace: "pre-wrap", overflowX: "auto", padding: 8, background: "var(--surface-darker)", borderRadius: 6 }}>
+                  <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace", fontSize: "0.95rem", color: "var(--text-contrast)" }}>
+                    {item.formula}
+                  </code>
+                </pre>
+                {/* Optional human-readable example */}
+                {("example" in item && (item as any).example) ? (
+                  <div className="metric-methodology-formula-example" style={{ marginTop: 8 }}>
+                    <strong>Primer:</strong>
+                    <div style={{ fontFamily: "ui-monospace, Menlo, monospace", marginTop: 4 }}>{(item as any).example}</div>
+                  </div>
+                ) : null}
               </section>
               <section className="metric-methodology-section">
                 <h4>Izvor podataka</h4>
