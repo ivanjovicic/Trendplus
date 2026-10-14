@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyDailyShiftSummary,
+  countDailyShiftEvidence,
   hasMissingShiftSummary,
   hasPartialShiftSummary,
   resolveShiftChartValue,
+  resolveShiftExportValue,
   summarizeShiftItems,
   sumShiftColumn,
 } from "../dailyShiftSummary";
@@ -100,5 +102,22 @@ describe("dailyShiftSummary", () => {
       row({ totalItemsSold: 10, firstShiftTotalItems: 6, secondShiftTotalItems: 4 }),
       "partial",
     )).toBe("partial");
+  });
+
+  it("keeps unavailable coverage separate from missing and partial days", () => {
+    const counts = countDailyShiftEvidence([
+      row({ totalItemsSold: null, firstShiftTotalItems: 4, secondShiftTotalItems: 4 }),
+      row({ totalItemsSold: 5, firstShiftTotalItems: 5, secondShiftTotalItems: null }),
+      row({ totalItemsSold: 5, firstShiftTotalItems: 2, secondShiftTotalItems: 3 }),
+      row({ totalItemsSold: 0, firstShiftTotalItems: 0, secondShiftTotalItems: 0 }),
+    ], "measured");
+
+    expect(counts).toEqual({ complete: 2, partial: 1, missing: 0, unavailable: 1 });
+    expect(resolveShiftExportValue(
+      row({ totalItemsSold: 10, firstShiftTotalItems: 6, secondShiftTotalItems: 4 }),
+      "first",
+      "Nije dostupno",
+    )).toBe("Nije dostupno");
+    expect(countDailyShiftEvidence([], "measured")).toEqual({ complete: 0, partial: 0, missing: 0, unavailable: 0 });
   });
 });
