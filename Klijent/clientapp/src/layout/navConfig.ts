@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ClipboardList,
   Gauge,
-  Globe2,
   LayoutGrid,
   ListChecks,
   Logs,
@@ -16,8 +15,6 @@ import {
   Package,
   PackagePlus,
   Palette,
-  Rocket,
-  ScanLine,
   Settings2,
   ShoppingBag,
   ShoppingCart,
@@ -51,24 +48,6 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: LayoutGrid,
     items: [
       { to: "/", label: "Početna", icon: LayoutGrid },
-      {
-        to: "/trend-dashboard",
-        label: "Trend pregled",
-        icon: Gauge,
-        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
-      },
-      {
-        to: "/runtime-scoring",
-        label: "Runtime Scoring",
-        icon: ScanLine,
-        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
-      },
-      {
-        to: "/open-training",
-        label: "Trening modela",
-        icon: Rocket,
-        badge: { label: "Test", tone: "warning", title: "Funkcionalnost u test fazi" },
-      },
     ],
   },
   {
@@ -141,7 +120,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: ShoppingCart },
       { to: "/analytics/decision-pulse", label: "Puls odluka", icon: AlertTriangle },
       { to: "/analytics/supplier?tab=scorecard", label: "Ocena dobavljača", icon: Microscope },
-      { to: "/analytics/daily-sales", label: "Prodaja po smenama", icon: CalendarDays },
+      { to: "/analytics/daily-sales", label: "Dnevna prodaja", icon: CalendarDays },
       {
         to: "/analytics/color-sales-stats",
         label: "Prodaja po boji artikla",
@@ -167,22 +146,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "scrapers",
-    label: "Trendovi i scraperi",
-    icon: Globe2,
-    badge: { label: "Test", tone: "warning", title: "Ova sekcija je u fazi testa — mogući prekidi" },
-    items: [
-      { to: "/global-trends", label: "Globalni trendovi", icon: Globe2 },
-      { to: "/scraper-hub", label: "Scraper Hub Top 10", icon: BarChart3 },
-      { to: "/deichmann", label: "Deichmann Scraper", icon: ScanLine },
-      { to: "/aboutyou", label: "About You Scraper", icon: ScanLine },
-      { to: "/humanic", label: "Humanic Scraper", icon: ScanLine },
-      { to: "/amazon-shoes", label: "Amazon Shoes", icon: ShoppingBag },
-      { to: "/ebay-shoes", label: "eBay Shoes", icon: ShoppingBag },
-      { to: "/google-shopping", label: "Google Shopping", icon: ShoppingBag },
-    ],
-  },
-  {
     id: "admin",
     label: "Nadzor i admin",
     icon: BookOpen,
@@ -191,7 +154,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/outbox/messages", label: "Outbox poruke", icon: Logs },
       { to: "/performance", label: "Performanse", icon: Gauge },
       { to: "/logs", label: "Logovi", icon: Logs },
-      { to: "/image-upload-test", label: "Upload slika (Test)", icon: PackagePlus },
       {
         to: "/admin/common-products",
         label: "Zajednički proizvodi",

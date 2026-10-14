@@ -36,7 +36,7 @@ describe("Sidebar", () => {
     expect(activeLinks[0]).toHaveTextContent("Prodaja po dobavljačima");
     expect(screen.getByRole("button", { name: /Glavne odluke/i })).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(screen.getByRole("button", { name: /Dodatne analize/i }));
-    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute("href", "/analytics/daily-sales");
+    expect(screen.getByRole("link", { name: /Dnevna prodaja/ })).toHaveAttribute("href", "/analytics/daily-sales");
   });
 
   it("opens Dodatne analize and marks the scorecard query link active", () => {
@@ -93,12 +93,14 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link", { name: /Dobavljači i tipovi obuće/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Prodaja po tipu obuće/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Prodaja po boji artikla/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Prodaja po smenama/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Dnevna prodaja/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Dodatne analize/i }));
     expect(screen.getByRole("link", { name: "Ocena dobavljača" })).toHaveAttribute("href", "/analytics/supplier?tab=scorecard");
     expect(screen.getByRole("link", { name: /Prodaja po boji artikla/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Prodaja po smenama/ })).toHaveAttribute("href", "/analytics/daily-sales");
+    expect(screen.getByRole("link", { name: /Dnevna prodaja/ })).toHaveAttribute("href", "/analytics/daily-sales");
     expect(screen.queryByRole("link", { name: /Prodaja po smeni i dobavljačima/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Trendovi i scraperi/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Test")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pre\/Posle nivelacije/ })).toBeInTheDocument();
   });
 

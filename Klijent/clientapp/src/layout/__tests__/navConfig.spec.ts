@@ -1,10 +1,66 @@
 import { describe, expect, it } from "vitest";
+import appSource from "../../App.tsx?raw";
 import { NAV_GROUPS } from "../navConfig";
 import { CORE_ANALYTICS_ROUTE_DEFINITIONS } from "../../routes/analyticsRouteDefinitions";
 
 function findGroup(id: string) {
   return NAV_GROUPS.find((group) => group.id === id);
 }
+
+const HIDDEN_EXPERIMENTAL_LINKS = [
+  "/trend-dashboard",
+  "/runtime-scoring",
+  "/open-training",
+  "/global-trends",
+  "/scraper-hub",
+  "/deichmann",
+  "/aboutyou",
+  "/humanic",
+  "/amazon-shoes",
+  "/ebay-shoes",
+  "/google-shopping",
+  "/image-upload-test",
+];
+
+describe("navConfig analytics-first scope (RQ659)", () => {
+  const visibleLinks = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to));
+
+  it("hides experimental, scraper and test links from primary navigation", () => {
+    for (const path of HIDDEN_EXPERIMENTAL_LINKS) {
+      expect(visibleLinks, `${path} must not be a navigation link`).not.toContain(path);
+    }
+    expect(findGroup("scrapers")).toBeUndefined();
+    expect(NAV_GROUPS.flatMap((group) => [group.badge, ...group.items.map((item) => item.badge)])
+      .some((badge) => badge?.label === "Test")).toBe(false);
+  });
+
+  it("keeps every group non-empty and the core retail analytics links visible", () => {
+    for (const group of NAV_GROUPS) {
+      expect(group.items.length, `${group.id} must not be empty`).toBeGreaterThan(0);
+    }
+    for (const path of [
+      "/analytics",
+      "/analytics/daily-sales",
+      "/analytics/inventory",
+      "/analytics/supplier",
+      "/analytics/products",
+      "/analytics/pre-nivelacija-prioriteti",
+    ]) {
+      expect(visibleLinks, `${path} must stay in navigation`).toContain(path);
+    }
+  });
+
+  it("labels daily sales by what it shows, not by shift coverage", () => {
+    const dailySales = NAV_GROUPS.flatMap((group) => group.items).find((item) => item.to === "/analytics/daily-sales");
+    expect(dailySales?.label).toBe("Dnevna prodaja");
+  });
+
+  it("keeps deep-link routes for hidden links registered in the router", () => {
+    for (const path of HIDDEN_EXPERIMENTAL_LINKS) {
+      expect(appSource, `${path} route must stay registered`).toContain(`path="${path}"`);
+    }
+  });
+});
 
 describe("navConfig", () => {
   it("keeps the owner-approved eight primary analytics destinations and labels in order", () => {
@@ -33,7 +89,7 @@ describe("navConfig", () => {
       ["/analytics/products", "Odluke o proizvodima"],
       ["/analytics/decision-pulse", "Puls odluka"],
       ["/analytics/supplier?tab=scorecard", "Ocena dobavljača"],
-      ["/analytics/daily-sales", "Prodaja po smenama"],
+      ["/analytics/daily-sales", "Dnevna prodaja"],
       ["/analytics/color-sales-stats", "Prodaja po boji artikla"],
       ["/analytics/supplier/report", "Izveštaj dobavljača"],
       ["/analytics/reports/pilot-intake", "Pilot izveštaj kvaliteta podataka"],
