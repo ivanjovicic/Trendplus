@@ -3086,7 +3086,7 @@ Commit suggestion: `test(analytics): add deterministic Supplier Shoe render-expo
 
 ## RQ665 - Stop order-dependent EF ManyServiceProvidersCreatedWarning failures in test hosts
 
-Status: IN PROGRESS
+Status: DONE
 Priority: P1
 Type: backend CI flakiness
 Feature family: test-host-ef-configuration
@@ -3127,3 +3127,19 @@ No test host registration without the opt-out; backend + governance CI green; me
 ### Dependencies
 
 None. Sharing one internal service provider across hosts was rejected: it requires `UseInternalServiceProvider`, which bypasses each host's logging/interceptor integration (e.g. benchmark command recorder) and would change test semantics.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: 100%
+- Changed files: 11 Api.Tests test-host factory files, Api.Tests/TestHostDbContextWarningConventionTests.cs, docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md
+- Checks run: local Testing env focused classes (14 total, 8 passed, 6 skipped, 0 failed; route mappings 8/8); check-prompt-queues, check-planning-architecture, check-agent-instructions with and without --self-test; git diff --check; PR #158 backend run 38565788120 pass, governance run 38565788009 pass
+- Checks not run: smoke tests and Development environment (owner rule); local CachedAnalyticsFailureContractTests (test host crash pre-exists on origin/main locally)
+- Run log: .ai/runs/2026-10-14-RQ665-ef-many-service-providers-evidence.md
+- Delivery mode: PR #158 merged with --merge after green CI
+- Main commit SHA: 85d29cd275ee4ab5d3975f0bc522d078e1ca7930
+- Main verification: git rev-parse origin/main -> 85d29cd275ee4ab5d3975f0bc522d078e1ca7930
+- Missed: 11 factories lacked the opt-out used by 20+ others
+- Follow-up: none
+- Residual risk: convention matches only lambda-style AddDbContext registrations; Vercel check was rate-limited (non-required)
