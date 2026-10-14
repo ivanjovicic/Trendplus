@@ -2785,13 +2785,15 @@ Owner decision: `docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md` freezes eBay,
 
 ## RQ659 - Analytics-first main navigation; hide experimental/test links
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: bounded frontend UX/tests
 Feature family: analytics-first-navigation
 Parallel-safe: yes; own `Klijent/clientapp/src/layout/navConfig.ts` and nearest nav/sidebar specs only
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ659-cursor.lock.md`
 Ready after: owner product focus decision 2026-10-14; no provider or other task dependency
+Claim reservation: inspected origin/main `72357d084b71c1cd77276e29af6cd061f8299855`; pushed claim = the `docs(queue): claim RQ659 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ659 branch, worktree, lock or open PR (only open PR #147, RQ650 branch audit). Claim paths: `Klijent/clientapp/src/layout/navConfig.ts`, `layout/__tests__/navConfig.spec.ts`, `layout/components/__tests__/Sidebar.spec.tsx` and directly affected nav/route specs.
 Commit suggestion: `fix(nav): prioritize retail analytics and hide test modules`
 
 ### Proven gap
