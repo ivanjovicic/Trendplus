@@ -203,7 +203,7 @@ export function periodHasIncompleteShiftEvidence(
  * The daily export must never call an empty/untested period "Potpuna".
  */
 export function describeShiftEvidenceCoverage(
-  rows: DailySalesRow[],
+  rows: readonly DailySalesRow[],
   assignmentStatus?: DailySalesShiftAssignmentStatus | null,
 ): string {
   if (rows.length === 0 || !isTrustedShiftAssignment(assignmentStatus)) {
