@@ -15,6 +15,7 @@
     "check:ui-program-gates": "npm run check:ui-ratchets -- --self-test && npm run check:ui-ratchets && npm run check:analytics-chart-accessibility -- --self-test && npm run check:analytics-chart-accessibility && node ./scripts/responsive_baseline.mjs --self-test && npm run test -- --run src/styles/__tests__/themeTokenUsage.spec.ts src/context/__tests__/ThemeContext.tokens.spec.ts src/components/trendshoes/SeasonalImageCarousel.spec.tsx",
     "check:analytics-guardrails:self-test": "node ./scripts/check-analytics-guardrails.mjs --self-test",
     "check:analytics-guardrails": "npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck",
+    "qa:rq448-fixture-smoke": "node ./scripts/qa/rq448-fixture-smoke.mjs",
     "responsive:baseline": "node ./scripts/responsive_baseline.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

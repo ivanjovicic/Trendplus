@@ -1,0 +1,97 @@
+{
+  "taskId": "RQ664",
+  "verdict": "synthetic_fixture_browser_render_export_pass",
+  "fixtureClass": "synthetic_fixture_only",
+  "contractVersion": "SST-ACCURACY-1.0",
+  "productionCertification": false,
+  "deployedSourceLineage": false,
+  "cases": [
+    {
+      "kind": "supplier",
+      "route": "/analytics/supplier",
+      "fixtureClass": "synthetic_fixture_only",
+      "requested": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": 2,
+        "dataScope": "imported"
+      },
+      "rendered": {
+        "totalRevenue": 240,
+        "rowCount": 2,
+        "kpiText": "UKUPAN PROMET (SERTIFIKOVANA PRODAJA U PERIODU)\n240 RSD\nKako je izračunato?\nMARŽNI DOPRINOS\n50 RSD\nKako je izračunato?\n⚠ Upozorenje\nUKUPAN POP TREND\n+140,0%\nKako je izračunato?",
+        "containsUnknown": true,
+        "containsNegativeIdLabel": true
+      },
+      "export": {
+        "fileName": "supplier-sales-stats.csv",
+        "lineCount": 3,
+        "header": "Dobavljač,Promet,Količina,Nabavna vrednost,Udeo prometa %,Vodeća vrsta obuće,Udeo vodeće vrste %,Maržni doprinos,Marža %,Kvalitet marže,Udeo u Maržni doprinos %,PoP trend %,Posmatrani promet pre nivelacije,Posmatrani promet posle nivelacije,Posmatrana količina pre nivelacije,Posmatrana količina posle nivelacije,Uporedivi promet pre nivelacije,Uporedivi promet posle nivelacije,Uporediva količina pre nivelacije,Uporediva količina posle nivelacije,Pre/post promena prometa %,Pre/post promena količine %,Pre/post pokriće prometa %,Artikala u uporedivoj pre/post kohorti,Napomena za pre/post signal,Preporuka",
+        "rows": 2
+      },
+      "interceptedExportPayload": true
+    },
+    {
+      "kind": "shoeType",
+      "route": "/analytics/shoe-type-sales-stats",
+      "fixtureClass": "synthetic_fixture_only",
+      "requested": {
+        "fromUtc": "2026-09-01T00:00:00Z",
+        "toUtc": "2026-09-02T00:00:00Z",
+        "storeId": 2,
+        "dataScope": "imported"
+      },
+      "rendered": {
+        "totalRevenue": 240,
+        "rowCount": 2,
+        "kpiText": "UKUPAN PROMET\n240 RSD\nUKUPAN MARŽNI DOPRINOS\n50 RSD\n⚠ Upozorenje\nPOP TREND PROMETA\n+140,0%",
+        "containsUnknown": true,
+        "containsNegativeIdLabel": true
+      },
+      "export": {
+        "fileName": "shoe-type-sales-stats.csv",
+        "lineCount": 3,
+        "header": "Tip obuće,Promet,Količina,Neto udeo %,Maržni doprinos,Marža %,Kvalitet marže,PoP trend %,Uticaj nivelacije %,Pre/post pokriće prometa %,Posmatrani promet pre nivelacije,Posmatrani promet posle nivelacije,Posmatrana količina pre nivelacije,Posmatrana količina posle nivelacije,Uporedivi promet pre nivelacije,Uporedivi promet posle nivelacije,Uporediva količina pre nivelacije,Uporediva količina posle nivelacije,Uticaj nivelacije na količinu %,Napomena za pre/post signal,Artikala u uporedivoj pre/post kohorti,Status signala,Sigurnost preporuke %,Udeo artikala sa nivelacijom %,Nabavna vrednost (rešeni trošak)",
+        "rows": 2
+      },
+      "interceptedExportPayload": true
+    },
+    {
+      "mode": "empty",
+      "kind": "shoeType",
+      "state": "empty",
+      "dataStateCode": "unknown_code",
+      "renderedEmpty": true
+    },
+    {
+      "mode": "error",
+      "kind": "supplier",
+      "state": "error",
+      "renderedError": true
+    },
+    {
+      "mode": "tampered",
+      "state": "mismatch_detected",
+      "message": "deliberately tampered total must not reconcile\n\n241 !== 240\n"
+    }
+  ],
+  "counts": {
+    "browserRoutes": 2,
+    "csvDownloads": 2,
+    "stateCases": 2,
+    "tamperedMismatchesDetected": 1
+  },
+  "exportPayloadTables": [
+    {
+      "tableKey": "supplier-sales-stats",
+      "rowCount": 2,
+      "columnCount": 26
+    },
+    {
+      "tableKey": "shoe-type-sales-stats",
+      "rowCount": 2,
+      "columnCount": 25
+    }
+  ],
+  "unexpectedApiCount": 0
+}
