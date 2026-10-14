@@ -188,7 +188,10 @@ export default function InfoTip({ text }: { text: string }) {
               .join(" ")}
             style={{ top: pos.top, left: pos.left }}
           >
-            {text}
+            <div className="info-tip-content" style={{ maxWidth: 280, whiteSpace: "pre-wrap", fontSize: "0.95rem", lineHeight: 1.4 }}>
+              {/* Show formula-like text in monospace when it looks like an equation */}
+              {/[=÷×/*+-]/.test(text) ? <code style={{ fontFamily: "ui-monospace, Menlo, monospace", display: "block" }}>{text}</code> : <span>{text}</span>}
+            </div>
           </span>,
           document.body,
         )}

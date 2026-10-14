@@ -92,11 +92,15 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
                         className="modal-close-button"
                         aria-label="Zatvori"
                     >
-                        x
+                        <span aria-hidden="true" style={{ fontSize: "1.25rem", lineHeight: 1 }}>×</span>
                     </button>
                 </div>
 
-                <div className="modal-body">{children}</div>
+                <div className="modal-body" role="document">
+                  <div className="modal-body-content" style={{ lineHeight: 1.5 }}>
+                    {children}
+                  </div>
+                </div>
 
                 {footer && <div className="modal-footer">{footer}</div>}
             </div>
