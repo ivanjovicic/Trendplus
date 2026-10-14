@@ -1,6 +1,10 @@
 # Analytics Pilot Operator Runbook
 
-Updated: 2026-06-21
+Updated: 2026-06-21 (historical procedures; current limitation notice 2026-10-14)
+
+**CURRENT STATUS — not proof of a live pilot.** Earlier sections saying a pilot is "usable" or "live smoke passed" describe dated historical checks, **not** deployed/current-source acceptance in October. As of the latest repository business audit, current Render/worker/refresh proof (STAB16), raw-to-deployed browser/export proof (RQ448/RQ565), current cost source approval (RQ601) and a real observed operator/action outcome have **not** been verified. Do not infer current recommendations, release readiness, real adoption or measured ROI from this runbook. A dated historical operator walkthrough may be run as **observation with as-of warnings**, but any real action/price change needs separate approved authority.
+
+Current owner decision / go-no-go evidence: [14.10 business progress and focus](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md); task status in [master roadmap](../../MASTER_ROADMAP.md) and canonical owner queue. Preserve the procedure below, but when its dated statements conflict with current evidence, the latest run/evidence and production gates prevail.
 
 ## Purpose
 
