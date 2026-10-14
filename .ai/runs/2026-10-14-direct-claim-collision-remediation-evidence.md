@@ -45,6 +45,7 @@ Claim reservation: direct-user-request/not applicable
 - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --disable-build-servers -m:1 -clp:ErrorsOnly` — pass (0 warnings, 0 errors).
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true; TRENDPLUS_BENCHMARK_REPORT_PATH=TestResults/rq647-analytics-endpoint-benchmark-remediated.json; dotnet test Api.Tests/Api.Tests.csproj --no-build --no-restore --configuration Release --filter FullyQualifiedName~AnalyticsEndpointBenchmarkPostgresTests` — pass (1 passed, 0 skipped, 0 failed); the report has 624 sales headers/lines and no `machineName` field.
 - Exact-main GitHub Actions Analytics Tests `38542983060` on `408d1b81062e5d4c114960d69ab51d4d239407e4` — pass (2,076 passed, 43 skipped, 0 failed); RQ453 certification passed and artifact `11884041409` contains the explicit RQ647 report.
+- The preceding current-main run `38542452293` on `578945fe` is classified as an in-scope report-path defect only: its backend suite passed, but artifact upload found no file at repository `TestResults`; `408d1b81` supplied the explicit path and its successor run passed.
 - Governance validators — pass: agent instruction self-test + validation, prompt-queue self-test + validation, and planning architecture self-test + validation.
 
 ## Validation not run
