@@ -51,31 +51,49 @@
 .info-tip-portal {
   /* Positioning (top/left set by JS) */
   position: fixed;
-  z-index: 9999;
+  z-index: 12000;
   /* Centering + base animation offset for "above" placement */
-  transform: translateX(-50%) translateY(-100%) scale(0.9);
+  transform: translateX(-50%) translateY(-100%) scale(0.95);
   /* Sizing */
-  max-width: min(var(--size-tooltip-max-width), calc(100vw - 24px));
+  max-width: min(var(--size-tooltip-max-width, 420px), calc(100vw - 32px));
   width: max-content;
-  /* Visual */
-  background: var(--analytics-chart-tooltip-bg, var(--surface-darker));
-  border: var(--border-width-sm) solid var(--analytics-chart-tooltip-border, var(--analytics-border));
-  border-radius: var(--analytics-radius-sm, var(--radius-md));
-  box-shadow: var(--analytics-chart-tooltip-shadow, var(--analytics-shadow));
+  /* Visual — slightly lighter, clearer border and stronger shadow for popups */
+  background: var(--analytics-chart-tooltip-bg, var(--surface-elevated));
+  border: var(--border-width-sm) solid var(--analytics-chart-tooltip-border, rgba(0,0,0,0.12));
+  border-radius: var(--analytics-radius-sm, 12px);
+  box-shadow: 0 18px 40px rgba(2,6,23,0.32);
   /* Typography */
   color: var(--analytics-text, var(--text-primary));
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.55;
-  padding: var(--space-2) var(--space-3);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+  padding: 10px 14px;
   white-space: normal;
   /* Fine pointer: tooltip is read-only; coarse pointer enables outside-tap dismissal */
   pointer-events: none;
   /* Entry animation (opacity + scale) */
   opacity: 0;
   transition:
-    opacity 180ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Tooltip arrow */
+.info-tip-portal::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  transform: rotate(45deg);
+  left: 50%;
+  margin-left: -5px;
+  bottom: calc(-5px);
+  border-left: var(--border-width-sm) solid var(--analytics-chart-tooltip-border, var(--analytics-border));
+  border-bottom: var(--border-width-sm) solid var(--analytics-chart-tooltip-border, var(--analytics-border));
+  box-shadow: var(--analytics-chart-tooltip-shadow);
+  display: block;
+  pointer-events: none;
 }
 
 /* When tooltip appears below the trigger (trigger near top of viewport) */
@@ -86,11 +104,11 @@
 /* Active (visible) state — triggered one rAF after mount */
 .info-tip-portal--visible {
   opacity: 1;
-  transform: translateX(-50%) translateY(calc(-100% - var(--space-2))) scale(1);
+  transform: translateX(-50%) translateY(calc(-100% - 8px)) scale(1);
 }
 
 .info-tip-portal--below.info-tip-portal--visible {
-  transform: translateX(-50%) translateY(var(--space-2)) scale(1);
+  transform: translateX(-50%) translateY(8px) scale(1);
 }
 
 .info-tip-portal--interactive {

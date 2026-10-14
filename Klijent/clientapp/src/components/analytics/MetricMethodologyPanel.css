@@ -57,8 +57,8 @@
 .metric-methodology-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  gap: 18px;
+  padding: 28px;
 }
 
 .metric-methodology-header {
@@ -109,6 +109,33 @@
   margin: 0;
 }
 
+.metric-methodology-section h4 {
+  font-size: 13px;
+  margin: 8px 0 6px;
+  color: var(--text-secondary);
+}
+
+.metric-methodology-formula-block {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+  font-size: 0.95rem;
+  color: var(--text-contrast);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.08);
+}
+
+.metric-methodology-formula-example {
+  margin-top: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
 .metric-methodology-section ul {
   display: grid;
   gap: 8px;
@@ -130,6 +157,26 @@
   overflow: hidden;
   position: absolute;
   width: 1px;
+}
+
+.metric-methodology-formula-block {
+  background: var(--surface-darker);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+  font-size: 0.95rem;
+  color: var(--text-contrast);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.metric-methodology-formula-example {
+  margin-top: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 720px) {
