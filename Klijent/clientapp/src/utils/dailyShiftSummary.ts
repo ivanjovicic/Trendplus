@@ -9,6 +9,13 @@ export type ShiftColumnAggregate = {
   isPartial: boolean;
 };
 
+export type DailyShiftEvidenceCounts = {
+  complete: number;
+  partial: number;
+  missing: number;
+  unavailable: number;
+};
+
 function finiteOrNull(value: DailySalesNumeric): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -85,6 +92,17 @@ export function hasIncompleteShiftEvidence(
 ): boolean {
   const state = classifyDailyShiftSummary(row, assignmentStatus);
   return state === "partial" || state === "missing" || state === "unavailable";
+}
+
+export function countDailyShiftEvidence(
+  rows: readonly DailySalesRow[],
+  assignmentStatus?: DailySalesShiftAssignmentStatus | null,
+): DailyShiftEvidenceCounts {
+  return rows.reduce<DailyShiftEvidenceCounts>((counts, row) => {
+    const state = classifyDailyShiftSummary(row, assignmentStatus);
+    counts[state] += 1;
+    return counts;
+  }, { complete: 0, partial: 0, missing: 0, unavailable: 0 });
 }
 
 export function resolveShiftDisplayValue(

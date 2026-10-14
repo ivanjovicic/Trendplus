@@ -68,9 +68,8 @@ import { resolveAuthoritativeTopSuppliers } from "../utils/dailySupplierOrder";
 import { createAnalyticsDatasetProjections } from "../utils/analyticsDatasetProjections";
 import type { PreviousPeriodComparisonState } from "../utils/supplierPreviousPeriodComparison";
 import {
+  countDailyShiftEvidence,
   describeShiftEvidenceCoverage,
-  hasMissingShiftSummary,
-  hasPartialShiftSummary,
   periodHasIncompleteShiftEvidence,
   resolveShiftChartValue,
   resolveShiftDisplayValue,
@@ -1133,17 +1132,13 @@ export default function DailySalesStatsPage() {
 
   const shiftAssignmentStatus = data?.metadata.shiftAssignmentStatus ?? null;
 
-  const missingShiftCount = useMemo(
-    () => chronologicalChartRows.filter((row) => hasMissingShiftSummary(row, shiftAssignmentStatus)).length,
-    [chronologicalChartRows, shiftAssignmentStatus]
+  const shiftEvidenceCounts = useMemo(
+    () => countDailyShiftEvidence(chronologicalChartRows, shiftAssignmentStatus),
+    [chronologicalChartRows, shiftAssignmentStatus],
   );
-
-  const partialShiftCount = useMemo(
-    () => chronologicalChartRows.filter((row) => hasPartialShiftSummary(row, shiftAssignmentStatus)).length,
-    [chronologicalChartRows, shiftAssignmentStatus]
-  );
-
-  const incompleteShiftCount = missingShiftCount + partialShiftCount;
+  const { missing: missingShiftCount, partial: partialShiftCount, unavailable: unavailableShiftCount } = shiftEvidenceCounts;
+  const incompleteShiftCount = missingShiftCount + partialShiftCount + unavailableShiftCount;
+  const hasShiftDayEvidence = chronologicalChartRows.length > 0;
 
   const incompleteDailyAggregateCount = useMemo(
     () => chronologicalChartRows.filter((row) => (
@@ -1537,16 +1532,23 @@ export default function DailySalesStatsPage() {
     {
       key: "missingShift",
       label: "Dani bez satnice",
-      value: fmtNumber(missingShiftCount),
-      tone: missingShiftCount > 0 ? "warning" : "good",
-      description: "Nedostaju podaci za obe smene ili su obe smene nepouzdane; delimično evidentirani dani se broje odvojeno.",
+      value: hasShiftDayEvidence ? fmtNumber(missingShiftCount) : "Nije dostupno",
+      tone: !hasShiftDayEvidence ? "info" : missingShiftCount > 0 ? "warning" : "good",
+      description: "Obe smene nedostaju u danu za koji je smenska evidencija potvrđena; delimični i nedostupni dani broje se odvojeno.",
+    },
+    {
+      key: "unavailableShift",
+      label: "Dani sa nedostupnom satnicom",
+      value: hasShiftDayEvidence ? fmtNumber(unavailableShiftCount) : "Nije dostupno",
+      tone: !hasShiftDayEvidence ? "info" : unavailableShiftCount > 0 ? "warning" : "good",
+      description: "Nije potvrđeno da izvor može pouzdano da razdvoji smene za ovaj dan; numeričke vrednosti se ne prikazuju kao izmerene.",
     },
     {
       key: "incompleteShift",
       label: "Dani sa nepotpunom satnicom",
-      value: fmtNumber(incompleteShiftCount),
-      tone: incompleteShiftCount > 0 ? "warning" : "good",
-      description: "Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom.",
+      value: hasShiftDayEvidence ? fmtNumber(incompleteShiftCount) : "Nije dostupno",
+      tone: !hasShiftDayEvidence ? "info" : incompleteShiftCount > 0 ? "warning" : "good",
+      description: "Ukupan broj dana bez kompletne smenske evidencije: nedostajući, nedostupni i delimični dani.",
     },
     {
       key: "partialShift",
@@ -1634,8 +1636,16 @@ export default function DailySalesStatsPage() {
     const total = problemSignals.length;
     if (dangerCount > 0) return { tone: "danger" as const, label: `\u26a0 ${total} problem${total === 1 ? "" : "a"} u podacima`, count: total };
     if (total > 0) return { tone: "warning" as const, label: `\u26a0 ${total} upozorenje${total === 1 ? "" : "a"}`, count: total };
+    const trustIsQualified = trustIsPartial
+      || trustDataQualityStatus == null
+      || trustDataQualityStatus !== "good"
+      || trustDataFreshnessStatus !== "fresh"
+      || (hasShiftDayEvidence && (shiftAssignmentStatus == null || unavailableShiftCount > 0));
+    if (trustIsQualified) {
+      return { tone: "info" as const, label: "? Kvalitet nije potpuno potvrđen", count: 0 };
+    }
     return { tone: "good" as const, label: "\u2713 Nema registrovanih upozorenja", count: 0 };
-  }, [qualitySignals]);
+  }, [hasShiftDayEvidence, qualitySignals, shiftAssignmentStatus, trustDataFreshnessStatus, trustDataQualityStatus, trustIsPartial, unavailableShiftCount]);
 
   const heuristicInsights = useMemo<InsightCard[]>(() => {
     const insights: InsightCard[] = [];
@@ -2551,12 +2561,16 @@ export default function DailySalesStatsPage() {
                   <strong>{fmtPct(currentSummary.secondShiftSharePct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Dani bez satnice <InfoTip text="Dan sa nedostajućim podacima za obe smene ili bez pouzdanog smenskog razdvajanja." /></span>
-                  <strong>{fmtNumber(missingShiftCount)}</strong>
+                  <span>Dani bez satnice <InfoTip text="Dan sa nedostajućim podacima za obe smene dok je izvor smene potvrđen." /></span>
+                  <strong>{hasShiftDayEvidence ? fmtNumber(missingShiftCount) : "Nije dostupno"}</strong>
                 </div>
                 <div>
-                  <span>Dani sa nepotpunom satnicom <InfoTip text="Ukupan broj dana bez kompletne smenske evidencije: dani bez satnice plus dani sa delimično evidentiranom satnicom." /></span>
-                  <strong>{fmtNumber(incompleteShiftCount)}</strong>
+                  <span>Dani sa nedostupnom satnicom <InfoTip text="Izvor ne potvrđuje da smenski raspored postoji ili je pouzdan za ovaj dan." /></span>
+                  <strong>{hasShiftDayEvidence ? fmtNumber(unavailableShiftCount) : "Nije dostupno"}</strong>
+                </div>
+                <div>
+                  <span>Dani sa nepotpunom satnicom <InfoTip text="Ukupan broj dana bez kompletne smenske evidencije: nedostajući, nedostupni i delimični dani." /></span>
+                  <strong>{hasShiftDayEvidence ? fmtNumber(incompleteShiftCount) : "Nije dostupno"}</strong>
                 </div>
               </div>
             </article>

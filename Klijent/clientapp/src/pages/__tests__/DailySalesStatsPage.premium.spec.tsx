@@ -810,6 +810,89 @@ describe("DailySalesStatsPage premium controls", () => {
     expect(within(dayRow as HTMLElement).getByText("0")).toBeInTheDocument();
   });
 
+  it("marks numeric shift columns unavailable when the source assignment status is unknown", async () => {
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        metadata: { ...response().metadata, shiftAssignmentStatus: null },
+        dateRows: [{
+          ...response().dateRows[0],
+          totalItemsSold: 18,
+          firstShiftTotalItems: 10,
+          secondShiftTotalItems: 8,
+        }],
+        meta: { ...response().meta, dataQualityStatus: "good", dataFreshnessStatus: "fresh", isPartial: false },
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Kvalitet nije potpuno potvrđen|upozorenje/i })).toBeInTheDocument();
+    });
+    const kpiSection = screen.getByRole("region", { name: "Ključni pokazatelji dnevne prodaje" });
+    const firstShiftKpi = within(kpiSection).getByText("Prva smena", { selector: "span" }).closest("article");
+    expect(firstShiftKpi).not.toBeNull();
+    expect(within(firstShiftKpi as HTMLElement).getByText("Nije dostupno")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle("Prikaži detalje kvaliteta"));
+    const qualityPanel = screen.getByRole("heading", { name: /^Kvalitet podataka/ }).closest("article");
+    expect(qualityPanel).not.toBeNull();
+    const unavailableCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nedostupnom satnicom")
+      .closest("article");
+    expect(unavailableCard).not.toBeNull();
+    expect(within(unavailableCard as HTMLElement).getByText("1")).toBeInTheDocument();
+    const incompleteCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nepotpunom satnicom")
+      .closest("article");
+    expect(incompleteCard).not.toBeNull();
+    expect(within(incompleteCard as HTMLElement).getByText("1")).toBeInTheDocument();
+    expect(screen.queryByText("✓ Nema registrovanih upozorenja")).not.toBeInTheDocument();
+  });
+
+  it("keeps incomplete coverage visible when unavailable, partial and complete days coexist", async () => {
+    const baseRow = response().dateRows[0];
+    vi.mocked(getDailySalesStats).mockResolvedValue(
+      response({
+        dateRows: [
+          { ...baseRow, totalItemsSold: null, firstShiftTotalItems: 4, secondShiftTotalItems: 4 },
+          { ...baseRow, date: "2026-04-02", totalItemsSold: 5, firstShiftTotalItems: 5, secondShiftTotalItems: null },
+          { ...baseRow, date: "2026-04-03", totalItemsSold: 5, firstShiftTotalItems: 2, secondShiftTotalItems: 3 },
+        ],
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/daily-sales"]}>
+        <Routes>
+          <Route path="/analytics/daily-sales" element={<DailySalesStatsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByTitle("Prikaži detalje kvaliteta"));
+    const qualityPanel = screen.getByRole("heading", { name: /^Kvalitet podataka/ }).closest("article");
+    expect(qualityPanel).not.toBeNull();
+    const unavailableCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nedostupnom satnicom")
+      .closest("article");
+    expect(within(unavailableCard as HTMLElement).getByText("1")).toBeInTheDocument();
+    const partialCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa delimičnom satnicom")
+      .closest("article");
+    expect(within(partialCard as HTMLElement).getByText("1")).toBeInTheDocument();
+    const incompleteCard = within(qualityPanel as HTMLElement)
+      .getByText("Dani sa nepotpunom satnicom")
+      .closest("article");
+    expect(within(incompleteCard as HTMLElement).getByText("2")).toBeInTheDocument();
+  });
+
   it("renders Daily Sales table when top suppliers use negative Access supplier IDs", async () => {
     vi.mocked(getDailySalesStats).mockResolvedValue(
       response({
