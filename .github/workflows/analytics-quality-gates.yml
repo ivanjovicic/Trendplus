@@ -84,6 +84,14 @@ jobs:
         working-directory: Klijent/clientapp
         run: npm run build
 
+      # RQ664 remains synthetic-only: fail the core frontend gate if browser,
+      # fixture, downloaded CSV or independent fixture-row parity is missing.
+      - name: Verify Supplier/Shoe fixture browser and CSV parity
+        working-directory: Klijent/clientapp
+        run: |
+          node --check scripts/qa/rq448-fixture-smoke.mjs
+          npm run qa:rq448-fixture-smoke
+
       - name: Check bundle budget and route-lazy charts
         working-directory: Klijent/clientapp
         run: |
