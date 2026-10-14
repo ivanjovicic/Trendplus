@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: RQ648 READY (primary P2 branch-content-equivalence audit; re-check its overlap with open PR #147 before claim). RQ655-RQ657 (frontend error/fake-zero/request-race audits) are independent READY lanes. RQ647 is DONE on main at `408d1b81062e5d4c114960d69ab51d4d239407e4`; RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day); RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ645/RQ646 and RQ651-RQ654 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
+Current READY prompt: RQ648 READY (primary P2 branch-content-equivalence audit; re-check its overlap with open PR #147 before claim). RQ657 (frontend request-race audit) is an independent READY lane; RQ656 is Codex-owned IN_PROGRESS. RQ655 is DONE on main at `ab20a4fb13b181ce8c82f8b67b934e792b7da845` (marketplace trend pages surface loader failures with retry). RQ647 is DONE on main at `408d1b81062e5d4c114960d69ab51d4d239407e4`; RQ654 is DONE on main at `239dfcbbd181c39e5defeac4e4451cceec8c7898` (presets now end on the Europe/Belgrade business day); RQ649 is DONE on main at `d8429e9d92fa08ed2d16bd06090a2469a2d54138` (exact-main run `38537132751` green; 0 worker-attributed relational-provider log lines). RQ645/RQ646 and RQ651-RQ654 are DONE. PR #147 proposes a new RQ650 entry but remains OPEN and is not current main state. The RQ645/RQ646/RQ647 scopes are path-separated; task closeouts must serialize canonical queue/roadmap updates. No source/import/provider mutation is authorized.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
 
 Analytics screen bug review 2026-10-13 (main `a5604874`): RQ651 (P2, fake-zero data-quality/margin trust text), RQ652 (P2, stale action-queue KPI counts/outcome summary), RQ653 (P2, pilot readiness zero actions on partial failure) and RQ654 (P3, period preset local-midnight boundary) are additional independent frontend-only READY lanes. They do not change the RQ645 primary pointer. RQ650 is reserved by open PR #146. Evidence: `docs/qa/ANALYTICS_SCREEN_BUG_REVIEW_2026-10-13.md`.
@@ -2545,13 +2545,12 @@ None. Frontend-only; P3 because the affected window is at most two hours per day
 
 ## RQ655 - Surface swallowed loader errors instead of silent fallback
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend loader error handling / silent-fallback audit
 Feature family: analytics-error-surface
 Parallel-safe: yes (audit-only; independent frontend files)
 Owner: Cursor
-Local lock: `.ai/task-locks/RQ655-cursor.lock.md`
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
 Claim reservation: inspected origin/main `05c7d05461781d1004a5c15e8c8827664ffee2e2`; pushed claim = the `docs(queue): claim RQ655 for Cursor` commit (SHA recorded in the run log); owner/worktree/branch Cursor / `C:\Users\Ivan\source\repos\Trendplus2` / `main`; remote branch/PR query: no RQ655 branch, worktree, lock or open PR (only open PR #147 is RQ650/branch audit).
 Claim paths: `Klijent/clientapp/src/pages/GoogleShoppingTrendsPage.tsx`, `AmazonShoesTrendsPage.tsx`, `EbayShoesTrendsPage.tsx` and their specs under `src/pages/__tests__/`; audit-only review of `services/analyticsHttp.ts` / `services/analyticsApi.ts` JSON error-body parsing. InsightStudio stays out of scope (experimental route, owner review required).
@@ -2590,6 +2589,25 @@ Loader failures are visible to users with a retry action and logged for diagnost
 ### Dependencies
 
 Coordination with page owners if an experimental route intentionally swallows errors.
+
+### Completion note
+
+- Date: 2026-10-14
+- Status: DONE
+- Completion: `/google-shopping`, `/amazon-shoes` and `/ebay-shoes` no longer turn failed category, product or next-page loads into an empty result or swallow them. Each failure is logged with `console.error` and rendered as a `role="alert"` notice (`components/trendshoes/MarketplaceLoadErrorNotice.tsx`) with a "Pokušaj ponovo" retry; empty states are suppressed while the matching error is shown, and a failed next page keeps the products already loaded. `analyticsHttp.ts` / `analyticsApi.ts` `res.json().catch(() => null)` were reviewed and retained: they only parse error bodies inside `parseApiError` and the caller still throws.
+- Changed files: `Klijent/clientapp/src/components/trendshoes/MarketplaceLoadErrorNotice.tsx`; `Klijent/clientapp/src/pages/GoogleShoppingTrendsPage.tsx`; `AmazonShoesTrendsPage.tsx`; `EbayShoesTrendsPage.tsx`; `src/pages/__tests__/MarketplaceTrendsPages.loadErrors.spec.tsx`; this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-14-RQ655-evidence.md`.
+- Checks run: failing-first spec 9/9 failed before, 9/9 pass after; full frontend vitest 243 files / 1,970 tests pass; analytics guardrails (baseline-only) and `npm run build` pass; `git diff --check` pass; exact-main Analytics Quality Gates run `38547362182` green.
+- Checks not run: none required.
+- Run log: `.ai/runs/2026-10-14-RQ655-evidence.md`
+- Evidence state: synchronized
+- Delivery mode: direct-main
+- Main commit SHA: `ab20a4fb13b181ce8c82f8b67b934e792b7da845`
+- Main verification: fresh `git fetch origin` confirmed `origin/main` = `ab20a4fb13b181ce8c82f8b67b934e792b7da845` after push.
+- Missed: the marketplace pages' `handleDelete` still ignores delete failures (user action, not a loader); `InsightStudioPage.tsx` stays untouched because its route is experimental and needs owner review.
+- Follow-up: RQ657 is the next unclaimed READY lane; RQ656 is Codex-owned IN_PROGRESS.
+- Residual risk: none known beyond the missed items.
+- Post-close routing: RQ655 has no dependents; RQ657 READY, RQ648 READY with PR #147 overlap, RQ656 IN_PROGRESS (Codex). No Zero-READY proof applies.
+- Prompt defect / scope repair: one shared notice component was added under `components/trendshoes/` instead of three copies; same owner (frontend trend pages).
 
 ## RQ656 - Audit and fix fake-zero fallbacks across analytics UI
 
