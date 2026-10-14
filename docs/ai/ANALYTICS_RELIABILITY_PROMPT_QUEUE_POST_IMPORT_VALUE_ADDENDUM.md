@@ -2977,12 +2977,14 @@ Commit suggestion: `fix(home): remove hardcoded business KPIs and prioritize ret
 
 ## RQ662 - Fail closed for stale Supplier store options across dataScope transitions
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/filter-lineage/tests
 Feature family: supplier-sales-store-filter-scope
 Parallel-safe: yes with RQ663/RQ664; no with another Supplier Sales filter/store-discovery owner
-Owner: unassigned
+Owner: Codex
+Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `b1da501c66a9daf135ee2c5f20034d3d26b096e7`. Planned worktree `C:\Users\Ivan\.codex\worktrees\rq662-supplier-scope`; planned branch `codex/rq662-supplier-scope-20261014`. Remote branch/PR/lock collision query found no RQ662 owner or Supplier store-discovery owner; RQ663 and RQ664 remain independently READY on disjoint paths.
+Local lock: `.ai/task-locks/RQ662-codex.lock.md` (created after reservation commit)
 Ready after: RQ657 DONE, RQ659 DONE; no provider/database or product-owner gate
 Commit suggestion: `fix(analytics): prevent stale supplier store options across scope switches`
 
