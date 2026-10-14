@@ -2458,13 +2458,15 @@ None. Frontend-only and repository-local.
 
 ## RQ654 - Align analytics period presets with the business calendar day around local midnight
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P3
 Type: frontend period provenance / timezone boundary
 Feature family: analytics-period-preset-day-boundary
 Parallel-safe: yes (only `utils/analyticsPeriodPresets.ts` and its spec; disjoint from RQ651-RQ653)
-Owner: unassigned
+Owner: Cursor
+Local lock: `.ai/task-locks/RQ654-cursor.lock.md`
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Claim note: 2026-10-14 - claimed after refreshing `origin/main` to `72494d35672dd6d3b644dae36748e0d39e3decf9`. No RQ654 branch, lock, worktree or open PR exists. The primary pointer RQ647 is Codex-owned IN_PROGRESS; RQ648 is not taken because open PR #147 overlaps its branch-reconciliation scope and gate.
 Commit suggestion: `fix(analytics): resolve period presets on the Europe/Belgrade business day`
 
 ### Problem
