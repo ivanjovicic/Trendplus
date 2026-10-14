@@ -2593,13 +2593,15 @@ Coordination with page owners if an experimental route intentionally swallows er
 
 ## RQ656 - Audit and fix fake-zero fallbacks across analytics UI
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend fake-zero / unavailable-value audit
 Feature family: analytics-screen-fake-zero-parity
 Parallel-safe: yes (frontend-only; independent pages)
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/RQ656-codex.lock.md`
 Ready after: 2026-10-13 analytics screen bug review on main `a5604874`
+Claim reservation: 2026-10-14 - claimed from inspected `origin/main` `4e948a448fd89fe251df81e7bb77c7cdbbe3d6f0`. Planned worktree `C:\Users\Ivan\.codex\worktrees\rq656-fake-zero`, branch `codex/rq656-fake-zero-20261014`; bounded paths are the named analytics pages and focused specs plus this queue/evidence. Remote branch/PR query found no RQ656 branch, lock or open PR; open PR #147 is the separate RQ650 branch audit and RQ655 is owned by Cursor on disjoint loader-error paths.
 Commit suggestion: `audit(analytics): remove coercive '?? 0' fake-zero fallbacks in analytics pages`
 
 ### Problem
