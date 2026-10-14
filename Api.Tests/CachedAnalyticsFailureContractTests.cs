@@ -151,6 +151,14 @@ public sealed class CachedAnalyticsFailureContractTests
         return JsonDocument.Parse(body).RootElement.Clone();
     }
 
+    [Fact]
+    public async Task FailureFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        await using var factory = new FailureFactory(new InvalidOperationException("registration check"));
+
+        Assert.False(AccessImportTestHostIsolation.IsRegistered(factory.Services));
+    }
+
     private sealed class FailureFactory : WebApplicationFactory<global::Program>
     {
         private readonly Exception _exception;
@@ -167,6 +175,7 @@ public sealed class CachedAnalyticsFailureContractTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                AccessImportTestHostIsolation.RemoveAccessImportWorker(services);
                 services.RemoveAll<IAnalyticsCacheService>();
                 services.AddSingleton<IAnalyticsCacheService>(new ThrowingAnalyticsCacheService(_exception));
 

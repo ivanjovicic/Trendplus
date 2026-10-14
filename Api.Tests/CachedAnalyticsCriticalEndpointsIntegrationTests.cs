@@ -1218,6 +1218,14 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
         Assert.False(looksLikeEmptySuccess);
     }
 
+    [Fact]
+    public async Task CachedAnalyticsFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        await using var factory = new CachedAnalyticsFactory();
+
+        Assert.False(AccessImportTestHostIsolation.IsRegistered(factory.Services));
+    }
+
     private sealed class CachedAnalyticsFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"cached-analytics-critical-{Guid.NewGuid():N}";
@@ -1228,6 +1236,7 @@ public sealed class CachedAnalyticsCriticalEndpointsIntegrationTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                AccessImportTestHostIsolation.RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();

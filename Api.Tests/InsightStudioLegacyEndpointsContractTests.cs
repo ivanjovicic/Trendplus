@@ -393,6 +393,14 @@ public sealed class InsightStudioLegacyEndpointsContractTests
         db.SaveChanges();
     }
 
+    [Fact]
+    public async Task LegacyInsightStudioFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        await using var factory = new LegacyInsightStudioFactory();
+
+        Assert.False(AccessImportTestHostIsolation.IsRegistered(factory.Services));
+    }
+
     private sealed class LegacyInsightStudioFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"legacy-insight-studio-{Guid.NewGuid():N}";
@@ -402,6 +410,7 @@ public sealed class InsightStudioLegacyEndpointsContractTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                AccessImportTestHostIsolation.RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();

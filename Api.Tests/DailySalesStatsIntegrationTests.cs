@@ -486,6 +486,14 @@ public sealed class DailySalesStatsIntegrationTests
         };
     }
 
+    [Fact]
+    public async Task DailySalesWebApplicationFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        await using var factory = new DailySalesWebApplicationFactory();
+
+        Assert.False(AccessImportTestHostIsolation.IsRegistered(factory.Services));
+    }
+
     private sealed class DailySalesWebApplicationFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _dbName = Guid.NewGuid().ToString("N");
@@ -495,6 +503,7 @@ public sealed class DailySalesStatsIntegrationTests
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                AccessImportTestHostIsolation.RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();

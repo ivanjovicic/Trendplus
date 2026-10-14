@@ -460,6 +460,14 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
         };
     }
 
+    [Fact]
+    public async Task SupplierSalesInMemoryFactory_DoesNotRegisterAccessImportBackgroundWorker()
+    {
+        await using var factory = new SupplierSalesInMemoryFactory();
+
+        Assert.False(global::Api.Tests.AccessImportTestHostIsolation.IsRegistered(factory.Services));
+    }
+
     private sealed class SupplierSalesInMemoryFactory : WebApplicationFactory<global::Program>
     {
         private readonly string _databaseName = $"supplier-sales-invalid-period-{Guid.NewGuid():N}";
@@ -469,6 +477,7 @@ public class AnalyticsSupplierSalesIntegrationTests : IClassFixture<WebApplicati
             builder.UseSetting("StartupReadiness:GateApiTraffic", "false");
             builder.ConfigureServices(services =>
             {
+                global::Api.Tests.AccessImportTestHostIsolation.RemoveAccessImportWorker(services);
                 services.RemoveAll<DbContextOptions<TrendplusDbContext>>();
                 services.RemoveAll<TrendplusDbContext>();
                 services.RemoveAll<IDbContextFactory<TrendplusDbContext>>();
