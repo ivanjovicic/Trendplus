@@ -18,23 +18,42 @@ export function isAnalyticsPeriodPreset(value: string): value is AnalyticsPeriod
   return (ANALYTICS_PERIOD_PRESET_VALUES as readonly string[]).includes(value);
 }
 
+const PRESET_DAY_COUNT: Record<AnalyticsComparablePeriodPreset, number> = {
+  "30d": 30,
+  "90d": 90,
+  "180d": 180,
+  "365d": 365,
+};
+
+// The backend resolves fromDate/toDate as Europe/Belgrade calendar days (BelgradeCalendarDatePolicy),
+// so "today" must be the Belgrade date, not the UTC date, during the hours around local midnight.
+const belgradeDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Europe/Belgrade",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function toBelgradeDateInput(date: Date): string {
+  const parts = Object.fromEntries(
+    belgradeDateFormatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function shiftDateInput(value: string, days: number): string {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function getAnalyticsPeriodPresetRange(
   preset: AnalyticsComparablePeriodPreset,
   now = new Date()
 ): { fromDate: string; toDate: string } {
-  const from = new Date(now);
-  const to = new Date(now);
-  to.setUTCHours(23, 59, 59, 999);
-
-  if (preset === "30d") from.setUTCDate(from.getUTCDate() - 29);
-  if (preset === "90d") from.setUTCDate(from.getUTCDate() - 89);
-  if (preset === "180d") from.setUTCDate(from.getUTCDate() - 179);
-  if (preset === "365d") from.setUTCDate(from.getUTCDate() - 364);
-
-  from.setUTCHours(0, 0, 0, 0);
-
-  const toDateInput = (date: Date): string => date.toISOString().slice(0, 10);
-  return { fromDate: toDateInput(from), toDate: toDateInput(to) };
+  const toDate = toBelgradeDateInput(now);
+  const dayCount = PRESET_DAY_COUNT[preset] ?? 1;
+  return { fromDate: shiftDateInput(toDate, -(dayCount - 1)), toDate };
 }
 
 export function resolvePresetFilterRange(
