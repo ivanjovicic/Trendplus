@@ -849,6 +849,70 @@ using NpgsqlTypes;
         entity.SourceBatchId = _activeBatchId;
     }
 
+    private static string BuildAccessSaleHeaderSourceKey(string sourceTableKey, long sourceRowId)
+        => $"{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}";
+
+    private static Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> BuildAccessSaleHeadersBySource(
+        IEnumerable<Domain.Model.Prodaja.ProdajaZaglavlje> headers)
+    {
+        var result = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in headers.Where(header =>
+                     string.Equals(header.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(header.SourceTableKey) &&
+                     header.SourceRowId.HasValue))
+        {
+            var key = BuildAccessSaleHeaderSourceKey(header.SourceTableKey!, header.SourceRowId!.Value);
+            result.TryAdd(key, header);
+        }
+
+        return result;
+    }
+
+    private static InvalidOperationException CreateSaleHeaderIdentityConflict(
+        string sourceTableKey,
+        long sourceRowId,
+        int conflictingTargetId,
+        string conflictingDataOrigin)
+        => new(
+            "duplicate_sale_header_identity: Access sale-header source identity " +
+            $"'{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}' cannot use target id " +
+            $"{conflictingTargetId.ToString(CultureInfo.InvariantCulture)} because that id belongs to data origin " +
+            $"'{TrimToMaxLength(conflictingDataOrigin, 32) ?? "unknown"}'. The import was stopped before any sale header or line was reassigned.");
+
+    private Domain.Model.Prodaja.ProdajaZaglavlje? ResolveAccessSaleHeaderBySource(
+        Dictionary<int, Domain.Model.Prodaja.ProdajaZaglavlje> existingByTargetId,
+        Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> existingBySource,
+        string sourceTableKey,
+        long sourceRowId,
+        int preferredTargetId)
+    {
+        var sourceKey = BuildAccessSaleHeaderSourceKey(sourceTableKey, sourceRowId);
+        if (existingBySource.TryGetValue(sourceKey, out var mappedHeader))
+            return mappedHeader;
+
+        if (existingByTargetId.TryGetValue(preferredTargetId, out var conflictingHeader))
+        {
+            throw CreateSaleHeaderIdentityConflict(
+                sourceTableKey,
+                sourceRowId,
+                conflictingHeader.Id,
+                conflictingHeader.DataOrigin);
+        }
+
+        return null;
+    }
+
+    private void ApplyAccessSaleHeaderSourceLineage(
+        Domain.Model.Prodaja.ProdajaZaglavlje header,
+        string sourceTableKey,
+        long sourceRowId,
+        AccessDataRow row)
+    {
+        ApplyAccessSourceLineage(header, sourceTableKey, row);
+        header.SourceTableKey = Normalize(sourceTableKey);
+        header.SourceRowId = sourceRowId;
+    }
+
     private bool ShouldSkipStaleOrUnchangedAccessOverwrite(
         IAccessImportSourceLineage existing,
         string tableKey,
@@ -2859,9 +2923,10 @@ using NpgsqlTypes;
         }
         catch (Exception ex)
         {
+            var failureMessage = GetAccessImportFailureMessage(ex);
             result.Status = "failed";
             result.CompletedAtUtc = DateTime.UtcNow;
-            result.Warnings.Add(ex.GetBaseException().Message);
+            result.Warnings.Add(failureMessage);
 
             batch.Status = "failed";
             batch.CompletedAtUtc = result.CompletedAtUtc;
@@ -2872,12 +2937,12 @@ using NpgsqlTypes;
             UpdateBatchDurationSeconds(batch, result.CompletedAtUtc ?? DateTime.UtcNow);
             ApplyBatchMetricsFromResult(batch, result, minTotalErrors: 1);
             batch.RetryCount = Math.Max(0, batch.RetryCount) + 1;
-            batch.ErrorMessage = ex.GetBaseException().Message;
+            batch.ErrorMessage = failureMessage;
             batch.ErrorDetailsJson = JsonSerializer.Serialize(new
             {
                 type = ex.GetType().FullName,
                 baseType = ex.GetBaseException().GetType().FullName,
-                message = ex.GetBaseException().Message
+                message = failureMessage
             });
             var failedCursorSnapshot = BuildBatchCursorSnapshotJson();
             batch.CursorSnapshot = failedCursorSnapshot;
@@ -5064,7 +5129,9 @@ using NpgsqlTypes;
     private async Task ImportProdajaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         _salesHeaderRowsWithUnknownDate = 0;
-        var existing = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
+        var existingHeaders = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
+        var existing = ToFirstDictionary(existingHeaders, x => x.Id);
+        var existingBySource = BuildAccessSaleHeadersBySource(existingHeaders);
         await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_zaglavlje", ct))
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
@@ -5077,7 +5144,16 @@ using NpgsqlTypes;
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             TrackAnalyticsSaleId(id.Value);
 
-            if (!existing.TryGetValue(id.Value, out var e))
+            var sourceTableKey = "prodaja_zaglavlje";
+            var sourceKey = BuildAccessSaleHeaderSourceKey(sourceTableKey, id.Value);
+            var e = ResolveAccessSaleHeaderBySource(
+                existing,
+                existingBySource,
+                sourceTableKey,
+                id.Value,
+                id.Value);
+
+            if (e is null)
             {
                 e = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
@@ -5092,6 +5168,7 @@ using NpgsqlTypes;
                 };
                 _trendDb.ProdajaZaglavlja.Add(e);
                 existing[e.Id] = e;
+                existingBySource[sourceKey] = e;
                 result.ProdajaInserted++;
                 TrackTrendWrite();
             }
@@ -5112,7 +5189,7 @@ using NpgsqlTypes;
                 TrackTrendWrite();
             }
 
-            ApplyAccessSourceLineage(e, "prodaja_zaglavlje", row);
+            ApplyAccessSaleHeaderSourceLineage(e, sourceTableKey, id.Value, row);
             TrackAnalyticsStoreId(e.IDObjekat);
 
             await FlushTrendWritesAsync(force: false, ct);
@@ -5163,7 +5240,7 @@ using NpgsqlTypes;
                 if (_options.AutoInsertMissingParents)
                 {
                     _logger.LogInformation("Auto-inserting {Count} missing prodaja_zaglavlje rows before importing prodaja_stavke.", missingSaleIds.Count);
-                    var insertedIds = await EnsureProdajaZaglavljeExistsAsync(missingSaleIds, session, overwriteExisting, result, ct);
+                    var insertedIds = await EnsureProdajaZaglavljeExistsAsync(missingSaleIds, session, parentTable, overwriteExisting, result, ct);
                     // Prefer to merge newly inserted ids returned by the helper so we don't need an extra round-trip.
                     if (insertedIds is not null && insertedIds.Count > 0)
                         saleIds.UnionWith(insertedIds);
@@ -5469,19 +5546,9 @@ using NpgsqlTypes;
 
     private async Task ImportProdajaFromLineTableAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
-        var existingBrojevi = BuildDuplicateTolerantLookup(
-            _trendDb.ProdajaZaglavlja
-                .AsNoTracking()
-                .Where(x => x.BrojRacuna != null)
-                .OrderBy(x => x.Id)
-                .ToList(),
-            x => x.BrojRacuna,
-            out var duplicateBrojevi);
-        AddDuplicateKeyWarning(
-            result.Warnings,
-            duplicateBrojevi,
-            "Postoje duplikati broja racuna u postojecoj tabeli prodaje. Import ce koristiti prvi pronadjeni zapis za svaki broj racuna");
+        var existingHeaderRows = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
+        var existingZaglavlja = ToFirstDictionary(existingHeaderRows, x => x.Id);
+        var existingHeadersBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
 
         var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
             .OrderBy(x => x.Id)
@@ -5551,7 +5618,16 @@ using NpgsqlTypes;
             var idObjekat = I(row, "idobjekat", "storeid");
             var brojRacunaFromRow = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
 
-            if (!existingZaglavlja.TryGetValue(sourceSaleId.Value, out var zaglavlje))
+            const string headerSourceTableKey = "prodaja_stavke";
+            var headerSourceKey = BuildAccessSaleHeaderSourceKey(headerSourceTableKey, sourceSaleId.Value);
+            var zaglavlje = ResolveAccessSaleHeaderBySource(
+                existingZaglavlja,
+                existingHeadersBySource,
+                headerSourceTableKey,
+                sourceSaleId.Value,
+                sourceSaleId.Value);
+
+            if (zaglavlje is null)
             {
                 var brojRacuna = dnevnik?.BrojRacuna ?? brojRacunaFromRow;
                 var businessKey = BuildProdajaHeaderBusinessKey(sourceSaleId.Value, brojRacuna);
@@ -5572,8 +5648,7 @@ using NpgsqlTypes;
                     pendingHeadersByBusinessKey[businessKey] = zaglavlje;
                     pendingHeaderIdsByBusinessKey[businessKey] = zaglavlje.Id;
                     existingZaglavlja[zaglavlje.Id] = zaglavlje;
-                    if (!string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
-                        existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
+                    existingHeadersBySource[headerSourceKey] = zaglavlje;
                     result.ProdajaInserted++;
                     TrackTrendWrite();
                 }
@@ -5595,7 +5670,7 @@ using NpgsqlTypes;
                 }
             }
 
-            ApplyAccessSourceLineage(zaglavlje, "prodaja_zaglavlje", row);
+            ApplyAccessSaleHeaderSourceLineage(zaglavlje, headerSourceTableKey, sourceSaleId.Value, row);
             TrackAnalyticsStoreId(zaglavlje.IDObjekat);
 
             var lineKey = BuildProdajaLineKey(zaglavlje.Id, idArtikal.Value, qty, cena);
@@ -6930,27 +7005,16 @@ using NpgsqlTypes;
         if (saleEntries.Count == 0)
             return;
 
-        var existingZaglavlja = ToFirstDictionary(_trendDb.ProdajaZaglavlja.AsNoTracking().ToList(), x => x.Id);
-        var existingBrojevi = BuildDuplicateTolerantLookup(
-            _trendDb.ProdajaZaglavlja
-                .AsNoTracking()
-                .Where(x => x.BrojRacuna != null)
-                .OrderBy(x => x.Id)
-                .ToList(),
-            x => x.BrojRacuna,
-            out var duplicateBrojevi);
-        AddDuplicateKeyWarning(
-            result.Warnings,
-            duplicateBrojevi,
-            "Postoje duplikati broja racuna u postojecoj tabeli prodaje. Sintetizacija prodaje ce koristiti prvi pronadjeni zapis za svaki broj racuna");
+        var existingHeaderRows = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
+        var existingZaglavlja = ToFirstDictionary(existingHeaderRows, x => x.Id);
+        var existingHeadersBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
 
         var groups = saleEntries
             .GroupBy(d => string.IsNullOrWhiteSpace(d.BrojRacuna)
                 ? $"DN-{d.Id}"
-                : d.BrojRacuna!)
+                : $"{Normalize(d.BrojRacuna)}|{d.IDObjekat?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}|{d.Datum.Date:yyyyMMdd}")
             .ToList();
 
-        int maxId = existingZaglavlja.Count > 0 ? existingZaglavlja.Keys.Max() : 0;
         int maxStavkaId = await _trendDb.ProdajaStavke.AsNoTracking().AnyAsync(ct)
             ? await _trendDb.ProdajaStavke.AsNoTracking().MaxAsync(x => x.Id, ct)
             : 0;
@@ -6974,19 +7038,20 @@ using NpgsqlTypes;
         {
             var first = grp.First();
             TrackAnalyticsStoreId(first.IDObjekat);
+            const string headerSourceTableKey = "dnevnik_promena";
+            var headerSourceKey = BuildAccessSaleHeaderSourceKey(headerSourceTableKey, first.Id);
+            var zaglavlje = ResolveAccessSaleHeaderBySource(
+                existingZaglavlja,
+                existingHeadersBySource,
+                headerSourceTableKey,
+                first.Id,
+                first.Id);
 
-            if (!existingZaglavlja.TryGetValue(first.Id, out var zaglavlje) &&
-                !existingBrojevi.TryGetValue(grp.Key, out zaglavlje))
+            if (zaglavlje is null)
             {
-                var assignedId = first.Id > 0 && !existingZaglavlja.ContainsKey(first.Id)
-                    ? first.Id
-                    : maxId + 1;
-                if (assignedId > maxId)
-                    maxId = assignedId;
-
                 zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
-                    Id = assignedId,
+                    Id = first.Id,
                     BrojRacuna = string.IsNullOrWhiteSpace(first.BrojRacuna) ? null : first.BrojRacuna,
                     DatumProdaje = first.Datum,
                     NacinPlacanja = null,
@@ -6997,8 +7062,7 @@ using NpgsqlTypes;
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
                 existingZaglavlja[zaglavlje.Id] = zaglavlje;
-                if (zaglavlje.BrojRacuna != null)
-                    existingBrojevi[zaglavlje.BrojRacuna] = zaglavlje;
+                existingHeadersBySource[headerSourceKey] = zaglavlje;
                 result.ProdajaInserted++;
                 insertedProdaja++;
                 TrackTrendWrite();
@@ -7040,6 +7104,12 @@ using NpgsqlTypes;
                     TrackTrendWrite();
                 }
             }
+
+            zaglavlje.SourceTableKey = headerSourceTableKey;
+            zaglavlje.SourceRowId = first.Id;
+            zaglavlje.SourceUpdatedAtUtc = first.SourceUpdatedAtUtc;
+            zaglavlje.SourceHash = first.SourceHash;
+            zaglavlje.SourceBatchId = _activeBatchId;
 
             foreach (var d in grp.Where(d => d.ArtikalId.HasValue && d.ArtikalId.Value > 0))
             {
@@ -9688,56 +9758,77 @@ using NpgsqlTypes;
         return ids;
     }
 
-    private async Task<HashSet<int>> EnsureProdajaZaglavljeExistsAsync(IEnumerable<int> missingIds, IAccessDataReaderSession session, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
+    private async Task<HashSet<int>> EnsureProdajaZaglavljeExistsAsync(
+        IEnumerable<int> missingIds,
+        IAccessDataReaderSession session,
+        string parentTable,
+        bool overwriteExisting,
+        AccessImportRunResponse result,
+        CancellationToken ct)
     {
         var toInsert = new HashSet<int>(missingIds);
         if (toInsert.Count == 0) return new HashSet<int>();
 
         var insertedIds = new HashSet<int>();
-        try
+        var existingHeaderRows = await _trendDb.ProdajaZaglavlja.AsNoTracking().ToListAsync(ct);
+        var existingByTargetId = ToFirstDictionary(existingHeaderRows, header => header.Id);
+        var existingBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
+        const string headerSourceTableKey = "prodaja_zaglavlje";
+
+        await foreach (var row in session.ReadRowsAsync(parentTable, ct))
         {
-            var tables = await session.GetTablesAsync(false, ct);
-            foreach (var t in tables)
+            var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
+            if (!id.HasValue || !toInsert.Contains(id.Value))
+                continue;
+
+            var mappedHeader = ResolveAccessSaleHeaderBySource(
+                existingByTargetId,
+                existingBySource,
+                headerSourceTableKey,
+                id.Value,
+                id.Value);
+            if (mappedHeader is not null)
             {
-                if (toInsert.Count == 0) break;
-                await foreach (var row in session.ReadRowsAsync(t, ct))
+                // This path can only link a line safely when the durable source mapping retains
+                // the same target id. Remapping line foreign keys requires an explicit contract.
+                if (mappedHeader.Id != id.Value)
                 {
-                    var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
-                    if (!id.HasValue) continue;
-                    if (!toInsert.Contains(id.Value)) continue;
-
-                    var e = new Domain.Model.Prodaja.ProdajaZaglavlje
-                    {
-                        Id = id.Value,
-                        BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
-                        DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.MinValue,
-                        NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
-                        IDObjekat = I(row, "idobjekat", "storeid") ?? 0,
-                        KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
-                        DataOrigin = "access",
-                        SourceTimestampBasis = "legacy_access_wall_clock"
-                    };
-
-                    if (e.DatumProdaje == DateTime.MinValue)
-                        continue;
-
-                    _trendDb.ProdajaZaglavlja.Add(e);
-                    result.ProdajaInserted++;
-                    insertedIds.Add(id.Value);
-                    toInsert.Remove(id.Value);
-                    TrackTrendWrite();
-                    TrackAnalyticsSaleId(e.Id);
-                    TrackAnalyticsStoreId(e.IDObjekat);
-
-                    if (toInsert.Count == 0) break;
+                    throw new InvalidOperationException(
+                        "duplicate_sale_header_identity: an Access line references a source sale id that is mapped to a different target header id. The import was stopped rather than attaching the line to the wrong sale.");
                 }
-                await FlushTrendWritesAsync(force: false, ct);
+
+                toInsert.Remove(id.Value);
+                continue;
             }
+
+            var e = new Domain.Model.Prodaja.ProdajaZaglavlje
+            {
+                Id = id.Value,
+                BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
+                DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.MinValue,
+                NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                IDObjekat = I(row, "idobjekat", "storeid") ?? 0,
+                KorisnikIme = S(row, "korisnikime", "korisnik", "username", "operater", "kasir"),
+                DataOrigin = "access",
+                SourceTimestampBasis = "legacy_access_wall_clock"
+            };
+
+            if (e.DatumProdaje == DateTime.MinValue)
+                continue;
+
+            ApplyAccessSaleHeaderSourceLineage(e, headerSourceTableKey, id.Value, row);
+            _trendDb.ProdajaZaglavlja.Add(e);
+            existingByTargetId[e.Id] = e;
+            existingBySource[BuildAccessSaleHeaderSourceKey(headerSourceTableKey, id.Value)] = e;
+            result.ProdajaInserted++;
+            insertedIds.Add(id.Value);
+            toInsert.Remove(id.Value);
+            TrackTrendWrite();
+            TrackAnalyticsSaleId(e.Id);
+            TrackAnalyticsStoreId(e.IDObjekat);
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error while attempting to auto-insert missing prodaja_zaglavlje rows.");
-        }
+
+        await FlushTrendWritesAsync(force: false, ct);
 
         if (insertedIds.Count > 0)
         {
@@ -10395,7 +10486,57 @@ using NpgsqlTypes;
         var writesToFlush = _pendingTrendWrites;
         _trendDb.ChangeTracker.DetectChanges();
         await GuardProdajaStavkeForeignKeysBeforeFlushAsync(ct);
-        await _trendDb.SaveChangesAsync(ct);
+        var pendingHeaders = _trendDb.ChangeTracker
+            .Entries<Domain.Model.Prodaja.ProdajaZaglavlje>()
+            .Where(entry => entry.State is EntityState.Added or EntityState.Modified)
+            .ToList();
+        var duplicateAddedHeaderIds = pendingHeaders
+            .Where(entry => entry.State == EntityState.Added)
+            .GroupBy(entry => entry.Entity.Id)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .Take(10)
+            .ToArray();
+
+        _logger.LogInformation(
+            "Access import sale-header flush diagnostics. BatchId: {BatchId}. Step: {Step}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}.",
+            _activeBatchId,
+            "db-flush",
+            pendingHeaders.Count(entry => entry.State == EntityState.Added),
+            pendingHeaders.Count(entry => entry.State == EntityState.Modified),
+            duplicateAddedHeaderIds,
+            pendingHeaders
+                .Take(5)
+                .Select(entry => new
+                {
+                    entry.State,
+                    entry.Entity.Id,
+                    entry.Entity.DataOrigin,
+                    entry.Entity.SourceTableKey,
+                    entry.Entity.SourceRowId
+                })
+                .ToArray());
+
+        try
+        {
+            await _trendDb.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (TryGetSaleHeaderUniqueViolation(ex, out var postgresException))
+        {
+            _logger.LogError(
+                ex,
+                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. Table: {Table}. Constraint: {Constraint}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}.",
+                _activeBatchId,
+                "db-flush",
+                postgresException.TableName,
+                postgresException.ConstraintName,
+                pendingHeaders.Count(entry => entry.State == EntityState.Added),
+                pendingHeaders.Count(entry => entry.State == EntityState.Modified),
+                duplicateAddedHeaderIds);
+            throw new InvalidOperationException(
+                "duplicate_sale_header_identity: PostgreSQL rejected a sale-header identity collision; the import transaction will roll back without advancing its cursor.",
+                ex);
+        }
         _trendDb.ChangeTracker.Clear();
         _pendingTrendWrites = 0;
         _lastTrendFlushUtc = DateTime.UtcNow;
@@ -10407,6 +10548,28 @@ using NpgsqlTypes;
             activeBatchSize,
             force);
     }
+
+    private static bool TryGetSaleHeaderUniqueViolation(Exception exception, out PostgresException postgresException)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgres &&
+                postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
+                string.Equals(postgres.TableName, "prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase))
+            {
+                postgresException = postgres;
+                return true;
+            }
+        }
+
+        postgresException = null!;
+        return false;
+    }
+
+    private static string GetAccessImportFailureMessage(Exception exception)
+        => exception.Message.StartsWith("duplicate_sale_header_identity:", StringComparison.Ordinal)
+            ? exception.Message
+            : exception.GetBaseException().Message;
 
     private async Task GuardProdajaStavkeForeignKeysBeforeFlushAsync(CancellationToken ct)
     {
