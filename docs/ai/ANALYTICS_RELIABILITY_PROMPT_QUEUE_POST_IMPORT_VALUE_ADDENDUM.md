@@ -3770,7 +3770,7 @@ Priority: P3
 Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
-Owner: unassigned
+Owner: grok (branch `fix/rq676-access-import-serbian-text`)
 Ready after: RQ677 DONE (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 

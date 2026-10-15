@@ -2463,7 +2463,7 @@ using NpgsqlTypes;
         response.CompletedAtUtc = null;
 
         var warning =
-            $"Access import batch {batch.Id} is already {response.Status} since {batch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{batch.SourceFileName}'.";
+            $"Access import #{batch.Id} je već aktivan (status: {response.Status}) od {batch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC za fajl '{batch.SourceFileName}'. Prikazan je postojeći import umesto novog.";
         if (!response.Warnings.Contains(warning, StringComparer.Ordinal))
             response.Warnings.Add(warning);
 
@@ -2471,9 +2471,9 @@ using NpgsqlTypes;
         {
             var heartbeatValue = batch.LastHeartbeatUtc.HasValue
                 ? batch.LastHeartbeatUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC"
-                : "n/a";
+                : "nema podatka";
             var progressWarning =
-                $"Current progress: step '{batch.CurrentStep ?? "unknown"}', table '{batch.CurrentTable ?? "unknown"}', last heartbeat {heartbeatValue}.";
+                $"Trenutni napredak: korak '{batch.CurrentStep ?? "nepoznat"}', tabela '{batch.CurrentTable ?? "nepoznata"}', poslednji signal {heartbeatValue}.";
             if (!response.Warnings.Contains(progressWarning, StringComparer.Ordinal))
                 response.Warnings.Add(progressWarning);
         }
