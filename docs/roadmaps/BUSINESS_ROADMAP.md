@@ -14,6 +14,10 @@ Before calling Milestone 1/2 customer-ready, show one actual operator can (a) se
 External Amazon/eBay/Shopping/trend experiments and test-feature UI are out of current product scope; legitimate source mapping/import needed for a paying retailer is **not** automatically out of scope.
 
 
+## Commercial validation overlay — 2026-10-15 (hypothesis, no new milestone)
+
+The [Retail ProfitGuard market feasibility and scenario analysis](../product/RETAIL_PROFITGUARD_MARKET_FEASIBILITY_2026-10-15.md) supplies a *testable* commercial lens, not a queue or a completion claim. Prioritize an actual operator session plus a paid, bounded, historical retail diagnostic **before** recurring SaaS packaging; count separately: source facts, operator decisions, paid pilots, repeat business and measured outcomes. The 0/3/12/35-customer projections are conditional exit-MRR scenarios, **not** forecasts supported by paid-customer data. Invoice/contract discrepancy control remains a distinct discovery candidate, not a shipped supplier feature. Do not use broad Serbian trade totals as the addressable footwear market or shared multi-tenancy as a first-customer prerequisite.
+
 ## Milestone 0 - Decision Truth + Currentness
 
 ### Business outcome
