@@ -15,9 +15,33 @@ Ovaj dokument mapira trenutnu cache politiku za analytics rute kako bismo izbegl
 | `pre-nivelacija-prioriteti` | `/api/analytics/pre-nivelacija-prioriteti` | supplier/season/footwear/stock/no-sale/min score/margin, pagination | `CacheExpiration.HeavyAnalytics` za base entry | `CoreFamilies`, manual invalidate (`pre-nivelacija-prioriteti`/`all`) | No | Endpoint ima base cache + page slicing; invalidacija mora ostati sinhronizovana sa import/refresh ciklusom. |
 | `reports` | supplier decision report, pilot intake report durable artifacts | canonical report filters + `reportCacheVersion` | `CacheExpiration.HeavyAnalytics` (report payload), report version token | report invalidate (`reports`/`all`) bumpuje version, data-quality worker, nightly/import clear | No | Report cache koristi version token za sigurnije “global invalidate” ponašanje. |
 
-## Invalidation TODO (explicit next steps)
-1. Import completed: potvrditi da svaki uspešan import path (uključujući fallback grane) poziva `ClearFamiliesAsync(AnalyticsCachePolicy.CoreFamilies)`.
-2. Analytics refresh succeeded: standardizovati mapiranje refreshed objekata -> target familije (trenutno noćni worker čisti `CoreFamilies`).
-3. Data quality refresh: ostaviti `data-quality` + `reports` clear kao kanonski signal i dokumentovati SLA.
-4. Manual admin refresh: UI treba eksplicitno nuditi family-level i all-level invalidate uz prikaz `lastClearFamily` i `reportCacheVersion`.
-5. Stale warning consistency: proširiti `ApplyStaleCacheWarning` i na rute koje danas koriste samo `GetOrSetAsync` (bez broad refactor-a u ovom koraku).
+## Dodatne familije (implementirano)
+
+| Cache family | Endpoint(s) | Key inputs | TTL | Invalidated by | Notes |
+|---|---|---|---|---|---|
+| `supplier-sales` (alias `supplier-sales-stats`) | supplier sales stats ruta (AllEndpoints) | period, store, supplier, `dataScope` | po policy-ju familije | `CoreFamilies`, manual invalidate | Uključeno u `AnalyticsDataQualityHealthWorker`. |
+| `shoe-type-sales` (alias `shoe-type-sales-stats`) | shoe-type sales stats ruta (AllEndpoints) | period, store, filteri, `dataScope`, snapshot, `integrityEvidenceId` (ključ v6) | po policy-ju familije | `CoreFamilies`, manual invalidate | Premešteno sa lokalnog `IMemoryCache` na `IAnalyticsCacheService`; integrity evidence u ključu sprečava mešanje snapshot/integrity konteksta. |
+| `color-sales` (alias `color-sales-stats`) | color sales stats | period, store, supplier, `dataScope` | po policy-ju familije | `CoreFamilies`, manual invalidate | Prefiks `analytics:color-sales-stats:`. |
+
+## Family -> prefix pravila (implementirano)
+- Mapiranje je eksplicitno (`AnalyticsCachePolicy.FamilyPrefixes` + aliasi); `ResolveFamilyPrefixes` baca grešku za nepoznatu familiju.
+- `all` (i prazna vrednost na API ulazu) ostaje dozvoljeno i invalidira sve.
+- `/api/analytics/cached/cache/invalidate` za nepoznatu familiju vraća `400 unknown_cache_family` (ranije je nepoznata familija brisala sve).
+
+## Mutacije -> invalidacija (implementirano, posle commit-a)
+| Mutacija | Familije | Gde |
+|---|---|---|
+| Access import (uspešan) | `CoreFamilies` | `AccessImportService`, posle commit-a |
+| Access import delete-batch | `CoreFamilies` | `AccessImportService` |
+| POS prodaja / povraćaj POST/PUT | `CoreFamilies` | `AllEndpoints` -> `AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync` |
+| Artikli POST/PUT | `CoreFamilies` | isto |
+| Snapshot activate/deactivate | `CoreFamilies` | `AnalyticsSnapshotEndpoints` |
+| Nightly refresh | `CoreFamilies` | `NightlyAnalyticsRefreshWorker` |
+| Data quality worker | `dashboard`, `product-decision-center`, `supplier-decision-hub`, `inventory`, `data-quality`, `color-sales`, `supplier-sales`, `shoe-type-sales`, `reports` | `AnalyticsDataQualityHealthWorker` |
+
+Invalidacija posle mutacije je best-effort: neuspeh se loguje i ne obara već commit-ovanu mutaciju. Transferi i nivelacija zadržavaju postojeće ponašanje (nije menjano u ovom prolazu).
+
+## Invalidation TODO (preostalo)
+1. Cross-instance stampede zaštita (lock je po instanci).
+2. Produkcija trenutno radi sa `UseRedis=false` (render.yaml), tj. in-memory po instanci; generacije su spremne za Redis kada se uključi.
+3. Pregled transfer mutacija u odnosu na analytics familije.

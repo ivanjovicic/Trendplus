@@ -347,7 +347,8 @@ public static class AllEndpoints
                     toDate,
                     normalizedRequestName,
                     normalizedStatus);
-                var cachedResult = await cache.GetAsync<GetPerformanceStatsResult>(cacheKey, ct);
+                var cachedResultLookup = await cache.GetWithGenerationAsync<GetPerformanceStatsResult>(cacheKey, ct);
+                var cachedResult = cachedResultLookup.Value;
                 if (cachedResult is not null)
                 {
                     return Results.Ok(cachedResult);
@@ -361,7 +362,7 @@ public static class AllEndpoints
                     normalizedRequestName,
                     normalizedStatus);
                 var result = await mediator.Send(query, ct);
-                await cache.SetAsync(cacheKey, result, CacheExpiration.ObservabilitySummary, ct);
+                await cache.SetIfGenerationAsync(cacheKey, result, CacheExpiration.ObservabilitySummary, cachedResultLookup.Stamp, ct);
                 return Results.Ok(result);
             }
             catch (Exception ex)
@@ -862,7 +863,8 @@ public static class AllEndpoints
                     storeId,
                     normalizedDataScope);
 
-                var cachedOptions = await cache.GetAsync<List<VendorSalesNivelacijaOptionDto>>(cacheKey, ct);
+                var cachedOptionsLookup = await cache.GetWithGenerationAsync<List<VendorSalesNivelacijaOptionDto>>(cacheKey, ct);
+                var cachedOptions = cachedOptionsLookup.Value;
                 if (cachedOptions is not null)
                 {
                     logger.LogInformation(
@@ -1064,7 +1066,7 @@ public static class AllEndpoints
                     });
                 }
 
-                await cache.SetAsync(cacheKey, options, CacheExpiration.HeavyAnalytics, ct);
+                await cache.SetIfGenerationAsync(cacheKey, options, CacheExpiration.HeavyAnalytics, cachedOptionsLookup.Stamp, ct);
                 logger.LogInformation(
                     "Vendor sales nivelacija options computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, CategorySet={CategorySet}, Take={Take}, Count={Count}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
                     vendorId,
@@ -1216,7 +1218,8 @@ public static class AllEndpoints
                     activeBatchId,
                     operationsIntegrityRegistry?.Current.EvidenceId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
-                var cachedResponse = await cache.GetAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
+                var supplierLookup = await cache.GetWithGenerationAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
+                var cachedResponse = supplierLookup.Value;
                 if (cachedResponse is not null)
                 {
                     var cacheMetadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(cacheMetadataKey, ct);
@@ -2119,8 +2122,11 @@ public static class AllEndpoints
 
                 processingStopwatch.Stop();
                 var responseJson = JsonSerializer.Serialize(response, AnalyticsCacheJsonOptions);
-                await cache.SetAsync(cacheKey, new AnalyticsJsonCachePayload { Json = responseJson }, CacheExpiration.HeavyAnalytics, ct);
-                await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
+                // Skipped when supplier-sales was invalidated while this response was computed.
+                if (await cache.SetIfGenerationAsync(cacheKey, new AnalyticsJsonCachePayload { Json = responseJson }, CacheExpiration.HeavyAnalytics, supplierLookup.Stamp, ct))
+                {
+                    await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
+                }
                 requestStopwatch.Stop();
                 logger.LogInformation(
                     "Supplier-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} SnapshotCostRows={SnapshotCostRows} PreviousComparableRows={PreviousComparableRows} SalesRows={SalesRows} SeasonCount={SeasonCount} SupplierCount={SupplierCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
@@ -2205,7 +2211,7 @@ public static class AllEndpoints
 
         app.MapGet("/api/analytics/shoe-type-sales-stats", async (
             TrendplusDbContext db,
-            IMemoryCache cache,
+            IAnalyticsCacheService cache,
             ILogger<Program> logger,
             HttpContext httpContext,
             IOptions<AnalyticsSnapshotOptions> snapshotOptionsRaw2,
@@ -2296,11 +2302,22 @@ public static class AllEndpoints
                 var snapshotPathUsed2 = snapshotOptions2.UseSnapshotCost && activeBatchId2.HasValue;
 
                 var isPrewarmRequest = IsPrewarmRequest(httpContext);
-                var cacheKey = AnalyticsCacheKeys.ShoeTypeSalesStats(fromUtc, toUtc, storeId, sezonaId, normalizedDataScope, activeBatchId2);
+                // Shoe-type lives in the central analytics cache (family shoe-type-sales) so imports, refreshes and
+                // admin invalidation reach it; the integrity evidence is part of the key because the payload carries
+                // integrity-gated recommendationAllowed.
+                var cacheKey = AnalyticsCacheKeys.ShoeTypeSalesStats(
+                    fromUtc,
+                    toUtc,
+                    storeId,
+                    sezonaId,
+                    normalizedDataScope,
+                    activeBatchId2,
+                    httpContext.RequestServices.GetService<OperationsAnalyticsIntegrityRegistry>()?.Current.EvidenceId);
                 var cacheMetadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
-                if (cache.TryGetValue(cacheKey, out object? cachedResponse) && cachedResponse is not null)
+                var shoeLookup = await cache.GetWithGenerationAsync<AnalyticsJsonCachePayload>(cacheKey, ct);
+                if (shoeLookup.Value is { } cachedPayload)
                 {
-                    var cacheMetadata = cache.Get<AnalyticsCacheEntryMetadata>(cacheMetadataKey);
+                    var cacheMetadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(cacheMetadataKey, ct);
                     requestStopwatch.Stop();
                     logger.LogInformation(
                         "Shoe-type-sales-stats cache hit in {ElapsedMs}ms. Prewarmed={Prewarmed} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId}",
@@ -2312,10 +2329,7 @@ public static class AllEndpoints
                         normalizedDataScope,
                         storeId,
                         sezonaId);
-                    var cachedJson = JsonSerializer.Serialize(
-                        cachedResponse,
-                        cachedResponse.GetType(),
-                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    var cachedJson = cachedPayload.Json;
                     var refreshedJson = await OperationsSourceFreshnessService.ApplyJsonIfRegisteredAsync(
                         serviceProvider,
                         cachedJson,
@@ -2972,8 +2986,11 @@ public static class AllEndpoints
                 };
 
                 processingStopwatch.Stop();
-                cache.Set(cacheKey, response, CacheExpiration.HeavyAnalytics);
-                cache.Set(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics);
+                var shoeResponseJson = JsonSerializer.Serialize(response, response.GetType(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                if (await cache.SetIfGenerationAsync(cacheKey, new AnalyticsJsonCachePayload { Json = shoeResponseJson }, CacheExpiration.HeavyAnalytics, shoeLookup.Stamp, ct))
+                {
+                    await cache.SetAsync(cacheMetadataKey, new AnalyticsCacheEntryMetadata(isPrewarmRequest, DateTime.UtcNow), CacheExpiration.HeavyAnalytics, ct);
+                }
                 requestStopwatch.Stop();
                 logger.LogInformation(
                     "Shoe-type-sales-stats cache miss computed in {ElapsedMs}ms. DbMs={DbMs} ProcessingMs={ProcessingMs} DataWindowCacheHit={DataWindowCacheHit} DataWindowMs={DataWindowMs} PrewarmRequest={PrewarmRequest} TtlMinutes={TtlMinutes} SnapshotFeatureEnabled={SnapshotFeatureEnabled} SnapshotPathUsed={SnapshotPathUsed} ActiveBatchId={ActiveBatchId} DataScope={DataScope} StoreId={StoreId} SezonaId={SezonaId} ShoeTypeCount={ShoeTypeCount} SnapshotCoveragePct={SnapshotCoveragePct:F2} LiveFallbackPct={LiveFallbackPct:F2} NoCostPct={NoCostPct:F2}",
@@ -3112,7 +3129,8 @@ public static class AllEndpoints
                     sezonaId,
                     normalizedDataScope);
                 var cachePolicy = AnalyticsCachePolicy.ColorSalesStats;
-                var cachedResponse = await cache.GetAsync<ColorSalesStatsCacheEntry>(cacheKey, ct);
+                var colorLookup = await cache.GetWithGenerationAsync<ColorSalesStatsCacheEntry>(cacheKey, ct);
+                var cachedResponse = colorLookup.Value;
                 if (cachedResponse is not null && !string.IsNullOrWhiteSpace(cachedResponse.JsonPayload))
                 {
                     var cachedMetadata = await cache.GetAsync<AnalyticsCacheMetadata>(
@@ -3914,16 +3932,19 @@ public static class AllEndpoints
                 trustMeta.LastRefreshAtUtc = cacheMetadata.DataRefreshAtUtc;
 
                 var responseJson = JsonSerializer.Serialize(response, ColorSalesCacheJsonOptions);
-                await cache.SetAsync(
+                if (await cache.SetIfGenerationAsync(
                     cacheKey,
                     new ColorSalesStatsCacheEntry { JsonPayload = responseJson },
                     cachePolicy.Ttl,
-                    ct);
-                await cache.SetAsync(
-                    AnalyticsCacheKeys.Metadata(cacheKey),
-                    cacheMetadata,
-                    cachePolicy.Ttl,
-                    ct);
+                    colorLookup.Stamp,
+                    ct))
+                {
+                    await cache.SetAsync(
+                        AnalyticsCacheKeys.Metadata(cacheKey),
+                        cacheMetadata,
+                        cachePolicy.Ttl,
+                        ct);
+                }
 
                 var responseWithCacheMeta = ApplyColorSalesCacheMetadata(
                         responseJson,
@@ -4067,7 +4088,8 @@ public static class AllEndpoints
                     normalizedDataScope,
                     includeEnrichment);
 
-                var cachedResponse = await cache.GetAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
+                var cachedResponseLookup = await cache.GetWithGenerationAsync<VendorSalesNivelacijaResponseDto>(cacheKey, ct);
+                var cachedResponse = cachedResponseLookup.Value;
                 if (cachedResponse is not null)
                 {
                     logger.LogInformation(
@@ -5316,7 +5338,7 @@ public static class AllEndpoints
                     await OperationsSourceFreshnessService.ApplyIfRegisteredAsync(
                         serviceProvider, response.Meta, normalizedDataScope, storeId, "report", ct);
 
-                await cache.SetAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, ct);
+                await cache.SetIfGenerationAsync(cacheKey, response, CacheExpiration.HeavyAnalytics, cachedResponseLookup.Stamp, ct);
 
                 logger.LogInformation(
                     "Vendor sales nivelacija computed and cached. VendorId={VendorId}, StoreId={StoreId}, DataScope={DataScope}, EventDate={EventDate}, From={From}, To={To}, RawRows={RawRows}, AnalyzedRows={AnalyzedRows}, Vendors={Vendors}, Articles={Articles}, ElapsedMs={ElapsedMs}, CacheTtlMinutes={CacheTtlMinutes}",
@@ -6926,11 +6948,12 @@ public static class AllEndpoints
         })
         .RequireRateLimiting("fixed");
 
-        app.MapPost("/artikli", async (CreateArtikalCommand command, IMediator mediator, CancellationToken ct) =>
+        app.MapPost("/artikli", async (CreateArtikalCommand command, IMediator mediator, HttpContext httpContext, ILogger<Program> logger, CancellationToken ct) =>
         {
             try
             {
                 var id = await mediator.Send(command, ct);
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(httpContext.RequestServices, AnalyticsCachePolicy.CoreFamilies, "article-create", logger);
                 return Results.Ok(new { id });
             }
             catch (Exception ex)
@@ -6940,7 +6963,7 @@ public static class AllEndpoints
         })
         .RequireRateLimiting("writes");
 
-        app.MapPut("/artikli/{id:int}", async (int id, UpdateArtikalCommand command, IMediator mediator, CancellationToken ct) =>
+        app.MapPut("/artikli/{id:int}", async (int id, UpdateArtikalCommand command, IMediator mediator, HttpContext httpContext, ILogger<Program> logger, CancellationToken ct) =>
         {
             if (id != command.Id)
                 return Results.BadRequest(new { message = "ID ne odgovara" });
@@ -6948,6 +6971,7 @@ public static class AllEndpoints
             try
             {
                 await mediator.Send(command, ct);
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(httpContext.RequestServices, AnalyticsCachePolicy.CoreFamilies, "article-update", logger);
                 return Results.Ok(new { success = true });
             }
             catch (KeyNotFoundException)
@@ -7355,6 +7379,7 @@ public static class AllEndpoints
             IMediator mediator,
             ILogger<Program> logger,
             KreirajPovracajCommand command,
+            HttpContext httpContext,
             CancellationToken ct) =>
         {
             try
@@ -7362,6 +7387,7 @@ public static class AllEndpoints
                 logger.LogInformation("Creating return note for supplier {SupplierId}", command.IDDobavljac);
 
                 var response = await mediator.Send(command, ct);
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(httpContext.RequestServices, AnalyticsCachePolicy.CoreFamilies, "supplier-return", logger);
 
                 return Results.Ok(new
                 {
@@ -7505,12 +7531,13 @@ public static class AllEndpoints
         .RequireRateLimiting("fixed");
 
         // ============ PRODAJA ============
-        app.MapPost("/api/prodaja", async (IMediator mediator, ILogger<Program> logger, ProdajArtikleCommand command, CancellationToken ct) =>
+        app.MapPost("/api/prodaja", async (IMediator mediator, ILogger<Program> logger, ProdajArtikleCommand command, HttpContext httpContext, CancellationToken ct) =>
         {
             try
             {
                 logger.LogInformation("Prodaja artikala");
                 await mediator.Send(command, ct);
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(httpContext.RequestServices, AnalyticsCachePolicy.CoreFamilies, "pos-sale", logger);
                 return Results.Ok(new { success = true, message = "Prodaja uspešno evidentirana" });
             }
             catch (Exception ex)
@@ -8892,7 +8919,8 @@ public static class AllEndpoints
     {
         var stopwatch = Stopwatch.StartNew();
         var cacheKey = AnalyticsCacheKeys.SalesDataWindow(storeId, normalizedDataScope);
-        var cachedWindow = await cache.GetAsync<SalesDataWindowCacheEntry>(cacheKey, ct);
+        var cachedWindowLookup = await cache.GetWithGenerationAsync<SalesDataWindowCacheEntry>(cacheKey, ct);
+        var cachedWindow = cachedWindowLookup.Value;
 
         if (cachedWindow is not null)
         {
@@ -8911,7 +8939,7 @@ public static class AllEndpoints
         }
 
         var entry = await BuildSalesDataWindowCacheEntryAsync(db, storeId, normalizedDataScope, ct);
-        await cache.SetAsync(cacheKey, entry, CacheExpiration.VeryLong, ct);
+        await cache.SetIfGenerationAsync(cacheKey, entry, CacheExpiration.VeryLong, cachedWindowLookup.Stamp, ct);
 
         stopwatch.Stop();
         logger.LogInformation(
@@ -9227,7 +9255,8 @@ public static class AllEndpoints
                     fromDate,
                     toDate,
                     normalizedSearch);
-                var cachedResponse = await cache.GetAsync<LogsPageResponseDto>(cacheKey, ct);
+                var cachedResponseLookup = await cache.GetWithGenerationAsync<LogsPageResponseDto>(cacheKey, ct);
+                var cachedResponse = cachedResponseLookup.Value;
                 if (cachedResponse is not null)
                 {
                     return Results.Ok(cachedResponse);
@@ -9257,7 +9286,7 @@ public static class AllEndpoints
                     safePageNumber,
                     safePageSize);
 
-                await cache.SetAsync(cacheKey, response, CacheExpiration.ObservabilityLive, ct);
+                await cache.SetIfGenerationAsync(cacheKey, response, CacheExpiration.ObservabilityLive, cachedResponseLookup.Stamp, ct);
                 return Results.Ok(response);
             }
             catch (Exception ex)

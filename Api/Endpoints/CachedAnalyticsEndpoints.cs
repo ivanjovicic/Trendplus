@@ -2600,7 +2600,9 @@ public static class CachedAnalyticsEndpoints
                     ct,
                     loggerFactory: loggerFactory,
                     dataRefreshAtUtcFactory: () => TryGetLastSuccessfulRefreshAtUtcAsync(refreshStatusService, loggerFactory, ct),
-                    routeName: "dashboard.bootstrap");
+                    routeName: "dashboard.bootstrap",
+                    // A bootstrap with failed sections is returned to this caller but never cached as a success.
+                    isCacheable: static response => response.Errors.Count == 0 && response.Meta?.IsPartial != true);
                 var result = cacheResult.Value;
 
                 result.Meta ??= BuildSuccessMeta();
@@ -2972,6 +2974,18 @@ public static class CachedAnalyticsEndpoints
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
 
+            if (!AnalyticsCachePolicy.IsKnownFamily(family))
+            {
+                // Never widen an unknown family to the whole analytics namespace.
+                return Results.BadRequest(new
+                {
+                    success = false,
+                    error = "unknown_cache_family",
+                    message = $"Nepoznata cache familija '{family}'.",
+                    allowedFamilies = AnalyticsCachePolicy.CoreFamilies.Append(AnalyticsCachePolicy.AllFamilies).ToArray()
+                });
+            }
+
             var state = await cacheAdmin.ClearAsync(family, ct);
             return Results.Ok(new
             {
@@ -3065,7 +3079,9 @@ public static class CachedAnalyticsEndpoints
             lastAnalyticsCacheClearAtUtc = clearState.LastAnalyticsCacheClearAtUtc,
             lastReportCacheClearAtUtc = clearState.LastReportCacheClearAtUtc,
             reportCacheVersion = clearState.ReportCacheVersion,
-            clearStateStorage = clearState.Storage
+            clearStateStorage = clearState.Storage,
+            // Process-local counters: hits (L1/L2), misses, factory runs, skipped stale writes, invalidations.
+            metrics = cache.GetMetricsSnapshot()
         });
     }
 
@@ -3088,7 +3104,20 @@ public static class CachedAnalyticsEndpoints
         });
     }
 
-    private static async Task<CacheReadResult<T>> GetOrSetWithPolicyAsync<T>(
+    private static readonly AnalyticsCacheKeyedLock PolicyCacheLocks = new();
+
+    /// <summary>
+    /// Value and its cache metadata are stored together, so a hit can never come without metadata and the
+    /// response never has to invent a creation time.
+    /// </summary>
+    internal sealed class PolicyCacheEnvelope<T> where T : class
+    {
+        public T? Value { get; set; }
+
+        public AnalyticsCacheEntryMetadata? Metadata { get; set; }
+    }
+
+    internal static async Task<CacheReadResult<T>> GetOrSetWithPolicyAsync<T>(
         IAnalyticsCacheService cache,
         string cacheKey,
         string family,
@@ -3097,62 +3126,94 @@ public static class CachedAnalyticsEndpoints
         CancellationToken ct,
         ILoggerFactory? loggerFactory = null,
         Func<Task<DateTime?>>? dataRefreshAtUtcFactory = null,
-        string? routeName = null) where T : class
+        string? routeName = null,
+        Func<T, bool>? isCacheable = null) where T : class
     {
         var sw = Stopwatch.StartNew();
-        var metadataKey = AnalyticsCacheKeys.Metadata(cacheKey);
         var provider = ResolveCacheProvider(cache);
         var cacheLogger = loggerFactory?.CreateLogger("AnalyticsCachePolicy");
         var normalizedRouteName = string.IsNullOrWhiteSpace(routeName) ? family : routeName.Trim();
 
-        var cached = await cache.GetAsync<T>(cacheKey, ct);
-        if (cached is not null)
+        var hit = await TryReadPolicyEntryAsync<T>(cache, cacheKey, ct);
+        if (hit.Result is null)
         {
-            var metadata = await cache.GetAsync<AnalyticsCacheEntryMetadata>(metadataKey, ct)
-                ?? new AnalyticsCacheEntryMetadata
+            // One computation per key and instance; concurrent callers wait and reuse the stored entry.
+            using (await PolicyCacheLocks.AcquireAsync(cacheKey, ct))
+            {
+                hit = await TryReadPolicyEntryAsync<T>(cache, cacheKey, ct);
+                if (hit.Result is null)
                 {
-                    CreatedAtUtc = DateTime.UtcNow,
-                    Family = family,
-                    Provider = provider
-                };
-            sw.Stop();
-            cacheLogger?.LogInformation(
-                "Cache HIT route={Route} family={Family} provider={Provider} key={KeyHash} ageSec={AgeSec} ttlSec={TtlSec} elapsedMs={ElapsedMs}",
-                normalizedRouteName,
-                family,
-                provider,
-                AnalyticsCacheKeys.SafeKeyFingerprint(cacheKey),
-                Math.Max(0, (DateTime.UtcNow - metadata.CreatedAtUtc).TotalSeconds),
-                policy.Ttl.TotalSeconds,
-                sw.ElapsedMilliseconds);
+                    var value = await factory();
+                    var dataRefreshAtUtc = dataRefreshAtUtcFactory is null
+                        ? null
+                        : await dataRefreshAtUtcFactory();
+                    var entryMetadata = new AnalyticsCacheEntryMetadata
+                    {
+                        CreatedAtUtc = DateTime.UtcNow,
+                        DataRefreshAtUtc = dataRefreshAtUtc,
+                        Family = family,
+                        Provider = provider
+                    };
 
-            return new CacheReadResult<T>(cached, true, metadata);
+                    var cacheable = isCacheable?.Invoke(value) ?? true;
+                    var stored = cacheable && await cache.SetIfGenerationAsync(
+                        PolicyEntryKey(cacheKey),
+                        new PolicyCacheEnvelope<T> { Value = value, Metadata = entryMetadata },
+                        policy.Ttl,
+                        hit.Stamp,
+                        ct);
+                    sw.Stop();
+                    cacheLogger?.LogInformation(
+                        "Cache MISS route={Route} family={Family} provider={Provider} key={KeyHash} ttlSec={TtlSec} stored={Stored} cacheable={Cacheable} elapsedMs={ElapsedMs}",
+                        normalizedRouteName,
+                        family,
+                        provider,
+                        AnalyticsCacheKeys.SafeKeyFingerprint(cacheKey),
+                        policy.Ttl.TotalSeconds,
+                        stored,
+                        cacheable,
+                        sw.ElapsedMilliseconds);
+
+                    return new CacheReadResult<T>(value, false, entryMetadata);
+                }
+            }
         }
 
-        var value = await factory();
-        var dataRefreshAtUtc = dataRefreshAtUtcFactory is null
-            ? null
-            : await dataRefreshAtUtcFactory();
-        var entryMetadata = new AnalyticsCacheEntryMetadata
-        {
-            CreatedAtUtc = DateTime.UtcNow,
-            DataRefreshAtUtc = dataRefreshAtUtc,
-            Family = family,
-            Provider = provider
-        };
-        await cache.SetAsync(cacheKey, value, policy.Ttl, ct);
-        await cache.SetAsync(metadataKey, entryMetadata, policy.Ttl, ct);
         sw.Stop();
+        var metadata = hit.Result.Metadata;
         cacheLogger?.LogInformation(
-            "Cache MISS route={Route} family={Family} provider={Provider} key={KeyHash} ttlSec={TtlSec} elapsedMs={ElapsedMs}",
+            "Cache HIT route={Route} family={Family} provider={Provider} key={KeyHash} ageSec={AgeSec} ttlSec={TtlSec} elapsedMs={ElapsedMs}",
             normalizedRouteName,
             family,
             provider,
             AnalyticsCacheKeys.SafeKeyFingerprint(cacheKey),
+            Math.Max(0, (DateTime.UtcNow - metadata.CreatedAtUtc).TotalSeconds),
             policy.Ttl.TotalSeconds,
             sw.ElapsedMilliseconds);
 
-        return new CacheReadResult<T>(value, false, entryMetadata);
+        return hit.Result;
+    }
+
+    /// <summary>
+    /// Envelopes live next to the logical key (same prefix, so the same invalidation generation) but never share
+    /// the slot with raw values: SalesSummary, for example, is also cached raw by the dashboard bootstrap sections.
+    /// </summary>
+    internal static string PolicyEntryKey(string cacheKey) => cacheKey + "|policy";
+
+    private static async Task<(CacheReadResult<T>? Result, AnalyticsCacheGenerationStamp? Stamp)> TryReadPolicyEntryAsync<T>(
+        IAnalyticsCacheService cache,
+        string cacheKey,
+        CancellationToken ct) where T : class
+    {
+        var lookup = await cache.GetWithGenerationAsync<PolicyCacheEnvelope<T>>(PolicyEntryKey(cacheKey), ct);
+        var envelope = lookup.Value;
+        if (envelope?.Value is null || envelope.Metadata is null || envelope.Metadata.CreatedAtUtc == default)
+        {
+            // Entries without trustworthy metadata are treated as a miss instead of fabricating CreatedAtUtc.
+            return (null, lookup.Stamp);
+        }
+
+        return (new CacheReadResult<T>(envelope.Value, true, envelope.Metadata), lookup.Stamp);
     }
 
     internal static void ApplyStaleCacheWarning(
@@ -8836,7 +8897,7 @@ public static class CachedAnalyticsEndpoints
         IReadOnlyList<ProductDecisionEvidenceNodeDto> EvidenceChain,
         ProductDecisionWhyPanelDto WhyPanel);
 
-    private sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
+    internal sealed record CacheReadResult<T>(T Value, bool CacheHit, AnalyticsCacheEntryMetadata Metadata) where T : class;
     private readonly record struct InventorySignalWindowStats(
         int NetMovementUnits,
         int InboundUnits,
