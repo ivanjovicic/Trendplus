@@ -27,7 +27,7 @@ export const HOME_BUSINESS_CARDS = [
   { to: "/analytics/data-quality", title: "Kvalitet podataka", question: "Da li su podaci dovoljno potpuni za odluku?", icon: AlertTriangle },
 ] as const;
 
-export const HOME_FRESHNESS_FALLBACK = "Poslednji potvrđeni period nije dostupan";
+export const HOME_FRESHNESS_FALLBACK = "Raspon zabeležene Access prodaje nije dostupan";
 
 type FreshnessState =
   | { kind: "loading" }
@@ -88,7 +88,7 @@ function DataFreshnessNote({ state }: { state: FreshnessState }) {
   if (state.kind === "loading") {
     return (
       <p className="text-sm text-muted" role="status" aria-live="polite" data-testid="home-freshness">
-        Proveravam poslednji potvrđeni period prodaje…
+        Proveravam raspon zabeležene Access prodaje…
       </p>
     );
   }
@@ -103,8 +103,8 @@ function DataFreshnessNote({ state }: { state: FreshnessState }) {
     <div className="space-y-1 text-sm" role="status" aria-live="polite" data-testid="home-freshness">
       {from && to ? (
         <p className="text-contrast">
-          Poslednji potvrđeni period prodaje iz Access uvoza: <strong>{from} – {to}</strong>
-          <span className="text-muted"> (ukupno, ne po radnji ili izvoru podataka)</span>
+          Zabeležena Access prodaja (najraniji – najkasniji datum računa sa stavkama): <strong>{from} – {to}</strong>
+          <span className="text-muted"> (ukupno, ne po radnji ili izvoru podataka; ne potvrđuje da su svi dani i radnje potpuni)</span>
         </p>
       ) : (
         <p className="text-contrast">
@@ -171,7 +171,7 @@ export default function HomePage() {
       <section className="rounded-2xl border border-muted surface p-5 shadow-lg shadow-black/20" aria-labelledby="home-title">
         <h2 id="home-title" className="text-2xl font-semibold text-contrast">Trendplus</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Početak radnog dana: proveri do kog datuma su podaci potvrđeni, pa otvori ekran koji odgovara na tvoje
+          Početak radnog dana: proveri do kog datuma postoji zabeležena prodaja i kada je bio poslednji uspešan uvoz, pa otvori ekran koji odgovara na tvoje
           poslovno pitanje. Brojke se prikazuju samo na izveštajima, uz period i stanje podataka.
         </p>
         <div className="mt-3 flex items-start gap-2">

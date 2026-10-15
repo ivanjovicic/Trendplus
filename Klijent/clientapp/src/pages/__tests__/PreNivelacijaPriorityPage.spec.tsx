@@ -2078,7 +2078,12 @@ describe("PreNivelacijaPriorityPage pre/post link", () => {
 
   it.each([
     ["supplier and store", "supplierId=5&storeId=3", "/analytics/nivelacije-pre-post?vendorId=5&storeId=3"],
-    ["negative supplier id", "supplierId=-5", "/analytics/nivelacije-pre-post"],
+    ["negative Access supplier id", "supplierId=-5", "/analytics/nivelacije-pre-post?vendorId=-5"],
+    ["negative Access supplier and store ids", "supplierId=-2004188974&storeId=-598733481", "/analytics/nivelacije-pre-post?vendorId=-2004188974&storeId=-598733481"],
+    ["zero supplier id (valid entity id)", "supplierId=0", "/analytics/nivelacije-pre-post?vendorId=0"],
+    ["NaN supplier id", "supplierId=NaN", "/analytics/nivelacije-pre-post"],
+    ["decimal supplier id", "supplierId=1.5", "/analytics/nivelacije-pre-post"],
+    ["out-of-range store id", "storeId=2147483648", "/analytics/nivelacije-pre-post"],
     ["non-numeric store id", "storeId=abc", "/analytics/nivelacije-pre-post"],
     ["old period params", "supplierId=5&fromDate=2026-01-01&toDate=2026-02-01&periodPreset=90d", "/analytics/nivelacije-pre-post?vendorId=5"],
   ])("passes only valid supplier/store ids and never the period (%s)", async (_label, query, expected) => {
