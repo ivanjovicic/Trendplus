@@ -6,6 +6,8 @@ import {
     deleteAccessImportBatch,
     getAccessImportRuntimeStatus,
     getAccessImportBatches,
+    ACCESS_IMPORT_MAX_UPLOAD_BYTES,
+    accessImportFileTooLargeMessage,
     previewAccessImport,
     runAccessImport,
     previewCleanupNonAccess,
@@ -718,6 +720,7 @@ export default function AccessImportPage() {
 
                     <div className={`accimport-field ${useRootFile ? "is-disabled" : ""}`}>
                         <span className="accimport-label">Rucni izbor fajla</span>
+                        <span className="accimport-hint">Maksimalna veličina fajla: 100 MiB</span>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -725,6 +728,12 @@ export default function AccessImportPage() {
                             style={{ display: "none" }}
                             onChange={(e) => {
                                 const selected = e.target.files?.[0] ?? null;
+                                if (selected && selected.size > ACCESS_IMPORT_MAX_UPLOAD_BYTES) {
+                                    setError(accessImportFileTooLargeMessage(selected.size));
+                                    setFile(null);
+                                    e.target.value = "";
+                                    return;
+                                }
                                 if (selected) setUseRootFile(false);
                                 setFile(selected);
                             }}

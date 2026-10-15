@@ -2,6 +2,14 @@ import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 import { API_COLD_START_TIMEOUT_MS } from "../utils/apiTimeouts";
 import { apiUrl } from "../utils/apiUrl";
 
+/** RQ677: must match AccessImportEndpoints.DefaultMaxUploadBytes (100 MiB). */
+export const ACCESS_IMPORT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+export function accessImportFileTooLargeMessage(sizeBytes: number): string {
+    const sizeMiB = (sizeBytes / (1024 * 1024)).toLocaleString("sr-RS", { maximumFractionDigits: 1 });
+    return `Access fajl ima ${sizeMiB} MiB, a dozvoljeno je najviše 100 MiB. Smanjite fajl (Compact & Repair u Access-u) ili kontaktirajte administratora.`;
+}
+
 const BATCHES_DEBUG_PREFIX = "[access-import][batches]";
 let batchesInFlightPromise: Promise<AccessImportBatchDto[]> | null = null;
 // Only share an in-flight request between callers with the same credential; a keyless mount request must not

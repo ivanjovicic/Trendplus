@@ -74,6 +74,53 @@ public sealed class AccessImportRunEndpointTests
     }
 
     [Fact]
+    public async Task PostRun_RejectsUploadOverTheLimit_With413AndSerbianMessage_WithoutStartingImport()
+    {
+        var service = new RecordingAccessImportService();
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true, maxUploadBytes: 1024);
+
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(new byte[200 * 1024]);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        content.Add(fileContent, "file", "big.accdb");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run") { Content = content };
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Access fajl je veći od dozvoljenih", body);
+        Assert.Equal(0, service.StartImportCallCount);
+    }
+
+    [Fact]
+    public void DefaultUploadLimit_Is100MiB_AndMessageNamesIt()
+    {
+        Assert.Equal(104_857_600L, AccessImportEndpoints.DefaultMaxUploadBytes);
+        Assert.Contains("100 MiB", AccessImportEndpoints.BuildUploadTooLargeMessage(AccessImportEndpoints.DefaultMaxUploadBytes));
+    }
+
+    [Fact]
+    public async Task PostRun_AcceptsUploadWithinConfiguredLimit()
+    {
+        var service = new RecordingAccessImportService();
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true, maxUploadBytes: 1024);
+
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(new byte[512]);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        content.Add(fileContent, "file", "small.accdb");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run") { Content = content };
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(1, service.StartImportCallCount);
+    }
+
+    [Fact]
     public async Task PostRun_RejectsRequestWithoutAdminKey()
     {
         var service = new RecordingAccessImportService();
@@ -223,7 +270,7 @@ public sealed class AccessImportRunEndpointTests
         public WebApplication App { get; }
         public HttpClient Client { get; }
 
-        public static async Task<AccessImportRunTestHost> CreateAsync(IAccessImportService service, bool withAdminKey = false)
+        public static async Task<AccessImportRunTestHost> CreateAsync(IAccessImportService service, bool withAdminKey = false, long? maxUploadBytes = null)
         {
             // Linux/macOS CI gates access-import on mdb-tables/mdb-export being on PATH.
             // Stub those commands so this isolated host can exercise StartAccessImportJobAsync
@@ -244,6 +291,11 @@ public sealed class AccessImportRunEndpointTests
             if (withAdminKey)
             {
                 config["Admin:ApiKey"] = AdminApiKey;
+            }
+
+            if (maxUploadBytes.HasValue)
+            {
+                config["AccessImport:MaxUploadBytes"] = maxUploadBytes.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
             builder.Configuration.AddInMemoryCollection(config);
