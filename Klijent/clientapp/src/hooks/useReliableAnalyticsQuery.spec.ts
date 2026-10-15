@@ -122,6 +122,37 @@ describe("useReliableAnalyticsQuery", () => {
     expect(result.current.data).toEqual({ version: "new" });
   });
 
+  it("drops the previous context snapshot so a failure is not shown as current data", async () => {
+    const firstContext = vi.fn().mockResolvedValue({ store: 1 });
+    const secondContext = vi.fn().mockRejectedValue(new Error("radnja 2 nije dostupna"));
+    const { result, rerender } = renderHook(
+      ({ query, contextKey }) => useReliableAnalyticsQuery({ query, contextKey }),
+      { initialProps: { query: firstContext, contextKey: "store=1" } },
+    );
+    await waitFor(() => expect(result.current.data).toEqual({ store: 1 }));
+
+    rerender({ query: secondContext, contextKey: "store=2" });
+    expect(result.current.data).toBeNull();
+    await waitFor(() => expect(result.current.error).toBe("radnja 2 nije dostupna"));
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.staleWarning).toBeNull();
+  });
+
+  it("keeps the snapshot as stale when the context key is unchanged", async () => {
+    const first = vi.fn().mockResolvedValue({ version: 1 });
+    const second = vi.fn().mockRejectedValue(new Error("privremeni pad"));
+    const { result, rerender } = renderHook(
+      ({ query }) => useReliableAnalyticsQuery({ query, contextKey: "store=1" }),
+      { initialProps: { query: first } },
+    );
+    await waitFor(() => expect(result.current.data).toEqual({ version: 1 }));
+
+    rerender({ query: second });
+    await waitFor(() => expect(result.current.staleWarning).toBe("privremeni pad"));
+    expect(result.current.data).toEqual({ version: 1 });
+  });
+
   it("aborts pending work during unmount cleanup", () => {
     let signal: AbortSignal | undefined;
     const query = vi.fn((nextSignal: AbortSignal) => {

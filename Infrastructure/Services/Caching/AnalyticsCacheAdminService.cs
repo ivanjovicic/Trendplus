@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Text.Json;
 using Application.Analytics;
 using Microsoft.Extensions.Caching.Distributed;
@@ -22,6 +23,7 @@ public sealed class AnalyticsCacheAdminService
     private DateTime? _lastAnalyticsCacheClearAtUtc;
     private DateTime? _lastReportCacheClearAtUtc;
     private int _reportCacheVersion = 1;
+    private readonly SemaphoreSlim _reportVersionLock = new(1, 1);
 
     public AnalyticsCacheAdminService(
         IAnalyticsCacheService cache,
@@ -91,7 +93,23 @@ public sealed class AnalyticsCacheAdminService
 
     public async Task<int> BumpReportCacheVersionAsync(CancellationToken ct = default)
     {
-        var nextVersion = (await GetReportCacheVersionAsync(ct)) + 1;
+        // Serialized inside the process so concurrent clears never read the same version and both write N+1.
+        // Across instances two bumps can still collapse into one value; that is harmless because every bump runs
+        // after its data commit and ClearAsync also bumps the report generation root with a unique token.
+        await _reportVersionLock.WaitAsync(ct);
+        try
+        {
+            return await BumpReportCacheVersionCoreAsync(ct);
+        }
+        finally
+        {
+            _reportVersionLock.Release();
+        }
+    }
+
+    private async Task<int> BumpReportCacheVersionCoreAsync(CancellationToken ct)
+    {
+        var nextVersion = Math.Max(await GetReportCacheVersionAsync(ct), _reportCacheVersion) + 1;
         _reportCacheVersion = nextVersion;
 
         if (CanUseDistributedClearState())
@@ -134,12 +152,15 @@ public sealed class AnalyticsCacheAdminService
         CancellationToken ct = default,
         bool scheduleIntegrityProbe = true)
     {
-        var normalizedFamily = string.IsNullOrWhiteSpace(family) ? "all" : family.Trim().ToLowerInvariant();
-        var prefix = normalizedFamily == "all"
-            ? AnalyticsCacheKeys.Prefix
-            : AnalyticsCachePolicy.ResolveFamilyPrefix(normalizedFamily);
-
-        await _cache.RemoveByPrefixAsync(prefix, ct);
+        // Unknown families are rejected; only an explicit "all" (or no family) clears the whole analytics namespace.
+        var normalizedFamily = AnalyticsCachePolicy.TryNormalizeFamily(family)
+            ?? throw new ArgumentException($"Unknown analytics cache family '{family}'.", nameof(family));
+        var prefixes = AnalyticsCachePolicy.ResolveFamilyPrefixes(normalizedFamily);
+        foreach (var familyPrefix in prefixes)
+        {
+            await _cache.RemoveByPrefixAsync(familyPrefix, ct);
+        }
+        var prefix = string.Join(",", prefixes);
 
         _lastClearAtUtc = DateTime.UtcNow;
         _lastClearFamily = normalizedFamily;
@@ -223,20 +244,24 @@ public sealed class AnalyticsCacheAdminService
         CancellationToken ct = default,
         bool scheduleIntegrityProbe = true)
     {
-        var normalizedFamilies = families
+        var requestedFamilies = families
             .Where(static family => !string.IsNullOrWhiteSpace(family))
-            .Select(static family => family.Trim().ToLowerInvariant())
+            .ToArray();
+        if (requestedFamilies.Length == 0)
+        {
+            throw new ArgumentException("At least one analytics cache family is required; pass \"all\" explicitly to clear everything.", nameof(families));
+        }
+
+        var normalizedFamilies = requestedFamilies
+            .Select(static family => AnalyticsCachePolicy.TryNormalizeFamily(family)
+                ?? throw new ArgumentException($"Unknown analytics cache family '{family}'.", nameof(families)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (normalizedFamilies.Length == 0)
+        // Bump every real prefix once even when families share prefixes (pre-post and nivelacija).
+        foreach (var familyPrefix in normalizedFamilies.SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes).Distinct(StringComparer.Ordinal))
         {
-            return await ClearAsync("all", ct, scheduleIntegrityProbe);
-        }
-
-        foreach (var family in normalizedFamilies)
-        {
-            await _cache.RemoveByPrefixAsync(AnalyticsCachePolicy.ResolveFamilyPrefix(family), ct);
+            await _cache.RemoveByPrefixAsync(familyPrefix, ct);
         }
 
         _lastClearAtUtc = DateTime.UtcNow;

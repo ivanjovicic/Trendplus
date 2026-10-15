@@ -82,13 +82,13 @@ public sealed class AnalyticsScreenCacheKeyContractTests
     {
         Assert.Contains(AnalyticsCachePolicy.ColorSalesFamily, AnalyticsCachePolicy.CoreFamilies);
         Assert.Equal(
-            "analytics:color-sales",
+            "analytics:color-sales-stats:",
             AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ColorSalesFamily));
         Assert.Equal(
             AnalyticsCachePolicy.ColorSalesStats,
             AnalyticsCachePolicy.ResolveByFamily(AnalyticsCachePolicy.ColorSalesFamily));
         Assert.Equal(
-            "analytics:color-sales",
+            "analytics:color-sales-stats:",
             AnalyticsCachePolicy.ResolveFamilyPrefix("color-sales-stats"));
     }
 

@@ -23,7 +23,9 @@ Trenutno standardizovane core familije su:
 - `pre-nivelacija-prioriteti`
 - `reports` ← trajan report cache; verzionisan sa `rv:{version}` tokenom
 
-Mapiranje prefiksa je definisano u `AnalyticsCachePolicy.ResolveFamilyPrefix(...)`.
+Dodatne familije: `color-sales`, `supplier-sales`, `shoe-type-sales`, `nivelacija`.
+
+Mapiranje je eksplicitno u `AnalyticsCachePolicy` (`ResolveFamilyPrefixes`, `TryNormalizeFamily`); nepoznata familija je validaciona greška, `all` je dozvoljen.
 
 ## Invalidacija
 
@@ -51,7 +53,7 @@ analytics:analytics-report:<slug>:rv:{version}:...
 Verzija se čuva u `AnalyticsCacheKeys.ReportVersionTokenKey` i persista u Redis-u kada je dostupan.
 
 Svaki put kada se `reports` family invalidira:
-- `BumpReportCacheVersionAsync` inkrementira verziju
+- `BumpReportCacheVersionAsync` inkrementira verziju (serijalizovano po instanci, `max(remote, local) + 1`; istovremeni bump sa dve instance može dati istu novu verziju, što je bezopasno jer je i dalje veća od stare)
 - `LastReportCacheClearAtUtc` se setuje
 - Svi stari ključevi automatski postaju neaktivni (jer nova verzija generiše drugačiji ključ)
 
@@ -94,6 +96,30 @@ U ovom prolazu stale warning je eksplicitno povezan na glavne response-e koji ve
 - product decision center
 - dashboard bootstrap
 
+## Generacije (Memory, Hybrid, Redis)
+
+- Fizički ključ = logički ključ + `|g:` + hash tokena generacija svih pokrivajućih root-ova (`AnalyticsCachePolicy.GenerationRoots`).
+- Invalidacija familije upisuje novi GUID token (bez read-modify-write); u Redis-u `analytics-gen:v1:{root}` (30 dana). Druge instance vide novu generaciju pri sledećem čitanju, pa se Hybrid prefix-brisanje više ne oslanja na lokalni L1 scan.
+- Upis posle invalidacije: `SetIfGenerationAsync` odbacuje upis ako je generacija promenjena dok je factory radio (nema stale republish-a).
+- Redis ispad: lokalni tokeni se rotiraju; pri oporavku se svi root-ovi bumpuju pre nego što se Redis ponovo veruje.
+- L2 envelope čuva istek; promocija L2 -> L1 zadržava preostali TTL (ranije fiksnih 5 min).
+- Vrednosti se čuvaju serijalizovano; svaki hit vraća novu instancu (nema deljenja mutabilnih objekata). Neslaganje tipa = miss.
+- Per-key lock sprečava stampede unutar instance.
+
+## Policy entry i stale metadata
+
+- Policy-aware endpointi čuvaju `{Value, Metadata}` pod `cacheKey|policy`; entry bez metadata je miss (nema izmišljenog `CreatedAt`).
+- Dashboard bootstrap sa greškama ili `Meta.IsPartial=true` se ne kešira.
+- `/api/analytics/cached/cache/status` vraća i `metrics` (L1/L2 hit, miss, factory izvršavanja, preskočeni stale upisi, invalidacije, greške serijalizacije), Meter `Trendplus.AnalyticsCache`.
+
+## Frontend browser cache
+
+- `clearAnalyticsCache` briše i browser cache i in-flight mapu.
+- Deljeni in-flight zahtev nije vezan za signal pojedinačnog pozivaoca; abort jednog ne prekida ostale.
+- Invalidacija se emituje drugim tabovima kroz `BroadcastChannel("trendplus-analytics-cache")`.
+- Ručni refresh (`refetch` u `useReliableAnalyticsQuery`) ide sa `withClientCacheBypass`.
+- `useReliableAnalyticsQuery` odbacuje poslednji snapshot kada se promeni `contextKey` (period/store/supplier/dataScope), pa se snapshot drugog konteksta ne prikazuje kao aktuelan.
+
 ## Test pokriće
 
 Dodate regresije proveravaju:
@@ -104,6 +130,9 @@ Dodate regresije proveravaju:
 - `ClearFamiliesAsync([non-report])` ne bumpa report version niti setuje `LastReportCacheClearAtUtc`
 - `ClearAsync("reports")` bumpa report version token
 - stale cache meta factory kontrakt (`STALE_CACHE`)
+- `AnalyticsCacheGenerationTests`: memory / hybrid-local / hybrid-redis, multi-instance invalidacija, spori factory, stampede, Redis ispad, L2 TTL, nemutabilnost, tip-miss, policy entry, shoe-type izolacija
+- nepoznata familija -> 400 (`AnalyticsCacheInvalidateAuthorizationTests`)
+- frontend: clear, abort deljenja, bypass, broadcast, izolacija konteksta
 
 ## Operativna napomena
 

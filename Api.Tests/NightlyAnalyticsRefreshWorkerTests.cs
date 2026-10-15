@@ -35,7 +35,16 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
 
         await InvokeCacheInvalidationAsync(harness.Worker, harness.Provider, warnings);
 
-        Assert.Equal(AnalyticsCachePolicy.CoreFamilies.Length, harness.Cache.RemovedPrefixes.Count);
+        // Every real prefix of every core family is invalidated exactly once (families share some prefixes).
+        Assert.Equal(
+            AnalyticsCachePolicy.CoreFamilies
+                .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static prefix => prefix, StringComparer.Ordinal)
+                .ToArray(),
+            harness.Cache.RemovedPrefixes.OrderBy(static prefix => prefix, StringComparer.Ordinal).ToArray());
+        Assert.Contains("analytics:shoe-type-sales-stats:", harness.Cache.RemovedPrefixes);
+        Assert.Contains("analytics:supplier-sales-stats:", harness.Cache.RemovedPrefixes);
         Assert.Empty(warnings);
     }
 
@@ -193,7 +202,12 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
 
         await InvokeRefreshAsync(harness.Worker);
 
-        Assert.Equal(AnalyticsCachePolicy.CoreFamilies.Length, harness.Cache.RemovedPrefixes.Count);
+        Assert.Equal(
+            AnalyticsCachePolicy.CoreFamilies
+                .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+                .Distinct(StringComparer.Ordinal)
+                .Count(),
+            harness.Cache.RemovedPrefixes.Count);
         Assert.Contains(
             AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
             harness.Cache.RemovedPrefixes);
