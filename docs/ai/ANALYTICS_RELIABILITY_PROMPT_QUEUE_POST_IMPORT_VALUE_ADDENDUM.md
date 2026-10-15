@@ -4,7 +4,9 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **none**.
+Current READY prompt: **RQ680**.
+
+Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
 RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
@@ -3967,3 +3969,259 @@ No batch is queued whose only source copy is on the web instance local filesyste
 ### Dependencies
 
 Owner confirmation of production storage configuration.
+
+## RQ680 - Apply the canonical retail population and half-open period to every Dashboard sales endpoint
+
+Status: READY
+Priority: P1
+Type: backend analytics correctness / PostgreSQL integration tests
+Feature family: dashboard-sales-population
+Parallel-safe: yes (CachedAnalyticsEndpoints secondary sales snapshots and their tests; disjoint from RQ682 AllEndpoints nivelacije and RQ683 frontend)
+Owner: unassigned
+Ready after: none (RQ605 policy is DONE; audit `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md` A1)
+Commit suggestion: `fix(analytics): one retail population and half-open period for dashboard sales endpoints`
+
+### Goal
+
+Every number on the Dashboard and Analytics Details screens is computed over the same population as the KPI header: retail receipts only (DUG/KOREKCIJA excluded), the selected `dataScope`, `fromDate <= DatumProdaje < toDate`, and sales lines kept when the article is missing.
+
+### Problem
+
+`BuildSalesSummarySnapshotAsync` and the daily series apply `SalesReceiptPopulationPolicy`, `< toDate` and a left join. The transaction-stats, payment, weekday, hour, quick-insights, by-category, category-trends, top-products queries and the bootstrap category/gender/supplier breakdowns do not: they include DUG/KOREKCIJA, use `<= toDate` and inner-join `Artikli`. Top-products also ignores `dataScope`.
+
+### Evidence
+
+- Correct reference: `Api/Endpoints/CachedAnalyticsEndpoints.cs:5131-5139`, `:5231-5239`; policy `Api/Services/SalesReceiptPopulationPolicy.cs:12-19`.
+- Deviations: `CachedAnalyticsEndpoints.cs:380-386`, `:1484`, `:1540`, `:1594`, `:1642`, `:1726-1749`, `:2193`, `:5284-5289`, `:5328-5331`, `:5370-5375`, `:5458`, `:5555-5580`, `:5666`, `:5716`, `:5768`.
+- Screen: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:2577-2584` (average document value), bootstrap breakdowns; `services/analyticsApi.ts:566-581` sends no `dataScope` for top products.
+
+### Exact files
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs` (only the listed query sites; no change to the fast path owned by RQ681), `Api/Services/SalesReceiptPopulationPolicy.cs` / `SalesDataScopePolicy.cs` (reuse only, no rule change), new `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, optional `Klijent/clientapp/src/services/analyticsApi.ts` + spec if top products gains `dataScope`.
+
+### Confirm first
+
+1. On disposable PostgreSQL (Testcontainers, `ASPNETCORE_ENVIRONMENT=Testing`; never the local 5434 DB) seed one day with: 2 retail receipts, 1 DUG, 1 KOREKCIJA, 1 return receipt with negative quantity, 1 line whose article is missing, 1 receipt at exactly `toDate` 00:00, and one `existing`-origin receipt.
+2. Write the oracle as raw SQL independent of the endpoint code. Call `/api/analytics/cached/dashboard/bootstrap`, `/sales/transaction-stats`, `/sales/by-weekday`, `/sales/by-hour`, `/sales/by-payment`, `/sales/by-category`, `/quick-insights`, `/sales/top-products`. Record which ones disagree with the oracle and with the header totals **before** changing code. If none disagree, close the prompt as not reproduced with the test kept.
+
+### Fix requirements
+
+- Apply `SalesReceiptPopulationPolicy.IncludedHeaderPredicate` and `SalesDataScopePolicy.HeaderPredicate` to every listed query; use `DatumProdaje < toDate` everywhere; left-join `Artikli` and roll missing articles up as the existing unknown bucket.
+- Pass `dataScope` through top products (endpoint, cache key, client) or document why that endpoint is scope-less and hide it on scoped screens.
+- Signed returns stay signed (RQ605); do not filter negative lines.
+
+### Must not change
+
+Header KPI values, daily series, cache key format of unrelated endpoints, RQ605/RQ607 semantics, aggregated fast path (RQ681), any formula in the glossary.
+
+### Tests
+
+PostgreSQL-required integration test per endpoint against the SQL oracle (sum of category/supplier/gender/weekday/hour/payment revenue == header revenue; transaction counts equal; DUG/KOREKCIJA contribute 0; midnight `toDate` row excluded everywhere; missing-article line counted; `imported`/`existing`/`all` each). A skipped test is not proof: the CI backend job must execute it. Existing `CachedAnalyticsCriticalEndpointsIntegrationTests` stay green.
+
+### Acceptance
+
+For the seeded fixture all Dashboard/Details numbers reconcile to the header within 0.01 RSD and equal the independent oracle; CI "Complete backend analytics suite" and "RQ453 Operations analytics certification" green on the PR head and on main after merge.
+
+### Delivery
+
+Branch from fresh `origin/main`, claim per `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, PR with green required CI, real merge, exact main SHA in the completion note, run log in `.ai/runs/`.
+
+## RQ681 - Retire or certify the pre-aggregated category/supplier/gender summary fast path
+
+Status: WAITING
+Priority: P1
+Type: backend analytics correctness / worker SQL
+Feature family: dashboard-sales-population
+Parallel-safe: yes (only after RQ680 is DONE; same file and helpers)
+Owner: unassigned
+Ready after: RQ680 DONE (shared `CachedAnalyticsEndpoints.cs` snapshot builders)
+Commit suggestion: `fix(analytics): do not serve partial or non-retail summary tables on the dashboard`
+
+### Goal
+
+The unfiltered Dashboard category, supplier and gender breakdowns equal the same breakdown computed from raw facts with the canonical population, or the fast path is removed.
+
+### Problem
+
+With `dataScope=all` and no store/supplier, the bootstrap returns `AnalyticsCategorySummary`/`AnalyticsGenderSummary`/`AnalyticsSupplierSummary` whenever any row exists. The writers include DUG/KOREKCIJA, refresh only the last 7 days, and re-import deletes leave holes; the read is date-inclusive and changes row grain (`Pol = "Ukupno"`) and unknown label (`Nepoznato` vs `Ostalo`).
+
+### Evidence
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs:5274-5281`, `:5318-5323`, `:5360-5365`, `:3325-3365`; `Workers/AnalyticsAggregationWorker.cs:43`, `:198-206`, `:357-371`, `:389`, `:421-423`; `Database/Migrations/007_AddAnalyticsOptimization.sql:183-258`; `Api/Services/AccessImportService.cs:4070-4087`; worker registration `Api/Config/WorkerRuntimeConfig.cs:144-145`.
+
+### Exact files
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs` (three `TryGet…FromAggregatesAsync` callers), `Workers/AnalyticsAggregationWorker.cs`, new `Api.Tests/Rq681SummaryFastPathPostgresTests.cs`. No production migration.
+
+### Confirm first
+
+1. Disposable PostgreSQL: seed 10 days of sales including DUG/KOREKCIJA; populate summary tables via the worker method for the last 7 days only. Call bootstrap unfiltered and with `storeId`; record the difference to the raw oracle.
+2. Read-only: state whether `AnalyticsAggregationWorker` is enabled in `render.yaml`/runtime config. Do not query or write the production or local business DB.
+
+### Fix requirements
+
+Preferred: remove the fast path (raw queries are already used for every filtered view) and keep the tables untouched. Alternative only with measured need: serve aggregates only when every requested date has a row with a matching generation marker and the writer applies the retail policy; otherwise fall back to raw. Either way the response grain and labels must be identical to the raw path.
+
+### Must not change
+
+Filtered breakdowns, RQ680 results, worker scheduling of unrelated summaries, schema of existing tables.
+
+### Tests
+
+PostgreSQL-required: unfiltered breakdown == raw oracle for full, partial and empty summary coverage; DUG/KOREKCIJA excluded; identical row shape with and without filters. No SKIP accepted as proof.
+
+### Acceptance
+
+No unfiltered Dashboard breakdown can differ from the raw canonical computation; CI backend suite and RQ453 certification green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, completion note with exact SHA.
+
+## RQ682 - Align the Nivelacije period filter with the wall-clock timestamp convention
+
+Status: READY
+Priority: P2
+Type: backend date semantics / documentation correction
+Feature family: business-day-timestamp-convention
+Parallel-safe: yes (`AllEndpoints.cs` `/api/nivelacije` handler, `BelgradeCalendarDatePolicy`, preset comment; disjoint from RQ680/RQ683)
+Owner: unassigned
+Ready after: none
+Commit suggestion: `fix(nivelacije): filter wall-clock journal dates by calendar day`
+
+### Goal
+
+A date filter "D" on any analytics or Nivelacije screen returns exactly the rows whose stored wall-clock date is D.
+
+### Problem
+
+Access sales and journal timestamps are stored as Belgrade wall-clock values tagged UTC, and analytics endpoints filter on UTC-midnight dates. `/api/nivelacije` alone converts Belgrade midnight to real UTC through `BelgradeCalendarDatePolicy`, shifting the window 2 h (summer) / 1 h (winter) back. The RQ654 decision and `analyticsPeriodPresets.ts` comment cite that policy as the analytics contract.
+
+### Evidence
+
+`Api/Services/AccessImportService.cs:8349`, `:8401-8402`, `:8427`; `Api/Endpoints/AllEndpoints.cs:7287-7308`; `Application/Analytics/BelgradeCalendarDatePolicy.cs:7-15`; `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts:28-29`; RQ586 note in `MASTER_ROADMAP.md` (`legacy_access_wall_clock`).
+
+### Exact files
+
+`Api/Endpoints/AllEndpoints.cs` (nivelacije list handler only), `Application/Analytics/BelgradeCalendarDatePolicy.cs` (rename/doc or remove if unused), `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` (comment only), test in `Api.Tests` for the nivelacije list, a one-paragraph decision note in this queue's RQ682 completion.
+
+### Confirm first
+
+1. Test (EF InMemory is not enough for date translation; use PostgreSQL): journal rows at D-1 23:30, D 00:30, D 23:30 wall-clock. Call `/api/nivelacije?fromDate=D&toDate=D`. Expected by convention: only D 00:30 and D 23:30. Record the current result.
+2. Grep every `DatumProdaje`/`Datum` writer for `DateTime.UtcNow` fallbacks (`AccessImportService.cs:5279`, `:6843`, POS paths) and list which can produce real-UTC values; report, do not change them here.
+
+### Fix requirements
+
+Use the same calendar-date half-open rule as analytics (`>= D 00:00`, `< D+1 00:00` on the stored value). Keep the frontend preset (Belgrade "today") unchanged. Correct the comment and add the decision to the completion note so RQ654's rationale is not reused.
+
+### Must not change
+
+Analytics endpoint date semantics, stored timestamps, import code, preset output.
+
+### Tests
+
+PostgreSQL-required boundary test for summer and winter dates (DST-adjacent days); existing nivelacije tests green.
+
+### Acceptance
+
+The three-row fixture returns exactly the wall-clock day rows in both seasons; CI green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+## RQ683 - Compute 7-day and 30-day Dashboard/Details signals on calendar days
+
+Status: READY
+Priority: P2
+Type: frontend analytics calculation
+Feature family: dashboard-moving-windows
+Parallel-safe: yes (`AnalyticsDashboard.tsx` `calculateDashboardMovingStats`, `AnalyticsDetails.tsx` trend/metric block and specs; disjoint from RQ680-RQ682)
+Owner: unassigned
+Ready after: none
+Commit suggestion: `fix(analytics-dashboard): moving averages and week-over-week on calendar days`
+
+### Goal
+
+MA7, MA30, momentum, elasticity, anomaly flags and week-over-week change describe calendar windows inside the selected period, not the last N rows.
+
+### Problem
+
+The daily series contains only days with sales. `calculateDashboardMovingStats` and the Details trend use `slice(-7)`/`slice(-14,-7)` on rows; with a closed day the window covers 8+ days and MA7 is overstated. Details week-over-week has no two-full-windows guard.
+
+### Evidence
+
+Backend grouping without zero-fill `Api/Endpoints/CachedAnalyticsEndpoints.cs:5242-5258`; `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:150-182`; `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:298-321`.
+
+### Exact files
+
+`Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, a shared helper in `Klijent/clientapp/src/utils/` (zero-fill inside `[fromDate, toDate]`), `pages/__tests__/AnalyticsDashboard.*.spec.ts(x)`, a new Details spec. Keep new helpers below guardrail baseline lines or update `scripts/known-guardrail-baseline.json` deliberately.
+
+### Confirm first
+
+Unit test with 14 calendar days where one Sunday is missing from the series: current MA7 and momentum differ from the calendar-day oracle. Commit the failing expectation first in the PR history (or show it in the run log).
+
+### Fix requirements
+
+Zero-fill missing days only inside the requested period (a day with no sales in an open store is 0 revenue; days outside the period are not invented). Windows are the last 7/30 calendar days ending at the period end. Signals stay `null` unless both windows are fully inside the period. Do not change backend payloads.
+
+### Must not change
+
+Header KPIs, period divisor logic (`calculateDashboardPeriodDays`), fake-zero guards from RQ656, guardrail and chart-accessibility checks.
+
+### Tests
+
+`npm run test:analytics`, `typecheck`, `build`, `check:analytics-guardrails`, `check:encoding`; new specs for gap, full, short and empty series in both screens.
+
+### Acceptance
+
+Specs prove calendar-day results; frontend CI job green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+## RQ684 - Supplier concentration definition, Serbian diacritics in analytics errors and page-scoped Inventory chart label
+
+Status: WAITING
+Priority: P3
+Type: frontend copy / KPI definition
+Feature family: analytics-copy-definitions
+Parallel-safe: yes (DailySalesStatsPage concentration helper, analyticsApi.ts messages, AnalyticsDetails messages, InventoryPriorityPanels heading)
+Owner: unassigned
+Ready after: same re-entry rule as RQ670 — a named core-operator observation or explicit owner re-entry for display-only core scope (`docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md`)
+Commit suggestion: `fix(analytics-ui): consistent concentration basis and Serbian error text`
+
+### Goal
+
+Supplier concentration KPIs use one basis; user-visible analytics errors are correct Serbian; the Inventory supplier chart says it covers the current page.
+
+### Problem / Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:556-660`, InfoTip `:2165`: revenue-ordered suppliers, quantity-share sums for Top-3/Top-5/"do 80 %".
+- `Klijent/clientapp/src/services/analyticsApi.ts`: ~50 `Greska pri ucitavanju …` fallbacks; `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:266-273` `Sazetak nije ucitan`, `Advanced snapshot nije ucitan`, `Health check nije dostupan`, `Analytics baza:`.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:1074`, `components/inventory/InventoryPriorityPanels.tsx:69`.
+
+### Confirm first
+
+Spec with suppliers whose revenue order differs from quantity order: current Top-3 qty share ≠ the share of the 3 largest by quantity. Grep test listing every non-diacritic message.
+
+### Fix requirements
+
+Pick one basis (sort by quantity for quantity shares, or show revenue shares) and state it in the InfoTip; replace messages with correct diacritics (`Greška pri učitavanju …`) without changing error codes or thrown types; change the chart heading to "Vrednost po dobavljaču (trenutna strana)" or feed it the backend total.
+
+### Must not change
+
+Backend payloads, error handling flow, mojibake guard.
+
+### Tests
+
+vitest specs for concentration ordering and message text; `npm run check:encoding`, `test:analytics`, `typecheck`, `build`.
+
+### Acceptance
+
+Specs green; frontend CI green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
