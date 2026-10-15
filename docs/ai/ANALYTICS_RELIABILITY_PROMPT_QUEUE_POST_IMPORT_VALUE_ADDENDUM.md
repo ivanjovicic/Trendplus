@@ -3542,12 +3542,12 @@ None. Server-side atomic start guard is RQ673.
 
 ## RQ673 - Make the Access import concurrent-start guard atomic
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: backend concurrency / data integrity
 Feature family: access-import-start-guard
 Parallel-safe: no (AccessImportService start path and DataImportBatches schema)
-Owner: grok (branch `fix/rq673-access-import-start-lock`)
+Owner: grok
 Ready after: RQ672
 Commit suggestion: `fix(access-import): serialize batch creation with a database guard`
 
@@ -3594,6 +3594,21 @@ Concurrent starts create exactly one batch; CI green with PostgreSQL.
 
 None (owner decision recorded above; index option rejected).
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Services/AccessImportService.cs (CreateImportBatchUnderAdvisoryLockAsync, CreateImportBatchInLockedTransactionAsync, InsertPendingImportBatchAsync, AccessImportBatchAlreadyActiveException, loser source-copy cleanup in StartImportAsync); new Api.Tests/AccessImportConcurrentStartPostgresTests.cs; this queue
+- Checks run: local build; local AccessImport tests (Postgres tests skip locally); queue validators with and without --self-test; git diff --check; PR #164 CI: backend 38690736223 pass (ParallelStarts_OnSeparateConnections_CreateExactlyOneBatch_AndShareItsId, Start_WithFreshActiveBatch_ReturnsExistingIdWithoutInsert, Start_WithStaleRunningBatch_RecoversItAndCreatesNewBatch passed on PostgreSQL), frontend 38690736280 pass, governance 38690736170 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ673-access-import-start-lock-evidence.md
+- Delivery mode: PR #164 merged with --merge after green CI
+- Main commit SHA: cb9a81a6
+- Main verification: git rev-parse origin/main -> cb9a81a6 after merge
+- Missed: none
+- Follow-up: RQ674 (next in owner order)
+- Residual risk: stale `pending` rows are not marked failed by recovery (only `running`), but they are outside the active window and never block a new start.
 
 ## RQ674 - Do not return an empty Access import history when the batch query times out
 
