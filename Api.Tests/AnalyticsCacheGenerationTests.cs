@@ -254,6 +254,23 @@ public sealed class AnalyticsCacheGenerationTests
     }
 
     [Fact]
+    public async Task MemoryOnlyCache_RespectsConfiguredTtlInsteadOfTwoMinuteSlidingExpiry()
+    {
+        var time = new ManualTimeProvider();
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions { TimeProvider = time }),
+            NullLogger<InMemoryCacheService>.Instance,
+            time);
+
+        await cache.SetAsync(SupplierKey, new Payload { Value = "long-lived" }, TimeSpan.FromMinutes(10));
+        time.Advance(TimeSpan.FromMinutes(3));
+        Assert.Equal("long-lived", (await cache.GetAsync<Payload>(SupplierKey))?.Value);
+
+        time.Advance(TimeSpan.FromMinutes(8));
+        Assert.Null(await cache.GetAsync<Payload>(SupplierKey));
+    }
+
+    [Fact]
     public async Task L2Promotion_KeepsRemainingTtl()
     {
         var time = new ManualTimeProvider();
