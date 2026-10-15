@@ -291,6 +291,68 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     }
 
     [PostgresRequiredFact]
+    public async Task DirectSaleLineReimport_RejectsChangedParentEvenWithoutOverwrite()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        var date = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
+        var headerRows = Rows(["ID", "BrojRacuna", "DatumProdaje"],
+            [7, "A-7", date], [8, "A-8", date]);
+        var headers = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["headers"] = headerRows
+        });
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        var result = new Api.Models.AccessImportRunResponse { BatchId = 7010, Status = "running" };
+        await InvokeSaleImportAsync(service, "ImportProdajaAsync", [headers, "headers", false, result, CancellationToken.None]);
+
+        SyntheticAccessSession Lines(int parentId) => new(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["headers"] = headerRows,
+            ["lines"] = Rows(["ID", "IDProdaja", "IDArtikal", "Kolicina", "Cena"], [44, parentId, 100, 1, 99m])
+        });
+        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Lines(7), "lines", "headers", false, result, CancellationToken.None]);
+        var original = await db.ProdajaStavke.AsNoTracking().SingleAsync(line => line.SourceRowId == 44);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Lines(8), "lines", "headers", false, result, CancellationToken.None]));
+        Assert.StartsWith("duplicate_sale_line_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(original.IdProdaja, (await db.ProdajaStavke.AsNoTracking().SingleAsync(line => line.SourceRowId == 44)).IdProdaja);
+        Assert.Equal(1, await db.ProdajaStavke.AsNoTracking().CountAsync());
+    }
+
+    [PostgresRequiredFact]
+    public async Task LineTableReimport_RejectsChangedParentEvenWithoutOverwrite()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        var date = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
+        static SyntheticAccessSession Lines(int parentId, DateTime date) => new(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["lines"] = Rows(
+                ["ID", "IDDnevnik", "IDArtikal", "Kolicina", "ProdajnaCena", "Datum", "IDObjekat", "BrojRacuna"],
+                [44, parentId, 100, 1, 99m, date, 2, $"A-{parentId}"])
+        });
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        var result = new Api.Models.AccessImportRunResponse { BatchId = 7011, Status = "running" };
+        await InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [Lines(7, date), "lines", false, result, CancellationToken.None]);
+        var original = await db.ProdajaStavke.AsNoTracking().SingleAsync(line => line.SourceRowId == 44);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [Lines(8, date), "lines", false, result, CancellationToken.None]));
+        Assert.StartsWith("duplicate_sale_line_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(original.IdProdaja, (await db.ProdajaStavke.AsNoTracking().SingleAsync(line => line.SourceRowId == 44)).IdProdaja);
+        Assert.Equal(1, await db.ProdajaStavke.AsNoTracking().CountAsync());
+    }
+
+    [PostgresRequiredFact]
     public async Task DirectSaleLinesWithoutSourceRowId_UseExactMultisetReimportAndRejectChangedSnapshot()
     {
         var database = await CreateDatabaseAsync();
