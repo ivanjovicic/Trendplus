@@ -1,3 +1,4 @@
+import { isClientCacheBypassActive, withClientCacheBypass } from "./analyticsClientCacheBypass";
 import type {
   AnalyticsDashboardBootstrap,
   AnalyticsRefreshStatus,
@@ -106,7 +107,6 @@ const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 let clientCacheGeneration = 0;
-let clientCacheBypassDepth = 0;
 const ANALYTICS_CACHE_CHANNEL_NAME = "trendplus-analytics-cache";
 let analyticsCacheChannel: BroadcastChannel | null | undefined;
 
@@ -160,14 +160,7 @@ function withCallerSignal<T>(request: Promise<T>, signal?: AbortSignal): Promise
  * Runs a query start so that analytics GETs issued synchronously by it skip the browser cache
  * (manual refresh). The fresh response still replaces the cached entry.
  */
-export function withClientCacheBypass<T>(start: () => Promise<T>): Promise<T> {
-  clientCacheBypassDepth += 1;
-  try {
-    return start();
-  } finally {
-    clientCacheBypassDepth -= 1;
-  }
-}
+export { withClientCacheBypass };
 
 type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
@@ -296,7 +289,7 @@ async function fetchJson<T>(
   const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
   const url = makeUrl(path, finalParams);
   const cacheTtlMs = resolveClientCacheTtl(path);
-  const bypassClientCache = clientCacheBypassDepth > 0;
+  const bypassClientCache = isClientCacheBypassActive();
   getAnalyticsCacheChannel();
 
   if (cacheTtlMs <= 0) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { withClientCacheBypass } from "../services/analyticsApi";
+import { withClientCacheBypass } from "../services/analyticsClientCacheBypass";
 
 export type ReliableAnalyticsQuery<T> = (signal: AbortSignal) => Promise<T>;
 
@@ -11,7 +11,7 @@ export type UseReliableAnalyticsQueryOptions<T> = {
   /**
    * Identity of the request context (period, store, supplier, dataScope, filters). When it changes the
    * previous snapshot is dropped, so a failed request never shows data of another context as current.
-   * Defaults to the query function identity.
+   * Opt-in: when omitted the snapshot is kept and a failed refetch is shown as stale (existing behaviour).
    */
   contextKey?: string;
 };
@@ -59,7 +59,7 @@ export function useReliableAnalyticsQuery<T>(
     getErrorMessage = defaultErrorMessage,
     contextKey,
   } = options;
-  const contextIdentity: unknown = contextKey ?? query;
+  const contextIdentity: string | undefined = contextKey;
   const [data, setData] = useState<T | null>(initialData);
   const [initialLoading, setInitialLoading] = useState(enabled && initialData == null);
   const [refetching, setRefetching] = useState(false);
@@ -74,7 +74,7 @@ export function useReliableAnalyticsQuery<T>(
   const generationRef = useRef(0);
   const mountedRef = useRef(true);
   const controllerRef = useRef<AbortController | null>(null);
-  const contextRef = useRef<unknown>(contextIdentity);
+  const contextRef = useRef<string | undefined>(contextIdentity);
   const bypassClientCacheRef = useRef(false);
 
   useEffect(() => {
