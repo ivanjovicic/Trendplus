@@ -95,6 +95,28 @@ public sealed class AccessImportRunEndpointTests
     }
 
     [Fact]
+    public async Task PostRun_RejectsFileOverLimit_EvenWhenMultipartRequestFitsOverhead()
+    {
+        var service = new RecordingAccessImportService();
+        await using var host = await AccessImportRunTestHost.CreateAsync(service, withAdminKey: true, maxUploadBytes: 1024);
+
+        using var content = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(new byte[1025]);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        content.Add(fileContent, "file", "over-file-limit.accdb");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run") { Content = content };
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        // The request is below MaxUploadBytes + MultipartOverheadBytes; only file.Length exceeds the limit.
+        Assert.InRange(content.Headers.ContentLength!.Value, 1025L, 1024L + 64L * 1024);
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Contains("Access fajl je veći od dozvoljenih", await response.Content.ReadAsStringAsync());
+        Assert.Equal(0, service.StartImportCallCount);
+    }
+
+    [Fact]
     public void DefaultUploadLimit_Is100MiB_AndMessageNamesIt()
     {
         Assert.Equal(104_857_600L, AccessImportEndpoints.DefaultMaxUploadBytes);
