@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Infrastructure.Logging;
+using Infrastructure.Services.Caching;
 
 namespace Api.Services
 {
@@ -44,11 +45,25 @@ namespace Api.Services
         private static volatile bool _transferSchemaBootstrapCompleted;
         private readonly TrendplusDbContext _db;
         private readonly ILogger<TransferService> _logger;
+        private readonly IServiceProvider? _services;
 
-        public TransferService(TrendplusDbContext db, ILogger<TransferService> logger)
+        public TransferService(TrendplusDbContext db, ILogger<TransferService> logger, IServiceProvider? services = null)
         {
             _db = db;
             _logger = logger;
+            _services = services;
+        }
+
+        private async Task InvalidateInventoryAfterCommitAsync(string operation)
+        {
+            if (_services is null)
+                return;
+
+            // Transfers change live inventory and (on completion) movement-derived analytics.
+            // Keep invalidation after the business transaction; a failed cache operation must
+            // never make a committed transfer look unsuccessful or trigger a second transfer.
+            await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+                _services, AnalyticsCachePolicy.CoreFamilies, operation, _logger);
         }
 
         public Task<TransferResponse> CreateAsync(TransferCreateRequest req, string userId, CancellationToken ct = default)
@@ -250,6 +265,8 @@ namespace Api.Services
             if (tx is not null)
                 await tx.CommitAsync(ct);
 
+            await InvalidateInventoryAfterCommitAsync("transfer-confirmed");
+
             _logger.LogInformation(
                 "Transfer confirmed. TransferId={TransferId} Lines={LineCount} Reserve={Reserve} DurationMs={DurationMs}",
                 transfer.Id,
@@ -365,6 +382,8 @@ namespace Api.Services
             if (tx is not null)
                 await tx.CommitAsync(ct);
 
+            await InvalidateInventoryAfterCommitAsync("transfer-completed");
+
             _logger.LogInformation(
                 "Transfer completed. TransferId={TransferId} Lines={LineCount} Movements={MovementCount} DurationMs={DurationMs}",
                 transfer.Id,
@@ -415,6 +434,8 @@ namespace Api.Services
             await _db.SaveChangesAsync(ct);
             if (tx is not null)
                 await tx.CommitAsync(ct);
+
+            await InvalidateInventoryAfterCommitAsync("transfer-cancelled");
 
             _logger.LogInformation(
                 "Transfer cancelled. TransferId={TransferId} Lines={LineCount}",
