@@ -811,6 +811,71 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     }
 
     [PostgresRequiredFact]
+    public async Task GeneratedHeaderId_WithUnadvancedLegacySequence_FailsClosedWithoutRebindingPos()
+    {
+        // A numeric collision does not require reusing the *Access* ID.
+        // Older explicit PostgreSQL IDs may be present while IDENTITY still starts at 1.
+        // This test characterizes the remaining migration/deployment gate; never
+        // silently reparent the POS row or auto-adjust a production sequence.
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 1,
+            BrojRacuna = "POS-FIRST",
+            DatumProdaje = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc),
+            DataOrigin = "existing"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var source = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["headers"] = Rows(
+                ["ID", "BrojRacuna", "DatumProdaje"],
+                [900, "ACCESS-900", new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc)])
+        });
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        var result = new Api.Models.AccessImportRunResponse { BatchId = 7900, Status = "running" };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeSaleImportAsync(service, "ImportProdajaAsync", [source, "headers", false, result, CancellationToken.None]));
+        Assert.StartsWith("duplicate_sale_header_identity:", error.Message, StringComparison.Ordinal);
+        Assert.Contains("target_primary_key_collision", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("POS-FIRST", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("ACCESS-900", error.Message, StringComparison.Ordinal);
+
+        await using var verify = CreateDbContext(database.ConnectionString);
+        var original = await verify.ProdajaZaglavlja.AsNoTracking().SingleAsync();
+        Assert.Equal(1, original.Id);
+        Assert.Equal("POS-FIRST", original.BrojRacuna);
+        Assert.Equal("existing", original.DataOrigin);
+    }
+
+    [PostgresRequiredFact]
+    public async Task ReadOnlyIdentityTriage_FailsClearlyOnAnEmptyOrWrongDatabase()
+    {
+        if (!_fixture.IsAvailable)
+            return;
+        var connectionString = await _fixture.TryCreateDatabaseConnectionStringAsync($"tp_access_empty_triage_{Guid.NewGuid():N}");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return;
+
+        var error = await Assert.ThrowsAsync<PostgresException>(() => ExecuteTriageScriptAsync(connectionString));
+        Assert.Equal("42P01", error.SqlState);
+        Assert.Contains("access_identity_triage_schema_missing", error.MessageText, StringComparison.Ordinal);
+
+        await using var verify = new NpgsqlConnection(connectionString);
+        await verify.OpenAsync();
+        await using var command = new NpgsqlCommand(
+            "SELECT to_regclass('prodaja_zaglavlje') IS NULL AND to_regclass('prodaja_stavke') IS NULL", verify);
+        Assert.True((bool)(await command.ExecuteScalarAsync())!);
+    }
+
+    [PostgresRequiredFact]
     public async Task MixedPopulationSqlOracle_DoesNotRebindHistoricalReceipts()
     {
         var database = await CreateDatabaseAsync();
@@ -1025,6 +1090,32 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             """));
         Assert.Equal(396m, await ScalarAsync<decimal>(db,
             $"SELECT COALESCE(SUM(\"LineTotal\"), 0) AS \"Value\" FROM \"SalesLineFacts\" WHERE \"SaleId\" = {imported.Id}"));
+
+        // Independent source-to-fact line oracle. Comparing only totals would miss
+        // a wrongly reparented receipt when both receipts have equal monetary value.
+        const string independentLineOracle = """
+            SELECT COUNT(*)::bigint AS "Value"
+            FROM "SalesLineFacts" AS fact
+            LEFT JOIN prodaja_stavke AS source
+              ON fact."SourceTableKey" = source.source_table_key
+             AND fact."SourceLineId" = source.source_row_id
+            WHERE fact."SourceLineId" IS NOT NULL
+              AND (
+                  source.id IS NULL OR
+                  fact."SaleId" IS DISTINCT FROM source.id_prodaja OR
+                  fact."ProductId" IS DISTINCT FROM source.id_artikal OR
+                  fact."Qty" IS DISTINCT FROM source.kolicina OR
+                  fact."UnitPrice" IS DISTINCT FROM source.cena OR
+                  fact."LineTotal" IS DISTINCT FROM (source.cena * source.kolicina)
+              )
+            """;
+        Assert.Equal(0, await ScalarAsync<long>(db, independentLineOracle));
+
+        // Negative control: corrupt ONLY the disposable analytics fixture and prove
+        // a real receipt reassignment is detected, not hidden by valid grand totals.
+        await db.Database.ExecuteSqlRawAsync(
+            """UPDATE "SalesLineFacts" SET "SaleId" = 7 WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'prodajastavke'""");
+        Assert.Equal(1, await ScalarAsync<long>(db, independentLineOracle));
     }
 
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
