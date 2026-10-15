@@ -337,6 +337,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
   });
 
   it("shows a filter-scoped negotiation evidence pack only for one selected supplier", async () => {
+    vi.mocked(getStores).mockResolvedValue([{ storeId: 4, storeName: "Objekat 4" }]);
     vi.mocked(getInventoryBalance).mockResolvedValue({
       totalSku: 3,
       totalOnHand: 42,
