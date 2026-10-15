@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ680**.
+Current READY prompt: **RQ682** (RQ680 is IN_PROGRESS; RQ683 remains an independent READY lane).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -3972,14 +3972,23 @@ Owner confirmation of production storage configuration.
 
 ## RQ680 - Apply the canonical retail population and half-open period to every Dashboard sales endpoint
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend analytics correctness / PostgreSQL integration tests
 Feature family: dashboard-sales-population
 Parallel-safe: yes (CachedAnalyticsEndpoints secondary sales snapshots and their tests; disjoint from RQ682 AllEndpoints nivelacije and RQ683 frontend)
-Owner: unassigned
+Owner: Codex
 Ready after: none (RQ605 policy is DONE; audit `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md` A1)
 Commit suggestion: `fix(analytics): one retail population and half-open period for dashboard sales endpoints`
+
+### Claim reservation — 2026-10-15
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex.
+- Inspected `origin/main`: `837986b1a1f7047cde2812c01137a57df0cfe7ad`.
+- Planned worktree / branch: `C:\Users\Ivan\.codex\worktrees\rq680-dashboard-population\Trendplus2` / `codex/rq680-dashboard-population-20261015`.
+- Bounded paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, existing policy helpers only as needed, `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, the narrowly required top-products client contract/spec, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-15-RQ680-evidence.md`.
+- Remote collision query: no RQ680 branch or open PR; only PR #163 is open and owns separate Access-import paths. No live internal agent owns this task.
 
 ### Goal
 
