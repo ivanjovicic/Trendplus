@@ -323,11 +323,15 @@ describe("InventoryPage signal window refresh", () => {
       }));
     });
 
-    expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("custom");
-    expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
-    expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
-    expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
-    expect(screen.getByTestId("location-search")).toHaveTextContent("periodPreset=custom");
+    // Calling the query precedes the asynchronous scoped-filter render. Wait for both
+    // request and rendered controls instead of racing a transient loading state in CI.
+    await waitFor(() => {
+      expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("custom");
+      expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
+      expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
+      expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("periodPreset=custom");
+    });
   });
 
   it("fails invalid period URL values closed to the deterministic 30-day preset", async () => {
