@@ -340,8 +340,9 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
 
     private static List<string> ExpectedRemovedPrefixes() =>
     [
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.SupplierDecisionHubFamily),
+        .. new[] { AnalyticsCachePolicy.DashboardFamily, AnalyticsCachePolicy.SupplierDecisionHubFamily }
+            .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+            .Distinct(StringComparer.Ordinal),
         AnalyticsCacheKeys.DashboardBootstrapPrefix,
         AnalyticsCacheKeys.DashboardAdvancedPrefix,
         AnalyticsCacheKeys.SalesSummaryPrefix,

@@ -79,13 +79,9 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
 
     private static List<string> ExpectedRemovedPrefixes() =>
     [
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ProductDecisionCenterFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.SupplierDecisionHubFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.InventoryFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DataQualityFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ColorSalesFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ReportsFamily)
+        .. new[] { AnalyticsCachePolicy.DashboardFamily, AnalyticsCachePolicy.ProductDecisionCenterFamily, AnalyticsCachePolicy.SupplierDecisionHubFamily, AnalyticsCachePolicy.InventoryFamily, AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ColorSalesFamily, AnalyticsCachePolicy.SupplierSalesFamily, AnalyticsCachePolicy.ShoeTypeSalesFamily, AnalyticsCachePolicy.ReportsFamily }
+            .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+            .Distinct(StringComparer.Ordinal)
     ];
 
     private static async Task InvokeRefreshDataQualityAsync(AnalyticsDataQualityHealthWorker worker)

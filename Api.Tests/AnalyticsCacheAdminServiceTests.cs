@@ -10,22 +10,44 @@ namespace Api.Tests;
 public sealed class AnalyticsCacheAdminServiceTests
 {
     [Theory]
-    [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:dashboard")]
-    [InlineData(AnalyticsCachePolicy.ProductDecisionCenterFamily, "analytics:product-decision-center")]
-    [InlineData(AnalyticsCachePolicy.SupplierDecisionHubFamily, "analytics:supplier-decision-hub")]
-    [InlineData(AnalyticsCachePolicy.InventoryFamily, "analytics:inventory")]
-    [InlineData(AnalyticsCachePolicy.DataQualityFamily, "analytics:data-quality")]
-    [InlineData(AnalyticsCachePolicy.PrePostFamily, "analytics:pre-post")]
-    [InlineData(AnalyticsCachePolicy.NivelacijaFamily, "analytics:vendor-sales-nivelacija")]
-    [InlineData("vendor-sales-nivelacija", "analytics:vendor-sales-nivelacija")]
-    [InlineData(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, "analytics:pre-nivelacija-prioriteti")]
+    [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:dashboard-bootstrap:")]
+    [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:summary:v2:")]
+    [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:daily:v3:")]
+    [InlineData(AnalyticsCachePolicy.ProductDecisionCenterFamily, "analytics:product-decision-center:")]
+    [InlineData(AnalyticsCachePolicy.SupplierDecisionHubFamily, "analytics:supplier-decision-hub:")]
+    [InlineData(AnalyticsCachePolicy.InventoryFamily, "analytics:inventory:")]
+    [InlineData(AnalyticsCachePolicy.DataQualityFamily, "analytics:data-quality:")]
+    [InlineData(AnalyticsCachePolicy.PrePostFamily, "analytics:vendor-sales-nivelacija:")]
+    [InlineData(AnalyticsCachePolicy.NivelacijaFamily, "analytics:vendor-sales-nivelacija:")]
+    [InlineData("vendor-sales-nivelacija", "analytics:vendor-sales-nivelacija-options:")]
+    [InlineData(AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily, "analytics:pre-nivelacija-priority:")]
+    [InlineData("pre-nivelacija", "analytics:pre-nivelacija-priority:")]
+    [InlineData(AnalyticsCachePolicy.ColorSalesFamily, "analytics:color-sales-stats:")]
+    [InlineData(AnalyticsCachePolicy.SupplierSalesFamily, "analytics:supplier-sales-stats:")]
+    [InlineData(AnalyticsCachePolicy.ShoeTypeSalesFamily, "analytics:shoe-type-sales-stats:")]
     [InlineData(AnalyticsCachePolicy.ReportsFamily, "analytics:analytics-report:")]
-    [InlineData("pre-nivelacija", "analytics:pre-nivelacija-prioriteti")]
-    public void ResolveFamilyPrefix_ReturnsCanonicalPrefix(string family, string expectedPrefix)
+    public void ResolveFamilyPrefixes_ContainsRealKeyPrefix(string family, string expectedPrefix)
     {
-        var actual = AnalyticsCachePolicy.ResolveFamilyPrefix(family);
+        var actual = AnalyticsCachePolicy.ResolveFamilyPrefixes(family);
 
-        Assert.Equal(expectedPrefix, actual);
+        Assert.Contains(expectedPrefix, actual);
+        Assert.All(actual, prefix => Assert.StartsWith(AnalyticsCacheKeys.Prefix, prefix, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("dashbord")]
+    [InlineData("analytics")]
+    [InlineData("*")]
+    public void ResolveFamilyPrefixes_UnknownFamily_IsRejected(string family)
+    {
+        Assert.False(AnalyticsCachePolicy.IsKnownFamily(family));
+        Assert.Throws<ArgumentException>(() => AnalyticsCachePolicy.ResolveFamilyPrefixes(family));
+    }
+
+    [Fact]
+    public void ResolveFamilyPrefixes_All_IsTheWholeNamespace()
+    {
+        Assert.Equal([AnalyticsCacheKeys.Prefix], AnalyticsCachePolicy.ResolveFamilyPrefixes(AnalyticsCachePolicy.AllFamilies));
     }
 
     [Fact]
@@ -41,24 +63,21 @@ public sealed class AnalyticsCacheAdminServiceTests
             cache,
             distributedCache,
             NullLogger<AnalyticsCacheAdminService>.Instance);
+        string[] families =
+        [
+            AnalyticsCachePolicy.DashboardFamily,
+            AnalyticsCachePolicy.DataQualityFamily,
+            AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily,
+            AnalyticsCachePolicy.ReportsFamily
+        ];
 
-        var state = await sut.ClearFamiliesAsync(
-            [
-                AnalyticsCachePolicy.DashboardFamily,
-                AnalyticsCachePolicy.DataQualityFamily,
-                AnalyticsCachePolicy.PreNivelacijaPrioritetiFamily,
-                AnalyticsCachePolicy.ReportsFamily
-            ],
-            CancellationToken.None);
+        var state = await sut.ClearFamiliesAsync(families, CancellationToken.None);
 
         Assert.Equal(
-            [
-                "analytics:dashboard",
-                "analytics:data-quality",
-                "analytics:pre-nivelacija-prioriteti",
-                "analytics:analytics-report:"
-            ],
+            families.SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes).Distinct(StringComparer.Ordinal).ToArray(),
             cache.RemovedPrefixes);
+        Assert.Contains("analytics:summary:v2:", cache.RemovedPrefixes);
+        Assert.Contains("analytics:pre-nivelacija-priority:", cache.RemovedPrefixes);
         Assert.True(state.IsShared);
         Assert.Equal("redis", state.Storage);
         Assert.Null(state.Warning);
@@ -76,7 +95,7 @@ public sealed class AnalyticsCacheAdminServiceTests
     }
 
     [Fact]
-    public async Task ClearFamiliesAsync_WithNoFamilies_FallsBackToFullAnalyticsPrefix()
+    public async Task ClearFamiliesAsync_WithNoFamilies_IsRejectedInsteadOfClearingEverything()
     {
         var cache = new RecordingAnalyticsCacheService();
         var sut = new AnalyticsCacheAdminService(
@@ -84,15 +103,53 @@ public sealed class AnalyticsCacheAdminServiceTests
             distributedCache: null,
             NullLogger<AnalyticsCacheAdminService>.Instance);
 
-        var state = await sut.ClearFamiliesAsync([], CancellationToken.None);
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.ClearFamiliesAsync([], CancellationToken.None));
+        Assert.Empty(cache.RemovedPrefixes);
+    }
+
+    [Fact]
+    public async Task ClearAsync_UnknownFamily_IsRejectedAndRemovesNothing()
+    {
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.ClearAsync("dashbord", CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.ClearFamiliesAsync(["dashboard", "nope"], CancellationToken.None));
+        Assert.Empty(cache.RemovedPrefixes);
+    }
+
+    [Fact]
+    public async Task ClearAsync_All_ClearsWholeNamespace()
+    {
+        var cache = new RecordingAnalyticsCacheService();
+        var sut = new AnalyticsCacheAdminService(
+            cache,
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+
+        var state = await sut.ClearAsync(AnalyticsCachePolicy.AllFamilies, CancellationToken.None);
 
         Assert.Equal([AnalyticsCacheKeys.Prefix], cache.RemovedPrefixes);
-        Assert.False(state.IsShared);
-        Assert.Equal("memory", state.Storage);
         Assert.Equal("all", state.LastClearFamily);
-        Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
-        Assert.NotNull(state.LastReportCacheClearAtUtc);
         Assert.True(state.ReportCacheVersion >= 2);
+    }
+
+    [Fact]
+    public async Task BumpReportCacheVersionAsync_ConcurrentBumps_NeverCollapse()
+    {
+        var sut = new AnalyticsCacheAdminService(
+            new RecordingAnalyticsCacheService(),
+            distributedCache: null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+        var before = await sut.GetReportCacheVersionAsync();
+
+        var versions = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(() => sut.BumpReportCacheVersionAsync())));
+
+        Assert.Equal(32, versions.Distinct().Count());
+        Assert.Equal(before + 32, await sut.GetReportCacheVersionAsync());
     }
 
     [Fact]
