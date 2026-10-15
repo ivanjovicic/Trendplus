@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { parseEntityIdParam } from "../validation/entityId";
+import { isEntityId, parseEntityIdParam } from "../validation/entityId";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -2100,9 +2100,8 @@ function cleanupReasonsLabel(reasonCodes: string[]): string {
  */
 function buildPrePostHistoryHref(filters: ActiveFilters): string {
   const params = new URLSearchParams();
-  const isLinkableId = (value: number | null | undefined): value is number => value != null && Number.isSafeInteger(value) && value > 0;
-  if (isLinkableId(filters.supplierId)) params.set("vendorId", String(filters.supplierId));
-  if (isLinkableId(filters.storeId)) params.set("storeId", String(filters.storeId));
+  if (isEntityId(filters.supplierId)) params.set("vendorId", String(filters.supplierId));
+  if (isEntityId(filters.storeId)) params.set("storeId", String(filters.storeId));
   const query = params.toString();
   return query ? `/analytics/nivelacije-pre-post?${query}` : "/analytics/nivelacije-pre-post";
 }

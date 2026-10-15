@@ -139,6 +139,9 @@ describe("HomePage business truth (RQ661)", () => {
     const note = screen.getByTestId("home-freshness");
     expect(note).toHaveTextContent("02.01.2025. – 14.10.2026.");
     expect(note).toHaveTextContent("ne po radnji ili izvoru podataka");
+    expect(note).toHaveTextContent("najraniji – najkasniji datum računa sa stavkama");
+    expect(note).toHaveTextContent("ne potvrđuje da su svi dani i radnje potpuni");
+    expect(note).not.toHaveTextContent(/potvrđeni period/i);
     expect(note).toHaveTextContent(/Poslednji uspešan uvoz: 15\.\s?10\.\s?2026\./);
     expect(screen.getByTestId("home-freshness-status")).toHaveTextContent("Uvoz podataka je svež");
     expect(refreshStatusMock).toHaveBeenCalledTimes(1);
@@ -177,7 +180,7 @@ describe("HomePage business truth (RQ661)", () => {
     await settled();
 
     const note = screen.getByTestId("home-freshness");
-    expect(note).toHaveTextContent("Poslednji potvrđeni period nije dostupan");
+    expect(note).toHaveTextContent("Raspon zabeležene Access prodaje nije dostupan");
     expect(within(note).getByRole("link", { name: "Kvalitet podataka" })).toHaveAttribute("href", "/analytics/data-quality");
   });
 
@@ -189,7 +192,7 @@ describe("HomePage business truth (RQ661)", () => {
     const { container } = renderHome();
     await settled();
 
-    expect(screen.getByTestId("home-freshness")).toHaveTextContent("Poslednji potvrđeni period nije dostupan");
+    expect(screen.getByTestId("home-freshness")).toHaveTextContent("Raspon zabeležene Access prodaje nije dostupan");
     expect(screen.getByTestId("home-freshness-status")).toHaveTextContent("nije moguće proveriti");
     expect(container.textContent ?? "").not.toMatch(/\d/);
   });

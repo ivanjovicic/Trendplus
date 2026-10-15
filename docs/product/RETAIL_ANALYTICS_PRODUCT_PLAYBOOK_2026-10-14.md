@@ -16,7 +16,7 @@ The [source-verified footwear decision opportunity catalog](FOOTWEAR_DECISION_PR
 
 Povezanost, hijerarhija i istinitost poruka postojećih ekrana, top 15 predloga i sprovedeni quick win-ovi: [TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15](TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md). Nema novih RQ ID-jeva ni READY statusa.
 
-Nastavak 2026-10-15: Početna prikazuje poslednji potvrđeni period prodaje i vodi na šest poslovnih pitanja; Puls odluka je u glavnom meniju (detalji u §8 audita).
+Nastavak 2026-10-15: Početna prikazuje raspon zabeležene Access prodaje (najraniji–najkasniji račun sa stavkama, ne potvrdu uvoza) i vodi na šest poslovnih pitanja; Puls odluka je u glavnom meniju (detalji u §8 audita).
 
 ## 1. Product decision — small, credible and sellable
 
