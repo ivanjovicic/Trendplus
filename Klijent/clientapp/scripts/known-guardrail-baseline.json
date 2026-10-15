@@ -5,7 +5,7 @@
     {
       "file": "src/pages/PreNivelacijaPriorityPage.tsx",
       "rule": "decisionScore_assign",
-      "line": 745,
+      "line": 746,
       "reason": "Backend decisionScore is only normalized for display and is exposed only when backend recommendationAllowed === true; gating and non-finite handling are covered by PreNivelacijaPriorityPage.spec."
     },
     {
@@ -65,7 +65,7 @@
     {
       "file": "src/pages/InventoryPage.tsx",
       "rule": "fake_zero_fallback",
-      "line": 1061,
+      "line": 1068,
       "reason": "Existing inventory page-count fallback requires a reviewed backend-total exception."
     },
     {
