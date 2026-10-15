@@ -1418,7 +1418,7 @@ export default function PreNivelacijaPriorityPage() {
           ...(dataScope === getDataScope()
             ? [{
               key: "pre-post-history",
-              label: "Pre/posle ranijih nivelacija",
+              label: "Pre/posle nivelacija: isti dobavljač i radnja (vremenski okvir bira odredišni ekran)",
               to: buildPrePostHistoryHref(activeFilters),
               tone: "secondary" as const,
             }]
@@ -1573,7 +1573,8 @@ export default function PreNivelacijaPriorityPage() {
               )}
             </article>
 
-            <article className="pnp-decision-card analytics-surface-panel pnp-shadow-comparison" aria-label="Eksperimentalno poređenje rangiranja">
+            <details className="pnp-decision-card analytics-surface-panel pnp-shadow-comparison" aria-label="Tehničko poređenje rangiranja">
+              <summary>Tehničko poređenje rangiranja <span className="pnp-shadow-disclaimer">(ne menja aktivnu preporuku)</span></summary>
               <h2>Eksperimentalno poređenje rangiranja</h2>
               <p className="pnp-shadow-disclaimer">{data?.shadowV9Comparison?.label ?? "Eksperimentalno rangiranje v9 nije dostupno."} Kanonska preporuka i redosled akcija i dalje koriste aktivni v10.</p>
               {data?.shadowV9Comparison ? (
@@ -1597,7 +1598,7 @@ export default function PreNivelacijaPriorityPage() {
                   ) : null}
                 </>
               ) : null}
-            </article>
+            </details>
 
             <article className="pnp-decision-card analytics-surface-panel">
               <div className="pnp-decision-table-head">
@@ -2099,8 +2100,9 @@ function cleanupReasonsLabel(reasonCodes: string[]): string {
  */
 function buildPrePostHistoryHref(filters: ActiveFilters): string {
   const params = new URLSearchParams();
-  if (filters.supplierId != null) params.set("vendorId", String(filters.supplierId));
-  if (filters.storeId != null) params.set("storeId", String(filters.storeId));
+  const isLinkableId = (value: number | null | undefined): value is number => value != null && Number.isSafeInteger(value) && value > 0;
+  if (isLinkableId(filters.supplierId)) params.set("vendorId", String(filters.supplierId));
+  if (isLinkableId(filters.storeId)) params.set("storeId", String(filters.storeId));
   const query = params.toString();
   return query ? `/analytics/nivelacije-pre-post?${query}` : "/analytics/nivelacije-pre-post";
 }

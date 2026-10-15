@@ -1203,6 +1203,7 @@ describe("AnalyticsActionsPage", () => {
     });
     const bar = within(kpiBar as HTMLElement);
     expect(bar.getByText("Završeno")).toBeInTheDocument();
+    expect(bar.getByText("Akcija je sprovedena; to nije ostvarena korist.")).toBeInTheDocument();
     expect(bar.getByText("Odbijeno")).toBeInTheDocument();
     expect(bar.queryByText("Zatvoreno")).not.toBeInTheDocument();
     expect(bar.getByText("5")).toBeInTheDocument();

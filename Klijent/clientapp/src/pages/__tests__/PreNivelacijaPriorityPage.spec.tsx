@@ -512,6 +512,10 @@ describe("PreNivelacijaPriorityPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Eksperimentalno poređenje rangiranja" })).toBeInTheDocument();
+    const shadowDetails = screen.getByText(/Tehničko poređenje rangiranja/).closest("details");
+    expect(shadowDetails).not.toBeNull();
+    expect(shadowDetails).not.toHaveAttribute("open");
+    expect(shadowDetails).toHaveTextContent("ne menja aktivnu preporuku");
     expect(screen.getByText(/nije aktivna preporuka/i)).toBeInTheDocument();
     expect(screen.getByText(/aktivni v10/i)).toBeInTheDocument();
     expect(screen.queryByText("Pojačaj sniženje")).not.toBeInTheDocument();
@@ -2033,6 +2037,8 @@ describe("PreNivelacijaPriorityPage", () => {
   });
 });
 
+const PRE_POST_LINK_NAME = /Pre\/posle nivelacija: isti dobavljač i radnja \(vremenski okvir bira odredišni ekran\)/;
+
 describe("PreNivelacijaPriorityPage pre/post link", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -2050,7 +2056,7 @@ describe("PreNivelacijaPriorityPage pre/post link", () => {
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
     await waitFor(() => {
-      expect(within(controlBar).getByRole("link", { name: "Pre/posle ranijih nivelacija" })).toHaveAttribute(
+      expect(within(controlBar).getByRole("link", { name: PRE_POST_LINK_NAME })).toHaveAttribute(
         "href",
         "/analytics/nivelacije-pre-post?vendorId=5",
       );
@@ -2067,6 +2073,26 @@ describe("PreNivelacijaPriorityPage pre/post link", () => {
 
     const controlBar = await screen.findByTestId("analytics-control-bar");
     expect(await within(controlBar).findByRole("link", { name: "Kvalitet podataka" })).toBeInTheDocument();
-    expect(within(controlBar).queryByRole("link", { name: "Pre/posle ranijih nivelacija" })).not.toBeInTheDocument();
+    expect(within(controlBar).queryByRole("link", { name: PRE_POST_LINK_NAME })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["supplier and store", "supplierId=5&storeId=3", "/analytics/nivelacije-pre-post?vendorId=5&storeId=3"],
+    ["negative supplier id", "supplierId=-5", "/analytics/nivelacije-pre-post"],
+    ["non-numeric store id", "storeId=abc", "/analytics/nivelacije-pre-post"],
+    ["old period params", "supplierId=5&fromDate=2026-01-01&toDate=2026-02-01&periodPreset=90d", "/analytics/nivelacije-pre-post?vendorId=5"],
+  ])("passes only valid supplier/store ids and never the period (%s)", async (_label, query, expected) => {
+    localStorage.setItem("trendplus:dataScope", "all");
+    render(
+      <MemoryRouter initialEntries={[`/analytics/pre-nivelacija-prioriteti?${query}&dataScope=all`]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    await waitFor(() => {
+      expect(within(controlBar).getByRole("link", { name: PRE_POST_LINK_NAME })).toHaveAttribute("href", expected);
+    });
+    expect(within(controlBar).getByRole("link", { name: PRE_POST_LINK_NAME }).getAttribute("href")).not.toMatch(/fromDate|toDate|periodPreset/);
   });
 });

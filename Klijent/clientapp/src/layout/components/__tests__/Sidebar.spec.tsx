@@ -120,4 +120,44 @@ describe("Sidebar", () => {
       "/analytics/supplier",
     );
   });
+
+  it("shows Puls odluka in the primary group without opening secondary analyses", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory"]}>
+        <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("link", { name: "Puls odluka" })).toHaveAttribute("href", "/analytics/decision-pulse");
+    expect(screen.queryByRole("link", { name: /Pre\/Posle nivelacije/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pilot spremnost" })).not.toBeInTheDocument();
+  });
+
+  it("opens Dodatne analize on an old Pre/Posle deep link and marks it active", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/nivelacije-pre-post?supplierId=7&storeId=2"]}>
+        <Sidebar mobileOpen={false} onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: /Dodatne analize/i })).toHaveAttribute("aria-expanded", "true");
+    const activeLinks = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page");
+    expect(activeLinks).toHaveLength(1);
+    expect(activeLinks[0]).toHaveAttribute("href", "/analytics/nivelacije-pre-post");
+  });
+
+  it("marks Puls odluka active on a direct deep link in the mobile dialog", () => {
+    render(
+      <MemoryRouter initialEntries={["/analytics/decision-pulse"]}>
+        <Sidebar mobileOpen onCloseMobile={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Backoffice/i });
+    expect(within(dialog).getByRole("button", { name: /Glavne odluke/i })).toHaveAttribute("aria-expanded", "true");
+    const active = dialog.querySelectorAll('a[aria-current="page"]');
+    expect(active).toHaveLength(1);
+    expect(active[0]).toHaveAttribute("href", "/analytics/decision-pulse");
+  });
 });

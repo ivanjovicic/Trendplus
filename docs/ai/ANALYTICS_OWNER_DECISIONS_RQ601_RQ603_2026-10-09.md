@@ -52,3 +52,12 @@ The screenshot/browser/menu render should not assert that the above 8 are fully 
 3. Claim RQ601 (diagnostics) and/or RQ603 (navigation) with disjoint paths. Start RQ602 in parallel only after exact path ownership check.
 4. Deliver source worksheet + reconciliation evidence for RQ601; never state the 20 reference purchase values have been provided until verified.
 5. Keep STAB16 production proof separate; green CI alone is not a production-data certificate.
+
+## Navigation decision update — 2026-10-15 (Ivan, direct request)
+
+This is a new decision; the RQ603 record above stays as history. Still a grouping/labels change only: no route, redirect, permission or analytics-logic change.
+
+- **Primary (exactly 8, in order):** Pregled poslovanja, Analitika zaliha, Prodaja po dobavljačima, Prodaja po tipu obuće, Prioriteti nivelacije, **Puls odluka**, Akcije i preporuke, Kvalitet podataka.
+- **Dodatne analize (9):** **Pre/Posle nivelacije** (also linked from Prioriteti nivelacije), Izvršni pregled odluka, Odluke o proizvodima, Ocena dobavljača, Dnevna prodaja, Prodaja po boji artikla, Izveštaj dobavljača, **Pilot spremnost** (moved lower), Pilot izveštaj kvaliteta podataka.
+- Reason: Puls odluka is the weekly owner digest (RQ585 DONE) and was hidden; Pre/Posle stays reachable from the menu and from Prioriteti. Source: `docs/product/TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md` proposal 6.
+- Proof: `src/layout/__tests__/navConfig.spec.ts`, `src/layout/components/__tests__/Sidebar.spec.tsx`, `headerNavigation.spec.ts`.

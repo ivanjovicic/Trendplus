@@ -104,7 +104,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/analytics/supplier", label: "Prodaja po dobavljačima", icon: Microscope },
       { to: "/analytics/shoe-type-sales-stats", label: "Prodaja po tipu obuće", icon: ShoppingBag },
       { to: "/analytics/pre-nivelacija-prioriteti", label: "Prioriteti nivelacije", icon: Sparkles },
-      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
+      { to: "/analytics/decision-pulse", label: "Puls odluka", icon: Zap },
       { to: "/analytics/actions", label: "Akcije i preporuke", icon: ClipboardList },
       { to: "/analytics/data-quality", label: "Kvalitet podataka", icon: AlertTriangle },
     ],
@@ -115,10 +115,9 @@ export const NAV_GROUPS: NavGroup[] = [
     sidebarLabel: "Dodatne analize",
     icon: BookOpen,
     items: [
-      { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
+      { to: "/analytics/nivelacije-pre-post", label: "Pre/Posle nivelacije", icon: Activity },
       { to: "/analytics/decision-board", label: "Izvršni pregled odluka", icon: Sparkles },
       { to: "/analytics/products", label: "Odluke o proizvodima", icon: ShoppingCart },
-      { to: "/analytics/decision-pulse", label: "Puls odluka", icon: AlertTriangle },
       { to: "/analytics/supplier?tab=scorecard", label: "Ocena dobavljača", icon: Microscope },
       { to: "/analytics/daily-sales", label: "Dnevna prodaja", icon: CalendarDays },
       {
@@ -137,6 +136,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: Wrench,
         badge: { label: "Izveštaj", tone: "info", title: "Dokumentarni izveštaj za dobavljače" },
       },
+      { to: "/analytics/pilot-readiness", label: "Pilot spremnost", icon: ListChecks },
       {
         to: "/analytics/reports/pilot-intake",
         label: "Pilot izveštaj kvaliteta podataka",
