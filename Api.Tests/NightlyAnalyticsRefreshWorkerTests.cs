@@ -202,7 +202,12 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
 
         await InvokeRefreshAsync(harness.Worker);
 
-        Assert.Equal(AnalyticsCachePolicy.CoreFamilies.Length, harness.Cache.RemovedPrefixes.Count);
+        Assert.Equal(
+            AnalyticsCachePolicy.CoreFamilies
+                .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+                .Distinct(StringComparer.Ordinal)
+                .Count(),
+            harness.Cache.RemovedPrefixes.Count);
         Assert.Contains(
             AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
             harness.Cache.RemovedPrefixes);

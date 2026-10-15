@@ -173,7 +173,7 @@
     {
       "file": "src/services/analyticsApi.ts",
       "rule": "swallowed_fetch_failure",
-      "line": 455,
+      "line": 516,
       "reason": "Existing API fallback wrapper requires a reviewed compatibility exception."
     },
     {

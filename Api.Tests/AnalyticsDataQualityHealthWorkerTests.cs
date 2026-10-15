@@ -51,7 +51,7 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
         Assert.Equal(ExpectedRemovedPrefixes(), harness.Cache.RemovedPrefixes);
 
         var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
-        Assert.Equal("dashboard,product-decision-center,supplier-decision-hub,inventory,data-quality,color-sales,reports", state.LastClearFamily);
+        Assert.Equal("dashboard,product-decision-center,supplier-decision-hub,inventory,data-quality,color-sales,supplier-sales,shoe-type-sales,reports", state.LastClearFamily);
         Assert.NotNull(state.LastClearAtUtc);
         Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
         Assert.NotNull(state.LastReportCacheClearAtUtc);
