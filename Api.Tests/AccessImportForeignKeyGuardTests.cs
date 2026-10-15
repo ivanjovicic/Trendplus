@@ -139,11 +139,106 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
 
         Assert.StartsWith("duplicate_sale_header_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("target_primary_key_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("POS-7", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("ACCESS-7", ex.Message, StringComparison.Ordinal);
 
         await using var verifyDb = CreateDbContext(database.ConnectionString);
         var persisted = await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync();
         Assert.Equal("POS-7", persisted.BrojRacuna);
         Assert.Equal("existing", persisted.DataOrigin);
+    }
+
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_DistinguishesSourceLineageCollisionFromPrimaryKeyCollision()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE UNIQUE INDEX ux_prodaja_zaglavlje_access_source_row
+            ON prodaja_zaglavlje (data_origin, source_table_key, source_row_id)
+            WHERE data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
+            """);
+
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "REDACT-ME-A",
+            DatumProdaje = DateTime.UtcNow,
+            DataOrigin = "access",
+            SourceTableKey = "prodaja_zaglavlje",
+            SourceRowId = 77
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 8, // Distinct target ID: the conflicting key is source lineage, not PK.
+            BrojRacuna = "REDACT-ME-B",
+            DatumProdaje = DateTime.UtcNow,
+            DataOrigin = "access",
+            SourceTableKey = "prodaja_zaglavlje",
+            SourceRowId = 77
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+        Assert.Contains("access_source_lineage_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("target_primary_key_collision", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("REDACT-ME", ex.Message, StringComparison.Ordinal);
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        var persisted = await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync();
+        Assert.Equal(7, persisted.Id);
+        Assert.Equal(77, persisted.SourceRowId);
+    }
+
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_DoesNotMisclassifyAnUnknownUniqueIndexAsPk()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX ux_test_sale_number_store ON prodaja_zaglavlje (broj_racuna, id_objekat);");
+
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "DO-NOT-LEAK",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 8, // The duplicate unique key is not the primary key.
+            BrojRacuna = "DO-NOT-LEAK",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "access"
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+        Assert.Contains("unclassified_unique_constraint (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("target_primary_key_collision", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("DO-NOT-LEAK", ex.Message, StringComparison.Ordinal);
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        Assert.Equal(7, (await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync()).Id);
     }
 
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()

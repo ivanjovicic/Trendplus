@@ -72,6 +72,80 @@ public class TransferServiceTests
     }
 
     [Fact]
+    public async Task ConfirmFailure_DoesNotInvalidateInventoryCache()
+    {
+        var db = CreateDb("tp_transfer_confirm_failure_cache");
+        db.Artikli.Add(new Artikli
+        {
+            Id = 202,
+            Naziv = "A",
+            Kolicina = 1,
+            IDObjekat = 1,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions()), NullLogger<InMemoryCacheService>.Instance);
+        var cacheAdmin = new AnalyticsCacheAdminService(
+            cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection().AddSingleton(cacheAdmin).BuildServiceProvider();
+        var service = new TransferService(db, new NullLogger<TransferService>(), services);
+        var draft = await service.CreateDraftAsync(new TransferCreateRequest
+        {
+            SourceId = 1,
+            DestinationId = 2,
+            Reserve = true,
+            Items = { new TransferLineInputDto { SkuId = 202, Quantity = 5m, Unit = "pcs" } }
+        }, "tester");
+        var key = AnalyticsCacheKeys.Inventory(2);
+        await cache.SetAsync(key, new TransferCacheMarker { Value = "before-failed-confirm" });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ConfirmAsync(draft.Id, "tester"));
+
+        Assert.Equal("before-failed-confirm", (await cache.GetAsync<TransferCacheMarker>(key))?.Value);
+        Assert.Equal(TransferStatuses.Draft, (await db.Transfers.SingleAsync(x => x.Id == draft.Id)).Status);
+    }
+
+    [Fact]
+    public async Task ConfirmAlreadyConfirmed_DoesNotInvalidateWithoutANewMutation()
+    {
+        var db = CreateDb("tp_transfer_confirm_repeat_cache");
+        db.Artikli.Add(new Artikli
+        {
+            Id = 203,
+            Naziv = "A",
+            Kolicina = 5,
+            IDObjekat = 1,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions()), NullLogger<InMemoryCacheService>.Instance);
+        var cacheAdmin = new AnalyticsCacheAdminService(
+            cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection().AddSingleton(cacheAdmin).BuildServiceProvider();
+        var service = new TransferService(db, new NullLogger<TransferService>(), services);
+        var draft = await service.CreateDraftAsync(new TransferCreateRequest
+        {
+            SourceId = 1,
+            DestinationId = 2,
+            Reserve = true,
+            Items = { new TransferLineInputDto { SkuId = 203, Quantity = 2m, Unit = "pcs" } }
+        }, "tester");
+
+        await service.ConfirmAsync(draft.Id, "tester");
+        var key = AnalyticsCacheKeys.Inventory(2);
+        await cache.SetAsync(key, new TransferCacheMarker { Value = "after-confirm" });
+
+        var repeated = await service.ConfirmAsync(draft.Id, "tester");
+
+        Assert.Equal(TransferStatuses.Confirmed, repeated.Status);
+        Assert.Equal("after-confirm", (await cache.GetAsync<TransferCacheMarker>(key))?.Value);
+    }
+
+    [Fact]
     public async Task Complete_MovesStockAndWritesBalancedMovements()
     {
         var db = CreateDb("tp_transfer_complete_balanced");
