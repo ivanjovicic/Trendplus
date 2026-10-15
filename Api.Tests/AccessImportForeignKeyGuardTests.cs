@@ -5,6 +5,7 @@ using Domain.Model;
 using Domain.Model.Prodaja;
 using Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -288,6 +289,30 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             .GetValue(service)!;
         Assert.Contains(accessHeader.Id, analyticsSaleIds);
         Assert.DoesNotContain(7, analyticsSaleIds);
+
+        // A newly added, earlier journal line can change the synthetic receipt's
+        // anchor source ID. The existing line may not be reassigned to that header.
+        db.DnevnikPromena.Add(new DnevnikPromena
+        {
+            Id = 52,
+            TipPromene = TipPromeneConstants.Prodaja,
+            Datum = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc),
+            Iznos = 99m,
+            BrojRacuna = "ACCESS-DN-7",
+            ArtikalId = 101,
+            Kolicina = 1,
+            IDObjekat = 2,
+            DataOrigin = "access",
+            SourceTableKey = "dnevnikpromena",
+            SourceRowId = 6,
+            SourceHash = "source-row-6"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var changedAnchor = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            InvokeSaleImportAsync(service, "SynthesizeProdajaFromDnevnikAsync", [false, result, CancellationToken.None]));
+        Assert.StartsWith("duplicate_sale_line_identity:", changedAnchor.Message, StringComparison.Ordinal);
+        Assert.Equal(accessHeader.Id, (await db.ProdajaStavke.AsNoTracking().SingleAsync()).IdProdaja);
     }
 
     [PostgresRequiredFact]
@@ -709,6 +734,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     {
         var options = new DbContextOptionsBuilder<TrendplusDbContext>()
             .UseNpgsql(connectionString)
+            .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))
             .Options;
         return new TrendplusDbContext(options);
     }
