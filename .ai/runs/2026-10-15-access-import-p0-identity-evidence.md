@@ -5,7 +5,7 @@ Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/access-import-p0 / PR #163 (draft; transport branch codex/access-sale-line-identity)
 Main commit SHA: pending
-Main verification: pending - implementation has not been merged to main
+Main verification: latest `origin/main` snapshot `6ff22b7ccd5c7dd96c53efe02b724d66be7cb5b3` is incorporated by merge commit `4ffbc63e`; this implementation is not merged to main.
 Evidence state: PARTIAL
 Ownership transfer: none
 Claim reservation: direct-user-request/not applicable
@@ -29,19 +29,19 @@ Claim reservation: direct-user-request/not applicable
 - .ai/runs/2026-10-15-access-import-p0-identity-evidence.md
 
 ## Validation run
-- `git fetch origin` -> pass; initial merge base was `2e711a310e9ff1256f800f0712852bf64f81531c`. `origin/main` has since advanced to `6ff22b7ccd5c7dd96c53efe02b724d66be7cb5b3`; this commit still needs to be merged and revalidated.
-- `git merge --no-edit origin/main` -> pass for the earlier `2e711a3` snapshot; latest main merge is pending.
-- `dotnet build Api/Api.csproj --no-restore -m:1 -clp:ErrorsOnly` -> pass on the pre-`6ff22b7` worktree, 0 errors, 174 warnings; rerun after merging latest main.
+- `git fetch origin` -> pass; `origin/main` is `6ff22b7ccd5c7dd96c53efe02b724d66be7cb5b3`.
+- `git merge --no-edit origin/main` -> pass; latest-main merge commit is `4ffbc63e`.
+- `dotnet build Api/Api.csproj --no-restore -m:1 -clp:ErrorsOnly` -> pass on `4ffbc63e`, 0 errors, 174 warnings.
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --filter 'FullyQualifiedName~AccessImportForeignKeyGuardTests|FullyQualifiedName~AccessImportRetryAtomicityTests' --no-restore -m:1 --logger 'console;verbosity=normal' -consoleloggerparameters:ErrorsOnly` -> pass, 14 passed, 0 failed, 0 skipped; Docker-backed PostgreSQL ran.
 - The PostgreSQL class includes direct-header collision/re-import, duplicate same-product lines, line-table-derived header, Dnevnik synthesis, primary-key vs lineage-unique diagnostics, sequence monotonicity, and cursor rollback.
-- `git diff --check` -> pass after the final source, test and documentation edits.
+- `git diff --check` -> pass after merging latest main; a later evidence-only run-log update is recorded in the delivery commit.
 - Full backend suite, run with `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`, ended with 2,094 passed, 43 skipped, and 5 failed (2 RQ610/RQ601 fixtures had no configured test connection; 3 supplier/SQL029 PostgreSQL fixture setup timeouts under parallel container load). All five named tests then passed in isolated runs against a disposable PostgreSQL container: RQ610 2/2, supplier parity 1/1, SQL029 lifecycle 1/1, RQ601 1/1. A second serialized full-suite attempt with RQ610/RQ601 connections ran idle for more than 13 minutes without a result and was interrupted; full suite status is incomplete, not green. Temporary runner config and disposable container were removed.
 
 ## Validation not run
 - Full backend suite -> incomplete as detailed above; the isolated reruns do not convert the full-suite result into a pass.
 - Independent before/after SQL oracle for `all` / `imported` / `existing`, including `SalesFacts` and `SalesLineFacts` -> not run against this implementation. Batch #23's historical oracle is documented in the existing audit, but it is not a post-fix oracle.
 - Full failure injection during header flush, line flush, analytics sync, final flush/commit and retry -> not run. The cursor repository rollback test proves its update participates in a Trendplus transaction, not every batch failure stage.
-- Exact-head CI for the updated PR -> pending push and CI execution.
+- Exact-head CI for the updated PR -> pending push and CI execution. The checks currently visible on PR #163 belong to old head `52fad788ade80ab5df42647732d0852415d585fd` and do not validate this change.
 - Production incident exception/batch log -> unavailable in this run; no production data was read or changed.
 
 ## Documentation impact
@@ -64,6 +64,5 @@ Claim reservation: direct-user-request/not applicable
 - not applicable for direct-user-request; the change has not closed on main.
 
 ## Next
-- Merge latest `origin/main` (`6ff22b7ccd5c7dd96c53efe02b724d66be7cb5b3`), resolve any overlapping changes, and rerun the focused PostgreSQL tests plus API build.
 - Push the validated partial work to the existing draft PR #163 without force-push; inspect exact-head CI and leave the PR open.
 - Obtain the stable Access database namespace and original incident exception/batch log from the system/operator owner; then design the namespace migration and dry-run legacy reconciliation before claiming P0 completion.
