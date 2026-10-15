@@ -3811,12 +3811,12 @@ None.
 
 ## RQ677 - Verify and surface the maximum Access upload size
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: backend limits / error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes
-Owner: grok (branch `fix/rq677-access-upload-limit`)
+Owner: grok
 Ready after: RQ675 (owner order 2026-10-15)
 Commit suggestion: `fix(access-import): explicit upload limit and clear 413 message`
 
@@ -3866,6 +3866,22 @@ Oversized uploads fail fast with a clear Serbian message.
 ### Dependencies
 
 None (owner decision recorded above).
+
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Endpoints/AccessImportEndpoints.cs (DefaultMaxUploadBytes 100 MiB, ApplyUploadLimit per request, 413 message, oversized form read mapping), Api.Tests/AccessImportRunEndpointTests.cs, Klijent/clientapp/src/services/accessImportApi.ts, AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue (storage verification, new RQ678)
+- Checks run: local AccessImport backend tests 46 pass; vitest page + services 118 pass; tsc; queue validators with and without --self-test; git diff --check; PR #167 CI: backend 38694648814, frontend 38694648654, governance 38694648653 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ677-access-upload-limit-evidence.md
+- Delivery mode: PR #167 merged with --merge after green CI
+- Main commit SHA: 741c2fa5
+- Main verification: git rev-parse origin/main -> 741c2fa5 after merge
+- Missed: none
+- Follow-up: RQ678 (durable copy guard, WAITING on Render dashboard Storage__Provider confirmation); RQ676 next in owner order
+- Residual risk: Cloudflare in front of Render may cap uploads near 100 MB (decimal); with Storage provider local the queued file is only on the web disk (RQ678).
 
 ## RQ678 - Guarantee a durable copy of a queued Access upload on Render Free
 
