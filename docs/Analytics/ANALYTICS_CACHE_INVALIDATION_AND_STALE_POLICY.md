@@ -41,6 +41,7 @@ Trenutno su povezani sledeći lifecycle hook-ovi:
 - `AccessImportService`: posle uspešnog importa i pri delete-batch analytics cleanup-u poziva `cacheAdmin.ClearFamiliesAsync(CoreFamilies)` što uključuje `reports` family i bumpa `ReportCacheVersion`. Fallback na sirovi prefix purge ako admin service nije dostupan.
 - `NightlyAnalyticsRefreshWorker`: posle uspešnog refresh-a invalidira sve core familije uključujući `reports` → bumpa `ReportCacheVersion` i setuje `LastReportCacheClearAtUtc`.
 - `AnalyticsDataQualityHealthWorker`: invalidira `data-quality` i `reports` familije.
+- `TransferService`: potvrda i otkazivanje rezervacija, kao i završavanje transfera (menja `Artikli.Kolicina` i upisuje `DnevnikPromena`), invalidiraju `CoreFamilies` posle commit-a; kreiranje/uređivanje drafta ne invalidira.
 
 ## Report cache verzionisanje
 
@@ -87,7 +88,7 @@ Kada je entry stariji od dozvoljenog praga, response meta treba da dobije:
 - `WarningCode="STALE_CACHE"`
 - `WarningMessage` sa pozivom na osvežavanje
 - `DataQualityStatus="warning"`
-- `LastRefreshAtUtc` iz vremena kreiranja cache entry-ja
+- `LastRefreshAtUtc` iz autoritativne vremenske oznake osvežavanja podataka (`DataRefreshAtUtc`) kada postoji; vreme kreiranja cache-a je zasebno `CacheCreatedAtUtc`
 
 U ovom prolazu stale warning je eksplicitno povezan na glavne response-e koji već imaju `Meta`:
 
@@ -118,7 +119,8 @@ U ovom prolazu stale warning je eksplicitno povezan na glavne response-e koji ve
 - Deljeni in-flight zahtev nije vezan za signal pojedinačnog pozivaoca; abort jednog ne prekida ostale.
 - Invalidacija se emituje drugim tabovima kroz `BroadcastChannel("trendplus-analytics-cache")`.
 - Ručni refresh (`refetch` u `useReliableAnalyticsQuery`) ide sa `withClientCacheBypass`.
-- `useReliableAnalyticsQuery` odbacuje poslednji snapshot kada se promeni `contextKey` (period/store/supplier/dataScope), pa se snapshot drugog konteksta ne prikazuje kao aktuelan.
+- `useReliableAnalyticsQuery` odbacuje poslednji snapshot odmah pri promeni `contextKey` (period/store/supplier/dataScope i drugi primenjeni filteri); kontekst je eksplicitno prosleđen sa Inventory, Color, Shoe Type, Pre/Post i Pre-Nivelacija Priority ekrana. Ne čuvaju se kao aktuelne tabele ili akcije iz prethodnog konteksta. Neuspešan refetch **istog** konteksta ostavlja prethodni rezultat uz `staleWarning`; promene filtera ne.
+- Za memory-only instancu L1 poštuje deklarisani TTL bez ranijeg dodatnog kliznog isteka na 2 minuta; Hybrid L2→L1 i dalje poštuje preostali TTL.
 
 ## Test pokriće
 
