@@ -10,6 +10,18 @@
 
 BEGIN TRANSACTION READ ONLY;
 
+-- Stop with a specific diagnostic instead of treating an EMPTY / wrong-search_path
+-- database as evidence that the failed import has no unique indexes.
+DO $schema_preflight$
+BEGIN
+    IF to_regclass('prodaja_zaglavlje') IS NULL OR to_regclass('prodaja_stavke') IS NULL THEN
+        RAISE EXCEPTION
+            'access_identity_triage_schema_missing: prodaja_zaglavlje or prodaja_stavke is absent in the active search_path. Verify database, schema, and the authorized source copy; no incident classification is possible.'
+            USING ERRCODE = '42P01';
+    END IF;
+END
+$schema_preflight$;
+
 -- 1. Discover the ACTUAL primary/unique index definitions (migration assumptions
 -- are not proof that this deployed DB matches). Confirm PK and lineage index exist.
 SELECT
@@ -92,7 +104,40 @@ SELECT
 FROM prodaja_stavke AS s
 LEFT JOIN prodaja_zaglavlje AS h ON h.id = s.id_prodaja;
 
--- 6. The legacy table+row pair has NO stable source-database namespace today.
+-- 6. READ-ONLY sequence readiness: PostgreSQL IDENTITY/serial counters are
+-- independent from explicit historic target IDs. The importer currently repairs
+-- sequences only AFTER writing new rows. A high existing id with a low sequence
+-- may collide on the FIRST generated insert. This is a risk indicator, not
+-- proof of the original incident; never invoke sequence-changing commands here.
+WITH identity_tables AS (
+    SELECT 'prodaja_zaglavlje'::text AS table_name,
+           pg_get_serial_sequence('prodaja_zaglavlje', 'id') AS sequence_name,
+           (SELECT MAX(id)::bigint FROM prodaja_zaglavlje) AS max_target_id
+    UNION ALL
+    SELECT 'prodaja_stavke'::text,
+           pg_get_serial_sequence('prodaja_stavke', 'id'),
+           (SELECT MAX(id)::bigint FROM prodaja_stavke)
+)
+SELECT
+    source.table_name,
+    source.sequence_name,
+    source.max_target_id,
+    seq.last_value AS sequence_last_value,
+    CASE
+        WHEN source.sequence_name IS NULL THEN 'NO_OWNED_SEQUENCE_VERIFY_SCHEMA'
+        WHEN source.max_target_id IS NULL THEN 'EMPTY_TABLE'
+        WHEN seq.last_value IS NULL THEN 'SEQUENCE_VALUE_NOT_VISIBLE_OR_NEVER_USED'
+        WHEN seq.last_value <= source.max_target_id THEN 'REVIEW_GENERATED_ID_COLLISION_RISK'
+        ELSE 'COUNTER_AHEAD_OF_MAX_AT_SNAPSHOT'
+    END AS sequence_observation
+FROM identity_tables AS source
+LEFT JOIN pg_class AS c ON c.oid = to_regclass(source.sequence_name)
+LEFT JOIN pg_namespace AS ns ON ns.oid = c.relnamespace
+LEFT JOIN pg_sequences AS seq
+  ON seq.schemaname = ns.nspname AND seq.sequencename = c.relname
+ORDER BY source.table_name;
+
+-- 7. The legacy table+row pair has NO stable source-database namespace today.
 -- The same pair may mean different receipts in separate Access databases.
 -- Only an operator-authoritative source namespace can resolve that ambiguity.
 -- This script deliberately does not choose source ownership or reparent children.
