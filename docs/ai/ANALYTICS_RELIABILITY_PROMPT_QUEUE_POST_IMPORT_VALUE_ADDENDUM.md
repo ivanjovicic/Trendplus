@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ667 (P1, Inventory store/compareStore scope validation)**. RQ666 is DONE on `main` at implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77`. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
+Current READY prompt: **RQ667 (P1, Inventory store/compareStore scope validation; IN_PROGRESS, Codex)**. RQ666 is DONE on `main` at implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77`. RQ675 is DONE on current `main` after PR #166; RQ677 has open PR #167 on disjoint Access-import paths, and RQ676 remains WAITING until RQ677 is DONE. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -3237,29 +3237,38 @@ In `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `buildSourceKey(
 - Checks run: focused PDC tests (queue status 14/14, hierarchy 8/8); `npm run check:analytics-guardrails`; `npm run build`; all agent-instructions, prompt-queue and planning-architecture validators with self-tests; exact-SHA Analytics Quality Gates run `38693091908` (163 files, 1,237 tests, all jobs green); `git diff --check`.
 - Checks not run: backend API source-status/upsert tests (no backend contract changed); production data, action-row migration or live operator/deployed browser validation (not part of this repo-local prompt).
 - Run log: `.ai/runs/2026-10-15-RQ666-evidence.md`
-- Evidence state: pending post-terminal routing sync
-- Claim reservation: inspected `origin/main` `71b6d6ae2a1d93da918e1840290a0baf7210c3e2`; pushed claim `4d2790d10b3455ac9e247311a0f173d7f1c9b488`; Codex worktree `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2`, branch `codex/rq666-product-scope-20261015`; no RQ666/RQ667 branch or PR. Current open PRs #163 and #166 are on disjoint Access-import paths.
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `71b6d6ae2a1d93da918e1840290a0baf7210c3e2`; pushed claim `4d2790d10b3455ac9e247311a0f173d7f1c9b488`; Codex worktree `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2`, branch `codex/rq666-product-scope-20261015`; no RQ666/RQ667 branch or PR. At initial claim, open PRs #163 and #166 were on disjoint Access-import paths; the post-close refresh found #163 and #167 open on those paths.
 - Delivery mode: direct-main
 - Main commit SHA: `4a3f7919d3703d117f84d621df4213c712221c77`
-- Main verification: refreshed `origin/main` at `92fb71dacb14108609b7360d04eb4f2161671311`; verified it contains the implementation SHA. Analytics Quality Gates `38693091908` is green on the exact implementation SHA.
+- Main verification: refreshed `origin/main` at `5b3d6e935d80c5f471a35453fd4a7a48e239af5b`; verified it contains implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77` and closure commit `01ba88a107d5417fa3f833a2813fd7ae4a5df8f3`. Analytics Quality Gates `38693091908` is green on the exact implementation SHA.
 - Missed: none known within repository scope.
-- Follow-up: RQ667 remains READY as the next P1 prompt; it is independently owned by the Inventory page path and remains unclaimed.
+- Follow-up: RQ667 was READY at the post-close recovery base and was then claimed by Codex as the next P1 task; implementation is in progress on the Inventory page path.
 - Residual risk: historical `product:...` actions remain unchanged and cannot be attributed to a source scope; the Product Decision page warns and does not attach their status or evidence to a scoped recommendation.
-- Post-close routing: pending; final post-terminal refresh and dependency cascade will be recorded before handoff.
+- Post-close routing: RQ667 was READY and unclaimed at the recovery base, then reserved by Codex in the following main-first queue commit. RQ676's stale READY status was corrected to WAITING because its explicit owner-order dependency RQ677 is not DONE and has open PR #167.
 - Prompt defect / scope repair: corrected the stale acceptance evidence path from 2026-10-14 to this run's 2026-10-15 log. An invalid store URL is cleared and continues with all stores inside the confirmed active data scope; store-list failure still blocks requests and action writes.
 
 ---
 
 ## RQ667 - Inventory: preserve verified store/compare-store context when dataScope changes
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/store filter provenance + inventory comparison tests
 Feature family: inventory-scope-filter-validity
 Parallel-safe: yes with RQ666 (InventoryPage only); no parallel Inventory page/filter owner
-Owner: unassigned
+Owner: Codex
 Ready after: RQ607 DONE (latest snapshot semantics), RQ662 DONE (scoped store-filter precedent), RQ626 DONE; no RQ610 stock-mutation gate
 Commit suggestion: `fix(analytics): validate inventory store filters per dataset scope`
+
+### Claim reservation — 2026-10-15
+
+- Status: IN_PROGRESS
+- Owner: Codex
+- Inspected origin/main: `5b3d6e935d80c5f471a35453fd4a7a48e239af5b`
+- Planned worktree/branch: `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2` / `codex/rq667-inventory-scope-20261015`
+- Bounded paths: `Klijent/clientapp/src/pages/InventoryPage.tsx`, focused Inventory scope/filter specs, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-15-RQ667-evidence.md`.
+- Remote branch/PR query: no RQ667 branch or PR; current open PRs #163 and #167 are on disjoint Access-import paths.
 
 ### Source-verified risk and exact boundaries
 
@@ -3278,7 +3287,7 @@ Commit suggestion: `fix(analytics): validate inventory store filters per dataset
 - Two-way imported/existing transitions, valid shared ID, stale URL ID, comparison set with one missing store, error, retry, same-scope refresh and rapid async race; failing-first reproducer and passing after patch.
 - All dependent list/balance/summary/comparison/export requests align to the effective dataScope/store/compare-store tuple; stale/unknown provenance is visible and cannot trigger an actionable inventory recommendation.
 - Focused Inventory integration tests, frontend `npm run check:analytics-guardrails` and `npm run build`, exact SHA Analytics Quality Gates and queue validator; no unrelated backend/deployed proof required.
-- Evidence: `.ai/runs/2026-10-14-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
+- Evidence: `.ai/runs/2026-10-15-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
 
 
 ## RQ668 - Fix small analytics frontend correctness, language and accessibility defects from the 2026-10-14 audit
@@ -3756,13 +3765,13 @@ None (owner decision recorded above).
 
 ## RQ676 - Serbian text and diacritics on the Access import screen and its server messages
 
-Status: READY
+Status: WAITING
 Priority: P3
 Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
 Owner: unassigned
-Ready after: RQ677 (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
+Ready after: RQ677 DONE (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 
 ### Problem
