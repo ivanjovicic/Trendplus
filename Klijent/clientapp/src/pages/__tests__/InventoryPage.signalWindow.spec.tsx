@@ -301,11 +301,15 @@ describe("InventoryPage signal window refresh", () => {
       }));
     });
 
-    expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
-    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
-    expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
-    expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
-    expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
+    // The scoped store-validation request may finish before the filter controls are
+    // rendered. Assert the actual settled UI instead of racing its loading state.
+    await waitFor(() => {
+      expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
+      expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
+      expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
+      expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
+    });
   });
 
   it("restores a custom period from URL and sends it to supported signal requests", async () => {
