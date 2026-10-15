@@ -59,6 +59,14 @@ Daily series are not zero-filled: `CachedAnalyticsEndpoints.cs:5242-5258` groups
 - A6 `Klijent/clientapp/src/services/analyticsApi.ts`: 50 fallback messages `Greska pri ucitavanju …` reach the screen through `getErrorText`; `pages/AnalyticsDetails.tsx:266-273` `Sazetak nije ucitan`, `Advanced snapshot nije ucitan`, `Health check nije dostupan`, `Analytics baza:`. Not covered by RQ668/RQ670 (their evidence lists other files).
 - A7 `Klijent/clientapp/src/pages/InventoryPage.tsx:1074` builds `chartData` from the current page `rows`; `components/inventory/InventoryPriorityPanels.tsx:69` heading "Vrednost po dobavljaču" reads as a total.
 
+## Independent correctness qualification — 2026-10-15
+
+**A3 mixed timestamp bases:** A blanket replacement of Belgrade-to-UTC bounds with midnight-UTC for every journal row would fix some imported Access wall-clock entries **but regress genuine-UTC POS/operational entries**. The current write endpoint `Api/Endpoints/AllEndpoints.cs` creates `DnevnikPromena` with `Datum = DateTime.UtcNow` and `DataOrigin = "existing"`; `AccessImportService` handles imported legacy wall-clock dates differently. Recheck source provenance, not `DateTime.Kind` alone, and seed both origins/DST boundaries in RQ682. See its corrected acceptance gate in the owning queue.
+
+**A4 source completeness:** The lack of a date in the grouped daily sales response is **not proof of zero sales**. `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md` defines `verified_empty` only for complete bounded source/day evidence, and legacy batch #23 gaps remain unknown. RQ683 may build calendar slots for positioning; missing days without authoritative `verified_empty` status must keep MA/momentum/weekly outcome `null`/unavailable, not fabricate zero. A code fix that blindly zero-fills missing rows does not satisfy acceptance.
+
+No live DB, browser or endpoint execution was performed by this qualification. It refines the scope and tests of A3/A4; it does not close either task.
+
 ## Registered prompts
 
 RQ680 (P1, READY), RQ681 (P1, WAITING on RQ680 — same file), RQ682 (P2, READY, disjoint backend path), RQ683 (P2, READY, frontend-only), RQ684 (P3, WAITING on core-operator evidence / owner re-entry, like RQ670). Full prompts are in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`.
