@@ -4,7 +4,9 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **none after RQ667 DONE** on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666 and RQ667 are DONE on `main`; RQ675/RQ676/RQ677 are DONE. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
+Current READY prompt: **none**.
+
+RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -3202,7 +3204,7 @@ Commit suggestion: `fix(analytics): prevent cross-dataset Product Decision actio
 
 ### Claim reservation — 2026-10-15
 
-- Status: IN_PROGRESS
+- Claim transition: READY -> IN_PROGRESS (historical claim state)
 - Owner: Codex
 - Inspected origin/main: 71b6d6ae2a1d93da918e1840290a0baf7210c3e2
 - Planned worktree/branch: C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2 / codex/rq666-product-scope-20261015
@@ -3252,7 +3254,7 @@ In `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `buildSourceKey(
 
 ## RQ667 - Inventory: preserve verified store/compare-store context when dataScope changes
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/store filter provenance + inventory comparison tests
 Feature family: inventory-scope-filter-validity
@@ -3294,7 +3296,7 @@ Commit suggestion: `fix(analytics): validate inventory store filters per dataset
 - Date: 2026-10-15
 - Status: DONE
 - Completion: Inventory store and comparison selections are validated against the newly requested `dataScope`; stale, unknown, or unverified IDs cannot drive inventory queries, exports, schedules, or action writes.
-- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`; `Klijent/clientapp/src/components/analytics/AnalyticsFilterLoadNotice.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; Inventory scope specs (`InventoryPage.queueStatus.spec.tsx`, `InventoryPage.insightsError.spec.tsx`, `InventoryPage.offPageDetail.spec.tsx`, `InventoryPage.partialFailure.spec.tsx`, `InventoryPage.signalWindow.spec.tsx`, `analyticsTrustStateProof.spec.tsx`); this queue; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-15-RQ667-evidence.md`.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`; `Klijent/clientapp/src/components/analytics/AnalyticsFilterLoadNotice.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; Inventory scope specs (`InventoryPage.queueStatus.spec.tsx`, `InventoryPage.insightsError.spec.tsx`, `InventoryPage.offPageDetail.spec.tsx`, `InventoryPage.partialFailure.spec.tsx`, `InventoryPage.signalWindow.spec.tsx`, `analyticsTrustStateProof.spec.tsx`); this queue; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` (stale READY prose repair during cascade); `MASTER_ROADMAP.md`; `.ai/runs/2026-10-15-RQ667-evidence.md`.
 - Checks run: local analytics suite 163 files / 1,246 tests passed; final scope-transition spec 12/12 passed; analytics guardrails and client build passed; queue and planning validators (including self-tests) passed; `git diff --check` passed; Analytics Quality Gates run `38699085117` succeeded on exact SHA `3f91841943871b3c3e44f1f1523d992db96821ae`.
 - Checks not run: backend or deployed/production browser checks; the prompt changes only client-side filter provenance and focused tests, and makes no production-data claim.
 - Run log: `.ai/runs/2026-10-15-RQ667-evidence.md`
