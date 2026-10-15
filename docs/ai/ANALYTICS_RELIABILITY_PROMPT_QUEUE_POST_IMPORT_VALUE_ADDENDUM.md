@@ -3672,12 +3672,12 @@ None.
 
 ## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: security / UX decision
 Feature family: access-import-ui
 Parallel-safe: yes
-Owner: unassigned
+Owner: grok (branch `fix/rq675-access-import-admin-key-session`)
 Ready after: RQ674 (owner order 2026-10-15)
 Commit suggestion: `feat(access-import): persistent admin session for import operations`
 
