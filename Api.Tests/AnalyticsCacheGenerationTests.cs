@@ -56,6 +56,12 @@ public sealed class AnalyticsCacheGenerationTests
         public void Advance(TimeSpan by) => _now += by;
     }
 
+    // MemoryCache in our net8 dependency uses ISystemClock rather than TimeProvider.
+    private sealed class ManualMemoryClock(ManualTimeProvider time) : Microsoft.Extensions.Internal.ISystemClock
+    {
+        public DateTimeOffset UtcNow => time.GetUtcNow();
+    }
+
     /// <summary>Distributed cache that can be switched into an outage.</summary>
     private sealed class FlakyDistributedCache : IDistributedCache
     {
@@ -251,6 +257,23 @@ public sealed class AnalyticsCacheGenerationTests
         Assert.Null(await a.GetAsync<Payload>(SupplierKey));
         Assert.Null(await b.GetAsync<Payload>(SupplierKey));
         Assert.True(a.IsRedisAvailable);
+    }
+
+    [Fact]
+    public async Task MemoryOnlyCache_RespectsConfiguredTtlInsteadOfTwoMinuteSlidingExpiry()
+    {
+        var time = new ManualTimeProvider();
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions { Clock = new ManualMemoryClock(time) }),
+            NullLogger<InMemoryCacheService>.Instance,
+            time);
+
+        await cache.SetAsync(SupplierKey, new Payload { Value = "long-lived" }, TimeSpan.FromMinutes(10));
+        time.Advance(TimeSpan.FromMinutes(3));
+        Assert.Equal("long-lived", (await cache.GetAsync<Payload>(SupplierKey))?.Value);
+
+        time.Advance(TimeSpan.FromMinutes(8));
+        Assert.Null(await cache.GetAsync<Payload>(SupplierKey));
     }
 
     [Fact]

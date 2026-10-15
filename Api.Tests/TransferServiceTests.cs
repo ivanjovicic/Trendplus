@@ -6,7 +6,10 @@ using Api.Services;
 using Domain.Model;
 using Domain.Transfers;
 using Infrastructure.DbContexts;
+using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -84,7 +87,13 @@ public class TransferServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new TransferService(db, new NullLogger<TransferService>());
+        // Exercise the real post-commit invalidation wiring without a Redis dependency.
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions()), NullLogger<InMemoryCacheService>.Instance);
+        var cacheAdmin = new AnalyticsCacheAdminService(
+            cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection().AddSingleton(cacheAdmin).BuildServiceProvider();
+        var service = new TransferService(db, new NullLogger<TransferService>(), services);
         var draft = await service.CreateDraftAsync(new TransferCreateRequest
         {
             SourceId = 1,
@@ -93,8 +102,14 @@ public class TransferServiceTests
             Items = { new TransferLineInputDto { SkuId = 301, Quantity = 4m, Unit = "pcs" } }
         }, "tester");
 
+        var inventoryKey = AnalyticsCacheKeys.Inventory(2);
+        await cache.SetAsync(inventoryKey, new TransferCacheMarker { Value = "before-confirm" });
         await service.ConfirmAsync(draft.Id, "tester");
+        Assert.Null(await cache.GetAsync<TransferCacheMarker>(inventoryKey));
+
+        await cache.SetAsync(inventoryKey, new TransferCacheMarker { Value = "before-complete" });
         var completed = await service.CompleteAsync(draft.Id, "tester");
+        Assert.Null(await cache.GetAsync<TransferCacheMarker>(inventoryKey));
 
         Assert.Equal(TransferStatuses.Completed, completed.Status);
 
@@ -107,6 +122,31 @@ public class TransferServiceTests
         Assert.Equal(2, movements.Count);
         Assert.Single(movements, x => x.TipPromene == TipPromeneConstants.PrenosIzlaz && x.Kolicina == -4);
         Assert.Single(movements, x => x.TipPromene == TipPromeneConstants.PrenosUlaz && x.Kolicina == 4);
+    }
+
+    [Fact]
+    public async Task CancelDraft_InvalidatesInventoryAfterCommit_ButCreatingDraftDoesNot()
+    {
+        var db = CreateDb("tp_transfer_cancel_cache");
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions()), NullLogger<InMemoryCacheService>.Instance);
+        var cacheAdmin = new AnalyticsCacheAdminService(
+            cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection().AddSingleton(cacheAdmin).BuildServiceProvider();
+        var service = new TransferService(db, new NullLogger<TransferService>(), services);
+        var key = AnalyticsCacheKeys.Inventory(2);
+
+        await cache.SetAsync(key, new TransferCacheMarker { Value = "before-draft" });
+        var draft = await service.CreateDraftAsync(new TransferCreateRequest
+        {
+            SourceId = 1,
+            DestinationId = 2,
+            Items = { new TransferLineInputDto { SkuId = 800, Quantity = 1m, Unit = "pcs" } }
+        }, "tester");
+        Assert.Equal("before-draft", (await cache.GetAsync<TransferCacheMarker>(key))?.Value);
+
+        await service.CancelAsync(draft.Id, "tester");
+        Assert.Null(await cache.GetAsync<TransferCacheMarker>(key));
     }
 
     [Fact]
@@ -142,6 +182,11 @@ public class TransferServiceTests
         var updatedByResult = await service.ListAsync(1, 50, null, null, null, "auditor-x");
         Assert.Single(updatedByResult.Items);
         Assert.Equal(second.Id, updatedByResult.Items[0].Id);
+    }
+
+    private sealed class TransferCacheMarker
+    {
+        public string Value { get; set; } = string.Empty;
     }
 
     private static TrendplusDbContext CreateDb(string dbName)

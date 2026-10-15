@@ -159,15 +159,19 @@ export function useReliableAnalyticsQuery<T>(
     setReloadVersion((current) => current + 1);
   }, []);
 
+  // An effect cannot protect the synchronous render that first sees new filters.
+  // Hide the old snapshot immediately, before useEffect aborts/restarts the request.
+  // A failed refresh with an unchanged context continues to show the stale snapshot.
+  const contextIsCurrent = contextRef.current === contextIdentity;
   return {
-    data,
-    initialLoading,
-    refetching,
-    error,
-    errorReason,
-    staleWarning,
-    staleReason,
-    loadedAt,
+    data: contextIsCurrent ? data : null,
+    initialLoading: contextIsCurrent ? initialLoading : enabled,
+    refetching: contextIsCurrent ? refetching : false,
+    error: contextIsCurrent ? error : null,
+    errorReason: contextIsCurrent ? errorReason : null,
+    staleWarning: contextIsCurrent ? staleWarning : null,
+    staleReason: contextIsCurrent ? staleReason : null,
+    loadedAt: contextIsCurrent ? loadedAt : null,
     requestGeneration,
     refetch,
   };

@@ -879,6 +879,7 @@ export default function ProdajaPrePostNivelacijePage() {
     refetch,
   } = useReliableAnalyticsQuery<PrePostQuerySnapshot>({
     query: prePostQuery,
+    contextKey: JSON.stringify([dataScope, activeFilters, storeValidationNonce]),
     enabled: storesScope === dataScope || (storesScope == null && storeId == null),
     getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
       reason instanceof Error ? reason.message : null,

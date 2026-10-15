@@ -35,13 +35,18 @@ Ovaj dokument mapira trenutnu cache politiku za analytics rute kako bismo izbegl
 | Access import delete-batch | `CoreFamilies` | `AccessImportService` |
 | POS prodaja / povraćaj POST/PUT | `CoreFamilies` | `AllEndpoints` -> `AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync` |
 | Artikli POST/PUT | `CoreFamilies` | isto |
+| Transfer confirm/complete/cancel | `CoreFamilies` | `TransferService`, posle commit-a (promene rezervacija, zaliha i kretanja) |
 | Snapshot activate/deactivate | `CoreFamilies` | `AnalyticsSnapshotEndpoints` |
 | Nightly refresh | `CoreFamilies` | `NightlyAnalyticsRefreshWorker` |
 | Data quality worker | `dashboard`, `product-decision-center`, `supplier-decision-hub`, `inventory`, `data-quality`, `color-sales`, `supplier-sales`, `shoe-type-sales`, `reports` | `AnalyticsDataQualityHealthWorker` |
 
-Invalidacija posle mutacije je best-effort: neuspeh se loguje i ne obara već commit-ovanu mutaciju. Transferi i nivelacija zadržavaju postojeće ponašanje (nije menjano u ovom prolazu).
+Invalidacija posle mutacije je best-effort: neuspeh se loguje i ne obara već commit-ovanu mutaciju. Transfer draft create/update ne menja stanje zaliha; potvrda, završetak i otkazivanje sada invalidiraju cache. Nivelacija zadržava postojeće ponašanje (nije menjano u ovom prolazu).
+
+## Frontend snapshot i Memory TTL (post-merge dopuna)
+- `useReliableAnalyticsQuery` koristi eksplicitni `contextKey` na Inventory, Color Sales, Shoe Type Sales, Pre/Post i Pre-Nivelacija Priority ekranima. Promena primenjenih poslovnih filtera odmah skriva prethodni snapshot (uključujući tabele i izvoz); neuspešan refetch **istog konteksta** sme zadržati prethodni podatak uz stale upozorenje.
+- In-memory L1 poštuje deklarisani apsolutni TTL bez dodatnog dvominutnog sliding cap-a. Hybrid L2→L1 i dalje preuzima isključivo preostali TTL.
 
 ## Invalidation TODO (preostalo)
 1. Cross-instance stampede zaštita (lock je po instanci).
 2. Produkcija trenutno radi sa `UseRedis=false` (render.yaml), tj. in-memory po instanci; generacije su spremne za Redis kada se uključi.
-3. Pregled transfer mutacija u odnosu na analytics familije.
+3. Potvrditi da zaključavanje i verzionisanje reporta zadovoljavaju stvarni multi-instance runtime pre uključivanja Redis-a.

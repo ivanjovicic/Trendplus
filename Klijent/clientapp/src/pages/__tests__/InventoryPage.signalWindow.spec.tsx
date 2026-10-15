@@ -301,11 +301,15 @@ describe("InventoryPage signal window refresh", () => {
       }));
     });
 
-    expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
-    expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
-    expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
-    expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
-    expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
+    // The scoped store-validation request may finish before the filter controls are
+    // rendered. Assert the actual settled UI instead of racing its loading state.
+    await waitFor(() => {
+      expect(screen.getByRole("searchbox", { name: "Pretraga artikala" })).toHaveValue("patika");
+      expect(screen.getByTestId("inventory-items-table")).toHaveTextContent("page=3");
+      expect(screen.getByLabelText("Veličina strane tabele artikala")).toHaveValue("100");
+      expect(screen.getByTestId("store-comparison-panel")).toHaveTextContent("1,2");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("page=3");
+    });
   });
 
   it("restores a custom period from URL and sends it to supported signal requests", async () => {
@@ -323,13 +327,15 @@ describe("InventoryPage signal window refresh", () => {
       }));
     });
 
-    // Request dispatch can precede the first settled inventory load. Controls
-    // mount only after that load; wait for user-visible controls, not just the API call.
-    expect(await screen.findByLabelText("Period signala zaliha")).toHaveValue("custom");
-    expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
-    expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
-    expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
-    expect(screen.getByTestId("location-search")).toHaveTextContent("periodPreset=custom");
+    // Calling the query precedes the asynchronous scoped-filter render. Wait for both
+    // request and rendered controls instead of racing a transient loading state in CI.
+    await waitFor(() => {
+      expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("custom");
+      expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
+      expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
+      expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
+      expect(screen.getByTestId("location-search")).toHaveTextContent("periodPreset=custom");
+    });
   });
 
   it("fails invalid period URL values closed to the deterministic 30-day preset", async () => {

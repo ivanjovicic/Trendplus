@@ -538,7 +538,7 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("objekat: 2");
   });
 
-  it("keeps the previous snapshot visible when a later query fails", async () => {
+  it("does not show previous-scope vendor results when a different scope fails", async () => {
     vi.mocked(getVendorSalesNivelacija)
       .mockResolvedValueOnce(response())
       .mockResolvedValueOnce(response())
@@ -551,11 +551,9 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     localStorage.setItem("trendplus:dataScope", "imported");
     window.dispatchEvent(new Event("trendplus:data-scope-changed"));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("ppn-stale-refetch-warning")).toBeInTheDocument();
-    });
-    expect(screen.getByTitle("Vendor A")).toBeInTheDocument();
-    expect(screen.queryByText("Podaci trenutno nisu dostupni")).not.toBeInTheDocument();
+    expect(await screen.findByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    expect(screen.queryByTestId("ppn-stale-refetch-warning")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Vendor A")).not.toBeInTheDocument();
   });
 
   it("uses Serbian labels for advanced Pre/Post signal cards", async () => {
