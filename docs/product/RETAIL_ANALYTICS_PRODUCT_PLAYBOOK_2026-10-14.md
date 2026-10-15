@@ -16,6 +16,8 @@ The [source-verified footwear decision opportunity catalog](FOOTWEAR_DECISION_PR
 
 Povezanost, hijerarhija i istinitost poruka postojećih ekrana, top 15 predloga i sprovedeni quick win-ovi: [TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15](TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md). Nema novih RQ ID-jeva ni READY statusa.
 
+Nastavak 2026-10-15: Početna prikazuje poslednji potvrđeni period prodaje i vodi na šest poslovnih pitanja; Puls odluka je u glavnom meniju (detalji u §8 audita).
+
 ## 1. Product decision — small, credible and sellable
 
 **Positioning:** footwear-retail decision support on top of a customer's existing sales/stock system, not a POS/ERP replacement, scraping service, generic BI toolkit or prediction platform. Start with one retailer and a repeatable source import. A separate deployment per customer is acceptable for the first pilot.

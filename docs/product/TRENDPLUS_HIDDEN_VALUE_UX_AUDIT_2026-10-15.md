@@ -90,3 +90,12 @@ Nisu menjane formule, pragovi, preporuke, cene, zalihe, auth ni izvori podataka.
 - **Šta bi vlasnik odmah primetio:** link sa kandidata za nivelaciju na rezultate ranijih nivelacija; iskren naziv procene u redistribuciji i direktan put do prenosa.
 - **Šta apsolutno ne graditi dalje:** novi dashboard/centar odluka/digest, AI skorove, marketplace/scraping, „uštede” ili „profit” bez kontrolne grupe i bez originalnih kalkulacija.
 - **Najbolja sledeća investicija:** originalne kalkulacije nabavnih cena (RQ601) + jedna stvarna operator sesija — ne novi kod.
+
+## 8. Sprovedeno posle audita — 2026-10-15 (direktan zahtev, bez novog RQ)
+
+- **Početna kao početni tok (predlog 5, V1):** naslov i opis; potvrđeni period prodaje iz postojećeg `/api/analytics/refresh-status` (`observedSalesPeriodFrom/ToUtc` = min/max datum Access prodaje, ukupno, ne po radnji ni izvoru; `lastSuccessfulImportAtUtc` = poslednji čist Access uvoz; `dataFreshnessStatus` = svežina uvoza). Jedan poziv pri otvaranju, bez pollinga i novog endpointa. Ako period nije dostupan ili je odgovor greška: „Poslednji potvrđeni period nije dostupan” + link na Kvalitet podataka; nepoznat status nikad nije prikazan kao svež. Link „Otvori pregled poslovanja”, 6 kartica sa poslovnim pitanjem (Pregled, Puls, Zalihe, Dobavljači, Prioriteti, Kvalitet), 5 operativnih akcija (Prodaja, Unos robe, Prenosi, Nivelacija, Povraćaj dobavljaču), manji backend status; OFFLINE je `role="alert"` uz objašnjenje.
+- **Navigacija (predlog 6):** Puls odluka u glavnoj grupi, Pre/Posle u „Dodatne analize”, Pilot spremnost niže; odluka zapisana u `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`.
+- **Prioriteti → Pre/Posle:** link sada glasi „isti dobavljač i radnja (vremenski okvir bira odredišni ekran)”; prenose se samo pozitivni `vendorId`/`storeId` (negativan ID se ranije prosleđivao — nađeno testom), nikad period.
+- **v9 senka:** u zatvorenom `<details>` „Tehničko poređenje rangiranja (ne menja aktivnu preporuku)”; bez promene proračuna.
+- **Akcije:** „Završeno” nosi objašnjenje da je akcija sprovedena, a ne da je korist ostvarena.
+- **Nije rađeno (preporuka):** opisi uloga Puls/Izvršni pregled/Akcije u zaglavljima (predlog 7) — više fajlova i specova, posebna mala izmena; isticanje linka „Izveštaj za razgovor sa dobavljačem” — `SupplierDecisionHub` je blizu RQ680 putanja; objašnjenje Prenosi u `RebalancingTable` je već urađeno u PR #179.
