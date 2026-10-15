@@ -100,6 +100,28 @@ function createEmptyRunResult(batchId: number, sourceFileName: string, includeAn
     };
 }
 
+// RQ675 (owner decision 2026-10-15): the admin key lives only in sessionStorage for this tab session,
+// is typed into a masked field and can be cleared explicitly. Never localStorage, URLs or logs.
+export const ACCESS_IMPORT_ADMIN_KEY_STORAGE = "trendplus.accessImport.adminKey";
+
+function readStoredAdminKey(): string | null {
+    try {
+        const value = window.sessionStorage.getItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE);
+        return value && value.trim() ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredAdminKey(key: string | null) {
+    try {
+        if (key) window.sessionStorage.setItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE, key);
+        else window.sessionStorage.removeItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE);
+    } catch {
+        // storage unavailable (private mode): keep the key in memory only
+    }
+}
+
 export default function AccessImportPage() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>("source");
@@ -131,7 +153,10 @@ export default function AccessImportPage() {
     const [restoreScript, setRestoreScript] = useState<string | null>(null);
     const batchPollInFlightRef = useRef(false);
     const lastPollWarningAtRef = useRef(0);
-    const adminKeyRef = useRef<string | null>(null);
+    const adminKeyRef = useRef<string | null>(readStoredAdminKey());
+    const adminKeyInputRef = useRef<HTMLInputElement | null>(null);
+    const [adminKeyInput, setAdminKeyInput] = useState("");
+    const [adminKeySaved, setAdminKeySaved] = useState<boolean>(() => adminKeyRef.current !== null);
     const [activeRunCheck, setActiveRunCheck] = useState<"pending" | "needsKey" | "done">("pending");
 
     // --- data loading ---
@@ -153,6 +178,7 @@ export default function AccessImportPage() {
             return rows;
         } catch (error) {
             if (isUnauthorizedError(error)) {
+                clearAdminKey();
                 if (reason === "mount") {
                     // A fresh tab has no admin key yet; ask for it instead of showing an error.
                     setActiveRunCheck("needsKey");
@@ -181,18 +207,35 @@ export default function AccessImportPage() {
     };
 
     const promptAdminKey = (actionLabel: string): string | null => {
-        const key = window.prompt(`Unesite admin key za akciju: ${actionLabel}`);
-        if (!key || !key.trim()) {
-            setError("Admin key je obavezan za ovu akciju.");
-            return null;
-        }
-
-        rememberAdminKey(key.trim());
-        return key.trim();
+        if (adminKeyRef.current) return adminKeyRef.current;
+        setError(`Admin key je obavezan za akciju: ${actionLabel}. Unesite ga u polje „Admin key“.`);
+        adminKeyInputRef.current?.focus();
+        return null;
     };
 
     const rememberAdminKey = (key: string) => {
         adminKeyRef.current = key;
+        writeStoredAdminKey(key);
+        setAdminKeySaved(true);
+    };
+
+    const clearAdminKey = () => {
+        adminKeyRef.current = null;
+        writeStoredAdminKey(null);
+        setAdminKeySaved(false);
+        setAdminKeyInput("");
+    };
+
+    const submitAdminKey = () => {
+        const key = adminKeyInput.trim();
+        if (!key) {
+            setError("Admin key je obavezan.");
+            return;
+        }
+        rememberAdminKey(key);
+        setAdminKeyInput("");
+        setError(null);
+        void refreshBatches("active-run-check", key);
     };
 
     const isUnauthorizedError = (error: unknown): boolean => {
@@ -399,6 +442,7 @@ export default function AccessImportPage() {
             await refreshBatches("after-cancel", adminKey);
         } catch (e: unknown) {
             if (isUnauthorizedError(e)) {
+                clearAdminKey();
                 setError("Otkazivanje importa zahteva važeći admin key.");
                 return;
             }
@@ -458,6 +502,7 @@ export default function AccessImportPage() {
             await refreshBatches("after-cleanup");
         } catch (e: unknown) {
             if (isUnauthorizedError(e)) {
+                clearAdminKey();
                 const retryKey = promptAdminKey("Cleanup ne-Access zapisa (ponovni unos kljuca)");
                 if (!retryKey) return;
 
@@ -571,6 +616,34 @@ export default function AccessImportPage() {
                     </button>
                 ))}
             </div>
+
+            <form
+                className="accimport-filterbar"
+                aria-label="Admin key"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    submitAdminKey();
+                }}
+            >
+                <label className="accimport-field">
+                    <span className="accimport-label">Admin key</span>
+                    <input
+                        ref={adminKeyInputRef}
+                        className="accimport-input"
+                        type="password"
+                        autoComplete="off"
+                        value={adminKeyInput}
+                        onChange={(event) => setAdminKeyInput(event.target.value)}
+                        placeholder={adminKeySaved ? "Ključ je sačuvan za ovu sesiju" : "Unesite admin key"}
+                    />
+                </label>
+                <button type="submit" className="accimport-btn accimport-btn-secondary">Sačuvaj za ovu sesiju</button>
+                {adminKeySaved && (
+                    <button type="button" className="accimport-btn accimport-btn-secondary" onClick={clearAdminKey}>
+                        Obriši ključ
+                    </button>
+                )}
+            </form>
 
             {/* ---- Global error ---- */}
             {error && <div className="accimport-error">{error}</div>}
@@ -1146,6 +1219,7 @@ export default function AccessImportPage() {
                                         setRestoreScript(script);
                                     } catch (e: unknown) {
                                         if (isUnauthorizedError(e)) {
+                                            clearAdminKey();
                                             setError("Generisanje restore skripte zahteva važeći admin key.");
                                             return;
                                         }

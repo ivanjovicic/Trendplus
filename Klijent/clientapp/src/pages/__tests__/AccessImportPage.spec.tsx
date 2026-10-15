@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,8 +14,8 @@ vi.mock("../../services/accessImportApi", async (importOriginal) => {
   };
 });
 
-import AccessImportPage from "../AccessImportPage";
-import { getAccessImportBatches, type AccessImportBatchDto } from "../../services/accessImportApi";
+import AccessImportPage, { ACCESS_IMPORT_ADMIN_KEY_STORAGE } from "../AccessImportPage";
+import { getAccessImportBatches, getAccessImportRuntimeStatus, type AccessImportBatchDto } from "../../services/accessImportApi";
 
 const runningBatch: AccessImportBatchDto = {
   id: 77, sourceSystem: "access", sourceFileName: "trend.accdb", queuedAtUtc: new Date(Date.now() - 60_000).toISOString(),
@@ -31,6 +31,7 @@ function renderPage() {
 describe("AccessImportPage active run detection", () => {
   beforeEach(() => {
     vi.mocked(getAccessImportBatches).mockReset();
+    window.sessionStorage.clear();
   });
 
   it("attaches to an import that is already running on the server after a reload", async () => {
@@ -57,5 +58,50 @@ describe("AccessImportPage active run detection", () => {
 
     expect(await screen.findByRole("button", { name: "Proveri status importa" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("Pregled import istorije zahteva važeći admin key.")).not.toBeInTheDocument());
+  });
+});
+
+describe("AccessImportPage admin key session (RQ675)", () => {
+  beforeEach(() => {
+    vi.mocked(getAccessImportRuntimeStatus).mockResolvedValue({ available: true, platform: "linux", missingDependencies: [], detail: null } as never);
+    vi.mocked(getAccessImportBatches).mockReset();
+    window.sessionStorage.clear();
+  });
+
+  it("uses the key stored for this tab session after a reload and attaches to the running import", async () => {
+    window.sessionStorage.setItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE, "secret-key");
+    vi.mocked(getAccessImportBatches).mockResolvedValue([runningBatch]);
+    renderPage();
+
+    expect(await screen.findByText("Batch #77")).toBeInTheDocument();
+    expect(vi.mocked(getAccessImportBatches).mock.calls[0][2]).toBe("secret-key");
+    expect(screen.getByRole("button", { name: "Obriši ključ" })).toBeInTheDocument();
+  });
+
+  it("takes the key from a masked field, keeps it only in sessionStorage and can clear it", async () => {
+    vi.mocked(getAccessImportBatches).mockRejectedValueOnce(new Error("401 Unauthorized")).mockResolvedValue([]);
+    renderPage();
+
+    const input = await screen.findByLabelText("Admin key", { selector: "input" });
+    expect(input).toHaveAttribute("type", "password");
+    fireEvent.change(input, { target: { value: "  typed-key  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Sačuvaj za ovu sesiju" }));
+
+    await waitFor(() => expect(window.sessionStorage.getItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE)).toBe("typed-key"));
+    expect(window.localStorage.getItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE)).toBeNull();
+    await waitFor(() => expect(vi.mocked(getAccessImportBatches).mock.calls.some((call) => call[2] === "typed-key")).toBe(true));
+    expect(input).toHaveValue("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Obriši ključ" }));
+    expect(window.sessionStorage.getItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE)).toBeNull();
+  });
+
+  it("clears a stored key that the server rejects", async () => {
+    window.sessionStorage.setItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE, "stale-key");
+    vi.mocked(getAccessImportBatches).mockRejectedValue(new Error("401 Unauthorized"));
+    renderPage();
+
+    await waitFor(() => expect(window.sessionStorage.getItem(ACCESS_IMPORT_ADMIN_KEY_STORAGE)).toBeNull());
+    expect(await screen.findByRole("button", { name: "Proveri status importa" })).toBeInTheDocument();
   });
 });
