@@ -10640,18 +10640,23 @@ using NpgsqlTypes;
         }
         catch (DbUpdateException ex) when (TryGetSaleHeaderUniqueViolation(ex, out var postgresException))
         {
+            var collisionKind = ClassifySaleHeaderUniqueViolation(postgresException.ConstraintName);
             _logger.LogError(
                 ex,
-                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. Table: {Table}. Constraint: {Constraint}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}.",
+                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. SqlState: {SqlState}. CollisionKind: {CollisionKind}. Table: {Table}. Constraint: {Constraint}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}.",
                 _activeBatchId,
                 "db-flush",
+                postgresException.SqlState,
+                collisionKind,
                 postgresException.TableName,
                 postgresException.ConstraintName,
                 pendingHeaders.Count(entry => entry.State == EntityState.Added),
                 pendingHeaders.Count(entry => entry.State == EntityState.Modified),
                 duplicateAddedHeaderIds);
+            // Surface only the classified constraint kind, not source row values,
+            // receipt numbers or PostgreSQL Detail, which may contain customer data.
             throw new InvalidOperationException(
-                "duplicate_sale_header_identity: PostgreSQL rejected a sale-header identity collision; the import transaction will roll back without advancing its cursor.",
+                BuildSaleHeaderUniqueViolationMessage(collisionKind),
                 ex);
         }
         _trendDb.ChangeTracker.Clear();
@@ -10665,6 +10670,38 @@ using NpgsqlTypes;
             activeBatchSize,
             force);
     }
+
+    // The caller must still consult SqlState/TableName to verify that this was a
+    // sale-header 23505. An unknown constraint is NOT evidence of a PK conflict.
+    private static string ClassifySaleHeaderUniqueViolation(string? constraintName)
+    {
+        if (string.Equals(constraintName, "PK_prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(constraintName, "prodaja_zaglavlje_pkey", StringComparison.OrdinalIgnoreCase))
+            return "target_primary_key_collision";
+
+        if (string.Equals(constraintName, "ux_prodaja_zaglavlje_access_source_row", StringComparison.OrdinalIgnoreCase))
+            return "access_source_lineage_collision";
+
+        return "unclassified_unique_constraint";
+    }
+
+    private static string BuildSaleHeaderUniqueViolationMessage(string collisionKind)
+        => collisionKind switch
+        {
+            "target_primary_key_collision" =>
+                "duplicate_sale_header_identity: target_primary_key_collision (SQLSTATE 23505). " +
+                "The PostgreSQL sale-header ID is already occupied. No automatic reparenting was performed; " +
+                "the import transaction will roll back without advancing its cursor.",
+            "access_source_lineage_collision" =>
+                "duplicate_sale_header_identity: access_source_lineage_collision (SQLSTATE 23505). " +
+                "A sale header already claims the same Access source table and row ID. " +
+                "The import transaction will roll back without advancing its cursor.",
+            _ =>
+                "duplicate_sale_header_identity: unclassified_unique_constraint (SQLSTATE 23505). " +
+                "A PostgreSQL sale-header unique constraint was violated; inspect the server log's " +
+                "BatchId, Constraint and HeaderSourceSamples before choosing a remediation. " +
+                "The import transaction will roll back without advancing its cursor."
+        };
 
     private static bool TryGetSaleHeaderUniqueViolation(Exception exception, out PostgresException postgresException)
     {
