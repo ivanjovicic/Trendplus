@@ -3612,12 +3612,12 @@ None (owner decision recorded above; index option rejected).
 
 ## RQ674 - Do not return an empty Access import history when the batch query times out
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P3
 Type: backend error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes (AccessImportEndpoints batch list/detail fallbacks)
-Owner: grok (branch `fix/rq674-batch-history-unavailable`)
+Owner: grok
 Ready after: RQ673 (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): report batch history timeouts instead of an empty list`
 
@@ -3654,6 +3654,21 @@ A slow database never renders as an empty history.
 
 None.
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Endpoints/AccessImportEndpoints.cs (503 + Retry-After instead of 200 []), Api.Tests/AccessImportAdminAuthorizationTests.cs, Klijent/clientapp/src/pages/AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue
+- Checks run: local AccessImport backend tests 40 pass; vitest page + services specs; tsc; queue validators with and without --self-test; git diff --check; PR #165 CI: backend 38692215256, frontend 38692215311, governance 38692215222 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ674-batch-history-unavailable-evidence.md
+- Delivery mode: PR #165 merged with --merge after green CI
+- Main commit SHA: 07df82c3
+- Main verification: git rev-parse origin/main -> 07df82c3 after merge
+- Missed: none
+- Follow-up: RQ675 (next in owner order)
+- Residual risk: real fetch-level client timeouts are still treated as cancellation and stay silent (unchanged behaviour).
 
 ## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
 
