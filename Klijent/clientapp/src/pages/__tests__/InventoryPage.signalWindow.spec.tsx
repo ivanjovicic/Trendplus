@@ -323,7 +323,9 @@ describe("InventoryPage signal window refresh", () => {
       }));
     });
 
-    expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("custom");
+    // Request dispatch can precede the first settled inventory load. Controls
+    // mount only after that load; wait for user-visible controls, not just the API call.
+    expect(await screen.findByLabelText("Period signala zaliha")).toHaveValue("custom");
     expect(screen.getByLabelText("Početak perioda signala")).toHaveValue("2026-01-05");
     expect(screen.getByLabelText("Kraj perioda signala")).toHaveValue("2026-02-15");
     expect(screen.getByTestId("inventory-period-lineage")).toHaveTextContent("2026-01-05 → 2026-02-15");
