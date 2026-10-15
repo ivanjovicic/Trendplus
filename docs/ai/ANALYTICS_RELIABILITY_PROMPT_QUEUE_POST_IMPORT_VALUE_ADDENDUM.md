@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ666 (P1, Product Decision source/action/store scope identity)**. Independent READY: **RQ667 (P1, Inventory store/compareStore scope validation)**. No prompt is claimed; require fresh shared main reservation, lock/worktree/PR check, and path-safe sequencing. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
+Current READY prompt: **RQ666 (P1, Product Decision source/action/store scope identity)**. Independent READY: **RQ667 (P1, Inventory store/compareStore scope validation)**. RQ666 is claimed by Codex under the shared reservation below; RQ667 remains independently READY and unclaimed. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -3191,14 +3191,23 @@ None. Sharing one internal service provider across hosts was rejected: it requir
 
 ## RQ666 - Product Decision Center: source-scoped action identity and store filter lineage
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: frontend/action-identity + filter-trust regression
 Feature family: product-decision-datascope-action-identity
 Parallel-safe: yes with RQ667 only when its Inventory paths and shared services are disjoint; no parallel ProductDecisionCenterPage owner
-Owner: unassigned
+Owner: Codex
 Ready after: RQ660 DONE, RQ662 DONE, RQ657 DONE; current local Analytics Quality Gates success `38587580206`
 Commit suggestion: `fix(analytics): prevent cross-dataset Product Decision action and store identity leakage`
+
+### Claim reservation — 2026-10-15
+
+- Status: IN_PROGRESS
+- Owner: Codex
+- Inspected origin/main: 71b6d6ae2a1d93da918e1840290a0baf7210c3e2
+- Planned worktree/branch: C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2 / codex/rq666-product-scope-20261015
+- Bounded paths: Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx, focused Product Decision specs/source-key utility, narrowly required API source-status/upsert tests, this queue, MASTER_ROADMAP.md, and .ai/runs/2026-10-15-RQ666-evidence.md.
+- Remote branch/PR query: no RQ666/RQ667 branches or PRs; the only open PR is #163 (codex/access-sale-line-identity) on disjoint Access-import paths.
 
 ### Source-verified risk and exact boundaries
 
