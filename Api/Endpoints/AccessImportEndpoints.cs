@@ -63,11 +63,11 @@ public static class AccessImportEndpoints
     private static readonly TimeSpan BatchListCacheDuration = TimeSpan.FromSeconds(15);
     private static readonly string[] SchemaAnalysisUnavailableWarnings = new[]
     {
-        "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
+        "Šema Access baze nije mogla biti u potpunosti analizirana. ODBC drajver je možda vratio neočekivane rezultate. Pokušajte ponovo ili se obratite podršci ako se problem ponavlja."
     };
     private static readonly string[] UnexpectedSchemaStructureWarnings = new[]
     {
-        "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue."
+        "Access ODBC drajver je vratio neočekivanu strukturu šeme, pa tabele nisu mogle biti izlistane. Moguć je problem kompatibilnosti drajvera."
     };
 
     private sealed record AccessImportRuntimeStatus(
@@ -181,7 +181,7 @@ public static class AccessImportEndpoints
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
                 var batch = await service.GetBatchAsync(batchId, timeoutCts.Token);
                 if (batch is null)
-                    return Results.NotFound(new { error = $"Job {batchId} nije pronadjen." });
+                    return Results.NotFound(new { error = $"Job {batchId} nije pronađen." });
                 CacheBatchSnapshot(cache, batch);
                 return Results.Ok(batch);
             }
@@ -282,7 +282,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/batches/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen ili nije aktivan." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportBatch");
@@ -307,7 +307,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Job {batchId} nije pronadjen ili nije aktivan." });
+                : Results.NotFound(new { error = $"Job {batchId} nije pronađen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportJob");
@@ -335,7 +335,7 @@ public static class AccessImportEndpoints
             {
                 return Results.NotFound(new
                 {
-                    error = $"Batch {batchId} nije pronadjen.",
+                    error = $"Batch {batchId} nije pronađen.",
                     diagnostics
                 });
             }
@@ -417,7 +417,7 @@ public static class AccessImportEndpoints
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
                 ? Results.Ok(result)
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
         })
         .RequireRateLimiting("writes")
         .WithName("DeleteAccessImportBatch");
@@ -1217,7 +1217,7 @@ public static class AccessImportEndpoints
             var detail = await logService.GetBatchDetailAsync(batchId, Math.Max(0, logTake), severity, timeoutCts.Token);
 
             if (detail is null)
-                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
 
             CacheBatchSnapshot(cache, detail.Batch);
             CacheBatchDetailSnapshot(cache, batchId, detail);
@@ -1732,7 +1732,7 @@ public static class AccessImportEndpoints
             if (root is not null)
                 return (true, root, null, false);
 
-            return (false, null, "Posalji multipart/form-data sa ACCDB/MDB fajlom ili postavi TRENDPLUS.accdb / TRENDPLUS.mdb u root folder.", false);
+            return (false, null, "Pošalji multipart/form-data sa ACCDB/MDB fajlom ili postavi TRENDPLUS.accdb / TRENDPLUS.mdb u root folder.", false);
         }
 
         IFormCollection form;
@@ -1758,7 +1758,7 @@ public static class AccessImportEndpoints
                 var root = FindRootAccessFile();
                 if (root is not null)
                     return (true, root, null, false);
-                return (false, null, "TRENDPLUS.accdb / TRENDPLUS.mdb nije pronadjen u root folderu.", false);
+                return (false, null, "TRENDPLUS.accdb / TRENDPLUS.mdb nije pronađen u root folderu.", false);
             }
 
             return (false, null, "Access fajl (.accdb ili .mdb) je obavezan.", false);

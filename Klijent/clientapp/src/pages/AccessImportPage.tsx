@@ -56,7 +56,7 @@ function ResultLine({ entity, inserted, updated }: { entity: string; inserted: n
 
 function describeTransformation(metric: AccessImportCoverageMetric): string {
     if (metric.transformationType === "expanded")
-        return metric.expandedTargetRows > 0 ? `Prosirenje (+${metric.expandedTargetRows.toLocaleString("sr-RS")})` : "Prosirenje";
+        return metric.expandedTargetRows > 0 ? `Proširenje (+${metric.expandedTargetRows.toLocaleString("sr-RS")})` : "Proširenje";
     if (metric.transformationType === "grouped")
         return metric.mergedRows > 0 ? `Grupisanje (-${metric.mergedRows.toLocaleString("sr-RS")})` : "Grupisanje";
     return "1:1";
@@ -368,7 +368,7 @@ export default function AccessImportPage() {
             } catch (e: unknown) {
                 if (cancelled) return;
                 if (isAccessImportRequestCanceledError(e)) return;
-                const message = e instanceof Error ? e.message : "Greska pri pracenju batch statusa.";
+                const message = e instanceof Error ? e.message : "Greška pri praćenju batch statusa.";
                 const now = Date.now();
                 if (now - lastPollWarningAtRef.current >= 30_000) {
                     console.warn("Access import polling skipped after transient failure:", message);
@@ -397,7 +397,7 @@ export default function AccessImportPage() {
             const data = await previewAccessImport(file, useRootFile);
             setPreview(data);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri analizi Access fajla.");
+            setError(e instanceof Error ? e.message : "Greška pri analizi Access fajla.");
         } finally {
             setLoadingPreview(false);
         }
@@ -426,7 +426,7 @@ export default function AccessImportPage() {
                 }
             }
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri importu.");
+            setError(e instanceof Error ? e.message : "Greška pri importu.");
         } finally {
             setLoadingImport(false);
         }
@@ -448,7 +448,7 @@ export default function AccessImportPage() {
                 setError("Otkazivanje importa zahteva važeći admin key.");
                 return;
             }
-            setError(e instanceof Error ? e.message : "Greska pri slanju zahteva za otkazivanje importa.");
+            setError(e instanceof Error ? e.message : "Greška pri slanju zahteva za otkazivanje importa.");
         } finally {
             setCancellingImport(false);
         }
@@ -467,7 +467,7 @@ export default function AccessImportPage() {
             setDeleteResult(result);
             await refreshBatches("after-delete");
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri brisanju batch-a.");
+            setError(e instanceof Error ? e.message : "Greška pri brisanju batch-a.");
         } finally {
             setDeletingBatchId(null);
         }
@@ -483,7 +483,7 @@ export default function AccessImportPage() {
             const data = await previewCleanupNonAccess(adminKey);
             setCleanupPreview(data);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Greska pri pregledanju podataka za brisanje.");
+            setError(e instanceof Error ? e.message : "Greška pri pregledanju podataka za brisanje.");
         } finally {
             setCleanupLoadingPreview(false);
         }
@@ -505,7 +505,7 @@ export default function AccessImportPage() {
         } catch (e: unknown) {
             if (isUnauthorizedError(e)) {
                 clearAdminKey();
-                const retryKey = promptAdminKey("Cleanup ne-Access zapisa (ponovni unos kljuca)");
+                const retryKey = promptAdminKey("Cleanup ne-Access zapisa (ponovni unos ključa)");
                 if (!retryKey) return;
 
                 try {
@@ -514,12 +514,12 @@ export default function AccessImportPage() {
                     await refreshBatches("after-cleanup-retry");
                     return;
                 } catch (retryError: unknown) {
-                    setError(retryError instanceof Error ? retryError.message : "Greska pri brisanju podataka.");
+                    setError(retryError instanceof Error ? retryError.message : "Greška pri brisanju podataka.");
                     return;
                 }
             }
 
-            setError(e instanceof Error ? e.message : "Greska pri brisanju podataka.");
+            setError(e instanceof Error ? e.message : "Greška pri brisanju podataka.");
         } finally {
             setCleanupExecuting(false);
         }
@@ -719,7 +719,7 @@ export default function AccessImportPage() {
                     </div>
 
                     <div className={`accimport-field ${useRootFile ? "is-disabled" : ""}`}>
-                        <span className="accimport-label">Rucni izbor fajla</span>
+                        <span className="accimport-label">Ručni izbor fajla</span>
                         <span className="accimport-hint">Maksimalna veličina fajla: 100 MiB</span>
                         <input
                             ref={fileInputRef}
@@ -744,13 +744,13 @@ export default function AccessImportPage() {
                                 className="accimport-btn accimport-btn-secondary"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={useRootFile}
-                                title={useRootFile ? "Iskljuci automatski fajl da bi izabrao rucno." : "Izaberi .accdb ili .mdb fajl"}
+                                title={useRootFile ? "Isključi automatski fajl da bi izabrao ručno." : "Izaberi .accdb ili .mdb fajl"}
                             >
                                 Browse .accdb/.mdb
                             </button>
                             {file && (
                                 <button type="button" className="accimport-btn accimport-btn-clear" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
-                                    Obrisi
+                                    Obriši
                                 </button>
                             )}
                             <span className={`accimport-file-name ${file ? "has-file" : ""}`}>
@@ -777,7 +777,7 @@ export default function AccessImportPage() {
                         <span className="accimport-label">Akcije</span>
                         <div className="accimport-actions">
                             <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy || !sourceSelected || runtimeBlocksImport}>
-                                {loadingPreview ? "Analiziram..." : "Analiza seme"}
+                                {loadingPreview ? "Analiziram..." : "Analiza šeme"}
                             </button>
                             <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
                                 {importBusy ? "Import u toku..." : "Pokreni import"}
@@ -795,7 +795,7 @@ export default function AccessImportPage() {
                         )}
                         {!sourceSelected && (
                             <div className="accimport-hint">
-                                Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb/.mdb.
+                                Izaberi fajl ili uključi automatski TRENDPLUS.accdb/.mdb.
                             </div>
                         )}
                     </div>
@@ -804,7 +804,7 @@ export default function AccessImportPage() {
                         <div className="accimport-field" style={{ gridColumn: "1 / -1" }}>
                             <div className={preview.canImport ? "accimport-success" : "accimport-warning"} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                                 <span>
-                                    Analiza seme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> - Tabele:{" "}
+                                    Analiza šeme: <strong>{preview.canImport ? "OK" : "BLOKIRANO"}</strong> - Tabele:{" "}
                                     <strong>{preview.mappedAccessTables}/{preview.totalAccessTables}</strong> - Redovi coverage:{" "}
                                     <strong>{preview.rowCoveragePercent.toFixed(1)}%</strong> - Nemapirano tabela sa podacima:{" "}
                                     <strong>{preview.unmappedAccessTablesWithRows.length}</strong>
@@ -871,7 +871,7 @@ export default function AccessImportPage() {
                             )}
                             {!sourceSelected && (
                                 <div className="accimport-hint">
-                                    Izaberi fajl ili ukljuci automatski TRENDPLUS.accdb/.mdb.
+                                    Izaberi fajl ili uključi automatski TRENDPLUS.accdb/.mdb.
                                 </div>
                             )}
                         </div>
@@ -1088,13 +1088,13 @@ export default function AccessImportPage() {
                                 <h3 className="accimport-card-title">Rezultati importa - Trendplus entiteti</h3>
                                 <div className="accimport-result-grid">
                                     <ResultLine entity="Artikli" inserted={runResult.artikliInserted} updated={runResult.artikliUpdated} />
-                                    <ResultLine entity="Dobavljaci" inserted={runResult.dobavljaciInserted} updated={runResult.dobavljaciUpdated} />
+                                    <ResultLine entity="Dobavljači" inserted={runResult.dobavljaciInserted} updated={runResult.dobavljaciUpdated} />
                                     <ResultLine entity="Sezone" inserted={runResult.sezoneInserted} updated={runResult.sezoneUpdated} />
                                     <ResultLine entity="Tipovi obuce" inserted={runResult.tipoviInserted} updated={runResult.tipoviUpdated} />
                                     <ResultLine entity="Prodaje" inserted={runResult.prodajaInserted} updated={runResult.prodajaUpdated} />
                                     <ResultLine entity="Stavke prodaje" inserted={runResult.prodajaStavkeInserted} updated={runResult.prodajaStavkeUpdated} />
                                     <ResultLine entity="Dnevnik promena" inserted={runResult.dnevnikInserted} updated={runResult.dnevnikUpdated} />
-                                    <ResultLine entity="Povracaji" inserted={runResult.povracajInserted} updated={runResult.povracajUpdated} />
+                                    <ResultLine entity="Povraćaji" inserted={runResult.povracajInserted} updated={runResult.povracajUpdated} />
                                     <ResultLine entity="Stavke povracaja" inserted={runResult.povracajStavkeInserted} updated={runResult.povracajStavkeUpdated} />
                                 </div>
                             </div>
@@ -1171,7 +1171,7 @@ export default function AccessImportPage() {
                                     {cleanupLoadingPreview ? "Pregledavam..." : "Preview za brisanje"}
                                 </button>
                                 <button className="accimport-btn accimport-btn-danger" onClick={() => void handleCleanupExecute()} disabled={cleanupExecuting || cleanupLoadingPreview}>
-                                    {cleanupExecuting ? "Brisem..." : "Obrisi ne-Access zapise"}
+                                    {cleanupExecuting ? "Brišem..." : "Obriši ne-Access zapise"}
                                 </button>
                             </div>
                         </div>
@@ -1232,11 +1232,11 @@ export default function AccessImportPage() {
                                             setError("Generisanje restore skripte zahteva važeći admin key.");
                                             return;
                                         }
-                                        setError(e instanceof Error ? e.message : 'Greska pri generisanju restore skripte.');
+                                        setError(e instanceof Error ? e.message : 'Greška pri generisanju restore skripte.');
                                     } finally {
                                         setGeneratingRestoreScript(false);
                                     }
-                                }} disabled={generatingRestoreScript}>{generatingRestoreScript ? 'Generisem...' : 'Generisi restore skriptu'}</button>
+                                }} disabled={generatingRestoreScript}>{generatingRestoreScript ? 'Generišem...' : 'Generiši restore skriptu'}</button>
                                 {restoreScript && (
                                     <button className="accimport-btn" onClick={() => {
                                         const blob = new Blob([restoreScript], { type: 'text/sql' });
@@ -1284,7 +1284,7 @@ export default function AccessImportPage() {
                             <span className="accimport-label">Opcije brisanja</span>
                             <label className="accimport-checkbox-row">
                                 <input type="checkbox" checked={deleteIncludeAnalytics} onChange={(e) => setDeleteIncludeAnalytics(e.target.checked)} />
-                                Obrisi i Analytics podatke (DataOrigin=access)
+                                Obriši i Analytics podatke (DataOrigin=access)
                             </label>
                         </div>
                         <div className="accimport-field" style={{ alignItems: "flex-end" }}>
@@ -1296,7 +1296,7 @@ export default function AccessImportPage() {
                                     void refreshBatches("manual-refresh", key);
                                 }}
                             >
-                                Osvezi
+                                Osveži
                             </button>
                         </div>
                     </div>
@@ -1309,10 +1309,10 @@ export default function AccessImportPage() {
                             Prodaje: {deleteResult.prodajaDeleted},
                             Stavke: {deleteResult.stavkeDeleted},
                             Sezone: {deleteResult.sezoneDeleted},
-                            Dobavljaci: {deleteResult.dobavljaciDeleted},
+                            Dobavljači: {deleteResult.dobavljaciDeleted},
                             Tipovi: {deleteResult.tipoviDeleted},
                             Dnevnik: {deleteResult.dnevnikDeleted},
-                            Povracaji: {deleteResult.povracajDeleted} ({deleteResult.povracajStavkeDeleted} stavki),
+                            Povraćaji: {deleteResult.povracajDeleted} ({deleteResult.povracajStavkeDeleted} stavki),
                             ProductsDim: {deleteResult.productsDimDeleted},
                             SalesFacts: {deleteResult.salesFactsDeleted},
                             SalesLineFacts: {deleteResult.salesLineFactsDeleted},
@@ -1356,7 +1356,7 @@ export default function AccessImportPage() {
                                                     className="accimport-btn accimport-btn-danger"
                                                     style={{ opacity: deletingBatchId !== null && deletingBatchId !== b.id ? 0.5 : 1 }}
                                                 >
-                                                    {deletingBatchId === b.id ? "Brisem..." : "Obrisi"}
+                                                    {deletingBatchId === b.id ? "Brišem..." : "Obriši"}
                                                 </button>
                                             </td>
                                         </tr>
