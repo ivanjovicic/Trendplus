@@ -167,3 +167,19 @@ WHERE "Id" = $1;
 Treat more than one source-lineage match, a matching legacy row without enough provenance, or an unknown source namespace as ambiguous. Do not repair lineage from receipt number, article, price or date. Do not rerun a deterministic identity failure as a transient retry. This run did not change production data.
 
 The current repair maps Access sale headers to PostgreSQL-generated IDs and passes those target IDs to lines and analytics. It also enlists analytics in the operational transaction only when both contexts resolve to the same PostgreSQL connection identity, and refuses the analytics-inclusive import otherwise. Source-database namespace, full legacy reconciliation and the complete SQL acceptance oracle are still open gates; keep PR #163 open until those proofs are supplied.
+
+## Related Access entity identity audit — 2026-10-15
+
+This is a code-path classification, not a production-data audit. It was read-only; no other entity identity code was changed in this P0 slice.
+
+| Entity/path | Finding | Classification |
+|---|---|---|
+| `TipObuce`, `Dobavljac`, `Sezona` | Active async import looks up target rows by Access numeric ID and `overwriteExisting` can update them; these models do not carry Access source lineage. | Confirmed cross-owner overwrite risk. A target ID is not source identity. |
+| `Artikli` | Import may attach an existing target row by source numeric ID, then apply Access values and lineage without proving that row belongs to this source identity. A colliding/occupied ID can also skip or alter the row rather than produce a durable source-to-target mapping. | Confirmed identity/mapping defect. Product IDs consumed by child rows are not remapped through a proven identity map. |
+| `DnevnikPromena` | Active async path matches existing target by numeric ID; synthesized sale headers also resolve journal rows by `SourceRowId ?? Id`. | Confirmed collision/mapping risk; source namespace is absent. |
+| `PovracajZaglavlje` | Active async path matches target ID first and falls back to `BrojZapisnika`; duplicate receipt/record numbers are explicitly tolerated. | Confirmed ambiguous update path; receipt number is not a universal identity. |
+| `PovracajStavke` | Active async path checks the source return ID against target header IDs and matches a line by numeric ID; it does not resolve a durable return-header source-to-target mapping before assigning the FK. | Confirmed wrong-parent and cross-owner line risk. |
+| `Nivelacije`, `UnosRobe`, `Povratnice`, `PrenosRobe` | These paths synthesize `DnevnikPromena` rows with allocated target IDs and count-based composite-key multiset de-duplication. No durable namespace-scoped source identity is retained for those generated events. | Provenance/idempotency risk; actual historical collision not established. |
+| `Objekti` and analytics dimensions | Access IDs are used as dimension/store IDs in the in-memory batch projection; current identity contract does not distinguish two source databases. | Multi-source collision risk; requires the same source namespace contract. |
+
+The user-requested classification covers the listed code paths, but resolving all confirmed cross-owner risks safely requires a source namespace and per-entity source-to-target maps plus downstream FK remapping. A stable source-database identifier is absent from the upload/API contract and cannot be derived from the random storage key or filename. Do not use receipt number, article/price/date, or source ID alone to backfill history. Keep the scope open until the operator supplies a stable source identity and the idempotent migration/reconciliation proof is available.
