@@ -2919,29 +2919,6 @@ using NpgsqlTypes;
                     if (includeAnalytics)
                         await SyncAnalyticsAsync(result, transactionCt);
 
-                    if (includeAnalytics && (_cacheAdmin is not null || _analyticsCache is not null))
-                    {
-                        try
-                        {
-                            if (_cacheAdmin is not null)
-                            {
-                                // Import owns the single post-commit integrity probe; do not also schedule cache_clear.
-                                await _cacheAdmin.ClearFamiliesAsync(
-                                    AnalyticsCachePolicy.CoreFamilies,
-                                    transactionCt,
-                                    scheduleIntegrityProbe: false);
-                            }
-                            else
-                            {
-                                await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, transactionCt);
-                            }
-                        }
-                        catch (Exception cacheEx)
-                        {
-                            _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import. BatchId: {BatchId}.", batch.Id);
-                        }
-                    }
-
                     if (includeAnalytics)
                     {
                         postImportIntegrityBatchId = batch.Id;
@@ -2984,6 +2961,31 @@ using NpgsqlTypes;
                         await analyticsTransaction.DisposeAsync();
                 }
             }, _logger, "AccessImportBatchExecution", ct);
+
+            if (postImportIntegrityBatchId is not null && (_cacheAdmin is not null || _analyticsCache is not null))
+            {
+                // Invalidate only after the import transaction committed: a reader that recomputed between an
+                // in-transaction invalidation and the commit would otherwise re-cache pre-import data.
+                try
+                {
+                    if (_cacheAdmin is not null)
+                    {
+                        // Import owns the single post-commit integrity probe; do not also schedule cache_clear.
+                        await _cacheAdmin.ClearFamiliesAsync(
+                            AnalyticsCachePolicy.CoreFamilies,
+                            ct,
+                            scheduleIntegrityProbe: false);
+                    }
+                    else
+                    {
+                        await _analyticsCache!.RemoveByPrefixAsync(AnalyticsCacheKeys.Prefix, ct);
+                    }
+                }
+                catch (Exception cacheEx) when (cacheEx is not OperationCanceledException)
+                {
+                    _logger.LogWarning(cacheEx, "Analytics cache invalidation failed after Access import commit. BatchId: {BatchId}.", postImportIntegrityBatchId);
+                }
+            }
 
             if (postImportIntegrityBatchId is long probeBatchId)
             {

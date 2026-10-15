@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Api.Services;
 using Infrastructure.Configuration;
+using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Options;
 
 namespace Trendplus2.Endpoints;
@@ -76,6 +77,12 @@ public static class AnalyticsSnapshotEndpoints
             try
             {
                 var batch = await service.ActivateBatchAsync(id, ct);
+                // Supplier/shoe keys carry the batch id; the other cost-bearing screens need an explicit bump.
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+                    httpContext.RequestServices,
+                    AnalyticsCachePolicy.CoreFamilies,
+                    "cost-snapshot-activate",
+                    httpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("AnalyticsSnapshotEndpoints"));
                 return Results.Ok(ToBatchDto(batch));
             }
             catch (InvalidOperationException ex)
@@ -101,6 +108,11 @@ public static class AnalyticsSnapshotEndpoints
             try
             {
                 var batch = await service.DeactivateBatchAsync(id, ct);
+                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+                    httpContext.RequestServices,
+                    AnalyticsCachePolicy.CoreFamilies,
+                    "cost-snapshot-deactivate",
+                    httpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("AnalyticsSnapshotEndpoints"));
                 return Results.Ok(ToBatchDto(batch));
             }
             catch (InvalidOperationException ex)

@@ -66,7 +66,22 @@ public sealed class AnalyticsCacheInvalidateAuthorizationTests
         var payload = await response.Content.ReadFromJsonAsync<CacheInvalidateResponse>();
         Assert.NotNull(payload);
         Assert.True(payload!.Success);
-        Assert.Contains(AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily), host.Cache.RemovedPrefixes);
+        Assert.Equal(AnalyticsCachePolicy.ResolveFamilyPrefixes(AnalyticsCachePolicy.DashboardFamily), host.Cache.RemovedPrefixes);
+        Assert.Contains("analytics:summary:v2:", host.Cache.RemovedPrefixes);
+    }
+
+    [Fact]
+    public async Task CacheInvalidate_UnknownFamily_Returns400AndClearsNothing()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/analytics/cached/cache/invalidate?family=dashbord");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(host.Cache.RemovedPrefixes);
     }
 
     [Fact]

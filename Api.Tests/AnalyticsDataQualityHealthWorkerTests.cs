@@ -51,7 +51,7 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
         Assert.Equal(ExpectedRemovedPrefixes(), harness.Cache.RemovedPrefixes);
 
         var state = await harness.CacheAdmin.GetStateAsync(CancellationToken.None);
-        Assert.Equal("dashboard,product-decision-center,supplier-decision-hub,inventory,data-quality,color-sales,reports", state.LastClearFamily);
+        Assert.Equal("dashboard,product-decision-center,supplier-decision-hub,inventory,data-quality,color-sales,supplier-sales,shoe-type-sales,reports", state.LastClearFamily);
         Assert.NotNull(state.LastClearAtUtc);
         Assert.NotNull(state.LastAnalyticsCacheClearAtUtc);
         Assert.NotNull(state.LastReportCacheClearAtUtc);
@@ -79,13 +79,9 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
 
     private static List<string> ExpectedRemovedPrefixes() =>
     [
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DashboardFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ProductDecisionCenterFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.SupplierDecisionHubFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.InventoryFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.DataQualityFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ColorSalesFamily),
-        AnalyticsCachePolicy.ResolveFamilyPrefix(AnalyticsCachePolicy.ReportsFamily)
+        .. new[] { AnalyticsCachePolicy.DashboardFamily, AnalyticsCachePolicy.ProductDecisionCenterFamily, AnalyticsCachePolicy.SupplierDecisionHubFamily, AnalyticsCachePolicy.InventoryFamily, AnalyticsCachePolicy.DataQualityFamily, AnalyticsCachePolicy.ColorSalesFamily, AnalyticsCachePolicy.SupplierSalesFamily, AnalyticsCachePolicy.ShoeTypeSalesFamily, AnalyticsCachePolicy.ReportsFamily }
+            .SelectMany(AnalyticsCachePolicy.ResolveFamilyPrefixes)
+            .Distinct(StringComparer.Ordinal)
     ];
 
     private static async Task InvokeRefreshDataQualityAsync(AnalyticsDataQualityHealthWorker worker)

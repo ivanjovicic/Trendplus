@@ -207,6 +207,9 @@ public sealed class AnalyticsDataQualityHealthWorker : BackgroundService
                     AnalyticsCachePolicy.InventoryFamily,
                     AnalyticsCachePolicy.DataQualityFamily,
                     AnalyticsCachePolicy.ColorSalesFamily,
+                    // Supplier and shoe-type payloads carry trust/recommendation gates like color.
+                    AnalyticsCachePolicy.SupplierSalesFamily,
+                    AnalyticsCachePolicy.ShoeTypeSalesFamily,
                     AnalyticsCachePolicy.ReportsFamily
                 ];
 

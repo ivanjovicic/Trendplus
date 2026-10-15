@@ -1,3 +1,4 @@
+import { isClientCacheBypassActive, withClientCacheBypass } from "./analyticsClientCacheBypass";
 import type {
   AnalyticsDashboardBootstrap,
   AnalyticsRefreshStatus,
@@ -106,6 +107,60 @@ const DEFAULT_ANALYTICS_GET_TIMEOUT_MS = API_COLD_START_TIMEOUT_MS;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 let clientCacheGeneration = 0;
+const ANALYTICS_CACHE_CHANNEL_NAME = "trendplus-analytics-cache";
+let analyticsCacheChannel: BroadcastChannel | null | undefined;
+
+function getAnalyticsCacheChannel(): BroadcastChannel | null {
+  if (analyticsCacheChannel !== undefined) return analyticsCacheChannel;
+  if (typeof BroadcastChannel === "undefined") {
+    analyticsCacheChannel = null;
+    return null;
+  }
+  try {
+    analyticsCacheChannel = new BroadcastChannel(ANALYTICS_CACHE_CHANNEL_NAME);
+    analyticsCacheChannel.addEventListener("message", (event: MessageEvent) => {
+      if ((event.data as { type?: string } | null)?.type === "invalidate") {
+        // Another tab saw an import/refresh/clear: drop this tab's copies without re-broadcasting.
+        invalidateAnalyticsCache({ broadcast: false });
+      }
+    });
+  } catch {
+    analyticsCacheChannel = null;
+  }
+  return analyticsCacheChannel;
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
+}
+
+/**
+ * Lets one caller stop waiting without cancelling a request that other callers share.
+ */
+function withCallerSignal<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return request;
+  if (signal.aborted) return Promise.reject(abortReason(signal));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortReason(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    request.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * Runs a query start so that analytics GETs issued synchronously by it skip the browser cache
+ * (manual refresh). The fresh response still replaces the cached entry.
+ */
+export { withClientCacheBypass };
 
 type FailoverAwareWindow = Window & {
   __trendplusFailoverInstalled?: boolean;
@@ -234,19 +289,27 @@ async function fetchJson<T>(
   const finalParams = params ? new URLSearchParams(params.toString()) : undefined;
   const url = makeUrl(path, finalParams);
   const cacheTtlMs = resolveClientCacheTtl(path);
+  const bypassClientCache = isClientCacheBypassActive();
+  getAnalyticsCacheChannel();
 
-  if (cacheTtlMs > 0) {
+  if (cacheTtlMs <= 0) {
+    return fetchJsonWithRetry<T>(url, DEFAULT_ANALYTICS_GET_TIMEOUT_MS, errorMessage, onResponse, schema, signal);
+  }
+
+  if (!bypassClientCache) {
     const cached = responseCache.get(url);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value as T;
     }
 
-    const existingRequest = signal ? undefined : inFlightRequests.get(url);
+    const existingRequest = inFlightRequests.get(url) as Promise<T> | undefined;
     if (existingRequest) {
-      return existingRequest as Promise<T>;
+      return withCallerSignal(existingRequest, signal);
     }
   }
 
+  // The shared request is not bound to any caller's signal: one caller aborting (filter change,
+  // unmount) must not reject the other callers that joined the same in-flight request.
   const requestGeneration = clientCacheGeneration;
   const request = (async () => {
     const data = await fetchJsonWithRetry<T>(
@@ -255,26 +318,24 @@ async function fetchJson<T>(
       errorMessage,
       onResponse,
       schema,
-      signal,
     );
-    if (cacheTtlMs > 0 && requestGeneration === clientCacheGeneration) {
+    if (requestGeneration === clientCacheGeneration) {
       responseCache.set(url, { expiresAt: Date.now() + cacheTtlMs, value: data });
     }
 
     return data;
   })();
 
-  if (cacheTtlMs > 0) {
-    inFlightRequests.set(url, request as Promise<unknown>);
-  }
+  inFlightRequests.set(url, request as Promise<unknown>);
+  void request
+    .finally(() => {
+      if (inFlightRequests.get(url) === request) {
+        inFlightRequests.delete(url);
+      }
+    })
+    .catch(() => undefined);
 
-  try {
-    return await request;
-  } finally {
-    if (cacheTtlMs > 0 && inFlightRequests.get(url) === request) {
-      inFlightRequests.delete(url);
-    }
-  }
+  return withCallerSignal(request, signal);
 }
 
 async function fetchJsonWithCachedFallback<T>(
@@ -814,10 +875,17 @@ export async function getAnalyticsCacheStatus(): Promise<AnalyticsCacheStatus> {
   );
 }
 
-export function invalidateAnalyticsCache(): void {
+export function invalidateAnalyticsCache(options?: { broadcast?: boolean }): void {
   clientCacheGeneration += 1;
   responseCache.clear();
   inFlightRequests.clear();
+  if (options?.broadcast !== false) {
+    try {
+      getAnalyticsCacheChannel()?.postMessage({ type: "invalidate", at: Date.now() });
+    } catch {
+      // Other tabs fall back to their short client TTL.
+    }
+  }
 }
 
 export async function clearAnalyticsCache(family = "all", adminKey?: string): Promise<AnalyticsCacheInvalidateResponse> {
@@ -840,6 +908,8 @@ export async function clearAnalyticsCache(family = "all", adminKey?: string): Pr
     throw new Error(await parseApiError(response, "Greska pri ciscenju analytics cache-a"));
   }
 
+  // The server cache is gone; browser copies (this tab and others) must not keep serving it.
+  invalidateAnalyticsCache();
   return (await response.json()) as AnalyticsCacheInvalidateResponse;
 }
 
