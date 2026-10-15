@@ -3692,12 +3692,12 @@ None.
 
 ## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: security / UX decision
 Feature family: access-import-ui
 Parallel-safe: yes
-Owner: grok (branch `fix/rq675-access-import-admin-key-session`)
+Owner: grok
 Ready after: RQ674 (owner order 2026-10-15)
 Commit suggestion: `feat(access-import): persistent admin session for import operations`
 
@@ -3738,6 +3738,21 @@ Owner-approved flow; no key in logs or URLs.
 
 None (owner decision recorded above).
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AccessImportPage.tsx (sessionStorage key helpers, masked Admin key form, clearAdminKey on 401/403, promptAdminKey without window.prompt), AccessImportPage.spec.tsx; this queue
+- Checks run: vitest page spec 6 tests; services specs; tsc; eslint (one pre-existing exhaustive-deps warning); queue validators with and without --self-test; git diff --check; PR #166 CI: backend 38693394192, frontend 38693394455, governance 38693394168 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ675-admin-key-session-evidence.md
+- Delivery mode: PR #166 merged with --merge after green CI
+- Main commit SHA: a249fc5f
+- Main verification: git rev-parse origin/main -> a249fc5f after merge
+- Missed: none
+- Follow-up: RQ677 (next in owner order)
+- Residual risk: the key is readable by scripts in the same tab (sessionStorage); acceptable per owner decision, cleared when the tab closes or on 401/403.
 
 ## RQ676 - Serbian text and diacritics on the Access import screen and its server messages
 
