@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { InventoryAlertsFeed } from "../../components/inventory/InventoryAlertsFeed";
 import { RebalancingTable } from "../../components/inventory/RebalancingTable";
@@ -124,7 +125,7 @@ describe("Inventory snapshot row actionability", () => {
 
   it("uses backend-safe rebalance reason text for blocked rows", () => {
     render(
-      <RebalancingTable
+      <MemoryRouter><RebalancingTable
         rebalance={{
           generatedAtUtc: "2026-08-10T10:00:00Z",
           totalCount: 1,
@@ -163,7 +164,7 @@ describe("Inventory snapshot row actionability", () => {
         displayCount={5}
         scopeLabel="za sve prodavnice"
         onCompareStores={vi.fn()}
-      />,
+      /></MemoryRouter>,
     );
 
     expect(screen.queryByText("unknown_reason_code")).not.toBeInTheDocument();

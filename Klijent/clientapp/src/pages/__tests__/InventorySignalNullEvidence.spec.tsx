@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { InventoryAlertsFeed } from "../../components/inventory/InventoryAlertsFeed";
 import { RebalancingTable } from "../../components/inventory/RebalancingTable";
@@ -47,7 +48,7 @@ describe("Inventory signal null evidence surfaces", () => {
 
   it("renders missing rebalance urgency and quantity explicitly", () => {
     render(
-      <RebalancingTable
+      <MemoryRouter><RebalancingTable
         rebalance={{
           generatedAtUtc: "2026-08-10T10:00:00Z",
           totalCount: 1,
@@ -114,7 +115,7 @@ describe("Inventory signal null evidence surfaces", () => {
         displayCount={5}
         scopeLabel="za sve prodavnice"
         onCompareStores={vi.fn()}
-      />,
+      /></MemoryRouter>,
     );
 
     expect(screen.getByText("Nepoznato")).toBeInTheDocument();
