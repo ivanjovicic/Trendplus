@@ -4,7 +4,7 @@ Date: 2026-10-14
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ666 (P1, Product Decision source/action/store scope identity)**. RQ666 is in close-out on `main` after implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77`; RQ667 (P1, Inventory store/compareStore scope validation) remains independently READY and unclaimed. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
+Current READY prompt: **RQ667 (P1, Inventory store/compareStore scope validation)**. RQ666 is DONE on `main` at implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77`. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -3191,7 +3191,7 @@ None. Sharing one internal service provider across hosts was rejected: it requir
 
 ## RQ666 - Product Decision Center: source-scoped action identity and store filter lineage
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: frontend/action-identity + filter-trust regression
 Feature family: product-decision-datascope-action-identity
@@ -3227,6 +3227,26 @@ In `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `buildSourceKey(
 - Store selection only after scope-appropriate options load; previous or unknown store ID cannot be sent as an accepted, trusted new-scope filter/action. Document the chosen explicit fallback if the stores API really has global store semantics.
 - Focused PDC tests and API source-status/upsert contract tests where required; `npm run check:analytics-guardrails`, `npm run build`, exact SHA Actions validation and `node scripts/check-prompt-queues.mjs`. No skipped requirement counts as PASS.
 - Evidence: `.ai/runs/2026-10-15-RQ666-evidence.md` with same/cross/legacy key matrix and exact main SHA. If the key proves intentionally global, close with verified `OBSOLETE` classification **for the key portion** while still completing any demonstrated store-scope defect; do not invent a fix.
+
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: Versioned Product Decision action keys by data scope, kept historical keys read-only and visibly unscoped, recorded dataScope in action metadata, and scoped/validated store filters before use.
+- Changed files: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, focused `ProductDecisionCenterPage` specs, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-15-RQ666-evidence.md`.
+- Checks run: focused PDC tests (queue status 14/14, hierarchy 8/8); `npm run check:analytics-guardrails`; `npm run build`; all agent-instructions, prompt-queue and planning-architecture validators with self-tests; exact-SHA Analytics Quality Gates run `38693091908` (163 files, 1,237 tests, all jobs green); `git diff --check`.
+- Checks not run: backend API source-status/upsert tests (no backend contract changed); production data, action-row migration or live operator/deployed browser validation (not part of this repo-local prompt).
+- Run log: `.ai/runs/2026-10-15-RQ666-evidence.md`
+- Evidence state: pending post-terminal routing sync
+- Claim reservation: inspected `origin/main` `71b6d6ae2a1d93da918e1840290a0baf7210c3e2`; pushed claim `4d2790d10b3455ac9e247311a0f173d7f1c9b488`; Codex worktree `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2`, branch `codex/rq666-product-scope-20261015`; no RQ666/RQ667 branch or PR. Current open PRs #163 and #166 are on disjoint Access-import paths.
+- Delivery mode: direct-main
+- Main commit SHA: `4a3f7919d3703d117f84d621df4213c712221c77`
+- Main verification: refreshed `origin/main` at `92fb71dacb14108609b7360d04eb4f2161671311`; verified it contains the implementation SHA. Analytics Quality Gates `38693091908` is green on the exact implementation SHA.
+- Missed: none known within repository scope.
+- Follow-up: RQ667 remains READY as the next P1 prompt; it is independently owned by the Inventory page path and remains unclaimed.
+- Residual risk: historical `product:...` actions remain unchanged and cannot be attributed to a source scope; the Product Decision page warns and does not attach their status or evidence to a scoped recommendation.
+- Post-close routing: pending; final post-terminal refresh and dependency cascade will be recorded before handoff.
+- Prompt defect / scope repair: corrected the stale acceptance evidence path from 2026-10-14 to this run's 2026-10-15 log. An invalid store URL is cleared and continues with all stores inside the confirmed active data scope; store-list failure still blocks requests and action writes.
 
 ---
 
