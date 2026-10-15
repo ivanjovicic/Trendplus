@@ -121,3 +121,32 @@
 | Margin/stock changes can prove impact | **No measured outcome yet** | Incomplete coverage, no approved prospective action/control |
 
 **Final owner choice required only after first real interviews:** continue *Retail read-only audit → weekly decision service*, or choose *supplier-invoice discrepancy* as a separate product; do not code both full-featured products in parallel.
+
+
+## 10. Longer-range perspective, 2027–2029 — *conditional paths, not market forecasts*
+
+The realistic alternatives are not simply “startup succeeds” vs “fails”:
+
+| 2027–2029 path | Observable threshold / operational form | Economic implication | What to do |
+| --- | --- | --- | --- |
+| **No repeat demand** | Diagnostic interviews/pilots fail; no real repeated decision beyond incumbent reports | Development sunk cost; MRR may remain **€0** | Stop software expansion; preserve reusable retail code and offer narrowly paid audits if requested |
+| **Specialist service business** | 2–10 recurring companies, repeated human review and bespoke mappings | Owner can earn revenue, but delivery hours grow with clients; not high-multiple SaaS | Price onboarding and review labor explicitly; keep dedicated isolated instances |
+| **Repeatable micro-SaaS** | 10–30 recurring clients, 1–3 supported export families, bounded onboarding and support hours | Attractive small product if churn/support are contained; still vulnerable to customer concentration and incumbent features | Automate source QA and weekly evidence, build reseller channel only after retention |
+| **Partner-led regional product** | Named ERP/retail integrators bring qualified accounts; verifiable 30+ repeatable deployments | Scalable distribution possible but margin split, partner dependency, compliance and support burden rise | Negotiate reseller terms, test one regional data format before expansion |
+| **Invoice anomaly control wins instead** | Retail audits low-value; distributors repeatedly pay for matched contract-vs-invoice exceptions | Different customer and data-contract architecture; Trendplus acts as technical donor, not shared core domain | Create separate product after sample-backed paid pilots; do not bury it inside footwear UI |
+
+These are **qualitative states, not predicted counts by calendar year**. No available churn, acquisition, sales-cycle, partner, real ARPU or interview data supports probabilistic 3-year forecasts. Annualized exit MRR in section 6 is a *sensitivity model*, not a valuation or cash-flow plan.
+
+**2027 decision horizon:** validate one retail vertical and a repeatable source; do not widen industry coverage if two paid pilots/regular usage are missing. **2028 conditional horizon:** if retention and low onboarding effort are proven, standardize 1–3 common POS/ERP export formats and a channel partner; otherwise operate as a deliberate high-touch service. **2029 conditional horizon:** only after repeatable acquisition, retention, costs and security are measured, evaluate shared SaaS, regional licensing or embedded OEM/API distribution.
+
+**Structural risk over three years:** general-purpose AI-generated reports and better incumbent ERP BI may make generic dashboards cheaper and less differentiated. Durable advantage, if any, must come from *verified source lineage, explicit business decisions, traceable human execution and independently measured results*, not model novelty. This is a strategic inference, not measured market share.
+
+## 11. Decision scorecard and pre-mortem (owner evaluation, not product KPI)
+
+- **Should we even sell a standalone tool?** Compare the exact same business question in the incumbent ERP/Excel. If improvement is only cosmetic or the customer is unable to act, a separate product is not justified.
+- **Which economic pain is easiest to *prove*?** A corrected supplier invoice discrepancy (if contracts exist) may be more provable than recovered markdown margin; a large inventory holding estimate can look impressive while conveying no realized saving.
+- **Who will distribute it?** Direct sales to many tiny shops likely have poor economics; 2–15-store owner/operators and ERP implementation partners are test segments, not validated ICP.
+- **What is the real moat?** Existing formulas/data quality and tested retail provenance are reusable technical strengths. Incumbent access, users and integration distribution can be stronger competitive moats than code sophistication.
+- **Where does it fail dangerously?** Wrong cost scale, stale source, dataScope/store mismatch, leaked tenant data and “projected savings” framed as guaranteed profit. Gate these before charging for automated recommendations.
+- **When should we NOT build more?** No paying pilot; inability to reproduce source data; onboarding longer than recurring revenue can justify; partner incentives conflicting with customers; repeat recommendations never acted on.
+- **Owner decision after 60-day evidence window:** **CONTINUE RETAIL**, **SERVICE/CHANNEL**, **TEST INVOICE DIFFERENCES SEPARATELY**, or **STOP NEW PRODUCT DEVELOPMENT**. Record the choice in the existing business progress document only when customer evidence exists. Do not pre-authorize a new prompt queue or client production deployment here.
