@@ -3612,13 +3612,13 @@ None (owner decision recorded above; index option rejected).
 
 ## RQ674 - Do not return an empty Access import history when the batch query times out
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P3
 Type: backend error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes (AccessImportEndpoints batch list/detail fallbacks)
-Owner: unassigned
-Ready after: RQ673 (owner order 2026-10-15: RQ673 ? RQ674 ? RQ675 ? RQ677 ? RQ676)
+Owner: grok (branch `fix/rq674-batch-history-unavailable`)
+Ready after: RQ673 (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): report batch history timeouts instead of an empty list`
 
 ### Problem
@@ -3712,7 +3712,7 @@ Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
 Owner: unassigned
-Ready after: RQ677 (owner order 2026-10-15: RQ673 ? RQ674 ? RQ675 ? RQ677 ? RQ676)
+Ready after: RQ677 (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 
 ### Problem

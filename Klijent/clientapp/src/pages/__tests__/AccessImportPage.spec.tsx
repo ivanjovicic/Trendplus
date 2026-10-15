@@ -43,6 +43,14 @@ describe("AccessImportPage active run detection", () => {
     expect(vi.mocked(getAccessImportBatches).mock.calls[0][1]).toBe("mount");
   });
 
+  it("keeps showing the last known history and a retry hint when the history is temporarily unavailable", async () => {
+    vi.mocked(getAccessImportBatches).mockRejectedValue(new Error("Istorija importa trenutno nije dostupna jer baza sporo odgovara. Pokušaj ponovo za nekoliko sekundi."));
+    renderPage();
+
+    expect(await screen.findByText(/Istorija importa trenutno nije dostupna/)).toBeInTheDocument();
+    expect(screen.queryByText("Pregled import istorije zahteva važeći admin key.")).not.toBeInTheDocument();
+  });
+
   it("asks for the admin key instead of silently showing an idle screen when history is protected", async () => {
     vi.mocked(getAccessImportBatches).mockRejectedValue(new Error("401 Unauthorized"));
     renderPage();
