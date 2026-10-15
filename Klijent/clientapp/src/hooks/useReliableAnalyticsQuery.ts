@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { withClientCacheBypass } from "../services/analyticsApi";
 
 export type ReliableAnalyticsQuery<T> = (signal: AbortSignal) => Promise<T>;
 
@@ -7,6 +8,12 @@ export type UseReliableAnalyticsQueryOptions<T> = {
   enabled?: boolean;
   initialData?: T | null;
   getErrorMessage?: (reason: unknown) => string;
+  /**
+   * Identity of the request context (period, store, supplier, dataScope, filters). When it changes the
+   * previous snapshot is dropped, so a failed request never shows data of another context as current.
+   * Defaults to the query function identity.
+   */
+  contextKey?: string;
 };
 
 export type UseReliableAnalyticsQueryResult<T> = {
@@ -50,7 +57,9 @@ export function useReliableAnalyticsQuery<T>(
     enabled = true,
     initialData = null,
     getErrorMessage = defaultErrorMessage,
+    contextKey,
   } = options;
+  const contextIdentity: unknown = contextKey ?? query;
   const [data, setData] = useState<T | null>(initialData);
   const [initialLoading, setInitialLoading] = useState(enabled && initialData == null);
   const [refetching, setRefetching] = useState(false);
@@ -65,6 +74,8 @@ export function useReliableAnalyticsQuery<T>(
   const generationRef = useRef(0);
   const mountedRef = useRef(true);
   const controllerRef = useRef<AbortController | null>(null);
+  const contextRef = useRef<unknown>(contextIdentity);
+  const bypassClientCacheRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -93,13 +104,23 @@ export function useReliableAnalyticsQuery<T>(
     setErrorReason(null);
     setStaleWarning(null);
     setStaleReason(null);
+    if (contextRef.current !== contextIdentity) {
+      // New context: the old snapshot belongs to other filters and must not be shown as current.
+      contextRef.current = contextIdentity;
+      dataRef.current = null;
+      setData(null);
+      setLoadedAt(null);
+    }
     if (dataRef.current == null) {
       setInitialLoading(true);
     } else {
       setRefetching(true);
     }
 
-    void query(controller.signal)
+    const bypassClientCache = bypassClientCacheRef.current;
+    bypassClientCacheRef.current = false;
+    const start = () => query(controller.signal);
+    void (bypassClientCache ? withClientCacheBypass(start) : start())
       .then((result) => {
         if (!mountedRef.current || generation !== generationRef.current) return;
         dataRef.current = result;
@@ -130,9 +151,11 @@ export function useReliableAnalyticsQuery<T>(
     return () => {
       controller.abort();
     };
-  }, [enabled, getErrorMessage, query, reloadVersion]);
+  }, [enabled, getErrorMessage, query, reloadVersion, contextIdentity]);
 
   const refetch = useCallback(() => {
+    // Manual refresh must reach the server instead of the short-lived browser cache.
+    bypassClientCacheRef.current = true;
     setReloadVersion((current) => current + 1);
   }, []);
 

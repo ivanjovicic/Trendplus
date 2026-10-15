@@ -12,8 +12,11 @@ import {
   getProductDecisionCenter,
   getSizeCurve,
   getStores,
+  getInventoryBalance,
+  clearAnalyticsCache,
   invalidateAnalyticsCache,
   updateAnalyticsActionOutcome,
+  withClientCacheBypass,
 } from "../analyticsApi";
 import { getColorSalesStats } from "../colorSalesStatsApi";
 import { AnalyticsResponseValidationError } from "../../validation/analyticsResponseValidation";
@@ -574,5 +577,150 @@ describe("analytics API contract requests", () => {
     expect(received[1]).toContain("issueType=missingSupplier");
     expect(received[1]).toContain("limit=5");
     expect(received[1]).toContain("dataScope=imported");
+  });
+});
+
+describe("analytics browser cache lifecycle", () => {
+  const balancePayload = (version: number) => ({
+    totalSku: version,
+    totalOnHand: 12,
+    lowStockCount: 1,
+    outOfStockCount: 0,
+    meta: { success: true },
+  });
+
+  function deferredResponse() {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { gate, release };
+  }
+
+  it("clearAnalyticsCache also drops the browser copies", async () => {
+    let requestCount = 0;
+    invalidateAnalyticsCache();
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", (_req, res, ctx) => {
+        requestCount += 1;
+        return res(ctx.status(200), ctx.json(balancePayload(requestCount)));
+      }),
+      rest.post("/api/analytics/cached/cache/invalidate", (_req, res, ctx) =>
+        res(ctx.status(200), ctx.json({ success: true, family: "all" }))),
+    );
+
+    await getInventoryBalance(true, 4);
+    await getInventoryBalance(true, 4);
+    expect(requestCount).toBe(1);
+
+    await clearAnalyticsCache("all", "admin-key");
+    const afterClear = await getInventoryBalance(true, 4);
+
+    expect(requestCount).toBe(2);
+    expect(afterClear.totalSku).toBe(2);
+  });
+
+  it("one caller aborting does not reject another caller sharing the in-flight request", async () => {
+    invalidateAnalyticsCache();
+    const { gate, release } = deferredResponse();
+    let requestCount = 0;
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", async (_req, res, ctx) => {
+        requestCount += 1;
+        await gate;
+        return res(ctx.status(200), ctx.json(balancePayload(7)));
+      }),
+    );
+
+    const abortingCaller = new AbortController();
+    const first = getInventoryBalance(true, 5, null, null, abortingCaller.signal);
+    const second = getInventoryBalance(true, 5);
+    abortingCaller.abort();
+    release();
+
+    await expect(first).rejects.toMatchObject({ name: "AbortError" });
+    await expect(second).resolves.toMatchObject({ totalSku: 7 });
+    expect(requestCount).toBe(1);
+  });
+
+  it("a response that arrives after invalidation is returned but not cached", async () => {
+    invalidateAnalyticsCache();
+    const { gate, release } = deferredResponse();
+    let requestCount = 0;
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", async (_req, res, ctx) => {
+        requestCount += 1;
+        if (requestCount === 1) await gate;
+        return res(ctx.status(200), ctx.json(balancePayload(requestCount)));
+      }),
+    );
+
+    const preImport = getInventoryBalance(true, 6);
+    invalidateAnalyticsCache(); // import finished while the request was in flight
+    release();
+    expect((await preImport).totalSku).toBe(1);
+
+    const afterImport = await getInventoryBalance(true, 6);
+    expect(afterImport.totalSku).toBe(2);
+    expect(requestCount).toBe(2);
+  });
+
+  it("manual refresh bypasses the browser cache and refreshes it", async () => {
+    invalidateAnalyticsCache();
+    let requestCount = 0;
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", (_req, res, ctx) => {
+        requestCount += 1;
+        return res(ctx.status(200), ctx.json(balancePayload(requestCount)));
+      }),
+    );
+
+    await getInventoryBalance(true, 8);
+    const refreshed = await withClientCacheBypass(() => getInventoryBalance(true, 8));
+    const cachedAfterRefresh = await getInventoryBalance(true, 8);
+
+    expect(refreshed.totalSku).toBe(2);
+    expect(cachedAfterRefresh.totalSku).toBe(2);
+    expect(requestCount).toBe(2);
+  });
+
+  it("an invalidation broadcast from another tab clears this tab's cache", async () => {
+    invalidateAnalyticsCache();
+    let requestCount = 0;
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", (_req, res, ctx) => {
+        requestCount += 1;
+        return res(ctx.status(200), ctx.json(balancePayload(requestCount)));
+      }),
+    );
+
+    await getInventoryBalance(true, 9);
+    const otherTab = new BroadcastChannel("trendplus-analytics-cache");
+    otherTab.postMessage({ type: "invalidate" });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    otherTab.close();
+
+    const next = await getInventoryBalance(true, 9);
+    expect(next.totalSku).toBe(2);
+    expect(requestCount).toBe(2);
+  });
+
+  it("keeps cache entries isolated by period, store and scope", async () => {
+    invalidateAnalyticsCache();
+    const seen: string[] = [];
+    server.use(
+      rest.get("/api/analytics/cached/inventory/balance", (req, res, ctx) => {
+        seen.push(req.url.search);
+        return res(ctx.status(200), ctx.json(balancePayload(seen.length)));
+      }),
+    );
+
+    await getInventoryBalance(true, 1, null, "all");
+    await getInventoryBalance(true, 2, null, "all");
+    await getInventoryBalance(true, 1, null, "imported");
+    await getInventoryBalance(true, 1, 3, "all");
+    await getInventoryBalance(true, 1, null, "all");
+
+    expect(seen).toHaveLength(4);
   });
 });
