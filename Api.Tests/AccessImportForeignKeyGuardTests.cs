@@ -581,6 +581,54 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal(51, nextSupplierId);
     }
 
+    [PostgresRequiredFact]
+    public async Task CursorRepositoryUpdateRollsBackWithItsTrendplusTransaction()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE "AccessImportCursors" (
+                "TableKey" character varying(128) PRIMARY KEY,
+                "CursorMode" character varying(32) NOT NULL,
+                "CursorTimestampUtc" timestamp with time zone,
+                "CursorId" bigint,
+                "CursorTieBreakerId" bigint,
+                "LastRowsRead" integer NOT NULL DEFAULT 0,
+                "LastRowsMerged" integer NOT NULL DEFAULT 0,
+                "LastLagSeconds" integer,
+                "LastSuccessfulBatchId" bigint,
+                "LastError" character varying(2000),
+                "LastRunCompletedAtUtc" timestamp with time zone,
+                "UpdatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            INSERT INTO "AccessImportCursors" ("TableKey", "CursorMode", "CursorId") VALUES ('sales', 'id', 7);
+            """);
+
+        var repository = new AccessImportCursorRepository(db);
+        await using (var transaction = await db.Database.BeginTransactionAsync())
+        {
+            await repository.CommitCursorAsync(
+                "sales",
+                DateTime.UtcNow,
+                20,
+                30,
+                rowsRead: 10,
+                rowsMerged: 10,
+                lagSeconds: 0,
+                lastSuccessfulBatchId: 9001,
+                CancellationToken.None);
+            await transaction.RollbackAsync();
+        }
+
+        var persistedCursor = await db.Database.SqlQueryRaw<long>(
+            "SELECT \"CursorId\" AS \"Value\" FROM \"AccessImportCursors\" WHERE \"TableKey\" = 'sales'").SingleAsync();
+        Assert.Equal(7, persistedCursor);
+    }
+
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
     {
         if (!_fixture.IsAvailable)

@@ -136,3 +136,34 @@ Fresh scope oracle totals remain:
 | operational retail / all | 5,231 | 66,528 | 234,830,323.64 |
 
 The orphan `existing` population therefore remains a consumer-population issue, not proof of Access overcount. No repair, delete, cache rebuild or production mutation was executed.
+
+## P0 Access import identity triage — 2026-10-15
+
+The public message `duplicate_sale_header_identity` does not identify the PostgreSQL constraint. Do not infer a primary-key collision from that message. Capture the structured importer event and retain these fields: `SqlState`, `TableName`, `ConstraintName`, `BatchId`, `Step`, `SourceTable`, `SourceSystem`, `SourceNamespace`, `Operation`, `SourceRowId`, and `TargetId`/`TargetHeaderId` when assigned. A generated target ID may still be null when its insert fails before PostgreSQL returns it. The event must not include whole source rows or customer fields.
+
+The incident text available for this run did not contain the PostgreSQL exception chain or batch log. Its constraint, source table, source namespace and IDs therefore remain unclassified. The code change in PR #163 now distinguishes primary-key, source-lineage unique, and other unique-constraint violations when PostgreSQL identifies the affected sale table; use the exact structured fields for each future incident.
+
+Read-only triage for a captured header source identity and target ID:
+
+Bind `$1` / `$2` / `$3` in the database client as target ID, source table key and source row ID; bind `$1` in the batch query as the batch ID.
+
+```sql
+SELECT id AS target_id, data_origin, source_table_key, source_row_id, source_batch_id
+FROM prodaja_zaglavlje
+WHERE id = $1
+   OR (source_table_key = $2 AND source_row_id = $3)
+ORDER BY id;
+
+SELECT conname, contype, pg_get_constraintdef(oid) AS definition
+FROM pg_constraint
+WHERE conrelid IN ('prodaja_zaglavlje'::regclass, 'prodaja_stavke'::regclass)
+ORDER BY conrelid::regclass::text, conname;
+
+SELECT "Id", "Status", "CurrentStep", "CurrentTable", "StartedAtUtc", "CompletedAtUtc"
+FROM "DataImportBatches"
+WHERE "Id" = $1;
+```
+
+Treat more than one source-lineage match, a matching legacy row without enough provenance, or an unknown source namespace as ambiguous. Do not repair lineage from receipt number, article, price or date. Do not rerun a deterministic identity failure as a transient retry. This run did not change production data.
+
+The current repair maps Access sale headers to PostgreSQL-generated IDs and passes those target IDs to lines and analytics. It also enlists analytics in the operational transaction only when both contexts resolve to the same PostgreSQL connection identity, and refuses the analytics-inclusive import otherwise. Source-database namespace, full legacy reconciliation and the complete SQL acceptance oracle are still open gates; keep PR #163 open until those proofs are supplied.

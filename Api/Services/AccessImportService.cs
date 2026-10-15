@@ -2871,10 +2871,11 @@ using NpgsqlTypes;
 
             await RetriableDbContextTransaction.ExecuteAsync(_trendDb, async transactionCt =>
             {
+                IDbContextTransaction? analyticsTransaction = null;
                 if (includeAnalytics)
                 {
                     EnsureAnalyticsSharesTrendplusDatabase();
-                    await EnlistAnalyticsContextInTrendTransactionAsync(transactionCt);
+                    analyticsTransaction = await EnlistAnalyticsContextInTrendTransactionAsync(transactionCt);
                 }
 
                 var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
@@ -2979,6 +2980,8 @@ using NpgsqlTypes;
                 finally
                 {
                     _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
+                    if (analyticsTransaction is not null)
+                        await analyticsTransaction.DisposeAsync();
                 }
             }, _logger, "AccessImportBatchExecution", ct);
 
@@ -8273,7 +8276,7 @@ using NpgsqlTypes;
                 "analytics_atomicity_unavailable: Access import cannot include analytics because Trendplus and Analytics use separate PostgreSQL connection identities; no cross-database atomic commit is available.");
     }
 
-    private async Task EnlistAnalyticsContextInTrendTransactionAsync(CancellationToken ct)
+    private async Task<IDbContextTransaction?> EnlistAnalyticsContextInTrendTransactionAsync(CancellationToken ct)
     {
         var connection = _trendDb.Database.GetDbConnection();
         var transaction = _trendDb.Database.CurrentTransaction?.GetDbTransaction();
@@ -8283,7 +8286,7 @@ using NpgsqlTypes;
         if (!ReferenceEquals(_analyticsDb.Database.GetDbConnection(), connection))
             _analyticsDb.Database.SetDbConnection(connection, contextOwnsConnection: false);
 
-        await _analyticsDb.Database.UseTransactionAsync(transaction, ct);
+        return await _analyticsDb.Database.UseTransactionAsync(transaction, ct);
     }
 
     private static async Task ExecuteAnalyticsNonQueryAsync(
@@ -10866,7 +10869,8 @@ using NpgsqlTypes;
             .ToList();
 
         _logger.LogInformation(
-            "Access import sale-header flush diagnostics. BatchId: {BatchId}. Step: {Step}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}.",
+            "Access import sale-header flush diagnostics. Operation: {Operation}. BatchId: {BatchId}. Step: {Step}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}.",
+            "flush-trend-writes",
             _activeBatchId,
             "db-flush",
             pendingHeaders.Count(entry => entry.State == EntityState.Added),
@@ -10877,7 +10881,7 @@ using NpgsqlTypes;
                 .Select(entry => new
                 {
                     entry.State,
-                    entry.Entity.Id,
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
                     entry.Entity.DataOrigin,
                     entry.Entity.SourceTableKey,
                     entry.Entity.SourceRowId
@@ -10893,8 +10897,10 @@ using NpgsqlTypes;
             var failureCode = ClassifyAccessImportUniqueViolation(postgresException);
             _logger.LogError(
                 ex,
-                "Access import identity conflict. SourceSystem: {SourceSystem}. BatchId: {BatchId}. Step: {Step}. SourceTable: {SourceTable}. SqlState: {SqlState}. TableName: {TableName}. ConstraintName: {ConstraintName}. FailureCode: {FailureCode}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. AddedOrModifiedLines: {Lines}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}. LineSourceSamples: {LineSourceSamples}.",
+                "Access import identity conflict. Operation: {Operation}. SourceSystem: {SourceSystem}. SourceNamespace: {SourceNamespace}. BatchId: {BatchId}. Step: {Step}. SourceTable: {SourceTable}. SqlState: {SqlState}. TableName: {TableName}. ConstraintName: {ConstraintName}. FailureCode: {FailureCode}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. AddedOrModifiedLines: {Lines}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}. LineSourceSamples: {LineSourceSamples}.",
+                "save-changes",
                 "access",
+                null,
                 _activeBatchId,
                 _activeBatchStep ?? "db-flush",
                 _activeBatchTable,
@@ -10908,15 +10914,15 @@ using NpgsqlTypes;
                 duplicateAddedHeaderIds,
                 pendingHeaders.Take(5).Select(entry => new
                 {
-                    entry.Entity.Id,
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
                     entry.Entity.DataOrigin,
                     entry.Entity.SourceTableKey,
                     entry.Entity.SourceRowId
                 }).ToArray(),
                 pendingSaleLines.Take(5).Select(entry => new
                 {
-                    entry.Entity.Id,
-                    entry.Entity.IdProdaja,
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
+                    TargetHeaderId = entry.Entity.IdProdaja > 0 ? entry.Entity.IdProdaja : (int?)null,
                     entry.Entity.SourceTableKey,
                     entry.Entity.SourceRowId
                 }).ToArray());

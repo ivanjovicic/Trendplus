@@ -33,6 +33,7 @@ public sealed class AccessImportRetryAtomicityTests
         Assert.Contains("RetriableDbContextTransaction.ExecuteAsync(_trendDb", batch, StringComparison.Ordinal);
         Assert.Contains("EnsureAnalyticsSharesTrendplusDatabase();", batch, StringComparison.Ordinal);
         Assert.Contains("EnlistAnalyticsContextInTrendTransactionAsync(transactionCt)", batch, StringComparison.Ordinal);
+        Assert.Contains("analyticsTransaction.DisposeAsync()", batch, StringComparison.Ordinal);
         Assert.True(batch.IndexOf("EnlistAnalyticsContextInTrendTransactionAsync", StringComparison.Ordinal)
             < batch.IndexOf("ImportTrendplusAsync(session", StringComparison.Ordinal));
     }
