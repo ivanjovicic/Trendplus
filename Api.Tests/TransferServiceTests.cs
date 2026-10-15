@@ -125,6 +125,31 @@ public class TransferServiceTests
     }
 
     [Fact]
+    public async Task CancelDraft_InvalidatesInventoryAfterCommit_ButCreatingDraftDoesNot()
+    {
+        var db = CreateDb("tp_transfer_cancel_cache");
+        var cache = new InMemoryCacheService(
+            new MemoryCache(new MemoryCacheOptions()), NullLogger<InMemoryCacheService>.Instance);
+        var cacheAdmin = new AnalyticsCacheAdminService(
+            cache, null, NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection().AddSingleton(cacheAdmin).BuildServiceProvider();
+        var service = new TransferService(db, new NullLogger<TransferService>(), services);
+        var key = AnalyticsCacheKeys.Inventory(2);
+
+        await cache.SetAsync(key, new TransferCacheMarker { Value = "before-draft" });
+        var draft = await service.CreateDraftAsync(new TransferCreateRequest
+        {
+            SourceId = 1,
+            DestinationId = 2,
+            Items = { new TransferLineInputDto { SkuId = 800, Quantity = 1m, Unit = "pcs" } }
+        }, "tester");
+        Assert.Equal("before-draft", (await cache.GetAsync<TransferCacheMarker>(key))?.Value);
+
+        await service.CancelAsync(draft.Id, "tester");
+        Assert.Null(await cache.GetAsync<TransferCacheMarker>(key));
+    }
+
+    [Fact]
     public async Task ListAsync_FiltersByActorAndUpdatedBy()
     {
         var db = CreateDb("tp_transfer_actor_filters");
