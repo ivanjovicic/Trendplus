@@ -51,7 +51,11 @@ vi.mock("../../components/analytics/AnalyticsEmptyState", () => ({
     </button>
   ),
 }));
-vi.mock("../../components/analytics/AnalyticsErrorState", () => ({ default: () => null }));
+vi.mock("../../components/analytics/AnalyticsErrorState", () => ({
+  default: ({ onRetry }: { onRetry?: () => void }) => onRetry
+    ? <button type="button" data-testid="analytics-error-retry" onClick={onRetry}>Pokušaj ponovo</button>
+    : null,
+}));
 vi.mock("../../components/analytics/KpiExplainButton", () => ({ default: () => null }));
 vi.mock("../../components/inventory/ActionWorkflowPanel", () => ({ ActionWorkflowPanel: () => null }));
 vi.mock("../../components/inventory/DecisionSummaryBar", () => ({ DecisionSummaryBar: () => null }));
@@ -177,6 +181,174 @@ describe("InventoryPage queue status sync", () => {
       expect(getInventoryAlertsMock.mock.calls.length).toBeGreaterThan(alertsBaseline);
       expect(getRebalanceSuggestionsMock.mock.calls.length).toBeGreaterThan(rebalanceBaseline);
     });
+  });
+
+  it("loads and validates store and compare filters for the new data scope before querying inventory", async () => {
+    setDataScope("imported");
+    let resolveExistingStores!: (stores: Array<{ storeId: number; storeName: string }>) => void;
+    const existingStores = new Promise<Array<{ storeId: number; storeName: string }>>((resolve) => {
+      resolveExistingStores = resolve;
+    });
+    getStoresMock.mockImplementation((_cached: boolean, scope: string) => {
+      if (scope === "imported") {
+        return Promise.resolve([
+          { storeId: -11, storeName: "Prodavnica" },
+          { storeId: 1, storeName: "Prodavnica" },
+        ]);
+      }
+      if (scope === "existing") return existingStores;
+      return Promise.resolve([]);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?storeId=-11&compareStores=-11,1"]}>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getStoresMock).toHaveBeenCalledWith(true, "imported");
+      expect(getInventoryListMock).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported", storeId: -11 }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [-11, 1] }));
+    });
+
+    const existingListCallCount = getInventoryListMock.mock.calls.length;
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => expect(getStoresMock).toHaveBeenCalledWith(true, "existing"));
+    expect(screen.getByLabelText("Filter po prodavnici")).toBeDisabled();
+    expect(getInventoryListMock.mock.calls.slice(existingListCallCount).filter(([request]) => request.dataScope === "existing")).toHaveLength(0);
+    expect(getInventoryStoreComparisonMock.mock.calls.filter(([request]) => request.dataScope === "existing")).toHaveLength(0);
+
+    resolveExistingStores([
+      { storeId: 1, storeName: "Prodavnica" },
+      { storeId: 2, storeName: "Prodavnica" },
+    ]);
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getInventoryBalanceMock).toHaveBeenLastCalledWith(true, null, null, "existing", expect.any(AbortSignal));
+      expect(getInventoryInsightsMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", compareStoreIds: [1] }));
+      expect(getInventoryActionSuggestionsMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getForecastMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getInventoryAlertsMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getRebalanceSuggestionsMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", fromStoreId: null }));
+    });
+    expect(screen.getByLabelText("Filter po prodavnici")).not.toBeDisabled();
+    expect(getInventoryListMock.mock.calls.filter(([request]) => request.dataScope === "existing" && request.storeId === -11)).toHaveLength(0);
+    expect(getInventoryStoreComparisonMock.mock.calls.filter(([request]) => request.dataScope === "existing" && request.compareStoreIds.includes(-11))).toHaveLength(0);
+  });
+
+  it("keeps verified filters during a same-scope refresh without reloading stores", async () => {
+    setDataScope("imported");
+    getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica" }]);
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?storeId=1&compareStores=1"]}>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", storeId: 1 }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [1] }));
+    });
+    const storeCallsBeforeRefresh = getStoresMock.mock.calls.length;
+    const inventoryCallsBeforeRefresh = getInventoryListMock.mock.calls.length;
+
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await waitFor(() => expect(getInventoryListMock.mock.calls.length).toBeGreaterThan(inventoryCallsBeforeRefresh));
+    expect(getStoresMock.mock.calls).toHaveLength(storeCallsBeforeRefresh);
+    expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", storeId: 1 }));
+    expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [1] }));
+  });
+
+  it("blocks inventory requests after store lookup failure and retries against the active scope", async () => {
+    setDataScope("imported");
+    let existingAttempts = 0;
+    getStoresMock.mockImplementation((_cached: boolean, scope: string) => {
+      if (scope === "imported") return Promise.resolve([{ storeId: -11, storeName: "Uvozna prodavnica" }]);
+      existingAttempts += 1;
+      return existingAttempts === 1
+        ? Promise.reject(new Error("store list unavailable"))
+        : Promise.resolve([{ storeId: 2, storeName: "Aktivna prodavnica" }]);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/analytics/inventory?storeId=-11&compareStores=-11"]}>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", storeId: -11 })));
+    const inventoryListBaseline = getInventoryListMock.mock.calls.length;
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+
+    await screen.findByRole("alert");
+    expect(getInventoryListMock.mock.calls.slice(inventoryListBaseline).filter(([request]) => request.dataScope === "existing")).toHaveLength(0);
+    expect(getSupplierFiltersMock.mock.calls.filter(([, , , storeId, scope]) => scope === "existing" && storeId === -11)).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+
+    await waitFor(() => {
+      expect(getInventoryListMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", storeId: null }));
+      expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "existing", compareStoreIds: [2] }));
+    });
+    expect(screen.getByLabelText("Filter po prodavnici")).toHaveValue("");
+    expect(getInventoryListMock.mock.calls.filter(([request]) => request.dataScope === "existing" && request.storeId === -11)).toHaveLength(0);
+  });
+
+  it("ignores a delayed store list response after a faster scope change", async () => {
+    setDataScope("imported");
+    let resolveExistingStores!: (stores: Array<{ storeId: number; storeName: string }>) => void;
+    const existingStores = new Promise<Array<{ storeId: number; storeName: string }>>((resolve) => {
+      resolveExistingStores = resolve;
+    });
+    let importedAttempts = 0;
+    getStoresMock.mockImplementation((_cached: boolean, scope: string) => {
+      if (scope === "existing") return existingStores;
+      importedAttempts += 1;
+      return Promise.resolve(importedAttempts === 1
+        ? [{ storeId: 1, storeName: "Početna uvozna prodavnica" }]
+        : [{ storeId: 3, storeName: "Aktuelna uvozna prodavnica" }]);
+    });
+
+    render(
+      <MemoryRouter>
+        <InventoryPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [1] })));
+
+    setDataScope("existing");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+    await waitFor(() => expect(getStoresMock).toHaveBeenCalledWith(true, "existing"));
+
+    setDataScope("imported");
+    act(() => {
+      window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    });
+    await waitFor(() => expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [3] })));
+
+    await act(async () => {
+      resolveExistingStores([{ storeId: 999, storeName: "Zastarela prodavnica" }]);
+      await existingStores;
+    });
+
+    expect(screen.getByLabelText("Filter po prodavnici").querySelector('option[value="3"]')).not.toBeNull();
+    expect(screen.getByLabelText("Filter po prodavnici").querySelector('option[value="999"]')).toBeNull();
+    expect(getInventoryStoreComparisonMock).toHaveBeenLastCalledWith(expect.objectContaining({ dataScope: "imported", compareStoreIds: [3] }));
   });
 
   it("clears the dependent supplier before loading a changed global scope", async () => {
