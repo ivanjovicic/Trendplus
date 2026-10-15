@@ -219,7 +219,8 @@ describe("InventoryPage queue status sync", () => {
     });
 
     await waitFor(() => expect(getStoresMock).toHaveBeenCalledWith(true, "existing"));
-    expect(screen.getByLabelText("Filter po prodavnici")).toBeDisabled();
+    expect(await screen.findByRole("status", { name: "Učitavanje bilansa zaliha" })).toBeInTheDocument();
+    expect(screen.getByTestId("inventory-store-comparison-unavailable")).toBeInTheDocument();
     expect(getInventoryListMock.mock.calls.slice(existingListCallCount).filter(([request]) => request.dataScope === "existing")).toHaveLength(0);
     expect(getInventoryStoreComparisonMock.mock.calls.filter(([request]) => request.dataScope === "existing")).toHaveLength(0);
 
