@@ -4087,7 +4087,7 @@ No unfiltered Dashboard breakdown can differ from the raw canonical computation;
 
 PR + green required CI, real merge, completion note with exact SHA.
 
-## RQ682 - Align the Nivelacije period filter with the wall-clock timestamp convention
+## RQ682 - Filter Nivelacije by the verified timestamp basis (Access wall-clock vs POS UTC)
 
 Status: READY
 Priority: P2
@@ -4116,12 +4116,12 @@ Access sales and journal timestamps are stored as Belgrade wall-clock values tag
 
 ### Confirm first
 
-1. Test (EF InMemory is not enough for date translation; use PostgreSQL): journal rows at D-1 23:30, D 00:30, D 23:30 wall-clock. Call `/api/nivelacije?fromDate=D&toDate=D`. Expected by convention: only D 00:30 and D 23:30. Record the current result.
-2. Grep every `DatumProdaje`/`Datum` writer for `DateTime.UtcNow` fallbacks (`AccessImportService.cs:5279`, `:6843`, POS paths) and list which can produce real-UTC values; report, do not change them here.
+1. On disposable PostgreSQL (EF InMemory is insufficient), seed two *explicit* source populations: (a) Access `DataOrigin=access` with `Datum` stored as wall-clock-UTC at D-1 23:30, D 00:30, D 23:30; (b) POS/operational `DataOrigin=existing` with genuine UTC event times corresponding to Belgrade D-1 23:30, D 00:30 and D 23:30. Call `/api/nivelacije?fromDate=D&toDate=D`. Both populations must select exactly the two D rows for their independently verified timestamp basis. Check the winter UTC+1 and summer UTC+2 cases; test near both DST transitions. The existing blanket UTC conversion incorrectly shifts Access, but a blanket raw-midnight replacement would incorrectly shift POS.
+2. Enumerate all `DnevnikPromena.Datum` writers, real UTC fallback paths and legacy imports; check if `DataOrigin` is actually sufficient to distinguish source time conventions. If not, record the precise missing per-row timestamp-basis field/authority and keep the mixed-origin population partially unavailable. Do not infer original timezone from the `DateTime.Kind` bit alone. Report, do not change import/legacy rows.
 
 ### Fix requirements
 
-Use the same calendar-date half-open rule as analytics (`>= D 00:00`, `< D+1 00:00` on the stored value). Keep the frontend preset (Belgrade "today") unchanged. Correct the comment and add the decision to the completion note so RQ654's rationale is not reused.
+DO NOT apply `>= D 00:00Z, < D+1 00:00Z` indiscriminately: `AllEndpoints.cs` writes POS/operational `DnevnikPromena` with `Datum = DateTime.UtcNow` and `DataOrigin = "existing"`, whereas imported Access journal dates are legacy Belgrade wall-clock values tagged UTC. First prove the timestamp basis for each real source population, including unknown/legacy. For confirmed Access wall-clock source, use the stored calendar date with half-open UTC-tagged midnights; for confirmed real-UTC operational source, retain the existing Belgrade-midnight-to-UTC conversion. If an origin has ambiguous timestamps, fail closed / mark period evidence unavailable rather than silently treating all dates as one basis. Keep the frontend preset (Belgrade "today") unchanged; correct the shared comment to distinguish UI calendar day from stored timestamp basis. Never alter stored timestamps in this task.
 
 ### Must not change
 
@@ -4129,17 +4129,17 @@ Analytics endpoint date semantics, stored timestamps, import code, preset output
 
 ### Tests
 
-PostgreSQL-required boundary test for summer and winter dates (DST-adjacent days); existing nivelacije tests green.
+PostgreSQL-required source-origin × boundary matrix: Access wall-clock, POS genuine UTC, unclassified legacy; summer and winter days and DST-adjacent boundaries; explicit `from <= date < toExclusive`, plus existing Nivelacije endpoint tests. Negative test: prove that simply replacing Belgrade conversion with raw midnight moves a POS event to the wrong day. No skipped PostgreSQL proof.
 
 ### Acceptance
 
-The three-row fixture returns exactly the wall-clock day rows in both seasons; CI green on PR and main.
+Both source-specific three-row fixtures return exactly their Belgrade business-day events; ambiguous legacy rows are not silently classified. CI green on PR and main. If source authority is absent, mark this task PARTIAL with a named provenance blocker; do not merge a blanket date conversion.
 
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
 
-## RQ683 - Compute 7-day and 30-day Dashboard/Details signals on calendar days
+## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
 
 Status: READY
 Priority: P2
@@ -4152,7 +4152,7 @@ Commit suggestion: `fix(analytics-dashboard): moving averages and week-over-week
 
 ### Goal
 
-MA7, MA30, momentum, elasticity, anomaly flags and week-over-week change describe calendar windows inside the selected period, not the last N rows.
+MA7, MA30, momentum, elasticity, anomaly flags and week-over-week change describe *known-complete calendar windows*, not the last N returned rows. Missing sales rows are not automatically verified zero-sale days.
 
 ### Problem
 
@@ -4168,11 +4168,11 @@ Backend grouping without zero-fill `Api/Endpoints/CachedAnalyticsEndpoints.cs:52
 
 ### Confirm first
 
-Unit test with 14 calendar days where one Sunday is missing from the series: current MA7 and momentum differ from the calendar-day oracle. Commit the failing expectation first in the PR history (or show it in the run log).
+Unit test with 14 calendar days where a Sunday is absent from the series: current last-7-rows MA and momentum are not seven calendar days. A missing Sunday has unknown completeness (NOT certified zero) until a store/day source proof confirms `verified_empty`. Add a separate 14-day fixture with explicit verified-empty coverage to prove correctly divided, signed day-based signals. Commit/show failing expected behavior before the fix.
 
 ### Fix requirements
 
-Zero-fill missing days only inside the requested period (a day with no sales in an open store is 0 revenue; days outside the period are not invented). Windows are the last 7/30 calendar days ending at the period end. Signals stay `null` unless both windows are fully inside the period. Do not change backend payloads.
+Build a daily calendar grid only inside the requested period. Distinguish `observed_sale`, `verified_empty`, `unknown_day`/`partial_day`, and `outside_window`; never convert missing source days to numeric zero merely because an API series omits them. `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md` (RQ611) explicitly says missing history, batch #23 gaps and unverified source days are NOT certified zero. A `verified_empty` zero is usable only if a trusted source/day coverage signal exists for that exact store/scope/period; do not invent a frontend signal by guessing from row presence. Until an authoritative day-coverage contract is available in the endpoint, return an explicit unavailable (`null`) MA/momentum/elasticity/anomaly/weekly comparison for windows with missing dates. For complete windows use exact 7/30 *calendar* days and preserve signed returns. Keep existing backend payloads unless a separately owned contract is needed; no synthetic financial signals.
 
 ### Must not change
 
@@ -4184,11 +4184,16 @@ Header KPIs, period divisor logic (`calculateDashboardPeriodDays`), fake-zero gu
 
 ### Acceptance
 
-Specs prove calendar-day results; frontend CI job green on PR and main.
+Specs prove complete calendar windows and genuinely verified zero days; a gap with no completeness evidence forces `null`/unavailable rather than inflated or fake-zero metrics. No cross-scope reuse of a different store/source's completion marker. Frontend CI job green on PR and main.
 
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
+
+
+### 2026-10-15 independent safety review — timestamp/provenance and fake-zero guards
+
+Direct user code-review addendum (not a new task claim): `Api/Endpoints/AllEndpoints.cs` writes an operational Nivelacija journal row with `Datum = DateTime.UtcNow`, `DataOrigin = "existing"`; Access history stores a local wall-clock value tagged UTC. The former `RQ682` blanket UTC-midnight replacement would break POS dates. `RQ611` store/day completeness says absence is not proof of zero; the former `RQ683` zero-fill instructions would fabricate sales evidence for missing days. The RQ682/RQ683 task objectives remain, but the test/acceptance contracts above now require source-specific time basis and verified day completeness. No runtime change, queue claim or business DB access was performed by this review.
 
 ## RQ684 - Supplier concentration definition, Serbian diacritics in analytics errors and page-scoped Inventory chart label
 
