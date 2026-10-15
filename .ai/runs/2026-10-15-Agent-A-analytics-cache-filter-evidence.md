@@ -3,10 +3,10 @@ Queue: direct-user-request
 Date: 2026-10-15
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: agent-a-analytics / pending
-Main commit SHA: pending
-Main verification: pending - verify the delivered test coverage on origin/main after merge
-Evidence state: pending
+Working branch / PR: agent-a-analytics / #177 (merged)
+Main commit SHA: e873086541a9b8ea8e44dd0adfaca7d566db4973
+Main verification: passed - origin/main contains e873086541a9b8ea8e44dd0adfaca7d566db4973; main run 38755445350 green
+Evidence state: synchronized
 Ownership transfer: none
 Claim reservation: direct-user-request/not applicable
 
@@ -47,4 +47,4 @@ Claim reservation: direct-user-request/not applicable
 - not applicable (direct-user-request)
 
 ## Next
-- Verify the delivered SHA on origin/main after merge; PR #163 remains a separate draft blocked on its documented P0 provenance/PostgreSQL evidence.
+- PR #163 remains a separate draft blocked on its documented P0 provenance/PostgreSQL evidence.
