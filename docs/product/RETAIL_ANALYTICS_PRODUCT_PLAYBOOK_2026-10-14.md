@@ -8,6 +8,10 @@ This file describes **why, for whom and how to prioritize**. It is **not** a tas
 
 Read the [evidence-based ProfitGuard market/competition and unit-economics study](RETAIL_PROFITGUARD_MARKET_FEASIBILITY_2026-10-15.md) before treating product expansion, pricing, SAM or supplier invoice controls as ready work. **Decision:** first validate a bounded paid, dated, read-only retail audit and actual operator use of the *existing* digest/actions; subscription and invoice-mismatch add-on remain unproven alternatives. Public competitor price pages and broad trade-sector counts are not customer demand or footwear TAM. No new RQ, screen, scoring family, source connector or live/deployed claim is authorized by the study. RQ666/RQ667 and RQ585 are already DONE.
 
+## Footwear-specific opportunity discovery — 2026-10-15
+
+The [source-verified footwear decision opportunity catalog](FOOTWEAR_DECISION_PRODUCT_OPPORTUNITIES_2026-10-15.md) evaluates size-run/store decisions, transfer-versus-buy-versus-markdown comparisons, supplier-return rights, seasonal buying constraints and data-integrity revenue opportunities. **It is discovery, not a new execution queue or runtime scope authorization.** Existing size-curve, rebalance, transfer, weekly digest and Actions components are not to be rebuilt; strong recommendations remain blocked where model-family/store-level stock, cost, provenance, customer authority or observed outcomes are missing. Follow this playbook's existing Wave B/C gates and only promote a feature after real customer/source proof.
+
 ## 1. Product decision — small, credible and sellable
 
 **Positioning:** footwear-retail decision support on top of a customer's existing sales/stock system, not a POS/ERP replacement, scraping service, generic BI toolkit or prediction platform. Start with one retailer and a repeatable source import. A separate deployment per customer is acceptable for the first pilot.

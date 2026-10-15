@@ -652,6 +652,7 @@ export default function PreNivelacijaPriorityPage() {
     refetch,
   } = useReliableAnalyticsQuery<PreNivelacijaPriorityResponse>({
     query: preNivelacijaQuery,
+    contextKey: JSON.stringify([dataScope, activeFilters, focusFilter, page, queryArticleId]),
     getErrorMessage: useCallback((reason: unknown) => getPreNivelacijaErrorDetails(reason).message, []),
   });
   const loading = initialLoading || refetching;

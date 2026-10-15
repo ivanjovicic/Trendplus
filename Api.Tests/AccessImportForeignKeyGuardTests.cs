@@ -1,5 +1,6 @@
 using System.Reflection;
 using Api.Config;
+using Npgsql;
 using Api.Services.Access;
 using Domain.Model;
 using Domain.Model.Prodaja;
@@ -458,7 +459,10 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
 
-        Assert.StartsWith("primary_key_collision:", ex.Message, StringComparison.Ordinal);
+        Assert.StartsWith("duplicate_sale_header_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("target_primary_key_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("POS-7", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("ACCESS-7", ex.Message, StringComparison.Ordinal);
 
         await using var verifyDb = CreateDbContext(database.ConnectionString);
         var persisted = await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync();
@@ -508,7 +512,9 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
 
-        Assert.StartsWith("primary_key_collision:", ex.Message, StringComparison.Ordinal);
+        Assert.StartsWith("duplicate_sale_line_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("target_primary_key_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("primary_key_collision:", ex.Message, StringComparison.Ordinal);
         await using var verifyDb = CreateDbContext(database.ConnectionString);
         var persisted = await verifyDb.ProdajaStavke.AsNoTracking().SingleAsync();
         Assert.Equal(100, persisted.IdArtikal);
@@ -620,7 +626,9 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         SetPendingTrendWrites(service, 1);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
-        Assert.StartsWith("source_lineage_unique_collision:", ex.Message, StringComparison.Ordinal);
+        Assert.StartsWith("duplicate_sale_line_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("access_source_lineage_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("target_primary_key_collision", ex.Message, StringComparison.Ordinal);
 
         await using var verifyDb = CreateDbContext(database.ConnectionString);
         var persisted = await verifyDb.ProdajaStavke.AsNoTracking().SingleAsync();
@@ -714,6 +722,309 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         var persistedCursor = await db.Database.SqlQueryRaw<long>(
             "SELECT \"CursorId\" AS \"Value\" FROM \"AccessImportCursors\" WHERE \"TableKey\" = 'sales'").SingleAsync();
         Assert.Equal(7, persistedCursor);
+    }
+
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_DistinguishesSourceLineageCollisionFromPrimaryKeyCollision()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "REDACT-ME-A",
+            DatumProdaje = DateTime.UtcNow,
+            DataOrigin = "access",
+            SourceTableKey = "prodaja_zaglavlje",
+            SourceRowId = 77
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 8,
+            BrojRacuna = "REDACT-ME-B",
+            DatumProdaje = DateTime.UtcNow,
+            DataOrigin = "access",
+            SourceTableKey = "prodaja_zaglavlje",
+            SourceRowId = 77
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+        Assert.Contains("access_source_lineage_collision (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("target_primary_key_collision", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("REDACT-ME", ex.Message, StringComparison.Ordinal);
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        var persisted = await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync();
+        Assert.Equal(7, persisted.Id);
+        Assert.Equal(77, persisted.SourceRowId);
+    }
+
+    [PostgresRequiredFact]
+    public async Task FlushTrendWritesAsync_DoesNotMisclassifyAnUnknownUniqueIndexAsPk()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX ux_test_sale_number_store ON prodaja_zaglavlje (broj_racuna, id_objekat);");
+
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 7,
+            BrojRacuna = "DO-NOT-LEAK",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "existing"
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
+        {
+            Id = 8,
+            BrojRacuna = "DO-NOT-LEAK",
+            DatumProdaje = DateTime.UtcNow,
+            IDObjekat = 1,
+            DataOrigin = "access"
+        });
+        SetPendingTrendWrites(service, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeFlushTrendWritesAsync(service));
+        Assert.Contains("unclassified_unique_constraint (SQLSTATE 23505)", ex.Message, StringComparison.Ordinal);
+        Assert.StartsWith("duplicate_sale_header_identity:", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("target_primary_key_collision", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("DO-NOT-LEAK", ex.Message, StringComparison.Ordinal);
+
+        await using var verifyDb = CreateDbContext(database.ConnectionString);
+        Assert.Equal(7, (await verifyDb.ProdajaZaglavlja.AsNoTracking().SingleAsync()).Id);
+    }
+
+    [PostgresRequiredFact]
+    public async Task MixedPopulationSqlOracle_DoesNotRebindHistoricalReceipts()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        var soldAt = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
+        db.ProdajaZaglavlja.AddRange(
+            new ProdajaZaglavlje
+            {
+                Id = 7,
+                BrojRacuna = "POS-7",
+                DatumProdaje = soldAt,
+                IDObjekat = 1,
+                DataOrigin = "existing"
+            },
+            new ProdajaZaglavlje
+            {
+                Id = 40,
+                BrojRacuna = "LEGACY-40",
+                DatumProdaje = soldAt,
+                IDObjekat = 1,
+                DataOrigin = "access",
+                SourceTableKey = "prodajazaglavlje",
+                SourceRowId = null
+            });
+        db.ProdajaStavke.AddRange(
+            new ProdajaStavka
+            {
+                Id = 11,
+                IdProdaja = 7,
+                IdArtikal = 100,
+                Kolicina = 1,
+                Cena = 50m
+            },
+            new ProdajaStavka
+            {
+                Id = 41,
+                IdProdaja = 40,
+                IdArtikal = 100,
+                Kolicina = 1,
+                Cena = 10m,
+                SourceTableKey = null,
+                SourceRowId = null
+            });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var source = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sales_headers"] = Rows(
+                ["ID", "BrojRacuna", "DatumProdaje", "IDObjekat"],
+                [7, "ACCESS-7", soldAt, 2]),
+            ["sales_lines"] = Rows(
+                ["ID", "IDProdaja", "IDArtikal", "Kolicina", "Cena"],
+                [11, 7, 100, 2, 99m],
+                [12, 7, 100, 2, 99m])
+        });
+        var service = CreateService(db, skipInvalidForeignKeys: false);
+        var result = new Api.Models.AccessImportRunResponse { BatchId = 7023, Status = "running" };
+        await InvokeSaleImportAsync(service, "ImportProdajaAsync", [source, "sales_headers", false, result, CancellationToken.None]);
+        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [source, "sales_lines", "sales_headers", false, result, CancellationToken.None]);
+        await InvokeSaleImportAsync(service, "ImportProdajaAsync", [source, "sales_headers", false, result, CancellationToken.None]);
+        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [source, "sales_lines", "sales_headers", false, result, CancellationToken.None]);
+
+        await ExecuteTriageScriptAsync(database.ConnectionString);
+
+        var headers = await db.ProdajaZaglavlja.AsNoTracking().ToListAsync();
+        var pos = headers.Single(header => header.Id == 7);
+        Assert.Equal("POS-7", pos.BrojRacuna);
+        Assert.Equal("existing", pos.DataOrigin);
+        var legacy = headers.Single(header => header.Id == 40);
+        Assert.Equal("LEGACY-40", legacy.BrojRacuna);
+        Assert.Null(legacy.SourceRowId);
+        var imported = headers.Single(header => header.DataOrigin == "access" && header.SourceRowId == 7);
+        Assert.NotEqual(7, imported.Id);
+        Assert.NotEqual(40, imported.Id);
+        Assert.Equal(3, headers.Count);
+
+        var lines = await db.ProdajaStavke.AsNoTracking().ToListAsync();
+        Assert.Equal(4, lines.Count);
+        Assert.Equal(7, lines.Single(line => line.Id == 11).IdProdaja);
+        Assert.Equal(50m, lines.Single(line => line.Id == 11).Cena);
+        Assert.Equal(40, lines.Single(line => line.Id == 41).IdProdaja);
+        var importedLines = lines.Where(line => line.SourceRowId is 11 or 12).OrderBy(line => line.SourceRowId).ToList();
+        Assert.Equal(2, importedLines.Count);
+        Assert.All(importedLines, line => Assert.Equal(imported.Id, line.IdProdaja));
+        Assert.All(importedLines, line => Assert.NotEqual(11, line.Id));
+
+        Assert.Equal(0, await ScalarAsync<long>(db, """
+            SELECT COUNT(*)::bigint AS "Value"
+            FROM (
+                SELECT source_table_key, source_row_id
+                FROM prodaja_zaglavlje
+                WHERE data_origin = 'access'
+                  AND source_table_key IS NOT NULL
+                  AND source_row_id IS NOT NULL
+                GROUP BY source_table_key, source_row_id
+                HAVING COUNT(*) > 1
+            ) AS duplicate_source
+            """));
+        Assert.Equal(1, await ScalarAsync<long>(db, """
+            SELECT COUNT(*)::bigint AS "Value"
+            FROM prodaja_zaglavlje
+            WHERE data_origin = 'access'
+              AND (source_row_id IS NULL OR source_table_key IS NULL)
+            """));
+        Assert.Equal(0, await ScalarAsync<long>(db, """
+            SELECT COUNT(*)::bigint AS "Value"
+            FROM prodaja_stavke AS s
+            LEFT JOIN prodaja_zaglavlje AS h ON h.id = s.id_prodaja
+            WHERE h.id IS NULL
+            """));
+        Assert.Equal(imported.Id, await ScalarAsync<int>(db, """
+            SELECT a.id AS "Value"
+            FROM prodaja_zaglavlje AS a
+            JOIN prodaja_zaglavlje AS t
+              ON t.id = a.source_row_id
+             AND t.id <> a.id
+            WHERE a.data_origin = 'access'
+              AND a.source_row_id = 7
+              AND t.data_origin = 'existing'
+            """));
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE "SalesFacts" (
+                "SaleId" integer PRIMARY KEY,
+                "BrojRacuna" text NOT NULL,
+                "SaleTimestampUtc" timestamp with time zone NOT NULL,
+                "StoreId" integer NOT NULL,
+                "PaymentType" text NOT NULL,
+                "TotalAmount" numeric(18,2) NOT NULL,
+                "TotalUnits" integer NOT NULL,
+                "TotalLines" integer NOT NULL,
+                "DataOrigin" text NOT NULL
+            );
+            CREATE TABLE "SalesLineFacts" (
+                "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                "SaleId" integer NOT NULL,
+                "ProductId" integer NOT NULL,
+                "Qty" integer NOT NULL,
+                "UnitPrice" numeric(18,2) NOT NULL,
+                "LineTotal" numeric(18,2) NOT NULL,
+                "NabavnaCena" numeric(18,2) NULL,
+                "DataOrigin" text NOT NULL,
+                "SourceTableKey" text NULL,
+                "SourceLineId" bigint NULL
+            );
+            INSERT INTO "SalesFacts" (
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+            SELECT
+                h.id,
+                COALESCE(h.broj_racuna, ''),
+                h.datum_prodaje,
+                COALESCE(h.id_objekat, 1),
+                COALESCE(h.nacin_placanja, ''),
+                COALESCE(SUM(s.kolicina * s.cena), 0),
+                COALESCE(SUM(s.kolicina), 0)::integer,
+                COUNT(s.id)::integer,
+                h.data_origin
+            FROM prodaja_zaglavlje AS h
+            LEFT JOIN prodaja_stavke AS s ON s.id_prodaja = h.id
+            GROUP BY h.id, h.broj_racuna, h.datum_prodaje, h.id_objekat, h.nacin_placanja, h.data_origin;
+            """);
+
+        var mappedFacts = AccessImportService.MapSalesLineFacts(lines.Select(line =>
+            new AccessImportService.SaleLineSourceSyncRow(
+                line.Id,
+                line.IdProdaja,
+                line.IdArtikal,
+                line.Kolicina,
+                line.Cena,
+                line.NabavnaCena,
+                line.SourceTableKey,
+                line.SourceRowId)));
+        var saleIds = lines.Select(line => line.IdProdaja).Distinct().ToArray();
+        await using (var connection = new NpgsqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                await using var transaction = await connection.BeginTransactionAsync();
+                await AccessImportService.ReplaceSalesLineFactsBulkAsync(
+                    connection,
+                    transaction,
+                    saleIds,
+                    mappedFacts,
+                    NullLogger<AccessImportService>.Instance,
+                    CancellationToken.None);
+                await transaction.CommitAsync();
+            }
+        }
+
+        Assert.Equal(4, await ScalarAsync<long>(db, """SELECT COUNT(*)::bigint AS "Value" FROM "SalesLineFacts" """));
+        Assert.Equal(396m, await ScalarAsync<decimal>(db,
+            $"SELECT \"TotalAmount\" AS \"Value\" FROM \"SalesFacts\" WHERE \"SaleId\" = {imported.Id}"));
+        Assert.Equal(50m, await ScalarAsync<decimal>(db, """SELECT "TotalAmount" AS "Value" FROM "SalesFacts" WHERE "SaleId" = 7"""));
+        Assert.Equal(10m, await ScalarAsync<decimal>(db, """SELECT "TotalAmount" AS "Value" FROM "SalesFacts" WHERE "SaleId" = 40"""));
+        Assert.Equal("existing", await ScalarAsync<string>(db, """SELECT "DataOrigin" AS "Value" FROM "SalesFacts" WHERE "SaleId" = 7"""));
+        Assert.Equal(imported.Id, await ScalarAsync<int>(db, """
+            SELECT "SaleId" AS "Value" FROM "SalesLineFacts"
+            WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'prodajastavke'
+            """));
+        Assert.Equal(0, await ScalarAsync<long>(db, """
+            SELECT COUNT(*)::bigint AS "Value"
+            FROM "SalesLineFacts"
+            WHERE "SaleId" = 7 AND "SourceTableKey" = 'prodajastavke'
+            """));
+        Assert.Equal(396m, await ScalarAsync<decimal>(db,
+            $"SELECT COALESCE(SUM(\"LineTotal\"), 0) AS \"Value\" FROM \"SalesLineFacts\" WHERE \"SaleId\" = {imported.Id}"));
     }
 
     private async Task<(TrendplusDbContext? Db, string ConnectionString)> CreateDatabaseAsync()
@@ -893,4 +1204,50 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 ON prodaja_stavke (source_table_key, source_row_id)
                 WHERE source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
             """);
+
+    private static async Task<T> ScalarAsync<T>(TrendplusDbContext db, string sql)
+        => await db.Database.SqlQueryRaw<T>(sql).SingleAsync();
+
+    private static async Task ExecuteTriageScriptAsync(string connectionString)
+    {
+        var script = FindTriageScript();
+        var executable = string.Join(
+            "\n",
+            script.Split('\n').Where(line => !line.TrimStart().StartsWith("--", StringComparison.Ordinal)));
+        foreach (var forbidden in new[] { "INSERT", "UPDATE", "DELETE", "setval", "DROP ", "ALTER ", "TRUNCATE" })
+        {
+            if (executable.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Triage script contains forbidden statement '{forbidden}'.");
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(script, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var resultSets = 0;
+        do
+        {
+            while (await reader.ReadAsync())
+            {
+            }
+
+            resultSets++;
+        }
+        while (await reader.NextResultAsync());
+
+        if (resultSets < 4)
+            throw new InvalidOperationException($"Triage script returned {resultSets} result sets.");
+    }
+
+    private static string FindTriageScript()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "tools", "access-sale-header-identity-triage.sql");
+            if (File.Exists(candidate))
+                return File.ReadAllText(candidate);
+        }
+
+        throw new FileNotFoundException("tools/access-sale-header-identity-triage.sql was not found from the test output directory.");
+    }
 }

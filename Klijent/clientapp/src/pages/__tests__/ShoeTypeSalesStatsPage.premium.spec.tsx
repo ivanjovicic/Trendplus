@@ -555,7 +555,7 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     expect(screen.queryByText("Prioritetna lista tipova obuće")).not.toBeInTheDocument();
   });
 
-  it("shows stale overlay and keeps prior data when a refetch fails after a successful load", async () => {
+  it("hides prior-scope shoe type rows when loading a different scope fails", async () => {
     vi.mocked(getShoeTypeSalesStats)
       .mockResolvedValueOnce(response())
       .mockRejectedValueOnce(new Error("Network error on refetch"));
@@ -574,13 +574,9 @@ describe("ShoeTypeSalesStatsPage premium controls", () => {
     localStorage.setItem("trendplus:dataScope", "existing");
     window.dispatchEvent(new Event("trendplus:data-scope-changed"));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("shoe-type-stale-refetch-warning")).toHaveTextContent(
-        "Prikazujemo prethodno ucitane podatke. Novi upit nije uspeo.",
-      );
-    });
-    expect(screen.getByText("Patike")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(await screen.findByText("Podaci trenutno nisu dostupni")).toBeInTheDocument();
+    expect(screen.queryByTestId("shoe-type-stale-refetch-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText("Patike")).not.toBeInTheDocument();
   });
 
   it("empty is not error when shoe type sales returns no rows", async () => {

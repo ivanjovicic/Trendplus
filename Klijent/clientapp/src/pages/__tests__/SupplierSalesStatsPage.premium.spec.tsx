@@ -337,6 +337,7 @@ describe("SupplierSalesStatsPage premium controls", () => {
   });
 
   it("shows a filter-scoped negotiation evidence pack only for one selected supplier", async () => {
+    vi.mocked(getStores).mockResolvedValue([{ storeId: 4, storeName: "Objekat 4" }]);
     vi.mocked(getInventoryBalance).mockResolvedValue({
       totalSku: 3,
       totalOnHand: 42,
@@ -395,7 +396,9 @@ describe("SupplierSalesStatsPage premium controls", () => {
     expect(within(panel).getByRole("heading", { name: /Vrednost i rizik za pregovor · Alfa/ })).toBeInTheDocument();
     expect(within(panel).getAllByRole("article")).toHaveLength(5);
     expect(within(panel).getByText(/Prodaja i marža za period 1\. 6\. 2026\. – 30\. 6\. 2026\./)).toBeInTheDocument();
-    expect(within(panel).getByText(/Pokrivenost vrednosti: 75,0%/)).toBeInTheDocument();
+    // The panel mounts before the parallel inventory requests settle; wait for the
+    // confirmed value instead of asserting against the initial unavailable state.
+    expect(await within(panel).findByText(/Pokrivenost vrednosti: 75,0%/)).toBeInTheDocument();
     const facts = within(within(panel).getByTestId("supplier-negotiation-facts")).getAllByRole("listitem");
     expect(facts.length).toBeGreaterThanOrEqual(3);
     expect(facts.length).toBeLessThanOrEqual(5);

@@ -525,6 +525,10 @@ export default function ColorSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ColorSalesStatsResponse>({
     query: colorQuery,
+    contextKey: JSON.stringify([
+      dataScope, activeFilters.fromDate, activeFilters.toDate,
+      activeFilters.sezonaId, activeFilters.storeId, storeValidationNonce,
+    ]),
     enabled: storesScope === dataScope || (storesScope == null && storeId == null),
     getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
       reason instanceof Error ? reason.message : null,

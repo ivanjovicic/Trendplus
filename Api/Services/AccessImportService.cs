@@ -10901,20 +10901,16 @@ using NpgsqlTypes;
         }
         catch (DbUpdateException ex) when (TryGetAccessImportUniqueViolation(ex, out var postgresException))
         {
-            var failureCode = ClassifyAccessImportUniqueViolation(postgresException);
+            var collisionKind = ClassifyAccessImportUniqueViolation(postgresException);
             _logger.LogError(
                 ex,
-                "Access import identity conflict. Operation: {Operation}. SourceSystem: {SourceSystem}. SourceNamespace: {SourceNamespace}. BatchId: {BatchId}. Step: {Step}. SourceTable: {SourceTable}. SqlState: {SqlState}. TableName: {TableName}. ConstraintName: {ConstraintName}. FailureCode: {FailureCode}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. AddedOrModifiedLines: {Lines}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}. LineSourceSamples: {LineSourceSamples}.",
-                "save-changes",
-                "access",
-                null,
+                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. SqlState: {SqlState}. CollisionKind: {CollisionKind}. TableName: {TableName}. ConstraintName: {ConstraintName}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. AddedOrModifiedLines: {Lines}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}. LineSourceSamples: {LineSourceSamples}.",
                 _activeBatchId,
                 _activeBatchStep ?? "db-flush",
-                _activeBatchTable,
                 postgresException.SqlState,
+                collisionKind,
                 postgresException.TableName,
                 postgresException.ConstraintName,
-                failureCode,
                 pendingHeaders.Count(entry => entry.State == EntityState.Added),
                 pendingHeaders.Count(entry => entry.State == EntityState.Modified),
                 pendingSaleLines.Count,
@@ -10933,8 +10929,10 @@ using NpgsqlTypes;
                     entry.Entity.SourceTableKey,
                     entry.Entity.SourceRowId
                 }).ToArray());
+            // The operator-facing text keeps the stable prefix and constraint class.
+            // ConstraintName, source row ids and PostgreSQL Detail stay in the server log.
             throw new InvalidOperationException(
-                $"{failureCode}: PostgreSQL rejected Access import writes (SQLSTATE={postgresException.SqlState}, table={postgresException.TableName ?? "unknown"}, constraint={postgresException.ConstraintName ?? "unknown"}); the import transaction will roll back without advancing its cursor.",
+                BuildAccessImportUniqueViolationMessage(postgresException, collisionKind),
                 ex);
         }
         _trendDb.ChangeTracker.Clear();
@@ -10947,6 +10945,55 @@ using NpgsqlTypes;
             writesToFlush,
             activeBatchSize,
             force);
+    }
+
+    // SqlState and TableName must already identify a sale-header or sale-line 23505.
+    // An unknown constraint is not evidence of a primary-key collision.
+    private static string ClassifyAccessImportUniqueViolation(PostgresException exception)
+    {
+        var constraint = exception.ConstraintName;
+        var isHeader = string.Equals(exception.TableName, "prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase);
+        var isLine = string.Equals(exception.TableName, "prodaja_stavke", StringComparison.OrdinalIgnoreCase);
+
+        if (isHeader && IsConstraint(constraint, "PK_prodaja_zaglavlje", "prodaja_zaglavlje_pkey"))
+            return "target_primary_key_collision";
+        if (isLine && IsConstraint(constraint, "PK_prodaja_stavke", "prodaja_stavke_pkey"))
+            return "target_primary_key_collision";
+        if (isHeader && IsConstraint(constraint, "ux_prodaja_zaglavlje_access_source_row"))
+            return "access_source_lineage_collision";
+        if (isLine && IsConstraint(constraint, "ux_prodaja_stavke_source_row"))
+            return "access_source_lineage_collision";
+
+        return "unclassified_unique_constraint";
+    }
+
+    private static bool IsConstraint(string? actual, params string[] expected)
+        => expected.Any(name => string.Equals(actual, name, StringComparison.OrdinalIgnoreCase));
+
+    private static string BuildAccessImportUniqueViolationMessage(PostgresException exception, string collisionKind)
+    {
+        var isLine = string.Equals(exception.TableName, "prodaja_stavke", StringComparison.OrdinalIgnoreCase);
+        var prefix = isLine ? "duplicate_sale_line_identity" : "duplicate_sale_header_identity";
+        return collisionKind switch
+        {
+            "target_primary_key_collision" =>
+                $"{prefix}: target_primary_key_collision (SQLSTATE 23505). " +
+                (isLine
+                    ? "The PostgreSQL sale-line ID is already occupied. No automatic reparenting was performed; "
+                    : "The PostgreSQL sale-header ID is already occupied. No automatic reparenting was performed; ") +
+                "the import transaction will roll back without advancing its cursor.",
+            "access_source_lineage_collision" =>
+                $"{prefix}: access_source_lineage_collision (SQLSTATE 23505). " +
+                (isLine
+                    ? "A sale line already claims the same Access source table and row ID. "
+                    : "A sale header already claims the same Access source table and row ID. ") +
+                "The import transaction will roll back without advancing its cursor.",
+            _ =>
+                $"{prefix}: unclassified_unique_constraint (SQLSTATE 23505). " +
+                "A PostgreSQL unique constraint was violated; inspect the server log's " +
+                "BatchId, ConstraintName and HeaderSourceSamples before choosing a remediation. " +
+                "The import transaction will roll back without advancing its cursor."
+        };
     }
 
     private static bool TryGetAccessImportUniqueViolation(Exception exception, out PostgresException postgresException)
@@ -10965,17 +11012,6 @@ using NpgsqlTypes;
 
         postgresException = null!;
         return false;
-    }
-
-    private static string ClassifyAccessImportUniqueViolation(PostgresException exception)
-    {
-        var constraint = exception.ConstraintName?.ToLowerInvariant();
-        if (constraint is "pk_prodaja_zaglavlje" or "prodaja_zaglavlje_pkey" or "pk_prodaja_stavke" or "prodaja_stavke_pkey")
-            return "primary_key_collision";
-        if (constraint is "ux_prodaja_zaglavlje_access_source_row" or "ux_prodaja_stavke_source_row")
-            return "source_lineage_unique_collision";
-
-        return "other_unique_constraint_collision";
     }
 
     private static string GetAccessImportFailureMessage(Exception exception)

@@ -830,6 +830,13 @@ export default function InventoryPage() {
     refetch,
   } = useReliableAnalyticsQuery<InventoryScopedSnapshot>({
     query: inventoryQuery,
+    // Previous data belongs only to the exact same business filters. A different period,
+    // store, supplier, scope, sort or page must not inherit its rows or export actions.
+    contextKey: JSON.stringify([
+      inventoryDataScope, selectedStoreId, selectedSupplierId, pageNumber, pageSize,
+      trimmedSearch, serverSortBy, inventorySignalWindow.fromDate, inventorySignalWindow.toDate,
+      compareStoreIds, alertSeverityFilter,
+    ]),
     enabled: storeFiltersReady,
     getErrorMessage: useCallback(
       (reason: unknown) => toInventoryPageError(reason, "Podaci o zalihama trenutno nisu dostupni.").message,

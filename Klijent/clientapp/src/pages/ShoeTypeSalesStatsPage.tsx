@@ -599,6 +599,10 @@ export default function ShoeTypeSalesStatsPage() {
     refetch,
   } = useReliableAnalyticsQuery<ShoeTypeSalesStatsResponse>({
     query: shoeTypeQuery,
+    contextKey: JSON.stringify([
+      dataScope, activeFilters.fromDate, activeFilters.toDate,
+      activeFilters.sezonaId, activeFilters.storeId, storeValidationNonce,
+    ]),
     enabled: storesScope === dataScope || (storesScope == null && storeId == null),
     getErrorMessage: useCallback((reason: unknown) => getSafeAnalyticsErrorMessage(
       reason instanceof Error ? reason.message : null,

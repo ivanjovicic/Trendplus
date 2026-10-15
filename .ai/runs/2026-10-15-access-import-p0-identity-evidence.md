@@ -1,14 +1,32 @@
 Task ID: P0-access-import-identity
 Queue: direct-user-request
 Date: 2026-10-15
-Agent/tool: Codex
+Agent/tool: Cursor
 Delivery target: main
-Working branch / PR: codex/access-import-p0 / PR #163 (draft; transport branch codex/access-sale-line-identity)
-Main commit SHA: pending
-Main verification: latest `origin/main` snapshot `6ff22b7ccd5c7dd96c53efe02b724d66be7cb5b3` is incorporated by merge commit `4ffbc63e`; this implementation is not merged to main.
+Working branch / PR: codex/access-sale-line-identity / PR #163 (draft, PARTIAL, do not merge)
+Main commit SHA: not delivered
+Main verification: refreshed `origin/main` is `e8730865` (includes classifier `20eb9fb5` / PR #178). Deployed Render `trendplus-api` reported `commitSha=f9faf02542aed3ee191c556fcd66c8eed9da4fb0` at `buildTimeUtc=2026-10-15T14:07:39Z`. This branch is rebased onto `e8730865` by merge and is not on `main`.
 Evidence state: PARTIAL
+Incident classification: ROOT_CAUSE_UNPROVEN
 Ownership transfer: none
 Claim reservation: direct-user-request/not applicable
+
+## Reconciliation against origin/main e8730865
+- Production and GitHub do not contain a server log line with BatchId, SQLSTATE, TableName, ConstraintName, import step and source identity for the reported `duplicate_sale_header_identity` failure. The public incident text is only the pre-classifier message. No Render API credential was available. Deployed SHA `f9faf025` still emits the generic message; its structured log would have included Constraint, but that log was not retrieved.
+- `tools/access-sale-header-identity-triage.sql` was executed read-only against local database `trendplus` on `127.0.0.1:5434`. `pg_indexes` returned no sale-header unique indexes and the next statement failed with `relation "prodaja_zaglavlje" does not exist`. That database is empty. It is not an authorized copy of the failed import. No production rows were read or changed. No sequence was reset. No constraint was disabled.
+- PR #163 conflict with the merged classifier was resolved without returning to Access numeric IDs as PostgreSQL sale-header or sale-line IDs. Header and line 23505 failures keep distinct sanitized classes: `target_primary_key_collision`, `access_source_lineage_collision`, `unclassified_unique_constraint`. ConstraintName stays in the server log. The operator message does not include receipt numbers or PostgreSQL Detail. Cursor commit remains on the success path only.
+- Disposable PostgreSQL proof, `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`, local server port 5434, not Docker: `AccessImportForeignKeyGuardTests` 18 passed / 0 failed / 0 skipped, including `MixedPopulationSqlOracle_DoesNotRebindHistoricalReceipts`. That test executes the triage script and checks populations `existing` (POS id 7), legacy access header 40 with NULL `source_row_id`, and a generated Access header whose source row 7 numerically overlaps POS id 7. POS and legacy lines stay on their original headers. Repeated import does not add a second header. `SalesFacts` totals are 50 / 10 / 396 and `SalesLineFacts` for source line 11 use the generated sale id. `AccessImportRetryAtomicityTests` 1 passed / 0 skipped.
+- Issue #174 entities (`Artikli`, `TipObuce`, `Dobavljaci`, `Sezona`, `DnevnikPromena`, returns, synthetic movements) are not remapped here.
+
+## Still required before merge
+1. The actual failed-import server log line: BatchId, SQLSTATE, TableName, ConstraintName, import step, and HeaderSourceSamples (source table key and source row id). Redact receipt numbers and customer fields.
+2. An authorized SELECT-only copy of the database that owns that batch, so the triage script can return real index definitions, lineage completeness, duplicate source tuples and numeric source/target overlaps.
+3. An operator-owned immutable Access source-database identifier. Filename, storage key and `(source_table_key, source_row_id)` cannot separate two Access databases that reuse the same IDs.
+4. A reviewed reconciliation for batch #23's 67,092 `prodaja_stavke` rows with NULL `source_row_id`. No receipt, date or price matching.
+5. The same historical oracle on that copy for `SalesFacts` and `SalesLineFacts` populations `all` / `imported` / `existing`, plus issue #174 dependent foreign keys.
+6. Exact final SHA CI after those inputs exist. This local 18/18 result is not that gate.
+
+## Earlier record
 
 ## What was done
 - Confirmed the supplied incident text does not include the PostgreSQL exception chain. Local incident logs available to this run also had no matching SQLSTATE 23505, so the exact historical constraint, batch, source namespace and IDs remain unclassified.
