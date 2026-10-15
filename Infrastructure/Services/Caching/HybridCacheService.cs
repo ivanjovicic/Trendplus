@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Text.Json;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
@@ -11,311 +8,132 @@ using Microsoft.Extensions.Logging;
 namespace Infrastructure.Services.Caching;
 
 /// <summary>
-/// Hibridni cache servis: In-Memory (L1) + Redis (L2).
-/// 
-/// ARHITEKTURA:
-/// - L1 (In-Memory): Brz, lokalni, besplatan, ali nije deljen između instanci
-/// - L2 (Redis): Sporiji, deljeni, opcioni (besplatan tier na većini cloud provajdera)
-/// 
-/// FLOW:
-/// GET: L1 -> L2 -> Database
-/// SET: L1 + L2 (paralelno)
-/// INVALIDATE: L1 + L2 (paralelno)
-/// 
-/// FALLBACK:
-/// Ako Redis nije dostupan, koristi se samo In-Memory.
+/// Hybrid analytics cache: in-memory L1 + Redis L2.
+///
+/// Multi-instance correctness comes from generation tokens stored in Redis (see
+/// <see cref="GenerationalAnalyticsCacheService"/>): an invalidation on instance B writes a new token,
+/// instance A reads the token on its next lookup and can no longer reach its old L1/L2 entries.
+///
+/// Redis outage: as soon as a Redis call fails, every local token is rotated (old L1 entries become
+/// unreachable because another instance may have invalidated them without us seeing it) and the cache
+/// continues process-local. When Redis answers again, every root is bumped in Redis before it is trusted,
+/// so values written before or during the outage are never resurrected. Disabling Redis by toggle is
+/// treated the same way.
 /// </summary>
-public class HybridCacheService : IAnalyticsCacheService
+public class HybridCacheService : GenerationalAnalyticsCacheService
 {
-    private sealed class CacheKeyLock
-    {
-        public SemaphoreSlim Semaphore { get; } = new(1, 1);
-        public int RefCount;
-    }
-
-    private readonly IMemoryCache _memoryCache;
     private readonly IDistributedCache? _distributedCache;
-    private readonly ILogger<HybridCacheService> _logger;
-    private readonly ConcurrentDictionary<string, byte> _keys = new();
-    private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly ConcurrentDictionary<string, CacheKeyLock> _keyLocks = new();
-    private readonly JsonSerializerOptions _jsonOptions;
-    private bool _redisAvailable;
-    private bool _redisUserEnabled = true;
-    private DateTime _lastRedisCheck = DateTime.MinValue;
     private readonly TimeSpan _redisCheckInterval = TimeSpan.FromMinutes(1);
+    private readonly SemaphoreSlim _recoveryLock = new(1, 1);
+    private volatile bool _redisAvailable;
+    private volatile bool _redisUserEnabled = true;
+    private volatile bool _needsRecoveryBump;
+    private long _lastRedisCheckTicks = DateTimeOffset.MinValue.UtcTicks;
 
     public HybridCacheService(
         IMemoryCache memoryCache,
         ILogger<HybridCacheService> logger,
-        IDistributedCache? distributedCache = null)
+        IDistributedCache? distributedCache = null,
+        TimeProvider? timeProvider = null)
+        : base(memoryCache, logger, timeProvider)
     {
-        _memoryCache = memoryCache;
         _distributedCache = distributedCache;
-        _logger = logger;
         _redisAvailable = distributedCache != null;
-        
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        };
     }
 
-    public bool IsRedisAvailable
+    public override bool IsRedisAvailable => _distributedCache != null && _redisAvailable;
+
+    public override bool IsRedisEnabled => _redisUserEnabled;
+
+    public override void SetRedisEnabled(bool enabled)
     {
-        get
+        if (_redisUserEnabled == enabled)
         {
-            if (DateTime.UtcNow - _lastRedisCheck > _redisCheckInterval)
-                CheckRedisAvailability();
-            return _redisAvailable;
+            return;
         }
-    }
 
-    public bool IsRedisEnabled => _redisUserEnabled;
-
-    public void SetRedisEnabled(bool enabled)
-    {
+        // Invalidations made while Redis was off were local only: re-enabling must bump Redis first,
+        // disabling must forget L1 entries that were keyed by Redis tokens.
+        RotateAllLocalTokens();
+        _needsRecoveryBump = true;
         _redisUserEnabled = enabled;
-        _logger.LogInformation("Redis cache {State} by user toggle", enabled ? "ENABLED" : "DISABLED");
+        Logger.LogInformation("Redis cache {State} by user toggle", enabled ? "ENABLED" : "DISABLED");
     }
 
-    public CacheFootprintSnapshot GetFootprintSnapshot()
-    {
-        return new CacheFootprintSnapshot(
-            CacheMode: _redisUserEnabled && _redisAvailable ? "redis" : "in-memory",
-            RedisEnabled: _redisUserEnabled,
-            RedisAvailable: IsRedisAvailable,
-            TrackedKeyCount: _keys.Count);
-    }
+    protected override string CacheModeName => UseDistributed ? "redis" : "in-memory";
 
-    private void CheckRedisAvailability()
+    protected override bool UseDistributed => _distributedCache != null && _redisUserEnabled && _redisAvailable && !_needsRecoveryBump;
+
+    protected override async Task EnsureDistributedStateAsync(CancellationToken ct)
     {
-        if (_distributedCache == null)
+        if (_distributedCache == null || !_redisUserEnabled)
         {
-            _redisAvailable = false;
+            return;
+        }
+
+        if (_redisAvailable && !_needsRecoveryBump)
+        {
+            return;
+        }
+
+        var now = Time.GetUtcNow().UtcTicks;
+        var last = Interlocked.Read(ref _lastRedisCheckTicks);
+        if (_redisAvailable == false && now - last < _redisCheckInterval.Ticks)
+        {
+            return;
+        }
+
+        if (!await _recoveryLock.WaitAsync(0, ct))
+        {
             return;
         }
 
         try
         {
-            // Probaj jednostavnu operaciju
-            _distributedCache.GetString("__health_check__");
+            Interlocked.Exchange(ref _lastRedisCheckTicks, now);
+            await _distributedCache.GetStringAsync("__health_check__", ct);
             _redisAvailable = true;
-        }
-        catch
-        {
-            _redisAvailable = false;
-            _logger.LogWarning("Redis is not available, falling back to In-Memory only");
-        }
-        
-        _lastRedisCheck = DateTime.UtcNow;
-    }
 
-    public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
-    {
-        // L1: In-Memory (najbrže)
-        if (_memoryCache.TryGetValue(key, out T? memoryValue))
-        {
-            _logger.LogDebug("Cache L1 HIT: {Key}", key);
-            return memoryValue;
-        }
-
-        // L2: Redis (ako je dostupan i ukljucen)
-        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
-        {
-            try
+            if (_needsRecoveryBump)
             {
-                var redisValue = await _distributedCache.GetStringAsync(key, ct);
-                if (!string.IsNullOrEmpty(redisValue))
+                if (!await BumpAllDistributedRootsAsync(ct))
                 {
-                    var value = JsonSerializer.Deserialize<T>(redisValue, _jsonOptions);
-                    if (value != null)
-                    {
-                        // Promovisi u L1 cache
-                        SetMemoryCache(key, value, GetPromotionExpiration(key));
-                        _logger.LogDebug("Cache L2 HIT (promoted to L1): {Key}", key);
-                        return value;
-                    }
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Redis GET error for key: {Key}", key);
-                _redisAvailable = false;
+
+                _needsRecoveryBump = false;
+                Logger.LogWarning("Redis analytics cache recovered; all generations bumped before trusting Redis again");
             }
         }
-
-        _logger.LogDebug("Cache MISS: {Key}", key);
-        return null;
-    }
-
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
-    {
-        var exp = expiration ?? CacheExpiration.Medium;
-        
-        // L1: In-Memory (uvek)
-        SetMemoryCache(key, value, exp);
-
-        // L2: Redis (ako je dostupan i ukljucen)
-        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            try
-            {
-                var json = JsonSerializer.Serialize(value, _jsonOptions);
-                var options = new DistributedCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = exp
-                };
-                
-                await _distributedCache.SetStringAsync(key, json, options, ct);
-                _logger.LogDebug("Cache L1+L2 SET: {Key}", key);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Redis SET error for key: {Key}", key);
-                _redisAvailable = false;
-            }
-        }
-        else
-        {
-            _logger.LogDebug("Cache L1 SET (Redis unavailable): {Key}", key);
-        }
-    }
-
-    public async Task RemoveAsync(string key, CancellationToken ct = default)
-    {
-        // L1: In-Memory
-        _memoryCache.Remove(key);
-        _keys.TryRemove(key, out _);
-
-        // L2: Redis
-        if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
-        {
-            try
-            {
-                await _distributedCache.RemoveAsync(key, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Redis REMOVE error for key: {Key}", key);
-            }
-        }
-        
-        _logger.LogDebug("Cache REMOVE: {Key}", key);
-    }
-
-    public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
-    {
-        await _lock.WaitAsync(ct);
-        try
-        {
-            // L1: In-Memory - ukloni sve sa prefixom
-            var keysToRemove = _keys.Keys.Where(k => k.StartsWith(prefix)).ToList();
-            foreach (var key in keysToRemove)
-            {
-                _memoryCache.Remove(key);
-                _keys.TryRemove(key, out _);
-            }
-            
-            // L2: Redis - NAPOMENA: Redis ne podržava wildcard delete bez SCAN
-            // Za jednostavnost, brišemo poznate ključeve
-            if (_redisUserEnabled && _redisAvailable && _distributedCache != null)
-            {
-                foreach (var key in keysToRemove)
-                {
-                    try
-                    {
-                        await _distributedCache.RemoveAsync(key, ct);
-                    }
-                    catch { /* ignore individual failures */ }
-                }
-            }
-            
-            _logger.LogInformation("Cache INVALIDATE by prefix: {Prefix}, Removed: {Count} keys", prefix, keysToRemove.Count);
+            OnDistributedFailure(ex, "health-check", "__health_check__");
         }
         finally
         {
-            _lock.Release();
+            _recoveryLock.Release();
         }
     }
 
-    public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class
+    protected override async Task<string?> ReadDistributedAsync(string key, CancellationToken ct)
+        => await _distributedCache!.GetStringAsync(key, ct);
+
+    protected override Task WriteDistributedAsync(string key, string value, TimeSpan ttl, CancellationToken ct)
+        => _distributedCache!.SetStringAsync(key, value, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl }, ct);
+
+    protected override Task RemoveDistributedAsync(string key, CancellationToken ct)
+        => _distributedCache!.RemoveAsync(key, ct);
+
+    protected override void OnDistributedFailure(Exception ex, string operation, string key)
     {
-        // Prvo pokušaj dohvatiti iz cache-a
-        var cached = await GetAsync<T>(key, ct);
-        if (cached != null)
+        Logger.LogWarning(ex, "Redis {Operation} failed for {Key}; analytics cache continues process-local until Redis recovers", operation, key);
+        if (_redisAvailable || !_needsRecoveryBump)
         {
-            return cached;
+            RotateAllLocalTokens();
         }
 
-        // Ako nema u cache-u, izvrši factory i sačuvaj.
-        // Lock je per-key da različiti cache key-evi ne čekaju jedni druge.
-        var keyLock = _keyLocks.GetOrAdd(key, static _ => new CacheKeyLock());
-        Interlocked.Increment(ref keyLock.RefCount);
-        var keyLockAcquired = false;
-
-        try
-        {
-            await keyLock.Semaphore.WaitAsync(ct);
-            keyLockAcquired = true;
-
-            // Double-check nakon lock-a
-            cached = await GetAsync<T>(key, ct);
-            if (cached != null)
-            {
-                return cached;
-            }
-
-            _logger.LogDebug("Cache FACTORY executing for: {Key}", key);
-            var value = await factory();
-            await SetAsync(key, value, expiration, ct);
-            return value;
-        }
-        finally
-        {
-            if (keyLockAcquired)
-            {
-                keyLock.Semaphore.Release();
-            }
-
-            if (Interlocked.Decrement(ref keyLock.RefCount) == 0)
-            {
-                _keyLocks.TryRemove(new KeyValuePair<string, CacheKeyLock>(key, keyLock));
-            }
-        }
-    }
-
-    private void SetMemoryCache<T>(string key, T value, TimeSpan expiration)
-    {
-        var options = new MemoryCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = expiration,
-            SlidingExpiration = TimeSpan.FromMinutes(2),
-            Priority = CacheItemPriority.Normal
-        };
-        
-        options.RegisterPostEvictionCallback((evictedKey, _, reason, _) =>
-        {
-            _keys.TryRemove(evictedKey.ToString()!, out _);
-        });
-
-        _memoryCache.Set(key, value, options);
-        _keys.TryAdd(key, 0);
-    }
-
-    private static TimeSpan GetPromotionExpiration(string key)
-    {
-        if (key.StartsWith(AnalyticsCacheKeys.ObservabilityLogsPrefix, StringComparison.Ordinal))
-        {
-            return CacheExpiration.ObservabilityLive;
-        }
-
-        if (key.StartsWith(AnalyticsCacheKeys.ObservabilityPerformancePrefix, StringComparison.Ordinal))
-        {
-            return CacheExpiration.ObservabilitySummary;
-        }
-
-        return CacheExpiration.Medium;
+        _redisAvailable = false;
+        _needsRecoveryBump = true;
+        Interlocked.Exchange(ref _lastRedisCheckTicks, Time.GetUtcNow().UtcTicks);
     }
 }

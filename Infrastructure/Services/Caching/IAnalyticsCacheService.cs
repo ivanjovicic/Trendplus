@@ -59,6 +59,43 @@ public interface IAnalyticsCacheService
     /// Vraća trenutni cache footprint snapshot za merenje.
     /// </summary>
     CacheFootprintSnapshot GetFootprintSnapshot();
+
+    /// <summary>
+    /// Reads a value and returns the cache generation observed by this read. Pass the stamp to
+    /// <see cref="SetIfGenerationAsync{T}"/> so a value computed before an invalidation is never published into the new generation.
+    /// </summary>
+    async Task<AnalyticsCacheLookup<T>> GetWithGenerationAsync<T>(string key, CancellationToken ct = default) where T : class
+        => new(await GetAsync<T>(key, ct), null);
+
+    /// <summary>
+    /// Stores the value only if the generation captured by <paramref name="stamp"/> is still current. Returns false when the write was
+    /// skipped because the key was invalidated after the stamp was taken. A null stamp behaves like SetAsync.
+    /// </summary>
+    async Task<bool> SetIfGenerationAsync<T>(string key, T value, TimeSpan? expiration, AnalyticsCacheGenerationStamp? stamp, CancellationToken ct = default) where T : class
+    {
+        await SetAsync(key, value, expiration, ct);
+        return true;
+    }
+
+    /// <summary>Hit/miss/factory/invalidation counters for this process.</summary>
+    AnalyticsCacheMetricsSnapshot GetMetricsSnapshot() => AnalyticsCacheMetricsSnapshot.Empty;
+}
+
+/// <summary>Opaque generation fingerprint of the prefixes covering a key at read time.</summary>
+public sealed record AnalyticsCacheGenerationStamp(string Fingerprint);
+
+public readonly record struct AnalyticsCacheLookup<T>(T? Value, AnalyticsCacheGenerationStamp? Stamp) where T : class;
+
+public sealed record AnalyticsCacheMetricsSnapshot(
+    long L1Hits,
+    long L2Hits,
+    long Misses,
+    long FactoryExecutions,
+    long StaleWritesSkipped,
+    long Invalidations,
+    long SerializationFailures)
+{
+    public static AnalyticsCacheMetricsSnapshot Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 }
 
 /// <summary>
@@ -240,8 +277,8 @@ public static class AnalyticsCacheKeys
     public static string SupplierSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null, string? integrityEvidenceId = null) =>
         $"{Prefix}supplier-sales-stats:v8:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}:integrity:{HashPart(integrityEvidenceId)}";
 
-    public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null) =>
-        $"{Prefix}shoe-type-sales-stats:v5:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}";
+    public static string ShoeTypeSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null, long? activeSnapshotBatchId = null, string? integrityEvidenceId = null) =>
+        $"{Prefix}shoe-type-sales-stats:v6:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}:snap:{FormatNullable(activeSnapshotBatchId)}:integrity:{HashPart(integrityEvidenceId)}";
 
     public static string ColorSalesStats(DateTime? from, DateTime? to, int? storeId = null, int? sezonaId = null, string? dataScope = null) =>
         $"{Prefix}color-sales-stats:v5:{FormatTicks(from)}:{FormatTicks(to)}:{FormatNullable(storeId)}:{FormatNullable(sezonaId)}:{NormalizeDataScope(dataScope)}";
