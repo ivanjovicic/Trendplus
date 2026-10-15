@@ -323,7 +323,7 @@ describe("ExecutiveDecisionBoardPage", () => {
     expect((await screen.findAllByText("Crna kožna sandala")).length).toBeGreaterThan(0);
 
     expect(getDecisionBoardAggregate).toHaveBeenCalledWith({ fromDate: undefined, toDate: undefined, storeId: undefined, dataScope: "all" });
-    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Izvršni board odluka");
+    expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("Izvršni pregled odluka");
     expect(screen.getByTestId("analytics-trust-header")).toHaveTextContent("status: warning");
     expect(screen.getByText("Urgentne odluke")).toBeInTheDocument();
     expect(screen.getAllByText("120.000 RSD").length).toBeGreaterThan(0);

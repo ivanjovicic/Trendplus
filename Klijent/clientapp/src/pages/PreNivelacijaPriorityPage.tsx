@@ -1415,6 +1415,14 @@ export default function PreNivelacijaPriorityPage() {
             disabled: loading,
             tone: "secondary",
           },
+          ...(dataScope === getDataScope()
+            ? [{
+              key: "pre-post-history",
+              label: "Pre/posle ranijih nivelacija",
+              to: buildPrePostHistoryHref(activeFilters),
+              tone: "secondary" as const,
+            }]
+            : []),
           {
             key: "data-quality",
             label: "Kvalitet podataka",
@@ -2083,4 +2091,16 @@ function cleanupReasonsLabel(reasonCodes: string[]): string {
     non_retail_store: "legacy ili neretail objekat",
   };
   return reasonCodes.map((code) => labels[code] ?? "izdvojeno iz preporuka").join(" · ");
+}
+
+/**
+ * Link to descriptive pre/post results for the same supplier and store. Pre/Post reads the shared data scope,
+ * so the link is offered only when it matches this page's scope.
+ */
+function buildPrePostHistoryHref(filters: ActiveFilters): string {
+  const params = new URLSearchParams();
+  if (filters.supplierId != null) params.set("vendorId", String(filters.supplierId));
+  if (filters.storeId != null) params.set("storeId", String(filters.storeId));
+  const query = params.toString();
+  return query ? `/analytics/nivelacije-pre-post?${query}` : "/analytics/nivelacije-pre-post";
 }

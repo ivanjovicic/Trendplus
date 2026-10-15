@@ -12,6 +12,10 @@ Read the [evidence-based ProfitGuard market/competition and unit-economics study
 
 The [source-verified footwear decision opportunity catalog](FOOTWEAR_DECISION_PRODUCT_OPPORTUNITIES_2026-10-15.md) evaluates size-run/store decisions, transfer-versus-buy-versus-markdown comparisons, supplier-return rights, seasonal buying constraints and data-integrity revenue opportunities. **It is discovery, not a new execution queue or runtime scope authorization.** Existing size-curve, rebalance, transfer, weekly digest and Actions components are not to be rebuilt; strong recommendations remain blocked where model-family/store-level stock, cost, provenance, customer authority or observed outcomes are missing. Follow this playbook's existing Wave B/C gates and only promote a feature after real customer/source proof.
 
+## Hidden-value / UX audit — 2026-10-15
+
+Povezanost, hijerarhija i istinitost poruka postojećih ekrana, top 15 predloga i sprovedeni quick win-ovi: [TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15](TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md). Nema novih RQ ID-jeva ni READY statusa.
+
 ## 1. Product decision — small, credible and sellable
 
 **Positioning:** footwear-retail decision support on top of a customer's existing sales/stock system, not a POS/ERP replacement, scraping service, generic BI toolkit or prediction platform. Start with one retailer and a repeatable source import. A separate deployment per customer is acceptable for the first pilot.

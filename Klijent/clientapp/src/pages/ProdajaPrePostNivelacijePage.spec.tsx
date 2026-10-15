@@ -237,6 +237,19 @@ describe("ProdajaPrePostNivelacijePage scope lineage", () => {
     });
   });
 
+  it("links back to markdown priorities with the same supplier and data scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    renderPage(["/analytics/nivelacije-pre-post?vendorId=10"]);
+
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    await waitFor(() => {
+      expect(within(controlBar).getByRole("link", { name: "Prioriteti nivelacije" })).toHaveAttribute(
+        "href",
+        "/analytics/pre-nivelacija-prioriteti?dataScope=imported&supplierId=10",
+      );
+    });
+  });
+
   it("shows observed mature markdown outcomes and exports the same event rows with evidence state", async () => {
     vi.mocked(getVendorSalesNivelacijaPrePostPair).mockResolvedValueOnce({
       current: response(),

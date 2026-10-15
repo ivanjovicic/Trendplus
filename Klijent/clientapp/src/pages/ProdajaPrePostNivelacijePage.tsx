@@ -147,6 +147,15 @@ function parsePrePostPeriodPreset(value: string | null): PeriodPreset | null {
     : null;
 }
 
+/** Link back to the markdown priority list with the same supplier, store and data scope. */
+function buildPriorityListHref(filters: ActiveFilters, dataScope: DataScope): string {
+  const params = new URLSearchParams();
+  params.set("dataScope", dataScope);
+  if (filters.vendorId != null) params.set("supplierId", String(filters.vendorId));
+  if (filters.storeId != null) params.set("storeId", String(filters.storeId));
+  return `/analytics/pre-nivelacija-prioriteti?${params.toString()}`;
+}
+
 function resolvePrePostUrlState(searchParams: URLSearchParams): { preset: PeriodPreset; filters: ActiveFilters } {
   const requestedPreset = parsePrePostPeriodPreset(searchParams.get("periodPreset"));
   const fromDate = parsePrePostDate(searchParams.get("fromDate"));
@@ -1683,6 +1692,12 @@ export default function ProdajaPrePostNivelacijePage() {
             label: "Poništi filtere",
             onClick: handleResetFilters,
             disabled: loading,
+            tone: "secondary",
+          },
+          {
+            key: "priority-list",
+            label: "Prioriteti nivelacije",
+            to: buildPriorityListHref(activeFilters, dataScope),
             tone: "secondary",
           },
           {

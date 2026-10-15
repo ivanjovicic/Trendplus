@@ -1,4 +1,5 @@
 import { ArrowRightLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { formatEntityFallbackLabel } from "../../validation/entityId";
 import type { RebalanceListDto, StoreOption } from "../../types/analytics";
 import { fmtNumber } from "../../utils/analyticsFormatters";
@@ -43,15 +44,20 @@ export function RebalancingTable({
             <ArrowRightLeft size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Pametna redistribucija</h2>
-            <p className="text-sm text-[var(--text-primary)]">Predlozi za redistribuciju robe između lokacija. Sortirano po urgentnosti i očekivanim uštedama.</p>
+            <h2 className="text-lg font-semibold text-foreground">Predlozi redistribucije</h2>
+            <p className="text-sm text-[var(--text-primary)]">Predlozi za premeštanje robe između lokacija iz snapshot signala, po urgentnosti i proceni moguće prodaje. Procena nije ostvarena prodaja ni dokazana ušteda; prenos se pravi ručno.</p>
             <div className="mt-2 inline-flex rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
               Opseg: {scopeLabel}
             </div>
           </div>
         </div>
-        <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/transfers" className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)] underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-color-44d0ff, #44d0ff)]">
+            Otvori prenose robe
+          </Link>
+          <div className="rounded-full border border-[var(--border-default)] bg-[var(--surface-elevated)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
           {rebalanceLoading ? "Učitavam..." : formatSignalCountBadge(rebalance?.returnedCount ?? rebalance?.totalCount, rebalance?.totalMatchingCount, "predloga", rebalance?.isTruncated)}
+          </div>
         </div>
       </div>
 
@@ -90,7 +96,7 @@ export function RebalancingTable({
                   <th className="px-4 py-3">SKU</th>
                   <th className="px-4 py-3">Vel.</th>
                   <th className="px-4 py-3 text-right">Količina</th>
-                  <th className="px-4 py-3 text-right">Sačuvana prodaja</th>
+                  <th className="px-4 py-3 text-right" title="Procena iz snapshot signala; nije ostvarena ni dokazana prodaja">Procena moguće prodaje</th>
                   <th className="px-4 py-3">Razlog</th>
                   <th className="px-4 py-3 text-right">Akcija</th>
                 </tr>
