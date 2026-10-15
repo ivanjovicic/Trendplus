@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage, {
@@ -181,7 +181,8 @@ describe("ProductDecisionCenterPage hierarchy", () => {
 
     render(<ProductDecisionCenterPage />);
 
-    const replenish = await screen.findByTestId("kpi-replenish");
+    await screen.findByText(/Prikazano 1 od 12 redova/);
+    const replenish = screen.getByTestId("kpi-replenish");
     expect(replenish).toHaveTextContent(PRODUCT_DECISION_BLOCKED_KPI_VALUE);
     expect(screen.getByTestId("kpi-replenish-reason")).toHaveTextContent(/Preporuka je blokirana/);
     expect(screen.getAllByText(/Prikazano 1 od 12 redova/).length).toBeGreaterThan(0);
@@ -193,7 +194,7 @@ describe("ProductDecisionCenterPage hierarchy", () => {
 
     render(<ProductDecisionCenterPage />);
 
-    expect(await screen.findByTestId("kpi-replenish")).toHaveTextContent("0");
+    await waitFor(() => expect(screen.getByTestId("kpi-replenish")).toHaveTextContent("0"));
     const why = await screen.findByRole("button", { name: "Zašto?" });
     expect(why).toHaveAttribute("aria-expanded", "false");
     expect(why).toHaveAttribute("aria-controls", "product-decision-why-101");

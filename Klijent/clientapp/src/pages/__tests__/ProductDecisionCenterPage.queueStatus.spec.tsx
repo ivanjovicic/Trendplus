@@ -448,9 +448,9 @@ describe("ProductDecisionCenterPage queue status sync", () => {
 
   it("loads and validates selected stores against each Product Decision data scope", async () => {
     localStorage.setItem("trendplus:dataScope", "imported");
-    window.history.replaceState({}, "", "/analytics/products?store=11");
+    window.history.replaceState({}, "", "/analytics/products?store=-11");
     getStoresMock
-      .mockResolvedValueOnce([{ storeId: 11, storeName: "Imported store" }])
+      .mockResolvedValueOnce([{ storeId: -11, storeName: "Imported store" }])
       .mockResolvedValueOnce([{ storeId: 22, storeName: "Existing store" }]);
 
     render(<ProductDecisionCenterPage />);
@@ -458,7 +458,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     await waitFor(() => expect(getStoresMock).toHaveBeenCalledWith(true, "imported"));
     await waitFor(() => {
       expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ dataScope: "imported", storeId: 11 }),
+        expect.objectContaining({ dataScope: "imported", storeId: -11 }),
       );
     });
 
@@ -468,10 +468,10 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "existing"));
     await waitFor(() => {
       expect(screen.getByRole("combobox", { name: "Prodavnica" })).toHaveValue("");
-      expect(screen.getByText(/Prodavnica 11 iz URL-a nije dostupna u izvoru/i)).toBeInTheDocument();
+      expect(screen.getByText(/Prodavnica -11 iz URL-a nije dostupna u izvoru/i)).toBeInTheDocument();
     });
     expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
-      options?.dataScope === "existing" && options?.storeId === 11)).toBe(false);
+      options?.dataScope === "existing" && options?.storeId === -11)).toBe(false);
     await waitFor(() => {
       expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
         options?.dataScope === "existing" && options?.storeId === null)).toBe(true);
