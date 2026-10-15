@@ -56,6 +56,12 @@ public sealed class AnalyticsCacheGenerationTests
         public void Advance(TimeSpan by) => _now += by;
     }
 
+    // MemoryCache in our net8 dependency uses ISystemClock rather than TimeProvider.
+    private sealed class ManualMemoryClock(ManualTimeProvider time) : Microsoft.Extensions.Internal.ISystemClock
+    {
+        public DateTimeOffset UtcNow => time.GetUtcNow();
+    }
+
     /// <summary>Distributed cache that can be switched into an outage.</summary>
     private sealed class FlakyDistributedCache : IDistributedCache
     {
@@ -258,7 +264,7 @@ public sealed class AnalyticsCacheGenerationTests
     {
         var time = new ManualTimeProvider();
         var cache = new InMemoryCacheService(
-            new MemoryCache(new MemoryCacheOptions { TimeProvider = time }),
+            new MemoryCache(new MemoryCacheOptions { Clock = new ManualMemoryClock(time) }),
             NullLogger<InMemoryCacheService>.Instance,
             time);
 
