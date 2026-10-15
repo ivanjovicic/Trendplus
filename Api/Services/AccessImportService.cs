@@ -5490,12 +5490,15 @@ using NpgsqlTypes;
             var e = ResolveAccessSaleLineBySource(existingBySource, sourceTableKey, sourceId);
             if (e is not null)
             {
-                if (!overwriteExisting) continue;
-                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_stavke", row))
-                    continue;
+                // Parent ownership is an identity invariant even on a read-only re-import.
+                // Check before the no-overwrite/stale shortcuts; otherwise a reused source
+                // line ID could be silently accepted against another receipt.
                 if (e.IdProdaja != targetSaleId)
                     throw new InvalidOperationException(
                         "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
+                if (!overwriteExisting) continue;
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_stavke", row))
+                    continue;
 
                 e.IdProdaja = targetSaleId;
                 e.IdArtikal = idArtikal.Value;
@@ -5891,12 +5894,13 @@ using NpgsqlTypes;
 
             if (line is not null)
             {
-                if (!overwriteExisting || ShouldSkipStaleOrUnchangedAccessOverwrite(line, lineSourceTableKey, row))
-                    continue;
-                // Never silently reassign an already-mapped source line to a different receipt.
+                // Fail closed before skip/staleness checks, including overwriteExisting=false.
+                // One Access line identity must never migrate to another receipt.
                 if (line.IdProdaja != zaglavlje.Id)
                     throw new InvalidOperationException(
                         "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
+                if (!overwriteExisting || ShouldSkipStaleOrUnchangedAccessOverwrite(line, lineSourceTableKey, row))
+                    continue;
                 line.IdProdaja = zaglavlje.Id;
                 line.IdArtikal = idArtikal.Value;
                 line.Kolicina = qty;
@@ -7402,15 +7406,16 @@ using NpgsqlTypes;
                     d.SourceRowId ?? d.Id);
                 if (stavka is not null)
                 {
+                    // A no-overwrite import must still reject an already-mapped line
+                    // pointing to a different generated header.
+                    if (stavka.IdProdaja != zaglavlje.Id)
+                        throw new InvalidOperationException(
+                            "duplicate_sale_line_identity: a synthesized source line resolves to a different sale header.");
                     if (!overwriteExisting)
                     {
                         skippedDuplicateStavke++;
                         continue;
                     }
-
-                    if (stavka.IdProdaja != zaglavlje.Id)
-                        throw new InvalidOperationException(
-                            "duplicate_sale_line_identity: a synthesized source line resolves to a different sale header.");
                     if (d.SourceUpdatedAtUtc.HasValue && stavka.SourceUpdatedAtUtc.HasValue &&
                         stavka.SourceUpdatedAtUtc.Value > d.SourceUpdatedAtUtc.Value)
                         continue;
