@@ -33,7 +33,6 @@ public abstract class GenerationalAnalyticsCacheService : IAnalyticsCacheService
     internal const string GenerationKeyPrefix = "analytics-gen:v1:";
     private const string InitialToken = "0";
     private static readonly TimeSpan GenerationTokenLifetime = TimeSpan.FromDays(30);
-    private static readonly TimeSpan MaxSlidingExpiration = TimeSpan.FromMinutes(2);
 
     private static readonly Meter CacheMeter = new("Trendplus.AnalyticsCache");
     private static readonly Counter<long> HitCounter = CacheMeter.CreateCounter<long>("analytics_cache_hits");
@@ -492,8 +491,9 @@ public abstract class GenerationalAnalyticsCacheService : IAnalyticsCacheService
     {
         var options = new MemoryCacheEntryOptions
         {
+            // Honor the declared TTL also in memory-only mode. A 2-minute sliding
+            // expiry previously evicted 5–10 minute entries during idle periods.
             AbsoluteExpirationRelativeToNow = ttl,
-            SlidingExpiration = ttl < MaxSlidingExpiration ? ttl : MaxSlidingExpiration,
             Priority = CacheItemPriority.Normal,
             Size = json.LongLength > 0 ? json.LongLength : 1
         };
