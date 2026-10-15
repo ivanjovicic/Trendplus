@@ -5,7 +5,7 @@ namespace Api.Tests;
 public sealed class AccessImportRetryAtomicityTests
 {
     [Fact]
-    public void AnalyticsProjectionUsesOneRollbackBoundaryForTheWholeBatch()
+    public void AnalyticsProjectionEnlistsInOuterOperationalTransaction()
     {
         var service = ReadRepoFile("Api/Services/AccessImportService.cs");
         var projectionStart = service.IndexOf(
@@ -20,11 +20,21 @@ public sealed class AccessImportRetryAtomicityTests
         Assert.True(projectionEnd > projectionStart);
 
         var projection = service[projectionStart..projectionEnd];
-        Assert.Equal(1, projection.Split("BeginTransactionAsync(ct)", StringSplitOptions.None).Length - 1);
-        Assert.Contains("await transaction.CommitAsync(ct);", projection, StringComparison.Ordinal);
-        Assert.Contains("await transaction.RollbackAsync(CancellationToken.None);", projection, StringComparison.Ordinal);
-        Assert.DoesNotContain("stepTx", projection, StringComparison.Ordinal);
-        Assert.DoesNotContain("RunStepAsync", projection, StringComparison.Ordinal);
+        Assert.Contains("_trendDb.Database.CurrentTransaction", projection, StringComparison.Ordinal);
+        Assert.DoesNotContain("BeginTransactionAsync", projection, StringComparison.Ordinal);
+        Assert.DoesNotContain("CommitAsync", projection, StringComparison.Ordinal);
+        Assert.DoesNotContain("RollbackAsync", projection, StringComparison.Ordinal);
+
+        var batchStart = service.IndexOf("private async Task<AccessImportRunResponse> ExecuteImportBatchAsync(", StringComparison.Ordinal);
+        var batchEnd = service.IndexOf("private sealed record", batchStart, StringComparison.Ordinal);
+        Assert.True(batchStart >= 0);
+        Assert.True(batchEnd > batchStart);
+        var batch = service[batchStart..batchEnd];
+        Assert.Contains("RetriableDbContextTransaction.ExecuteAsync(_trendDb", batch, StringComparison.Ordinal);
+        Assert.Contains("EnsureAnalyticsSharesTrendplusDatabase();", batch, StringComparison.Ordinal);
+        Assert.Contains("EnlistAnalyticsContextInTrendTransactionAsync(transactionCt)", batch, StringComparison.Ordinal);
+        Assert.True(batch.IndexOf("EnlistAnalyticsContextInTrendTransactionAsync", StringComparison.Ordinal)
+            < batch.IndexOf("ImportTrendplusAsync(session", StringComparison.Ordinal));
     }
 
     private static string ReadRepoFile(string relativePath)

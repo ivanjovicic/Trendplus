@@ -216,7 +216,7 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.Id);
                 
                 // Explicit column mapping for PostgreSQL snake_case
-                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
                 eb.Property(e => e.BrojRacuna).HasColumnName("broj_racuna").HasMaxLength(100);
                 eb.Property(e => e.DatumProdaje).HasColumnName("datum_prodaje").IsRequired();
                 eb.Property(e => e.NacinPlacanja).HasColumnName("nacin_placanja").HasMaxLength(100);
@@ -249,7 +249,7 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.Id);
                 
                 // Explicit column mapping for PostgreSQL snake_case
-                eb.Property(e => e.Id).HasColumnName("id");
+                eb.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
                 eb.Property(e => e.IdProdaja).HasColumnName("id_prodaja").IsRequired();
                 eb.Property(e => e.IdArtikal).HasColumnName("id_artikal").IsRequired();
                 eb.Property(e => e.Kolicina).HasColumnName("kolicina").IsRequired();
