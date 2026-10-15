@@ -20,7 +20,7 @@ export const CORE_ANALYTICS_ROUTE_DEFINITIONS: AnalyticsSmokeRouteDefinition[] =
     },
     {
         path: "/analytics/decision-board",
-        label: "Izvršni board odluka",
+        label: "Izvršni pregled odluka",
         isDurableReport: false,
         legacyAliases: [],
     },

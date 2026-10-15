@@ -5,7 +5,7 @@ const QUICK_ACTIONS = [
   { to: "/prodaja", title: "Prodaja", subtitle: "Kreiranje novih računa", icon: ShoppingCart },
   { to: "/unos-robe", title: "Unos robe", subtitle: "Prijem robe po dobavljaču", icon: Package },
   { to: "/nivelacija", title: "Nivelacija", subtitle: "Korekcija cena i marži", icon: Tags },
-  { to: "/povracaj", title: "Povraćaj robe", subtitle: "Obrada reklamacija", icon: Undo2 },
+  { to: "/povracaj", title: "Povraćaj robe", subtitle: "Vraćanje robe dobavljaču", icon: Undo2 },
   { to: "/analytics", title: "Analitika", subtitle: "KPI i trend performanse", icon: BarChart3 },
   { to: "/logs", title: "Logovi", subtitle: "Nadzor i dijagnostika", icon: Wrench },
 ];

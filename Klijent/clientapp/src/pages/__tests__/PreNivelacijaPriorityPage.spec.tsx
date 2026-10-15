@@ -2032,3 +2032,41 @@ describe("PreNivelacijaPriorityPage", () => {
     expect(screen.getByRole("button", { name: /Isticanje vs sniženje \(procena\)/ })).toBeInTheDocument();
   });
 });
+
+describe("PreNivelacijaPriorityPage pre/post link", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    getPreNivelacijaPrioritetiMock.mockImplementation(async (query) => buildPagedFocusResponse(query));
+  });
+
+  it("links to pre/post results for the same supplier when the data scope matches", async () => {
+    localStorage.setItem("trendplus:dataScope", "all");
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=5&dataScope=all"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    await waitFor(() => {
+      expect(within(controlBar).getByRole("link", { name: "Pre/posle ranijih nivelacija" })).toHaveAttribute(
+        "href",
+        "/analytics/nivelacije-pre-post?vendorId=5",
+      );
+    });
+  });
+
+  it("hides the pre/post link when the page scope differs from the shared scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "all");
+    render(
+      <MemoryRouter initialEntries={["/analytics/pre-nivelacija-prioriteti?supplierId=5&dataScope=imported"]}>
+        <PreNivelacijaPriorityPage />
+      </MemoryRouter>,
+    );
+
+    const controlBar = await screen.findByTestId("analytics-control-bar");
+    expect(await within(controlBar).findByRole("link", { name: "Kvalitet podataka" })).toBeInTheDocument();
+    expect(within(controlBar).queryByRole("link", { name: "Pre/posle ranijih nivelacija" })).not.toBeInTheDocument();
+  });
+});
