@@ -3845,7 +3845,7 @@ Commit suggestion: `fix(access-import): explicit upload limit and clear 413 mess
 
 - Correction to the audit: a global Kestrel limit exists, `Api/Program.cs:158` `MaxRequestBodySize = 25 MiB`; uploads over 25 MiB were rejected before this task.
 - Upload path: `AccessImportEndpoints.ResolveSourceFileAsync` writes the multipart file to `Path.GetTempPath()/trendplus-access-import` on the web instance; `AccessImportService.PrepareQueuedSourceAsync` then either uploads it to durable storage (`IFileStorage` provider `s3`, batch row stores `SourceStorageKey`) or, with provider `local` (the default when `Storage:Provider` is empty), only makes a local working copy (`SourceFilePath`).
-- `render.yaml` runs the API (`plan: free`, no disk, `AccessImport__WorkerEnabled=false`) and a separate `trendplus-worker` service and sets no `Storage__Provider`. Unless the Render dashboard sets `Storage__Provider=s3`, the queued file exists only on the web instance local filesystem, which the worker cannot read and which is lost on restart. This violates the owner rule; tracked as RQ678 (needs dashboard confirmation before a fail-fast guard, so a working s3 setup is not broken).
+- `render.yaml` runs the API (`plan: free`, no disk, `AccessImport__WorkerEnabled=false`) and a separate `trendplus-worker` service and sets no `Storage__Provider`. Unless the Render dashboard sets `Storage__Provider=s3`, the queued file exists only on the web instance local filesystem, which the worker cannot read and which is lost on restart. This violates the owner rule; tracked as RQ679 (needs dashboard confirmation before a fail-fast guard, so a working s3 setup is not broken).
 - Residual: Render sits behind Cloudflare, whose upload cap may be about 100 MB (decimal, ~95 MiB), below the 100 MiB application limit; files close to the limit may be rejected by the proxy with a generic 413.
 
 ### Problem
@@ -3887,7 +3887,7 @@ None (owner decision recorded above).
 - Date: 2026-10-15
 - Status: DONE
 - Completion: 100%
-- Changed files: Api/Endpoints/AccessImportEndpoints.cs (DefaultMaxUploadBytes 100 MiB, ApplyUploadLimit per request, 413 message, oversized form read mapping), Api.Tests/AccessImportRunEndpointTests.cs, Klijent/clientapp/src/services/accessImportApi.ts, AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue (storage verification, new RQ678)
+- Changed files: Api/Endpoints/AccessImportEndpoints.cs (DefaultMaxUploadBytes 100 MiB, ApplyUploadLimit per request, 413 message, oversized form read mapping), Api.Tests/AccessImportRunEndpointTests.cs, Klijent/clientapp/src/services/accessImportApi.ts, AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue (storage verification, new RQ679)
 - Checks run: local AccessImport backend tests 46 pass; vitest page + services 118 pass; tsc; queue validators with and without --self-test; git diff --check; PR #167 CI: backend 38694648814, frontend 38694648654, governance 38694648653 pass
 - Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
 - Run log: .ai/runs/2026-10-15-RQ677-access-upload-limit-evidence.md
@@ -3895,10 +3895,10 @@ None (owner decision recorded above).
 - Main commit SHA: 741c2fa5
 - Main verification: git rev-parse origin/main -> 741c2fa5 after merge
 - Missed: none
-- Follow-up: RQ678 (durable copy guard, WAITING on Render dashboard Storage__Provider confirmation); RQ676 next in owner order
-- Residual risk: Cloudflare in front of Render may cap uploads near 100 MB (decimal); with Storage provider local the queued file is only on the web disk (RQ678).
+- Follow-up: RQ679 (durable copy guard, WAITING on Render dashboard Storage__Provider confirmation); RQ676 next in owner order
+- Residual risk: Cloudflare in front of Render may cap uploads near 100 MB (decimal); with Storage provider local the queued file is only on the web disk (RQ679).
 
-## RQ678 - Guarantee a durable copy of a queued Access upload on Render Free
+## RQ679 - Guarantee a durable copy of a queued Access upload on Render Free
 
 Status: WAITING
 Priority: P1
