@@ -1097,8 +1097,13 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             SELECT COUNT(*)::bigint AS "Value"
             FROM "SalesLineFacts" AS fact
             LEFT JOIN prodaja_stavke AS source
-              ON fact."SourceTableKey" = source.source_table_key
-             AND fact."SourceLineId" = source.source_row_id
+              ON (
+                  (fact."SourceTableKey" = source.source_table_key
+                   AND fact."SourceLineId" = source.source_row_id)
+                  OR
+                  (fact."SourceTableKey" = 'trendplus.prodaja_stavke'
+                   AND fact."SourceLineId" = source.id)
+              )
             WHERE fact."SourceLineId" IS NOT NULL
               AND (
                   source.id IS NULL OR

@@ -26,6 +26,13 @@ Claim reservation: direct-user-request/not applicable
 5. The same historical oracle on that copy for `SalesFacts` and `SalesLineFacts` populations `all` / `imported` / `existing`, plus issue #174 dependent foreign keys.
 6. Exact final SHA CI after those inputs exist. This local 18/18 result is not that gate.
 
+## CI repair addendum — 2026-10-15
+- Resumed the existing direct-user P0 draft after `Analytics Tests & Data Integrity` failed on exact PR head `ff58cfaaa9aa55d7360dea7a67ccf78d84d8aa8e`. The sole failure was `MixedPopulationSqlOracle_DoesNotRebindHistoricalReceipts`: expected `0`, actual `2`.
+- Cause: the independent `SalesLineFacts` oracle joined only Access lineage (`source_table_key`, `source_row_id`). Valid native POS and legacy fact rows deliberately use `trendplus.prodaja_stavke` plus the target `prodaja_stavke.id`, so the oracle falsely reported them as missing source rows.
+- Repair: the test-only oracle now resolves either supported identity form. The negative control still changes an Access-derived fact and requires exactly one detected reparenting. No import, mapping, formula, schema, production data, or cursor behavior changed.
+- Local required PostgreSQL proof used Testcontainers with `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`: focused oracle test `1 passed / 0 failed / 0 skipped`; whole `AccessImportForeignKeyGuardTests` group `20 passed / 0 failed / 0 skipped` (TRX result). `dotnet build Api.Tests/Api.Tests.csproj --no-restore --disable-build-servers -m:1` also passed with `0` warnings and `0` errors.
+- Delivery state at this addendum: the correction is awaiting a normal non-force push to PR #163 and a fresh exact-head backend CI result. PR #163 remains draft/PARTIAL and must not merge: the stable source-database namespace, authorized batch #23 reconciliation, full all/imported/existing SQL oracle, and remaining failure/foreign-key matrix are still unmet.
+
 ## Earlier record
 
 ## What was done
