@@ -3542,14 +3542,21 @@ None. Server-side atomic start guard is RQ673.
 
 ## RQ673 - Make the Access import concurrent-start guard atomic
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend concurrency / data integrity
 Feature family: access-import-start-guard
 Parallel-safe: no (AccessImportService start path and DataImportBatches schema)
-Owner: unassigned
+Owner: grok (branch `fix/rq673-access-import-start-lock`)
 Ready after: RQ672
 Commit suggestion: `fix(access-import): serialize batch creation with a database guard`
+
+### Owner decision (Ivan, 2026-10-15 08:03/08:04)
+
+- Chosen: cross-instance PostgreSQL transaction-scoped advisory lock `pg_advisory_xact_lock` with a dedicated, documented key (`AccessImportService.AccessImportBatchCreateAdvisoryLockKey` = `0x5450_4149_4D50_0001`, ASCII "TPAIMP" + 1). No in-process lock, no migration.
+- Stale recovery (`RecoverStaleRunningBatchesAsync`), the active-batch check and the new-batch insert run in one transaction under the lock; the second caller gets the existing batch ID instead of a new batch.
+- Rejected: partial unique index over `pending`/`running` statuses. Reason: it needs a schema change plus a Neon migration, and an abandoned row in an active status would block every new start until manually repaired; the advisory lock keeps stale handling in the existing recovery rules.
+- Non-PostgreSQL providers (InMemory tests) keep the previous best-effort check.
 
 ### Problem
 
@@ -3585,7 +3592,7 @@ Concurrent starts create exactly one batch; CI green with PostgreSQL.
 
 ### Dependencies
 
-Owner approval if the index option (schema change) is chosen.
+None (owner decision recorded above; index option rejected).
 
 
 ## RQ674 - Do not return an empty Access import history when the batch query times out
@@ -3596,7 +3603,7 @@ Type: backend error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes (AccessImportEndpoints batch list/detail fallbacks)
 Owner: unassigned
-Ready after: RQ672
+Ready after: RQ673 (owner order 2026-10-15: RQ673 ? RQ674 ? RQ675 ? RQ677 ? RQ676)
 Commit suggestion: `fix(access-import): report batch history timeouts instead of an empty list`
 
 ### Problem
@@ -3635,14 +3642,18 @@ None.
 
 ## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
 
-Status: WAITING
+Status: READY
 Priority: P2
 Type: security / UX decision
 Feature family: access-import-ui
 Parallel-safe: yes
-Owner: Ivan (decision)
-Ready after: owner decision
+Owner: unassigned
+Ready after: RQ674 (owner order 2026-10-15)
 Commit suggestion: `feat(access-import): persistent admin session for import operations`
+
+### Owner decision (Ivan, 2026-10-15 08:04)
+
+Option (b): keep the admin key in `sessionStorage` for the tab session only, enter it through a masked (password) input instead of `window.prompt`, and provide explicit key clearing (clear button; also clear on 401/403). Never put the key in logs, URLs or `localStorage`.
 
 ### Problem
 
@@ -3675,7 +3686,7 @@ Owner-approved flow; no key in logs or URLs.
 
 ### Dependencies
 
-Owner decision.
+None (owner decision recorded above).
 
 
 ## RQ676 - Serbian text and diacritics on the Access import screen and its server messages
@@ -3686,7 +3697,7 @@ Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
 Owner: unassigned
-Ready after: RQ672
+Ready after: RQ677 (owner order 2026-10-15: RQ673 ? RQ674 ? RQ675 ? RQ677 ? RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 
 ### Problem
@@ -3726,14 +3737,20 @@ None.
 
 ## RQ677 - Verify and surface the maximum Access upload size
 
-Status: WAITING
+Status: READY
 Priority: P3
 Type: backend limits / error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes
 Owner: unassigned
-Ready after: owner confirms the largest expected .accdb size
+Ready after: RQ675 (owner order 2026-10-15)
 Commit suggestion: `fix(access-import): explicit upload limit and clear 413 message`
+
+### Owner decision (Ivan, 2026-10-15 08:04)
+
+- Limit: 100 MiB (104857600 bytes) for `/api/access-import/run` and `/preview`, with a clear Serbian rejection over the limit (413) and the limit shown next to the file picker.
+- Render Free has no persistent disk: verify how the upload is stored and handed to the worker; the uploaded file must never be the only copy on the local filesystem when the worker uses it later (durable storage key first).
+- If a real `.accdb` exceeds 100 MiB, do not raise HTTP limits; write a separate analysis/prompt for direct upload to durable storage.
 
 ### Problem
 
@@ -3754,7 +3771,7 @@ Set an explicit limit per endpoint from options, return a clear 413 message, and
 
 ### Do
 
-1. Confirm the real largest file size with the owner.
+1. Verify upload storage and worker hand-off (durable copy) per the owner decision.
 2. Add the limit and message; test with a synthetic oversized request (no real import).
 
 ### Tests
@@ -3767,4 +3784,4 @@ Oversized uploads fail fast with a clear Serbian message.
 
 ### Dependencies
 
-Owner input on maximum size.
+None (owner decision recorded above).
