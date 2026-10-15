@@ -53,7 +53,7 @@ import {
   SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
-import { getDataScope, type DataScope } from "../utils/dataScope";
+import { dataScopeLabel, getDataScope, type DataScope } from "../utils/dataScope";
 import { recommendationReasonLabel } from "../utils/canonicalRecommendationSemantics";
 import type {
   AnalyticsActionDataQualityStatus,
@@ -741,10 +741,23 @@ function buildSourceKey(
   toDate: string,
   storeId: number | null,
   supplierId: number | null,
+  dataScope: DataScope,
 ): string {
-  return `product:${row.productId}:${actionKind}:${fromDate}:${toDate}:${storeId ?? "all"}:${supplierId ?? "all"}`;
+  return "product:v2:" + dataScope + ":" + row.productId + ":" + actionKind + ":" + fromDate + ":" + toDate
+    + ":" + (storeId ?? "all") + ":" + (supplierId ?? "all");
 }
 
+function buildLegacySourceKey(
+  row: ProductDecisionRow,
+  actionKind: string,
+  fromDate: string,
+  toDate: string,
+  storeId: number | null,
+  supplierId: number | null,
+): string {
+  return "product:" + row.productId + ":" + actionKind + ":" + fromDate + ":" + toDate
+    + ":" + (storeId ?? "all") + ":" + (supplierId ?? "all");
+}
 function recommendationActionTitle(status: ProductDecisionRecommendationStatus, productName: string): string {
   if (status === "REPLENISH") return `Dopuni: ${productName}`;
   if (status === "BOOST") return `Pojačaj: ${productName}`;
@@ -904,10 +917,21 @@ export default function ProductDecisionCenterPage() {
   const [timelineExportingProductId, setTimelineExportingProductId] = useState<number | null>(null);
   const [evidenceSnapshotByProductId, setEvidenceSnapshotByProductId] = useState<Record<number, { capturedAtUtc: string; recommendationId: string } | null>>({});
   const [dataScope, setDataScope] = useState<DataScope>(() => getDataScope());
+  const dataScopeRef = useRef(dataScope);
+  dataScopeRef.current = dataScope;
   const timelineRequestSeqRef = useRef(0);
   const dataRequestSeqRef = useRef(0);
 
   const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storeOptionsScope, setStoreOptionsScope] = useState<DataScope | null>(null);
+  const [storeOptionsLoading, setStoreOptionsLoading] = useState(true);
+  const [storeOptionsError, setStoreOptionsError] = useState<string | null>(null);
+  const [storeOptionsReloadNonce, setStoreOptionsReloadNonce] = useState(0);
+  const [storeFilterNotice, setStoreFilterNotice] = useState<string | null>(null);
+
+  const storeOptionsReady = storeOptionsScope === dataScope && !storeOptionsLoading && !storeOptionsError;
+  const selectedStoreIsKnown = storeId == null || stores.some((store) => store.storeId === storeId);
+  const storeFiltersReady = storeOptionsReady && selectedStoreIsKnown;
   const [suppliers, setSuppliers] = useState<SupplierFilterOption[]>([]);
   const [supplierFiltersWarning, setSupplierFiltersWarning] = useState<string | null>(null);
   const [supplierFiltersStale, setSupplierFiltersStale] = useState(false);
@@ -924,6 +948,7 @@ export default function ProductDecisionCenterPage() {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [queueBusyKey, setQueueBusyKey] = useState<string | null>(null);
   const [queuedActionKeys, setQueuedActionKeys] = useState<Set<string> | null>(null);
+  const [legacyActionKeys, setLegacyActionKeys] = useState<Set<string> | null>(null);
   const queuedActionKeysRef = useRef<Set<string> | null>(null);
   const queueBusyKeyRef = useRef<string | null>(null);
   queuedActionKeysRef.current = queuedActionKeys;
@@ -975,11 +1000,33 @@ export default function ProductDecisionCenterPage() {
 
   useEffect(() => {
     const handleScopeChange = () => {
-      // A supplier choice belongs to the previous dataset and must not narrow the next one.
-      setSupplierId(null);
-      setDataScope(getDataScope());
-    };
+      const nextDataScope = getDataScope();
+      if (nextDataScope === dataScopeRef.current) return;
 
+      dataRequestSeqRef.current += 1;
+      timelineRequestSeqRef.current += 1;
+      payloadRef.current = null;
+      setPayload(null);
+      setLoading(true);
+      setError(null);
+      setStaleWarning(null);
+      setActionStatusWarning(null);
+      setQueueMessage(null);
+      setQueuedActionKeys(null);
+      setLegacyActionKeys(null);
+      setEvidenceSnapshotByProductId({});
+      setExpandedProductId(null);
+      setTimelineByProductId({});
+      setTimelineLoadingProductId(null);
+      setTimelineError(null);
+      setTimelineExportError(null);
+      setStoreOptionsScope(null);
+      setStoreOptionsLoading(true);
+      setStoreOptionsError(null);
+      setStoreFilterNotice(null);
+      setSupplierId(null);
+      setDataScope(nextDataScope);
+    };
     window.addEventListener("trendplus:data-scope-changed", handleScopeChange);
     return () => {
       window.removeEventListener("trendplus:data-scope-changed", handleScopeChange);
@@ -988,20 +1035,41 @@ export default function ProductDecisionCenterPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestedScope = dataScope;
+    setStoreOptionsScope(null);
+    setStoreOptionsLoading(true);
+    setStoreOptionsError(null);
+
     (async () => {
       try {
-        const items = await getStores();
-        if (!cancelled) setStores(items);
+        const items = await getStores(true, requestedScope);
+        if (cancelled) return;
+        setStores(items);
+        setStoreOptionsScope(requestedScope);
+        setStoreOptionsLoading(false);
       } catch {
-        if (!cancelled) {
-          // Preserve the last known store list on transient failures instead of faking an empty filter set.
-        }
+        if (cancelled) return;
+        setStoreOptionsScope(null);
+        setStoreOptionsLoading(false);
+        setStoreOptionsError("Lista prodavnica nije dostupna za izvor " + dataScopeLabel(requestedScope) + ".");
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dataScope, storeOptionsReloadNonce]);
+
+  useEffect(() => {
+    if (!storeOptionsReady || storeId == null || stores.some((store) => store.storeId === storeId)) return;
+
+    setStoreId(null);
+    setStoreFilterNotice(
+      "Prodavnica " + storeId + " iz URL-a nije dostupna u izvoru " + dataScopeLabel(dataScope)
+        + ". Filter je uklonjen; prikazuju se sve prodavnice.",
+    );
+  }, [dataScope, storeId, storeOptionsReady, stores]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -1039,6 +1107,22 @@ export default function ProductDecisionCenterPage() {
   }, [dataScope, fromDate, toDate, storeId]);
 
   const loadData = useCallback(async () => {
+    if (!storeFiltersReady) {
+      dataRequestSeqRef.current += 1;
+      payloadRef.current = null;
+      setPayload(null);
+      setLoading(!storeOptionsError && (storeOptionsLoading || storeOptionsScope !== dataScope));
+      setError(
+        storeOptionsError
+          ? { message: storeOptionsError }
+          : storeFilterNotice
+            ? { message: storeFilterNotice }
+            : selectedStoreIsKnown
+              ? null
+              : { message: "Izabrana prodavnica nije potvrđena za aktivni izvor podataka." },
+      );
+      return;
+    }
     const requestSeq = ++dataRequestSeqRef.current;
     setLoading(true);
     setError(null);
@@ -1091,7 +1175,20 @@ export default function ProductDecisionCenterPage() {
         setLoading(false);
       }
     }
-  }, [dataScope, fromDate, serverSearch, supplierId, storeId, toDate]);
+  }, [
+    dataScope,
+    fromDate,
+    selectedStoreIsKnown,
+    serverSearch,
+    storeFilterNotice,
+    storeFiltersReady,
+    storeId,
+    storeOptionsError,
+    storeOptionsLoading,
+    storeOptionsScope,
+    supplierId,
+    toDate,
+  ]);
 
   useEffect(() => {
     loadData();
@@ -1149,19 +1246,26 @@ export default function ProductDecisionCenterPage() {
   }, [dataScope, fromDate, recommendationFilter, dataQualityFilter, search, serverSearch, sortField, sortDir, storeId, supplierId, toDate]);
 
   const actionStatusLookupItems = useMemo(() => {
-    const candidates = filteredRows.filter((row) => row.recommendationStatus?.toUpperCase() !== "MARKDOWN").map((row) => {
-      const queueSpec = buildProductQueueSpec(row);
-      return {
-        sourceType: queueSpec.sourceType,
-        sourceKey: buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId),
-      };
-    });
+    const candidates = filteredRows
+      .filter((row) => row.recommendationStatus?.toUpperCase() !== "MARKDOWN")
+      .flatMap((row) => {
+        const queueSpec = buildProductQueueSpec(row);
+        return [
+          {
+            sourceType: queueSpec.sourceType,
+            sourceKey: buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId, dataScope),
+          },
+          {
+            sourceType: queueSpec.sourceType,
+            sourceKey: buildLegacySourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId),
+          },
+        ];
+      });
 
     return Array.from(new Map(
-      candidates.map((entry) => [`${entry.sourceType}::${entry.sourceKey}`, entry])
+      candidates.map((entry) => [entry.sourceType + "::" + entry.sourceKey, entry])
     ).values());
-  }, [filteredRows, fromDate, storeId, supplierId, toDate]);
-
+  }, [dataScope, filteredRows, fromDate, storeId, supplierId, toDate]);
   const actionStatusLookupSignature = useMemo(
     () => productDecisionActionStatusLookupSignature(actionStatusLookupItems),
     [actionStatusLookupItems],
@@ -1175,6 +1279,7 @@ export default function ProductDecisionCenterPage() {
     if (lookupItems.length === 0) {
       setActionStatusWarning(null);
       setQueuedActionKeys(new Set());
+      setLegacyActionKeys(new Set());
       setEvidenceSnapshotByProductId((previous) => (Object.keys(previous).length === 0 ? previous : {}));
       return () => {
         cancelled = true;
@@ -1193,18 +1298,24 @@ export default function ProductDecisionCenterPage() {
           .filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof getAnalyticsActionSourceStatuses>>> => result.status === "fulfilled")
           .flatMap((result) => result.value.items);
         const hasFailedChunk = settled.some((result) => result.status === "rejected");
-        const currentKeys = new Set(lookupItems.map((item) => item.sourceKey));
+        const currentKeys = new Set(
+          lookupItems
+            .filter((item) => item.sourceKey.startsWith("product:v2:"))
+            .map((item) => item.sourceKey),
+        );
         const keys = new Set<string>();
         for (const key of queuedActionKeysRef.current ?? []) {
           if (currentKeys.has(key)) keys.add(key);
         }
+        const legacyKeys = new Set<string>();
         const snapshots: Record<number, { capturedAtUtc: string; recommendationId: string }> = {};
         for (const item of successfulStatuses) {
-          if (item.exists && item.sourceKey) keys.add(item.sourceKey);
+          if (item.exists && item.sourceKey && currentKeys.has(item.sourceKey)) keys.add(item.sourceKey);
+          if (item.actionId != null && item.sourceKey && !currentKeys.has(item.sourceKey)) legacyKeys.add(item.sourceKey);
         }
         for (const row of filteredRows) {
           const queueSpec = buildProductQueueSpec(row);
-          const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+          const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId, dataScope);
           const status = successfulStatuses.find((entry) => entry.sourceType === queueSpec.sourceType && entry.sourceKey === sourceKey);
           if (status?.hasEvidenceSnapshot && status.evidenceSnapshotCapturedAtUtc && status.evidenceSnapshotRecommendationId) {
             snapshots[row.productId] = {
@@ -1216,9 +1327,11 @@ export default function ProductDecisionCenterPage() {
 
         if (successfulStatuses.length === 0 && hasFailedChunk) {
           setQueuedActionKeys(null);
+          setLegacyActionKeys(null);
           setEvidenceSnapshotByProductId({});
         } else {
           setQueuedActionKeys(keys);
+          setLegacyActionKeys(hasFailedChunk ? null : legacyKeys);
         }
         if (successfulStatuses.length > 0 || !hasFailedChunk) {
           setEvidenceSnapshotByProductId(snapshots);
@@ -1227,6 +1340,7 @@ export default function ProductDecisionCenterPage() {
       } catch (reason) {
         if (!cancelled) {
           setQueuedActionKeys(null);
+          setLegacyActionKeys(null);
           setEvidenceSnapshotByProductId({});
           setActionStatusWarning(buildActionStatusWarning(reason));
         }
@@ -1236,15 +1350,15 @@ export default function ProductDecisionCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [actionStatusLookupItems, actionStatusLookupSignature, filteredRows, fromDate, storeId, supplierId, toDate]);
-  const hasBlockingError = Boolean(error && !payload);
+  }, [actionStatusLookupItems, actionStatusLookupSignature, dataScope, filteredRows, fromDate, storeId, supplierId, toDate]);
+  const hasBlockingError = Boolean((error && !payload) || (storeOptionsError && !payload));
   const showMetaWarning = !loading && !hasBlockingError && isAnalyticsMetaWarning(responseMeta);
   const showInsufficientState = !loading
     && !hasBlockingError
     && shouldShowAnalyticsEmptyState(responseMeta, rows.length)
     && isAnalyticsMetaInsufficient(responseMeta);
-  const showNoDataState = !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
-  const showFilteredOutState = !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
+  const showNoDataState = storeFiltersReady && !loading && !hasBlockingError && !showInsufficientState && rows.length === 0;
+  const showFilteredOutState = storeFiltersReady && !loading && !hasBlockingError && !showInsufficientState && rows.length > 0 && sortedRows.length === 0;
   const hideKpiChrome = hasBlockingError || showInsufficientState || showNoDataState || showFilteredOutState;
 
   const kpis = useMemo(() => ({
@@ -1465,8 +1579,9 @@ export default function ProductDecisionCenterPage() {
 
   const addRowToCentralActions = useCallback(async (row: ProductDecisionRow) => {
     if (row.recommendationStatus?.toUpperCase() === "MARKDOWN") return;
+    if (!storeFiltersReady) return;
     const queueSpec = buildProductQueueSpec(row);
-    const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+    const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId, dataScope);
     const confidenceLevel = normalizeConfidenceLevel(row.confidenceLevel);
     const confidenceScore = resolveConfidenceScore(row);
     const warningCodes = resolveWarningCodes(row);
@@ -1534,6 +1649,7 @@ export default function ProductDecisionCenterPage() {
           detail: node.detail ?? null,
         })),
         metadataJson: JSON.stringify({
+          dataScope,
           productId: row.productId,
           sku: row.sku,
           supplierId: row.supplierId ?? null,
@@ -1592,7 +1708,7 @@ export default function ProductDecisionCenterPage() {
       queueBusyKeyRef.current = null;
       setQueueBusyKey(null);
     }
-  }, [fromDate, queuedActionKeys, storeId, supplierId, toDate]);
+  }, [dataScope, fromDate, queuedActionKeys, storeFiltersReady, storeId, supplierId, toDate]);
 
   return (
     <section className="product-decision-page">
@@ -1699,7 +1815,16 @@ export default function ProductDecisionCenterPage() {
           </label>
           <label>
             Prodavnica
-            <select value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value ? Number(event.target.value) : null)}>
+            <select
+              aria-label="Prodavnica"
+              value={storeId ?? ""}
+              onChange={(event) => {
+                setStoreId(event.target.value ? Number(event.target.value) : null);
+                setStoreFilterNotice(null);
+              }}
+              disabled={!storeOptionsReady}
+              aria-invalid={storeFilterNotice ? true : undefined}
+            >
               <option value="">Sve prodavnice</option>
               {stores.map((store) => (
                 <option key={store.storeId} value={store.storeId}>
@@ -1707,6 +1832,22 @@ export default function ProductDecisionCenterPage() {
                 </option>
               ))}
             </select>
+            {storeOptionsError ? (
+              <p className="product-decision-message product-decision-message-info" role="alert">
+                {storeOptionsError} Odluke i akcije su blokirane.
+                <button type="button" disabled={storeOptionsLoading} onClick={() => setStoreOptionsReloadNonce((value) => value + 1)}>
+                  Pokušaj ponovo
+                </button>
+              </p>
+            ) : storeOptionsLoading || storeOptionsScope !== dataScope ? (
+              <p className="product-decision-message product-decision-message-info" role="status">
+                Proverava se lista prodavnica za izvor {dataScopeLabel(dataScope)}.
+              </p>
+            ) : storeFilterNotice ? (
+              <p className="product-decision-message product-decision-message-info" role="status">
+                {storeFilterNotice}
+              </p>
+            ) : null}
           </label>
           <label>
             Dobavljač
@@ -1993,7 +2134,9 @@ export default function ProductDecisionCenterPage() {
               {visibleRows.map((row) => {
                   const expanded = expandedProductId === row.productId;
                   const queueSpec = buildProductQueueSpec(row);
-                  const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+                  const sourceKey = buildSourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId, dataScope);
+                  const legacySourceKey = buildLegacySourceKey(row, queueSpec.actionKind, fromDate, toDate, storeId, supplierId);
+                  const hasUnscopedLegacyAction = legacyActionKeys?.has(legacySourceKey) ?? false;
                   const isQueued = queuedActionKeys?.has(sourceKey) ?? false;
                   const isQueueBusy = queueBusyKey === sourceKey;
                   const actionStatusKnown = queuedActionKeys != null;
@@ -2037,6 +2180,11 @@ export default function ProductDecisionCenterPage() {
                         <td>
                           <strong>{row.productName}</strong>
                           <small>{row.sku || ANALYTICS_UNAVAILABLE_LABEL} | {row.category ?? row.tipObuce ?? ANALYTICS_UNAVAILABLE_LABEL}</small>
+                          {hasUnscopedLegacyAction ? (
+                            <small className="product-decision-message product-decision-message-info" role="status" data-testid="legacy-product-action-warning">
+                              Postoji ranija akcija bez potvrđenog dataScope izvora; nije povezana sa ovom preporukom. <Link to="/analytics/actions">Proverite centralni red akcija</Link>.
+                            </small>
+                          ) : null}
                         </td>
                         <td>{row.supplierName ?? ANALYTICS_UNAVAILABLE_LABEL}</td>
                         <td>
@@ -2124,7 +2272,7 @@ export default function ProductDecisionCenterPage() {
                                 event.stopPropagation();
                                 void addRowToCentralActions(row);
                               }}
-                              disabled={isQueueBusy || isQueued}
+                              disabled={isQueueBusy || isQueued || !storeFiltersReady}
                               title={isQueued
                                 ? "Akcija je već u centralnom redu."
                                 : actionStatusKnown
@@ -2515,7 +2663,7 @@ export default function ProductDecisionCenterPage() {
                                 ) : <button
                                   type="button"
                                   className={`btn-add-to-queue product-decision-workflow-action${isQueued ? " added" : ""}`}
-                                  disabled={isQueueBusy || isQueued}
+                                  disabled={isQueueBusy || isQueued || !storeFiltersReady}
                                   onClick={() => void addRowToCentralActions(row)}
                                   title={isQueued
                                     ? "Akcija je već u centralnom redu."

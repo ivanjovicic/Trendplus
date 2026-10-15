@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductDecisionCenterPage from "../ProductDecisionCenterPage";
@@ -49,6 +49,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    window.history.replaceState({}, "", "/");
 
     getStoresMock.mockResolvedValue([]);
     getSupplierFiltersMock.mockResolvedValue([]);
@@ -118,6 +119,7 @@ describe("ProductDecisionCenterPage queue status sync", () => {
       },
     });
   });
+
 
   it("uses batch source status endpoint for visible rows", async () => {
     const { unmount } = render(<ProductDecisionCenterPage />);
@@ -328,6 +330,12 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     fireEvent.click(addButtons[0]);
 
     expect(upsertAnalyticsActionWithResultMock).toHaveBeenCalledTimes(1);
+    const upsertInput = upsertAnalyticsActionWithResultMock.mock.calls[0]?.[0] as {
+      sourceKey: string;
+      metadataJson: string;
+    };
+    expect(upsertInput.sourceKey).toMatch(/^product:v2:all:/);
+    expect(JSON.parse(upsertInput.metadataJson)).toEqual(expect.objectContaining({ dataScope: "all" }));
 
     resolveUpsert?.({
       item: { id: 1, sourceKey: "product:101:replenish:2026-05-28:2026-06-26:all:all" },
@@ -382,4 +390,158 @@ describe("ProductDecisionCenterPage queue status sync", () => {
     expect(screen.queryByText("Status akcija trenutno nije dostupan.")).not.toBeInTheDocument();
     expect(screen.queryByText("Model X")).not.toBeInTheDocument();
   });
+  it("isolates Product Decision action status and evidence by data scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    let importedSourceKeyFromApi: string | null = null;
+    getAnalyticsActionSourceStatusesMock.mockImplementation(async (input: { items: Array<{ sourceType: string; sourceKey: string }> }) => {
+      if (importedSourceKeyFromApi == null) {
+        importedSourceKeyFromApi = input.items.find((item) => item.sourceKey.startsWith("product:v2:imported:"))?.sourceKey ?? null;
+      }
+      return {
+        items: input.items.map((item) => {
+          const isCurrentImportedAction = item.sourceKey === importedSourceKeyFromApi;
+          const isUnscopedLegacyAction = item.sourceKey.startsWith("product:") && !item.sourceKey.startsWith("product:v2:");
+          return {
+            ...item,
+            exists: isCurrentImportedAction || isUnscopedLegacyAction,
+            actionId: isCurrentImportedAction || isUnscopedLegacyAction ? 41 : null,
+            hasEvidenceSnapshot: isCurrentImportedAction,
+            evidenceSnapshotCapturedAtUtc: isCurrentImportedAction ? "2026-10-15T10:00:00Z" : null,
+            evidenceSnapshotRecommendationId: isCurrentImportedAction ? "imported-recommendation" : null,
+          };
+        }),
+      };
+    });
+    const latestSourceKey = () => {
+      const call = [...getAnalyticsActionSourceStatusesMock.mock.calls]
+        .reverse()
+        .find(([input]) => input?.items?.length > 0);
+      return call?.[0]?.items?.[0]?.sourceKey as string | undefined;
+    };
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => expect(latestSourceKey()).toBeTruthy());
+    const importedSourceKey = latestSourceKey()!;
+    expect(importedSourceKey).toMatch(/^product:v2:imported:/);
+    expect(await screen.findByRole("button", { name: "U akcijama" })).toBeDisabled();
+    fireEvent.click(screen.getByText("Model X"));
+    expect((await screen.findByTestId("decision-evidence-snapshot")).textContent).toContain("Snimljen");
+    expect(await screen.findByTestId("legacy-product-action-warning")).toBeInTheDocument();
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+        options?.dataScope === "existing" && options?.top === 500)).toBe(true);
+    });
+    await waitFor(() => expect(latestSourceKey()).not.toBe(importedSourceKey));
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Model X"));
+    expect((await screen.findByTestId("decision-evidence-snapshot")).textContent).toContain("Nije snimljen");
+    expect(screen.queryByRole("button", { name: "U akcijama" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("legacy-product-action-warning")).toBeInTheDocument();
+    const addActionButtons = await screen.findAllByRole("button", { name: "Dodaj u proveru" });
+    expect(addActionButtons.some((button) => !button.hasAttribute("disabled"))).toBe(true);
+  });
+
+  it("loads and validates selected stores against each Product Decision data scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.history.replaceState({}, "", "/analytics/products?store=11");
+    getStoresMock
+      .mockResolvedValueOnce([{ storeId: 11, storeName: "Imported store" }])
+      .mockResolvedValueOnce([{ storeId: 22, storeName: "Existing store" }]);
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => expect(getStoresMock).toHaveBeenCalledWith(true, "imported"));
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dataScope: "imported", storeId: 11 }),
+      );
+    });
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "existing"));
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: "Prodavnica" })).toHaveValue("");
+      expect(screen.getByText(/Prodavnica 11 iz URL-a nije dostupna u izvoru/i)).toBeInTheDocument();
+    });
+    expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+      options?.dataScope === "existing" && options?.storeId === 11)).toBe(false);
+    await waitFor(() => {
+      expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+        options?.dataScope === "existing" && options?.storeId === null)).toBe(true);
+    });
+  });
+
+  it("blocks recommendations when scoped store loading fails and retries the same scope", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    getStoresMock
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("store list unavailable"))
+      .mockResolvedValueOnce([{ storeId: 22, storeName: "Existing store" }]);
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+      options?.dataScope === "imported" && options?.top === 500)).toBe(true));
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+
+    await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "existing"));
+    expect(await screen.findByRole("button", { name: "Pokušaj ponovo" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Prodavnica" })).toBeDisabled();
+    expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+      options?.dataScope === "existing" && options?.top === 500)).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+    await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "existing"));
+    await waitFor(() => expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+      options?.dataScope === "existing" && options?.top === 500)).toBe(true));
+    expect(screen.getByRole("combobox", { name: "Prodavnica" })).toBeEnabled();
+  });
+
+  it("ignores a late store response after the active data scope changes again", async () => {
+    localStorage.setItem("trendplus:dataScope", "imported");
+    let resolveExistingStores: ((items: Array<{ storeId: number; storeName: string }>) => void) | null = null;
+    getStoresMock.mockImplementation((_useCached: boolean, scope: string) => {
+      if (scope === "existing") {
+        return new Promise((resolve) => {
+          resolveExistingStores = resolve;
+        });
+      }
+      return Promise.resolve([{ storeId: 11, storeName: "Imported store" }]);
+    });
+
+    render(<ProductDecisionCenterPage />);
+
+    await waitFor(() => expect(getProductDecisionCenterMock.mock.calls.some(([options]) =>
+      options?.dataScope === "imported" && options?.top === 500)).toBe(true));
+
+    localStorage.setItem("trendplus:dataScope", "existing");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "existing"));
+
+    localStorage.setItem("trendplus:dataScope", "imported");
+    window.dispatchEvent(new Event("trendplus:data-scope-changed"));
+    await waitFor(() => expect(getStoresMock).toHaveBeenLastCalledWith(true, "imported"));
+    await waitFor(() => expect(screen.getByRole("option", { name: "Imported store" })).toBeInTheDocument());
+
+    await act(async () => {
+      resolveExistingStores?.([{ storeId: 22, storeName: "Existing store" }]);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("option", { name: "Imported store" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Existing store" })).not.toBeInTheDocument();
+    expect(getProductDecisionCenterMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ dataScope: "imported", top: 500 }),
+    );
+  });
+
 });
