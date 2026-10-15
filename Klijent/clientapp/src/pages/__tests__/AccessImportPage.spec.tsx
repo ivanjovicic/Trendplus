@@ -105,3 +105,23 @@ describe("AccessImportPage admin key session (RQ675)", () => {
     expect(await screen.findByRole("button", { name: "Proveri status importa" })).toBeInTheDocument();
   });
 });
+
+describe("AccessImportPage upload size limit (RQ677)", () => {
+  beforeEach(() => {
+    vi.mocked(getAccessImportBatches).mockReset();
+    vi.mocked(getAccessImportBatches).mockResolvedValue([]);
+    window.sessionStorage.clear();
+  });
+
+  it("shows the 100 MiB limit and rejects a larger file before any upload", async () => {
+    const { container } = renderPage();
+    expect(await screen.findByText("Maksimalna veličina fajla: 100 MiB")).toBeInTheDocument();
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const big = new File([new Uint8Array(8)], "big.accdb");
+    Object.defineProperty(big, "size", { value: 101 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+
+    expect(await screen.findByText(/dozvoljeno je najviše 100 MiB/)).toBeInTheDocument();
+  });
+});

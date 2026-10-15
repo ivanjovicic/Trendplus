@@ -3802,12 +3802,12 @@ None.
 
 ## RQ677 - Verify and surface the maximum Access upload size
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P3
 Type: backend limits / error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes
-Owner: unassigned
+Owner: grok (branch `fix/rq677-access-upload-limit`)
 Ready after: RQ675 (owner order 2026-10-15)
 Commit suggestion: `fix(access-import): explicit upload limit and clear 413 message`
 
@@ -3816,6 +3816,13 @@ Commit suggestion: `fix(access-import): explicit upload limit and clear 413 mess
 - Limit: 100 MiB (104857600 bytes) for `/api/access-import/run` and `/preview`, with a clear Serbian rejection over the limit (413) and the limit shown next to the file picker.
 - Render Free has no persistent disk: verify how the upload is stored and handed to the worker; the uploaded file must never be the only copy on the local filesystem when the worker uses it later (durable storage key first).
 - If a real `.accdb` exceeds 100 MiB, do not raise HTTP limits; write a separate analysis/prompt for direct upload to durable storage.
+
+### Storage and hand-off verification (2026-10-15)
+
+- Correction to the audit: a global Kestrel limit exists, `Api/Program.cs:158` `MaxRequestBodySize = 25 MiB`; uploads over 25 MiB were rejected before this task.
+- Upload path: `AccessImportEndpoints.ResolveSourceFileAsync` writes the multipart file to `Path.GetTempPath()/trendplus-access-import` on the web instance; `AccessImportService.PrepareQueuedSourceAsync` then either uploads it to durable storage (`IFileStorage` provider `s3`, batch row stores `SourceStorageKey`) or, with provider `local` (the default when `Storage:Provider` is empty), only makes a local working copy (`SourceFilePath`).
+- `render.yaml` runs the API (`plan: free`, no disk, `AccessImport__WorkerEnabled=false`) and a separate `trendplus-worker` service and sets no `Storage__Provider`. Unless the Render dashboard sets `Storage__Provider=s3`, the queued file exists only on the web instance local filesystem, which the worker cannot read and which is lost on restart. This violates the owner rule; tracked as RQ678 (needs dashboard confirmation before a fail-fast guard, so a working s3 setup is not broken).
+- Residual: Render sits behind Cloudflare, whose upload cap may be about 100 MB (decimal, ~95 MiB), below the 100 MiB application limit; files close to the limit may be rejected by the proxy with a generic 413.
 
 ### Problem
 
@@ -3850,3 +3857,51 @@ Oversized uploads fail fast with a clear Serbian message.
 ### Dependencies
 
 None (owner decision recorded above).
+
+## RQ678 - Guarantee a durable copy of a queued Access upload on Render Free
+
+Status: WAITING
+Priority: P1
+Type: backend storage / import reliability
+Feature family: access-import-pipeline
+Parallel-safe: yes (AccessImportService source preparation and startup checks only)
+Owner: unassigned
+Ready after: Ivan confirms the production `Storage__Provider` value on the Render web and worker services
+Commit suggestion: `fix(access-import): refuse to queue an upload without durable storage`
+
+### Problem
+
+With storage provider `local` (the default), a queued upload exists only on the web instance local disk. On Render Free there is no persistent disk and the worker is a separate service, so the worker cannot read the file and a restart loses it.
+
+### Evidence
+
+- `Api/Services/AccessImportService.cs` `PrepareQueuedSourceAsync`: provider `local` or no `IFileStorage` -> `CreateBackgroundWorkingCopyAsync` only.
+- `Infrastructure/Services/Storage/FileStorageServiceCollectionExtensions.cs` `ResolveProviderName`: empty -> `local`.
+- `render.yaml`: web `plan: free`, `AccessImport__WorkerEnabled=false`, separate `trendplus-worker`; no `Storage__Provider`.
+- RQ677 storage verification section.
+
+### Scope
+
+When the import will be processed outside the web process (worker not registered in web) and the provider is `local`, refuse to queue in non-Development environments with a clear Serbian 503 instead of creating a batch the worker cannot run; expose the storage mode in runtime status. If a real `.accdb` exceeds 100 MiB, write a separate analysis for direct browser-to-storage upload (presigned URL) instead of raising HTTP limits.
+
+### Read first
+
+`Api/Program.cs` worker registration flags, `Api/Services/Access/AccessImportJobQueue.cs`, `Infrastructure/Services/Storage/S3FileStorage.cs`.
+
+### Do
+
+1. Confirm the Render dashboard values with Ivan.
+2. Add the guard with tests for local+external-worker (rejected), s3 (accepted, storage key persisted) and in-process worker (accepted).
+3. Keep successful import, restart recovery and cancel behaviour unchanged.
+
+### Tests
+
+Endpoint/service tests for the three modes; existing enqueue and recovery tests stay green.
+
+### Acceptance
+
+No batch is queued whose only source copy is on the web instance local filesystem.
+
+### Dependencies
+
+Owner confirmation of production storage configuration.
