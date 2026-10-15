@@ -80,10 +80,9 @@ const offPageAlert = {
 
 async function waitForInventoryBootstrap() {
   await waitFor(() => {
-    // Store discovery fills the default comparison selection, which intentionally
-    // triggers one follow-up inventory request. RQ323 hides secondary snapshots
-    // during that refetch, so interact only with the settled current-scope alert.
-    expect(getInventoryAlertsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Inventory loading starts only after store discovery confirms its default comparison set.
+    expect(getInventoryStoreComparisonMock).toHaveBeenCalledWith(expect.objectContaining({ compareStoreIds: [1] }));
+    expect(getInventoryAlertsMock).toHaveBeenCalled();
   });
 }
 

@@ -76,7 +76,7 @@ const staleInsights = {
 describe("InventoryPage insights error handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getStoresMock.mockResolvedValue([]);
+    getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
     getSupplierFiltersMock.mockResolvedValue([]);
     getInventoryReportSchedulesMock.mockResolvedValue([]);
     getAnalyticsActionSourceStatusesMock.mockResolvedValue({ items: [] });

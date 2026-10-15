@@ -278,6 +278,11 @@ describe("InventoryPage signal window refresh", () => {
   });
 
   it("restores Inventory pagination, search, page size, and compare stores from URL", async () => {
+    getStoresMock.mockResolvedValue([
+      { storeId: 1, storeName: "Prodavnica 1" },
+      { storeId: 2, storeName: "Prodavnica 2" },
+    ]);
+
     render(
       <MemoryRouter initialEntries={["/analytics/inventory?page=3&pageSize=100&search=patika&compareStores=1,2"]}>
         <LocationProbe />
@@ -337,6 +342,7 @@ describe("InventoryPage signal window refresh", () => {
         fromDate: "2026-08-20",
         toDate: "2026-09-18",
       }));
+      expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("30d");
     });
 
     expect(screen.getByLabelText("Period signala zaliha")).toHaveValue("30d");

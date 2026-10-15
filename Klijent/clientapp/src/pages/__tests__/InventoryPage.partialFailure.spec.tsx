@@ -82,7 +82,7 @@ vi.mock("../../components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }:
 describe("InventoryPage partial load failure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getStoresMock.mockResolvedValue([]);
+    getStoresMock.mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
     getSupplierFiltersMock.mockResolvedValue([]);
     getInventoryReportSchedulesMock.mockResolvedValue([]);
     getAnalyticsActionSourceStatusesMock.mockResolvedValue({ items: [] });
