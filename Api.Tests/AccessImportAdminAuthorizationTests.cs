@@ -277,6 +277,50 @@ public sealed class AccessImportAdminAuthorizationTests
         Assert.Equal(1, host.Service.GetRecentBatchStatusesCallCount);
     }
 
+    [Theory]
+    [InlineData("timeout")]
+    [InlineData("npgsql")]
+    [InlineData("unexpected")]
+    public async Task BatchList_WhenHistoryQueryFailsWithoutCache_Returns503InsteadOfEmptyList(string failure)
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+        host.Service.BatchStatusesFailure = failure switch
+        {
+            "timeout" => new TimeoutException("slow"),
+            "npgsql" => new Npgsql.NpgsqlException("db down"),
+            _ => new InvalidOperationException("boom")
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/access-import/batches?take=20");
+        request.Headers.Add("X-Admin-Key", AdminApiKey);
+        using var response = await host.Client.SendAsync(request);
+
+        Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(5), response.Headers.RetryAfter?.Delta);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Istorija importa trenutno nije dostupna", body);
+        Assert.DoesNotContain("timeout", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task BatchList_WhenHistoryQueryFailsAfterSuccess_ServesCachedRows()
+    {
+        await using var host = await TestHost.CreateAsync(withAdminKey: true);
+
+        var first = new HttpRequestMessage(HttpMethod.Get, "/api/access-import/batches?take=20");
+        first.Headers.Add("X-Admin-Key", AdminApiKey);
+        using (var ok = await host.Client.SendAsync(first))
+            ok.EnsureSuccessStatusCode();
+
+        host.Service.BatchStatusesFailure = new TimeoutException("slow");
+        var second = new HttpRequestMessage(HttpMethod.Get, "/api/access-import/batches?take=20");
+        second.Headers.Add("X-Admin-Key", AdminApiKey);
+        using var response = await host.Client.SendAsync(second);
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, host.Service.GetRecentBatchStatusesCallCount);
+    }
+
     private sealed record RuntimeStatusResponse(bool Available, string Platform, string[] MissingDependencies, string? Detail);
 
     private sealed class TestHost : IAsyncDisposable
@@ -359,6 +403,7 @@ public sealed class AccessImportAdminAuthorizationTests
         public int RequestCancellationCallCount { get; private set; }
         public int DeleteBatchCallCount { get; private set; }
         public int GetRecentBatchStatusesCallCount { get; private set; }
+        public Exception? BatchStatusesFailure { get; set; }
 
         public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
             => throw new NotSupportedException();
@@ -378,6 +423,8 @@ public sealed class AccessImportAdminAuthorizationTests
         public Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default)
         {
             GetRecentBatchStatusesCallCount++;
+            if (BatchStatusesFailure is not null)
+                throw BatchStatusesFailure;
             return Task.FromResult(new List<AccessImportBatchDto>());
         }
 

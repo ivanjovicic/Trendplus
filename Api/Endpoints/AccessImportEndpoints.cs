@@ -1047,6 +1047,28 @@ public static class AccessImportEndpoints
         }
     }
 
+    /// <summary>
+    /// RQ674: shown to the operator when the batch history cannot be loaded and no cached copy exists.
+    /// Deliberately avoids the words the client treats as request cancellation (timeout/abort/canceled).
+    /// </summary>
+    internal const string BatchHistoryUnavailableMessage =
+        "Istorija importa trenutno nije dostupna jer baza sporo odgovara. Pokušaj ponovo za nekoliko sekundi.";
+
+    internal const int BatchHistoryRetryAfterSeconds = 5;
+
+    // A slow database must never render as an empty history: return 503 + Retry-After instead of 200 [].
+    private static IResult BatchHistoryUnavailableResult() => new BatchHistoryUnavailableHttpResult();
+
+    private sealed class BatchHistoryUnavailableHttpResult : IResult
+    {
+        public Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            httpContext.Response.Headers.RetryAfter = BatchHistoryRetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return httpContext.Response.WriteAsJsonAsync(new { error = BatchHistoryUnavailableMessage, retryable = true });
+        }
+    }
+
     private static async Task<IResult> GetBatchListResultAsync(
         IAccessImportService service,
         IMemoryCache cache,
@@ -1086,7 +1108,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (NpgsqlException ex)
         {
@@ -1101,7 +1123,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (TimeoutException ex)
         {
@@ -1116,7 +1138,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (Exception ex)
         {
@@ -1131,7 +1153,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
     }
 

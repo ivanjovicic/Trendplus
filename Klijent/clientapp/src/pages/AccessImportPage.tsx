@@ -110,6 +110,7 @@ export default function AccessImportPage() {
     const [preview, setPreview] = useState<AccessImportPreviewResponse | null>(null);
     const [runResult, setRunResult] = useState<AccessImportRunResponse | null>(null);
     const [batches, setBatches] = useState<AccessImportBatchDto[]>([]);
+    const [batchHistoryWarning, setBatchHistoryWarning] = useState<string | null>(null);
     const [batchStatusFilter, setBatchStatusFilter] = useState<BatchStatusFilter>("all");
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [loadingImport, setLoadingImport] = useState(false);
@@ -140,6 +141,7 @@ export default function AccessImportPage() {
         try {
             const rows = await getAccessImportBatches(50, reason, key);
             setBatches(rows);
+            setBatchHistoryWarning(null);
             setActiveRunCheck("done");
             if (key) {
                 try {
@@ -160,6 +162,8 @@ export default function AccessImportPage() {
                 return [] as AccessImportBatchDto[];
             }
             if (!isAccessImportRequestCanceledError(error)) {
+                // RQ674: keep the last known rows and say the history is temporarily unavailable instead of showing "no imports".
+                setBatchHistoryWarning(error instanceof Error && error.message ? error.message : "Istorija importa trenutno nije dostupna. Pokušaj ponovo.");
                 console.debug("[access-import][batches] refresh failed", {
                     reason,
                     message: error instanceof Error ? error.message : String(error),
@@ -570,6 +574,7 @@ export default function AccessImportPage() {
 
             {/* ---- Global error ---- */}
             {error && <div className="accimport-error">{error}</div>}
+            {batchHistoryWarning && <div className="accimport-warning" role="status">{batchHistoryWarning}</div>}
 
             {activeRunCheck === "needsKey" && !importBusy && (
                 <div className="accimport-error" role="status">
