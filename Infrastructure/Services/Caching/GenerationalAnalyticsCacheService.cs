@@ -278,6 +278,7 @@ public abstract class GenerationalAnalyticsCacheService : IAnalyticsCacheService
             if (value is not null)
             {
                 RecordHit(ref _l1Hits, "l1");
+                Logger.LogDebug("Cache HIT: {Key}", key);
                 return new AnalyticsCacheLookup<T>(value, stamp);
             }
         }
@@ -303,6 +304,7 @@ public abstract class GenerationalAnalyticsCacheService : IAnalyticsCacheService
                                 // Promotion keeps the remaining L2 lifetime instead of restarting the TTL.
                                 SetL1(physicalKey, bytes, expiresAt, remaining, envelope.TypeName);
                                 RecordHit(ref _l2Hits, "l2");
+                                Logger.LogDebug("Cache HIT: {Key}", key);
                                 return new AnalyticsCacheLookup<T>(value, stamp);
                             }
                         }
@@ -321,6 +323,7 @@ public abstract class GenerationalAnalyticsCacheService : IAnalyticsCacheService
 
         Interlocked.Increment(ref _misses);
         MissCounter.Add(1);
+        Logger.LogDebug("Cache MISS: {Key}", key);
         return new AnalyticsCacheLookup<T>(null, stamp);
     }
 
