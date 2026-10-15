@@ -58,6 +58,18 @@ public static class AccessImportEndpoints
         return null;
     }
 
+    // Use the same typed HTTP outcome for multipart parser limits and oversized file payloads.
+    private static IResult SourceResolutionFailureResult(HttpRequest request, string? error)
+    {
+        var maxUploadBytes = GetMaxUploadBytes(request.HttpContext);
+        if (string.Equals(error, BuildUploadTooLargeMessage(maxUploadBytes), StringComparison.Ordinal))
+        {
+            return Results.Json(new { error, maxUploadBytes }, statusCode: StatusCodes.Status413PayloadTooLarge);
+        }
+
+        return Results.BadRequest(new { error });
+    }
+
     private const int BatchListFallbackTimeoutSeconds = 8;
     private const int BatchDetailFallbackTimeoutSeconds = 10;
     private static readonly TimeSpan BatchListCacheDuration = TimeSpan.FromSeconds(15);
@@ -804,7 +816,7 @@ public static class AccessImportEndpoints
                     exceptionType: nameof(ArgumentException),
                     stackTrace: null,
                     ct);
-                return Results.BadRequest(new { error = resolved.Error });
+                return SourceResolutionFailureResult(request, resolved.Error);
             }
 
             try
@@ -1393,7 +1405,7 @@ public static class AccessImportEndpoints
                 exceptionType: nameof(ArgumentException),
                 stackTrace: null,
                 ct);
-            return Results.BadRequest(new { error = resolved.Error });
+            return SourceResolutionFailureResult(request, resolved.Error);
         }
 
         if (!string.IsNullOrWhiteSpace(resolved.Path) && File.Exists(resolved.Path))
@@ -1768,6 +1780,11 @@ public static class AccessImportEndpoints
         if (!string.Equals(ext, ".accdb", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(ext, ".mdb", StringComparison.OrdinalIgnoreCase))
             return (false, null, "Dozvoljeni su samo .accdb i .mdb fajlovi.", false);
+
+        // Multipart headroom is for form fields and boundaries, not extra bytes in the Access file.
+        // Enforce the actual file limit even when Content-Length is within the permitted request size.
+        if (file.Length > GetMaxUploadBytes(request.HttpContext))
+            return (false, null, BuildUploadTooLargeMessage(GetMaxUploadBytes(request.HttpContext)), false);
 
         var tempPath = Path.Combine(Path.GetTempPath(), "trendplus-access-import");
         Directory.CreateDirectory(tempPath);
