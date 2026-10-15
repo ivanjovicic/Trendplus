@@ -3770,7 +3770,7 @@ Priority: P3
 Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
-Owner: grok (branch `fix/rq676-access-import-serbian-text`)
+Owner: grok
 Ready after: RQ677 DONE (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 
@@ -3808,6 +3808,21 @@ No English or diacritic-less operator text on the screen.
 
 None.
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AccessImportPage.tsx, Api/Endpoints/AccessImportEndpoints.cs (schema warnings, not-found and source messages), Api/Services/AccessImportService.cs (reused active batch warnings); this queue
+- Checks run: vitest page + services 118 pass; tsc; backend build; queue validators with and without --self-test; git diff --check; PR #168 CI: backend 38696026042, frontend 38696026057, governance 38696026036 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ676-access-import-serbian-text-evidence.md
+- Delivery mode: PR #168 merged with --merge after green CI
+- Main commit SHA: 5258c315
+- Main verification: git rev-parse origin/main -> 5258c315 after merge
+- Missed: none
+- Follow-up: RQ678 (WAITING, owner confirmation of Storage__Provider)
+- Residual risk: remaining English text may come from deeper service exceptions surfaced verbatim; log messages intentionally stay English.
 
 ## RQ677 - Verify and surface the maximum Access upload size
 
