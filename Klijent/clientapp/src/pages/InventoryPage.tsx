@@ -46,6 +46,12 @@ import {
   SUPPLIER_FILTER_LOAD_FAILED_MESSAGE,
   SUPPLIER_FILTER_STALE_LIST_MESSAGE,
 } from "../utils/supplierFilterFallbackState";
+import {
+  resolveStoreFilterFallbackState,
+  STORE_FILTER_LOAD_FAILED_MESSAGE,
+  STORE_FILTER_SCOPE_LOADING_MESSAGE,
+  STORE_SELECTION_CLEARED_MESSAGE,
+} from "../utils/storeFilterFallbackState";
 import { useReliableAnalyticsQuery } from "../hooks/useReliableAnalyticsQuery";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
@@ -130,6 +136,8 @@ const OVERSTOCK_RISK_THRESHOLD = 0.5;
 const STORE_COMPARISON_SECTION_ID = "inventory-store-comparison";
 const ACTION_WORKFLOW_SECTION_ID = "inventory-action-workflow";
 const INVENTORY_ACTIONS_QUEUE_URL = "/analytics/actions?sourceType=inventory";
+const INVENTORY_EMPTY_STORE_LIST_MESSAGE = "Lista prodavnica je prazna za aktivni opseg podataka; inventory podaci i akcije nisu učitani.";
+const INVENTORY_COMPARE_STORE_CLEARED_MESSAGE = "Prodavnice koje nisu dostupne u aktivnom opsegu uklonjene su iz poređenja.";
 
 type InventoryPageError = { message: string; errorCode?: string | null; correlationId?: string | null };
 
@@ -152,6 +160,11 @@ type InventoryLifecycleSnapshot = {
   alerts: InventoryAlertListDto | null;
   rebalance: RebalanceListDto | null;
   secondaryErrors: InventorySecondaryPanelErrors;
+};
+
+type InventoryScopedSnapshot = {
+  dataScope: string;
+  snapshot: InventoryLifecycleSnapshot;
 };
 
 function toInventoryPageError(reason: unknown, fallback: string): InventoryPageError {
@@ -425,10 +438,16 @@ export default function InventoryPage() {
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [storesLoadError, setStoresLoadError] = useState(false);
   const [storesReloadNonce, setStoresReloadNonce] = useState(0);
+  const [storesScope, setStoresScope] = useState<string | null>(null);
+  const [storesWarning, setStoresWarning] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(() => searchParams.get("search") ?? "");
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => parseEntityIdParam(searchParams.get("storeId")));
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(() => parseEntityIdParam(searchParams.get("supplierId")));
   const [compareStoreIds, setCompareStoreIds] = useState<number[]>(() => parseInventoryCompareStores(searchParams.get("compareStores")));
+  const selectedStoreIdRef = useRef(selectedStoreId);
+  selectedStoreIdRef.current = selectedStoreId;
+  const compareStoreIdsRef = useRef(compareStoreIds);
+  compareStoreIdsRef.current = compareStoreIds;
   const [sortBy, setSortBy] = useState(() => parseInventorySort(searchParams.get("sortBy")));
   const [pageNumber, setPageNumber] = useState(() => parseInventoryPositiveInt(searchParams.get("page"), 1));
   const [pageSize, setPageSize] = useState(() => parseInventoryPageSize(searchParams.get("pageSize")));
@@ -464,6 +483,17 @@ export default function InventoryPage() {
   const [sizeCurveStoreId, setSizeCurveStoreId] = useState<number | null>(null);
   const [sizeCurveSizeCode, setSizeCurveSizeCode] = useState<string | null>(null);
   const [inventoryDataScope, setInventoryDataScope] = useState(() => getDataScope());
+  const storesScopeRef = useRef<string | null>(null);
+  const storeFiltersReady = storesScope === inventoryDataScope
+    && storesScopeRef.current === inventoryDataScope
+    && !storesLoadError
+    && getDataScope() === inventoryDataScope;
+  function hasVerifiedStoreFilters(): boolean {
+    return storesScope === inventoryDataScope
+      && storesScopeRef.current === inventoryDataScope
+      && !storesLoadError
+      && getDataScope() === inventoryDataScope;
+  }
   const deferredSearch = useDeferredValue(searchInput);
   const trimmedSearch = deferredSearch.trim();
   const inventorySignalWindow = useMemo(
@@ -492,14 +522,16 @@ export default function InventoryPage() {
     if (pendingUrlWritesRef.current.delete(urlKey)) return;
     pendingUrlWritesRef.current.clear();
     const nextSearch = searchParams.get("search") ?? "";
-    const nextStore = parseEntityIdParam(searchParams.get("storeId"));
+    const requestedStoreId = parseEntityIdParam(searchParams.get("storeId"));
+    const requestedCompareStoreIds = parseInventoryCompareStores(searchParams.get("compareStores"));
     const nextSupplier = parseEntityIdParam(searchParams.get("supplierId"));
     setSearchInput((current) => current === nextSearch ? current : nextSearch);
-    setSelectedStoreId((current) => current === nextStore ? current : nextStore);
+    setSelectedStoreId((current) => current === requestedStoreId ? current : requestedStoreId);
     setSelectedSupplierId((current) => current === nextSupplier ? current : nextSupplier);
     setCompareStoreIds((current) => {
-      const next = parseInventoryCompareStores(searchParams.get("compareStores"));
-      return current.length === next.length && current.every((value, index) => value === next[index]) ? current : next;
+      return current.length === requestedCompareStoreIds.length && current.every((value, index) => value === requestedCompareStoreIds[index])
+        ? current
+        : requestedCompareStoreIds;
     });
     setSortBy((current) => {
       const next = parseInventorySort(searchParams.get("sortBy"));
@@ -524,6 +556,23 @@ export default function InventoryPage() {
       return current === next ? current : next;
     });
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!storeFiltersReady) return;
+
+    const availableStoreIds = new Set(stores.map((store) => store.storeId));
+    const selectedStoreIsInvalid = selectedStoreId != null && !availableStoreIds.has(selectedStoreId);
+    const nextCompareStoreIds = compareStoreIds.filter((storeId) => availableStoreIds.has(storeId));
+    const compareStoresWereRemoved = nextCompareStoreIds.length !== compareStoreIds.length;
+    if (!selectedStoreIsInvalid && !compareStoresWereRemoved) return;
+
+    setStoresWarning([
+      selectedStoreIsInvalid ? STORE_SELECTION_CLEARED_MESSAGE : null,
+      compareStoresWereRemoved ? INVENTORY_COMPARE_STORE_CLEARED_MESSAGE : null,
+    ].filter((message): message is string => Boolean(message)).join(" "));
+    if (selectedStoreIsInvalid) setSelectedStoreId(null);
+    if (compareStoresWereRemoved) setCompareStoreIds(nextCompareStoreIds);
+  }, [compareStoreIds, selectedStoreId, storeFiltersReady, stores]);
 
   useEffect(() => {
     setSearchParams((current) => {
@@ -558,34 +607,65 @@ export default function InventoryPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestedScope = inventoryDataScope;
+    storesScopeRef.current = null;
+    setStoresScope(null);
+    setStores([]);
+    setStoresWarning(STORE_FILTER_SCOPE_LOADING_MESSAGE);
+    setStoresLoadError(false);
     setFiltersLoading(true);
-    void getStores(true)
-      .then((nextStores) => {
+    void (async () => {
+      try {
+        const nextStores = await getStores(true, requestedScope);
         if (cancelled) return;
-        setStoresLoadError(false);
+
+        const resolvedStores = resolveStoreFilterFallbackState(nextStores, []);
+        if (resolvedStores.isStale || nextStores.length === 0) {
+          storesScopeRef.current = null;
+          setStores([]);
+          setStoresScope(null);
+          setStoresLoadError(true);
+          setStoresWarning(resolvedStores.warning ?? INVENTORY_EMPTY_STORE_LIST_MESSAGE);
+          setSelectedStoreId(null);
+          setCompareStoreIds([]);
+          return;
+        }
+
+        const availableStoreIds = new Set(nextStores.map((store) => store.storeId));
+        const requestedStoreId = selectedStoreIdRef.current;
+        const requestedCompareStoreIds = compareStoreIdsRef.current;
+        const selectedStoreIsInvalid = requestedStoreId != null && !availableStoreIds.has(requestedStoreId);
+        const validatedCompareStoreIds = requestedCompareStoreIds.filter((storeId) => availableStoreIds.has(storeId));
+        const compareStoresWereRemoved = validatedCompareStoreIds.length !== requestedCompareStoreIds.length;
+        const nextCompareStoreIds = validatedCompareStoreIds.length > 0
+          ? validatedCompareStoreIds
+          : nextStores.slice(0, DEFAULT_COMPARE_STORES).map((store) => store.storeId);
+
+        storesScopeRef.current = requestedScope;
         setStores(nextStores);
-        setCompareStoreIds((current) => {
-          const next = current.length > 0
-            ? current
-            : nextStores.slice(0, DEFAULT_COMPARE_STORES).map((store) => store.storeId);
-          if (current.length === next.length && current.every((id, index) => id === next[index])) {
-            return current;
-          }
-          return next;
-        });
-      })
-      .catch(() => {
+        setStoresScope(requestedScope);
+        setStoresLoadError(false);
+        setStoresWarning([
+          selectedStoreIsInvalid ? STORE_SELECTION_CLEARED_MESSAGE : null,
+          compareStoresWereRemoved ? INVENTORY_COMPARE_STORE_CLEARED_MESSAGE : null,
+        ].filter((message): message is string => Boolean(message)).join(" ") || null);
+        setSelectedStoreId(selectedStoreIsInvalid ? null : requestedStoreId);
+        setCompareStoreIds(nextCompareStoreIds);
+      } catch {
         if (cancelled) return;
+        storesScopeRef.current = null;
         setStores([]);
-        setCompareStoreIds([]);
-        setSelectedStoreId(null);
+        setStoresScope(null);
         setStoresLoadError(true);
-      })
-      .finally(() => {
+        setStoresWarning(STORE_FILTER_LOAD_FAILED_MESSAGE);
+        setSelectedStoreId(null);
+        setCompareStoreIds([]);
+      } finally {
         if (!cancelled) setFiltersLoading(false);
-      });
+      }
+    })();
     return () => { cancelled = true; };
-  }, [storesReloadNonce]);
+  }, [inventoryDataScope, storesReloadNonce]);
 
   useEffect(() => {
     let cancelled = false;
@@ -600,6 +680,13 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    if (!storeFiltersReady) {
+      // Keep prior options only as a disabled fallback until the active store scope is verified.
+      setSupplierFiltersWarning(SUPPLIER_FILTER_STALE_LIST_MESSAGE);
+      setSupplierFiltersStale(true);
+      return;
+    }
+
     let cancelled = false;
     void getSupplierFilters(undefined, undefined, true, selectedStoreId ?? undefined, inventoryDataScope)
       .then((nextSuppliers) => {
@@ -629,9 +716,13 @@ export default function InventoryPage() {
         }
       });
     return () => { cancelled = true; };
-  }, [inventoryDataScope, selectedStoreId, selectedSupplierId]);
+  }, [inventoryDataScope, selectedStoreId, selectedSupplierId, storeFiltersReady]);
 
-  const inventoryQuery = useCallback(async (signal: AbortSignal): Promise<InventoryLifecycleSnapshot> => {
+  const inventoryQuery = useCallback(async (signal: AbortSignal): Promise<InventoryScopedSnapshot> => {
+    if (storesScopeRef.current !== inventoryDataScope || getDataScope() !== inventoryDataScope) {
+      throw new Error(STORE_FILTER_SCOPE_LOADING_MESSAGE);
+    }
+
     const results = await Promise.allSettled([
       getInventoryBalance(true, selectedStoreId, selectedSupplierId, inventoryDataScope, signal),
       getInventoryList({
@@ -707,26 +798,29 @@ export default function InventoryPage() {
     );
 
     return {
-      balance: (results[0] as PromiseFulfilledResult<InventoryBalance>).value,
-      pageData: (results[1] as PromiseFulfilledResult<InventoryPagedResponse>).value,
-      insights: insightsResult.value,
-      storeComparison: storeComparisonResult.value,
-      actionWorkflow: actionWorkflowResult.value,
-      forecast: forecastResult.value,
-      alerts: alertsResult.value,
-      rebalance: rebalanceResult.value,
-      secondaryErrors: {
-        insights: insightsResult.error,
-        storeComparison: storeComparisonResult.error,
-        actionWorkflow: actionWorkflowResult.error,
-        forecast: forecastResult.error,
-        alerts: alertsResult.error,
-        rebalance: rebalanceResult.error,
+      dataScope: inventoryDataScope,
+      snapshot: {
+        balance: (results[0] as PromiseFulfilledResult<InventoryBalance>).value,
+        pageData: (results[1] as PromiseFulfilledResult<InventoryPagedResponse>).value,
+        insights: insightsResult.value,
+        storeComparison: storeComparisonResult.value,
+        actionWorkflow: actionWorkflowResult.value,
+        forecast: forecastResult.value,
+        alerts: alertsResult.value,
+        rebalance: rebalanceResult.value,
+        secondaryErrors: {
+          insights: insightsResult.error,
+          storeComparison: storeComparisonResult.error,
+          actionWorkflow: actionWorkflowResult.error,
+          forecast: forecastResult.error,
+          alerts: alertsResult.error,
+          rebalance: rebalanceResult.error,
+        },
       },
     };
   }, [alertSeverityFilter, compareStoreIds, inventoryDataScope, inventorySignalWindow, pageNumber, pageSize, selectedStoreId, selectedSupplierId, serverSortBy, trimmedSearch]);
   const {
-    data: inventorySnapshot,
+    data: scopedInventorySnapshot,
     initialLoading,
     refetching,
     error: queryError,
@@ -734,13 +828,17 @@ export default function InventoryPage() {
     staleWarning,
     staleReason,
     refetch,
-  } = useReliableAnalyticsQuery<InventoryLifecycleSnapshot>({
+  } = useReliableAnalyticsQuery<InventoryScopedSnapshot>({
     query: inventoryQuery,
+    enabled: storeFiltersReady,
     getErrorMessage: useCallback(
       (reason: unknown) => toInventoryPageError(reason, "Podaci o zalihama trenutno nisu dostupni.").message,
       [],
     ),
   });
+  const inventorySnapshot = storeFiltersReady && scopedInventorySnapshot?.dataScope === inventoryDataScope
+    ? scopedInventorySnapshot.snapshot
+    : null;
   // Declared after useReliableAnalyticsQuery so the same-scope branch can use its stable refetch().
   useEffect(() => {
     const handleScopeChange = () => {
@@ -757,9 +855,16 @@ export default function InventoryPage() {
           // Same dataset: re-run the primary inventory request through the query hook.
           refetch();
         } else {
+          storesScopeRef.current = null;
           // A supplier selected in the previous dataset must not narrow the next dataset.
           setSelectedSupplierId(null);
           setPageNumber(1);
+          setDetailRow(null);
+          setDetailData(null);
+          setDetailSizeCurve(null);
+          setSizeCurveSkuId(null);
+          setSizeCurveStoreId(null);
+          setSizeCurveSizeCode(null);
           if (periodPreset !== "custom") {
             const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
             setPeriodFrom(nextRange.fromDate);
@@ -792,7 +897,11 @@ export default function InventoryPage() {
     alerts: null,
     rebalance: null,
   };
-  const loading = initialLoading || refetching;
+  const hasCurrentScopeSnapshot = scopedInventorySnapshot?.dataScope === inventoryDataScope;
+  const awaitingCurrentScopeSnapshot = storeFiltersReady && !hasCurrentScopeSnapshot && !queryError && !staleWarning;
+  const loading = filtersLoading
+    || (!storeFiltersReady && !storesLoadError)
+    || (storeFiltersReady && (initialLoading || refetching || awaitingCurrentScopeSnapshot));
   const insightsLoading = loading;
   const insightsError = secondaryErrors.insights ?? queryError ?? staleWarning;
   const operationsLoading = loading;
@@ -808,7 +917,9 @@ export default function InventoryPage() {
   const effectiveActionWorkflow = secondarySnapshot == null ? null : workflowOverride ?? actionWorkflow;
   const actionWorkflowError = secondaryErrors.actionWorkflow ?? queryError ?? staleWarning;
   const storeComparisonError = secondaryErrors.storeComparison ?? queryError ?? staleWarning;
-  const inventoryError = queryError || staleWarning
+  const inventoryError = storesLoadError
+    ? { message: storesWarning ?? STORE_FILTER_LOAD_FAILED_MESSAGE }
+    : storeFiltersReady && (queryError || staleWarning)
     ? toInventoryPageError(
       errorReason ?? staleReason ?? queryError ?? staleWarning,
       "Podaci o zalihama trenutno nisu dostupni.",
@@ -1129,7 +1240,7 @@ export default function InventoryPage() {
   };
 
   async function runServerExport(format: "pdf" | "xlsx" | "csv", preview = false) {
-    if (totalCount === 0 || exportBusy) return;
+    if (!hasVerifiedStoreFilters() || totalCount === 0 || exportBusy) return;
     try {
       setExportBusy(true);
       setExportStatus(preview ? "Pripremam print preview na serveru..." : "Server priprema dokument za izvoz...");
@@ -1171,6 +1282,7 @@ export default function InventoryPage() {
   }
 
   function exportVisibleCsv() {
+    if (!hasVerifiedStoreFilters()) return;
     // Screen CSV must follow the visible table order (displayedRows), including page-local risk sorts.
     const lines = buildInventoryScreenCsvLines(displayedRows);
     const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8;" });
@@ -1221,6 +1333,7 @@ export default function InventoryPage() {
   }
 
   async function updateWorkflowStatus(item: InventoryActionSuggestion, status: "approved" | "deferred" | "closed") {
+    if (!hasVerifiedStoreFilters()) return;
     try {
       setWorkflowBusyKey(item.suggestionKey);
       await saveInventoryActionDecision(item.suggestionKey, { actionType: item.actionType, status, note: item.note ?? "" });
@@ -1241,6 +1354,7 @@ export default function InventoryPage() {
   }
 
   async function addWorkflowSuggestionToCentralQueue(item: InventoryActionSuggestion) {
+    if (!hasVerifiedStoreFilters()) return;
     try {
       setQueueBusyKey(item.suggestionKey);
       const result = await upsertAnalyticsActionWithResult({
@@ -1268,6 +1382,10 @@ export default function InventoryPage() {
   }
 
   async function saveSchedule() {
+    if (!hasVerifiedStoreFilters()) {
+      setSchedulerMessage(STORE_FILTER_SCOPE_LOADING_MESSAGE);
+      return;
+    }
     const validationMessage = validateScheduleDraft(scheduleDraft);
     if (validationMessage) {
       setSchedulerMessage(validationMessage);
@@ -1302,10 +1420,12 @@ export default function InventoryPage() {
   }
 
   function toggleCompareStore(storeId: number) {
+    if (!hasVerifiedStoreFilters() || !stores.some((store) => store.storeId === storeId)) return;
     setCompareStoreIds((current) => current.includes(storeId) ? current.filter((value) => value !== storeId) : current.length >= DEFAULT_COMPARE_STORES ? [...current.slice(1), storeId] : [...current, storeId]);
   }
 
   function copyCurrentFiltersToSchedule() {
+    if (!hasVerifiedStoreFilters()) return;
     setScheduleDraft((current) => ({ ...current, search: trimmedSearch, storeId: selectedStoreId, supplierId: selectedSupplierId, sortBy: serverSortBy }));
     setSchedulerMessage("Trenutni filteri su prepisani u scheduler formu.");
   }
@@ -1315,11 +1435,13 @@ export default function InventoryPage() {
   }
 
   function openDetail(row: InventoryRow, tab: "overview" | "sizeCurve" = "overview") {
+    if (!hasVerifiedStoreFilters()) return;
     setDetailRow(row);
     setDetailTab(tab);
   }
 
   function openDetailBySku(skuId: number, storeId?: number, label?: string) {
+    if (!hasVerifiedStoreFilters() || (storeId != null && !stores.some((store) => store.storeId === storeId))) return;
     const existingRow = rows.find((row) => row.id === skuId && (storeId == null || row.idObjekat === storeId)) ?? rows.find((row) => row.id === skuId);
     if (existingRow) {
       openDetail(existingRow);
@@ -1329,12 +1451,14 @@ export default function InventoryPage() {
   }
 
   function openSizeCurveFromAlert(skuId: number, storeId: number, sizeCode?: string | null) {
+    if (!hasVerifiedStoreFilters() || !stores.some((store) => store.storeId === storeId)) return;
     setSizeCurveStoreId(storeId);
     setSizeCurveSizeCode(sizeCode ?? null);
     setSizeCurveSkuId(skuId);
   }
 
   function openSizeCurveFromPanel(skuId: number | null) {
+    if (!hasVerifiedStoreFilters()) return;
     setSizeCurveStoreId(null);
     setSizeCurveSizeCode(null);
     setSizeCurveSkuId(skuId);
@@ -1348,6 +1472,7 @@ export default function InventoryPage() {
   }
 
   function queueForecastRestock(item: ForecastDto["items"][number]) {
+    if (!hasVerifiedStoreFilters()) return;
     if (item.forecast7d == null || item.probabilityOfOOSIn7d == null) {
       setExportStatus("Forecast signal nema dovoljno evidencije za predlog dopune.");
       return;
@@ -1390,11 +1515,15 @@ export default function InventoryPage() {
   }
 
   function compareStoresFromRebalance(fromStoreId: number, toStoreId: number) {
+    if (!hasVerifiedStoreFilters()) return;
+    const availableStoreIds = new Set(stores.map((store) => store.storeId));
+    if (!availableStoreIds.has(fromStoreId) || !availableStoreIds.has(toStoreId)) return;
     setCompareStoreIds(Array.from(new Set([fromStoreId, toStoreId])));
     scrollToSection(STORE_COMPARISON_SECTION_ID);
   }
 
   async function addSignalRowToCentralQueue(row: InventoryRow) {
+    if (!hasVerifiedStoreFilters() || (row.idObjekat != null && !stores.some((store) => store.storeId === row.idObjekat))) return;
     const actionSpec = buildInventorySignalActionSpec(row, inventoryActionDatasetContext);
     setQueueBusyKey(actionSpec.sourceKey);
     try {
@@ -1449,6 +1578,10 @@ export default function InventoryPage() {
   }, [error, inventorySnapshot, primaryLoadSettled]);
 
   function retryPageLoad() {
+    if (storesLoadError) {
+      setStoresReloadNonce((value) => value + 1);
+      return;
+    }
     if (periodPreset !== "custom") {
       const nextRange = getAnalyticsPeriodPresetRange(periodPreset);
       setPeriodFrom(nextRange.fromDate);
@@ -1483,8 +1616,15 @@ export default function InventoryPage() {
 
     return (
       <section className="rounded-[28px] border border-muted surface-light p-5 shadow-lg">
-        {storesLoadError ? (
-          <AnalyticsFilterLoadNotice onRetry={() => setStoresReloadNonce((value) => value + 1)} />
+        {!storeFiltersReady ? (
+          <AnalyticsFilterLoadNotice
+            onRetry={storesLoadError ? undefined : () => setStoresReloadNonce((value) => value + 1)}
+            message={storesWarning ?? STORE_FILTER_SCOPE_LOADING_MESSAGE}
+          />
+        ) : storesWarning ? (
+          <div className="mb-4 rounded-2xl border border-[var(--warning)] bg-[var(--surface-darker)] px-4 py-3 text-sm text-[var(--warning)]" role="status">
+            {storesWarning}
+          </div>
         ) : null}
         <AnalyticsControlBar
           responsiveFilterLayout
@@ -1594,7 +1734,7 @@ export default function InventoryPage() {
                   aria-label="Filter po prodavnici"
                   value={selectedStoreId ?? ""}
                   onChange={(event) => { setSelectedStoreId(event.target.value ? Number(event.target.value) : null); setSelectedSupplierId(null); setPageNumber(1); }}
-                  disabled={storesLoadError}
+                  disabled={!storeFiltersReady}
                 >
                   <option value="">Sve prodavnice</option>
                   {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName}</option>)}
@@ -1922,7 +2062,7 @@ export default function InventoryPage() {
       <InventoryPriorityPanels rows={rows} topRiskRows={topRiskRows} highestValueRows={highestValueRows} chartData={chartData} balance={balance} lowStockShare={lowStockShare} totalCount={totalCount} onOpenDetail={openDetail} />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        {storesLoadError ? (
+        {!storeFiltersReady ? (
           <div data-testid="inventory-store-comparison-unavailable" className="rounded-[28px] border border-muted surface-light p-5 text-sm text-muted">
             Poređenje prodavnica nije dostupno dok se lista prodavnica ne učita.
           </div>
@@ -1980,6 +2120,11 @@ export default function InventoryPage() {
       <SKUDetailModal detailRow={detailRow} detailData={detailData} detailLoading={detailLoading} detailError={detailError} detailTab={detailTab} detailSizeCurve={detailSizeCurve} detailSizeCurveLoading={detailSizeCurveLoading} detailSizeCurveError={detailSizeCurveError} onRetry={retryDetailFetch} onRetrySizeCurve={() => setDetailSizeCurveRetryKey((key) => key + 1)} onTabChange={setDetailTab} onClose={() => setDetailRow(null)} />
       </>
       )}
+      {blockingState && !storeFiltersReady ? (
+        <div data-testid="inventory-store-comparison-unavailable" className="rounded-[28px] border border-muted surface-light p-5 text-sm text-muted">
+          Poređenje prodavnica nije dostupno dok se lista prodavnica ne učita.
+        </div>
+      ) : null}
       </div>
     </ErrorBoundary>
   );

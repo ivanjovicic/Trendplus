@@ -1,10 +1,12 @@
 # Analytics Reliability RQ queue — post-import correctness and business value
 
-Date: 2026-10-14
+Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ666 (P1, Product Decision source/action/store scope identity)**. Independent READY: **RQ667 (P1, Inventory store/compareStore scope validation)**. No prompt is claimed; require fresh shared main reservation, lock/worktree/PR check, and path-safe sequencing. **RQ669/670/671 are WAITING** by 2026-10-14 product-focus decision (experimental reachability, core operator i18n gate, and narrowly approved lint risk, respectively); don't take them as opportunistic work. RQ448, RQ565, RQ610, STAB16 and PERF16 keep their external/source gates. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
+Current READY prompt: **none**.
+
+RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
 RQ610 was BLOCKED after the company-grain capture delivery and was reopened for bounded, repository-local source qualification. The probe confirms structurally store-keyed `Artikli` rows, but no trustworthy inventory mutation generation has been established across import, manual edit, transfer and POS paths. Worker/schema ownership is released until the documented source-generation contract is supplied. This pointer is advisory; apply `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md` for global routing.
@@ -76,7 +78,7 @@ No external start gate: STAB16 and RQ601 original documents are not needed for t
 - Checks run: focused PostgreSQL RQ607 test 1/1; fallback/dashboard + RQ607 tests 7/7; API Release build 0 warnings / 0 errors; all six governance checks; `git diff --check`; Analytics Tests & Data Integrity run `38116562952` on `35aabd582e754bb293337eace0a6b45aeee58026` succeeded (1,969 total / 1,927 passed / 42 skipped / 0 failed); RQ453 certification job succeeded.
 - Checks not run: full local backend suite; exact-main Actions provided the broad backend proof.
 - Run log: `.ai/runs/2026-10-11-RQ608-evidence.md`
-- Evidence state: pending close-out push
+- Evidence state: synchronized
 - Delivery mode: direct-main
 - Main commit SHA: `35aabd582e754bb293337eace0a6b45aeee58026`
 - Main verification: at closure verification `origin/main` was `b0a9814509858897bd6ac6f7bfee3882901e1652`, containing implementation `35aabd582e754bb293337eace0a6b45aeee58026` and closure `b0a9814509858897bd6ac6f7bfee3882901e1652`. Exact-SHA Actions run `38116562952` succeeded.
@@ -3191,14 +3193,23 @@ None. Sharing one internal service provider across hosts was rejected: it requir
 
 ## RQ666 - Product Decision Center: source-scoped action identity and store filter lineage
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/action-identity + filter-trust regression
 Feature family: product-decision-datascope-action-identity
 Parallel-safe: yes with RQ667 only when its Inventory paths and shared services are disjoint; no parallel ProductDecisionCenterPage owner
-Owner: unassigned
+Owner: Codex
 Ready after: RQ660 DONE, RQ662 DONE, RQ657 DONE; current local Analytics Quality Gates success `38587580206`
 Commit suggestion: `fix(analytics): prevent cross-dataset Product Decision action and store identity leakage`
+
+### Claim reservation — 2026-10-15
+
+- Claim transition: READY -> IN_PROGRESS (historical claim state)
+- Owner: Codex
+- Inspected origin/main: 71b6d6ae2a1d93da918e1840290a0baf7210c3e2
+- Planned worktree/branch: C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2 / codex/rq666-product-scope-20261015
+- Bounded paths: Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx, focused Product Decision specs/source-key utility, narrowly required API source-status/upsert tests, this queue, MASTER_ROADMAP.md, and .ai/runs/2026-10-15-RQ666-evidence.md.
+- Remote branch/PR query: no RQ666/RQ667 branches or PRs; the only open PR is #163 (codex/access-sale-line-identity) on disjoint Access-import paths.
 
 ### Source-verified risk and exact boundaries
 
@@ -3217,20 +3228,49 @@ In `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, `buildSourceKey(
 - Failing-first regression before fix; same-scope retains idempotency; cross-scope never wrongly shows `Već dodato` nor shares evidence snapshot; historical action keys remain retrievable and aren't duplicated by an automatic migration.
 - Store selection only after scope-appropriate options load; previous or unknown store ID cannot be sent as an accepted, trusted new-scope filter/action. Document the chosen explicit fallback if the stores API really has global store semantics.
 - Focused PDC tests and API source-status/upsert contract tests where required; `npm run check:analytics-guardrails`, `npm run build`, exact SHA Actions validation and `node scripts/check-prompt-queues.mjs`. No skipped requirement counts as PASS.
-- Evidence: `.ai/runs/2026-10-14-RQ666-evidence.md` with same/cross/legacy key matrix and exact main SHA. If the key proves intentionally global, close with verified `OBSOLETE` classification **for the key portion** while still completing any demonstrated store-scope defect; do not invent a fix.
+- Evidence: `.ai/runs/2026-10-15-RQ666-evidence.md` with same/cross/legacy key matrix and exact main SHA. If the key proves intentionally global, close with verified `OBSOLETE` classification **for the key portion** while still completing any demonstrated store-scope defect; do not invent a fix.
+
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: Versioned Product Decision action keys by data scope, kept historical keys read-only and visibly unscoped, recorded dataScope in action metadata, and scoped/validated store filters before use.
+- Changed files: `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`, focused `ProductDecisionCenterPage` specs, this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-15-RQ666-evidence.md`.
+- Checks run: focused PDC tests (queue status 14/14, hierarchy 8/8); `npm run check:analytics-guardrails`; `npm run build`; all agent-instructions, prompt-queue and planning-architecture validators with self-tests; exact-SHA Analytics Quality Gates run `38693091908` (163 files, 1,237 tests, all jobs green); `git diff --check`.
+- Checks not run: backend API source-status/upsert tests (no backend contract changed); production data, action-row migration or live operator/deployed browser validation (not part of this repo-local prompt).
+- Run log: `.ai/runs/2026-10-15-RQ666-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `71b6d6ae2a1d93da918e1840290a0baf7210c3e2`; pushed claim `4d2790d10b3455ac9e247311a0f173d7f1c9b488`; Codex worktree `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2`, branch `codex/rq666-product-scope-20261015`; no RQ666/RQ667 branch or PR. At initial claim, open PRs #163 and #166 were on disjoint Access-import paths; the post-close refresh found #163 and #167 open on those paths.
+- Delivery mode: direct-main
+- Main commit SHA: `4a3f7919d3703d117f84d621df4213c712221c77`
+- Main verification: refreshed `origin/main` at `5b3d6e935d80c5f471a35453fd4a7a48e239af5b`; verified it contains implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77` and closure commit `01ba88a107d5417fa3f833a2813fd7ae4a5df8f3`. Analytics Quality Gates `38693091908` is green on the exact implementation SHA.
+- Missed: none known within repository scope.
+- Follow-up: RQ667 was READY at the post-close recovery base and was then claimed by Codex as the next P1 task; implementation is in progress on the Inventory page path.
+- Residual risk: historical `product:...` actions remain unchanged and cannot be attributed to a source scope; the Product Decision page warns and does not attach their status or evidence to a scoped recommendation.
+- Post-close routing: RQ667 was READY and unclaimed at the recovery base, then reserved by Codex in the following main-first queue commit. RQ676's stale READY status was corrected to WAITING because its explicit owner-order dependency RQ677 is not DONE and has open PR #167.
+- Prompt defect / scope repair: corrected the stale acceptance evidence path from 2026-10-14 to this run's 2026-10-15 log. An invalid store URL is cleared and continues with all stores inside the confirmed active data scope; store-list failure still blocks requests and action writes.
 
 ---
 
 ## RQ667 - Inventory: preserve verified store/compare-store context when dataScope changes
 
-Status: READY
+Status: DONE
 Priority: P1
 Type: frontend/store filter provenance + inventory comparison tests
 Feature family: inventory-scope-filter-validity
 Parallel-safe: yes with RQ666 (InventoryPage only); no parallel Inventory page/filter owner
-Owner: unassigned
+Owner: Codex
 Ready after: RQ607 DONE (latest snapshot semantics), RQ662 DONE (scoped store-filter precedent), RQ626 DONE; no RQ610 stock-mutation gate
 Commit suggestion: `fix(analytics): validate inventory store filters per dataset scope`
+
+### Claim reservation — 2026-10-15
+
+- Status: IN_PROGRESS
+- Owner: Codex
+- Inspected origin/main: `5b3d6e935d80c5f471a35453fd4a7a48e239af5b`
+- Planned worktree/branch: `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2` / `codex/rq667-inventory-scope-20261015`
+- Bounded paths: `Klijent/clientapp/src/pages/InventoryPage.tsx`, focused Inventory scope/filter specs, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-15-RQ667-evidence.md`.
+- Remote branch/PR query: no RQ667 branch or PR; current open PRs #163 and #167 are on disjoint Access-import paths.
 
 ### Source-verified risk and exact boundaries
 
@@ -3249,7 +3289,27 @@ Commit suggestion: `fix(analytics): validate inventory store filters per dataset
 - Two-way imported/existing transitions, valid shared ID, stale URL ID, comparison set with one missing store, error, retry, same-scope refresh and rapid async race; failing-first reproducer and passing after patch.
 - All dependent list/balance/summary/comparison/export requests align to the effective dataScope/store/compare-store tuple; stale/unknown provenance is visible and cannot trigger an actionable inventory recommendation.
 - Focused Inventory integration tests, frontend `npm run check:analytics-guardrails` and `npm run build`, exact SHA Analytics Quality Gates and queue validator; no unrelated backend/deployed proof required.
-- Evidence: `.ai/runs/2026-10-14-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
+- Evidence: `.ai/runs/2026-10-15-RQ667-evidence.md`, with source scope, store selection and comparison validation before/after, exact main SHA.
+
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: Inventory store and comparison selections are validated against the newly requested `dataScope`; stale, unknown, or unverified IDs cannot drive inventory queries, exports, schedules, or action writes.
+- Changed files: `Klijent/clientapp/src/pages/InventoryPage.tsx`; `Klijent/clientapp/src/components/analytics/AnalyticsFilterLoadNotice.tsx`; `Klijent/clientapp/scripts/known-guardrail-baseline.json`; Inventory scope specs (`InventoryPage.queueStatus.spec.tsx`, `InventoryPage.insightsError.spec.tsx`, `InventoryPage.offPageDetail.spec.tsx`, `InventoryPage.partialFailure.spec.tsx`, `InventoryPage.signalWindow.spec.tsx`, `analyticsTrustStateProof.spec.tsx`); this queue; `docs/ai/ANALYTICS_UI_PREMIUM_PROMPT_QUEUE.md` (stale READY prose repair during cascade); `MASTER_ROADMAP.md`; `.ai/runs/2026-10-15-RQ667-evidence.md`.
+- Checks run: local analytics suite 163 files / 1,246 tests passed; final scope-transition spec 12/12 passed; analytics guardrails and client build passed; agent-instruction, queue and planning validators (including self-tests) passed; `git diff --check` passed; Analytics Quality Gates run `38699085117` succeeded on exact SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; closeout Planning Governance run `38700516723` succeeded on `ade03eeabbc70cca645e1e1abe58ea5c49e73d69`.
+- Checks not run: backend or deployed/production browser checks; the prompt changes only client-side filter provenance and focused tests, and makes no production-data claim.
+- Run log: `.ai/runs/2026-10-15-RQ667-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected `origin/main` `5b3d6e935d80c5f471a35453fd4a7a48e239af5b`; pushed claim `64d6fafe6d1994da75a64593771884b2edcc432f`; Codex worktree `C:\Users\Ivan\.codex\worktrees\rq666-product-scope-20261015\Trendplus2`, branch `codex/rq667-inventory-scope-20261015`; no RQ667 branch or PR at claim.
+- Delivery mode: direct-main
+- Main commit SHA: `3f91841943871b3c3e44f1f1523d992db96821ae`
+- Main verification: refreshed post-close `origin/main` at `ade03eeabbc70cca645e1e1abe58ea5c49e73d69`; it contains runtime commit `a75da182723206994d8cf1de6776a271b4677471`, focused test correction `6b5d99cf38bdeb27c2d336fa42786ab4df098186`, final CI assertion repair/delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`, and this synchronized closeout. Exact-SHA Analytics Quality Gates `38699085117` is green on delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; closeout Planning Governance `38700516723` is green.
+- Missed: live production/source parity and customer/operator impact were not part of this repository-local prompt.
+- Follow-up: no READY RQ successor; see the Zero-READY proof in the run log.
+- Residual risk: store availability and business-data correctness remain dependent on the scope-specific API response; no deployed customer session was performed.
+- Post-close routing: Zero-READY proof recorded in `.ai/runs/2026-10-15-RQ667-evidence.md`.
+- Prompt defect / scope repair: the first CI assertion looked for a filter control while the page correctly rendered a blocking loading state. The focused test now asserts the loading and unavailable-comparison states. Stale RQ608 and RQ676 status headers were repaired from their synchronized DONE evidence.
 
 
 ## RQ668 - Fix small analytics frontend correctness, language and accessibility defects from the 2026-10-14 audit
@@ -3533,14 +3593,21 @@ None. Server-side atomic start guard is RQ673.
 
 ## RQ673 - Make the Access import concurrent-start guard atomic
 
-Status: READY
+Status: DONE
 Priority: P2
 Type: backend concurrency / data integrity
 Feature family: access-import-start-guard
 Parallel-safe: no (AccessImportService start path and DataImportBatches schema)
-Owner: unassigned
+Owner: grok
 Ready after: RQ672
 Commit suggestion: `fix(access-import): serialize batch creation with a database guard`
+
+### Owner decision (Ivan, 2026-10-15 08:03/08:04)
+
+- Chosen: cross-instance PostgreSQL transaction-scoped advisory lock `pg_advisory_xact_lock` with a dedicated, documented key (`AccessImportService.AccessImportBatchCreateAdvisoryLockKey` = `0x5450_4149_4D50_0001`, ASCII "TPAIMP" + 1). No in-process lock, no migration.
+- Stale recovery (`RecoverStaleRunningBatchesAsync`), the active-batch check and the new-batch insert run in one transaction under the lock; the second caller gets the existing batch ID instead of a new batch.
+- Rejected: partial unique index over `pending`/`running` statuses. Reason: it needs a schema change plus a Neon migration, and an abandoned row in an active status would block every new start until manually repaired; the advisory lock keeps stale handling in the existing recovery rules.
+- Non-PostgreSQL providers (InMemory tests) keep the previous best-effort check.
 
 ### Problem
 
@@ -3576,18 +3643,33 @@ Concurrent starts create exactly one batch; CI green with PostgreSQL.
 
 ### Dependencies
 
-Owner approval if the index option (schema change) is chosen.
+None (owner decision recorded above; index option rejected).
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Services/AccessImportService.cs (CreateImportBatchUnderAdvisoryLockAsync, CreateImportBatchInLockedTransactionAsync, InsertPendingImportBatchAsync, AccessImportBatchAlreadyActiveException, loser source-copy cleanup in StartImportAsync); new Api.Tests/AccessImportConcurrentStartPostgresTests.cs; this queue
+- Checks run: local build; local AccessImport tests (Postgres tests skip locally); queue validators with and without --self-test; git diff --check; PR #164 CI: backend 38690736223 pass (ParallelStarts_OnSeparateConnections_CreateExactlyOneBatch_AndShareItsId, Start_WithFreshActiveBatch_ReturnsExistingIdWithoutInsert, Start_WithStaleRunningBatch_RecoversItAndCreatesNewBatch passed on PostgreSQL), frontend 38690736280 pass, governance 38690736170 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ673-access-import-start-lock-evidence.md
+- Delivery mode: PR #164 merged with --merge after green CI
+- Main commit SHA: cb9a81a6
+- Main verification: git rev-parse origin/main -> cb9a81a6 after merge
+- Missed: none
+- Follow-up: RQ674 (next in owner order)
+- Residual risk: stale `pending` rows are not marked failed by recovery (only `running`), but they are outside the active window and never block a new start.
 
 ## RQ674 - Do not return an empty Access import history when the batch query times out
 
-Status: READY
+Status: DONE
 Priority: P3
 Type: backend error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes (AccessImportEndpoints batch list/detail fallbacks)
-Owner: unassigned
-Ready after: RQ672
+Owner: grok
+Ready after: RQ673 (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): report batch history timeouts instead of an empty list`
 
 ### Problem
@@ -3623,17 +3705,36 @@ A slow database never renders as an empty history.
 
 None.
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Endpoints/AccessImportEndpoints.cs (503 + Retry-After instead of 200 []), Api.Tests/AccessImportAdminAuthorizationTests.cs, Klijent/clientapp/src/pages/AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue
+- Checks run: local AccessImport backend tests 40 pass; vitest page + services specs; tsc; queue validators with and without --self-test; git diff --check; PR #165 CI: backend 38692215256, frontend 38692215311, governance 38692215222 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ674-batch-history-unavailable-evidence.md
+- Delivery mode: PR #165 merged with --merge after green CI
+- Main commit SHA: 07df82c3
+- Main verification: git rev-parse origin/main -> 07df82c3 after merge
+- Missed: none
+- Follow-up: RQ675 (next in owner order)
+- Residual risk: real fetch-level client timeouts are still treated as cancellation and stay silent (unchanged behaviour).
 
 ## RQ675 - Decide how the Access import screen authenticates across reloads and sessions
 
-Status: WAITING
+Status: DONE
 Priority: P2
 Type: security / UX decision
 Feature family: access-import-ui
 Parallel-safe: yes
-Owner: Ivan (decision)
-Ready after: owner decision
+Owner: grok
+Ready after: RQ674 (owner order 2026-10-15)
 Commit suggestion: `feat(access-import): persistent admin session for import operations`
+
+### Owner decision (Ivan, 2026-10-15 08:04)
+
+Option (b): keep the admin key in `sessionStorage` for the tab session only, enter it through a masked (password) input instead of `window.prompt`, and provide explicit key clearing (clear button; also clear on 401/403). Never put the key in logs, URLs or `localStorage`.
 
 ### Problem
 
@@ -3666,18 +3767,33 @@ Owner-approved flow; no key in logs or URLs.
 
 ### Dependencies
 
-Owner decision.
+None (owner decision recorded above).
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AccessImportPage.tsx (sessionStorage key helpers, masked Admin key form, clearAdminKey on 401/403, promptAdminKey without window.prompt), AccessImportPage.spec.tsx; this queue
+- Checks run: vitest page spec 6 tests; services specs; tsc; eslint (one pre-existing exhaustive-deps warning); queue validators with and without --self-test; git diff --check; PR #166 CI: backend 38693394192, frontend 38693394455, governance 38693394168 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ675-admin-key-session-evidence.md
+- Delivery mode: PR #166 merged with --merge after green CI
+- Main commit SHA: a249fc5f
+- Main verification: git rev-parse origin/main -> a249fc5f after merge
+- Missed: none
+- Follow-up: RQ677 (next in owner order)
+- Residual risk: the key is readable by scripts in the same tab (sessionStorage); acceptable per owner decision, cleared when the tab closes or on 401/403.
 
 ## RQ676 - Serbian text and diacritics on the Access import screen and its server messages
 
-Status: READY
+Status: DONE
 Priority: P3
 Type: frontend/backend i18n
 Feature family: access-import-ui
 Parallel-safe: yes (display strings only)
-Owner: unassigned
-Ready after: RQ672
+Owner: grok
+Ready after: RQ677 DONE (owner order 2026-10-15: RQ673 -> RQ674 -> RQ675 -> RQ677 -> RQ676)
 Commit suggestion: `fix(access-import): Serbian messages with diacritics`
 
 ### Problem
@@ -3714,17 +3830,45 @@ No English or diacritic-less operator text on the screen.
 
 None.
 
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Klijent/clientapp/src/pages/AccessImportPage.tsx, Api/Endpoints/AccessImportEndpoints.cs (schema warnings, not-found and source messages), Api/Services/AccessImportService.cs (reused active batch warnings); this queue
+- Checks run: vitest page + services 118 pass; tsc; backend build; queue validators with and without --self-test; git diff --check; PR #168 CI: backend 38696026042, frontend 38696026057, governance 38696026036 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ676-access-import-serbian-text-evidence.md
+- Delivery mode: PR #168 merged with --merge after green CI
+- Main commit SHA: 5258c315
+- Main verification: git rev-parse origin/main -> 5258c315 after merge
+- Missed: none
+- Follow-up: RQ678 (WAITING, owner confirmation of Storage__Provider)
+- Residual risk: remaining English text may come from deeper service exceptions surfaced verbatim; log messages intentionally stay English.
 
 ## RQ677 - Verify and surface the maximum Access upload size
 
-Status: WAITING
+Status: DONE
 Priority: P3
 Type: backend limits / error surfacing
 Feature family: access-import-pipeline
 Parallel-safe: yes
-Owner: unassigned
-Ready after: owner confirms the largest expected .accdb size
+Owner: grok
+Ready after: RQ675 (owner order 2026-10-15)
 Commit suggestion: `fix(access-import): explicit upload limit and clear 413 message`
+
+### Owner decision (Ivan, 2026-10-15 08:04)
+
+- Limit: 100 MiB (104857600 bytes) for `/api/access-import/run` and `/preview`, with a clear Serbian rejection over the limit (413) and the limit shown next to the file picker.
+- Render Free has no persistent disk: verify how the upload is stored and handed to the worker; the uploaded file must never be the only copy on the local filesystem when the worker uses it later (durable storage key first).
+- If a real `.accdb` exceeds 100 MiB, do not raise HTTP limits; write a separate analysis/prompt for direct upload to durable storage.
+
+### Storage and hand-off verification (2026-10-15)
+
+- Correction to the audit: a global Kestrel limit exists, `Api/Program.cs:158` `MaxRequestBodySize = 25 MiB`; uploads over 25 MiB were rejected before this task.
+- Upload path: `AccessImportEndpoints.ResolveSourceFileAsync` writes the multipart file to `Path.GetTempPath()/trendplus-access-import` on the web instance; `AccessImportService.PrepareQueuedSourceAsync` then either uploads it to durable storage (`IFileStorage` provider `s3`, batch row stores `SourceStorageKey`) or, with provider `local` (the default when `Storage:Provider` is empty), only makes a local working copy (`SourceFilePath`).
+- `render.yaml` runs the API (`plan: free`, no disk, `AccessImport__WorkerEnabled=false`) and a separate `trendplus-worker` service and sets no `Storage__Provider`. Unless the Render dashboard sets `Storage__Provider=s3`, the queued file exists only on the web instance local filesystem, which the worker cannot read and which is lost on restart. This violates the owner rule; tracked as RQ678 (needs dashboard confirmation before a fail-fast guard, so a working s3 setup is not broken).
+- Residual: Render sits behind Cloudflare, whose upload cap may be about 100 MB (decimal, ~95 MiB), below the 100 MiB application limit; files close to the limit may be rejected by the proxy with a generic 413.
 
 ### Problem
 
@@ -3745,7 +3889,7 @@ Set an explicit limit per endpoint from options, return a clear 413 message, and
 
 ### Do
 
-1. Confirm the real largest file size with the owner.
+1. Verify upload storage and worker hand-off (durable copy) per the owner decision.
 2. Add the limit and message; test with a synthetic oversized request (no real import).
 
 ### Tests
@@ -3758,4 +3902,68 @@ Oversized uploads fail fast with a clear Serbian message.
 
 ### Dependencies
 
-Owner input on maximum size.
+None (owner decision recorded above).
+
+### Completion note
+
+- Date: 2026-10-15
+- Status: DONE
+- Completion: 100%
+- Changed files: Api/Endpoints/AccessImportEndpoints.cs (DefaultMaxUploadBytes 100 MiB, ApplyUploadLimit per request, 413 message, oversized form read mapping), Api.Tests/AccessImportRunEndpointTests.cs, Klijent/clientapp/src/services/accessImportApi.ts, AccessImportPage.tsx, AccessImportPage.spec.tsx; this queue (storage verification, new RQ678)
+- Checks run: local AccessImport backend tests 46 pass; vitest page + services 118 pass; tsc; queue validators with and without --self-test; git diff --check; PR #167 CI: backend 38694648814, frontend 38694648654, governance 38694648653 pass
+- Checks not run: real Access import, smoke tests and Development environment (owner rule); no writes to the local database
+- Run log: .ai/runs/2026-10-15-RQ677-access-upload-limit-evidence.md
+- Delivery mode: PR #167 merged with --merge after green CI
+- Main commit SHA: 741c2fa5
+- Main verification: git rev-parse origin/main -> 741c2fa5 after merge
+- Missed: none
+- Follow-up: RQ678 (durable copy guard, WAITING on Render dashboard Storage__Provider confirmation); RQ676 next in owner order
+- Residual risk: Cloudflare in front of Render may cap uploads near 100 MB (decimal); with Storage provider local the queued file is only on the web disk (RQ678).
+
+## RQ678 - Guarantee a durable copy of a queued Access upload on Render Free
+
+Status: WAITING
+Priority: P1
+Type: backend storage / import reliability
+Feature family: access-import-pipeline
+Parallel-safe: yes (AccessImportService source preparation and startup checks only)
+Owner: unassigned
+Ready after: Ivan confirms the production `Storage__Provider` value on the Render web and worker services
+Commit suggestion: `fix(access-import): refuse to queue an upload without durable storage`
+
+### Problem
+
+With storage provider `local` (the default), a queued upload exists only on the web instance local disk. On Render Free there is no persistent disk and the worker is a separate service, so the worker cannot read the file and a restart loses it.
+
+### Evidence
+
+- `Api/Services/AccessImportService.cs` `PrepareQueuedSourceAsync`: provider `local` or no `IFileStorage` -> `CreateBackgroundWorkingCopyAsync` only.
+- `Infrastructure/Services/Storage/FileStorageServiceCollectionExtensions.cs` `ResolveProviderName`: empty -> `local`.
+- `render.yaml`: web `plan: free`, `AccessImport__WorkerEnabled=false`, separate `trendplus-worker`; no `Storage__Provider`.
+- RQ677 storage verification section.
+
+### Scope
+
+When the import will be processed outside the web process (worker not registered in web) and the provider is `local`, refuse to queue in non-Development environments with a clear Serbian 503 instead of creating a batch the worker cannot run; expose the storage mode in runtime status. If a real `.accdb` exceeds 100 MiB, write a separate analysis for direct browser-to-storage upload (presigned URL) instead of raising HTTP limits.
+
+### Read first
+
+`Api/Program.cs` worker registration flags, `Api/Services/Access/AccessImportJobQueue.cs`, `Infrastructure/Services/Storage/S3FileStorage.cs`.
+
+### Do
+
+1. Confirm the Render dashboard values with Ivan.
+2. Add the guard with tests for local+external-worker (rejected), s3 (accepted, storage key persisted) and in-process worker (accepted).
+3. Keep successful import, restart recovery and cancel behaviour unchanged.
+
+### Tests
+
+Endpoint/service tests for the three modes; existing enqueue and recovery tests stay green.
+
+### Acceptance
+
+No batch is queued whose only source copy is on the web instance local filesystem.
+
+### Dependencies
+
+Owner confirmation of production storage configuration.

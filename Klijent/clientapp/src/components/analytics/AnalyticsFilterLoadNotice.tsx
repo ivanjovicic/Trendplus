@@ -1,5 +1,5 @@
 type AnalyticsFilterLoadNoticeProps = {
-  onRetry: () => void;
+  onRetry?: () => void;
   message?: string;
   stale?: boolean;
 };
@@ -15,13 +15,15 @@ export default function AnalyticsFilterLoadNotice({ onRetry, message, stale = fa
         <strong>{stale ? "Lista prodavnica je zastarela." : "Filter prodavnice nije dostupan."}</strong>{" "}
         {message ?? "Podaci po svim objektima mogu biti prikazani, ali izbor pojedinačne prodavnice nije potvrđen."}
       </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="rounded-lg border border-amber-400/60 px-3 py-1.5 font-semibold text-amber-100 transition hover:bg-amber-400/20"
-      >
-        Pokušaj ponovo
-      </button>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-lg border border-amber-400/60 px-3 py-1.5 font-semibold text-amber-100 transition hover:bg-amber-400/20"
+        >
+          Pokušaj ponovo
+        </button>
+      ) : null}
     </div>
   );
 }

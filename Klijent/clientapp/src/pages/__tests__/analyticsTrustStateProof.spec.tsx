@@ -93,7 +93,7 @@ describe("analytics trust-state header proof", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.setItem("trendplus:dataScope", "all");
-    vi.mocked(getStores).mockResolvedValue([]);
+    vi.mocked(getStores).mockResolvedValue([{ storeId: 1, storeName: "Prodavnica 1" }]);
     const analyticsApi = await import("../../services/analyticsApi");
     vi.mocked(analyticsApi.getSupplierFilters).mockResolvedValue([]);
     vi.mocked(analyticsApi.getInventoryReportSchedules).mockResolvedValue([]);

@@ -2436,7 +2436,14 @@ using NpgsqlTypes;
             {
                 var runningResponse = await BuildExistingRunningBatchResponseAsync(activeBatch, includeAnalytics, ct);
                 if (runningResponse is not null)
+                {
+                    // RQ673: the losing request reuses the active batch ID; drop its own unused source copy.
+                    if (preparedSource.UploadedToStorage)
+                        await DeleteQueuedStorageSourceBestEffortAsync(preparedSource.SourceStorageKey);
+                    if (!string.IsNullOrWhiteSpace(preparedSource.SourceFilePath))
+                        TryDeleteFile(preparedSource.SourceFilePath, "batch-already-active-cleanup", Path.GetFileName(accessFilePath), activeBatch.Id, "working-copy");
                     return runningResponse;
+                }
             }
 
             if (preparedSource.UploadedToStorage)
@@ -2500,7 +2507,7 @@ using NpgsqlTypes;
         response.CompletedAtUtc = null;
 
         var warning =
-            $"Access import batch {batch.Id} is already {response.Status} since {batch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{batch.SourceFileName}'.";
+            $"Access import #{batch.Id} je već aktivan (status: {response.Status}) od {batch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC za fajl '{batch.SourceFileName}'. Prikazan je postojeći import umesto novog.";
         if (!response.Warnings.Contains(warning, StringComparer.Ordinal))
             response.Warnings.Add(warning);
 
@@ -2508,9 +2515,9 @@ using NpgsqlTypes;
         {
             var heartbeatValue = batch.LastHeartbeatUtc.HasValue
                 ? batch.LastHeartbeatUtc.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC"
-                : "n/a";
+                : "nema podatka";
             var progressWarning =
-                $"Current progress: step '{batch.CurrentStep ?? "unknown"}', table '{batch.CurrentTable ?? "unknown"}', last heartbeat {heartbeatValue}.";
+                $"Trenutni napredak: korak '{batch.CurrentStep ?? "nepoznat"}', tabela '{batch.CurrentTable ?? "nepoznata"}', poslednji signal {heartbeatValue}.";
             if (!response.Warnings.Contains(progressWarning, StringComparer.Ordinal))
                 response.Warnings.Add(progressWarning);
         }
@@ -2584,16 +2591,113 @@ using NpgsqlTypes;
         var now = DateTime.UtcNow;
         await EnsureDataImportBatchesTableIfEnabledAsync(ct);
 
-        if (_options.PreventConcurrentRuns)
+        if (_options.PreventConcurrentRuns && _trendDb.Database.IsNpgsql())
         {
-            var activeBatch = await GetActiveRunningBatchAsync(ct);
-            if (activeBatch is not null)
-            {
-                throw new InvalidOperationException(
-                    $"Access import batch {activeBatch.Id} is already running since {activeBatch.StartedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{activeBatch.SourceFileName}'.");
-            }
+            // RQ673: cross-instance guard. Stale recovery, the active-batch check and the insert
+            // all run in one transaction while holding pg_advisory_xact_lock(AccessImportBatchCreateAdvisoryLockKey).
+            return await CreateImportBatchUnderAdvisoryLockAsync(
+                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
         }
 
+        if (_options.PreventConcurrentRuns)
+        {
+            // Non-PostgreSQL providers (InMemory/SQLite tests) have no advisory locks; keep the best-effort check.
+            var activeBatch = await GetActiveRunningBatchAsync(ct);
+            if (activeBatch is not null)
+                throw new AccessImportBatchAlreadyActiveException(activeBatch.Id, activeBatch.StartedAtUtc, activeBatch.SourceFileName);
+        }
+
+        return await InsertPendingImportBatchAsync(
+            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+    }
+
+    /// <summary>
+    /// Dedicated PostgreSQL advisory lock key that serializes Access import batch creation across all API
+    /// instances (RQ673). Value is ASCII "TPAIMP" followed by 0x0001; do not reuse it for any other lock.
+    /// Taken with pg_advisory_xact_lock, so it is released automatically on commit or rollback.
+    /// </summary>
+    internal const long AccessImportBatchCreateAdvisoryLockKey = 0x5450_4149_4D50_0001;
+
+    private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> CreateImportBatchUnderAdvisoryLockAsync(
+        string? sourceFilePath,
+        string? sourceStorageKey,
+        string? sourceStorageProvider,
+        string sourceFileName,
+        bool hasLocalSource,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables,
+        DateTime now,
+        CancellationToken ct)
+    {
+        if (_trendDb.Database.CurrentTransaction is not null)
+            return await CreateImportBatchInLockedTransactionAsync(
+                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+
+        (DataImportBatch Batch, AccessImportRunResponse Result) created = default;
+        var strategy = _trendDb.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _trendDb.Database.BeginTransactionAsync(ct);
+            try
+            {
+                created = await CreateImportBatchInLockedTransactionAsync(
+                    sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+                await transaction.CommitAsync(ct);
+            }
+            catch
+            {
+                if (created.Batch is not null)
+                    _trendDb.Entry(created.Batch).State = EntityState.Detached;
+                created = default;
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
+            }
+        });
+
+        return created;
+    }
+
+    private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> CreateImportBatchInLockedTransactionAsync(
+        string? sourceFilePath,
+        string? sourceStorageKey,
+        string? sourceStorageProvider,
+        string sourceFileName,
+        bool hasLocalSource,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables,
+        DateTime now,
+        CancellationToken ct)
+    {
+        await _trendDb.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0})",
+            new object[] { AccessImportBatchCreateAdvisoryLockKey },
+            ct);
+
+        // Abandoned batches go through the normal stale-recovery rules first, so they never block forever.
+        await RecoverStaleRunningBatchesAsync(null, ct);
+
+        var activeBatch = await GetActiveRunningBatchAsync(ct);
+        if (activeBatch is not null)
+            throw new AccessImportBatchAlreadyActiveException(activeBatch.Id, activeBatch.StartedAtUtc, activeBatch.SourceFileName);
+
+        return await InsertPendingImportBatchAsync(
+            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+    }
+
+    private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> InsertPendingImportBatchAsync(
+        string? sourceFilePath,
+        string? sourceStorageKey,
+        string? sourceStorageProvider,
+        string sourceFileName,
+        bool hasLocalSource,
+        bool includeAnalytics,
+        bool overwriteExisting,
+        bool includeTemporaryTables,
+        DateTime now,
+        CancellationToken ct)
+    {
         var batch = new DataImportBatch
         {
             SourceSystem = "access",
@@ -3080,6 +3184,17 @@ using NpgsqlTypes;
     }
 
     private sealed record TableMatch(string? TableName, string Strategy, IReadOnlyList<string>? Columns = null);
+
+    internal sealed class AccessImportBatchAlreadyActiveException : InvalidOperationException
+    {
+        public AccessImportBatchAlreadyActiveException(long activeBatchId, DateTime startedAtUtc, string sourceFileName)
+            : base($"Access import batch {activeBatchId} is already running since {startedAtUtc:yyyy-MM-dd HH:mm:ss} UTC for file '{sourceFileName}'.")
+        {
+            ActiveBatchId = activeBatchId;
+        }
+
+        public long ActiveBatchId { get; }
+    }
 
     private sealed record RunningBatchSnapshot(long Id, string SourceFileName, string Status, DateTime StartedAtUtc, DateTime? LastHeartbeatUtc);
     private sealed class AccessImportCancellationRequestedException : OperationCanceledException

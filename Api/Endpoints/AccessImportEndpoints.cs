@@ -19,16 +19,55 @@ namespace Trendplus2.Endpoints;
 
 public static class AccessImportEndpoints
 {
+    /// <summary>RQ677 (owner decision 2026-10-15): maximum Access upload size, 100 MiB; override with AccessImport:MaxUploadBytes.</summary>
+    internal const long DefaultMaxUploadBytes = 100L * 1024 * 1024;
+
+    // Allowance for multipart boundaries and the small form fields sent next to the file.
+    internal const long MultipartOverheadBytes = 64L * 1024;
+
+    internal static long GetMaxUploadBytes(HttpContext httpContext)
+    {
+        var configured = httpContext.RequestServices.GetService<IConfiguration>()?.GetValue<long?>("AccessImport:MaxUploadBytes");
+        return configured is > 0 ? configured.Value : DefaultMaxUploadBytes;
+    }
+
+    internal static string BuildUploadTooLargeMessage(long maxUploadBytes)
+    {
+        var limit = maxUploadBytes >= 1024 * 1024
+            ? $"{maxUploadBytes / (1024d * 1024d):0.#} MiB"
+            : $"{maxUploadBytes} B";
+        return $"Access fajl je veći od dozvoljenih {limit}. Smanjite fajl (Compact & Repair u Access-u) ili kontaktirajte administratora.";
+    }
+
+    // Raises the Kestrel body limit (global 25 MiB) for this upload only and rejects a declared oversized body up front.
+    private static IResult? ApplyUploadLimit(HttpContext httpContext)
+    {
+        var maxUploadBytes = GetMaxUploadBytes(httpContext);
+        var allowedBodyBytes = maxUploadBytes + MultipartOverheadBytes;
+        var bodySizeFeature = httpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+        if (bodySizeFeature is { IsReadOnly: false })
+            bodySizeFeature.MaxRequestBodySize = allowedBodyBytes;
+
+        if (httpContext.Request.ContentLength is long contentLength && contentLength > allowedBodyBytes)
+        {
+            return Results.Json(
+                new { error = BuildUploadTooLargeMessage(maxUploadBytes), maxUploadBytes },
+                statusCode: StatusCodes.Status413PayloadTooLarge);
+        }
+
+        return null;
+    }
+
     private const int BatchListFallbackTimeoutSeconds = 8;
     private const int BatchDetailFallbackTimeoutSeconds = 10;
     private static readonly TimeSpan BatchListCacheDuration = TimeSpan.FromSeconds(15);
     private static readonly string[] SchemaAnalysisUnavailableWarnings = new[]
     {
-        "Access database schema could not be fully analyzed. The ODBC provider may have returned unexpected results. Try again or contact support if issues persist."
+        "Šema Access baze nije mogla biti u potpunosti analizirana. ODBC drajver je možda vratio neočekivane rezultate. Pokušajte ponovo ili se obratite podršci ako se problem ponavlja."
     };
     private static readonly string[] UnexpectedSchemaStructureWarnings = new[]
     {
-        "The Access ODBC provider returned an unexpected schema structure. Unable to enumerate tables. This may be a provider compatibility issue."
+        "Access ODBC drajver je vratio neočekivanu strukturu šeme, pa tabele nisu mogle biti izlistane. Moguć je problem kompatibilnosti drajvera."
     };
 
     private sealed record AccessImportRuntimeStatus(
@@ -142,7 +181,7 @@ public static class AccessImportEndpoints
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(BatchDetailFallbackTimeoutSeconds));
                 var batch = await service.GetBatchAsync(batchId, timeoutCts.Token);
                 if (batch is null)
-                    return Results.NotFound(new { error = $"Job {batchId} nije pronadjen." });
+                    return Results.NotFound(new { error = $"Job {batchId} nije pronađen." });
                 CacheBatchSnapshot(cache, batch);
                 return Results.Ok(batch);
             }
@@ -243,7 +282,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/batches/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen ili nije aktivan." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportBatch");
@@ -268,7 +307,7 @@ public static class AccessImportEndpoints
             var cancelled = await service.RequestCancellationAsync(batchId, ct);
             return cancelled
                 ? Results.Accepted($"/api/access-import/jobs/{batchId}", new { batchId, status = "cancellation-requested" })
-                : Results.NotFound(new { error = $"Job {batchId} nije pronadjen ili nije aktivan." });
+                : Results.NotFound(new { error = $"Job {batchId} nije pronađen ili nije aktivan." });
         })
         .RequireRateLimiting("writes")
         .WithName("CancelAccessImportJob");
@@ -296,7 +335,7 @@ public static class AccessImportEndpoints
             {
                 return Results.NotFound(new
                 {
-                    error = $"Batch {batchId} nije pronadjen.",
+                    error = $"Batch {batchId} nije pronađen.",
                     diagnostics
                 });
             }
@@ -378,7 +417,7 @@ public static class AccessImportEndpoints
             var result = await service.DeleteBatchAsync(batchId, includeAnalytics, ct);
             return result.Found
                 ? Results.Ok(result)
-                : Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+                : Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
         })
         .RequireRateLimiting("writes")
         .WithName("DeleteAccessImportBatch");
@@ -752,6 +791,9 @@ public static class AccessImportEndpoints
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
+            if (ApplyUploadLimit(httpContext) is { } previewTooLarge)
+                return previewTooLarge;
+
             var resolved = await ResolveSourceFileAsync(request, ct);
             if (!resolved.Success)
             {
@@ -1047,6 +1089,28 @@ public static class AccessImportEndpoints
         }
     }
 
+    /// <summary>
+    /// RQ674: shown to the operator when the batch history cannot be loaded and no cached copy exists.
+    /// Deliberately avoids the words the client treats as request cancellation (timeout/abort/canceled).
+    /// </summary>
+    internal const string BatchHistoryUnavailableMessage =
+        "Istorija importa trenutno nije dostupna jer baza sporo odgovara. Pokušaj ponovo za nekoliko sekundi.";
+
+    internal const int BatchHistoryRetryAfterSeconds = 5;
+
+    // A slow database must never render as an empty history: return 503 + Retry-After instead of 200 [].
+    private static IResult BatchHistoryUnavailableResult() => new BatchHistoryUnavailableHttpResult();
+
+    private sealed class BatchHistoryUnavailableHttpResult : IResult
+    {
+        public Task ExecuteAsync(HttpContext httpContext)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            httpContext.Response.Headers.RetryAfter = BatchHistoryRetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return httpContext.Response.WriteAsJsonAsync(new { error = BatchHistoryUnavailableMessage, retryable = true });
+        }
+    }
+
     private static async Task<IResult> GetBatchListResultAsync(
         IAccessImportService service,
         IMemoryCache cache,
@@ -1086,7 +1150,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (NpgsqlException ex)
         {
@@ -1101,7 +1165,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (TimeoutException ex)
         {
@@ -1116,7 +1180,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
         catch (Exception ex)
         {
@@ -1131,7 +1195,7 @@ public static class AccessImportEndpoints
                 return Results.Ok(cachedRows);
             }
 
-            return Results.Ok(Array.Empty<AccessImportBatchDto>());
+            return BatchHistoryUnavailableResult();
         }
     }
 
@@ -1153,7 +1217,7 @@ public static class AccessImportEndpoints
             var detail = await logService.GetBatchDetailAsync(batchId, Math.Max(0, logTake), severity, timeoutCts.Token);
 
             if (detail is null)
-                return Results.NotFound(new { error = $"Batch {batchId} nije pronadjen." });
+                return Results.NotFound(new { error = $"Batch {batchId} nije pronađen." });
 
             CacheBatchSnapshot(cache, detail.Batch);
             CacheBatchDetailSnapshot(cache, batchId, detail);
@@ -1310,6 +1374,12 @@ public static class AccessImportEndpoints
                 title: "Access import runtime missing",
                 detail: runtimeStatus.Detail ?? "Access import is unavailable on this server because required runtime dependencies are missing.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (ApplyUploadLimit(httpContext) is { } uploadTooLarge)
+        {
+            outcome = "payload_too_large";
+            return uploadTooLarge;
         }
 
         resolved = await ResolveSourceFileAsync(request, ct);
@@ -1662,10 +1732,22 @@ public static class AccessImportEndpoints
             if (root is not null)
                 return (true, root, null, false);
 
-            return (false, null, "Posalji multipart/form-data sa ACCDB/MDB fajlom ili postavi TRENDPLUS.accdb / TRENDPLUS.mdb u root folder.", false);
+            return (false, null, "Pošalji multipart/form-data sa ACCDB/MDB fajlom ili postavi TRENDPLUS.accdb / TRENDPLUS.mdb u root folder.", false);
         }
 
-        var form = await request.ReadFormAsync(ct);
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync(ct);
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            return (false, null, BuildUploadTooLargeMessage(GetMaxUploadBytes(request.HttpContext)), false);
+        }
+        catch (InvalidDataException)
+        {
+            return (false, null, BuildUploadTooLargeMessage(GetMaxUploadBytes(request.HttpContext)), false);
+        }
         var useRoot = ParseBoolOrDefault(form["useRootFile"], false);
         var file = form.Files.GetFile("file");
 
@@ -1676,7 +1758,7 @@ public static class AccessImportEndpoints
                 var root = FindRootAccessFile();
                 if (root is not null)
                     return (true, root, null, false);
-                return (false, null, "TRENDPLUS.accdb / TRENDPLUS.mdb nije pronadjen u root folderu.", false);
+                return (false, null, "TRENDPLUS.accdb / TRENDPLUS.mdb nije pronađen u root folderu.", false);
             }
 
             return (false, null, "Access fajl (.accdb ili .mdb) je obavezan.", false);
