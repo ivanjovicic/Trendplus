@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update (2026-10-16)
 
-Current READY prompt: QDB12 (IN_PROGRESS: Codex; shared reservation 2026-10-16 UTC; bounded read-only SEF XML reconciliation); QDB13/QDB14 WAITING.
+Current READY prompt: QDB13 (READY: SEF XML receipt-draft UI after QDB12 direct-main evidence); QDB14 WAITING.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -133,7 +133,7 @@ Vlasnik Trendplus prodavnice stvarni prijem robe radi rucno u Accessu, a dobavlj
 
 ## QDB12 - SEF XML: uparivanje sa artiklima i objasnjenje razlika (read-only)
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1 (owner pilot)
 Type: backend matching + provenance + tests
 Feature family: sef-xml-reconciliation
@@ -174,11 +174,47 @@ Nazivi i sifre dobavljaca nisu automatski Trendplus Artikli ID; razlicite velici
 - Bez ovlascene stvarne fakture, Access originala i operatorske sesije: source/financial truth i komercijalna korist ostaju NOT VERIFIED.
 - Nema upisa robe, prelaska u production import, automatskog "finansijski gubitak" niti novog dashboarda.
 
+### Completion note
+
+- Date: 2026-10-16
+- Status: DONE
+- Completion: authenticated read-only reconciliation preview over a bounded no-tracking article projection. Only one ordinal-exact `SupplierItemId` to unique catalog external ID (`PLU`) is automatic; names and duplicates require review. The response never sets a received quantity, compares uncertain cost, or verifies an Access receipt.
+- Changed files:
+  - `Api/Services/SefXml/SefXmlReconciliationService.cs`
+  - `Api/Services/SefXml/EfSefXmlCatalogReader.cs`
+  - `Api/Endpoints/SefXmlReconciliationEndpoints.cs`
+  - `Api/Endpoints/SefXmlPreviewEndpoints.cs`
+  - `Api/Program.cs`
+  - `Api.Tests/SefXmlReconciliationServiceTests.cs`
+  - `Api.Tests/SefXmlReconciliationEndpointTests.cs`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-10-16-QDB12-evidence.md`
+- Checks run:
+  - `git diff --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --no-build --filter 'FullyQualifiedName~SefXmlReconciliationServiceTests|FullyQualifiedName~SefXmlReconciliationEndpointTests|FullyQualifiedName~SefXmlInvoiceParserTests|FullyQualifiedName~SefXmlPreviewEndpointTests' --verbosity minimal` - pass (33 passed, 0 failed, 0 skipped)
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --verbosity minimal` - pass (0 warnings, 0 errors)
+  - static read-only scope review - pass: no save/write SQL, Access import, inventory, journal, master price, formula, migration, or raw source logging dependency in the QDB12 feature files
+- Checks not run:
+  - full `Api.Tests` suite - not run; focused parser/reconciliation/API/security regression and Release build are the mapped proof
+  - real SEF invoice, historical Access receipt proof, and operator validation - not supplied; synthetic-only evidence
+  - browser/UI - deferred to separate QDB13 after this close-out
+- Run log: `.ai/runs/2026-10-16-QDB12-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected origin/main `32072083cefe2e39e0805eec0695cd70c8f7b07b`; pushed claim `ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c`; owner Codex; worktree `C:\Users\Ivan\source\repos\Trendplus2-qdb11`; branch `agent/qdb12-sef-xml-reconciliation`; remote branch/PR query found no matching SEF/XML/reconciliation work and classified PR #163 as unrelated Access-sale-identity work.
+- Delivery mode: direct-main
+- Main commit SHA: `3b0edc2e69cb261be7a92c02543ff265c20226b4`
+- Main verification: passed - fresh `origin/main` resolved to `3b0edc2e69cb261be7a92c02543ff265c20226b4` and contains the implementation SHA.
+- Missed: authentic invoice compatibility, original Access lineage/cost proof, and operator validation remain NOT VERIFIED.
+- Follow-up: QDB13
+- Residual risk: GitHub Actions run `38869089375` for implementation SHA `3b0edc2e69cb261be7a92c02543ff265c20226b4` was `queued` at post-delivery inspection; only local synthetic focused proof is complete.
+- Post-close routing: recovery base `3b0edc2e69cb261be7a92c02543ff265c20226b4`; QDB11/QDB12 are DONE, QDB13 dependencies (parser DTO, read-only reconciliation and server authorization/file boundary) are now satisfied and QDB13 is promoted to READY. QDB14 remains WAITING on QDB13 plus its explicit owner/test-database approvals.
+- Prompt defect / scope repair: Access comparison remains an explicit `NotAvailable` explanation because QDB12 found no proven document/lineage/quantity/cost relationship; it does not infer a mismatch.
+
 ---
 
 ## QDB13 - Pilot na /unos-robe: ucitaj SEF XML i pripremi pregledan nacrt
 
-Status: WAITING
+Status: READY
 Priority: P1 (owner pilot)
 Type: frontend UI + API/auth integration + focused tests
 Feature family: sef-xml-receipt-draft-ui
