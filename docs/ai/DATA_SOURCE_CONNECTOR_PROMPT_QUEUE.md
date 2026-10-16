@@ -46,9 +46,15 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ---
 
+## Current routing update (2026-10-16)
+
+Current READY prompt: QDB12 (READY: QDB11 delivered on main and closed below); QDB13/QDB14 WAITING.
+
+This canonical routing update supersedes the malformed historical aggregate header above.
+
 ## QDB11 - SEF XML: bezbedno parsiranje originalne ulazne fakture
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1 (vlasnik odobrio ograniceni pilot 2026-10-16; ne pretice aktivni P0/source/prod gate)
 Type: backend parser + API preview + focused tests
 Feature family: sef-xml-invoice-parser
@@ -89,11 +95,45 @@ Vlasnik Trendplus prodavnice stvarni prijem robe radi rucno u Accessu, a dobavlj
 - Bez stvarnog, uz dozvolu pribavljenog SEF XML-a oznaci REAL SEF SAMPLE: NOT VERIFIED. Agent ne moze fingirati korisnicku validaciju.
 - PR/commit i dokazani testovi; queue status po protokolu.
 
+### Completion note
+
+- Date: 2026-10-16
+- Status: DONE
+- Completion: isolated UBL 2.x Invoice parser and authenticated, rate-limited read-only preview endpoint; no inventory, Access or database write path.
+- Changed files:
+  - `Api/Services/SefXml/SefXmlInvoiceParser.cs`
+  - `Api/Endpoints/SefXmlPreviewEndpoints.cs`
+  - `Api/Program.cs`
+  - `Api.Tests/SefXmlInvoiceParserTests.cs`
+  - `Api.Tests/SefXmlPreviewEndpointTests.cs`
+  - `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+  - `.ai/runs/2026-10-16-QDB11-evidence.md`
+- Checks run:
+  - `git diff --check` - pass
+  - `dotnet test Api.Tests/Api.Tests.csproj --filter 'FullyQualifiedName~SefXmlInvoiceParserTests|FullyQualifiedName~SefXmlPreviewEndpointTests|FullyQualifiedName~EndpointNameUniquenessTests' --no-restore --verbosity minimal` - pass (22 passed, 0 failed, 0 skipped)
+  - `dotnet build Api.Tests/Api.Tests.csproj --configuration Release --no-restore --verbosity minimal` - pass (0 errors; 262 existing repository warnings)
+  - QDB11 static scope review - pass: no Access import, journal, inventory, persistence or logging dependency in the new feature files
+- Checks not run:
+  - full `Api.Tests` suite - not run; focused parser/API/security and release build were the mapped proof
+  - real SEF XML or owner/operator validation - not supplied; synthetic-only evidence
+  - browser/UI - QDB13 remains separate and was not started before this closure
+- Run log: `.ai/runs/2026-10-16-QDB11-evidence.md`
+- Evidence state: synchronized
+- Claim reservation: inspected origin/main `69abc25db79e07444bb241f3cd7ad5fb0013f458`; pushed claim `84a0fd96c206ff405b7f2d1edaa251450cdbcc80`; owner Codex; worktree `C:\Users\Ivan\source\repos\Trendplus2-qdb11`; branch `agent/qdb11-sef-xml-preview`; remote branch/PR query found no matching SEF/XML/QDB work.
+- Delivery mode: direct-main
+- Main commit SHA: `600a0a4c82e8a38aef0c69cfcfe5bc25c2cebfd5`
+- Main verification: passed - fresh `origin/main` resolved to `600a0a4c82e8a38aef0c69cfcfe5bc25c2cebfd5` and contains the implementation SHA.
+- Missed: authentic invoice compatibility and real operator validation remain NOT VERIFIED.
+- Follow-up: QDB12
+- Residual risk: GitHub Actions run `38836814732` for the implementation SHA is queued; UBL variants beyond the synthetic test set remain unverified until an authorized sample is supplied.
+- Post-close routing: QDB12 promoted to READY because QDB11 is delivered on main with its parser DTO/test contract; QDB13 remains WAITING on QDB12.
+- Prompt defect / scope repair: non-canonical comma decimal values are preserved as unknown with a diagnostic rather than guessed or converted.
+
 ---
 
 ## QDB12 - SEF XML: uparivanje sa artiklima i objasnjenje razlika (read-only)
 
-Status: WAITING
+Status: READY
 Priority: P1 (owner pilot)
 Type: backend matching + provenance + tests
 Feature family: sef-xml-reconciliation
