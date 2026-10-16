@@ -88,6 +88,12 @@ public sealed record GoodsReceiptCreateResult(
     long? SimilarReceiptId = null,
     bool RequiresSimilarConfirmation = false);
 
+public sealed record GoodsReceiptReverseRequest(Guid RequestKey, string? Reason);
+
+public sealed record GoodsReceiptReverseResponse(
+    long Id, string Status, Guid RequestKey, string ReversedBy,
+    DateTime ReversedAtUtc, string Reason, bool Replayed);
+
 public sealed class GoodsReceiptException(string code, string message, int statusCode = 400) : Exception(message)
 {
     public string Code { get; } = code;
@@ -231,6 +237,157 @@ public sealed class GoodsReceiptService(
                 throw new GoodsReceiptException("idempotency_payload_mismatch", "Ključ zahteva je već upotrebljen za drugačiji prijem. Otvorite novi prijem.", 409);
             return new GoodsReceiptCreateResult(replay.Receipt, Replayed: true);
         }
+    }
+
+
+    /// <summary>
+    /// Audited, atomic full reversal. The original receipt and movement evidence is never deleted.
+    /// Refuses reversal if goods have already left the available stock; those cases need a separately
+    /// approved adjustment workflow rather than creating fictitious negative availability.
+    /// </summary>
+    public async Task<GoodsReceiptReverseResponse> ReverseAsync(
+        long receiptId, GoodsReceiptReverseRequest request, string actor, CancellationToken ct)
+    {
+        if (receiptId <= 0 || request is null || request.RequestKey == Guid.Empty)
+            throw new GoodsReceiptException("invalid_reversal_request", "Storno zahteva ID prijema i jedinstveni ključ.");
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length is < 10 or > 500)
+            throw new GoodsReceiptException("invalid_reversal_reason", "Razlog storna mora imati od 10 do 500 znakova.");
+
+        await using var efTransaction = await operationalDb.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        var connection = (NpgsqlConnection)operationalDb.GetDbConnection();
+        var transaction = (NpgsqlTransaction)efTransaction.GetDbTransaction();
+
+        string status;
+        int storeId;
+        Guid? previousKey;
+        string? previousReason;
+        string? previousActor;
+        DateTime? previousTime;
+        await using (var header = new NpgsqlCommand("""
+            SELECT "Status", "StoreId", "ReversalRequestKey", "ReversalReason",
+                   "ReversedBy", "ReversedAtUtc"
+            FROM "GoodsReceipts" WHERE "Id" = @receiptId FOR UPDATE
+            """, connection, transaction))
+        {
+            Add(header, "receiptId", receiptId, NpgsqlDbType.Bigint);
+            await using var reader = await header.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct))
+                throw new GoodsReceiptException("receipt_not_found", "Prijem nije pronađen.", 404);
+            status = reader.GetString(0);
+            storeId = reader.GetInt32(1);
+            previousKey = reader.IsDBNull(2) ? null : reader.GetGuid(2);
+            previousReason = reader.IsDBNull(3) ? null : reader.GetString(3);
+            previousActor = reader.IsDBNull(4) ? null : reader.GetString(4);
+            previousTime = reader.IsDBNull(5) ? null : reader.GetDateTime(5);
+        }
+
+        if (status == "reversed")
+        {
+            if (previousKey != request.RequestKey || !string.Equals(previousReason, reason, StringComparison.Ordinal))
+                throw new GoodsReceiptException("receipt_already_reversed", "Ovaj prijem je već storniran. Pogledajte istoriju.", 409);
+            await efTransaction.CommitAsync(ct);
+            return new GoodsReceiptReverseResponse(receiptId, "reversed", request.RequestKey,
+                previousActor!, previousTime!.Value, previousReason!, Replayed: true);
+        }
+        if (status != "confirmed")
+            throw new GoodsReceiptException("invalid_receipt_state", "Prijem nije u stanju za storno.", 409);
+
+        var keyInUse = await ScalarBoolAsync(connection, transaction, """
+            SELECT EXISTS (SELECT 1 FROM "GoodsReceipts"
+                           WHERE "ReversalRequestKey" = @key AND "Id" <> @receiptId)
+            """, ct, ("key", request.RequestKey), ("receiptId", receiptId));
+        if (keyInUse)
+            throw new GoodsReceiptException("reversal_key_reused", "Ključ storna već pripada drugom dokumentu.", 409);
+
+        var lines = new List<(long LineId, int ArticleId, int Quantity, decimal PurchaseUnitPrice)>();
+        await using (var read = new NpgsqlCommand("""
+            SELECT "Id", "ArticleId", "Quantity", "PurchaseUnitPrice"
+            FROM "GoodsReceiptLines" WHERE "GoodsReceiptId" = @receiptId
+            ORDER BY "ArticleId", "LineNumber" FOR UPDATE
+            """, connection, transaction))
+        {
+            Add(read, "receiptId", receiptId, NpgsqlDbType.Bigint);
+            await using var reader = await read.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+                lines.Add((reader.GetInt64(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetDecimal(3)));
+        }
+        if (lines.Count == 0)
+            throw new GoodsReceiptException("receipt_has_no_lines", "Prijem nema validne stavke.", 409);
+
+        foreach (var group in lines.GroupBy(line => line.ArticleId).OrderBy(group => group.Key))
+        {
+            var quantity = group.Sum(line => (long)line.Quantity);
+            if (quantity > int.MaxValue)
+                throw new GoodsReceiptException("reversal_quantity_overflow", "Količina za storno prelazi podržani opseg.", 409);
+            // A conditional UPDATE serializes with Access imports, transfers and other receipt writes.
+            var updatedId = await ScalarIntAsync(connection, transaction, """
+                UPDATE "Artikli" SET "Kolicina" = "Kolicina" - @quantity, "UpdatedAt" = NOW()
+                WHERE "Id" = @articleId AND "IDObjekat" = @store AND "Kolicina" >= @quantity
+                RETURNING "Id"
+                """, ct, ("quantity", (int)quantity), ("articleId", group.Key), ("store", storeId));
+            if (updatedId != group.Key)
+                throw new GoodsReceiptException("reversal_stock_insufficient",
+                    $"Storno je blokiran: artikal {group.Key} nema dovoljno raspoložive robe. Potrebna je odvojena kontrolisana korekcija.", 409);
+        }
+
+        foreach (var line in lines)
+        {
+            int movementId;
+            await using (var movement = new NpgsqlCommand("""
+                INSERT INTO "DnevnikPromena"
+                    ("TipPromene", "Datum", "Iznos", "BrojRacuna", "DobavljacId",
+                     "ArtikalId", "Kolicina", "IDObjekat", "Komentar", "KorisnikIme", "DataOrigin")
+                SELECT @type, NOW(), -(@quantity * @unitPrice), r."DocumentNumber",
+                       r."SupplierId", @articleId, -@quantity, r."StoreId",
+                       @comment, @actor, 'app'
+                FROM "GoodsReceipts" r WHERE r."Id" = @receiptId
+                RETURNING "Id"
+                """, connection, transaction))
+            {
+                Add(movement, "type", TipPromeneConstants.UlazRobe, NpgsqlDbType.Varchar);
+                Add(movement, "quantity", line.Quantity, NpgsqlDbType.Integer);
+                Add(movement, "unitPrice", line.PurchaseUnitPrice, NpgsqlDbType.Numeric);
+                Add(movement, "articleId", line.ArticleId, NpgsqlDbType.Integer);
+                Add(movement, "comment", $"STORNO PRIJEMA #{receiptId}: {reason}", NpgsqlDbType.Varchar);
+                Add(movement, "actor", actor, NpgsqlDbType.Varchar);
+                Add(movement, "receiptId", receiptId, NpgsqlDbType.Bigint);
+                movementId = (int)(await movement.ExecuteScalarAsync(ct))!;
+            }
+            await using var link = new NpgsqlCommand("""
+                UPDATE "GoodsReceiptLines" SET "ReversalMovementId" = @movementId
+                WHERE "Id" = @lineId AND "ReversalMovementId" IS NULL
+                """, connection, transaction);
+            Add(link, "movementId", movementId, NpgsqlDbType.Integer);
+            Add(link, "lineId", line.LineId, NpgsqlDbType.Bigint);
+            if (await link.ExecuteNonQueryAsync(ct) != 1)
+                throw new GoodsReceiptException("reversal_link_conflict", "Storno kretanja nije moglo biti povezano sa originalnom stavkom.", 409);
+        }
+
+        DateTime reversedAt;
+        await using (var update = new NpgsqlCommand("""
+            UPDATE "GoodsReceipts" SET "Status" = 'reversed',
+                "ReversalRequestKey" = @key, "ReversalReason" = @reason,
+                "ReversedBy" = @actor, "ReversedAtUtc" = NOW()
+            WHERE "Id" = @receiptId AND "Status" = 'confirmed'
+            RETURNING "ReversedAtUtc"
+            """, connection, transaction))
+        {
+            Add(update, "key", request.RequestKey, NpgsqlDbType.Uuid);
+            Add(update, "reason", reason, NpgsqlDbType.Varchar);
+            Add(update, "actor", actor, NpgsqlDbType.Varchar);
+            Add(update, "receiptId", receiptId, NpgsqlDbType.Bigint);
+            var result = await update.ExecuteScalarAsync(ct);
+            if (result is not DateTime time)
+                throw new GoodsReceiptException("reversal_concurrent_change", "Status prijema je promenjen.", 409);
+            reversedAt = time;
+        }
+
+        await efTransaction.CommitAsync(ct);
+        logger.LogInformation("Goods receipt reversed. ReceiptId={ReceiptId} Actor={Actor} LineCount={LineCount}",
+            receiptId, actor, lines.Count);
+        return new GoodsReceiptReverseResponse(receiptId, "reversed", request.RequestKey,
+            actor, reversedAt, reason, Replayed: false);
     }
 
     public async Task<IReadOnlyList<GoodsReceiptResponse>> SearchAsync(
@@ -682,7 +839,7 @@ public sealed class GoodsReceiptService(
     {
         await using var command = new NpgsqlCommand("""
             SELECT "Id" FROM "GoodsReceipts"
-            WHERE "SupplierId" = @supplier AND "DocumentType" = @type
+            WHERE "SupplierId" = @supplier AND "DocumentType" = @type AND "Status" = 'confirmed'
               AND lower(btrim("DocumentNumber")) = lower(btrim(@number))
               AND "StoreId" = @store AND "Id" <> COALESCE((
                   SELECT "Id" FROM "GoodsReceipts" WHERE "RequestKey" = @requestKey), -1)
