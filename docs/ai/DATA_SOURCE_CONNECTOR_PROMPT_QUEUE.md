@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update (2026-10-16)
 
-Current READY prompt: QDB12 (READY: QDB11 delivered on main and closed below); QDB13/QDB14 WAITING.
+Current READY prompt: QDB12 (IN_PROGRESS: Codex; shared reservation 2026-10-16 UTC; bounded read-only SEF XML reconciliation); QDB13/QDB14 WAITING.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -133,13 +133,14 @@ Vlasnik Trendplus prodavnice stvarni prijem robe radi rucno u Accessu, a dobavlj
 
 ## QDB12 - SEF XML: uparivanje sa artiklima i objasnjenje razlika (read-only)
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1 (owner pilot)
 Type: backend matching + provenance + tests
 Feature family: sef-xml-reconciliation
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex; shared claim published before implementation
 Dependencies: QDB11 DONE i objavljeni parser DTO/test ugovor; pristup samo dozvoljenom, read-only katalogu artikala
+Claim reservation: inspected origin/main 32072083cefe2e39e0805eec0695cd70c8f7b07b; owner Codex; intended worktree C:\Users\Ivan\source\repos\Trendplus2-qdb11; intended branch agent/qdb12-sef-xml-reconciliation; bounded paths isolated SEF reconciliation service/read-only preview API/focused tests and this queue; excludes Access import, inventory writes, journals, master price/formula changes, migrations and PR #163 paths; remote branch/PR query found no matching SEF/XML/reconciliation work. STAB17 is WAITING and PR #163 is an unrelated Access-sale-identity draft.
 Read first: QDB11 evidence, docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md, docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md, docs/product/RETAIL_PROFITGUARD_MARKET_FEASIBILITY_2026-10-15.md
 Suggested commit: feat(pilot): match invoice lines to Trendplus catalogue with explicit uncertainty
 
