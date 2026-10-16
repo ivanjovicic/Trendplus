@@ -1,5 +1,11 @@
 # Trendplus Master Roadmap
 
+
+## P0 Access import — source-qualified incremental delta (verified 2026-10-16)
+
+**Owner task: STAB17 (WAITING)** in [STAB queue](docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md); do not treat it as an additional READY lane. Owner requirement: ordinary Access uploads import only new source records (plus safely detected changed records) since a *proven* last successful source checkpoint, not a destructive full sales replay. Direct Neon read proves #42 was the last completed import, #43–#49 failed, all inspected #42–#49 used full / not incremental / overwrite=true and AccessImportCursors is empty. Render #47/#49 confirm 23505 PK_prodaja_zaglavlje at db-flush; #44/#46/#48 confirm PK_prodaja_stavke. Sampled source-table-key numeric collisions and near-exhausted integer ID range are documented in STAB17, but the exact rejected source row is not logged. **Do not enable incremental blindly** or derive cursor from sale date: reconcile the #42 lineage and namespace first. PR #163 is an overlapping DRAFT, #173/#174 hold other lineage/FK issues; preserve claim exclusivity. No production write, snapshot reset, bigint migration, import or deployment is authorized by this queue entry.
+
+
 ## Vlasnicki odobren ograniceni SEF XML pilot — 2026-10-16
 
 Vlasnik prodavnice prima dobavljacke fakture kroz drzavni SEF i rucno upisuje robu u originalni Access. Product owner trazi **testnu opciju unutar Trendplus /unos-robe** da ucita lokalni SEF XML, proveri stavke i pripremi nacrt prijema za demonstraciju. Ovo je **ograniceni pilot bez upisa**, ne promena primarnog Access procesa, ne genericki ERP, ne novi analytics modul i ne dozvola za stvarno knjizenje ili SEF nalog/API pristup.
