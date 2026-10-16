@@ -308,7 +308,23 @@ describe("SefXmlReceiptDraftWizard", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Izaberite jedan XML fajl sa nastavkom .xml.");
     expect(screen.getByRole("button", { name: "Pregledaj XML" })).toBeDisabled();
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText(/komponenta ne traži niti čuva admin ključ/i)).toBeInTheDocument();
+    expect(screen.getByText(/ključ se koristi samo u zahtevu i ne čuva se u pregledaču/i)).toBeInTheDocument();
+  });
+
+  it("does not upload XML if the transient admin-key request is cancelled", async () => {
+    const fetchMock = vi.fn();
+    const requestAdminKey = vi.fn(() => null);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SefXmlReceiptDraftWizard requestAdminKey={requestAdminKey} />);
+    selectFile();
+    fireEvent.click(screen.getByRole("button", { name: "Pregledaj XML" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Admin autorizacija nije potvrđena; XML nije poslat na pregled.");
+    expect(requestAdminKey).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem("sefXmlPilotAdminKey")).toBeNull();
+    expect(sessionStorage.getItem("sefXmlPilotAdminKey")).toBeNull();
   });
 
   it("offers native keyboard-focusable controls and a live status region", () => {

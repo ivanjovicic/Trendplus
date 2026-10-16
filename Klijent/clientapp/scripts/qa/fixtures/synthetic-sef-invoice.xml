@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic browser-test fixture only. No real supplier, customer, or invoice data. -->
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">
+  <ID>SYNTHETIC-ONLY-20261016</ID>
+  <IssueDate>2026-10-16</IssueDate>
+  <InvoiceTypeCode>380</InvoiceTypeCode>
+  <DocumentCurrencyCode>RSD</DocumentCurrencyCode>
+  <AccountingSupplierParty>
+    <Party><PartyName><Name>Sintetički dobavljač za test</Name></PartyName></Party>
+  </AccountingSupplierParty>
+  <InvoiceLine>
+    <ID>1</ID>
+    <InvoicedQuantity unitCode="H87">2</InvoicedQuantity>
+    <Item><Name>Sintetička patika model A broj 42</Name></Item>
+  </InvoiceLine>
+</Invoice>

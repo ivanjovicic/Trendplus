@@ -19,8 +19,10 @@ type WizardPhase = "empty" | "previewing" | "reconciling" | "ready" | "error";
 type FailedStep = "preview" | "reconcile" | null;
 
 interface SefXmlReceiptDraftWizardProps {
-  /** Supplied by an existing authorized parent; this component never persists the key. */
+  /** Supplied by an authorized parent when already available; never persisted by this component. */
   adminKey?: string;
+  /** Requests a transient key only when the operator starts a protected preview or reconciliation. */
+  requestAdminKey?: () => string | null;
 }
 
 const MAX_XML_BYTES = 5 * 1024 * 1024;
@@ -101,7 +103,7 @@ function downloadCsv(csv: string): void {
   URL.revokeObjectURL(blobUrl);
 }
 
-export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraftWizardProps) {
+export default function SefXmlReceiptDraftWizard({ adminKey, requestAdminKey }: SefXmlReceiptDraftWizardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const requestSequenceRef = useRef(0);
@@ -119,9 +121,26 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isLoading = phase === "previewing" || phase === "reconciling";
-  const hasAdminKey = Boolean(adminKey?.trim());
+  const canRequestAuthorization = Boolean(adminKey?.trim() || requestAdminKey);
 
   useEffect(() => () => requestControllerRef.current?.abort(), []);
+
+  function resolveAdminKey(): string | undefined {
+    try {
+      const existing = adminKey?.trim();
+      if (existing) return existing;
+      const requested = requestAdminKey?.()?.trim();
+      return requested || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function showAuthorizationCancelled(step: Exclude<FailedStep, null>) {
+    setPhase("error");
+    setFailedStep(step);
+    setErrorMessage("Admin autorizacija nije potvrđena; XML nije poslat na pregled.");
+  }
 
   function clearDraft(clearFile = true) {
     requestSequenceRef.current += 1;
@@ -182,6 +201,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
     selections: SefXmlManualMatchSelection[],
     controller: AbortController,
     requestId: number,
+    requestKey: string,
   ): Promise<boolean> {
     setPhase("reconciling");
     setFailedStep(null);
@@ -191,7 +211,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
         invoice: nextInvoice,
         manualSelections: selections,
         dataScope: "all",
-      }, adminKey, controller.signal);
+      }, requestKey, controller.signal);
       if (requestSequenceRef.current !== requestId) return false;
       if (!isReadOnlyReconciliation(result)) {
         throw new SefXmlPilotApiError(null, "Odgovor nije potvrđen kao read-only pregled; nacrt nije nastavljen.");
@@ -213,7 +233,12 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
   }
 
   async function startPreview() {
-    if (!selectedFile || !hasAdminKey || isLoading) return;
+    if (!selectedFile || !canRequestAuthorization || isLoading) return;
+    const requestKey = resolveAdminKey();
+    if (!requestKey) {
+      showAuthorizationCancelled("preview");
+      return;
+    }
     requestControllerRef.current?.abort();
     const controller = new AbortController();
     requestControllerRef.current = controller;
@@ -222,7 +247,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
     setFailedStep(null);
     setErrorMessage(null);
     try {
-      const result = await previewSefXmlInvoice(selectedFile, adminKey, controller.signal);
+      const result = await previewSefXmlInvoice(selectedFile, requestKey, controller.signal);
       if (requestSequenceRef.current !== requestId) return;
       if (!isInvoicePreview(result)) {
         throw new SefXmlPilotApiError(null, "XML pregled nije u očekivanom obliku; nacrt nije nastavljen.");
@@ -235,7 +260,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
         storeLocation: "",
       });
       setPhase("reconciling");
-      await reconcilePreview(result, [], controller, requestId);
+      await reconcilePreview(result, [], controller, requestId, requestKey);
     } catch (error) {
       if (isAbortError(error) || requestSequenceRef.current !== requestId) return;
       setPhase("error");
@@ -245,23 +270,33 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
   }
 
   async function retry() {
-    if (!hasAdminKey || isLoading) return;
+    if (!canRequestAuthorization || isLoading) return;
     if (invoice && failedStep === "reconcile") {
+      const requestKey = resolveAdminKey();
+      if (!requestKey) {
+        showAuthorizationCancelled("reconcile");
+        return;
+      }
       requestControllerRef.current?.abort();
       const controller = new AbortController();
       requestControllerRef.current = controller;
       const requestId = ++requestSequenceRef.current;
-      await reconcilePreview(invoice, pendingManualSelections, controller, requestId);
+      await reconcilePreview(invoice, pendingManualSelections, controller, requestId, requestKey);
       return;
     }
     await startPreview();
   }
 
   async function applyManualSelection(line: SefXmlReconciliationLine) {
-    if (!invoice || !reconciliation || !hasAdminKey || isLoading) return;
+    if (!invoice || !reconciliation || !canRequestAuthorization || isLoading) return;
     const selectedValue = candidateSelections[line.sourceOrder];
     const selectedCandidate = line.candidates.find((candidate) => String(candidate.catalogArticleId) === selectedValue);
     if (!selectedCandidate) return;
+    const requestKey = resolveAdminKey();
+    if (!requestKey) {
+      showAuthorizationCancelled("reconcile");
+      return;
+    }
 
     const selections = manualSelectionsFor(manualSelections, line.sourceOrder, selectedCandidate.catalogArticleId);
     setPendingManualSelections(selections);
@@ -269,7 +304,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
     const controller = new AbortController();
     requestControllerRef.current = controller;
     const requestId = ++requestSequenceRef.current;
-    await reconcilePreview(invoice, selections, controller, requestId);
+    await reconcilePreview(invoice, selections, controller, requestId, requestKey);
   }
 
   function updateMetadata(field: keyof SefXmlDraftMetadata, value: string) {
@@ -314,9 +349,9 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
         <span>Ne upisuje prijem, artikle, zalihe, dnevnik promena niti produkcioni Access.</span>
       </div>
 
-      {!hasAdminKey && (
+      {!canRequestAuthorization && (
         <p className="sef-xml-pilot__notice" role="status">
-          Za pregled je potrebna postojeća autorizacija aplikacije. Ova komponenta ne traži niti čuva admin ključ.
+          Za pregled je potrebna administratorska autorizacija. Ključ se koristi samo u zahtevu i ne čuva se u pregledaču.
         </p>
       )}
 
@@ -341,7 +376,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
         </label>
         {selectedFile && <p className="sef-xml-pilot__file-name">Izabrano: {selectedFile.name}</p>}
         <div className="sef-xml-pilot__actions">
-          <button className="btn btn--primary" type="button" disabled={!selectedFile || !hasAdminKey || isLoading} onClick={() => void startPreview()}>
+          <button className="btn btn--primary" type="button" disabled={!selectedFile || !canRequestAuthorization || isLoading} onClick={() => void startPreview()}>
             {phase === "previewing" ? "Učitavam XML…" : "Pregledaj XML"}
           </button>
           {selectedFile && (
@@ -355,7 +390,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
       {errorMessage && (
         <div className="sef-xml-pilot__error" role="alert">
           <p>{errorMessage}</p>
-          {selectedFile && hasAdminKey && (
+          {selectedFile && canRequestAuthorization && (
             <button className="btn btn--secondary" type="button" disabled={isLoading} onClick={() => void retry()}>
               {failedStep === "reconcile" ? "Ponovi uparivanje" : "Pokušaj ponovo"}
             </button>
@@ -484,7 +519,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
                           id={`sef-xml-candidate-${line.sourceOrder}`}
                           value={candidateValue}
                           aria-label={`Ručni izbor artikla za XML red ${line.sourceOrder}`}
-                          disabled={!hasAdminKey || isLoading || !hasCandidates}
+                          disabled={!canRequestAuthorization || isLoading || !hasCandidates}
                           onChange={(event) => setCandidateSelections((current) => ({ ...current, [line.sourceOrder]: event.target.value }))}
                         >
                           <option value="">{hasCandidates ? "Izaberite kataloškog kandidata" : "Nema dostupnih kandidata"}</option>
@@ -499,7 +534,7 @@ export default function SefXmlReceiptDraftWizard({ adminKey }: SefXmlReceiptDraf
                       <button
                         className="btn btn--secondary"
                         type="button"
-                        disabled={!candidateValue || !hasCandidates || !hasAdminKey || isLoading}
+                        disabled={!candidateValue || !hasCandidates || !canRequestAuthorization || isLoading}
                         onClick={() => void applyManualSelection(line)}
                       >
                         Primeni ručni izbor
