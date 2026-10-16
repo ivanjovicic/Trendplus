@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: none in this addendum (RQ680 and RQ683 are IN_PROGRESS; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
+Current READY prompt: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -4178,7 +4178,7 @@ PR + green required CI, real merge, exact SHA.
 
 ## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P2
 Type: frontend analytics calculation
 Feature family: dashboard-moving-windows
@@ -4237,6 +4237,26 @@ Specs prove complete calendar windows and genuinely verified zero days; a gap wi
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
+
+### Completion note
+
+- Date: 2026-10-16.
+- Status: DONE on `main`; PR #188 merged at `797f3734bb06688bc3cdff874ea23248436dd4e0` from exact head `cc05fb3f578887b059b9ba7bf956aa0fbf36535d`.
+- Completion: Dashboard and Details moving metrics now use exact requested calendar-day windows. Missing/partial dates remain unavailable unless exact-scope, exact-period verified-empty coverage exists; current endpoints provide no such source contract, so no page invents zero-sale days.
+- Changed files: shared calendar-day helper; Dashboard and Details calculations/accessibility text; focused page and indicator regression tests; known-guardrail baseline; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Checks run: `npm run test:analytics` (167 files / 1,303 tests); `npm run check:analytics-guardrails`; `npm run build`; focused 23-test regression set; `node scripts/check-prompt-queues.mjs` (811 tasks); `git diff --check`. PR Analytics Quality Gates run `38919858392` passed on exact PR head and included frontend analytics tests, guardrails, build and fixture browser steps. PR Analytics Tests & Data Integrity run `38919858404` also passed on exact PR head. Current-main Analytics Quality Gates run `38920483346` passed on the merge SHA and included the same frontend/browser fixture steps. Self-tests for agent instructions, prompt queues and planning architecture passed.
+- Checks not run: authenticated human/deployed browser demonstration and live source-day completeness verification; no current endpoint exposes authoritative day coverage.
+- Run log: `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: PR #188, squash merge.
+- Main commit SHA: `797f3734bb06688bc3cdff874ea23248436dd4e0`.
+- Main verification: fresh `origin/main` fetch verified `HEAD == origin/main == 797f3734bb06688bc3cdff874ea23248436dd4e0`; the exact implementation SHA is on `main`.
+- Missed: no authenticated retailer walkthrough or deployed demonstration URL was produced; the frontend has no authoritative day-coverage source contract yet.
+- Follow-up: RQ680 remains active with its owner; after it or the missing cross-program `MASTER_ROADMAP.md` routing is resolved, rerun the queue selector. Revisit source-gated work only after the named external evidence arrives.
+- Residual risk: moving-window signals intentionally remain unavailable when the source omits a date; an authoritative source/day coverage contract is a separate owner decision. Planning Governance run `38916238577` was red on predecessor `c782d9920848bcf70aab2489fb57587bc66ed0c8` for pre-existing cross-program routing/index omissions; the new exact-main Analytics Quality Gates run is green.
+- Post-close routing: refreshed recovery base `797f3734bb06688bc3cdff874ea23248436dd4e0`; scanned all 13 active RQ queue/addendum files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; no direct task depends on RQ683. RQ680 remains IN_PROGRESS under another owner, RQ681 waits on RQ680, and RQ682 remains PARTIAL on the source timestamp-basis authority gate.
+- Cross-program recovery: no `Status: READY` row was present across the 24 active `*PROMPT_QUEUE*.md` files; QDB's current pointer is none (QDB11-QDB13 DONE, QDB14 waiting for real operator authorization and an isolated test database). However, `MASTER_ROADMAP.md` lacks the cross-program routing/index entries required to select the next program (planning validator reports 45 pre-existing findings), so no global Zero-READY conclusion is asserted and no unrelated prompt was claimed. Recovery is incomplete at that cross-program routing step.
+- Next: RQ680 remains owned/in progress; repair the canonical cross-program route before selecting a different program. Revisit source-gated prompts only on their named evidence/owner event.
 
 
 ### 2026-10-15 independent safety review — timestamp/provenance and fake-zero guards
