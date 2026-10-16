@@ -23,12 +23,9 @@ public static class GoodsReceiptEndpoints
         {
             var denial = AdminAccessControl.RejectIfUnauthorized(httpContext, configuration);
             if (denial is not null) return denial;
+            if (GoodsReceiptWriteAccess.Reject(httpContext, configuration, out var actor) is { } writeDenial)
+                return writeDenial;
             if (request is null) return Results.BadRequest(new { code = "missing_body", message = "Nedostaje prijemni dokument." });
-
-            var actor = string.IsNullOrWhiteSpace(httpContext.User.Identity?.Name)
-                ? "admin-api-key"
-                : httpContext.User.Identity!.Name!.Trim();
-            if (actor.Length > 200) actor = actor[..200];
 
             try
             {
