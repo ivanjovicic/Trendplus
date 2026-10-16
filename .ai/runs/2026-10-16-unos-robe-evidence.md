@@ -3,7 +3,7 @@ Queue: direct-user-request
 Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/p0-unos-robe-20261016; PR pending
+Working branch / PR: codex/p0-unos-robe-20261016; draft PR #184 https://github.com/ivanjovicic/Trendplus/pull/184
 Main commit SHA: pending
 Main verification: pending; current refreshed origin/main is ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c
 Evidence state: pending
@@ -46,7 +46,8 @@ Claim reservation: direct-user-request/not applicable
 ## Validation not run
 - Browser end-to-end -> `BROWSER NOT RUN`; no isolated browser deployment/environment was available. The production URL was not used for a write-flow rehearsal.
 - Full `Api.Tests` -> not green/complete: the mandatory all-suite Testcontainers attempt hit Docker API/Testcontainers startup timeouts; a broad non-integration attempt was interrupted while silent. Focused required PostgreSQL tests did execute with the mandatory flag and had 0 skips.
-- GitHub PR CI -> pending PR creation; no remote result claimed.
+- GitHub PR CI on latest evidence-synchronized head -> pending; no remote result claimed yet.
+- Initial PR CI on head `fcf520160a07d2de0424cbe9d7397ddd712e38d9` -> frontend, complete backend analytics, SDK pin, POS dependency/build, RQ453 certification, and Vercel deployment checks were queued/in progress when first inspected; Vercel Preview Comments passed. Recheck after evidence synchronization before reporting.
 
 ## Documentation impact
 - Added `docs/operations/GOODS_RECEIPT_RUNBOOK.md`, including retry, partial-delivery, projection failure, Access collision, and correction escalation guidance.
@@ -66,4 +67,4 @@ Claim reservation: direct-user-request/not applicable
 - not applicable for direct-user-request; no queue task was claimed or closed.
 
 ## Next
-- Create a focused PR from `codex/p0-unos-robe-20261016`; keep it open unless browser, individual actor identity, correction workflow, and exact-head checks meet the supplied merge gate.
+- Recheck all PR #184 checks at its latest head. Keep it open unless browser, individual actor identity, correction workflow, and exact-head checks meet the supplied merge gate.
