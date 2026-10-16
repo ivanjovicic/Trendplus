@@ -63,9 +63,9 @@ Claim reservation: inspected `origin/main` `78b31aa0bcd153b9c805f29d1a30a1598808
 - No Access, stock, receipt, journal, article or production database writes were performed or enabled.
 
 ## Post-close routing recovery
-- Recovery base: refreshed `origin/main` `c49150972a507e66ee72a9123c8fa7bd56cfbf04` after implementation delivery.
+- Recovery base: refreshed post-close `origin/main` `eb18809a2dd50d92f27800d21a03d659f138353f` after the QDB13 evidence close-out commit.
 - Entire active QDB queue scanned: QDB11/QDB12/QDB13A/QDB13 are DONE; QDB14 remains WAITING on owner/operator authorization, real operator evidence and an isolated test database; QDB07/QDB08/QDB10 retain their stated dependencies/source gates.
-- Post-close cross-program routing found RQ685 (P1, test-only, independent READY) in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`; RQ680 remains IN_PROGRESS and RQ682/RQ683 remain path-disjoint READY lanes. RQ685 is the next candidate subject to a fresh claim/collision check and WIP cap.
+- Post-close cross-program routing found RQ685 (P1, test-only, independent READY) in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`; RQ680 remained IN_PROGRESS and RQ682/RQ683 were path-disjoint READY lanes. After a fresh collision/priority scan, RQ685 was claimed READY -> IN_PROGRESS on main at `ba0bd7bce474a46bff31cfae0ec6fe16db03693e`; its separate F: worktree and local lock were created only after the claim was visible. RQ680 + RQ685 remain within the WIP cap of two.
 
 ## Next
-- Continue with the post-close P1 candidate RQ685 only after refreshing `origin/main`, confirming its READY status and collisions, and publishing its own shared claim; do not infer QDB14 authorization from QDB13 completion.
+- RQ685 is now the active P1 follow-up under its own shared claim; QDB14 still requires explicit owner/operator authorization and an isolated test database.
