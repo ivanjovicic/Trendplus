@@ -138,7 +138,7 @@ public sealed class GoodsReceiptEndpointAuthorizationTests
         authorized.Headers.Add("X-Receipt-Operator-Key", OperatorKey);
         using var third = await host.Client.SendAsync(authorized);
         Assert.Equal(HttpStatusCode.BadRequest, third.StatusCode);
-        Assert.Contains("missing_reversal_request", await third.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("invalid_reversal_request", await third.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     private static async Task<TestHost> CreateHostAsync(bool writesEnabled = true)
