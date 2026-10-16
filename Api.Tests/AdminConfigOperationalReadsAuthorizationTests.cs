@@ -173,7 +173,7 @@ public sealed class AdminConfigOperationalReadsAuthorizationTests
             builder.Services.AddRouting();
             builder.Services.AddLogging();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase($"admin-ops-reads-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"admin-ops-reads-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddSingleton<WorkerHealthService>();
             builder.Services.AddSingleton(readinessState ?? new StartupReadinessState());
             builder.Services.AddSingleton(new WorkerRuntimeControlService(

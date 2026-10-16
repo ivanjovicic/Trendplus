@@ -22,7 +22,7 @@ public sealed class DbErrorStoreTests
     {
         var services = new ServiceCollection();
         services.AddDbContextFactory<TrendplusDbContext>(options =>
-            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()).IgnoreManyServiceProvidersCreatedWarning());
         services.AddSingleton<IHostEnvironment>(new TestHostEnvironment(Environments.Production));
 
         await using var provider = services.BuildServiceProvider();
@@ -60,7 +60,7 @@ public sealed class DbErrorStoreTests
     {
         var services = new ServiceCollection();
         services.AddDbContextFactory<TrendplusDbContext>(options =>
-            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()).IgnoreManyServiceProvidersCreatedWarning());
         services.AddSingleton<IHostEnvironment>(new TestHostEnvironment(Environments.Development));
 
         await using var provider = services.BuildServiceProvider();

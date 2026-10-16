@@ -147,7 +147,7 @@ public sealed class DocumentExportAuthorizationTests
             builder.Services.AddLogging();
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase($"document-export-auth-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"document-export-auth-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.Configure<DocumentExportOptions>(options =>
             {
                 options.SigningKey = "unit-test-key";

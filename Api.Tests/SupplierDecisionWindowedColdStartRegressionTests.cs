@@ -258,8 +258,8 @@ public sealed class SupplierDecisionWindowedColdStartRegressionTests
     private static ServiceProvider CreateDatabaseServices(
         string defaultConnectionString,
         string analyticsConnectionString) => new ServiceCollection()
-        .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(defaultConnectionString))
-        .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(analyticsConnectionString))
+        .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(defaultConnectionString).IgnoreManyServiceProvidersCreatedWarning())
+        .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(analyticsConnectionString).IgnoreManyServiceProvidersCreatedWarning())
         .BuildServiceProvider();
 
     private static async Task CreateReadinessContractTableAsync(string connectionString)

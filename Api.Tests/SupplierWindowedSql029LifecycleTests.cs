@@ -188,7 +188,7 @@ public sealed class SupplierWindowedSql029LifecycleTests : IClassFixture<Postgre
             .Build();
 
         using var services = new ServiceCollection()
-            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString))
+            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning())
             .BuildServiceProvider();
 
         await DatabaseInitializer.EnsureAnalyticsSupplierDecisionSchemaAsync(

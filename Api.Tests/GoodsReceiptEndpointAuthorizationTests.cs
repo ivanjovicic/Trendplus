@@ -154,9 +154,9 @@ public sealed class GoodsReceiptEndpointAuthorizationTests
         });
         builder.Services.AddLogging();
         builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(
-            "Host=127.0.0.1;Database=not-used;Username=not-used;Password=not-used;Timeout=1"));
+            "Host=127.0.0.1;Database=not-used;Username=not-used;Password=not-used;Timeout=1").IgnoreManyServiceProvidersCreatedWarning());
         builder.Services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(
-            "Host=127.0.0.1;Database=not-used;Username=not-used;Password=not-used;Timeout=1"));
+            "Host=127.0.0.1;Database=not-used;Username=not-used;Password=not-used;Timeout=1").IgnoreManyServiceProvidersCreatedWarning());
         builder.Services.AddScoped<ITrendplusDbContext>(services => services.GetRequiredService<TrendplusDbContext>());
         builder.Services.AddScoped<IAnalyticsDbContext>(services => services.GetRequiredService<AnalyticsDbContext>());
         builder.Services.AddScoped<GoodsReceiptService>();

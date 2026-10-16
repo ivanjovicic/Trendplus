@@ -415,11 +415,11 @@ public sealed class AnalyticsAggregationWorkerTests : IClassFixture<PostgresCont
 
         if (useInMemoryDatabase)
         {
-            services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase($"trendplus-agg-worker-{Guid.NewGuid():N}"));
+            services.AddDbContext<TrendplusDbContext>(options => options.UseInMemoryDatabase($"trendplus-agg-worker-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
         }
         else
         {
-            services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString!));
+            services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString!).IgnoreManyServiceProvidersCreatedWarning());
         }
 
         services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
