@@ -70,7 +70,7 @@ const emptyLine = (): ArtikalStavka => ({
 // prices such as 1.13 and 0.29 fail an exact Math.round(price * 100) comparison.
 function isValidUnitPrice(value: string): boolean {
   const normalized = value.trim();
-  if (!/^\\d+(?:\\.\\d{1,2})?$/.test(normalized)) return false;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return false;
   const price = Number(normalized);
   // Keep values within the precision at which JavaScript can serialize cents reliably.
   return Number.isFinite(price) && price <= 9_000_000_000_000;
