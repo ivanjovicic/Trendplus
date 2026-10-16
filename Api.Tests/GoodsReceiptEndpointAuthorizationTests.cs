@@ -19,6 +19,7 @@ namespace Api.Tests;
 public sealed class GoodsReceiptEndpointAuthorizationTests
 {
     private const string AdminKey = "goods-receipt-test-key";
+    private const string OperatorKey = "named-operator-only-test-key-over-32-characters";
 
     [Fact]
     public async Task ReceiptReadAndPostRoutes_RejectMissingOrWrongAdminCredential()
@@ -52,6 +53,8 @@ public sealed class GoodsReceiptEndpointAuthorizationTests
             Content = new StringContent("{}", Encoding.UTF8, "application/json")
         };
         request.Headers.Add("X-Admin-Key", AdminKey);
+        request.Headers.Add("X-Receipt-Operator-Id", "stock-clerk-1");
+        request.Headers.Add("X-Receipt-Operator-Key", OperatorKey);
 
         using var response = await host.Client.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
@@ -60,13 +63,59 @@ public sealed class GoodsReceiptEndpointAuthorizationTests
         Assert.Contains("missing_request_key", body, StringComparison.Ordinal);
     }
 
-    private static async Task<TestHost> CreateHostAsync()
+    [Fact]
+    public async Task ReceiptPostRoute_SharedAdminKeyAloneNeverAuthorizesWrite()
+    {
+        await using var host = await CreateHostAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Admin-Key", AdminKey);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReceiptPostRoute_DisabledFlagReturnsNotFoundEvenForNamedOperator()
+    {
+        await using var host = await CreateHostAsync(writesEnabled: false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Admin-Key", AdminKey);
+        request.Headers.Add("X-Receipt-Operator-Id", "stock-clerk-1");
+        request.Headers.Add("X-Receipt-Operator-Key", OperatorKey);
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReceiptPostRoute_UnknownOrIncorrectOperatorIsForbidden()
+    {
+        await using var host = await CreateHostAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Admin-Key", AdminKey);
+        request.Headers.Add("X-Receipt-Operator-Id", "stock-clerk-1");
+        request.Headers.Add("X-Receipt-Operator-Key", "wrong-operator-key-12345678901234567890");
+        using var response = await host.Client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    private static async Task<TestHost> CreateHostAsync(bool writesEnabled = true)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Admin:ApiKey"] = AdminKey
+            ["Admin:ApiKey"] = AdminKey,
+            ["GoodsReceipts:WritesEnabled"] = writesEnabled.ToString(),
+            ["GoodsReceipts:Operators:stock-clerk-1:Enabled"] = "true",
+            ["GoodsReceipts:Operators:stock-clerk-1:Key"] = OperatorKey
         });
         builder.Services.AddLogging();
         builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(
