@@ -125,7 +125,7 @@ Vlasnik Trendplus prodavnice stvarni prijem robe radi rucno u Accessu, a dobavlj
 - Main verification: passed - fresh `origin/main` resolved to `600a0a4c82e8a38aef0c69cfcfe5bc25c2cebfd5` and contains the implementation SHA.
 - Missed: authentic invoice compatibility and real operator validation remain NOT VERIFIED.
 - Follow-up: QDB12
-- Residual risk: GitHub Actions run `38836814732` for the implementation SHA is queued; UBL variants beyond the synthetic test set remain unverified until an authorized sample is supplied.
+- Residual risk: GitHub Actions run `38836814732` for the implementation SHA was `in_progress` at post-delivery inspection; UBL variants beyond the synthetic test set remain unverified until an authorized sample is supplied.
 - Post-close routing: QDB12 promoted to READY because QDB11 is delivered on main with its parser DTO/test contract; QDB13 remains WAITING on QDB12.
 - Prompt defect / scope repair: non-canonical comma decimal values are preserved as unknown with a diagnostic rather than guessed or converted.
 

@@ -52,7 +52,7 @@ Claim reservation: inspected origin/main 69abc25db79e07444bb241f3cd7ad5fb0013f45
 
 ## Risks
 
-- GitHub Actions run `38836814732` for `600a0a4c` was `queued` when inspected.
+- GitHub Actions run `38836814732` for `600a0a4c` was `in_progress` at final post-delivery inspection.
 - Unseen permitted UBL variants remain a compatibility risk until tested with an authorized sample; no real document was logged, stored or committed.
 
 ## Post-close routing recovery
