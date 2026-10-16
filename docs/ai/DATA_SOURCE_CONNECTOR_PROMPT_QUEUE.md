@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update (2026-10-16)
 
-Current READY prompt: QDB13 (READY: SEF XML receipt-draft UI after QDB12 direct-main evidence); QDB14 WAITING.
+Current READY prompt: QDB13A (READY: isolated, read-only SEF XML draft UI and export, with zero overlapping /unos-robe/Artikli edits); QDB13 WAITING (integration after QDB13A and explicit PR #184 UI-path release); QDB14 WAITING.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -212,17 +212,51 @@ Nazivi i sifre dobavljaca nisu automatski Trendplus Artikli ID; razlicite velici
 
 ---
 
-## QDB13 - Pilot na /unos-robe: ucitaj SEF XML i pripremi pregledan nacrt
+## QDB13A - Izolovani SEF XML nacrt: UI komponenta, API klijent i bezbedan eksport (bez povezivanja sa /unos-robe)
 
 Status: READY
+Priority: P1 (owner-approved demo pilot; ne pretice aktivni P0/source/prod gate)
+Type: new-file-only frontend UI + request-scoped client + unit tests
+Feature family: sef-xml-receipt-draft-isolated
+Parallel-safe: yes, only with current PR #184; no overlapping file edits or dependency on its write contract
+Owner: unassigned
+Dependencies: QDB11 DONE and QDB12 DONE on main. Current 2026-10-16 review: PR #184 is an OPEN DRAFT/PARTIAL P0 write workflow, with no person-level audit actor, no correction/storno path, and no isolated browser E2E. It owns /unos-robe and Artikli UI; **do not** modify those paths in QDB13A.
+Claim: normal shared reservation required by docs/ai/PROMPT_QUEUE_PROTOCOL.md before coding; rerun current-main and PR/branch/owner check. Do not claim QDB13 itself.
+Suggested commit: feat(pilot): build isolated read-only SEF invoice draft component
+
+### Bounded work
+1. In **new files only** under `Klijent/clientapp/src/components/sef-xml-pilot/` and, if needed, a new isolated `Klijent/clientapp/src/services/sefXmlPilotApi.ts`, implement a reusable unmounted SEF draft wizard and adjacent focused tests. Do not modify `UnosRobePage.tsx`, `UnosRobeForm.tsx`, `UnosArtikalaForm.tsx`, `ArtikliPage.tsx`, router, shared API/auth helpers, backend source, migrations, PR #184 branch or its worktree. If a shared source edit is unexpectedly needed, leave it for QDB13 rather than colliding.
+2. One local XML file -> `POST /api/pilot/sef-xml/preview` (multipart) -> `POST /api/pilot/sef-xml/reconcile` (typed read-only JSON) -> invoice lines and immutable original line references -> editable in-memory draft, manual catalogue selection, *operator-entered* physical received quantities, document/store metadata, and CSV export clearly headed `NEKNJIŽENO — NACRT`. Do not generate synthetic price/cost, default physical quantity from invoiced quantity, or convert currencies/UOM silently.
+3. Treat `ExactIdMatch` from QDB12 only as an exact **code comparison** until source supplier-item-ID ↔ catalogue PLU namespace/issuer and supplier-specific uniqueness are proven. It is not evidence of physically received goods, correct size or inventory identity. Show an explicit `proveriti` warning; any required backend confidence correction is a separate bounded gate before a live demo.
+4. Use existing authorized admin request pattern; never put admin secrets, XML, invoice data or supplier identifiers into localStorage, sessionStorage, debug logs or browser caches. Keep state in memory only and clear on new upload/unmount. Respect backend `SefXmlPilot:Enabled` (OFF by default); do not treat frontend visibility as authorization.
+5. Export deterministic CSV with RFC 4180 quoting, spreadsheet formula-injection protection (including leading whitespace, =, +, -, @ and control characters), UTF-8 Serbian text, original line provenance, unverified vs manual match source, physical qty unknown vs confirmed and `NEKNJIŽENO` on every exported row. No export uses production receipt write endpoints.
+6. Unit/component tests prove parse/reconcile states, invalid/ambiguous/unmatched paths, manual override, unknown quantities/prices, unauthorized/404/503/413/error/retry, repeated uploads, CSV injection, keyboard/a11y and no mutation requests to goods-receipt/Artikli/Access/DnevnikPromena endpoints. Synthetic UBL only.
+7. Run focused frontend tests, `tsc -b`, guardrails and production build. Capture exact SHA and pass/fail/skip evidence. Browser/deploy/operator validation remains NOT RUN while component is unmounted; do not claim a demo URL.
+
+### Completion boundary
+QDB13A DONE means a tested **unmounted** read-only pilot component exists on main with synchronized evidence. It does **not** complete QDB13, allow web goods receipt posting, clear PR #184 ownership, authorize SEF data handling or enable production flag. Post-close dependency cascade rechecks PR #184; if the owner has formally released the shared UI path and no active changes conflict, promote QDB13 to READY.
+
+---
+
+## QDB13 - Pilot na /unos-robe: ucitaj SEF XML i pripremi pregledan nacrt
+
+Status: WAITING
 Priority: P1 (owner pilot)
 Type: frontend UI + API/auth integration + focused tests
 Feature family: sef-xml-receipt-draft-ui
 Parallel-safe: no
 Owner: unassigned
-Dependencies: QDB11 DONE, QDB12 DONE, backend autorizacija/fajl granice provereni; implementacija mora biti collision-safe sa ostalim radovima na UnosRobe/Artikli
+Dependencies: QDB11 DONE, QDB12 DONE, QDB13A DONE; formalno zabelezen release/handoff za UnosRobePage.tsx od aktivnog vlasnika PR #184, plus ponovljena provera aktuelnih PR/branch/lock promena. QDB13A ne daje dozvolu za UI route edit ili receipt write.
 Read first: QDB11/QDB12 evidence, Klijent/clientapp/src/pages/UnosRobePage.tsx, Klijent/clientapp/src/components/UnosRobeForm.tsx, Klijent/clientapp/src/components/UnosArtikalaForm.tsx, docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md
 Suggested commit: feat(pilot): preview SEF XML into editable receiving draft
+
+
+### QDB13 routing decision — 2026-10-16 (post-QDB12 review)
+- QDB11 `600a0a4c82e8a38aef0c69cfcfe5bc25c2cebfd5` and QDB12 `3b0edc2e69cb261be7a92c02543ff265c20226b4` are on main; QDB12 close-out `f8788a81734a1c17d10c761109b4205b60e46163` is synchronized. GitHub Actions run `38869089375`: both backend analytics suite and RQ453 certification jobs completed successfully upon this review.
+- PR #184 is OPEN/DRAFT/PARTIAL, at inspected head `58a4d6a8e6fdb866fe0fb4df08f5b9cb7aedc14d`; it edits `UnosRobePage`, `UnosRobeForm`, `UnosArtikalaForm` and `ArtikliPage`. This is a genuine active path conflict, not a historical stale lock.
+- Decision: keep PR #184 draft, do not merge or deploy receipt writes while personal audit identity, correction/storno and isolated browser evidence are absent. QDB13 **WAITING** for formal owner path release; introduce QDB13A **READY** as a new-files-only collision-safe, read-only UI slice, preserving a useful independent deliverable.
+- QDB13 is not automatically claimable after QDB13A DONE; record the release source, previous owner, target owner/branch, time and whether PR #184 remains untouched, and refresh latest PR head. No assumptions that an unacknowledged PR author has stopped.
+- Do not enable `SefXmlPilot:Enabled` in public production or infer authentic SEF compatibility from synthetic tests. QDB14 remains WAITING and requires separate business approval.
 
 ### Problem
 Vlasnik mora moci da pokaze XML fakturu direktno u Trendplus aplikaciji i vidi koliko rucnog rada je izbegnuto. Postojeci manual receipt forma nije bezbedan production write tok, pa pilot ne sme da prikaze "Sacuvao" niti koristi stari handleSubmitAll.
