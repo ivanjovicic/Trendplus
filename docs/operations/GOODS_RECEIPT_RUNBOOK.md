@@ -9,6 +9,8 @@
 
 Prijem zaključava stanje postojećih artikala u PostgreSQL-u i povećava količinu atomskim upisom. Zaglavlje, stavke i kretanja `Ulaz robe` potvrđuju se zajedno ili se zajedno vraćaju. Analitičko kretanje se projektuje idempotentno preko SyncWorker-a; zastoj projekcije ne poništava niti ponavlja već potvrđenu operativnu zalihu.
 
+Autor se čuva kao ime prijavljenog administratora kada postoji autentifikovani identitet; pri pristupu zajedničkim `X-Admin-Key` ključem zapisuje se `admin-api-key`, što ne identifikuje pojedinačnog operatera. Dok se ne obezbedi autentifikacija po osobi, ovaj pristup ne ispunjava zahtev za proverljivim individualnim revizijskim tragom.
+
 Access import blokira batch ako pozitivan izvorni ID artikla zauzima ciljni artikal koji nije porekla `access`; log navodi batch, izvorni i ciljni ID i poreklo bez sirovih podataka artikla. Potrebna je eksplicitna identitetska rekonsilijacija pre ponovnog importa.
 
 ## Nepoznat ishod ili sumnjiv dokument
