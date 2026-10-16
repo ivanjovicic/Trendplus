@@ -56,6 +56,41 @@ public static class GoodsReceiptEndpoints
             }
         }).WithName("CreateGoodsReceipt");
 
+
+        group.MapPost("/{id:long}/reverse", async (
+            long id,
+            [FromBody] GoodsReceiptReverseRequest? request,
+            [FromServices] GoodsReceiptService service,
+            HttpContext httpContext,
+            IConfiguration configuration,
+            ILoggerFactory loggerFactory,
+            CancellationToken ct) =>
+        {
+            if (AdminAccessControl.RejectIfUnauthorized(httpContext, configuration) is { } denial)
+                return denial;
+            if (GoodsReceiptWriteAccess.Reject(httpContext, configuration, out var actor) is { } writeDenial)
+                return writeDenial;
+            if (request is null)
+                return Results.BadRequest(new { code = "missing_reversal_request", message = "Nedostaje zahtev za storno." });
+
+            try
+            {
+                var result = await service.ReverseAsync(id, request, actor, ct);
+                if (!result.Replayed)
+                {
+                    await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+                        httpContext.RequestServices, AnalyticsCachePolicy.CoreFamilies, "goods-receipt-reversal",
+                        loggerFactory.CreateLogger("GoodsReceiptEndpoints"));
+                }
+                return Results.Ok(result);
+            }
+            catch (GoodsReceiptException ex)
+            {
+                return Results.Problem(statusCode: ex.StatusCode, title: ex.Code, detail: ex.Message,
+                    extensions: new Dictionary<string, object?> { ["code"] = ex.Code });
+            }
+        }).WithName("ReverseGoodsReceipt");
+
         group.MapGet("", async (
             string? query,
             int? supplierId,
