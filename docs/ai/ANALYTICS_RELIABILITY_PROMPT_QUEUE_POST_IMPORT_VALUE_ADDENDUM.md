@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ683** (RQ680 is IN_PROGRESS; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
+Current READY prompt: none in this addendum (RQ680 and RQ683 are IN_PROGRESS; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -4190,6 +4190,7 @@ Owner: Codex
 - Claim transition: READY -> IN_PROGRESS.
 - Owner: Codex (current task).
 - Inspected `origin/main`: `ca7317eb56324973b9b5a6a003363fc5be76c4a7`.
+- Published claim commit on `main`: `b1dcba4fc547efafa567cc60069218fdd1a3a43c`.
 - Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq683` / `codex/rq683-calendar-day-windows-20261016`.
 - Bounded paths: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/utils/calendarDayCoverage.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.movingWindows.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.movingWindows.spec.tsx`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ683-evidence.md`.
 - Remote collision query: GitHub branch search `rq683` and open-PR search `RQ683` returned none; all current open PRs #185 and #163 were checked by changed filename and are path-disjoint. The listed worktrees have no changes on the bounded runtime/test paths or RQ683 lock; F: destination path is absent.
