@@ -8,6 +8,8 @@ Current READY prompt: **RQ682** (RQ680 is IN_PROGRESS; RQ683 remains an independ
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
+Flaky-test diagnostics 2026-10-16 (main `f9277afe`): RQ685 (P1, test-only) is an additional independent READY lane - extend the RQ665 EF `ManyServiceProvidersCreatedWarning` opt-out to plain `ServiceCollection` test registrations; the `WorkerRuntimeSettings` 42P01 CI failure is a secondary symptom. Evidence: `.ai/runs/2026-10-16-flaky-tests-diagnostics.md`.
+
 RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
 RQ648 is DONE on `main` via PR #157 merge SHA `b42493c97cce68043f55e35237ee17063bc93d89`; its 110-ref current-main census, SQL022/RQ481 semantic review and explicit SQL029 no-duplicate check are recorded in `docs/qa/BRANCH_PARITY_REVIEW_2026-10-14.md` and `.ai/runs/2026-10-14-RQ648-evidence.md`. RQ660 is DONE on main at `6b9041f93e4652732fee4ac3812147daf252270f`; RQ661 is DONE on main at `dcdb84c79aa22eb4f3f4c3806645cfd36fbb35c6`; RQ659 is DONE on main at `2472df857e48397a8b0a16076b66e9dd5a04bfd0`; RQ657 is DONE on main at `5a4a15f647166d53dffafe2354b3649680527dc2`; RQ655/RQ656 and RQ585 are DONE. No marketplace/test-feature work without explicit owner reversal.
@@ -4235,6 +4237,52 @@ vitest specs for concentration ordering and message text; `npm run check:encodin
 ### Acceptance
 
 Specs green; frontend CI green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+## RQ685 - Close the remaining EF ManyServiceProvidersCreatedWarning gap outside WebApplicationFactory hosts
+
+Status: READY
+Priority: P1
+Type: backend CI flakiness (test-only)
+Feature family: test-host-ef-configuration
+Parallel-safe: yes (Api.Tests / Infrastructure.Tests only; no production code)
+Owner: unassigned
+Ready after: none (follow-up to RQ665)
+Commit suggestion: `test(ci): opt all test DbContext registrations out of ManyServiceProvidersCreatedWarning`
+
+### Problem
+
+RQ665 covered only in-process `WebApplicationFactory` hosts. Plain tests that build their own `ServiceCollection` (`AddDbContext`/`AddDbContextFactory`) also create a new EF internal service provider per test (the application service provider is part of the cache key), increase the process-wide count and throw once it exceeds twenty. Which test hits the throw depends on parallel class order, so failures move between classes and a rerun of failed jobs usually passes.
+
+### Evidence (diagnostic 2026-10-16, run log `.ai/runs/2026-10-16-flaky-tests-diagnostics.md`)
+
+- Backend workflow `analytics-tests.yml`, last 200 runs (2026-10-10..16): 119 success, 33 failure, 48 cancelled. After RQ665 merged (2026-10-14 12:50 UTC) 4 of 49 non-cancelled runs failed on this warning (~8 %): `38647868045` (229 failing tests), `38718398984` (227), `38752847869` (97), `38798077405` (18, PR #181); all passed on rerun or later commits.
+- Throwing sites in `38798077405`: `NightlyAnalyticsRefreshWorkerTests.cs:310`, `SupplierWindowedSql029LifecycleTests.cs:194`, `AnalyticsAggregationWorkerTests.cs:425`, `SupplierDecisionSchemaReadinessIntegrationTests.cs:62/234`, `SupplierDecisionWindowedColdStartRegressionTests.cs:44/119`, `VendorSalesNivelacijaContractDiagnosticsTests.cs:117`, `AnalyticsDataQualityHealthWorkerTests.cs:98` - all `ServiceCollection` registrations without the opt-out.
+- Source scan of `origin/main` `f9277afe`: 171 `UseNpgsql(`/`UseInMemoryDatabase(` sites in 91 test files, 119 without the opt-out nearby (most are plain `DbContextOptionsBuilder` which share one cached provider and are harmless; the risky ones are per-test `ServiceCollection` registrations).
+- The `relation "WorkerRuntimeSettings" does not exist` failure (`WorkerRuntimePolicyServiceTests.cs:112`) is a secondary symptom: `CreateProvider` resolved the context, the warning threw, `WorkerRuntimePolicyService.GetPolicyAsync` caught it in its generic `catch` and returned the allow fallback (log: `Failed to evaluate worker runtime policy ... ManyServiceProvidersCreatedWarning`), so `EnsureSchemaAsync` never ran on the fresh per-test database and the verify query hit 42P01. Migration `20260507132430_AddWorkerRuntimeSettings` has `[DbContext(typeof(TrendplusDbContext))]` (RQ629 pattern OK); each test uses its own database, so this is not a shared-schema race.
+
+### Scope
+
+Test-only. Add `ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))` (or one shared test helper) to every `AddDbContext`/`AddDbContextFactory` registration in `Api.Tests` and `Infrastructure.Tests`, and widen `TestHostDbContextWarningConventionTests` from factory hosts to all `ServiceCollection` registrations, with self-tests.
+
+### Must not change
+
+Production DbContext configuration, `WorkerRuntimePolicyService` behavior, assertions, timeouts, skips. Shared `UseInternalServiceProvider` remains rejected (RQ665 rationale).
+
+### Tests
+
+Convention tests with self-tests; affected classes locally only in Testing env against an isolated Docker Postgres (never 127.0.0.1:5434, never Development); full backend CI on the PR, then two further green backend runs on main.
+
+### Acceptance
+
+No test DbContext registration without the opt-out; convention test enforces it; backend + governance CI green.
+
+### Owner note (not in scope)
+
+`WorkerRuntimePolicyService.GetPolicyAsync/...` return `CreateAllowFallback` for any exception, not only missing schema. That turns an unknown state into "worker may run". Needs an explicit owner decision before any change.
 
 ### Delivery
 
