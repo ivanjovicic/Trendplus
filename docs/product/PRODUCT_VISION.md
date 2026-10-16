@@ -168,3 +168,10 @@ Roadmaps should also measure supporting outcomes such as:
 - performance and cost per customer/data volume tier.
 
 Exact metric definitions belong to the OBS, DT and RL roadmaps rather than this vision document.
+
+
+## Commercial proof gate — decision note 2026-10-17
+
+The analytics-first owner directive above is unchanged. New research in [Retail ProfitGuard feasibility, section 9](RETAIL_PROFITGUARD_MARKET_FEASIBILITY_2026-10-15.md) recommends a **dated, paid read-only retailer diagnostic** as a low-risk commercial validation, followed only by proven operator demand for existing weekly decisions. The existing SEF XML draft can be piloted as a **separate, unposted adjunct**; it does not change the core product into an accounting, SEF compliance or warehouse replacement.
+
+Readiness requires four independent steps: (1) source-reconciled bounded historical facts, (2) disclosed cost/stock/period unknowns, (3) independent operator completing a valuable job compared with their own ERP/Excel, (4) written paid pilot and a measured repeat-use outcome. No interview, invoice payment, live goods receipt posting, or recurring adoption is yet proven by this study. QDB11–QDB13 and PR #184 engineering delivery should **not** be reimplemented. Historical STAB16/RQ601/RQ610/PR #163 source gates remain in their owning programs. Prices and company counts are hypotheses and cannot be presented as customer demand.
