@@ -4106,7 +4106,8 @@ Commit suggestion: `fix(nivelacije): filter wall-clock journal dates by calendar
 - Claim transition: READY -> IN_PROGRESS.
 - Owner: Codex (current task).
 - Inspected `origin/main`: `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`.
-- Planned worktree / branch: `F:\\Trendplus-dev\\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`.
+- Published claim commit on `main`: `98ec98dfacc9193524a52f857dc966e392d3de50`.
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`.
 - Bounded paths: `Api/Endpoints/AllEndpoints.cs` (Nivelacije handler only), `Application/Analytics/BelgradeCalendarDatePolicy.cs`, `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` (comment only), focused PostgreSQL test in `Api.Tests`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ682-evidence.md`.
 - Remote collision query: no RQ682 branch or open PR; no RQ682 local lock in listed worktrees; open PRs #185 and #163 are path-disjoint. F: destination path was absent.
 
