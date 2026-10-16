@@ -29,11 +29,18 @@ public static class GoodsReceiptMovementProjector
             await using (var read = new NpgsqlCommand("""
                 SELECT l."Id", d."Id", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
                        d."StaraProdajnaCena", d."NovaProdajnaCena", d."Iznos", d."IDObjekat",
-                       d."DobavljacId", d."BrojRacuna", d."KorisnikIme", d."DataOrigin"
+                       d."DobavljacId", d."BrojRacuna", d."KorisnikIme", d."DataOrigin", false AS "IsReversal"
                 FROM "GoodsReceiptLines" l
                 JOIN "DnevnikPromena" d ON d."GoodsReceiptLineId" = l."Id"
                 WHERE l."AnalyticsProjectedAtUtc" IS NULL
-                ORDER BY l."Id"
+                UNION ALL
+                SELECT l."Id", d."Id", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
+                       d."StaraProdajnaCena", d."NovaProdajnaCena", d."Iznos", d."IDObjekat",
+                       d."DobavljacId", d."BrojRacuna", d."KorisnikIme", d."DataOrigin", true AS "IsReversal"
+                FROM "GoodsReceiptLines" l
+                JOIN "DnevnikPromena" d ON d."Id" = l."ReversalMovementId"
+                WHERE l."ReversalMovementId" IS NOT NULL AND l."ReversalProjectedAtUtc" IS NULL
+                ORDER BY "Id", "IsReversal"
                 LIMIT @batchSize
                 """, connection))
             {
@@ -55,7 +62,8 @@ public static class GoodsReceiptMovementProjector
                         reader.IsDBNull(10) ? null : reader.GetInt32(10),
                         reader.IsDBNull(11) ? null : reader.GetString(11),
                         reader.IsDBNull(12) ? null : reader.GetString(12),
-                        reader.GetString(13)));
+                        reader.GetString(13),
+                        reader.GetBoolean(14)));
                 }
             }
 
@@ -79,11 +87,18 @@ public static class GoodsReceiptMovementProjector
                         "DataOrigin" = EXCLUDED."DataOrigin";
                     """, ct);
 
-                await using var mark = new NpgsqlCommand("""
-                    UPDATE "GoodsReceiptLines"
-                    SET "AnalyticsProjectedAtUtc" = NOW()
-                    WHERE "Id" = @lineId AND "AnalyticsProjectedAtUtc" IS NULL
-                    """, connection);
+                var markerSql = movement.IsReversal
+                    ? """
+                      UPDATE "GoodsReceiptLines"
+                      SET "ReversalProjectedAtUtc" = NOW()
+                      WHERE "Id" = @lineId AND "ReversalProjectedAtUtc" IS NULL
+                      """
+                    : """
+                      UPDATE "GoodsReceiptLines"
+                      SET "AnalyticsProjectedAtUtc" = NOW()
+                      WHERE "Id" = @lineId AND "AnalyticsProjectedAtUtc" IS NULL
+                      """;
+                await using var mark = new NpgsqlCommand(markerSql, connection);
                 mark.Parameters.AddWithValue("lineId", movement.ReceiptLineId);
                 await mark.ExecuteNonQueryAsync(ct);
             }
@@ -111,5 +126,6 @@ public static class GoodsReceiptMovementProjector
         int? SupplierId,
         string? DocumentNumber,
         string? UserName,
-        string DataOrigin);
+        string DataOrigin,
+        bool IsReversal);
 }
