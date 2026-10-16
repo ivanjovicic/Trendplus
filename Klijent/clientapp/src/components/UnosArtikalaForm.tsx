@@ -66,6 +66,16 @@ const emptyLine = (): ArtikalStavka => ({
   comment: "",
 });
 
+// Validate decimal text rather than multiplying IEEE-754 floats by 100: legitimate
+// prices such as 1.13 and 0.29 fail an exact Math.round(price * 100) comparison.
+function isValidUnitPrice(value: string): boolean {
+  const normalized = value.trim();
+  if (!/^\\d+(?:\\.\\d{1,2})?$/.test(normalized)) return false;
+  const price = Number(normalized);
+  // Keep values within the precision at which JavaScript can serialize cents reliably.
+  return Number.isFinite(price) && price <= 9_000_000_000_000;
+}
+
 function errorMessage(body: any, status: number): string {
   return body?.detail ?? body?.message ?? body?.title ?? `Zahtev nije uspeo (HTTP ${status}).`;
 }
@@ -287,12 +297,11 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
       const quantity = Number(line.quantity);
       const purchase = Number(line.purchaseUnitPrice);
       const sales = Number(line.salesUnitPrice);
-      if (!Number.isInteger(quantity) || quantity <= 0) {
+      if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 2_147_483_647) {
         setError(`Količina u stavci ${index + 1} mora biti ceo broj veći od nule.`);
         return;
       }
-      if (!line.purchaseUnitPrice.trim() || !Number.isFinite(purchase) || purchase < 0 || Math.round(purchase * 100) !== purchase * 100 ||
-          !line.salesUnitPrice.trim() || !Number.isFinite(sales) || sales < 0 || Math.round(sales * 100) !== sales * 100) {
+      if (!isValidUnitPrice(line.purchaseUnitPrice) || !isValidUnitPrice(line.salesUnitPrice)) {
         setError(`Unesite poznatu nenegativnu nabavnu i prodajnu cenu sa najviše dve decimale u stavci ${index + 1}.`);
         return;
       }
