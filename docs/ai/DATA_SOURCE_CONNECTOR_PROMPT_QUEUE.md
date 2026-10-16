@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update — post-QDB13A delivery (2026-10-16)
 
-Current READY prompt: QDB13. QDB11, QDB12 and QDB13A are DONE; QDB13 is READY after the user-authorized PR #184 handoff and merge; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB14 remains WAITING on QDB13 and separate owner/operator authorization.
+Current READY prompt: QDB13 (IN_PROGRESS: Codex; shared reservation 2026-10-16 UTC; /unos-robe SEF XML read-only preview integration and focused tests). QDB11, QDB12 and QDB13A are DONE; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB14 remains WAITING on QDB13 and separate owner/operator authorization.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -262,13 +262,15 @@ QDB13A DONE means a tested **unmounted** read-only pilot component exists on mai
 
 ## QDB13 - Pilot na /unos-robe: ucitaj SEF XML i pripremi pregledan nacrt
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1 (owner pilot)
 Type: frontend UI + API/auth integration + focused tests
 Feature family: sef-xml-receipt-draft-ui
 Parallel-safe: no
-Owner: unassigned
+Owner: Codex
+Local lock: `.ai/task-locks/QDB13-codex.lock.md` (uncommitted)
 Dependencies: QDB11 DONE, QDB12 DONE, QDB13A DONE; formalni release/handoff za UnosRobePage.tsx ostvaren je izričitom korisničkom instrukcijom da Codex završi i spoji PR #184 (2026-10-16), koji je MERGED kao `25860229a07e2edb3879b6c617ad55d9bafd97da`; QDB13A ne daje dozvolu za UI route edit ili receipt write.
+Claim reservation: inspected refreshed `origin/main` `78b31aa0bcd153b9c805f29d1a30a15988085755`; shared reservation published on main in this update; owner Codex; worktree `F:\Trendplus-dev\Trendplus2-qdb13`; branch `codex/qdb13-sef-xml-draft-20261016`; bounded to existing `/unos-robe` page/form, isolated SEF pilot component/API client and adjacent frontend tests, QDB13 queue/run evidence; excludes `InfoTip.tsx`, Access import, all receipt/stock/journal write paths, production configuration and migrations. Fresh scan: PR #184 merged; only open PR #163 touches Access import and shared `InfoTip.tsx`, which is excluded; no competing QDB13 PR/remote branch/local lock found.
 Read first: QDB11/QDB12 evidence, Klijent/clientapp/src/pages/UnosRobePage.tsx, Klijent/clientapp/src/components/UnosRobeForm.tsx, Klijent/clientapp/src/components/UnosArtikalaForm.tsx, docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md
 Suggested commit: feat(pilot): preview SEF XML into editable receiving draft
 
