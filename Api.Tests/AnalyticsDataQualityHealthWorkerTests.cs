@@ -117,7 +117,7 @@ public sealed class AnalyticsDataQualityHealthWorkerTests : IClassFixture<Postgr
         services.AddSingleton<ILogger<AnalyticsCacheAdminService>>(NullLogger<AnalyticsCacheAdminService>.Instance);
         services.AddScoped<AnalyticsDataQualityHealthService>();
         services.AddScoped<AnalyticsDataQualityHistoryService>();
-        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning());
         services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
 
         var provider = services.BuildServiceProvider(validateScopes: true);

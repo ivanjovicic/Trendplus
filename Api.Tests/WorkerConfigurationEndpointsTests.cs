@@ -185,7 +185,7 @@ public sealed class WorkerConfigurationEndpointsTests
 
             var dbName = $"worker-config-tests-{Guid.NewGuid():N}";
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase(dbName));
+                options.UseInMemoryDatabase(dbName).IgnoreManyServiceProvidersCreatedWarning());
 
             builder.Services.AddSingleton<WorkerHealthService>();
             builder.Services.AddSingleton(new WorkerRuntimeControlService(

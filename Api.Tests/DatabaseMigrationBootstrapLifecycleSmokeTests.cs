@@ -317,8 +317,8 @@ public sealed class DatabaseMigrationBootstrapLifecycleSmokeTests
         ILogger logger)
     {
         using var services = new ServiceCollection()
-            .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString))
-            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString))
+            .AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning())
+            .AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning())
             .BuildServiceProvider();
 
         var outcome = await DatabaseInitializer.InitializeDatabasesAsync(

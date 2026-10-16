@@ -456,7 +456,7 @@ public sealed class AdminDataSourceEndpointsTests
         builder.Services.AddRouting();
         builder.Services.AddLogging();
         builder.Services.AddDbContext<TrendplusDbContext>(options =>
-            options.UseInMemoryDatabase($"admin-data-sources-{Guid.NewGuid():N}"));
+            options.UseInMemoryDatabase($"admin-data-sources-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
         builder.Services.AddSingleton<WorkerHealthService>();
         builder.Services.AddSingleton(new WorkerRuntimeControlService(
             initialEnabled: true,

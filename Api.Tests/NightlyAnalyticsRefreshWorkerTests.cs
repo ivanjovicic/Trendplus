@@ -357,8 +357,8 @@ public sealed class NightlyAnalyticsRefreshWorkerTests : IClassFixture<PostgresC
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddSingleton<ILogger<AnalyticsCacheAdminService>>(NullLogger<AnalyticsCacheAdminService>.Instance);
         services.AddSingleton<ILogger<AnalyticsRefreshRunRecorder>>(NullLogger<AnalyticsRefreshRunRecorder>.Instance);
-        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
-        services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(analyticsConnectionString ?? connectionString));
+        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning());
+        services.AddDbContext<AnalyticsDbContext>(options => options.UseNpgsql(analyticsConnectionString ?? connectionString).IgnoreManyServiceProvidersCreatedWarning());
         services.AddScoped<AnalyticsRefreshRunRecorder>();
 
         var provider = services.BuildServiceProvider(validateScopes: true);
