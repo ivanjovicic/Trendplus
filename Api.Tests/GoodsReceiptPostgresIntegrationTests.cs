@@ -422,6 +422,95 @@ public sealed class GoodsReceiptPostgresIntegrationTests : IClassFixture<Postgre
             """).SingleAsync());
     }
 
+    [PostgresRequiredFact(DisplayName = "Full storno reverses stock once, retains audit, and projects negative movements")]
+    public async Task ReverseReceipt_IsAtomic_IdempotentAndProjectsNegativeMovement()
+    {
+        var databases = await CreateMigratedDatabasesAsync();
+        await SeedAsync(databases);
+        await using var operational = CreateOperational(databases.Operational);
+        await using var analytics = CreateAnalytics(databases.Analytics);
+        var service = CreateService(operational, analytics);
+
+        var created = await service.CreateAsync(
+            Request(Guid.NewGuid(), "FA-REVERSAL", [ExistingLine(-7, 2, 13.50m)]),
+            "stock-clerk-1", CancellationToken.None);
+        var request = new GoodsReceiptReverseRequest(Guid.NewGuid(), "Pogrešno evidentirana količina");
+        var reversed = await service.ReverseAsync(created.Receipt.Id, request, "stock-clerk-1", CancellationToken.None);
+        var retry = await service.ReverseAsync(created.Receipt.Id, request, "stock-clerk-1", CancellationToken.None);
+
+        Assert.Equal("reversed", reversed.Status);
+        Assert.False(reversed.Replayed);
+        Assert.True(retry.Replayed);
+        Assert.Equal("stock-clerk-1", reversed.ReversedBy);
+        Assert.Equal(4, await operational.Artikli.Where(a => a.Id == -7).Select(a => a.Kolicina).SingleAsync());
+        Assert.Equal("reversed", (await service.GetAsync(created.Receipt.Id, CancellationToken.None))!.Status);
+
+        var delta = await AccessArticleStockOverlay.LoadAsync(operational, CancellationToken.None);
+        Assert.Equal(0, delta[-7]);
+        var negative = await operational.DnevnikPromena.AsNoTracking()
+            .SingleAsync(x => x.DataOrigin == "app" && x.Kolicina == -2);
+        Assert.Equal(-27m, negative.Iznos);
+
+        Assert.Equal(2, await Workers.GoodsReceiptMovementProjector.ProjectPendingAsync(operational, analytics, CancellationToken.None));
+        Assert.Equal(2, await analytics.InventoryMovementFacts.CountAsync());
+        Assert.Equal(0, await analytics.InventoryMovementFacts.SumAsync(x => x.Kolicina!.Value));
+        Assert.Equal(0, await Workers.GoodsReceiptMovementProjector.ProjectPendingAsync(operational, analytics, CancellationToken.None));
+        Assert.Equal(1, await operational.Database.SqlQueryRaw<long>(
+            "SELECT COUNT(*) AS \"Value\" FROM \"GoodsReceiptLines\" WHERE \"ReversalProjectedAtUtc\" IS NOT NULL").SingleAsync());
+    }
+
+    [PostgresRequiredFact(DisplayName = "Storno fails closed when received stock has already been consumed")]
+    public async Task ReverseReceipt_InsufficientStock_RollsBackWithoutAuditMutation()
+    {
+        var databases = await CreateMigratedDatabasesAsync();
+        await SeedAsync(databases);
+        await using var operational = CreateOperational(databases.Operational);
+        await using var analytics = CreateAnalytics(databases.Analytics);
+        var service = CreateService(operational, analytics);
+        var created = await service.CreateAsync(
+            Request(Guid.NewGuid(), "FA-SOLD-AFTER-RECEIPT", [ExistingLine(-7, 2, 10m)]),
+            "stock-clerk-1", CancellationToken.None);
+
+        await operational.Database.ExecuteSqlRawAsync(
+            "UPDATE \"Artikli\" SET \"Kolicina\" = 1 WHERE \"Id\" = -7");
+        var error = await Assert.ThrowsAsync<GoodsReceiptException>(() => service.ReverseAsync(
+            created.Receipt.Id, new GoodsReceiptReverseRequest(Guid.NewGuid(), "Ovaj dokument je pogrešan"),
+            "stock-clerk-1", CancellationToken.None));
+        Assert.Equal("reversal_stock_insufficient", error.Code);
+        Assert.Equal(1, await operational.Artikli.Where(a => a.Id == -7).Select(a => a.Kolicina).SingleAsync());
+        Assert.Equal("confirmed", (await service.GetAsync(created.Receipt.Id, CancellationToken.None))!.Status);
+        Assert.Equal(0, await operational.Database.SqlQueryRaw<long>(
+            "SELECT COUNT(*) AS \"Value\" FROM \"GoodsReceiptLines\" WHERE \"ReversalMovementId\" IS NOT NULL").SingleAsync());
+    }
+
+    [PostgresRequiredFact(DisplayName = "Two storno requests cannot subtract stock twice")]
+    public async Task ReverseReceipt_ConcurrentRequests_AppliesOnlyOnce()
+    {
+        var databases = await CreateMigratedDatabasesAsync();
+        await SeedAsync(databases);
+        long id;
+        await using (var op = CreateOperational(databases.Operational))
+        await using (var analytics = CreateAnalytics(databases.Analytics))
+        {
+            id = (await CreateService(op, analytics).CreateAsync(
+                Request(Guid.NewGuid(), "FA-STORNO-RACE", [ExistingLine(-7, 1, 10m)]),
+                "stock-clerk-1", CancellationToken.None)).Receipt.Id;
+        }
+        var request = new GoodsReceiptReverseRequest(Guid.NewGuid(), "Zamenjen dobavljački dokument");
+        async Task<GoodsReceiptReverseResponse> Reverse()
+        {
+            await using var op = CreateOperational(databases.Operational);
+            await using var an = CreateAnalytics(databases.Analytics);
+            return await CreateService(op, an).ReverseAsync(id, request, "stock-clerk-1", CancellationToken.None);
+        }
+
+        var results = await Task.WhenAll(Reverse(), Reverse());
+        Assert.Single(results.Where(x => !x.Replayed));
+        Assert.Single(results.Where(x => x.Replayed));
+        await using var verify = CreateOperational(databases.Operational);
+        Assert.Equal(4, await verify.Artikli.Where(a => a.Id == -7).Select(a => a.Kolicina).SingleAsync());
+    }
+
     private async Task<(string Operational, string Analytics)> CreateMigratedDatabasesAsync()
     {
         Assert.True(_fixture.IsAvailable, "Goods receipt acceptance requires disposable PostgreSQL; unavailable Testcontainers must fail.");
