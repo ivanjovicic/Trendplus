@@ -1,5 +1,12 @@
 # Trendplus Master Roadmap
 
+## Vlasnicki odobren ograniceni SEF XML pilot — 2026-10-16
+
+Vlasnik prodavnice prima dobavljacke fakture kroz drzavni SEF i rucno upisuje robu u originalni Access. Product owner trazi **testnu opciju unutar Trendplus /unos-robe** da ucita lokalni SEF XML, proveri stavke i pripremi nacrt prijema za demonstraciju. Ovo je **ograniceni pilot bez upisa**, ne promena primarnog Access procesa, ne genericki ERP, ne novi analytics modul i ne dozvola za stvarno knjizenje ili SEF nalog/API pristup.
+
+**Owner queue:** docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md — QDB11 READY (bezbedni UBL parser), QDB12 WAITING (read-only katalog/Access reconciliation), QDB13 WAITING (UI pilot /unos-robe, editable draft + export), QDB14 WAITING (samo posebno odobren testni PostgreSQL write nakon stvarne operator validacije). **Pilot owner runbook:** docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md. P0 source/prod/PR #163 pravila i cap WIP <=2 ostaju na snazi; nema konkurentnog rada nad aktivnim owner fajlovima. Sample invoice/operator evidence: NOT PROVIDED / NOT RUN; CI/deploy nije dokaz produkcione validacije.
+
+
 ## Aktuelna poslovna odluka / razvojni fokus — 2026-10-14
 
 **P0:** STAB16/RQ448/RQ565 produkciona svežina i source dokaz (samo uz ovlašćen pristup); RQ601 originalne kalkulacije (owner), RQ610 pouzdana stock-change generacija (owner/source). **Repo-local P1:** RQ666 (Product Decision `dataScope` → action/store identity) is DONE on `main` at implementation SHA `4a3f7919d3703d117f84d621df4213c712221c77`; RQ667 (Inventory store/compareScope filteri) is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae` (Analytics Quality Gates `38699085117` green). **P3 kozmetika i wholesale lint nisu pilot gate:** RQ669/670/671 WAITING uz jasno odložene start uslove. Posle P1, jedna stvarna operator sesija i RQ592 pre-registracija tek kada je svežina potvrđena. Repo tests ≠ live customer business impact. Nema novih eksperimentalnih ekrana, AI, scraping, novih „dashboard” familija niti novog sveobuhvatnog audita.
