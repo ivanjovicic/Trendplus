@@ -4,9 +4,9 @@ Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: `codex/master-roadmap-recovery-20261016` / none
-Main commit SHA: pending
-Main verification: pending
-Evidence state: pending
+Main commit SHA: `600fdab3d15a912a97d07a7085173f23da1d9b9a`
+Main verification: fresh fetch verified that exact implementation SHA on `origin/main`; final evidence-sync descendant check follows.
+Evidence state: synchronized on `main` with this evidence update
 Ownership transfer: none
 Claim reservation: direct-user-request; canonical routing repair, no formal task status/owner changed
 
@@ -33,7 +33,7 @@ Claim reservation: direct-user-request; canonical routing repair, no formal task
 ## Validation not run
 - Backend/frontend tests, build and browser rehearsal -> not run; this is a documentation-only router repair.
 - Production/isolated database queries, Access import, inventory posting, real invoice/operator session and deployment -> not run; outside this repair and not authorized.
-- Exact-main CI for the repair -> pending delivery/run inspection.
+- GitHub Actions Planning Governance run [38924065990](https://github.com/ivanjovicic/Trendplus/actions/runs/38924065990), exact implementation SHA `600fdab3d15a912a97d07a7085173f23da1d9b9a` -> success; the job's agent-instruction, prompt-queue and planning-architecture checks all passed.
 
 ## Documentation impact
 - Restored the canonical cross-program routing matrix and corrected only current routing facts made stale by RQ682/RQ683 completion and QDB11-QDB14 progression. Dated historical queue snapshots were retained.
@@ -43,12 +43,12 @@ Claim reservation: direct-user-request; canonical routing repair, no formal task
 
 ## Risks
 - STAB16/STAB17, deployed analytics, original-source evidence and business/tenant authority gates remain open. Green local governance checks do not authorize production access or data changes.
-- A new main CI run is needed to confirm that the Planning Governance workflow now consumes the restored matrix; the previous run `38922092579` on the pre-fix main SHA was red for the 45 missing-route findings.
+- The predecessor run `38922092579` on the pre-fix main SHA was red for the 45 missing-route findings; exact-main run `38924065990` on the repaired implementation SHA is green.
 
 ## Post-close routing recovery
-- Recovery base before delivery: `3ba2e036b054ed84ff4059c1e7fd9845ea9de9f1`; refresh and repeat the scan after the main delivery.
+- Recovery base before delivery: `3ba2e036b054ed84ff4059c1e7fd9845ea9de9f1`. Post-delivery refresh verified implementation SHA `600fdab3d15a912a97d07a7085173f23da1d9b9a` on `origin/main`; the active queues were scanned again from that refreshed main state.
 - Active queue set scanned: all 24 `docs/ai/*PROMPT_QUEUE*.md` files including RQ addenda and SQL queue; historical `NEXT_PROMPT_QUEUE.md` was excluded as required.
-- READY result: no task-section `Status: READY` in the scanned active queues; the repaired master now records explicit `none` pointers where applicable.
+- READY result: no current task-section `Status: READY` in the scanned active queues; remaining READY strings are historical promotion notes for tasks later marked DONE. The repaired master now records explicit `none` pointers where applicable.
 - No-READY action ladder attempted: repaired the stale/missing canonical router; reran all three governance validators; parsed all active queue task statuses; checked the current RQ/QDB/STAB candidate details, local RQ680 worktree signal, and GitHub PR #184/#163 metadata. PR #184 is merged; PR #163 is still DRAFT/PARTIAL and owns conflicting Access-import files.
 - Candidate/blocker matrix:
 
