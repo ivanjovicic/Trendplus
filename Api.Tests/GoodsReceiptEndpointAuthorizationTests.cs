@@ -106,6 +106,41 @@ public sealed class GoodsReceiptEndpointAuthorizationTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+
+    [Fact]
+    public async Task StornoRoute_RequiresBothAdminAndNamedOperatorAndDoesNotReachDatabaseWhenDenied()
+    {
+        await using var host = await CreateHostAsync();
+
+        using var withoutAdmin = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts/81/reverse")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        withoutAdmin.Headers.Add("X-Receipt-Operator-Id", "stock-clerk-1");
+        withoutAdmin.Headers.Add("X-Receipt-Operator-Key", OperatorKey);
+        using var first = await host.Client.SendAsync(withoutAdmin);
+        Assert.Equal(HttpStatusCode.Unauthorized, first.StatusCode);
+
+        using var sharedOnly = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts/81/reverse")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        sharedOnly.Headers.Add("X-Admin-Key", AdminKey);
+        using var second = await host.Client.SendAsync(sharedOnly);
+        Assert.Equal(HttpStatusCode.Unauthorized, second.StatusCode);
+
+        using var authorized = new HttpRequestMessage(HttpMethod.Post, "/api/goods-receipts/81/reverse")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+        authorized.Headers.Add("X-Admin-Key", AdminKey);
+        authorized.Headers.Add("X-Receipt-Operator-Id", "stock-clerk-1");
+        authorized.Headers.Add("X-Receipt-Operator-Key", OperatorKey);
+        using var third = await host.Client.SendAsync(authorized);
+        Assert.Equal(HttpStatusCode.BadRequest, third.StatusCode);
+        Assert.Contains("missing_reversal_request", await third.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     private static async Task<TestHost> CreateHostAsync(bool writesEnabled = true)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
