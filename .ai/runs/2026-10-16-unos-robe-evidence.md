@@ -4,9 +4,9 @@ Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/p0-unos-robe-20261016; draft PR #184 https://github.com/ivanjovicic/Trendplus/pull/184
-Main commit SHA: pending
-Main verification: pending; current refreshed origin/main is ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c
-Evidence state: pending
+Main commit SHA: not delivered; the supplied merge gate is unmet
+Main verification: refreshed origin/main is ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c and does not contain this implementation
+Evidence state: PR #184 remains open; implementation head 84cec623e7b01b6cc1758f0fcd5a405538a7a1a8 has green remote CI
 Ownership transfer: none
 Claim reservation: direct-user-request/not applicable
 
@@ -43,11 +43,10 @@ Claim reservation: direct-user-request/not applicable
 - Focused backend suites -> pass: `GoodsReceiptEndpointAuthorizationTests` 2/2; `AccessImportServiceTests` 42/42; `TransferServiceTests` + `DnevnikPromenaReadServiceTests` + `InventorySnapshotContractTests` 48/48; cache failure isolation 1/1.
 - `git diff --check` -> pass.
 
-## Validation not run
+## Validation limits and remote results
 - Browser end-to-end -> `BROWSER NOT RUN`; no isolated browser deployment/environment was available. The production URL was not used for a write-flow rehearsal.
-- Full `Api.Tests` -> not green/complete: the mandatory all-suite Testcontainers attempt hit Docker API/Testcontainers startup timeouts; a broad non-integration attempt was interrupted while silent. Focused required PostgreSQL tests did execute with the mandatory flag and had 0 skips.
-- GitHub PR CI on latest evidence-synchronized head -> pending; no remote result claimed yet.
-- Initial PR CI on head `fcf520160a07d2de0424cbe9d7397ddd712e38d9` -> frontend, complete backend analytics, SDK pin, POS dependency/build, RQ453 certification, and Vercel deployment checks were queued/in progress when first inspected; Vercel Preview Comments passed. Recheck after evidence synchronization before reporting.
+- Local full `Api.Tests` -> the mandatory all-suite Testcontainers attempt hit Docker API/Testcontainers startup timeouts; a broad non-integration attempt was interrupted while silent. This local limitation was superseded by the remote full suite below.
+- GitHub PR CI on implementation head `84cec623e7b01b6cc1758f0fcd5a405538a7a1a8` -> all checks passed: backend run `38859376447` (2,173 passed, 0 failed, 43 known classified skips; 13 classified as isolated PostgreSQL certifiable and 30 legacy/superseded, 0 uncovered/new skips), frontend run `38859376334` (tests, guardrails, build, fixture browser/CSV parity and bundle gates), RQ453 certification, SDK pin, POS UI build/dependency audit, Vercel deployment and preview comments. Backend full suite ran with `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`; run duration 8m04s. This run-log synchronization changes only evidence text; recheck the resulting PR head before any merge decision.
 
 ## Documentation impact
 - Added `docs/operations/GOODS_RECEIPT_RUNBOOK.md`, including retry, partial-delivery, projection failure, Access collision, and correction escalation guidance.
@@ -67,4 +66,4 @@ Claim reservation: direct-user-request/not applicable
 - not applicable for direct-user-request; no queue task was claimed or closed.
 
 ## Next
-- Recheck all PR #184 checks at its latest head. Keep it open unless browser, individual actor identity, correction workflow, and exact-head checks meet the supplied merge gate.
+- PR #184 head `84cec623e7b01b6cc1758f0fcd5a405538a7a1a8` passed the listed remote CI checks. Keep it open: individual actor identity, linked correction/reversal workflow, and isolated end-to-end browser proof remain required before merge or real-use approval.
