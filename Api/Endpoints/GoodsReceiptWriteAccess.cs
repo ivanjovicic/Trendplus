@@ -24,15 +24,18 @@ internal static class GoodsReceiptWriteAccess
             return Results.Unauthorized();
 
         // Only explicitly configured, stable opaque operator IDs may appear in audit records.
-        if (id.Length > 80 || !id.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '_' or '-'))
+        if (id.Length > 80 || !id.All(ch => ch is >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '-'))
             return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         var section = configuration.GetSection("GoodsReceipts:Operators").GetSection(id);
         var expected = section["Key"];
+        var sharedAdminKey = configuration["Admin:ApiKey"];
+        if (string.IsNullOrWhiteSpace(sharedAdminKey))
+            sharedAdminKey = Environment.GetEnvironmentVariable("ADMIN_API_KEY");
         if (section.GetValue<bool?>("Enabled") != true ||
             string.IsNullOrEmpty(expected) || expected.Length < 32 ||
             string.IsNullOrEmpty(key) || key.Length < 32 ||
-            string.Equals(expected, configuration["Admin:ApiKey"], StringComparison.Ordinal))
+            string.Equals(expected, sharedAdminKey, StringComparison.Ordinal))
             return Results.StatusCode(StatusCodes.Status403Forbidden);
 
         if (!CryptographicOperations.FixedTimeEquals(
