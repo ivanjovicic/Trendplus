@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import CreateArtikalForm from "../components/CreateArtikalForm";
-import UnosArtikalaForm from "../components/UnosArtikalaForm";
+import UnosArtikalaForm, { type GoodsReceiptHeaderDraft } from "../components/UnosArtikalaForm";
 import { createArtikal } from "../services/artikliApi";
 import { getTipoviObuce } from "../services/tipoviObuceApi";
 import { getDobavljaci } from "../services/dobavljaciApi";
@@ -15,16 +15,17 @@ export default function ArtikliPage() {
 
   // Extract state from navigation using useMemo (no setState in effect)
   const navigationState = useMemo(() => {
-    const state = location.state as { dobavljacId?: number; dobavljacNaziv?: string; brojRacuna?: string } | null;
+    const state = location.state as { dobavljacId?: number; dobavljacNaziv?: string; brojRacuna?: string; receiptHeader?: GoodsReceiptHeaderDraft } | null;
     return {
       dobavljacId: state?.dobavljacId ?? null,
       dobavljacNaziv: state?.dobavljacNaziv ?? "",
-      brojRacuna: state?.brojRacuna ?? ""
+      brojRacuna: state?.brojRacuna ?? "",
+      receiptHeader: state?.receiptHeader ?? null,
     };
   }, [location.state]);
 
   // Determine if coming from Unos Robe
-  const isUnosRobe = navigationState.dobavljacId !== null && navigationState.brojRacuna !== "";
+  const isUnosRobe = navigationState.receiptHeader !== null || (navigationState.dobavljacId !== null && navigationState.brojRacuna !== "");
 
   React.useEffect(() => {
     let aborted = false;
@@ -83,15 +84,17 @@ export default function ArtikliPage() {
   }
 
   // Show Unos Artikala Form if coming from Unos Robe
-  if (isUnosRobe && navigationState.dobavljacId) {
+  if (isUnosRobe && navigationState.receiptHeader) {
     return (
       <UnosArtikalaForm
-        dobavljacId={navigationState.dobavljacId}
-        dobavljacNaziv={navigationState.dobavljacNaziv}
-        brojRacuna={navigationState.brojRacuna}
+        header={navigationState.receiptHeader}
         tipoviObuce={tipovi}
       />
     );
+  }
+
+  if (isUnosRobe && navigationState.dobavljacId !== null) {
+    return <p role="alert" className="rounded-lg border border-amber-600 p-4 text-foreground">Zaglavlje prijema nema prodavnicu i datume. Vratite se na unos robe i započnite prijem ponovo.</p>;
   }
 
   // Otherwise show regular CreateArtikalForm

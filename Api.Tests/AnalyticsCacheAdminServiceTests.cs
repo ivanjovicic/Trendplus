@@ -2,6 +2,7 @@ using System.Text;
 using Application.Analytics;
 using Infrastructure.Services.Caching;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -9,6 +10,27 @@ namespace Api.Tests;
 
 public sealed class AnalyticsCacheAdminServiceTests
 {
+    [Fact]
+    public async Task InvalidateAfterCommitAsync_CacheFailureDoesNotEscapeAfterBusinessCommit()
+    {
+        var cache = new RecordingAnalyticsCacheService { ThrowOnRemove = true };
+        var admin = new AnalyticsCacheAdminService(
+            cache,
+            null,
+            NullLogger<AnalyticsCacheAdminService>.Instance);
+        using var services = new ServiceCollection()
+            .AddSingleton(admin)
+            .BuildServiceProvider();
+
+        await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+            services,
+            AnalyticsCachePolicy.CoreFamilies,
+            "goods-receipt-test",
+            NullLogger.Instance);
+
+        Assert.Single(cache.RemovedPrefixes);
+    }
+
     [Theory]
     [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:dashboard-bootstrap:")]
     [InlineData(AnalyticsCachePolicy.DashboardFamily, "analytics:summary:v2:")]
@@ -249,6 +271,8 @@ public sealed class AnalyticsCacheAdminServiceTests
     {
         public List<string> RemovedPrefixes { get; } = [];
 
+        public bool ThrowOnRemove { get; init; }
+
         public bool IsRedisAvailable { get; set; }
 
         public bool IsRedisEnabled { get; set; }
@@ -268,7 +292,9 @@ public sealed class AnalyticsCacheAdminServiceTests
         public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
         {
             RemovedPrefixes.Add(prefix);
-            return Task.CompletedTask;
+            return ThrowOnRemove
+                ? Task.FromException(new InvalidOperationException("Injected cache failure"))
+                : Task.CompletedTask;
         }
 
         public Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default) where T : class

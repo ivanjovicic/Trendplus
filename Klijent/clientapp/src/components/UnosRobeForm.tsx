@@ -1,397 +1,161 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Circle, Clock3, Search, X } from "lucide-react";
-import { useViewportSearchPanel } from "./forms/useViewportSearchPanel";
+import { getStores } from "../services/analyticsApi";
 
 interface Dobavljac {
-    id: number;
-    naziv: string;
-    adresa?: string;
-    telefon?: string;
+  id: number;
+  naziv: string;
 }
 
 interface UnosRobeFormProps {
-    dobavljaci: Dobavljac[];
+  dobavljaci: Dobavljac[];
 }
 
-type RecentDobavljac = {
-    id: number;
-    naziv: string;
-    adresa?: string;
-    telefon?: string;
-    lastInvoice?: string;
-    lastUsedAt: string;
-};
+const LEGACY_RECENTS_KEY = "trendplus.unosRobe.recentDobavljaci";
 
-const RECENT_DOBAVLJACI_KEY = "trendplus.unosRobe.recentDobavljaci";
-
-function readRecentDobavljaci(): RecentDobavljac[] {
-    try {
-        const raw = localStorage.getItem(RECENT_DOBAVLJACI_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw) as RecentDobavljac[];
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-            .filter((x) => x && typeof x.id === "number" && typeof x.naziv === "string")
-            .slice(0, 8);
-    } catch {
-        return [];
-    }
-}
-
-function saveRecentDobavljaci(items: RecentDobavljac[]) {
-    try {
-        localStorage.setItem(RECENT_DOBAVLJACI_KEY, JSON.stringify(items.slice(0, 8)));
-    } catch {
-        // ignore storage errors
-    }
-}
-
-function normalizeInvoice(input: string): string {
-    return input.trim();
-}
-
-function buildNextInvoiceSuggestion(value: string): string | null {
-    const trimmed = normalizeInvoice(value);
-    if (!trimmed) return null;
-
-    const match = trimmed.match(/^(.*?)(\d+)(\D*)$/);
-    if (!match) return null;
-
-    const [, prefix, digits, suffix] = match;
-    const next = (Number(digits) + 1).toString().padStart(digits.length, "0");
-    return `${prefix}${next}${suffix}`;
-}
-
-function formatUsedAt(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return "";
-    return parsed.toLocaleDateString("sr-RS");
+function localToday(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
 }
 
 export default function UnosRobeForm({ dobavljaci }: UnosRobeFormProps) {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [stores, setStores] = useState<{ storeId: number; storeName: string }[]>([]);
+  const [storesLoading, setStoresLoading] = useState(true);
+  const [storesError, setStoresError] = useState<string | null>(null);
+  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [documentType, setDocumentType] = useState<"invoice" | "delivery-note">("invoice");
+  const [documentDate, setDocumentDate] = useState(localToday);
+  const [receivedDate, setReceivedDate] = useState(localToday);
+  const [storeId, setStoreId] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-    const [selectedDobavljac, setSelectedDobavljac] = useState<Dobavljac | null>(null);
-    const [brojRacuna, setBrojRacuna] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showSearchResults, setShowSearchResults] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [recentDobavljaci, setRecentDobavljaci] = useState<RecentDobavljac[]>([]);
-    const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      // Remove supplier names, phone numbers and invoice references saved by the old flow.
+      localStorage.removeItem(LEGACY_RECENTS_KEY);
+    } catch {
+      // Storage may be disabled; no receipt data is written to browser storage.
+    }
+  }, []);
 
-    const searchRef = useRef<HTMLDivElement>(null);
-    const searchInputRef = useRef<HTMLInputElement>(null);
-    const searchPanelStyle = useViewportSearchPanel(searchInputRef, showSearchResults && !!searchQuery.trim());
+  useEffect(() => {
+    let active = true;
+    void getStores(false).then((result) => {
+      if (!active) return;
+      setStores(result.filter((item) => Number.isInteger(item.storeId) && !!item.storeName));
+      setStoresError(null);
+    }).catch(() => {
+      if (active) setStoresError("Lokacije nisu dostupne. Osvežite stranicu ili proverite vezu.");
+    }).finally(() => {
+      if (active) setStoresLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
-    useEffect(() => {
-        setRecentDobavljaci(readRecentDobavljaci());
-    }, []);
+  const selectedSupplier = useMemo(
+    () => dobavljaci.find((item) => item.id === supplierId) ?? null,
+    [dobavljaci, supplierId],
+  );
+  const documentReady = documentNumber.trim().length >= 1;
+  const canContinue = !!selectedSupplier && documentReady && storeId !== null && !storesLoading;
 
-    const filteredDobavljaci = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) return dobavljaci.slice(0, 50);
+  const handleContinue = () => {
+    setError(null);
+    if (!selectedSupplier) {
+      setError("Izaberite dobavljača.");
+      return;
+    }
+    if (!documentReady) {
+      setError("Unesite broj računa ili otpremnice.");
+      return;
+    }
+    if (storeId === null || !stores.some((store) => store.storeId === storeId)) {
+      setError("Izaberite važeću prodavnicu ili skladište.");
+      return;
+    }
+    if (!documentDate || !receivedDate || comment.length > 500) {
+      setError("Proverite datume i komentar (najviše 500 znakova).");
+      return;
+    }
 
-        return dobavljaci
-            .filter((dobavljac) =>
-                dobavljac.naziv.toLowerCase().includes(query) ||
-                dobavljac.adresa?.toLowerCase().includes(query) ||
-                dobavljac.telefon?.toLowerCase().includes(query)
-            )
-            .slice(0, 12);
-    }, [dobavljaci, searchQuery]);
+    navigate("/artikli", {
+      state: {
+        receiptHeader: {
+          supplierId: selectedSupplier.id,
+          supplierName: selectedSupplier.naziv,
+          documentNumber: documentNumber.trim(),
+          documentType,
+          documentDate,
+          receivedDate,
+          storeId,
+          storeName: stores.find((store) => store.storeId === storeId)?.storeName ?? "",
+          comment: comment.trim(),
+          requestKey: crypto.randomUUID(),
+        },
+      },
+    });
+  };
 
-    const invoiceReady = normalizeInvoice(brojRacuna).length >= 3;
-    const supplierReady = selectedDobavljac !== null;
-    const canProceed = invoiceReady && supplierReady;
+  return (
+    <section className="mobile-entry-form rounded-xl border border-border bg-surface p-4 sm:p-5" aria-labelledby="goods-receipt-heading">
+      <h2 id="goods-receipt-heading" className="mb-4 text-xl font-semibold text-foreground">Podaci o prijemu</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <label className="grid gap-1.5 text-sm font-medium text-foreground">
+          Dobavljač <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <select className="input-big w-full" value={supplierId ?? ""} onChange={(event) => setSupplierId(event.target.value === "" ? null : Number(event.target.value))}>
+            <option value="">Izaberite dobavljača</option>
+            {dobavljaci.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.naziv} (ID {supplier.id})</option>)}
+          </select>
+        </label>
 
-    const invoiceSuggestions = useMemo(() => {
-        const unique = new Set<string>();
+        <label className="grid gap-1.5 text-sm font-medium text-foreground">
+          Vrsta dokumenta <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <select className="input-big w-full" value={documentType} onChange={(event) => setDocumentType(event.target.value as "invoice" | "delivery-note")}>
+            <option value="invoice">Račun</option>
+            <option value="delivery-note">Otpremnica</option>
+          </select>
+        </label>
 
-        const currentNext = buildNextInvoiceSuggestion(brojRacuna);
-        if (currentNext) unique.add(currentNext);
+        <label className="grid gap-1.5 text-sm font-medium text-foreground md:col-span-2">
+          Broj računa ili otpremnice <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <input className="input-big w-full" value={documentNumber} onChange={(event) => setDocumentNumber(event.target.value)} maxLength={100} autoComplete="off" />
+        </label>
 
-        for (const recent of recentDobavljaci) {
-            if (!recent.lastInvoice) continue;
-            unique.add(recent.lastInvoice);
-            const next = buildNextInvoiceSuggestion(recent.lastInvoice);
-            if (next) unique.add(next);
-        }
+        <label className="grid gap-1.5 text-sm font-medium text-foreground">
+          Datum dokumenta <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <input className="input-big w-full" type="date" value={documentDate} onChange={(event) => setDocumentDate(event.target.value)} />
+        </label>
+        <label className="grid gap-1.5 text-sm font-medium text-foreground">
+          Datum fizičkog prijema <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <input className="input-big w-full" type="date" value={receivedDate} onChange={(event) => setReceivedDate(event.target.value)} />
+        </label>
 
-        return Array.from(unique).slice(0, 6);
-    }, [brojRacuna, recentDobavljaci]);
+        <label className="grid gap-1.5 text-sm font-medium text-foreground md:col-span-2">
+          Prodavnica ili skladište prijema <span className="text-[var(--error)]" aria-hidden="true">*</span>
+          <select className="input-big w-full" value={storeId ?? ""} onChange={(event) => setStoreId(event.target.value === "" ? null : Number(event.target.value))} disabled={storesLoading || stores.length === 0}>
+            <option value="">{storesLoading ? "Učitavanje lokacija…" : "Izaberite lokaciju"}</option>
+            {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.storeName} (ID {store.storeId})</option>)}
+          </select>
+          {storesError ? <span role="alert" className="text-sm text-[var(--error)]">{storesError}</span> : null}
+          {!storesLoading && !storesError && stores.length === 0 ? <span role="alert" className="text-sm text-[var(--error)]">Nema potvrđenih lokacija; prijem nije moguće nastaviti.</span> : null}
+        </label>
 
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [filteredDobavljaci.length]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-                setShowSearchResults(false);
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const persistRecentSupplier = useCallback((dobavljac: Dobavljac, invoice: string) => {
-        const now = new Date().toISOString();
-        const nextItem: RecentDobavljac = {
-            id: dobavljac.id,
-            naziv: dobavljac.naziv,
-            adresa: dobavljac.adresa,
-            telefon: dobavljac.telefon,
-            lastInvoice: invoice,
-            lastUsedAt: now,
-        };
-
-        const next = [nextItem, ...recentDobavljaci.filter((x) => x.id !== dobavljac.id)]
-            .slice(0, 8);
-        setRecentDobavljaci(next);
-        saveRecentDobavljaci(next);
-    }, [recentDobavljaci]);
-
-    const handleContinue = useCallback(() => {
-        const invoice = normalizeInvoice(brojRacuna);
-        if (!selectedDobavljac) {
-            setValidationMessage("Izaberite dobavljaca pre nastavka.");
-            return;
-        }
-
-        if (invoice.length < 3) {
-            setValidationMessage("Broj racuna mora imati najmanje 3 karaktera.");
-            return;
-        }
-
-        persistRecentSupplier(selectedDobavljac, invoice);
-        navigate("/artikli", {
-            state: {
-                dobavljacId: selectedDobavljac.id,
-                dobavljacNaziv: selectedDobavljac.naziv,
-                brojRacuna: invoice,
-            },
-        });
-    }, [brojRacuna, navigate, persistRecentSupplier, selectedDobavljac]);
-
-    useEffect(() => {
-        const onWindowKeyDown = (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canProceed) {
-                event.preventDefault();
-                handleContinue();
-            }
-        };
-
-        window.addEventListener("keydown", onWindowKeyDown);
-        return () => window.removeEventListener("keydown", onWindowKeyDown);
-    }, [canProceed, handleContinue]);
-
-    const handleSelectDobavljac = (dobavljac: Dobavljac) => {
-        setSelectedDobavljac(dobavljac);
-        setSearchQuery(dobavljac.naziv);
-        setShowSearchResults(false);
-        setValidationMessage(null);
-    };
-
-    const handleKeyDown = (event: React.KeyboardEvent) => {
-        if (!showSearchResults || filteredDobavljaci.length === 0) return;
-
-        switch (event.key) {
-            case "ArrowDown":
-                event.preventDefault();
-                setSelectedIndex((prev) => (prev + 1) % filteredDobavljaci.length);
-                break;
-            case "ArrowUp":
-                event.preventDefault();
-                setSelectedIndex((prev) => (prev - 1 + filteredDobavljaci.length) % filteredDobavljaci.length);
-                break;
-            case "Enter":
-                event.preventDefault();
-                if (filteredDobavljaci[selectedIndex]) {
-                    handleSelectDobavljac(filteredDobavljaci[selectedIndex]);
-                }
-                break;
-            case "Escape":
-                setShowSearchResults(false);
-                break;
-        }
-    };
-
-    return (
-        <div className="mobile-entry-form space-y-4">
-            <section className="rounded-xl border border-border bg-surface p-4">
-                <h2 className="mb-3 text-xl font-semibold text-foreground">Unos robe</h2>
-                <div className="grid gap-2 md:grid-cols-3">
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${invoiceReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {invoiceReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
-                        1) Broj racuna
-                    </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${supplierReady ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {supplierReady ? <CheckCircle2 size={14} className="mb-1" /> : <Circle size={14} className="mb-1" />}
-                        2) Dobavljac
-                    </div>
-                    <div className={`rounded-lg border px-3 py-2 text-xs ${canProceed ? "border-emerald-700 bg-emerald-950/20 text-emerald-300" : "border-border bg-surface text-muted"}`}>
-                        {canProceed ? <CheckCircle2 size={14} className="mb-1" /> : <Clock3 size={14} className="mb-1" />}
-                        3) Nastavak na stavke
-                    </div>
-                </div>
-            </section>
-
-            <section className="rounded-xl border border-border bg-surface p-4">
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Broj racuna *</label>
-                <input
-                    type="text"
-                    placeholder="Npr. PR-2026-001"
-                    value={brojRacuna}
-                    onChange={(event) => {
-                        setBrojRacuna(event.target.value);
-                        setValidationMessage(null);
-                    }}
-                    className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                    {invoiceSuggestions.map((suggestion) => (
-                        <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setBrojRacuna(suggestion)}
-                            className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-primary hover:text-foreground"
-                        >
-                            {suggestion}
-                        </button>
-                    ))}
-                </div>
-                <p className="keyboard-hint mt-2 text-xs text-muted">Tip: `Ctrl+Enter` nastavlja cim su polja validna.</p>
-            </section>
-
-            {recentDobavljaci.length > 0 && (
-                <section className="rounded-xl border border-border bg-surface p-4">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-foreground">Poslednje korisceni dobavljaci</h3>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setRecentDobavljaci([]);
-                                saveRecentDobavljaci([]);
-                            }}
-                            className="rounded-lg border border-border bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground hover:bg-surface-elevated"
-                        >
-                            Ocisti listu
-                        </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {recentDobavljaci.map((recent) => (
-                            <button
-                                key={recent.id}
-                                type="button"
-                                onClick={() => {
-                                    const match = dobavljaci.find((x) => x.id === recent.id);
-                                    if (match) handleSelectDobavljac(match);
-                                    if (recent.lastInvoice && !brojRacuna.trim()) setBrojRacuna(recent.lastInvoice);
-                                }}
-                                className="rounded-lg border border-border bg-surface px-3 py-1.5 text-left text-xs text-foreground hover:border-primary"
-                            >
-                                <div className="font-semibold">{recent.naziv}</div>
-                                {recent.lastInvoice ? <div className="text-muted">Racun: {recent.lastInvoice}</div> : null}
-                                <div className="text-[11px] text-muted">Koriscen: {formatUsedAt(recent.lastUsedAt)}</div>
-                            </button>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            <section className="relative rounded-xl border border-border bg-surface p-4" ref={searchRef}>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pretraga dobavljaca *</label>
-                <div className="relative">
-                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                    <input
-                        ref={searchInputRef}
-                        type="text"
-                        placeholder="Naziv, adresa ili telefon..."
-                        value={searchQuery}
-                        onChange={(event) => {
-                            setSearchQuery(event.target.value);
-                            setShowSearchResults(true);
-                            setSelectedDobavljac(null);
-                            setValidationMessage(null);
-                        }}
-                        onFocus={() => setShowSearchResults(true)}
-                        onKeyDown={handleKeyDown}
-                        className="w-full rounded-xl border border-border bg-surface-elevated py-2 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary shadow-sm placeholder:text-muted"
-                    />
-                </div>
-
-                {showSearchResults && searchQuery.trim() && (
-                    <div className="mobile-entry-search-results absolute left-4 right-4 top-[calc(100%-4px)] z-20 mt-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl" style={searchPanelStyle}>
-                        {filteredDobavljaci.length > 0 ? (
-                            filteredDobavljaci.map((dobavljac, index) => (
-                                <button
-                                    key={dobavljac.id}
-                                    type="button"
-                                    onClick={() => handleSelectDobavljac(dobavljac)}
-                                    onMouseEnter={() => setSelectedIndex(index)}
-                                    className={`block w-full border-b border-border px-3 py-3 text-left transition ${
-                                        index === selectedIndex ? "bg-surface-elevated" : "hover:bg-surface-elevated"
-                                    }`}
-                                >
-                                    <div className="font-semibold text-foreground">{dobavljac.naziv}</div>
-                                    {dobavljac.adresa ? <div className="text-xs text-muted">Adresa: {dobavljac.adresa}</div> : null}
-                                    {dobavljac.telefon ? <div className="text-xs text-muted">Telefon: {dobavljac.telefon}</div> : null}
-                                </button>
-                            ))
-                        ) : (
-                            <div className="px-3 py-5 text-center text-sm text-muted">Nema rezultata za "{searchQuery}"</div>
-                        )}
-                    </div>
-                )}
-            </section>
-
-            {selectedDobavljac ? (
-                <section className="rounded-xl border border-success bg-success-10 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-success">Izabrani dobavljac</h3>
-                            <p className="mt-1 text-base font-semibold text-foreground">{selectedDobavljac.naziv}</p>
-                            {selectedDobavljac.adresa ? <p className="text-sm text-muted">Adresa: {selectedDobavljac.adresa}</p> : null}
-                            {selectedDobavljac.telefon ? <p className="text-sm text-muted">Telefon: {selectedDobavljac.telefon}</p> : null}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setSelectedDobavljac(null);
-                                setSearchQuery("");
-                            }}
-                            className="inline-flex items-center gap-1 rounded-lg border bg-danger-10 px-3 py-1.5 text-xs font-semibold text-danger"
-                            style={{ borderColor: 'var(--danger)' }}
-                        >
-                            <X size={12} /> Promeni
-                        </button>
-                    </div>
-                </section>
-            ) : null}
-
-            <section className={`rounded-xl border p-4 ${canProceed ? "border-success bg-success-10" : "border-border bg-surface"}`}>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Pregled unosa</h3>
-                <div className="space-y-1 text-sm text-foreground">
-                    <p><span className="text-muted">Broj racuna:</span> {normalizeInvoice(brojRacuna) || "[Nije unet]"}</p>
-                    <p><span className="text-muted">Dobavljac:</span> {selectedDobavljac?.naziv || "[Nije izabran]"}</p>
-                </div>
-
-                {validationMessage ? (
-                    <div className="mt-3 rounded-lg border bg-danger-10 px-3 py-2 text-xs text-danger" style={{ borderColor: 'var(--danger)' }}>
-                        {validationMessage}
-                    </div>
-                ) : null}
-
-                <button
-                    onClick={handleContinue}
-                    disabled={!canProceed}
-                    className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${canProceed ? 'border-success bg-success-10 text-success hover:bg-success' : 'border-border bg-surface text-muted'}`}
-                >
-                    Nastavi na unos artikala <ArrowRight size={14} />
-                </button>
-            </section>
-        </div>
-    );
+        <label className="grid gap-1.5 text-sm font-medium text-foreground md:col-span-2">
+          Komentar (opciono)
+          <textarea className="input-big w-full" rows={3} maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} />
+        </label>
+      </div>
+      {error ? <p role="alert" className="mt-3 text-sm text-[var(--error)]">{error}</p> : null}
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-muted">Zaliha se knjiži tek nakon serverske potvrde celog prijema. Valuta: RSD.</p>
+        <button type="button" className="button-big bg-primary text-on-primary" disabled={!canContinue} onClick={handleContinue}>
+          Nastavi na stavke
+        </button>
+      </div>
+    </section>
+  );
 }
