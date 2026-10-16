@@ -4178,12 +4178,22 @@ PR + green required CI, real merge, exact SHA.
 
 ## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: frontend analytics calculation
 Feature family: dashboard-moving-windows
 Parallel-safe: yes (`AnalyticsDashboard.tsx` `calculateDashboardMovingStats`, `AnalyticsDetails.tsx` trend/metric block and specs; disjoint from RQ680-RQ682)
-Owner: unassigned
+Owner: Codex
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex (current task).
+- Inspected `origin/main`: `ca7317eb56324973b9b5a6a003363fc5be76c4a7`.
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq683` / `codex/rq683-calendar-day-windows-20261016`.
+- Bounded paths: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/utils/calendarDayCoverage.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.movingWindows.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.movingWindows.spec.tsx`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Remote collision query: GitHub branch search `rq683` and open-PR search `RQ683` returned none; all current open PRs #185 and #163 were checked by changed filename and are path-disjoint. The listed worktrees have no changes on the bounded runtime/test paths or RQ683 lock; F: destination path is absent.
+
 Ready after: none
 Commit suggestion: `fix(analytics-dashboard): moving averages and week-over-week on calendar days`
 
