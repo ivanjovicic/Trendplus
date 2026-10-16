@@ -5,6 +5,27 @@ Status: **OWNER-APPROVED ENGINEERING PILOT, CUSTOMER TEST NOT RUN**
 Kanonska implementaciona queue: docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md (QDB11–QDB14)
 UI cilj: /unos-robe (postojeća ruta); **nema novog prodajnog dashboarda**
 
+
+## Current-code correction / safe pilot distinction (2026-10-17)
+
+Repo main: 8239678f71eefc79fe5d5741364f3dfa043016cf. PR #184 **MERGED** (2026-10-16): the current manual goods-receipt path is **no longer the historical console-log-only form described below**. Actual code: Api/Endpoints/GoodsReceiptEndpoints.cs, Api/Endpoints/GoodsReceiptWriteAccess.cs, Api/Services/GoodsReceiptService.cs, Klijent/clientapp/src/components/UnosRobeForm.tsx and src/pages/UnosRobePage.tsx. New ledger supports atomic receipt and linked reversal **when expressly enabled**. Server GoodsReceipts:WritesEnabled defaults OFF; POST requires separately provisioned named operator credentials plus admin gate. **This merge does not approve production writes or make the XML pilot a booking workflow.**
+
+SEF XML mode remains a distinct preview -> match -> local NEKNJIŽENO CSV. QDB11, QDB12, QDB13A, QDB13 are DONE engineering; the owner session and 2–3 authentic samples are NOT RUN. QDB14 remains WAITING: before any approval, resolve whether its proposed test write duplicates the already-merged ledger. No real invoice, customer record or credentials go into public GitHub or screenshots/logs. PR #185 is an open exact-head regression candidate for decimal prices and integer quantities; do not merge it from this study.
+
+**Use this current-code correction in preference to any historical statement later in this file claiming the manual receipt path only logs.** This correction changes product classification, not historical record.
+
+### Operator test: count time and safe mismatch, not just XML parser PASS
+
+1. Consent and lawful sample handling outside repository, minimum two private invoices (simple and multi-size, ideally third with discount/currency) and reference physical receiving record if available.
+2. Record original Access/ERP procedure: wall-clock minutes, manual fields, lines/size variants and observed mismatch count.
+3. Run only authorized isolated preview/draft; record exact, manual, ambiguous, unmatched per original XML line; **never automatically match ambiguous style/size**.
+4. Compare human-confirmed physically received quantity to invoice quantity, explain gaps and blocked tax/unit/currency data. Preview **must not** change stock, costs or SEF invoice state.
+5. Operator exports NEKNJIŽENO, recounts line totals against original, records errors and actual time; verify 375px and desktop, 401/403/404 default-off, no private payload persistence.
+6. Offer fixed-scope paid pilot only if genuinely faster/safer than incumbent; name price owner and decision deadline. Polite feedback and fixtures are not validation.
+
+Suggested owner-defined decision threshold (not a market claim): **100% of tested XML lines accounted for (including explicit unmatched/blocked), 0 silent wrong product/size matches and measurable reduction in operator steps or error handling**. If existing ERP does the same at lower effort, halt this adjunct. Checklists NOT RUN until a real operator signs off.
+
+
 ## Problem koji zelimo da proverimo
 
 Vlasnik maloprodaje obuce prima ulazne fakture preko drzavnog SEF portala i stavke robe rucno upisuje u originalni Access program. Istorijska Trendplus baza vec ima uvezene Access podatke o prijemima/kretanjima, ali ne dokazuje da imamo originalne iznose svih linija kalkulacija, pa RQ601 provenance ostaje PARTIAL. Aktuelni web UnosRobeForm -> ArtikliPage -> UnosArtikalaForm **nije kompletan prijemni ledger**: postojece stavke se samo loguju, a DnevnikPromena se samo ispisuje u konzolu. Ne koristiti taj submit kao nacin knjizenja pilota.
