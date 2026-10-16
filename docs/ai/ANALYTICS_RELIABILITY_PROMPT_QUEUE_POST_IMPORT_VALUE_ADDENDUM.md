@@ -4162,19 +4162,19 @@ PR + green required CI, real merge, exact SHA.
 - Checks not run: disposable PostgreSQL origin × season/DST matrix (Docker/Testcontainers hung); production Access/database; browser/UI (no runtime/UI change).
 - Source proof: the Access importer assigns raw `DateTime` values `DateTimeKind.Utc` without converting their clock reading, and writes imported journal rows with `DataOrigin=access`; the operational Nivelacija endpoint writes `DateTime.UtcNow` with `DataOrigin=existing`.
 - Delivery mode: direct-main queue/roadmap/evidence closeout; no runtime implementation.
-- Main commit SHA: pending.
-- Main verification: pending close-out delivery and fresh `origin/main` check.
+- Main commit SHA: `060014e76c1fdfacf528201ed49f3e3eab3807ee` (PARTIAL/release delivery).
+- Main verification: fresh `origin/main` fetch after close-out contained `060014e76c1fdfacf528201ed49f3e3eab3807ee`.
 - Missed: no per-row timestamp-basis field or trusted legacy-row backfill authority exists on `DnevnikPromena`.
-- Follow-up: request source-owner decision for durable per-row basis and legacy treatment; RQ683 remains an independent READY candidate.
+- Follow-up: request source-owner decision for durable per-row basis and legacy treatment; post-close cascade selected RQ683 as the next READY candidate.
 - Residual risk: the existing endpoint still applies one UTC-converted day window across mixed source records.
 - Provenance blocker: `DnevnikPromena` has no `SourceTimestampBasis` field. `DataOrigin=existing` is also the model/database default for legacy rows, so it cannot distinguish the new UTC operational rows from historical rows whose timestamp basis is unknown. `SourceTimestampBasis` currently exists on `ProdajaZaglavlja`, not `DnevnikPromena`. A source-owner decision and durable per-row authority/backfill policy are required before changing the mixed-origin filter.
 - Safety: no production database or Access source was opened or changed; no blanket conversion or classification by `DateTime.Kind` was made.
 - Validation: the focused `Api.Tests` project restored and compiled, but the required PostgreSQL test did not complete because the local Docker/Testcontainers startup hung. No test pass is claimed; details are in the run log.
 - Release: the current Codex owner explicitly releases RQ682 to `unassigned` on 2026-10-16 while PARTIAL. Re-enter only after the timestamp-basis authority event above.
 - Run log: `.ai/runs/2026-10-16-RQ682-evidence.md`.
-- Evidence state: pending synchronization after delivery to `main`.
+- Evidence state: synchronized.
 - Claim reservation: inspected `origin/main` `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`; shared claim commit `98ec98dfacc9193524a52f857dc966e392d3de50`; owner/worktree/branch `Codex` / `F:\Trendplus-dev\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`; remote branch/PR and lock checks were clear at claim.
-- Next: RQ683 is the remaining independent READY lane; RQ682 requires a durable per-row timestamp-basis contract before runtime work resumes.
+- Next: claim RQ683 on fresh `origin/main`; revisit RQ682 only after a durable per-row timestamp-basis authority event.
 
 ## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
 
