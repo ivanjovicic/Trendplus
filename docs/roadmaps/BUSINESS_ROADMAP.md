@@ -230,3 +230,23 @@ Trendplus can add customer-facing GenAI features without making AI a dependency 
 - Warnings must be explicit, owned and visible; they are not silently converted to PASS.
 - Commercial material, demos and customer-facing documentation must not describe a metric as a forecast, availability, lost-sales estimate, optimization or recommendation beyond the evidence its owner contract supports.
 - A new analytical capability earns a customer-facing claim only after its grain, provenance, coverage, freshness, decision constraint and validation outcome are documented in the owning program.
+
+
+## Product-commercial execution overlay — 2026-10-17 (NOT a second queue)
+
+Canonical evidence and competitive/pricing calculation: [Retail ProfitGuard market feasibility, section 9](../product/RETAIL_PROFITGUARD_MARKET_FEASIBILITY_2026-10-15.md). Source baseline main 8239678f71eefc79fe5d5741364f3dfa043016cf. Market validation, operator interviews, willingness to pay, time-to-task and actual recurring revenue remain NOT VERIFIED.
+
+**Policy:** one commercial wedge, dated read-only retail diagnostic using existing analytics and separately one strictly unposted SEF XML operator study, before any recurring subscription or broad ERP integration investment. Maintain the authorized analytics-first product vision; do not convert research to engineering claims or resume eBay/Amazon/Google Shopping/AI model training.
+
+| Window | Business owner proof | Technical dependency (status remains in owning queue) | Hold/stop |
+| --- | --- | --- | --- |
+| NOW (0–14d) | Complete the existing 20-min operator business session; compare 3 decisions to POS/Excel. Seek source-proven 20 original cost calculations | Existing RQ585 DONE; RQ601 PARTIAL; RQ680 IN_PROGRESS; no new READY | Without operator results, no new dashboard tasks |
+| NOW (0–30d) | Run private 2–3-invoice SEF preview/draft timing trial, show 100% line accounting and blocked ambiguous matches | QDB11–QDB13 DONE; PR #184 merged with goods-receipt writes disabled by default; QDB14 WAITING; PR #185 open exact-head CI | No posting, Access writes, or production flag changes |
+| NEXT (15–60d) | Offer 3 bounded paid historical diagnostics to independently qualified stores; record cash/budget decision | STAB16 BLOCKED deployed refresh, STAB17 WAITING incremental identity, PR #163 open draft, RQ610 BLOCKED stock history | Label source horizon and unknown cost; no current inventory or saved-profit promise |
+| VALIDATE (30–90d) | Ten interviews, two named paid proposals, one accepted independent paid pilot target; measure onboarding hours | Compare against BizniSoft/Minimax/PANTHEON existing reports; only one small reproducible user-blocking UX repair | Halt if existing ERP/Excel meets job cheaper |
+| LATER | Invoice/PO/receipt Guard, size/run/store transfers, partner OEM, region expansion | Need original sources, stock generation, licensed integration, legal review, paying customer | Not new implementation READY |
+| DROP now | Generic ERP, new POS, generic forecasting, automatic price/transfer execution, marketplace scrapers and model-training | Out of owner-approved commercial lane | No implementation |
+
+Engineering envelope: **200 hours for 90 days** split 40 truth/safety, 35 XML pilot fixes and tests, 30 diagnostic report, 25 proved UX friction, 25 second-source proof contingent on prospect, 25 security/onboarding, 20 contingency. Total 200; unused contingent hours move to existing safe P0/P1 family, not speculative product scope. Owner discovery/sales are separate. Pricing 300–600 EUR diagnostic and 99–249 EUR/month subscription is TESTABLE HYPOTHESIS, not approved published offer. Break-even model 26 companies at 149 EUR blended/month, 80% contribution and 2,983 EUR fixed/month *including founder opportunity cost*; exact formulas, scenario range and competitor links are in the research owner, not copied here.
+
+**No new READY task created from this study.** Relevant already-owned entries: STAB16 BLOCKED; STAB17 WAITING; RQ601 PARTIAL; RQ610 BLOCKED; QDB14 WAITING; RQ680 IN_PROGRESS; RQ682 PARTIAL; PR #163 open DRAFT and #185 open. Respect independently claimed paths and WIP <= 2. Do not mutate statuses from a product research task.
