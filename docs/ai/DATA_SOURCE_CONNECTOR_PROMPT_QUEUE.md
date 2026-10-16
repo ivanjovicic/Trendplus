@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update — post-QDB13A delivery (2026-10-16)
 
-Current READY prompt: none in this QDB owner queue. QDB11, QDB12 and QDB13A are DONE; QDB13 is WAITING for formal PR #184 UI-path release; QDB14 is WAITING on QDB13 and separate owner/operator authorization.
+Current READY prompt: none in this QDB owner queue. QDB11, QDB12 and QDB13A are DONE; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB13 is WAITING for formal PR #184 UI-path release; QDB14 is WAITING on QDB13 and separate owner/operator authorization.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -244,18 +244,19 @@ QDB13A DONE means a tested **unmounted** read-only pilot component exists on mai
 - Status: DONE
 - Completion: delivered an isolated unmounted read-only SEF XML receipt-draft wizard, request-scoped preview/reconcile API client and formula-safe `NEKNJIŽENO — NACRT` CSV export. Exact code comparison is explicitly labelled for operator verification; no identity namespace, received quantity or stock posting is inferred.
 - Changed files: `Klijent/clientapp/src/components/sef-xml-pilot/SefXmlReceiptDraftWizard.tsx`; `.css`; `sefXmlDraftCsv.ts`; `sefXmlDraftPresentation.ts`; `SefXmlReceiptDraftWizard.spec.tsx`; `Klijent/clientapp/src/services/sefXmlPilotApi.ts`; `Klijent/clientapp/src/services/__tests__/sefXmlPilotApi.spec.ts`.
-- Checks run: focused Vitest 27/27; `npm run typecheck`; `npm run check:analytics-guardrails`; `npm run build`; instruction/queue/planning governance checks and their self-tests; GitHub Actions Analytics Quality Gates run `38879677397` SUCCESS on implementation SHA `b0687a3e3e99027b4ffb4c40b71bd630a377fc41`.
+- Checks run: focused Vitest 27/27; `npm run typecheck`; `npm run check:analytics-guardrails`; `npm run build`; instruction/queue/planning governance checks and their self-tests; GitHub Actions Analytics Quality Gates run `38879677397` SUCCESS on implementation SHA `b0687a3e3e99027b4ffb4c40b71bd630a377fc41`; Planning Governance run `38880614047` SUCCESS on closeout SHA `c93c39776317e767a7042f1fb6e277c854684ca0`.
 - Checks not run: browser/deployed demo, real supplier XML, owner/operator session. No `/unos-robe` route was changed; no demo URL exists yet.
 - No production Access database, stock, receipt, journal, price or migration was read or written. PR #184 was not changed.
 - Run log: `.ai/runs/2026-10-16-QDB13A-evidence.md`
-- Evidence state: pending final post-close routing synchronization.
+- Evidence state: synchronized.
 - Claim reservation: inspected origin/main `6b65c392f8473de57cd4813bd2da936c69319ee4` + pushed claim `bd4a95d2da67dca1e32a658b70eb24009b7bc03a`, path correction `dc49fe4ffc10f743b08e4eab83546a4d610e8455`; owner/worktree/branch recorded above; remote scan: no QDB13A branch/PR; PR #184 remains OPEN/DRAFT at `879ccc22a02c3722fb172a9dffd6885f5f80693b`.
 - Delivery mode: direct-main
 - Main commit SHA: `b0687a3e3e99027b4ffb4c40b71bd630a377fc41`
-- Main verification: passed for implementation SHA; closure/evidence synchronization pending.
+- Main verification: passed - refreshed `origin/main` is `c93c39776317e767a7042f1fb6e277c854684ca0` and contains implementation `b0687a3e3e99027b4ffb4c40b71bd630a377fc41` plus closeout `c93c39776317e767a7042f1fb6e277c854684ca0`.
 - Missed: `/unos-robe` integration, browser/demo, real invoice and operator validation were intentionally not performed.
 - Follow-up: QDB13 remains WAITING for formal PR #184 owner release/handoff; QDB14 remains WAITING on QDB13 plus separate owner/operator authorization.
 - Residual risk: the component is unmounted; no demo route exists and no production behavior is enabled.
+- Post-close routing: recovery base `origin/main` `c93c39776317e767a7042f1fb6e277c854684ca0`; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB13 remains WAITING because PR #184 is OPEN/DRAFT at `879ccc22a02c3722fb172a9dffd6885f5f80693b` and no formal UI-path handoff exists; QDB14 remains WAITING on QDB13/owner gates. Cross-program RQ routing found primary READY RQ682 and independent RQ683/RQ685; none was claimed because it would leave the explicitly assigned SEF pilot scope. Full blocker matrix and ladder are in the run log.
 
 ---
 
