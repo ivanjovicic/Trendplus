@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update — post-QDB13 delivery (2026-10-16)
 
-Current READY prompt: none in this queue (QDB11, QDB12, QDB13A and QDB13 are DONE; QDB14 WAITING on a real operator session, explicit owner authorization and an isolated test database). QDB07/QDB08/QDB10 retain their declared authorization/dependency/source gates. Post-close recovery selected cross-program P1 READY candidate RQ685; its claim must be independently reserved after a fresh collision check.
+Current READY prompt: none in this queue (QDB11, QDB12, QDB13A and QDB13 are DONE; QDB14 WAITING on a real operator session, explicit owner authorization and an isolated test database). QDB07/QDB08/QDB10 retain their declared authorization/dependency/source gates. Post-close recovery selected RQ685 as the next cross-program P1; its READY -> IN_PROGRESS claim is visible on `main` at `ba0bd7bce474a46bff31cfae0ec6fe16db03693e`.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
