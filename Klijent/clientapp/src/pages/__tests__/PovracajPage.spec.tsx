@@ -20,7 +20,7 @@ describe("PovracajPage responsive list", () => {
     render(<PovracajPage />);
 
     const search = await screen.findByRole("textbox", { name: "Pretraga povraćaja po broju zapisnika ili dobavljaču" });
-    const region = screen.getByRole("region", { name: "Lista povraćaja" });
+    const region = await screen.findByRole("region", { name: "Lista povraćaja" });
     expect(search.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(region).toHaveAttribute("tabindex", "0");
     expect(region.querySelector("tbody td")).toHaveClass("sticky", "left-0");

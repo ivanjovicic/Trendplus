@@ -1,7 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import UnosRobeForm from "./UnosRobeForm";
+import { getStores } from "../services/analyticsApi";
+
+vi.mock("../services/analyticsApi", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../services/analyticsApi")>(),
+  getStores: vi.fn(),
+}));
 
 function NavigationState() {
   const location = useLocation();
@@ -9,7 +15,9 @@ function NavigationState() {
 }
 
 describe("UnosRobeForm workflow contract", () => {
-  it("selects a supplier and continues with the trimmed receipt and existing route state", () => {
+  beforeEach(() => vi.mocked(getStores).mockResolvedValue([{ storeId: -4, storeName: "Magacin" }]));
+
+  it("requires a supplier, reference and physical location before navigating with the receipt header", async () => {
     render(
       <MemoryRouter>
         <UnosRobeForm dobavljaci={[{ id: 7, naziv: "Dobavljac A", adresa: "Novi Sad" }]} />
@@ -17,15 +25,21 @@ describe("UnosRobeForm workflow contract", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("Npr. PR-2026-001"), { target: { value: " INV-7 " } });
-    fireEvent.change(screen.getByPlaceholderText("Naziv, adresa ili telefon..."), { target: { value: "Dobavljac" } });
-    fireEvent.click(screen.getByRole("button", { name: /Dobavljac A/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Nastavi na unos artikala/ }));
+    fireEvent.change(screen.getByLabelText(/Dobavljač/), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText(/Broj računa ili otpremnice/), { target: { value: " INV-7 " } });
+    fireEvent.change(await screen.findByLabelText(/Prodavnica ili skladište prijema/), { target: { value: "-4" } });
+    fireEvent.click(screen.getByRole("button", { name: /Nastavi na stavke/ }));
 
-    expect(screen.getByTestId("navigation-state")).toHaveTextContent(JSON.stringify({
-      dobavljacId: 7,
-      dobavljacNaziv: "Dobavljac A",
-      brojRacuna: "INV-7",
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("navigation-state").textContent ?? "null")).toMatchObject({
+      receiptHeader: {
+        supplierId: 7,
+        supplierName: "Dobavljac A",
+        documentNumber: "INV-7",
+        documentType: "invoice",
+        storeId: -4,
+        storeName: "Magacin",
+      },
     }));
+    expect(JSON.parse(screen.getByTestId("navigation-state").textContent ?? "null").receiptHeader.requestKey).toMatch(/^[0-9a-f-]{36}$/i);
   });
 });

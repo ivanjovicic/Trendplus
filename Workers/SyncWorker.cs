@@ -1,6 +1,7 @@
 ﻿using Domain.Model;
 using Infrastructure.DbContexts;
 using Infrastructure.Services;
+using Infrastructure.Services.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -201,6 +202,20 @@ namespace Workers
                         try { await SyncSeasonsDim(td, ad, stoppingToken); }       catch (Exception ex) { _logger.LogWarning(ex, "SyncSeasonsDim failed."); }
                         try { await SyncFootwearTypesDim(td, ad, stoppingToken); } catch (Exception ex) { _logger.LogWarning(ex, "SyncFootwearTypesDim failed."); }
                         try { await SyncInventoryMovements(td, ad, stoppingToken); } catch (Exception ex) { _logger.LogWarning(ex, "SyncInventoryMovements failed."); }
+                        try
+                        {
+                            var projectedReceipts = await GoodsReceiptMovementProjector.ProjectPendingAsync(td, ad, stoppingToken);
+                            if (projectedReceipts > 0)
+                            {
+                                _logger.LogInformation("Goods receipt movement projection completed for {Count} lines.", projectedReceipts);
+                                await AnalyticsCacheMutationInvalidation.InvalidateAfterCommitAsync(
+                                    _provider,
+                                    AnalyticsCachePolicy.CoreFamilies,
+                                    "goods-receipt-analytics-projection",
+                                    _logger);
+                            }
+                        }
+                        catch (Exception ex) { _logger.LogWarning(ex, "Goods receipt movement projection failed; pending lines will be retried."); }
                         try { await SyncReturnFacts(td, ad, stoppingToken); }      catch (Exception ex) { _logger.LogWarning(ex, "SyncReturnFacts failed."); }
                     }
 

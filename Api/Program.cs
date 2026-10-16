@@ -767,6 +767,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
     builder.Services.AddScoped<INivelacijaRepairService, NivelacijaRepairService>();
     builder.Services.AddScoped<ITransferService, TransferService>();
+    builder.Services.AddScoped<GoodsReceiptService>();
     builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();
     builder.Services.AddScoped<IShopifyImportService, ShopifyImportService>();
 
@@ -1245,6 +1246,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapDocumentEndpoints();
     // Transfer endpoints
     app.MapTransferEndpoints();
+    app.MapGoodsReceiptEndpoints();
 
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

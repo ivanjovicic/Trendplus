@@ -6777,7 +6777,6 @@ public static class AllEndpoints
 
         app.MapGet("/api/artikli", async (
             ITrendplusDbContext db,
-            IMemoryCache cache,
             ILogger<Program> logger,
             int pageNumber = 1,
             int pageSize = 50,
@@ -6800,12 +6799,6 @@ public static class AllEndpoints
                 var normalizedDataScope = (dataScope ?? "all").Trim().ToLowerInvariant();
                 pageNumber = pageNumber < 1 ? 1 : pageNumber;
                 pageSize = pageSize < 1 ? 50 : Math.Min(pageSize, 200);
-
-                var responseCacheKey =
-                    $"artikli_page_{pageNumber}_{pageSize}_{naziv}_{sezonaId}_{dobavljacId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedSortBy}_{normalizedSortDir}_{normalizedDataScope}";
-
-                if (cache.TryGetValue(responseCacheKey, out object? cachedResponse) && cachedResponse is not null)
-                    return Results.Ok(cachedResponse);
 
                 var baseQuery = from a in db.Artikli.AsNoTracking()
                                 join d in db.Dobavljaci.AsNoTracking() on a.IDDobavljac equals d.Id into dob
@@ -6857,14 +6850,7 @@ public static class AllEndpoints
                     _ => baseQuery
                 };
 
-                var filterHash = $"{naziv}_{sezonaId}_{dobavljacId}_{minCena}_{maxCena}_{minKolicina}_{maxKolicina}_{normalizedDataScope}";
-                var cacheKey = $"artikli_count_{filterHash}";
-
-                if (!cache.TryGetValue(cacheKey, out int total))
-                {
-                    total = await baseQuery.CountAsync(ct);
-                    cache.Set(cacheKey, total, TimeSpan.FromMinutes(2));
-                }
+                var total = await baseQuery.CountAsync(ct);
 
                 baseQuery = normalizedSortBy switch
                 {
@@ -6878,7 +6864,6 @@ public static class AllEndpoints
 
                 var items = await baseQuery.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
                 var response = new { items, totalCount = total, pageNumber, pageSize };
-                cache.Set(responseCacheKey, response, TimeSpan.FromSeconds(30));
 
                 return Results.Ok(response);
             }
