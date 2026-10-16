@@ -80,7 +80,13 @@ public sealed record GoodsReceiptResponse(
     int LineCount,
     int TotalQuantity,
     decimal PurchaseTotal,
-    IReadOnlyList<GoodsReceiptLineResponse> Lines);
+    IReadOnlyList<GoodsReceiptLineResponse> Lines)
+{
+    public GoodsReceiptReversalDetails? Reversal { get; init; }
+}
+
+public sealed record GoodsReceiptReversalDetails(
+    string ReversedBy, DateTime ReversedAtUtc, string Reason);
 
 public sealed record GoodsReceiptCreateResult(
     GoodsReceiptResponse Receipt,
@@ -349,7 +355,7 @@ public sealed class GoodsReceiptService(
                 Add(movement, "quantity", line.Quantity, NpgsqlDbType.Integer);
                 Add(movement, "unitPrice", line.PurchaseUnitPrice, NpgsqlDbType.Numeric);
                 Add(movement, "articleId", line.ArticleId, NpgsqlDbType.Integer);
-                Add(movement, "comment", $"STORNO PRIJEMA #{receiptId}: {reason}", NpgsqlDbType.Varchar);
+                Add(movement, "comment", $"STORNO PRIJEMA #{receiptId}: {reason}"[..Math.Min($"STORNO PRIJEMA #{receiptId}: {reason}".Length, 500)], NpgsqlDbType.Varchar);
                 Add(movement, "actor", actor, NpgsqlDbType.Varchar);
                 Add(movement, "receiptId", receiptId, NpgsqlDbType.Bigint);
                 movementId = (int)(await movement.ExecuteScalarAsync(ct))!;
@@ -499,7 +505,20 @@ public sealed class GoodsReceiptService(
                     reader.IsDBNull(4) ? null : reader.GetString(4), reader.GetInt32(5), reader.GetDecimal(6),
                     reader.GetDecimal(7), reader.GetDecimal(8), reader.GetString(9),
                     reader.IsDBNull(10) ? null : reader.GetString(10), reader.IsDBNull(11) ? null : reader.GetInt32(11)));
-            return receipt with { Lines = lines };
+            GoodsReceiptReversalDetails? reversal = null;
+            if (receipt.Status == "reversed")
+            {
+                await using var reversalLookup = new NpgsqlCommand("""
+                    SELECT "ReversedBy", "ReversedAtUtc", "ReversalReason"
+                    FROM "GoodsReceipts" WHERE "Id" = @receiptId AND "Status" = 'reversed'
+                    """, connection);
+                Add(reversalLookup, "receiptId", id, NpgsqlDbType.Bigint);
+                await using var reversalReader = await reversalLookup.ExecuteReaderAsync(ct);
+                if (await reversalReader.ReadAsync(ct))
+                    reversal = new GoodsReceiptReversalDetails(
+                        reversalReader.GetString(0), reversalReader.GetDateTime(1), reversalReader.GetString(2));
+            }
+            return receipt with { Lines = lines, Reversal = reversal };
         }
         finally
         {
