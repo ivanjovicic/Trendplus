@@ -38,6 +38,12 @@ function fillPricesAndQuantity() {
   fireEvent.change(inputs[0], { target: { value: "2" } });
   fireEvent.change(inputs[1], { target: { value: "13.50" } });
   fireEvent.change(inputs[2], { target: { value: "25" } });
+  fireEvent.change(screen.getByLabelText(/ID ovlašćenog operatera/), {
+    target: { value: "stock-clerk-1" },
+  });
+  fireEvent.change(screen.getByLabelText(/Lični ključ operatera/), {
+    target: { value: "named-operator-only-test-key-over-32-characters" },
+  });
 }
 
 function notFound() {
@@ -75,6 +81,8 @@ describe("UnosArtikalaForm receipt regressions", () => {
     expect(post).toBeDefined();
     expect(post?.[1]?.body).toContain('"articleId":-7');
     expect(post?.[1]?.body).toContain('"storeId":-4');
+    expect(post?.[1]?.headers["X-Receipt-Operator-Id"]).toBe("stock-clerk-1");
+    expect(post?.[1]?.headers["X-Receipt-Operator-Key"]).toBe("named-operator-only-test-key-over-32-characters");
     expect(request.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(1);
   });
 
@@ -190,6 +198,25 @@ describe("UnosArtikalaForm receipt regressions", () => {
     fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "-1" } });
     fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("ceo broj veći od nule");
+    expect(request.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(0);
+  });
+
+
+  it("refuses a receipt POST without a named operator key even if admin credentials exist", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce(notFound())
+      .mockResolvedValueOnce(ok([{
+        id: -7, name: "Čizma 42", code: null, quantity: 4,
+        purchasePrice: 11, salesPrice: 25, storeId: -4, dataOrigin: "access",
+      }]));
+    vi.stubGlobal("fetch", request);
+    renderForm();
+    searchExisting();
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
+    fillPricesAndQuantity();
+    fireEvent.change(screen.getByLabelText(/Lični ključ operatera/), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("namenski ID operatera");
     expect(request.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(0);
   });
 
