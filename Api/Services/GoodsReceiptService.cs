@@ -505,6 +505,8 @@ public sealed class GoodsReceiptService(
                     reader.IsDBNull(4) ? null : reader.GetString(4), reader.GetInt32(5), reader.GetDecimal(6),
                     reader.GetDecimal(7), reader.GetDecimal(8), reader.GetString(9),
                     reader.IsDBNull(10) ? null : reader.GetString(10), reader.IsDBNull(11) ? null : reader.GetInt32(11)));
+            // Release the first data reader before issuing a second command on this connection.
+            await reader.DisposeAsync();
             GoodsReceiptReversalDetails? reversal = null;
             if (receipt.Status == "reversed")
             {
