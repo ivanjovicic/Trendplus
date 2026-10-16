@@ -48,7 +48,7 @@ QDB09 correctly proves SQL Server discovery -> mapping preview -> checkpointed a
 
 ## Current routing update — post-QDB13A delivery (2026-10-16)
 
-Current READY prompt: none in this QDB owner queue. QDB11, QDB12 and QDB13A are DONE; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB13 is WAITING for formal PR #184 UI-path release; QDB14 is WAITING on QDB13 and separate owner/operator authorization.
+Current READY prompt: QDB13. QDB11, QDB12 and QDB13A are DONE; QDB13 is READY after the user-authorized PR #184 handoff and merge; QDB07/QDB08/QDB10 remain WAITING on their declared authorization/dependency/source gates; QDB14 remains WAITING on QDB13 and separate owner/operator authorization.
 
 This canonical routing update supersedes the malformed historical aggregate header above.
 
@@ -262,23 +262,30 @@ QDB13A DONE means a tested **unmounted** read-only pilot component exists on mai
 
 ## QDB13 - Pilot na /unos-robe: ucitaj SEF XML i pripremi pregledan nacrt
 
-Status: WAITING
+Status: READY
 Priority: P1 (owner pilot)
 Type: frontend UI + API/auth integration + focused tests
 Feature family: sef-xml-receipt-draft-ui
 Parallel-safe: no
 Owner: unassigned
-Dependencies: QDB11 DONE, QDB12 DONE, QDB13A DONE; formalno zabelezen release/handoff za UnosRobePage.tsx od aktivnog vlasnika PR #184, plus ponovljena provera aktuelnih PR/branch/lock promena. QDB13A ne daje dozvolu za UI route edit ili receipt write.
+Dependencies: QDB11 DONE, QDB12 DONE, QDB13A DONE; formalni release/handoff za UnosRobePage.tsx ostvaren je izričitom korisničkom instrukcijom da Codex završi i spoji PR #184 (2026-10-16), koji je MERGED kao `25860229a07e2edb3879b6c617ad55d9bafd97da`; QDB13A ne daje dozvolu za UI route edit ili receipt write.
 Read first: QDB11/QDB12 evidence, Klijent/clientapp/src/pages/UnosRobePage.tsx, Klijent/clientapp/src/components/UnosRobeForm.tsx, Klijent/clientapp/src/components/UnosArtikalaForm.tsx, docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md
 Suggested commit: feat(pilot): preview SEF XML into editable receiving draft
 
 
-### QDB13 routing decision — 2026-10-16 (post-QDB12 review)
+### QDB13 routing decision — 2026-10-16 (historical pre-merge review; superseded below)
 - QDB11 `600a0a4c82e8a38aef0c69cfcfe5bc25c2cebfd5` and QDB12 `3b0edc2e69cb261be7a92c02543ff265c20226b4` are on main; QDB12 close-out `f8788a81734a1c17d10c761109b4205b60e46163` is synchronized. GitHub Actions run `38869089375`: both backend analytics suite and RQ453 certification jobs completed successfully upon this review.
 - PR #184 is OPEN/DRAFT/PARTIAL, at inspected head `58a4d6a8e6fdb866fe0fb4df08f5b9cb7aedc14d`; it edits `UnosRobePage`, `UnosRobeForm`, `UnosArtikalaForm` and `ArtikliPage`. This is a genuine active path conflict, not a historical stale lock.
 - Decision: keep PR #184 draft, do not merge or deploy receipt writes while personal audit identity, correction/storno and isolated browser evidence are absent. QDB13 **WAITING** for formal owner path release; introduce QDB13A **READY** as a new-files-only collision-safe, read-only UI slice, preserving a useful independent deliverable.
 - QDB13 is not automatically claimable after QDB13A DONE; record the release source, previous owner, target owner/branch, time and whether PR #184 remains untouched, and refresh latest PR head. No assumptions that an unacknowledged PR author has stopped.
 - Do not enable `SefXmlPilot:Enabled` in public production or infer authentic SEF compatibility from synthetic tests. QDB14 remains WAITING and requires separate business approval.
+
+### QDB13 dependency recovery — after PR #184 merge (2026-10-16)
+- User/previous owner Ivan Jovicic explicitly instructed Codex to finish and merge PR #184; this is the formal UI-path handoff. The existing PR #184 worktree/branch was preserved, not modified after merge, and the PR is MERGED at `25860229a07e2edb3879b6c617ad55d9bafd97da`.
+- QDB11, QDB12 and QDB13A are DONE on main. PR #184 exact-head checks passed at `998b1f65a0a4b445e0ba809bcf82d242eb8b1e71`: backend/Testcontainers + RQ453 run `38886376788`, and frontend/guardrails/build + synthetic desktop/mobile browser fixture run `38886377042`.
+- Post-merge main runs `38887481954` (backend/Testcontainers) and `38887481931` (frontend quality gates) were in progress when routing was refreshed; they are residual risk and must be classified if they turn red.
+- Fresh remote scan: PR #184 is merged; the only open PR is #163, whose changed paths are Access import/foreign-key/identity plus `InfoTip.tsx`; QDB13 will not edit `InfoTip.tsx` or Access import paths. No open QDB13 PR or competing QDB13 remote branch/lock was found. QDB13A's completed branch is separate and unchanged.
+- QDB13 is promoted WAITING -> READY. This promotion does not enable the pilot feature flag, production route, Access writes, stock posting or receipt writes; QDB14 remains WAITING for an explicit operator/business authorization and isolated test database.
 
 ### Problem
 Vlasnik mora moci da pokaze XML fakturu direktno u Trendplus aplikaciji i vidi koliko rucnog rada je izbegnuto. Postojeci manual receipt forma nije bezbedan production write tok, pa pilot ne sme da prikaze "Sacuvao" niti koristi stari handleSubmitAll.

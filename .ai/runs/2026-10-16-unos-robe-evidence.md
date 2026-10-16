@@ -3,15 +3,15 @@ Queue: direct-user-request
 Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
-Working branch / PR: codex/p0-unos-robe-20261016; draft PR #184 https://github.com/ivanjovicic/Trendplus/pull/184
-Main commit SHA: pending
-Main verification: pending; refreshed origin/main is 0e40de54e710993c58d645b81817123e6e9c000c and does not yet contain PR #184
-Evidence state: pending final review, current-main integration validation and delivery
+Working branch / PR: codex/p0-unos-robe-20261016; PR #184 merged https://github.com/ivanjovicic/Trendplus/pull/184
+Main commit SHA: 25860229a07e2edb3879b6c617ad55d9bafd97da
+Main verification: passed - refreshed origin/main is 25860229a07e2edb3879b6c617ad55d9bafd97da and contains the PR #184 merge commit
+Evidence state: synchronized
 Ownership transfer: Ivan Jovicic (PR author ivanjovicic) -> Codex (current task); authority is the user's 2026-10-16 instruction to finish and merge PR #184; recorded before source-path edits in this run log
 Claim reservation: direct-user-request/not applicable
 
 ## What was done
-- Ownership transfer recorded before any source-path edits: the user explicitly reassigned PR #184 completion in this task. The existing PR branch/worktree `codex/p0-unos-robe-20261016` is preserved; no branch was deleted or rewritten. Review/revalidation will use current `origin/main` `0e40de54e710993c58d645b81817123e6e9c000c` and the PR's exact head.
+- Ownership transfer recorded before any source-path edits: the user explicitly reassigned PR #184 completion in this task. The PR branch/worktree `codex/p0-unos-robe-20261016` is preserved; no branch was deleted or rewritten. The PR was revalidated against `origin/main` `0e40de54e710993c58d645b81817123e6e9c000c` and merged at `25860229a07e2edb3879b6c617ad55d9bafd97da`.
 - Implementation commits on the branch: `3e510f080017d244db13c7ac6b7fbe671b9b64d1` (receipt workflow) and `315ac6f37e727cdb44ac2abcb14c650ddf334d16` (stale search/accessibility regression fix), based on refreshed `origin/main` `ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c`.
 - Replaced console-only receipt handling with an admin-protected, server-side receipt transaction that stores a receipt header, immutable line snapshots, and one linked `Ulaz robe` movement per line.
 - Existing article stock is incremented atomically while its row is locked. New articles get PostgreSQL-generated IDs; receipt prices remain line history and do not overwrite article master prices.
@@ -49,8 +49,8 @@ Claim reservation: direct-user-request/not applicable
 ## Validation limits and remote results
 - Real operator or production-browser session -> not run. A **synthetic, network-intercepted desktop/mobile browser fixture** ran successfully in workflow `38875300226`; it does not access a live database and is not a real receipt demonstration.
 - Local full `Api.Tests` -> the mandatory all-suite Testcontainers attempt hit Docker API/Testcontainers startup timeouts; a broad non-integration attempt was interrupted while silent. This local limitation was superseded by the remote full suite below.
-- Latest pre-refresh PR-head CI on `879ccc22a02c3722fb172a9dffd6885f5f80693b` -> backend run `38875299959`, frontend/analytics and synthetic goods-receipt browser workflow `38875300226`, RQ453 certification, SDK pin, POS UI audit/build, and Vercel checks succeeded. The current-main-integrated head still requires exact-head CI before merge.
-- Current-main-integrated local head `b958c96ed05406fef18fccb2c6dd8d9c0fdf5712` has not yet been pushed; no current-head remote check has been inferred from earlier runs.
+- Current-main-integrated PR head `998b1f65a0a4b445e0ba809bcf82d242eb8b1e71` was pushed and exact-head CI succeeded: backend/Testcontainers and RQ453 run `38886376788`; frontend analytics, guardrails, build and synthetic desktop/mobile goods-receipt browser fixture run `38886377042`.
+- After merge, main workflows `38887481954` (backend/Testcontainers) and `38887481931` (frontend/quality gates) were triggered on merge SHA `25860229a07e2edb3879b6c617ad55d9bafd97da`; both were `in_progress` at the time of this update. This is residual main-CI risk, not a failed check.
 
 ## Documentation impact
 - Added `docs/operations/GOODS_RECEIPT_RUNBOOK.md`, including retry, partial-delivery, projection failure, Access collision, and correction escalation guidance.
@@ -66,7 +66,7 @@ Claim reservation: direct-user-request/not applicable
 - Operational PostgreSQL and analytics PostgreSQL are separate. Receipt commit is atomic in the operational database; analytics movement projection is durable, idempotent, and retryable, not cross-database ACID.
 
 ## Post-close routing recovery
-- not applicable for direct-user-request; no queue task was claimed or closed.
+- PR #184 was a direct-user-request; no queue task was claimed for that P0 receipt workflow. The dependent QDB route recovery is recorded separately in `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`: the user's explicit handoff plus merged PR #184 satisfy the last QDB13 start gate, and QDB13 is promoted to READY for a fresh claim/collision scan.
 
 ## Next
-- Push the ownership-evidence commit and current-main integration merge, wait for exact-head PostgreSQL/backend plus frontend/synthetic-browser CI, then mark PR #184 ready and merge if all required checks pass. Do not enable writes or create a real receipt.
+- QDB13 may be claimed after the post-promotion `origin/main` refresh and a fresh exact-path owner/branch/PR/lock scan. No production Access write, real stock posting, actual supplier receipt, or owner/operator validation is claimed or authorized by this merge.
