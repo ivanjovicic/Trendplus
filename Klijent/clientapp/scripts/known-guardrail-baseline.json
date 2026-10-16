@@ -21,12 +21,6 @@
       "reason": "Existing backend reliability projection requires a reviewed authority exception."
     },
     {
-      "file": "src/pages/AnalyticsDashboard.tsx",
-      "rule": "page_reduce_kpi",
-      "line": 159,
-      "reason": "Existing dashboard aggregation predates the backend KPI ownership contract."
-    },
-    {
       "file": "src/pages/DailySalesStatsPage.tsx",
       "rule": "refetch_setData_null",
       "line": 985,
