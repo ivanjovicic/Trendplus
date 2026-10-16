@@ -50,6 +50,7 @@ Before editing:
 
 Use these guides only when relevant:
 - agent entrypoint: `docs/ai/AGENT_START_HERE.md`;
+- Windows development storage: `docs/ai/WINDOWS_DEVELOPMENT_STORAGE.md` (prefer the configured F: development area when available);
 - architecture ownership: `docs/ai/ARCHITECTURE_BOUNDARIES.md`;
 - validation selection: `docs/ai/VALIDATION_SELECTOR.md`;
 - queue semantics: `docs/ai/PROMPT_QUEUE_PROTOCOL.md`;

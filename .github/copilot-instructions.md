@@ -4,6 +4,7 @@ Ove instrukcije važe za `ivanjovicic/Trendplus`, posebno za analytics, data qua
 
 Za kanonske detalje posle ovog fajla pogledaj:
 - `docs/ai/AGENT_START_HERE.md`
+- `docs/ai/WINDOWS_DEVELOPMENT_STORAGE.md` (F: development storage preference and cleanup boundaries)
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`
 - `docs/ai/COMMON_FAILURES_AND_FIXES.md`

@@ -44,6 +44,7 @@ Trendplus is a retail decision-support product, not a dashboard collection.
 
 Useful standards:
 
+- `docs/ai/WINDOWS_DEVELOPMENT_STORAGE.md` (Windows worktrees, caches and temporary development files)
 - `docs/ai/CODEX_TASK_CHECKLIST.md`
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/ENCODING_AND_TEXT_SAFETY.md`

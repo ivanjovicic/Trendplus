@@ -10,7 +10,7 @@
 
 Vlasnik prodavnice prima dobavljacke fakture kroz drzavni SEF i rucno upisuje robu u originalni Access. Product owner trazi **testnu opciju unutar Trendplus /unos-robe** da ucita lokalni SEF XML, proveri stavke i pripremi nacrt prijema za demonstraciju. Ovo je **ograniceni pilot bez upisa**, ne promena primarnog Access procesa, ne genericki ERP, ne novi analytics modul i ne dozvola za stvarno knjizenje ili SEF nalog/API pristup.
 
-**Owner queue:** docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md — QDB11 READY (bezbedni UBL parser), QDB12 WAITING (read-only katalog/Access reconciliation), QDB13 WAITING (UI pilot /unos-robe, editable draft + export), QDB14 WAITING (samo posebno odobren testni PostgreSQL write nakon stvarne operator validacije). **Pilot owner runbook:** docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md. P0 source/prod/PR #163 pravila i cap WIP <=2 ostaju na snazi; nema konkurentnog rada nad aktivnim owner fajlovima. Sample invoice/operator evidence: NOT PROVIDED / NOT RUN; CI/deploy nije dokaz produkcione validacije.
+**Owner queue:** docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md — QDB11, QDB12 i QDB13A DONE; QDB13 WAITING na formalni release/handoff UI putanje od PR #184 owner-a; QDB14 WAITING na QDB13 i posebnu autorizaciju vlasnika/operatora za izolovanu test bazu. QDB13A je izolovana, neuključena read-only komponenta; ne daje demo rutu ni dozvolu za prijem robe. **Pilot owner runbook:** docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md. P0 source/prod/PR #163 pravila i cap WIP <=2 ostaju na snazi; nema konkurentnog rada nad aktivnim owner fajlovima. Sample invoice/operator evidence: NOT PROVIDED / NOT RUN; CI/deploy nije dokaz produkcione validacije.
 
 
 ## Aktuelna poslovna odluka / razvojni fokus — 2026-10-14
