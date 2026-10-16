@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ682** (RQ680 is IN_PROGRESS; RQ683 remains an independent READY lane).
+Current READY prompt: **RQ682** (RQ680 and RQ685 are IN_PROGRESS; RQ683 remains an independent P2 READY lane).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -4244,14 +4244,26 @@ PR + green required CI, real merge, exact SHA.
 
 ## RQ685 - Close the remaining EF ManyServiceProvidersCreatedWarning gap outside WebApplicationFactory hosts
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1
 Type: backend CI flakiness (test-only)
 Feature family: test-host-ef-configuration
 Parallel-safe: yes (Api.Tests / Infrastructure.Tests only; no production code)
-Owner: unassigned
+Owner: Codex
 Ready after: none (follow-up to RQ665)
 Commit suggestion: `test(ci): opt all test DbContext registrations out of ManyServiceProvidersCreatedWarning`
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex.
+- Inspected `origin/main`: `eb18809a2dd50d92f27800d21a03d659f138353f` (post-QDB13 evidence close).
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq685` / `codex/rq685-ef-warning-test-hosts-20261016`.
+- Bounded paths: test DbContext registration/convention files under `Api.Tests` and `Infrastructure.Tests`; this RQ addendum; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-16-RQ685-evidence.md`.
+- Collision query: no RQ685 remote branch, local lock or open PR. Open PR #185 changes only `UnosArtikalaForm` frontend files; #163 owns Access import/`InfoTip.tsx`. RQ680 is active in `C:\Users\Ivan\.codex\worktrees\rq680-dashboard-population\Trendplus2`; its modified paths are the cached analytics endpoint, analytics client/spec and `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, whose contexts use plain options builders rather than `AddDbContext`/`AddDbContextFactory`; no RQ685 registration/convention path overlaps. Planned F: destination was free.
+- Global priority check: BCI queue has no active READY/IN_PROGRESS task; P0 STAB16 is BLOCKED and STAB17 WAITING on external deployment/source/owner evidence; P0 RQ137/RQ139/RQ140 are PARTIAL with live/provider or source gates. No P0 repository-local READY successor was found. RQ680 + RQ685 stay within owner WIP cap 2 and both declare path-safe parallel execution.
+- Local PostgreSQL prerequisite: Docker Desktop service was stopped at claim time. Do not treat local PostgreSQL proof as run; this prompt's exact-head PR backend/PostgreSQL CI is a merge gate, followed by two green backend runs on `main`.
+- Shared claim commit SHA: record immediately after publication before source edits.
 
 ### Problem
 
