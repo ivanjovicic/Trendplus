@@ -4,11 +4,11 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ682** (RQ680 and RQ685 are IN_PROGRESS; RQ683 remains an independent P2 READY lane).
+Current READY prompt: **RQ682** (RQ680 is IN_PROGRESS; RQ685 is DONE; RQ683 remains an independent P2 READY lane).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
-Flaky-test diagnostics 2026-10-16 (main `f9277afe`): RQ685 (P1, test-only) is an additional independent READY lane - extend the RQ665 EF `ManyServiceProvidersCreatedWarning` opt-out to plain `ServiceCollection` test registrations; the `WorkerRuntimeSettings` 42P01 CI failure is a secondary symptom. Evidence: `.ai/runs/2026-10-16-flaky-tests-diagnostics.md`.
+Flaky-test diagnostics 2026-10-16 (main `f9277afe`): RQ685 (P1, test-only) was an additional independent READY lane - extend the RQ665 EF `ManyServiceProvidersCreatedWarning` opt-out to plain `ServiceCollection` test registrations; the `WorkerRuntimeSettings` 42P01 CI failure is a secondary symptom. RQ685 is now DONE; see its completion evidence below and `.ai/runs/2026-10-16-RQ685-evidence.md`.
 
 RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
@@ -4244,7 +4244,7 @@ PR + green required CI, real merge, exact SHA.
 
 ## RQ685 - Close the remaining EF ManyServiceProvidersCreatedWarning gap outside WebApplicationFactory hosts
 
-Status: IN_PROGRESS
+Status: DONE
 Priority: P1
 Type: backend CI flakiness (test-only)
 Feature family: test-host-ef-configuration
@@ -4261,12 +4261,12 @@ Commit suggestion: `test(ci): opt all test DbContext registrations out of ManySe
 - Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq685` / `codex/rq685-ef-warning-test-hosts-20261016`.
 - Shared claim commit SHA: `ba0bd7bce474a46bff31cfae0ec6fe16db03693e`, verified on refreshed `origin/main` before creating the worktree.
 - Local lock: `.ai/task-locks/RQ685-codex.lock.md` (created after the shared reservation and removed before implementation commit).
-- PR #187: opened from branch `codex/rq685-ef-warning-test-hosts-20261016`; initial implementation head `60ebe2f905affcea56002e15d8895b3768ef22bd`; exact-head required CI is pending.
+- PR #187: merged from branch `codex/rq685-ef-warning-test-hosts-20261016`; exact implementation head `d91acf1a7638caa0a1a68f350054e2b637587b97`; merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb`.
 - Bounded paths: test DbContext registration/convention files under `Api.Tests` and `Infrastructure.Tests`; this RQ addendum; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-16-RQ685-evidence.md`.
 - Collision query: no RQ685 remote branch, local lock or open PR. Open PR #185 changes only `UnosArtikalaForm` frontend files; #163 owns Access import/`InfoTip.tsx`. RQ680 is active in `C:\Users\Ivan\.codex\worktrees\rq680-dashboard-population\Trendplus2`; its modified paths are the cached analytics endpoint, analytics client/spec and `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, whose contexts use plain options builders rather than `AddDbContext`/`AddDbContextFactory`; no RQ685 registration/convention path overlaps. Planned F: destination was free.
 - Global priority check: BCI queue has no active READY/IN_PROGRESS task; P0 STAB16 is BLOCKED and STAB17 WAITING on external deployment/source/owner evidence; P0 RQ137/RQ139/RQ140 are PARTIAL with live/provider or source gates. No P0 repository-local READY successor was found. RQ680 + RQ685 stay within owner WIP cap 2 and both declare path-safe parallel execution.
 - Local PostgreSQL prerequisite: Docker Desktop service was stopped at claim time. Do not treat local PostgreSQL proof as run; this prompt's exact-head PR backend/PostgreSQL CI is a merge gate, followed by two green backend runs on `main`.
-- Test-only implementation is in progress after the shared claim became visible; the local lock remains uncommitted and no production files are in scope.
+- Test-only implementation is delivered on `main`; the local lock was removed before the implementation commit and no production files changed.
 
 ### Problem
 
@@ -4302,3 +4302,11 @@ No test DbContext registration without the opt-out; convention test enforces it;
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
+
+### Completion — 2026-10-16
+
+- Status: DONE on `main`; PR #187 merged at `735c2ae295fd999bb50775a775a454f6af90b9eb` from exact head `d91acf1a7638caa0a1a68f350054e2b637587b97`.
+- Exact-head PR checks: Analytics Tests & Data Integrity run `38908923515` SUCCESS (complete backend suite and RQ453 certification), Analytics Quality Gates run `38908923965` SUCCESS, Planning Governance run `38908924156` SUCCESS.
+- Required post-merge backend checks on merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb`: push run `38910285905` SUCCESS and workflow-dispatch run `38911196844` SUCCESS.
+- Focused local tests, Release build, static conventions and governance checks are recorded in `.ai/runs/2026-10-16-RQ685-evidence.md`.
+- Post-delivery dependency cascade at recovery base `735c2ae295fd999bb50775a775a454f6af90b9eb` scanned all 13 active RQ queue/addendum files and the active SQL analytics queue: no other prompt names or depends on RQ685. RQ682 remains the Current READY pointer; RQ683 is independently READY; RQ680 remains IN_PROGRESS, and RQ681 still depends on RQ680. No promotion or Zero-READY conclusion applies.
