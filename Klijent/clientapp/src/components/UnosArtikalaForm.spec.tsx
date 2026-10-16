@@ -183,6 +183,48 @@ describe("UnosArtikalaForm receipt regressions", () => {
     await screen.findByText("Prijem je potvrđen");
   });
 
+  it("accepts ordinary two-decimal prices despite JavaScript floating-point rounding", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce(notFound())
+      .mockResolvedValueOnce(ok([{
+        id: -7, name: "Čizma 42", code: null, quantity: 4,
+        purchasePrice: 11, salesPrice: 25, storeId: -4, dataOrigin: "access",
+      }]))
+      .mockResolvedValueOnce(ok({ id: 85, status: "confirmed", lineCount: 1, totalQuantity: 2, purchaseTotal: 2.26 }, 201));
+    vi.stubGlobal("fetch", request);
+    renderForm();
+    searchExisting();
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
+    fillPricesAndQuantity();
+    const inputs = screen.getAllByRole("spinbutton");
+    fireEvent.change(inputs[1], { target: { value: "1.13" } });
+    fireEvent.change(inputs[2], { target: { value: "2.07" } });
+    fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
+    await screen.findByText("Prijem je potvrđen");
+    const post = request.mock.calls.find(([, options]) => options?.method === "POST");
+    expect(post).toBeDefined();
+    const payload = JSON.parse(post![1].body);
+    expect(payload.lines[0]).toMatchObject({ purchaseUnitPrice: 1.13, salesUnitPrice: 2.07 });
+  });
+
+  it("rejects prices with more than two decimal places without posting", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce(notFound())
+      .mockResolvedValueOnce(ok([{
+        id: -7, name: "Čizma 42", code: null, quantity: 4,
+        purchasePrice: 11, salesPrice: 25, storeId: -4, dataOrigin: "access",
+      }]));
+    vi.stubGlobal("fetch", request);
+    renderForm();
+    searchExisting();
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
+    fillPricesAndQuantity();
+    fireEvent.change(screen.getAllByRole("spinbutton")[1], { target: { value: "1.234" } });
+    fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("najviše dve decimale");
+    expect(request.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(0);
+  });
+
   it("rejects negative or invalid quantities before posting", async () => {
     const request = vi.fn()
       .mockResolvedValueOnce(notFound())
