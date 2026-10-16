@@ -436,16 +436,20 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
                       updateLine(index, { articleName: event.target.value, articleId: null });
                       setSearch((current) => ({ ...current, [index]: event.target.value }));
                       setOpenSearch((current) => ({ ...current, [index]: true }));
+                      setArticleResults((current) => ({ ...current, [index]: [] }));
+                      setArticleErrors((current) => ({ ...current, [index]: "" }));
                     }} />
                   </label>
                   {openSearch[index] && filteredArticles(index).length > 0 ? (
-                    <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg" role="listbox" aria-label={`Rezultati pretrage stavke ${index + 1}`}>
+                    <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg" aria-label={`Rezultati pretrage stavke ${index + 1}`}>
                       {filteredArticles(index).map((article) => (
-                        <button type="button" key={article.id} role="option" aria-selected="false" className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-elevated" onClick={() => chooseExisting(index, article)}>
-                          {article.name} · ID {article.id} · zaliha {article.quantity ?? "nepoznata"}
-                        </button>
+                        <li key={article.id}>
+                          <button type="button" className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-elevated" onClick={() => chooseExisting(index, article)}>
+                            {article.name} · ID {article.id} · zaliha {article.quantity ?? "nepoznata"}
+                          </button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   ) : null}
                   {articleErrors[index] ? <p role="alert" className="mt-1 text-xs text-[var(--error)]">{articleErrors[index]}</p> : null}
                   {openSearch[index] && search[index]?.trim() && !articleErrors[index] && articleResults[index]?.length === 0 ? <p className="mt-1 text-xs text-muted">Nema postojećeg artikla na izabranoj lokaciji. Možete uneti novi artikal.</p> : null}

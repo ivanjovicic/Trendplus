@@ -66,7 +66,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     renderForm();
 
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
     fillPricesAndQuantity();
     fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
 
@@ -76,6 +76,28 @@ describe("UnosArtikalaForm receipt regressions", () => {
     expect(post?.[1]?.body).toContain('"articleId":-7');
     expect(post?.[1]?.body).toContain('"storeId":-4');
     expect(request.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(1);
+  });
+
+  it("hides old article results as soon as the search query changes", async () => {
+    const request = vi.fn((input: RequestInfo | URL) => {
+      const url = new URL(String(input), window.location.origin);
+      if (url.pathname.includes("/request/")) return Promise.resolve(notFound());
+      if (url.searchParams.get("query") === "Čizma") return Promise.resolve(ok([{
+        id: -7, name: "Čizma 42", code: "C42", quantity: 4,
+        purchasePrice: 11, salesPrice: 25, storeId: -4, dataOrigin: "access",
+      }]));
+      return new Promise<Response>(() => {});
+    });
+    vi.stubGlobal("fetch", request);
+    renderForm();
+
+    searchExisting();
+    expect(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Pretražite artikle ili unesite novi naziv"), {
+      target: { value: "Patika" },
+    });
+
+    expect(screen.queryByRole("button", { name: /Čizma 42 · ID -7/ })).not.toBeInTheDocument();
   });
 
   it("prompts for authorization before parsing an empty 401 response and retries with the key", async () => {
@@ -92,7 +114,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     vi.stubGlobal("fetch", request);
     renderForm();
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
     fillPricesAndQuantity();
     fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
 
@@ -115,7 +137,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     vi.stubGlobal("fetch", request);
     renderForm();
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
     fillPricesAndQuantity();
 
     const button = screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ });
@@ -143,7 +165,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     vi.stubGlobal("fetch", request);
     renderForm();
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
     fillPricesAndQuantity();
     const button = screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ });
     fireEvent.click(button);
@@ -163,7 +185,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     vi.stubGlobal("fetch", request);
     renderForm();
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
     fillPricesAndQuantity();
     fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "-1" } });
     fireEvent.click(screen.getByRole("button", { name: /Pregledaj i potvrdi prijem/ }));
@@ -206,7 +228,7 @@ describe("UnosArtikalaForm receipt regressions", () => {
     vi.stubGlobal("fetch", request);
     renderForm();
     searchExisting();
-    fireEvent.click(await screen.findByRole("option", { name: /Čizma 42 · ID -7/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Čizma 42 · ID -7/ }));
 
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const event = new Event("beforeunload", { cancelable: true });
