@@ -214,14 +214,15 @@ Nazivi i sifre dobavljaca nisu automatski Trendplus Artikli ID; razlicite velici
 
 ## QDB13A - Izolovani SEF XML nacrt: UI komponenta, API klijent i bezbedan eksport (bez povezivanja sa /unos-robe)
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P1 (owner-approved demo pilot; ne pretice aktivni P0/source/prod gate)
 Type: new-file-only frontend UI + request-scoped client + unit tests
 Feature family: sef-xml-receipt-draft-isolated
 Parallel-safe: yes, only with current PR #184; no overlapping file edits or dependency on its write contract
-Owner: unassigned
+Owner: Codex; shared claim published before implementation
 Dependencies: QDB11 DONE and QDB12 DONE on main. Current 2026-10-16 review: PR #184 is an OPEN DRAFT/PARTIAL P0 write workflow, with no person-level audit actor, no correction/storno path, and no isolated browser E2E. It owns /unos-robe and Artikli UI; **do not** modify those paths in QDB13A.
 Claim: normal shared reservation required by docs/ai/PROMPT_QUEUE_PROTOCOL.md before coding; rerun current-main and PR/branch/owner check. Do not claim QDB13 itself.
+Claim reservation: inspected origin/main `6b65c392f8473de57cd4813bd2da936c69319ee4`; owner Codex; worktree `C:\Users\Ivan\source\repos\Trendplus2-qdb11`; branch `agent/qdb13a-sef-xml-draft-isolated`; bounded to new files only under `Klijent/clientapp/src/components/sef-xml-pilot/`, optional new `Klijent/clientapp/src/services/sefXmlPilotApi.ts`, adjacent new tests, queue and evidence; excludes `/unos-robe`, `Artikli`, router, shared API/auth, backend, migrations and PR #184 worktree. Fresh PR/branch scan found PR #184 open/draft and owning only excluded paths; no QDB13A/SEF XML draft branch, PR, or lock exists.
 Suggested commit: feat(pilot): build isolated read-only SEF invoice draft component
 
 ### Bounded work
