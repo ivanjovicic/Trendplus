@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **RQ682** (RQ680 is IN_PROGRESS; RQ685 is DONE; RQ683 remains an independent P2 READY lane).
+Current READY prompt: **RQ683** (RQ680 is IN_PROGRESS; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -4091,12 +4091,12 @@ PR + green required CI, real merge, completion note with exact SHA.
 
 ## RQ682 - Filter Nivelacije by the verified timestamp basis (Access wall-clock vs POS UTC)
 
-Status: IN_PROGRESS
+Status: PARTIAL
 Priority: P2
 Type: backend date semantics / documentation correction
 Feature family: business-day-timestamp-convention
 Parallel-safe: yes (`AllEndpoints.cs` `/api/nivelacije` handler, `BelgradeCalendarDatePolicy`, preset comment; disjoint from RQ680/RQ683)
-Owner: Codex (current task)
+Owner: unassigned
 Ready after: none
 Commit suggestion: `fix(nivelacije): filter wall-clock journal dates by calendar day`
 
@@ -4151,6 +4151,30 @@ Both source-specific three-row fixtures return exactly their Belgrade business-d
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
+
+### Completion note
+
+- Date: 2026-10-16.
+- Status: PARTIAL; no runtime code or stored timestamps were changed.
+- Completion: source audit proved `DataOrigin=existing` is ambiguous between direct UTC operational writes and historical rows that receive the database default; no safe source-specific date filter can be implemented without a per-row basis authority.
+- Changed files: this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Checks run: source-writer/schema audit; focused `Api.Tests` restore and compilation succeeded, but the selected Testcontainers test produced no result because startup hung; `git diff --check` and all governance validations/self-tests passed (18 instruction files, 811 queue tasks, 80 planning tasks).
+- Checks not run: disposable PostgreSQL origin × season/DST matrix (Docker/Testcontainers hung); production Access/database; browser/UI (no runtime/UI change).
+- Source proof: the Access importer assigns raw `DateTime` values `DateTimeKind.Utc` without converting their clock reading, and writes imported journal rows with `DataOrigin=access`; the operational Nivelacija endpoint writes `DateTime.UtcNow` with `DataOrigin=existing`.
+- Delivery mode: direct-main queue/roadmap/evidence closeout; no runtime implementation.
+- Main commit SHA: pending.
+- Main verification: pending close-out delivery and fresh `origin/main` check.
+- Missed: no per-row timestamp-basis field or trusted legacy-row backfill authority exists on `DnevnikPromena`.
+- Follow-up: request source-owner decision for durable per-row basis and legacy treatment; RQ683 remains an independent READY candidate.
+- Residual risk: the existing endpoint still applies one UTC-converted day window across mixed source records.
+- Provenance blocker: `DnevnikPromena` has no `SourceTimestampBasis` field. `DataOrigin=existing` is also the model/database default for legacy rows, so it cannot distinguish the new UTC operational rows from historical rows whose timestamp basis is unknown. `SourceTimestampBasis` currently exists on `ProdajaZaglavlja`, not `DnevnikPromena`. A source-owner decision and durable per-row authority/backfill policy are required before changing the mixed-origin filter.
+- Safety: no production database or Access source was opened or changed; no blanket conversion or classification by `DateTime.Kind` was made.
+- Validation: the focused `Api.Tests` project restored and compiled, but the required PostgreSQL test did not complete because the local Docker/Testcontainers startup hung. No test pass is claimed; details are in the run log.
+- Release: the current Codex owner explicitly releases RQ682 to `unassigned` on 2026-10-16 while PARTIAL. Re-enter only after the timestamp-basis authority event above.
+- Run log: `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Evidence state: pending synchronization after delivery to `main`.
+- Claim reservation: inspected `origin/main` `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`; shared claim commit `98ec98dfacc9193524a52f857dc966e392d3de50`; owner/worktree/branch `Codex` / `F:\Trendplus-dev\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`; remote branch/PR and lock checks were clear at claim.
+- Next: RQ683 is the remaining independent READY lane; RQ682 requires a durable per-row timestamp-basis contract before runtime work resumes.
 
 ## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
 
