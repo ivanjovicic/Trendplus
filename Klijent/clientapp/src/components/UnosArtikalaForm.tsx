@@ -96,6 +96,8 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
   const submittingRef = useRef(false);
   const requestIdentity = useRef<{ fingerprint: string; key: string } | null>(null);
   const adminKeyRef = useRef("");
+  const [operatorId, setOperatorId] = useState("");
+  const [operatorKey, setOperatorKey] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -262,6 +264,10 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
   const submit = async () => {
     if (submittingRef.current || confirmedReceipt) return;
     setError(null);
+    if (!operatorId.trim() || operatorKey.length < 32) {
+      setError("Za knjiženje je potreban namenski ID operatera i njegov bezbednosni ključ (minimum 32 karaktera). Zajednički admin ključ nije dovoljan.");
+      return;
+    }
     if (optionsLoading || optionsError) {
       setError(optionsError ?? "Sačekajte da se učitaju šifarnici.");
       return;
@@ -343,6 +349,8 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
             headers: {
               "Content-Type": "application/json",
               ...(adminKeyRef.current ? { "X-Admin-Key": adminKeyRef.current } : {}),
+              "X-Receipt-Operator-Id": operatorId.trim(),
+              "X-Receipt-Operator-Key": operatorKey,
             },
             body: JSON.stringify({ ...businessPayload, requestKey, confirmSimilarDocument }),
           });
@@ -356,6 +364,7 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
           adminKeyRef.current = entered.trim();
           return send(confirmSimilarDocument);
         }
+        if (response.status === 404) throw new Error("Serversko knjiženje prijema nije omogućeno. Obratite se administratoru; roba nije upisana.");
         const body = await readJson(response);
         if (response.status === 409 && body?.code === "similar_document") {
           if (!window.confirm(`${body.message}\n\nAko je ovo zasebna delimična isporuka, nastavite potvrdom.`))
@@ -490,6 +499,16 @@ export default function UnosArtikalaForm({ header, tipoviObuce }: UnosArtikalaFo
         <p>Broj stavki: <strong>{lines.length}</strong> · Ukupno komada: <strong>{lines.reduce((sum, line) => sum + (Number.isInteger(Number(line.quantity)) ? Number(line.quantity) : 0), 0)}</strong></p>
         <p className="mt-1">Zbir unetih nabavnih vrednosti: <strong>{preview.toLocaleString("sr-RS", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD</strong></p>
         <p className="mt-1 text-xs text-muted">Orijentacioni zbir bez obračuna PDV-a i rabata. Nabavne i prodajne cene prijema neće prepisati cene artikla u šifarniku.</p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
+        <p className="text-sm text-muted sm:col-span-2">Knjiženje je po pravilu isključeno. Čak i kada je omogućeno, samo pojedinačno ovlašćeni operater može potvrditi prijem. Ključ se ne čuva u pregledaču.</p>
+        <label className="grid gap-1 text-sm text-foreground">ID ovlašćenog operatera
+          <input className="input-big" autoComplete="off" maxLength={80} value={operatorId} onChange={(event) => setOperatorId(event.target.value)} />
+        </label>
+        <label className="grid gap-1 text-sm text-foreground">Lični ključ operatera
+          <input className="input-big" type="password" autoComplete="off" value={operatorKey} onChange={(event) => setOperatorKey(event.target.value)} />
+        </label>
       </div>
 
       {error ? <p role="alert" className="mt-4 text-sm text-[var(--error)]">{error}</p> : null}
