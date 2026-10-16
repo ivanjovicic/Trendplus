@@ -43,6 +43,7 @@ using Api.Endpoints;
 using Api.Services.Analytics;
 using Api.Services.Access;
 using Api.Services.DataSources;
+using Api.Services.SefXml;
 using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
@@ -504,6 +505,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<ISourceDataSessionFactory, SourceDataSessionFactory>();
     builder.Services.AddScoped<IDataSourceDiscoveryService, DataSourceDiscoveryService>();
     builder.Services.AddScoped<IDataSourceMappingPreviewService, DataSourceMappingPreviewService>();
+    builder.Services.AddSingleton<ISefXmlInvoiceParser>(_ =>
+        new SefXmlInvoiceParser(SefXmlPreviewEndpoints.GetParseLimits(builder.Configuration)));
 
     // Embedding service for AI-powered image search
     var embeddingServiceSettings = EmbeddingServiceRuntimePolicy.Resolve(
@@ -1220,6 +1223,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapSupplierDecisionHubEndpoints();
     app.MapDataSourceDiscoveryEndpoints();
     app.MapDataSourceMappingPreviewEndpoints();
+    app.MapSefXmlPreviewEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();
