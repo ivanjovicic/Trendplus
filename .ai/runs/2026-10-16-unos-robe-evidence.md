@@ -43,23 +43,25 @@ Claim reservation: direct-user-request/not applicable
 - `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true dotnet test Api.Tests/Api.Tests.csproj --no-restore --filter 'FullyQualifiedName~GoodsReceiptPostgresIntegrationTests'` -> pass on real Testcontainers PostgreSQL, 10 passed / 0 failed / 0 skipped. Covers mixed receipt, movement projection retry, identical concurrent key, partial shipment warning, concurrent stock updates, full rollback on line-two failure, invalid references, Access-ID collision, Access snapshot serialization, and monotonic sequence repair.
 - Focused backend suites -> pass: `GoodsReceiptEndpointAuthorizationTests` 2/2; `AccessImportServiceTests` 42/42; `TransferServiceTests` + `DnevnikPromenaReadServiceTests` + `InventorySnapshotContractTests` 48/48; cache failure isolation 1/1.
 - `git diff --check` -> pass.
+- Ownership-transfer validation on current code tree `b958c96ed05406fef18fccb2c6dd8d9c0fdf5712` after merging refreshed `origin/main` `0e40de54e710993c58d645b81817123e6e9c000c`: `GoodsReceiptEndpointAuthorizationTests` 6/6 passed; focused receipt UI specs 3 files / 13 tests passed; `git diff --check` passed. `docker info` did not return and was interrupted; no local PostgreSQL run was claimed for this merged tree.
+- Pre-refresh exact PR-head CI at `879ccc22a02c3722fb172a9dffd6885f5f80693b`: backend/PostgreSQL workflow `38875299959` and Analytics Quality Gates workflow `38875300226` succeeded. These are superseded for merge acceptance by the required rerun on the current-main-integrated PR head.
 
 ## Validation limits and remote results
-- Browser end-to-end -> `BROWSER NOT RUN`; no isolated browser deployment/environment was available. The production URL was not used for a write-flow rehearsal.
+- Real operator or production-browser session -> not run. A **synthetic, network-intercepted desktop/mobile browser fixture** ran successfully in workflow `38875300226`; it does not access a live database and is not a real receipt demonstration.
 - Local full `Api.Tests` -> the mandatory all-suite Testcontainers attempt hit Docker API/Testcontainers startup timeouts; a broad non-integration attempt was interrupted while silent. This local limitation was superseded by the remote full suite below.
-- GitHub PR CI on implementation head `84cec623e7b01b6cc1758f0fcd5a405538a7a1a8` -> all checks passed: backend run `38859376447` (2,173 passed, 0 failed, 43 known classified skips; 13 classified as isolated PostgreSQL certifiable and 30 legacy/superseded, 0 uncovered/new skips), frontend run `38859376334` (tests, guardrails, build, fixture browser/CSV parity and bundle gates), RQ453 certification, SDK pin, POS UI build/dependency audit, Vercel deployment and preview comments. Backend full suite ran with `TRENDPLUS_REQUIRE_POSTGRES_TESTS=true`; run duration 8m04s. This run-log synchronization changes only evidence text; recheck the resulting PR head before any merge decision.
+- Latest pre-refresh PR-head CI on `879ccc22a02c3722fb172a9dffd6885f5f80693b` -> backend run `38875299959`, frontend/analytics and synthetic goods-receipt browser workflow `38875300226`, RQ453 certification, SDK pin, POS UI audit/build, and Vercel checks succeeded. The current-main-integrated head still requires exact-head CI before merge.
+- Current-main-integrated local head `b958c96ed05406fef18fccb2c6dd8d9c0fdf5712` has not yet been pushed; no current-head remote check has been inferred from earlier runs.
 
 ## Documentation impact
 - Added `docs/operations/GOODS_RECEIPT_RUNBOOK.md`, including retry, partial-delivery, projection failure, Access collision, and correction escalation guidance.
 - Documented that shared admin-key writes are attributed as `admin-api-key`; they do not identify an individual operator.
 
 ## What was missed
-- No correction/storno operation is provided. Incorrect confirmed receipts require controlled administrator correction until a linked, auditable reversal flow is implemented.
-- The shared admin-key path does not provide person-level authorship. An authenticated named administrator is recorded when available; shared-key-only use cannot satisfy verified individual audit attribution.
-- Browser interaction across desktop/mobile widths and SPA back/forward was not verified end to end.
+- No real invoice, production Access file, live operator credentials or stock mutation was used. No live operator/browser demonstration is claimed.
+- Public-environment provisioning and explicit owner authorization to set `GoodsReceipts:WritesEnabled=true` remain outside this merge task and were not performed.
 
 ## Risks
-- Do not use for actual supplier receipts until person-level actor identity and a traceable correction/reversal workflow are available and the complete browser flow is verified in an isolated environment. Backend transaction and idempotency behavior passed PostgreSQL tests, but that is not sufficient production-use proof.
+- The code merge does not authorize actual supplier receipt use. Keep `GoodsReceipts:WritesEnabled` OFF until a separate owner-authorized environment review and operator provisioning; synthetic CI is not proof of live behavior or consent to post stock.
 - Access article snapshot import takes ordered row locks on existing articles for its transaction; a long Access batch can delay receipt writes.
 - Operational PostgreSQL and analytics PostgreSQL are separate. Receipt commit is atomic in the operational database; analytics movement projection is durable, idempotent, and retryable, not cross-database ACID.
 
@@ -67,4 +69,4 @@ Claim reservation: direct-user-request/not applicable
 - not applicable for direct-user-request; no queue task was claimed or closed.
 
 ## Next
-- PR #184 head `84cec623e7b01b6cc1758f0fcd5a405538a7a1a8` passed the listed remote CI checks. Keep it open: individual actor identity, linked correction/reversal workflow, and isolated end-to-end browser proof remain required before merge or real-use approval.
+- Push the ownership-evidence commit and current-main integration merge, wait for exact-head PostgreSQL/backend plus frontend/synthetic-browser CI, then mark PR #184 ready and merge if all required checks pass. Do not enable writes or create a real receipt.
