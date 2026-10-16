@@ -4091,14 +4091,24 @@ PR + green required CI, real merge, completion note with exact SHA.
 
 ## RQ682 - Filter Nivelacije by the verified timestamp basis (Access wall-clock vs POS UTC)
 
-Status: READY
+Status: IN_PROGRESS
 Priority: P2
 Type: backend date semantics / documentation correction
 Feature family: business-day-timestamp-convention
 Parallel-safe: yes (`AllEndpoints.cs` `/api/nivelacije` handler, `BelgradeCalendarDatePolicy`, preset comment; disjoint from RQ680/RQ683)
-Owner: unassigned
+Owner: Codex (current task)
 Ready after: none
 Commit suggestion: `fix(nivelacije): filter wall-clock journal dates by calendar day`
+
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex (current task).
+- Inspected `origin/main`: `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`.
+- Planned worktree / branch: `F:\\Trendplus-dev\\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`.
+- Bounded paths: `Api/Endpoints/AllEndpoints.cs` (Nivelacije handler only), `Application/Analytics/BelgradeCalendarDatePolicy.cs`, `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` (comment only), focused PostgreSQL test in `Api.Tests`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Remote collision query: no RQ682 branch or open PR; no RQ682 local lock in listed worktrees; open PRs #185 and #163 are path-disjoint. F: destination path was absent.
 
 ### Goal
 
