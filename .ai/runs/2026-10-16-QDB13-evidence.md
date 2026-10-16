@@ -4,44 +4,68 @@ Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/qdb13-sef-xml-draft-20261016; no PR opened
-Main commit SHA: pending implementation
-Main verification: claim commit `5e69c3c6f44dbe56f3d2d38bc98a6c0bc32f1431` verified on refreshed `origin/main`
-Evidence state: pending implementation and validation
+Main commit SHA: `c49150972a507e66ee72a9123c8fa7bd56cfbf04`
+Main verification: implementation SHA `c49150972a507e66ee72a9123c8fa7bd56cfbf04` was verified on refreshed `origin/main`; Analytics Quality Gates run `38905197261` completed successfully on that exact SHA
+Evidence state: synchronized
 Ownership transfer: Ivan Jovicic (PR #184 UI-path owner) -> Codex; authority/evidence: user's 2026-10-16 instruction to finish and merge PR #184; merge SHA `25860229a07e2edb3879b6c617ad55d9bafd97da`; PR branch/worktree preserved
 Claim reservation: inspected `origin/main` `78b31aa0bcd153b9c805f29d1a30a15988085755`; pushed claim `5e69c3c6f44dbe56f3d2d38bc98a6c0bc32f1431`; owner/worktree/branch: Codex / `F:\Trendplus-dev\Trendplus2-qdb13` / `codex/qdb13-sef-xml-draft-20261016`; open PR scan found only #163 with `InfoTip.tsx` excluded; no QDB13 remote branch or local lock before claim
 
 ## What was done
-- Promoted QDB13 after QDB11, QDB12, QDB13A and the explicit PR #184 owner-path handoff were verified; published the shared reservation on `main` before implementation.
-- Created the local lock after the reservation became visible on `origin/main`.
+- Promoted and claimed QDB13 after QDB11, QDB12, QDB13A and the explicit PR #184 owner-path handoff were verified; published the shared reservation on `main` before implementation.
+- Mounted the isolated read-only SEF XML wizard on `/unos-robe`, separated XML mode from manual receipt/history, and requested the admin key only transiently for protected preview/reconciliation requests.
+- Added route/component coverage and a browser fixture using only synthetic invoice data and locally intercepted API responses; it verifies keyboard entry, 320/375/768/1024/1280 widths, cautious exact-code review, ambiguous manual mapping, explicit physical quantity, CSV download and no inventory/journal write calls.
+- Delivered implementation directly to `main` at `c49150972a507e66ee72a9123c8fa7bd56cfbf04`; refreshed `origin/main` contains that SHA.
 
 ## Files changed
-- Pending implementation; queue/roadmap claim changes are recorded in `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` and `MASTER_ROADMAP.md`.
+- `Klijent/clientapp/package.json`
+- `Klijent/clientapp/src/pages/UnosRobePage.tsx`
+- `Klijent/clientapp/src/pages/UnosRobePage.spec.tsx`
+- `Klijent/clientapp/src/components/sef-xml-pilot/SefXmlReceiptDraftWizard.tsx`
+- `Klijent/clientapp/src/components/sef-xml-pilot/SefXmlReceiptDraftWizard.spec.tsx`
+- `Klijent/clientapp/scripts/qa/sef-xml-draft-fixture-browser-smoke.mjs`
+- `Klijent/clientapp/scripts/qa/fixtures/synthetic-sef-invoice.xml`
+- `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md`
+- `docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md`
+- `MASTER_ROADMAP.md`
+- `.ai/runs/2026-10-16-QDB13-evidence.md`
 
 ## Validation run
-- `git diff --check` -> pass for claim documentation.
-- `node scripts/check-prompt-queues.mjs --self-test` -> pass.
-- `node scripts/check-prompt-queues.mjs` -> pass (811 tasks).
-- `node scripts/check-planning-architecture.mjs --self-test` -> pass.
-- `node scripts/check-planning-architecture.mjs` -> pass (80 planning tasks).
-- Claim visibility verified: refreshed `origin/main` contains `5e69c3c6f44dbe56f3d2d38bc98a6c0bc32f1431`.
+- `node node_modules/vitest/vitest.mjs run src/pages/UnosRobePage.spec.tsx src/components/sef-xml-pilot/SefXmlReceiptDraftWizard.spec.tsx src/services/__tests__/sefXmlPilotApi.spec.ts src/components/UnosRobeForm.spec.tsx` -> pass, 4 files / 30 tests.
+- `node node_modules/typescript/bin/tsc -b` -> pass.
+- `node node_modules/vite/bin/vite.js build` -> pass, 2,740 modules.
+- `node scripts/check-encoding.mjs` -> pass.
+- `node scripts/check-analytics-guardrails.mjs --self-test` -> pass; baseline check pass (36 known, 0 removed).
+- `node scripts/check-bundle-budget.mjs` -> pass.
+- `npm run qa:sef-xml-draft-fixture-smoke` -> pass in Puppeteer Chromium; ephemeral local URL `http://127.0.0.1:54449/unos-robe`; API requests were intercepted, no non-fixture external requests or receipt/journal writes, CSV downloaded.
+- `dotnet test Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SefXml --verbosity minimal` -> pass, 33 tests.
+- `git diff --check` -> pass.
+- `gh run view 38905197261 --json status,conclusion,headSha,workflowName` -> Analytics Quality Gates completed successfully on exact implementation SHA `c49150972a507e66ee72a9123c8fa7bd56cfbf04`.
+- Claim visibility: refreshed `origin/main` contains claim `5e69c3c6f44dbe56f3d2d38bc98a6c0bc32f1431` and implementation `c49150972a507e66ee72a9123c8fa7bd56cfbf04`.
 
 ## Validation not run
-- Feature tests, build, browser flow, live invoice and operator session -> not run yet; implementation has not started and no real invoice/operator consent was supplied.
+- Real supplier invoice, owner/operator acceptance, production deployment, production feature-flag enablement and live owner-demo URL -> not run; no consented invoice or approved environment was supplied.
+- Full frontend/backend suites and PostgreSQL/Testcontainers proof -> not run; this delivery changes only frontend/UI fixture code and does not add a write path.
+- `npm run test -- --run ...` could not find the Windows `vitest` wrapper after dependency installation; the equivalent direct Vitest CLI above executed and passed.
+- The pre-existing `check-recharts-route-loading.mjs` smoke was attempted and failed at its unrelated `Operacije navigation group is missing` expectation; no analytics navigation changes were made.
+- A manual owner session was not attempted; prior desktop Computer Use was stopped because the active browser URL could not be safely identified. The isolated headless Chromium fixture is the browser proof for this change.
 
 ## Documentation impact
-- Updated the current owner queue, cross-program roadmap and this run log; QDB14 remains gated.
+- Updated the QDB13 owner queue/completion record, the SEF pilot runbook, the cross-program roadmap and this run log. QDB14 remains gated and no business authorization is inferred.
 
 ## What was missed
-- No QDB13 runtime implementation or mounted UI is delivered yet.
-- No real supplier invoice, owner/operator session, deployed route or browser demo URL is available.
+- No real supplier invoice, owner/operator session, deployed route or persistent owner-demo URL is available; the tested `127.0.0.1` fixture server closed when the smoke test finished.
+- Authentic SEF parser behavior against the owner's actual document remains unverified.
 
 ## Risks
-- Post-merge main backend run `38887481954` was in progress at claim time; if it turns red, classify/fix that in-scope main regression before continuing.
-- Open PR #163 remains `PARTIAL`; its `InfoTip.tsx` and Access import paths are excluded from this task.
-- Pilot flag stays OFF in production; no Access or stock/receipt/journal writes are authorized.
+- Analytics Quality Gates run `38905197261` completed successfully on the implementation SHA; no deployed-owner validation follows from CI.
+- Open PR #163 remains `PARTIAL`; its `InfoTip.tsx` and Access import paths are excluded from this task. PR #185 changes separate `UnosArtikalaForm` files and was not edited.
+- The backend flag `SefXmlPilot:Enabled` remains OFF by default and the endpoints require server-side admin authorization; no deployment configuration changed.
+- No Access, stock, receipt, journal, article or production database writes were performed or enabled.
 
 ## Post-close routing recovery
-- Not yet applicable: QDB13 remains IN_PROGRESS; run the post-close cascade after delivery.
+- Recovery base: refreshed `origin/main` `c49150972a507e66ee72a9123c8fa7bd56cfbf04` after implementation delivery.
+- Entire active QDB queue scanned: QDB11/QDB12/QDB13A/QDB13 are DONE; QDB14 remains WAITING on owner/operator authorization, real operator evidence and an isolated test database; QDB07/QDB08/QDB10 retain their stated dependencies/source gates.
+- Post-close cross-program routing found RQ685 (P1, test-only, independent READY) in `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE_POST_IMPORT_VALUE_ADDENDUM.md`; RQ680 remains IN_PROGRESS and RQ682/RQ683 remain path-disjoint READY lanes. RQ685 is the next candidate subject to a fresh claim/collision check and WIP cap.
 
 ## Next
-- Inspect the mounted `/unos-robe` screen and QDB13A API/client contract, then integrate the read-only draft wizard and prove the non-mutation boundary with focused UI/browser tests.
+- Continue with the post-close P1 candidate RQ685 only after refreshing `origin/main`, confirming its READY status and collisions, and publishing its own shared claim; do not infer QDB14 authorization from QDB13 completion.

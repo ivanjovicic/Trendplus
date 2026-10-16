@@ -19,12 +19,14 @@ Za istu ulaznu fakturu pokazati vlasniku: (a) koliko XML stavki se automatski ci
 
 | Faza | Queued | Demonstracija / izlaz | Granica |
 | --- | --- | --- | --- |
-| 1 | QDB11 READY | Ucitaj jedan SEF XML, pregledaj broj/datume/dobavljaca/valutu/stavke | Read-only, bez persistentnih customer payload-a |
-| 2 | QDB12 WAITING | Po stavci exact/manual/ambiguous/unmatched i razlog; manual physical received qty | Ne menjaj master cost/stock, nesertifikovana Access kalkulacija = UNKNOWN |
-| 3 | QDB13 WAITING | U /unos-robe pregled, editabilan nacrt, CSV/PDF export sa oznakom NEKNJIZENO | Server auth, flag OFF po defaultu, bez zaliha writes; owner demo moze samo uz stvarnu verifikaciju okruzenja |
+| 1 | QDB11 DONE | Ucitaj jedan SEF XML, pregledaj broj/datume/dobavljaca/valutu/stavke | Read-only, bez persistentnih customer payload-a |
+| 2 | QDB12 DONE | Po stavci exact/manual/ambiguous/unmatched i razlog; manual physical received qty | Ne menjaj master cost/stock, nesertifikovana Access kalkulacija = UNKNOWN |
+| 3 | QDB13 DONE (engineering) | Na `/unos-robe` postoji odvojeni XML pregled/nacrt i NEKNJIŽENO CSV export; sinteticki Chromium fixture prolazi | Server auth, flag OFF po defaultu, bez zaliha writes; nema deployovanog owner URL-a niti stvarne fakture/operator testa |
 | 4 | QDB14 WAITING | Opcioni commit u izolovanu TEST Trendplus bazu | Zahteva novu owner dozvolu, PostgreSQL dokaz, nikada Access write |
 
 Redosled je serijski (unutar iste feature family). WIP i visi prioriteti iz MASTER_ROADMAP ostaju merodavni.
+
+QDB13 local browser-fixture URL is ephemeral and is not a deployed demo: `http://127.0.0.1:54449/unos-robe` (tested with synthetic-only API interception; the server closed after the smoke test). The production API flag remains OFF by default and still requires server-side admin authorization. Real invoice/operator validation is NOT RUN pending the owner's explicit consent and approved environment.
 
 ## Priprema stvarnog operator testa
 
