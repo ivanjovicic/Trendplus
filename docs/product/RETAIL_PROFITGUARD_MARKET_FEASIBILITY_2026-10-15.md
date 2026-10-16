@@ -311,3 +311,32 @@ A prospective client must receive signed data-processing scope, retention/export
 The buyer can decline because existing ERP already supports basic turnover, stock and repricing, Excel cheaply provides small one-off reports, cost numbers lack original receipts, or sharing sensitive sales data with a new provider is not justified. A full business-grade product would need measured secure onboarding, easy independent source reconciliation, a reasonable liability/retention agreement, real backup/deletion and operator proof. ERP incumbents could readily copy (1) weekly digest, (2) top slow-stock suggestions and (3) SEF XML import preview; these are **not durable moats**. More defendable but unproven would be cross-ERP source reconciliation, auditable source-quality lineage, and a validated footwear style-size-store action workflow.
 
 An investor would still lack: verified segmented buyer counts, signed paid pilots, repeated 30/90-day usage, collection, gross margin, churn, average onboarding hours, customer ROI ground truth, security due diligence and specific partner distribution. A sole developer must keep one supported first customer and one narrow revenue wedge, not an ERP rewrite. **GO** to restricted operator validation + paid diagnostic discovery; **NO-GO** for full SaaS expansion until at least one independent paying buyer and repeatable source onboarding are proven. This is a decision gate, not a guarantee of profit.
+
+
+### 9.11 Live read-only provider verification — 2026-10-17 (new independent evidence)
+
+Unlike the dated local batch-23 audit above, this is a fresh **read-only** check through authorized connected Render/Neon account tooling. Provider URLs and query shape only; no customer payloads, names or secrets copied. No deploy, data write, SEF operation, import attempt or schema mutation was performed.
+
+| Boundary | Observed on 2026-10-17 | Consequence |
+| --- | --- | --- |
+| Render production service | `trendplus-api` web service, https://dashboard.render.com/web/srv-d55c2tre5dus73c4bve0, `autoDeploy=no`/trigger off, latest LIVE manual deploy finished 2026-10-16 11:10 UTC at SHA **16bc5fc7124fc0ac6019edd00f45da1a930e8a24**; repository baseline current main **8239678f71eefc79fe5d5741364f3dfa043016cf** | Latest web deploy is not the inspected main head. Service being LIVE alone does not certify data freshness, source identity, SEF flag or frontend version |
+| Render services / logs | Only a Trendplus web service appears in accessible Render service list; no separate dedicated Trendplus worker entry. Logs on 2026-10-16 22:12 UTC repeatedly show `ExecuteReader on access-import-queue` at ~2-second intervals | Polling is not evidence that an import or analytics refresh successfully completed; integrated worker registration/runtime cannot be inferred from a service list |
+| Neon `trendplus` database, production branch | Read-only aggregate SQL: `AccessImportCursors` row count **0**; latest `DataImportBatches.Id` **49**, last status `completed` **#42** on **2026-08-12 10:32 UTC**, attempts #43–#49 **failed** with `IsIncremental=false`, `OverwriteExisting=true`; latest `prodaja_zaglavlje.datum_prodaje` **2026-08-05 00:00 UTC** | Safe incremental delta is NOT proven and current-sales recommendations are stale. Cross-database source identity and rollback acceptance in STAB17/PR #163 are prerequisites. Do not convert these reads into an unauthorized import |
+| Neon separate `analytics` database | Read-only `SELECT count(*), max("FinishedAtUtc") FROM analytics_refresh_runs` returned **zero** rows and NULL latest refresh time | The queried analytics refresh-run table provides **no recorded durable refresh proof**. This is not by itself proof that every other analytical process never ran; reconcile the deployed runtime source/worker path in STAB16 |
+
+Reproducible read-only query shapes:
+
+```sql
+SELECT (SELECT count(*) FROM "AccessImportCursors") AS cursors,
+       (SELECT max("Id") FROM "DataImportBatches") AS latest_batch_id,
+       (SELECT max("Id") FROM "DataImportBatches" WHERE lower("Status")='completed') AS last_completed_batch_id,
+       (SELECT max(datum_prodaje) FROM prodaja_zaglavlje) AS last_sale_date;
+SELECT "Id", "Status", "StartedAtUtc", "CompletedAtUtc", "IsIncremental", "OverwriteExisting"
+FROM "DataImportBatches" ORDER BY "Id" DESC LIMIT 8;
+SELECT count(*) AS refresh_run_count, max("FinishedAtUtc") AS last_refresh_finished
+FROM analytics_refresh_runs;
+```
+
+Important: the Neon default **neondb** is an empty incidental database and is NOT the `trendplus` business database. Both named `trendplus` and `analytics` databases were queried explicitly. No customer row contents were accessed.
+
+**Adversarial commercial change:** ranking above is still a cross-opportunity *subjective product* comparison, but **source recovery STAB16/STAB17 and PR #163 source-lineage safety outrank all discretionary engineering for any recurring 'this week' promise**. A bounded **historical as-of diagnostic** can still be offered when its exact scope reconciles; a recurring current-state decision subscription should be withheld. STAB16 remains BLOCKED and STAB17 WAITING per owning queues, not silently promoted. Escalation is to an authorized owner-approved provider/source-reconciliation workflow, not this docs-only PR.
