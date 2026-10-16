@@ -4,13 +4,14 @@ Date: 2026-10-16
 Agent/tool: Codex
 Delivery target: main
 Working branch / PR: codex/p0-unos-robe-20261016; draft PR #184 https://github.com/ivanjovicic/Trendplus/pull/184
-Main commit SHA: not delivered; the supplied merge gate is unmet
-Main verification: refreshed origin/main is ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c and does not contain this implementation
-Evidence state: PR #184 remains open; implementation head 84cec623e7b01b6cc1758f0fcd5a405538a7a1a8 has green remote CI
-Ownership transfer: none
+Main commit SHA: pending
+Main verification: pending; refreshed origin/main is 0e40de54e710993c58d645b81817123e6e9c000c and does not yet contain PR #184
+Evidence state: pending final review, current-main integration validation and delivery
+Ownership transfer: Ivan Jovicic (PR author ivanjovicic) -> Codex (current task); authority is the user's 2026-10-16 instruction to finish and merge PR #184; recorded before source-path edits in this run log
 Claim reservation: direct-user-request/not applicable
 
 ## What was done
+- Ownership transfer recorded before any source-path edits: the user explicitly reassigned PR #184 completion in this task. The existing PR branch/worktree `codex/p0-unos-robe-20261016` is preserved; no branch was deleted or rewritten. Review/revalidation will use current `origin/main` `0e40de54e710993c58d645b81817123e6e9c000c` and the PR's exact head.
 - Implementation commits on the branch: `3e510f080017d244db13c7ac6b7fbe671b9b64d1` (receipt workflow) and `315ac6f37e727cdb44ac2abcb14c650ddf334d16` (stale search/accessibility regression fix), based on refreshed `origin/main` `ef85f93e2bbea1bdc214cf7b7b6eaba09a56d16c`.
 - Replaced console-only receipt handling with an admin-protected, server-side receipt transaction that stores a receipt header, immutable line snapshots, and one linked `Ulaz robe` movement per line.
 - Existing article stock is incremented atomically while its row is locked. New articles get PostgreSQL-generated IDs; receipt prices remain line history and do not overwrite article master prices.
