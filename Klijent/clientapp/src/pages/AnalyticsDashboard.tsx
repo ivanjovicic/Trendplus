@@ -74,6 +74,12 @@ import {
   recommendationReasonLabel,
 } from "../utils/canonicalRecommendationSemantics";
 import {
+  averageCalendarDayWindow,
+  buildCalendarDayGrid,
+  getCompleteCalendarDayWindow,
+  sumCalendarDayWindow,
+} from "../utils/calendarDayCoverage";
+import {
   fmtNumber,
   fmtPct,
   fmtRsd,
@@ -130,9 +136,9 @@ const HELP: Record<string, string> = {
   velocity: ANALYTICS_VELOCITY_HELP,
   oos: "Rasprodat: artikal nije dostupan za prodaju.",
   pareto: "Koliko mali broj artikala pravi većinu prometa.",
-  ma7: "7-dnevni pokretni prosek smanjuje dnevni šum i prikazuje realniji trend. Prikazuje se tek kada postoji svih 7 dnevnih tačaka.",
-  ma30: "30-dnevni pokretni prosek prikazuje se tek kada postoji svih 30 dnevnih tačaka; kraća istorija ostaje nedostupna umesto da se prikaže kao lažni MA30.",
-  momentum: "Poredi poslednjih 7 dana sa prethodnih 7 dana.",
+  ma7: "Prosek poslednjih 7 kalendarskih dana. Nedostajući dan nije nula; potreban je dnevni red ili pouzdana potvrda dana bez prodaje.",
+  ma30: "Prosek poslednjih 30 kalendarskih dana. Nedostajući dan nije nula; potreban je dnevni red ili pouzdana potvrda dana bez prodaje.",
+  momentum: "Poredi poslednjih 7 kalendarskih dana sa prethodnih 7 kada svaki dan ima prodajni red ili pouzdanu potvrdu bez prodaje.",
   elasticnost: "Pokazuje koliko se tražnja menja kada se menja cena.",
   completeness: "Da li artikli imaju ključna polja (naziv, šifra, kategorija).",
   freshness: "Vreme od poslednjeg osvežavanja podataka.",
@@ -147,36 +153,39 @@ export type DashboardMovingStats = {
   elasticity: number | null;
 };
 
-export function calculateDashboardMovingStats(dailySales: DailySale[]): DashboardMovingStats {
-  if (dailySales.length === 0) {
+export function calculateDashboardMovingStats(
+  dailySales: DailySale[],
+  fromDate: string,
+  toDate: string,
+): DashboardMovingStats {
+  const calendarDays = buildCalendarDayGrid(dailySales, fromDate, toDate);
+  if (calendarDays.length === 0) {
     return { ma7Revenue: null, ma30Revenue: null, momentumPct: null, elasticity: null };
   }
 
-  const sorted = [...dailySales].sort((a, b) => a.date.localeCompare(b.date));
-  const last7 = sorted.slice(-7);
-  const last30 = sorted.slice(-30);
-  const prev7 = sorted.slice(-14, -7);
-  const sumRevenue = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalRevenue, 0);
-  const sumUnits = (items: DailySale[]) => items.reduce((acc, item) => acc + item.totalUnits, 0);
-  const lastRevenue = sumRevenue(last7);
-  const last30Revenue = sumRevenue(last30);
-  const prevRevenue = sumRevenue(prev7);
-  const lastUnits = sumUnits(last7);
-  const prevUnits = sumUnits(prev7);
-  const ma7Revenue = last7.length >= 7 ? lastRevenue / 7 : null;
-  const ma30Revenue = last30.length >= 30 ? last30Revenue / 30 : null;
-  // Week-over-week signals need two complete 7-row windows; a short previous window inflates them.
-  const hasTwoFullWeeks = last7.length === 7 && prev7.length === 7;
-  const momentumPct = hasTwoFullWeeks && prevRevenue > 0
+  const lastIndex = calendarDays.length - 1;
+  const last7 = getCompleteCalendarDayWindow(calendarDays, lastIndex - 6, 7);
+  const last30 = getCompleteCalendarDayWindow(calendarDays, lastIndex - 29, 30);
+  const prev7 = getCompleteCalendarDayWindow(calendarDays, lastIndex - 13, 7);
+  const lastRevenue = sumCalendarDayWindow(last7, "totalRevenue");
+  const prevRevenue = sumCalendarDayWindow(prev7, "totalRevenue");
+  const lastUnits = sumCalendarDayWindow(last7, "totalUnits");
+  const prevUnits = sumCalendarDayWindow(prev7, "totalUnits");
+  const ma7Revenue = averageCalendarDayWindow(last7, "totalRevenue");
+  const ma30Revenue = averageCalendarDayWindow(last30, "totalRevenue");
+  const hasTwoFullWeeks = last7 != null && prev7 != null;
+  const momentumPct = hasTwoFullWeeks && prevRevenue != null && lastRevenue != null && prevRevenue > 0
     ? Number((((lastRevenue - prevRevenue) / prevRevenue) * 100).toFixed(2))
     : null;
-  const lastPrice = lastUnits > 0 ? lastRevenue / lastUnits : null;
-  const prevPrice = prevUnits > 0 ? prevRevenue / prevUnits : null;
-  const qtyChange = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : null;
+  const lastPrice = lastUnits != null && lastRevenue != null && lastUnits > 0 ? lastRevenue / lastUnits : null;
+  const prevPrice = prevUnits != null && prevRevenue != null && prevUnits > 0 ? prevRevenue / prevUnits : null;
+  const qtyChange = prevUnits != null && lastUnits != null && prevUnits > 0
+    ? (lastUnits - prevUnits) / prevUnits
+    : null;
   const priceChange = prevPrice != null && prevPrice > 0 && lastPrice != null
     ? (lastPrice - prevPrice) / prevPrice
     : null;
-  const elasticity = hasTwoFullWeeks && prevUnits > 0 && priceChange != null && priceChange !== 0 && qtyChange != null
+  const elasticity = hasTwoFullWeeks && prevUnits != null && prevUnits > 0 && priceChange != null && priceChange !== 0 && qtyChange != null
     ? Number((qtyChange / priceChange).toFixed(2))
     : null;
 
@@ -1011,7 +1020,10 @@ export default function AnalyticsDashboard() {
     setSelectedSupplier("");
   }, [selectedSupplier, supplierId, supplierOptions]);
 
-  const movingStats = useMemo(() => calculateDashboardMovingStats(dailySales), [dailySales]);
+  const movingStats = useMemo(
+    () => calculateDashboardMovingStats(dailySales, fromDate, toDate),
+    [dailySales, fromDate, toDate],
+  );
 
   const derived = useMemo(() => {
     const { availablePct, redZonePct } = projectInventoryRatios(inventory ?? {});

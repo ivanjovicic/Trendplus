@@ -15,7 +15,7 @@ import { formatPercent } from "../../components/inventory/inventoryUtils";
 
 describe("analytics indicator regression guards", () => {
   it("keeps moving averages unavailable when there is no daily history", () => {
-    expect(calculateDashboardMovingStats([])).toMatchObject({
+    expect(calculateDashboardMovingStats([], "2026-08-01", "2026-08-30")).toMatchObject({
       ma7Revenue: null,
       ma30Revenue: null,
       momentumPct: null,
@@ -31,8 +31,8 @@ describe("analytics indicator regression guards", () => {
       totalUnits: 2,
     }));
 
-    expect(calculateDashboardMovingStats(rows).ma7Revenue).toBeNull();
-    expect(calculateDashboardMovingStats(rows).ma30Revenue).toBeNull();
+    expect(calculateDashboardMovingStats(rows, "2026-08-01", "2026-08-06").ma7Revenue).toBeNull();
+    expect(calculateDashboardMovingStats(rows, "2026-08-01", "2026-08-06").ma30Revenue).toBeNull();
   });
 
   it("keeps week-over-week momentum and elasticity unknown without two full 7-row windows", () => {
@@ -43,14 +43,14 @@ describe("analytics indicator regression guards", () => {
       totalUnits: 2 + (index % 3),
     }));
 
-    expect(calculateDashboardMovingStats(rows)).toMatchObject({ momentumPct: null, elasticity: null });
+    expect(calculateDashboardMovingStats(rows, "2026-08-01", "2026-08-10")).toMatchObject({ momentumPct: null, elasticity: null });
     const full = Array.from({ length: 14 }, (_, index) => ({
       date: `2026-08-${String(index + 1).padStart(2, "0")}`,
       totalRevenue: index < 7 ? 1000 : 1100,
       transactionCount: 1,
       totalUnits: 2,
     }));
-    expect(calculateDashboardMovingStats(full).momentumPct).toBe(10);
+    expect(calculateDashboardMovingStats(full, "2026-08-01", "2026-08-14").momentumPct).toBe(10);
   });
 
   it("does not turn a missing detail summary into zero per-day KPIs", () => {
