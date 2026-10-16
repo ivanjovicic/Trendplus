@@ -27,20 +27,20 @@ public static class GoodsReceiptMovementProjector
         {
             var pending = new List<PendingMovement>();
             await using (var read = new NpgsqlCommand("""
-                SELECT l."Id", d."Id", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
+                SELECT l."Id" AS "ReceiptLineId", d."Id" AS "MovementSourceId", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
                        d."StaraProdajnaCena", d."NovaProdajnaCena", d."Iznos", d."IDObjekat",
                        d."DobavljacId", d."BrojRacuna", d."KorisnikIme", d."DataOrigin", false AS "IsReversal"
                 FROM "GoodsReceiptLines" l
                 JOIN "DnevnikPromena" d ON d."GoodsReceiptLineId" = l."Id"
                 WHERE l."AnalyticsProjectedAtUtc" IS NULL
                 UNION ALL
-                SELECT l."Id", d."Id", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
+                SELECT l."Id" AS "ReceiptLineId", d."Id" AS "MovementSourceId", d."TipPromene", d."Datum", d."ArtikalId", d."Kolicina",
                        d."StaraProdajnaCena", d."NovaProdajnaCena", d."Iznos", d."IDObjekat",
                        d."DobavljacId", d."BrojRacuna", d."KorisnikIme", d."DataOrigin", true AS "IsReversal"
                 FROM "GoodsReceiptLines" l
                 JOIN "DnevnikPromena" d ON d."Id" = l."ReversalMovementId"
                 WHERE l."ReversalMovementId" IS NOT NULL AND l."ReversalProjectedAtUtc" IS NULL
-                ORDER BY "Id", "IsReversal"
+                ORDER BY "ReceiptLineId", "IsReversal"
                 LIMIT @batchSize
                 """, connection))
             {
