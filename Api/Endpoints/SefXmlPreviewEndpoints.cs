@@ -122,7 +122,7 @@ public static class SefXmlPreviewEndpoints
             : DefaultMaxUploadBytes;
     }
 
-    private static bool IsPilotEnabled(IConfiguration configuration) =>
+    internal static bool IsPilotEnabled(IConfiguration configuration) =>
         configuration.GetValue<bool?>("SefXmlPilot:Enabled") == true;
 
     private static IResult? ApplyUploadLimit(HttpContext httpContext)

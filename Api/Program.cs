@@ -507,6 +507,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IDataSourceMappingPreviewService, DataSourceMappingPreviewService>();
     builder.Services.AddSingleton<ISefXmlInvoiceParser>(_ =>
         new SefXmlInvoiceParser(SefXmlPreviewEndpoints.GetParseLimits(builder.Configuration)));
+    builder.Services.AddScoped<ISefXmlCatalogReader, EfSefXmlCatalogReader>();
+    builder.Services.AddSingleton<SefXmlReconciliationService>();
 
     // Embedding service for AI-powered image search
     var embeddingServiceSettings = EmbeddingServiceRuntimePolicy.Resolve(
@@ -1224,6 +1226,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapDataSourceDiscoveryEndpoints();
     app.MapDataSourceMappingPreviewEndpoints();
     app.MapSefXmlPreviewEndpoints();
+    app.MapSefXmlReconciliationEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();
