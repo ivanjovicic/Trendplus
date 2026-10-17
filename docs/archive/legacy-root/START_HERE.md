@@ -3,16 +3,16 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
 
 
-## ?? **Najbrûi na?in (ONE-LINE):**
+## ?? **Najbr≈æi na?in (ONE-LINE):**
 
 ```powershell
 .\run-sql-auto.ps1
 ```
 
-**Zaöto ovaj?**
+**Za≈°to ovaj?**
 - ? Automatski pronalazi PostgreSQL
 - ? Radi bez PATH-a
-- ? Jasne poruke o greökama
+- ? Jasne poruke o gre≈°kama
 - ? Prikazuje slede?e korake
 
 ---
@@ -35,7 +35,7 @@
 .\run-sql-auto.ps1
 ```
 
-**äta ?e kreirati:**
+**≈†ta ?e kreirati:**
 - ? 15 sample artikala (Nike, Adidas, Puma, itd.)
 - ? 10 artikala sa veli?inama i bojama
 - ? 5 test prodaja (DEMO-001 do DEMO-005)
@@ -50,7 +50,7 @@ dotnet build
 dotnet run
 ```
 
-**Vaûno**: Mora `dotnet build` da u?ita nove izmene!
+**Va≈æno**: Mora `dotnet build` da u?ita nove izmene!
 
 ### 3?? **Sa?ekaj workers**
 
@@ -133,7 +133,7 @@ Pokreni kao postgres user:
 & $psqlPath -U postgres -d $DB -f "..."
 ```
 
-### ? Backend joö pokazuje 500 error
+### ? Backend jo≈° pokazuje 500 error
 
 **Problem**: Backend nije restartovan sa novim kodom
 
@@ -145,11 +145,11 @@ dotnet build
 dotnet run
 ```
 
-### ? Frontend prazan (nema greöke)
+### ? Frontend prazan (nema gre≈°ke)
 
-**Problem**: Workers joö nisu procesirali
+**Problem**: Workers jo≈° nisu procesirali
 
-**Fix**: Sa?ekaj joö 30-60 sekundi
+**Fix**: Sa?ekaj jo≈° 30-60 sekundi
 
 ---
 
@@ -161,7 +161,7 @@ dotnet run
 | `run-sql-simple.ps1` | Jednostavna verzija (zahteva PATH) |
 | `setup-manual.ps1` | Sa detaljnim proverama |
 | `005_CreateArtikliAndTestData.sql` | SQL skripta |
-| `ONE_LINE_FIX.md` | Najbrûi vodi? |
+| `ONE_LINE_FIX.md` | Najbr≈æi vodi? |
 | `QUICK_FIX_README.md` | Detaljna dokumentacija |
 | `HITNA_POMOC.md` | Troubleshooting guide |
 

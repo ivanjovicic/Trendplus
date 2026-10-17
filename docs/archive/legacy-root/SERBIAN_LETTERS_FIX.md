@@ -1,15 +1,15 @@
-# UPUTSTVO ZA REäAVANJE PROBLEMA SA SRPSKIM SLOVIMA
+# UPUTSTVO ZA RE≈†AVANJE PROBLEMA SA SRPSKIM SLOVIMA
 
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
 
 
 ## Problem
-Vidite `?` znake umesto srpskih slova (?, ?, ö, û, ?) na stranici.
+Vidite `?` znake umesto srpskih slova (?, ?, ≈°, ≈æ, ?) na stranici.
 
 ## Uzrok
-Browser cache - stari build fajlovi su keöirani u memoriji browsera.
+Browser cache - stari build fajlovi su ke≈°irani u memoriji browsera.
 
-## Reöenje
+## Re≈°enje
 
 ### Opcija 1: Hard Refresh (Preporu?eno)
 1. Otvorite aplikaciju u browseru
@@ -43,18 +43,18 @@ Browser cache - stari build fajlovi su keöirani u memoriji browsera.
 Nakon bilo koje od opcija, otvorite stranicu i proverite:
 - ? "Broj ra?una" (ne "Broj ra?una")
 - ? "Dobavlja?" (ne "Dobavlja?")
-- ? "Pretraûite" (ne "Pretra?ite")
+- ? "Pretra≈æite" (ne "Pretra?ite")
 
 ## Tehni?ki detalji
 - Build fajlovi sada koriste **esbuild minifier** koji ?uva UTF-8 karaktere
 - Source fajlovi su UTF-8 encoded
-- Verification: `npm run build` generiöe pravilne UTF-8 fajlove
+- Verification: `npm run build` generi≈°e pravilne UTF-8 fajlove
 
 ## Ako problem i dalje postoji
-Kontaktirajte podröku ili pokrenite:
+Kontaktirajte podr≈°ku ili pokrenite:
 ```powershell
 cd C:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp
-node -e "const fs = require('fs'); const content = fs.readFileSync('./dist/assets/index-D61RbFAL.js', 'utf8'); console.log(content.includes('Greöka') ? '? Build je OK' : '? Rebuild needed');"
+node -e "const fs = require('fs'); const content = fs.readFileSync('./dist/assets/index-D61RbFAL.js', 'utf8'); console.log(content.includes('Gre≈°ka') ? '? Build je OK' : '? Rebuild needed');"
 ```
 
-Ako kaûe "? Build je OK", problem je 100% browser cache.
+Ako ka≈æe "? Build je OK", problem je 100% browser cache.

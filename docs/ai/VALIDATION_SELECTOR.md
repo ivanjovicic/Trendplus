@@ -57,6 +57,8 @@ node scripts/check-planning-architecture.mjs --self-test
 node scripts/check-planning-architecture.mjs
 node scripts/check-analytics-execution-plan.mjs --self-test
 node scripts/check-analytics-execution-plan.mjs
+node scripts/check-doc-links.mjs --self-test
+node scripts/check-doc-links.mjs
 ```
 
 These four pairs are what `.github/workflows/planning-governance.yml` runs.

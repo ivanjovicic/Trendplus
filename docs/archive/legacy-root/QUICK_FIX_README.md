@@ -3,7 +3,7 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
 
 
-## ? **3 na?ina da rešite problem:**
+## ? **3 na?ina da reÅ¡ite problem:**
 
 ---
 
@@ -30,9 +30,9 @@ dotnet run
 .\run-sql-auto.ps1
 ```
 
-**Šta radi**:
+**Å ta radi**:
 - ? Automatski pronalazi PostgreSQL na sistemu
-- ? Traži u common lokacijama (Program Files, itd.)
+- ? TraÅ¾i u common lokacijama (Program Files, itd.)
 - ? Pita vas za path ako ne na?e
 - ? Pokre?e SQL skriptu
 - ? Prikazuje slede?e korake
@@ -47,12 +47,12 @@ dotnet run
 .\run-sql-simple.ps1
 ```
 
-**Ako dobijete grešku**:
-- Promenite `$DB` varijablu u skripti na ime vaše baze
+**Ako dobijete greÅ¡ku**:
+- Promenite `$DB` varijablu u skripti na ime vaÅ¡e baze
 
 ---
 
-## ?? **Šta SQL skripta radi:**
+## ?? **Å ta SQL skripta radi:**
 
 `005_CreateArtikliAndTestData.sql` ?e:
 
@@ -79,11 +79,11 @@ dotnet run
 
 ## ?? **Troubleshooting:**
 
-### Greška: "psql: command not found"
+### GreÅ¡ka: "psql: command not found"
 
 **Uzrok**: PostgreSQL nije u PATH-u
 
-**Rešenje**:
+**ReÅ¡enje**:
 ```powershell
 # Add to PATH (Windows)
 $env:Path += ";C:\Program Files\PostgreSQL\16\bin"
@@ -93,36 +93,36 @@ cd "C:\Program Files\PostgreSQL\16\bin"
 .\psql -d trendplus -f "C:\path\to\Database\Migrations\005_CreateArtikliAndTestData.sql"
 ```
 
-### Greška: "database 'trendplus' does not exist"
+### GreÅ¡ka: "database 'trendplus' does not exist"
 
 **Uzrok**: Baza ne postoji ili se zove druga?ije
 
-**Rešenje 1**: Kreiraj bazu
+**ReÅ¡enje 1**: Kreiraj bazu
 ```powershell
 createdb trendplus
 ```
 
-**Rešenje 2**: Promeni ime baze u skripti
+**ReÅ¡enje 2**: Promeni ime baze u skripti
 ```powershell
 # Edit run-sql-simple.ps1
 $DB = "your_actual_db_name"
 ```
 
-### Greška: "permission denied"
+### GreÅ¡ka: "permission denied"
 
 **Uzrok**: Nemate permissions na bazi
 
-**Rešenje**:
+**ReÅ¡enje**:
 ```sql
 -- Run as postgres superuser
 psql -U postgres -d trendplus -f Database/Migrations/005_CreateArtikliAndTestData.sql
 ```
 
-### Greška: "relation 'Artikli' does not exist"
+### GreÅ¡ka: "relation 'Artikli' does not exist"
 
 **Uzrok**: Glavne tabele nisu kreirane
 
-**Rešenje**: Pokrenite EF migrations prvo
+**ReÅ¡enje**: Pokrenite EF migrations prvo
 ```powershell
 cd Infrastructure
 dotnet ef database update --context TrendplusDbContext

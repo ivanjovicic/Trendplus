@@ -14,7 +14,7 @@ To je sve! Script ?e:
 2. ? Pokrenuti SQL skriptu
 3. ? Restart backend
 4. ? Sa?ekajte 90 sekundi
-5. ?? Osveûite browser: `http://localhost:8080/analytics`
+5. ?? Osve≈æite browser: `http://localhost:8080/analytics`
 
 ---
 
@@ -22,7 +22,7 @@ To je sve! Script ?e:
 
 ### Problem: "Database 'trendplus' does not exist"
 
-**Reöenje**: Promenite ime baze
+**Re≈°enje**: Promenite ime baze
 
 1. Edit `run-sql-auto.ps1`
 2. Promenite liniju: `$DB = "trendplus"` ? `$DB = "vase_ime_baze"`
@@ -30,7 +30,7 @@ To je sve! Script ?e:
 
 ### Problem: "Cannot find psql.exe"
 
-**Reöenje**: Script ?e vas pitati za path
+**Re≈°enje**: Script ?e vas pitati za path
 
 Unesite punu putanju, npr:
 ```
@@ -39,7 +39,7 @@ C:\Program Files\PostgreSQL\16\bin\psql.exe
 
 ### Problem: "Permission denied"
 
-**Reöenje**: Edit skriptu i dodaj `-U postgres`:
+**Re≈°enje**: Edit skriptu i dodaj `-U postgres`:
 
 ```powershell
 & $psqlPath -U postgres -d $DB -f "Database/Migrations/005_CreateArtikliAndTestData.sql"
@@ -47,7 +47,7 @@ C:\Program Files\PostgreSQL\16\bin\psql.exe
 
 ---
 
-## ?? äta ?e se kreirati:
+## ?? ≈†ta ?e se kreirati:
 
 - ? 15 sample artikala (ako ih nema)
 - ? 10 artikala sa veli?inama i bojama

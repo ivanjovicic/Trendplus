@@ -120,4 +120,4 @@ GROUP BY "IsProcessed";
 ## ?? Kompletna dokumentacija:
 
 - `TEST_DATA_README.md` - Detaljno uputstvo
-- `ANALYTICS_VELICINA_BOJA_FEATURE.md` - Feature dokumentacija
+- `docs/archive/legacy-root/ANALYTICS_VELICINA_BOJA_FEATURE.md` (historical) - Feature dokumentacija

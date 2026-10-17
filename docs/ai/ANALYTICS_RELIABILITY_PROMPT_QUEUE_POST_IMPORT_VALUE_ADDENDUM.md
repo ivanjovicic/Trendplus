@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
+Current READY prompt: RQ686 (P2 worker runtime policy fail-closed, registered 2026-10-17; parallel-safe with RQ680). Previously: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -3972,6 +3972,19 @@ No batch is queued whose only source copy is on the web instance local filesyste
 
 Owner confirmation of production storage configuration.
 
+### Owner check (exact, documented 2026-10-17)
+
+We cannot read the Render dashboard from the repository, so this stays WAITING until Ivan checks:
+
+1. Render -> service `trendplus-api` -> Environment: the value of `Storage__Provider`. Missing or empty means `local` (`FileStorageServiceCollectionExtensions.ResolveProviderName`).
+2. The same key on service `trendplus-worker`. Web and worker must use the same provider.
+3. If the value is `s3`: `Storage__Bucket` is set on both services (same bucket), and `Storage__Endpoint` / `Storage__Region` / `Storage__AccessKey` / `Storage__SecretKey` exist as needed. Report only whether they exist; never paste secret values.
+4. `AccessImport__WorkerEnabled` and `AccessImport__RegisterWorkerInWebProcess` on both services. `render.yaml` declares web `false`/`false` and worker `true`/`false`; dashboard values override it.
+
+Outcome: if both services use `s3` with the same bucket, the guard is defensive only and RQ679 can become READY at P2. If either side is `local` or missing, a queued upload cannot reach the worker and RQ679 stays P1.
+
+Safe default until the check is done: treat production as `local`. Do not rely on the queue for production Access imports (STAB17 also keeps production import not approved). The guard must reject queuing with a Serbian 503 rather than create a batch the worker cannot read.
+
 ## RQ680 - Apply the canonical retail population and half-open period to every Dashboard sales endpoint
 
 Status: IN_PROGRESS
@@ -4376,3 +4389,52 @@ PR + green required CI, real merge, exact SHA.
 - Required post-merge backend checks on merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb`: push run `38910285905` SUCCESS and workflow-dispatch run `38911196844` SUCCESS.
 - Focused local tests, Release build, static conventions and governance checks are recorded in `.ai/runs/2026-10-16-RQ685-evidence.md`.
 - Post-close dependency cascade at recovery base `12d096e610bc7359ef0b299ab26a41882e704c95` scanned all 13 active RQ queue/addendum files and the active SQL analytics queue: no other prompt names or depends on RQ685. RQ682 remains the Current READY pointer; RQ683 is independently READY; RQ680 remains IN_PROGRESS, and RQ681 still depends on RQ680. No promotion or Zero-READY conclusion applies.
+
+## RQ686 - Fail closed when the worker runtime policy cannot be evaluated
+
+Status: READY
+Priority: P2
+Type: backend worker runtime safety
+Feature family: worker-runtime-policy
+Parallel-safe: yes (`Infrastructure/Services/WorkerRuntimePolicyService.cs` and its tests only; disjoint from RQ680 `CachedAnalyticsEndpoints`)
+Owner: unassigned
+Ready after: none (owner delegated the decision on 2026-10-17; follows the RQ685 owner note)
+Commit suggestion: `fix(workers): fail closed when worker runtime policy cannot be evaluated`
+
+### Problem
+
+`WorkerRuntimePolicyService.GetPolicyAsync` returns `CreateAllowFallback` (`CanRunNow: true`, not stopped) for any exception, not only for the missing `WorkerRuntimeSettings` table. A manually stopped or unscheduled worker can therefore run whenever the settings read fails for an unknown reason (connection loss, timeout, EF configuration error). This turns an unknown state into a positive one. `RequestManualRunAsync` also returns a fresh token on any error, so the caller reports a manual run that was never persisted.
+
+### Evidence
+
+- `Infrastructure/Services/WorkerRuntimePolicyService.cs`: `GetPolicyAsync` generic `catch` logs "Falling back to allow" and returns `CreateAllowFallback`; `RequestManualRunAsync` generic `catch` returns `DateTime.UtcNow.ToString("O")`; `TryConsumeManualRunRequestAsync` already returns `false` (fail-closed).
+- Every hosted worker gates on `GetPolicyAsync`: `AccessImportBackgroundWorker`, `DecisionPulseSchedulerWorker`, `AnalyticsAggregationWorker`, `AnalyticsDataQualityHealthWorker`, `DocumentGenerationWorker`, `InventoryReportSchedulerWorker`, `NightlyAnalyticsRefreshWorker`, `ObservedInventoryDailyCaptureWorker`, `OpenTrainingModelTrainingWorker`, `OutboxProcessorWorker`, `SyncWorker`, `TrendIngestionWorker`.
+- RQ685 diagnostics: the generic `catch` turned `ManyServiceProvidersCreatedWarning` into "allow", which hid the real failure.
+
+### Scope
+
+1. In `GetPolicyAsync`, an unknown exception (not a missing relation, not cancellation of the caller token) returns a paused snapshot: `CanRunNow: false` with a clear `PauseReason` (for example `policy-unavailable`).
+2. Log it at Error with the worker name, deduplicated per worker until the next successful read (same pattern as `ReportMissingSchema`), so it is visible in logs and alerts without flooding.
+3. Keep the explicit missing-table path unchanged: `IsMissingRelationException` -> `ReportMissingSchema` plus the current bootstrap behaviour, so fresh databases still self-heal through `WorkerRuntimeSettingsSchemaGuard.EnsureSchemaAsync`.
+4. In `RequestManualRunAsync`, do not return a fabricated token on an unknown error. Surface the failure according to the existing endpoint contract (check callers first) so the admin UI shows an error.
+5. `OperationCanceledException` for the caller token still propagates and is not logged as a policy failure.
+
+### Must not change
+
+Missing-schema bootstrap, stop/schedule semantics when the read succeeds, `TryConsumeManualRunRequestAsync`, worker loop delays, production DbContext configuration.
+
+### Tests
+
+Unit tests with a throwing scope/DbContext: an unknown exception gives `CanRunNow: false` and one Error log; 42P01 behaves as before; cancellation propagates; `RequestManualRunAsync` with an unknown error returns no token. The existing PostgreSQL `WorkerRuntimePolicyServiceTests` stay green. Local runs only in the Testing environment against an isolated Docker PostgreSQL (never 127.0.0.1:5434, never Development).
+
+### Acceptance
+
+No unknown error path yields `CanRunNow: true` or a fake manual-run token, the missing-table path still bootstraps, and backend plus governance CI are green.
+
+### Dependencies
+
+none
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.

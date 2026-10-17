@@ -5,7 +5,7 @@
 
 ## ?? Opis
 
-Dodata je funkcionalnost za tracking najduûih i najsporijih akcija u aplikaciji sa real-time dashboard-om.
+Dodata je funkcionalnost za tracking najdu≈æih i najsporijih akcija u aplikaciji sa real-time dashboard-om.
 
 ## ? Funkcionalnosti
 
@@ -14,13 +14,13 @@ Dodata je funkcionalnost za tracking najduûih i najsporijih akcija u aplikaciji 
 - **Real-time dashboard** sa statistikama
 - **Filtriranje** po trajanju, datumu, broju rezultata
 - **Color-coded indikatori** za razli?ite nivoe performansi
-- **Exception tracking** za neuspeöne zahteve
+- **Exception tracking** za neuspe≈°ne zahteve
 
-## ?? äta se prati?
+## ?? ≈†ta se prati?
 
 ### Automatski se loguju:
 - ? Svi zahtevi preko MediatR (Commands & Queries)
-- ? Trajanje izvröenja u milisekundama
+- ? Trajanje izvr≈°enja u milisekundama
 - ? Request data (JSON)
 - ? Response data (JSON)
 - ? Exception poruke (ako ima)
@@ -37,14 +37,14 @@ Dodata je funkcionalnost za tracking najduûih i najsporijih akcija u aplikaciji 
 ### Summary Cards:
 1. **Total Requests** - Ukupan broj pra?enih zahteva
 2. **Slow Requests** - Broj zahteva sporijih od 1s
-3. **Failed Requests** - Broj neuspeönih zahteva
+3. **Failed Requests** - Broj neuspe≈°nih zahteva
 4. **Average Duration** - Prose?no trajanje
-5. **Max Duration** - Najduûe trajanje
+5. **Max Duration** - Najdu≈æe trajanje
 
 ### Tabela Najsporijih Zahteva:
 - Sortirana po trajanju (najsporiji prvi)
 - Prikazuje vreme, naziv zahteva, trajanje, status
-- Exception details za neuspeöne zahteve
+- Exception details za neuspe≈°ne zahteve
 
 ## ?? Pristup
 
@@ -64,7 +64,7 @@ public class PerformanceLoggingBehavior<TRequest, TResponse>
 ```
 
 **Funkcionalnost:**
-- Meri vreme izvröenja svakog zahteva
+- Meri vreme izvr≈°enja svakog zahteva
 - Loguje u Serilog (console/file) uvek
 - Loguje u bazu samo ako:
   - Trajanje > 1000ms ILI
@@ -179,8 +179,8 @@ http://localhost:5173/performance
 
 ### Color Coding:
 - ?? **Zeleno** (< 1s): Brzo
-- ?? **éuto** (1-3s): Sporo
-- ?? **Narandûasto** (3-5s): Vrlo sporo
+- ?? **≈Ωuto** (1-3s): Sporo
+- ?? **Narand≈æasto** (3-5s): Vrlo sporo
 - ?? **Crveno** (> 5s): Kriti?no sporo
 
 ### Filteri:
@@ -204,10 +204,10 @@ http://localhost:5173/performance
 - Proveri exception messages
 
 ### 4. Performance trend analysis
-- Prati prose?no vreme izvröenja
+- Prati prose?no vreme izvr≈°enja
 - Identifikuj degradacije performansi
 
-## ?? Vaûne Napomene
+## ?? Va≈æne Napomene
 
 ### Performance Impact:
 - **Minimalan overhead** (<5ms per request)
@@ -215,7 +215,7 @@ http://localhost:5173/performance
 - Async operacije - ne blokira glavni thread
 
 ### Data Retention:
-- **Preporuka**: Arhiviraj/obriöi stare logove periodi?no
+- **Preporuka**: Arhiviraj/obri≈°i stare logove periodi?no
 - Dodaj scheduled job za cleanup (npr. >30 dana)
 
 ### Monitoring:
@@ -228,7 +228,7 @@ http://localhost:5173/performance
 ### Cleanup starih logova:
 
 ```sql
--- Obriöi logove starije od 30 dana
+-- Obri≈°i logove starije od 30 dana
 DELETE FROM "PerformanceLogs" 
 WHERE "Timestamp" < NOW() - INTERVAL '30 days';
 

@@ -1,4 +1,4 @@
-﻿# Decision Timeline Slice-5 Hardening â€” DT08
+﻿# Decision Timeline Slice-5 Hardening — DT08
 
 Date: 2026-08-17
 Repo: `ivanjovicic/Trendplus`
@@ -20,7 +20,7 @@ Timeline export and Product Decision Center labels stay in parity with the DT05 
 | Missing measurement time on attempted success | Funnel does not count measured success |
 | Full lifecycle | Stage timestamps stay distinct; `successRate=1` only over measured |
 | Empty / error CSV | No `successRate=0` or `0%` KPI table |
-| Export/UI parity | Export copies Slice-2 event/gap codes; UI labels map `action_rejected` â‰  executed and `outcome_not_measured` â‰  measured |
+| Export/UI parity | Export copies Slice-2 event/gap codes; UI labels map `action_rejected` ≠ executed and `outcome_not_measured` ≠ measured |
 
 ## Out of scope
 

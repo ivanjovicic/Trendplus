@@ -3,7 +3,7 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
 
 
-## ? Najbrûi fix (3 komande):
+## ? Najbr≈æi fix (3 komande):
 
 ```powershell
 # 1. Zaustavi backend (Ctrl+C u terminalu gde radi)
@@ -12,7 +12,7 @@
 cd Trendplus2
 dotnet run
 
-# 3. Sa?ekaj 90 sekundi, pa osveûi browser (Ctrl+Shift+R)
+# 3. Sa?ekaj 90 sekundi, pa osve≈æi browser (Ctrl+Shift+R)
 ```
 
 ---
@@ -77,7 +77,7 @@ dotnet build
 dotnet run
 ```
 
-**VAéNO**: Mora `dotnet build` da bi u?itao nove izmene!
+**VA≈ΩNO**: Mora `dotnet build` da bi u?itao nove izmene!
 
 ### 5?? Sa?ekaj workers
 
@@ -93,7 +93,7 @@ dotnet run
 ```
 1. Idi na: http://localhost:8080/analytics
 2. Hard refresh: Ctrl + Shift + R
-3. Proveri da nema viöe 500 greöke
+3. Proveri da nema vi≈°e 500 gre≈°ke
 ```
 
 ---
@@ -102,7 +102,7 @@ dotnet run
 
 ### Backend logs:
 
-Trebao bi da vidiö:
+Trebao bi da vidi≈°:
 ```
 [Info] GetTopProducts query: Top=10
 [Info] Sales count after filters: 5
@@ -127,13 +127,13 @@ GROUP BY "IsProcessed";
 
 ---
 
-## ? Joö uvek ne radi?
+## ? Jo≈° uvek ne radi?
 
 ### Problem: Backend nije u?itao nove izmene
 
-**Simptom**: I dalje 500 greöka nakon restarta
+**Simptom**: I dalje 500 gre≈°ka nakon restarta
 
-**Reöenje**:
+**Re≈°enje**:
 ```powershell
 cd Trendplus2
 dotnet clean
@@ -145,18 +145,18 @@ dotnet run
 
 **Simptom**: "relation SalesFacts does not exist"
 
-**Reöenje**: Pokreni SQL skripte (korak 2 iznad)
+**Re≈°enje**: Pokreni SQL skripte (korak 2 iznad)
 
 ### Problem: Nema podataka
 
-**Simptom**: Dashboard prazan ali nema greöke
+**Simptom**: Dashboard prazan ali nema gre≈°ke
 
-**Reöenje**:
+**Re≈°enje**:
 ```powershell
 # Proveri outbox
 psql -d trendplus -c "SELECT * FROM \"OutboxMessages\" WHERE \"Payload\"::jsonb->>'BrojRacuna' LIKE 'DEMO-%';"
 
-# Ako nije processed, sa?ekaj joö 30s
+# Ako nije processed, sa?ekaj jo≈° 30s
 ```
 
 ---
@@ -172,12 +172,12 @@ psql -d trendplus -c "SELECT * FROM \"OutboxMessages\" WHERE \"Payload\"::jsonb-
 
 ## ?? Hitna pomo?:
 
-Ako niöta ne radi, proveri:
+Ako ni≈°ta ne radi, proveri:
 
-1. **Backend logs** - Da li je backend uopöte pokrenut?
-2. **Database connection** - Da li backend moûe da se poveûe na obe baze?
-3. **Browser console** (F12) - Koja je ta?na greöka?
+1. **Backend logs** - Da li je backend uop≈°te pokrenut?
+2. **Database connection** - Da li backend mo≈æe da se pove≈æe na obe baze?
+3. **Browser console** (F12) - Koja je ta?na gre≈°ka?
 
 ---
 
-**TL;DR**: **Restart backend** (`Ctrl+C` pa `dotnet run`)! To je 99% reöenje problema! ??
+**TL;DR**: **Restart backend** (`Ctrl+C` pa `dotnet run`)! To je 99% re≈°enje problema! ??

@@ -1,4 +1,4 @@
-﻿# Worker SLA Evidence Capture â€” OBS09
+﻿# Worker SLA Evidence Capture — OBS09
 
 Date: 2026-08-17
 Repo: `ivanjovicic/Trendplus`
@@ -35,11 +35,11 @@ Exposed as additive `SlaEvidence` on `GET /api/workers/health`. Existing health 
 | `sourceJobId` / `sourceSystem` / `correlationId` | not on health payload | **unknown** (`null`) |
 | `dataQualityStatus` | derived | `unknown` when inventory missing or globally paused; otherwise `partial` because W5/W6/last-success remain unknown |
 
-Empty worker inventory is `inventoryStatus=unknown` with `worker_inventory_missing`, not â€œ0 workers, therefore healthyâ€.
+Empty worker inventory is `inventoryStatus=unknown` with `worker_inventory_missing`, not “0 workers, therefore healthy”.
 
 ## Out of scope
 
 - alerting rules
 - numeric SLA hours
 - per-worker `WorkerRuntimePolicyService` pause on the snapshot
-- inventing queue depth from â€œno jobs observedâ€
+- inventing queue depth from “no jobs observed”
