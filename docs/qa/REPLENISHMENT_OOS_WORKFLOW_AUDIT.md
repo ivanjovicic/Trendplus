@@ -13,7 +13,7 @@ HEAD SHA: `72a1db59edfa332d66f31f2c930ecea69f0824a4`
 - `Klijent/clientapp/src/components/inventory/ActionWorkflowPanel.tsx`
 - `Klijent/clientapp/src/components/inventory/inventoryUtils.ts`
 - `Klijent/clientapp/src/services/analyticsIntelligenceDerived.ts`
-- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- `docs/Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
 - `docs/Analytics/INVENTORY_UX_AUDIT.md`
 
 ## Current Behavior

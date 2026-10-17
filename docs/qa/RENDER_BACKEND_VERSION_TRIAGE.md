@@ -48,7 +48,7 @@ Conclusion:
 
 ## Render Config
 
-Source: [render.yaml](/Users/Ivan/source/repos/Trendplus2/render.yaml)
+Source: [render.yaml](../../render.yaml)
 
 - Service name: `trendplus-api`
 - Branch: `main`
@@ -73,7 +73,7 @@ Conclusion:
 
 ## Backend Route Map In Code
 
-Source: [Program.cs](/Users/Ivan/source/repos/Trendplus2/Api/Program.cs)
+Source: [Program.cs](../../Api/Program.cs)
 
 Confirmed mapped:
 - `app.MapGet("/health", ...)`
@@ -84,7 +84,7 @@ Confirmed mapped:
 
 ## Startup / Prewarm
 
-Source: [AnalyticsCachePrewarmHostedService.cs](/Users/Ivan/source/repos/Trendplus2/Api/Services/Startup/AnalyticsCachePrewarmHostedService.cs)
+Source: [AnalyticsCachePrewarmHostedService.cs](../../Api/Services/Startup/AnalyticsCachePrewarmHostedService.cs)
 
 Current code has startup-safe prewarm behavior:
 - best-effort only

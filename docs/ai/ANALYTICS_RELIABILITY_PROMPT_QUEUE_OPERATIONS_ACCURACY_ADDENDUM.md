@@ -264,7 +264,7 @@ Do not redesign Supplier Decision scoring, weighted-margin formulas, comparable-
 - current sale-line model and migrations
 - `Api/Services/AccessImportService.cs` and POS persistence path
 - RQ373/RQ375-RQ380 evidence
-- `MARGIN_FORENSIC_AUDIT_FINAL.md`
+- `MARGIN_FORENSIC_AUDIT_FINAL.md` (archived 2026-10-17 to `docs/archive/legacy-root/MARGIN_FORENSIC_AUDIT_FINAL.md`)
 
 ### Do
 

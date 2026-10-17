@@ -27,7 +27,7 @@ If the environment cannot prove that it is demo-only, stop and do not run any de
 | Cleanup execute | Exists via `/api/access-import/cleanup/execute` | No by default | Too risky for mixed environments; use only in a dedicated demo environment with backup and explicit approval |
 | Demo environment verification | Exists via `/api/admin/demo-verification` | Yes, with admin access | Returns `demoSafe`, `reasons`, `environment`, `checkedAtUtc`, and `warnings`; use this before any destructive demo reset |
 | Worker/manual refresh control | Exists via worker/admin endpoints | Yes, with admin access | Can trigger refresh and data-quality worker runs after reseed |
-| Pilot readiness and smoke verification | Exists | Yes | Use `/analytics/pilot-readiness` and [ANALYTICS_PILOT_SMOKE_TEST.md](c:/Users/Ivan/source/repos/Trendplus2/docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md) as final proof |
+| Pilot readiness and smoke verification | Exists | Yes | Use `/analytics/pilot-readiness` and [ANALYTICS_PILOT_SMOKE_TEST.md](../qa/ANALYTICS_PILOT_SMOKE_TEST.md) as final proof |
 
 ## Safety Rules
 
@@ -290,7 +290,7 @@ If any critical step is `blocked` or misleadingly `unknown`, stop the demo prep 
 
 ## Phase 5: Run Analytics Smoke Test
 
-Run the checklist in [ANALYTICS_PILOT_SMOKE_TEST.md](c:/Users/Ivan/source/repos/Trendplus2/docs/qa/ANALYTICS_PILOT_SMOKE_TEST.md).
+Run the checklist in [ANALYTICS_PILOT_SMOKE_TEST.md](../qa/ANALYTICS_PILOT_SMOKE_TEST.md).
 
 Minimum required proof:
 

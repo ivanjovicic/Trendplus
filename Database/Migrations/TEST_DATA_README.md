@@ -288,4 +288,4 @@ AND "Payload"::jsonb->>'BrojRacuna' LIKE 'DEMO-%';
 
 - `003_AddVelicinaBojaToArtikli.sql` - Write DB migration
 - `002_AddVelicinaBojaToProductsDim.sql` - Analytics DB migration
-- `ANALYTICS_VELICINA_BOJA_FEATURE.md` - Kompletna dokumentacija
+- `docs/archive/legacy-root/ANALYTICS_VELICINA_BOJA_FEATURE.md` (historical) - Kompletna dokumentacija

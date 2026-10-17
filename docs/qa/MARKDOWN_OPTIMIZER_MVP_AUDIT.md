@@ -5,7 +5,7 @@ HEAD SHA: `8ad00a56ff6feaecea39d84032625c8303163108`
 
 ## Scope Reviewed
 
-- [Retail Analytics KPI Roadmap](../analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md)
+- [Retail Analytics KPI Roadmap](../Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md)
 - `Klijent/clientapp/src/pages/ProductDecisionCenterPage.tsx`
 - `Klijent/clientapp/src/pages/PreNivelacijaPriorityPage.tsx`
 - `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`

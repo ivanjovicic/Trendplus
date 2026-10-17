@@ -1,5 +1,7 @@
 # Trendplus — skrivena vrednost i UX: nezavisni product/UX audit (15.10.2026)
 
+> **Stanje posle isporuke (dopuna 17.10.2026):** nalazi u tabelama i listama ispod opisuju stanje *pre* PR #181/#182. Sada je Puls odluka u glavnoj grupi menija, Pre/Posle nivelacije u „Dodatne analize”, a Početna prikazuje raspon zabeležene Access prodaje (ne „potvrđeni period”). Isporuka je opisana u odeljku o isporuci (§8); trenutni meni je `Klijent/clientapp/src/layout/navConfig.ts`.
+
 **Baza:** `origin/main` `5360b34b`. **Metod:** statička analiza koda i testova (rute, `navConfig.ts`, stranice, komponente, međusobni linkovi). **Ekrani nisu otvarani u browseru** — svaka UX ocena ovde je *nije potvrđeno u browseru*. Development okruženje i lokalna baza nisu korišćeni. Ovo nije merenje produkcije, kupca ni poslovnog ishoda.
 
 **Odnos prema kanonskim dokumentima:** ne otvara DONE stavke (RQ585, RQ659–RQ668, RQ666/667) i ne pravi nove RQ ID-jeve ni READY statuse. Vlasništvo veće stavke ostaje u postojećem queue-u; ovde su samo zavisnosti. Prethodni UX audit (`docs/qa/ANALYTICS_FRONTEND_UX_AUDIT_2026-10-14.md`) pokriva formatiranje/i18n/a11y; ovaj dokument pokriva **povezanost, hijerarhiju i istinitost poruka**.

@@ -169,4 +169,4 @@ All backend changes are compiled and ready.
 ## ?? Related Files:
 - `Database/Migrations/DEBUG_CheckState.sql` - Quick database check script
 - `Database/Migrations/QUICKSTART.md` - Complete setup guide
-- `ANALYTICS_VELICINA_BOJA_FEATURE.md` - Feature documentation
+- `docs/archive/legacy-root/ANALYTICS_VELICINA_BOJA_FEATURE.md` (historical) - Feature documentation

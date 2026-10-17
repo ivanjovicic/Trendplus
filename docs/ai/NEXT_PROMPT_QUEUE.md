@@ -238,8 +238,8 @@ Token budget: low
 
 ### Scope only
 
-- `docs/analytics/PILOT_DATA_REQUIREMENTS.md`
-- `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+- `docs/Analytics/PILOT_DATA_REQUIREMENTS.md`
+- `docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
 - optional small DataQualityPage link/card only if obvious
 
 ### Prompt
@@ -251,8 +251,8 @@ Task:
 Add pilot onboarding and import map docs.
 
 Do:
-1. Create docs/analytics/PILOT_DATA_REQUIREMENTS.md.
-2. Create docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md.
+1. Create docs/Analytics/PILOT_DATA_REQUIREMENTS.md.
+2. Create docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md.
 
 PILOT_DATA_REQUIREMENTS.md:
 - required datasets: products, sales lines, suppliers, stock, cost prices, retail prices
@@ -293,8 +293,8 @@ Acceptance:
 
 - Date: 2026-06-14
 - Changed files:
-  - `docs/analytics/PILOT_DATA_REQUIREMENTS.md`
-  - `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+  - `docs/Analytics/PILOT_DATA_REQUIREMENTS.md`
+  - `docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Audited:
   - `Api/Services/AccessImportService.cs`
@@ -1718,7 +1718,7 @@ Priority: P2
 
 - Date: 2026-06-19
 - Files:
-  - `docs/analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
+  - `docs/Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
   - `git diff --check` - pass
@@ -2044,8 +2044,8 @@ Next step:
 - Date: 2026-06-19
 - Verification HEAD: `c79f50bc87a98962c3da51dcb3e9bb8f30272017`
 - Changed files:
-  - `docs/analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md`
-  - `docs/analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
+  - `docs/Analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md`
+  - `docs/Analytics/ANALYTICS_DECISION_OS_ROADMAP.md`
   - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - Checks:
   - `git diff --check` - not run yet after this doc update
@@ -2472,7 +2472,7 @@ Token budget: low/medium
 
 ### Scope only
 
-- `docs/qa/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/Analytics/ANALYTICS_PRODUCTION_READINESS_CHECKLIST.md`
 - `docs/qa/ANALYTICS_PRODUCTION_READINESS_STATUS.md`
 - `docs/ai/NEXT_PROMPT_QUEUE.md`
 - no feature code

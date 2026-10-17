@@ -1,5 +1,14 @@
 # Trendplus Master Roadmap
 
+## Current state / next (read first, verified 2026-10-17)
+
+This block is the entry point. The dated sections below are kept in date order; older dated "current" sections are historical context. Task status truth stays in each owner-queue header ([protocol](docs/ai/PROMPT_QUEUE_PROTOCOL.md)).
+
+- **P0 Access import:** STAB17 is IN_PROGRESS for repository-local engineering on draft PR #163 only. Production import, backfill and deployment are NOT approved; see the two STAB17 sections directly below. STAB16 stays BLOCKED on provider/release evidence.
+- **Analytics (RQ):** live routing is [Current analytics queue routing - 2026-10-16](#current-analytics-queue-routing--2026-10-16), amended 2026-10-17: READY `RQ686` (P2, worker runtime policy fail-closed); `RQ680` IN_PROGRESS; `RQ681` and `RQ684` WAITING; `RQ682` PARTIAL; `RQ683` and `RQ685` DONE; `RQ679` WAITING on the owner's Render `Storage__Provider` check.
+- **SEF XML pilot:** QDB13 DONE (read-only `/unos-robe`); QDB14 WAITING on owner/operator authorization and an isolated test database.
+- **Still binding:** owner WIP cap <=2; no production writes from queue entries; synthetic CI evidence is not production proof.
+- **Docs hygiene:** [documentation audit 2026-10-17](docs/qa/DOCUMENTATION_AUDIT_2026-10-17.md); legacy root notes are in [docs/archive](docs/archive/README.md).
 
 ## P0 ownership unblock — STAB17 repository engineering only (2026-10-17)
 
@@ -32,7 +41,7 @@ Vlasnik prodavnice prima dobavljacke fakture kroz drzavni SEF i rucno upisuje ro
 
 ## Current analytics queue routing — 2026-10-16
 
-Current RQ READY prompt: `none`. `RQ680` remains IN_PROGRESS (P1, Dashboard sales population/period) under its active owner and `RQ681` remains WAITING on its shared snapshot-builder dependency. `RQ685` is DONE on merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb` after exact-head PR backend/PostgreSQL and governance checks plus two green backend runs on `main` (runs `38910285905` and `38911196844`). `RQ682` is PARTIAL and explicitly released pending durable per-row timestamp-basis authority; `RQ683` is DONE via PR #188 at merge SHA `797f3734bb06688bc3cdff874ea23248436dd4e0`, with exact-head and exact-main Analytics Quality Gates runs `38919858392` and `38920483346` green. P0 STAB16/STAB17 and RQ137/RQ139/RQ140 remain blocked, waiting or partial on deployment/provider/source/owner evidence; this routing note does not authorize production access or data changes.
+Current RQ READY prompt: `RQ686` (registered 2026-10-17 from the RQ685 owner note; P2 worker runtime policy fail-closed, parallel-safe with RQ680). `RQ680` remains IN_PROGRESS (P1, Dashboard sales population/period) under its active owner and `RQ681` remains WAITING on its shared snapshot-builder dependency. `RQ685` is DONE on merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb` after exact-head PR backend/PostgreSQL and governance checks plus two green backend runs on `main` (runs `38910285905` and `38911196844`). `RQ682` is PARTIAL and explicitly released pending durable per-row timestamp-basis authority; `RQ683` is DONE via PR #188 at merge SHA `797f3734bb06688bc3cdff874ea23248436dd4e0`, with exact-head and exact-main Analytics Quality Gates runs `38919858392` and `38920483346` green. P0 STAB16/STAB17 and RQ137/RQ139/RQ140 remain blocked, waiting or partial on deployment/provider/source/owner evidence; this routing note does not authorize production access or data changes.
 
 **Already DONE:** RQ662 store-scope supplier filter, RQ663 daily shift quality, RQ664 fixture browser export and PR #159 browser/CSV hardening, RQ665 EF test-host convention, RQ648 branch audit, RQ683 calendar-day Dashboard/Details windows. Analytics Quality Gates run `38920483346` succeeded on RQ683 implementation SHA `797f3734bb06688bc3cdff874ea23248436dd4e0`. Planning Governance run `38922092579` on recovery base `3ba2e036b054ed84ff4059c1e7fd9845ea9de9f1` exposed the missing canonical route matrix; this repair restores it and reruns the validator. **Remaining old gates not promoted:** RQ448/RQ565 deployed authenticated browser/source parity, STAB16 provider/worker/read-only proof, RQ610 source stock-mutation generation, RQ530/RQ601/RQ602/RQ606 source/owner evidence, RQ531 policy approval, RQ506 snapshot-cost rollout, RQ558/RQ559 mature cohort/size source, PERF16 MT/shared-SaaS fixture. Distinguish synthetic CI evidence from certified production.
 

@@ -647,7 +647,7 @@ Color already has aggregate and cross-screen total checks, but no focused integr
 
 ### Read first
 
-- `docs/ai/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` items 8-10 and follow-up list.
+- `docs/qa/ANALYTICS_TESTS_ADVERSARIAL_AUDIT_2026-10-05.md` items 8-10 and follow-up list.
 - `Api.Tests/OperationsAnalyticsRawFactOracleIntegrationTests.cs`.
 - `Api.Tests/AnalyticsCrossScreenRevenueInvariantIntegrationTests.cs`.
 - `Api.Tests/Fixtures/operations-analytics-all-routes-seed.sql`.

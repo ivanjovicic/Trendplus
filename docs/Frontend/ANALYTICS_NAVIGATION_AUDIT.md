@@ -1,5 +1,8 @@
 # Analytics Navigation Audit
 
+> **HISTORICAL (docs audit 2026-10-17):** June 2026 navigation audit. Current navigation is `Klijent/clientapp/src/layout/navConfig.ts` (guarded by `src/layout/__tests__/navConfig.spec.ts`); the 2026-10-15 change is recorded in `docs/product/TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md` and `docs/ai/ANALYTICS_OWNER_DECISIONS_RQ601_RQ603_2026-10-09.md`.
+
+
 Datum: 2026-06-14  
 Repo: ivanjovicic/Trendplus  
 Scope: analytics route registration, sidebar navigation, analytics landing izlazi i legacy/compatibility signal.

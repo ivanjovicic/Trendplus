@@ -1,6 +1,6 @@
 # Trendplus Validation Selector
 
-Updated: 2026-08-11
+Updated: 2026-10-17
 Repo: `ivanjovicic/Trendplus`
 
 Use this document to choose the smallest executable proof that matches the changed behavior. Validation is selected from the owning layer, changed paths and named failure modes; routine validation choice does not require a user question.
@@ -55,7 +55,13 @@ node scripts/check-prompt-queues.mjs --self-test
 node scripts/check-prompt-queues.mjs
 node scripts/check-planning-architecture.mjs --self-test
 node scripts/check-planning-architecture.mjs
+node scripts/check-analytics-execution-plan.mjs --self-test
+node scripts/check-analytics-execution-plan.mjs
+node scripts/check-doc-links.mjs --self-test
+node scripts/check-doc-links.mjs
 ```
+
+These four pairs are what `.github/workflows/planning-governance.yml` runs.
 
 A historical snapshot banner or typo-only change outside live routing may use the instruction check plus the specifically affected governance validator, with wider checks recorded as skipped and why.
 
@@ -74,6 +80,8 @@ Add the analytics guardrail check when analytics pages, shared analytics helpers
 npm run check:analytics-guardrails
 ```
 
+Add `npm run check:ui-program-gates` (UI ratchets, chart accessibility, theme tokens) when layout, navigation, charts, theme or shared UI components changed; CI runs it together with `npm run test:analytics`.
+
 Add `npm run build` when shared types, imports, routes, build configuration or multiple frontend modules changed. A route smoke test does not replace browser/live evidence when URL refresh, API loading or deployed behavior is part of acceptance.
 
 ## .NET API, application and infrastructure
@@ -88,6 +96,8 @@ dotnet test Trendplus2.Backend.slnf --no-build
 ```
 
 If `--no-build` is invalid because the matching build did not complete, use `dotnet test Trendplus2.Backend.slnf`. Do not treat restore/network failure as a product regression.
+
+PostgreSQL-required tests (`[PostgresRequiredFact]`) run only with Docker/Testcontainers or an isolated test database. A run that returns early without Docker is `not run`, never a pass; such changes need a green exact-head PR backend CI before merge (`AGENTS.md` section 7.1). New DbContext registrations in tests must use the `ManyServiceProvidersCreatedWarning` opt-out (`docs/ai/COMMON_FAILURES_AND_FIXES.md` section 25).
 
 ## Workers, refresh and scheduled jobs
 

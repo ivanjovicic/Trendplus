@@ -1,4 +1,4 @@
-﻿# Recommendation Measurement Statistics Review Surface â€” RL09
+﻿# Recommendation Measurement Statistics Review Surface — RL09
 
 Date: 2026-08-17
 Repo: `ivanjovicic/Trendplus`
@@ -33,8 +33,8 @@ Shared chrome: `AnalyticsTrustHeader`, `AnalyticsErrorState`, `AnalyticsEmptySta
 
 Focused Vitest, non-watch:
 
-- `src/utils/__tests__/recommendationMeasurementStatistics.spec.ts` â€” 6/6
-- `src/components/analytics/__tests__/RecommendationMeasurementStatisticsReview.spec.tsx` â€” 6/6
+- `src/utils/__tests__/recommendationMeasurementStatistics.spec.ts` — 6/6
+- `src/components/analytics/__tests__/RecommendationMeasurementStatisticsReview.spec.tsx` — 6/6
 - existing Analytics Actions page specs still pass with `measurementStatistics` fixtures
 
 ## Out of scope
