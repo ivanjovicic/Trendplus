@@ -4,7 +4,7 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: RQ686 (P2 worker runtime policy fail-closed, registered 2026-10-17; parallel-safe with RQ680). Previously: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
+Current READY prompt: RQ686 (P2, worker runtime policy fail-closed); additional READY: RQ687 (P2, independent Daily Sales supplier-concentration KPI truth). Neither is claimed. RQ680 and STAB17 are IN_PROGRESS (WIP cap <=2): do not claim another task until an active slot is released; verify fresh ownership before choosing. Previously: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
 
 Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
 
@@ -4278,11 +4278,13 @@ Direct user code-review addendum (not a new task claim): `Api/Endpoints/AllEndpo
 
 ## RQ684 - Supplier concentration definition, Serbian diacritics in analytics errors and page-scoped Inventory chart label
 
+**2026-10-17 scope split (current owner truth):** The quantitatively material supplier concentration/80%-coverage calculation is independently owned by **RQ687 READY** below, with its own fixtures and bounded `DailySalesStatsPage.tsx` helper/UI/test paths. Do not claim that calculation through this P3 prompt. RQ684 remains WAITING and retains only the optional Serbian copy/Inventory current-page heading portion after explicit core-operator evidence; do not use its old combined title as an overlapping code reservation.
+
 Status: WAITING
 Priority: P3
 Type: frontend copy / KPI definition
 Feature family: analytics-copy-definitions
-Parallel-safe: yes (DailySalesStatsPage concentration helper, analyticsApi.ts messages, AnalyticsDetails messages, InventoryPriorityPanels heading)
+Parallel-safe: yes for cosmetics only (analyticsApi.ts, AnalyticsDetails messages and InventoryPriorityPanels heading); do NOT touch DailySalesStatsPage concentration code, which is exclusively RQ687 when claimed
 Owner: unassigned
 Ready after: same re-entry rule as RQ670 — a named core-operator observation or explicit owner re-entry for display-only core scope (`docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md`)
 Commit suggestion: `fix(analytics-ui): consistent concentration basis and Serbian error text`
@@ -4438,3 +4440,36 @@ none
 ### Delivery
 
 PR + green required CI, real merge, exact SHA.
+
+
+## RQ687 - Make Daily Sales supplier quantity concentration mathematically consistent and evidence-backed
+
+Status: READY
+Priority: P2
+Type: retail KPI correctness / bounded frontend regression
+Feature family: daily-sales-supplier-concentration-basis
+Parallel-safe: yes with STAB17 and RQ680 **by code-path**; only `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx` supplier-concentration helper/labels and its *new* focused spec. However global active WIP <=2 (STAB17 and RQ680) means do **not** claim until a slot opens.
+Owner: unassigned
+Ready after: owner-directed queue refill 2026-10-17; existing RQ684 P3 remains WAITING for cosmetic content. No external customer, schema or database write dependency.
+Commit suggestion: `fix(daily-sales): use consistent supplier quantity concentration basis`
+
+### Business outcome and failing counterexample
+
+The buyer's decision is **how concentrated sold units are among suppliers**. The current `DailySalesStatsPage.tsx:556-665` obtains suppliers in the backend's **revenue** order, then computes `top3QtySharePct`, `top5QtySharePct`, `cumulativeQtySharePct` and `suppliersTo80Pct` from **quantity** shares without reordering. The dashboard labels `Koncentracija komada po dobavljaču` and `Dobavljača za 80%` (around lines 2582-2629), so its Pareto count can exceed the minimum number needed for 80% of units; the chart visually implies quantities are ranked, although they aren't. The top-3 InfoTip does explicitly say highest **revenue** suppliers; preserve that valid interpretation only if it is clearly labelled as a different metric.
+
+**Failing-first synthetic fixture (no real data needed):** five suppliers with very different unit prices: revenue order A/B/C/D/E, unit quantities A=5, B=5, C=5, D=80, E=5. Total 100 units, all denominators complete. Current code reports `Dobavljača za 80%` as 4 while quantity-based Pareto requires **1** (D). Assert exact values and the relevant UI label. Add counter-control where quantity and revenue orders coincide, and an explicitly named *top revenue suppliers' share of units* metric if retained.
+
+### Required implementation
+
+1. Inspect `resolveAuthoritativeTopSuppliers`, `DailySalesTableResponse`, `topSuppliersOrder` and existing concentration specs. Build the failing fixture before changing implementation. Do not mutate backend order or the actual Daily Sales table column sort.
+2. Pick an unambiguous contract: the **quantity concentration chart** uses descending nonnegative quantity and a deterministic supplier key tie-breaker; top 3, top 5, cumulative and suppliers-to-80% all use exactly that order/denominator. If the existing top-3 secondary KPI intentionally measures quantity of **top-revenue** suppliers, keep it but label the basis explicitly and compute it separately; never mix that value with the quantity Pareto. Preserve signed returns semantics: do not make net-negative quantities positive or manufacture a valid Pareto from invalid/unknown denominator. Fail closed/null when net quantity makes the share undefined.
+3. Protect `Ostali` semantics. Do not treat a truncated top-N list or a reconstructed `Ostali` as an individually identified supplier for minimum supplier count. If complete supplier-grain coverage is absent, show `Nije dostupno` for the count rather than false precision. Preserve current missing-value, over-100%-coverage warnings and chart accessibility.
+4. Do not change unrelated Daily Sales business metrics, backend SQL, CSV, export ordering, cache keys, the caller's data scope or `InfoTip.tsx` (owned by draft PR #163); adjust only the text/tooltip passed into existing components.
+5. Create focused Vitest fixtures for opposite ranks, ties, truncated top-N, `Ostali`, empty/unknown, 0 denominator, negative and signed-return populations, and inconsistent totals. Each displayed percentage must have a proved numerator, denominator and rank basis. Do not invent zero where unavailable.
+
+### Checks, acceptance and delivery
+
+Focused Vitest specs, `npm run test:analytics`, typecheck, build, encoding and analytics guardrails, plus exact-head frontend CI and Planning Governance. If inspection shows the UI *actually and consistently* documents revenue-ranked unit shares, preserve the valid metric and merely clarify the labels with a test instead of changing ranking just to satisfy the audit.
+
+**Acceptance:** Qty-ranked Pareto count for the synthetic 5/5/5/80/5 fixture is 1 only with complete quantity coverage; a separately labelled revenue-top-3 unit share remains 15% if retained; truncated/unknown coverage yields an explicit unknown count. No P0 source/master changes. Commit/review/merge only under a fresh shared claim and after global WIP has capacity.
+
