@@ -4284,7 +4284,7 @@ Status: WAITING
 Priority: P3
 Type: frontend copy / KPI definition
 Feature family: analytics-copy-definitions
-Parallel-safe: yes (DailySalesStatsPage concentration helper, analyticsApi.ts messages, AnalyticsDetails messages, InventoryPriorityPanels heading)
+Parallel-safe: yes for cosmetics only (analyticsApi.ts, AnalyticsDetails messages and InventoryPriorityPanels heading); do NOT touch DailySalesStatsPage concentration code, which is exclusively RQ687 when claimed
 Owner: unassigned
 Ready after: same re-entry rule as RQ670 — a named core-operator observation or explicit owner re-entry for display-only core scope (`docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md`)
 Commit suggestion: `fix(analytics-ui): consistent concentration basis and Serbian error text`
