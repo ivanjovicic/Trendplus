@@ -1784,7 +1784,7 @@ Commit suggestion: fix(import): make recurring Access synchronization incrementa
 - Exclusive paths: `Api/Services/AccessImportService.cs`, `Api/Services/Access/*`, Access import API/options/UI, source-lineage models/migrations, PostgreSQL Access tests, SQL oracle, and this STAB17 evidence.
 - WIP check: RQ680 is the other active independent code/evidence family; this claim is the second allowed active family under the product-value limit.
 - Ownership transfer: `ivanjovicic` / prior PR #163 workspace -> Codex `/root`; authority: user instruction in this thread plus PR #163 owner-directed handoff comment `#6231362263` and PR #191 / main `531a2962`.
-- Claim commit SHA: pending; this reservation must be pushed to `main` before any source edit.
+- Claim commit SHA: `a51be37fc12c67a791c8c33082687d0ff7af238c`; this reservation is pushed to `main` before any source edit.
 
 
 ### Owner-authorized single-agent STAB17 engineering handoff — 2026-10-17
