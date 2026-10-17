@@ -156,7 +156,7 @@ Top Products tabele sada imaju kolone:
 
 ### 1. Pokrenite SQL skripte (obe baze)
 ```bash
-# Write database (VAéNO: koristi "Artikli" sa navodnicima)
+# Write database (VA≈ΩNO: koristi "Artikli" sa navodnicima)
 psql -d trendplus_db -f Database/Migrations/003_AddVelicinaBojaToArtikli.sql
 
 # Analytics database
@@ -210,15 +210,15 @@ LIMIT 10;
 
 ### 4. Proveri frontend
 
-Idi na `http://localhost:8080/analytics` i pogledaj **Top Products** tabele - trebao bi da vidiö kolone za Veli?inu i Boju!
+Idi na `http://localhost:8080/analytics` i pogledaj **Top Products** tabele - trebao bi da vidi≈° kolone za Veli?inu i Boju!
 
-## ?? Vaûne napomene
+## ?? Va≈æne napomene
 
 ### PostgreSQL Case Sensitivity
 
 Ova baza koristi **PascalCase** sa **navodnicima** za imena tabela:
 - ? `"Artikli"` - Ispravno
-- ? `artikli` - Greöka: "relation does not exist"
+- ? `artikli` - Gre≈°ka: "relation does not exist"
 - ? `Artikli` (bez navodnika) - PostgreSQL konvertuje u lowercase
 
 ### Naming Convention
@@ -259,20 +259,20 @@ Razli?ite tabele koriste razli?ite konvencije:
 
 ## ?? Troubleshooting
 
-### Greöka: "relation 'artikli' does not exist"
+### Gre≈°ka: "relation 'artikli' does not exist"
 
 **Uzrok**: SQL skripta koristi lowercase `artikli` umesto `"Artikli"` sa navodnicima.
 
-**Reöenje**: Koristite aûuriranu skriptu koja koristi `"Artikli"` (PascalCase sa navodnicima).
+**Re≈°enje**: Koristite a≈æuriranu skriptu koja koristi `"Artikli"` (PascalCase sa navodnicima).
 
 ### Podaci se ne pojavljuju u analytics
 
 **Provera**:
 1. Da li su kolone dodate u **obe** baze?
 2. Da li je SyncWorker aktivan? (proveri backend logs)
-3. Da li su artikli aûurirani nakon dodavanja kolona? (SyncWorker ?ita samo izmenjene artikle)
+3. Da li su artikli a≈æurirani nakon dodavanja kolona? (SyncWorker ?ita samo izmenjene artikle)
 
-**Reöenje**: Aûuriraj `UpdatedAt` timestamp:
+**Re≈°enje**: A≈æuriraj `UpdatedAt` timestamp:
 ```sql
 UPDATE "Artikli" 
 SET "UpdatedAt" = NOW() 
@@ -283,7 +283,7 @@ WHERE "Velicina" IS NOT NULL OR "Boja" IS NOT NULL;
 
 **Provera**: Da li je frontend rebuild-ovan nakon izmena?
 
-**Reöenje**:
+**Re≈°enje**:
 ```bash
 cd Klijent/clientapp
 npm run build

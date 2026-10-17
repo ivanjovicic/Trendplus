@@ -1,5 +1,7 @@
 # KPI Methodology Audit
 
+> **HISTORICAL SNAPSHOT (docs audit 2026-10-17):** point-in-time audit from 2026-05-26. Its findings predate later RQ work and the PR #181/#182 menu and Home changes; do not treat them as current gaps without re-checking the code. Current sources: `Klijent/clientapp/src/layout/navConfig.ts` (menu), `Klijent/clientapp/src/routes/analyticsRouteDefinitions.ts` (routes), `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md` and `docs/product/TRENDPLUS_HIDDEN_VALUE_UX_AUDIT_2026-10-15.md` (latest audits), owner queues via `MASTER_ROADMAP.md`.
+
 Date: 2026-05-26
 Scope: core analytics screens i durable report prikazi.
 

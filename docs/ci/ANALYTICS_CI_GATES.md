@@ -23,7 +23,7 @@ Ovaj dokument opisuje minimalne CI gate-ove za analytics i frontend guardrails.
 | Frontend build | `cd Klijent/clientapp && npm run build` | Yes | Yes | Yes | Hvata TypeScript/Vite regresije i bundle probleme. |
 | Client dependency audit | `cd Klijent/clientapp && npm ci && npm audit --audit-level=high` | Yes | Yes | Yes | SEC08; koristi committed `package-lock.json` i fail-closed high threshold. |
 | POS UI dependency audit | `cd Trendplus.POS.Ui && npm ci && npm audit --audit-level=high` | Yes | Yes | Yes | SEC08; pokriva odvojeni POS lockfile i ne zavisi od lokalnog cache-a. |
-| Planning governance | `node scripts/check-agent-instructions.mjs`, `check-prompt-queues.mjs`, `check-planning-architecture.mjs`, `check-analytics-execution-plan.mjs` (svaki i sa `--self-test`) | Yes (path-filtered) | Yes (path-filtered) | Yes | `.github/workflows/planning-governance.yml`; okida se samo za AGENTS/roadmap/`docs/ai`/`docs/planning`/`docs/product`/`docs/roadmaps`/`docs/architecture` i navedene status dokumente. |
+| Planning governance | `node scripts/check-agent-instructions.mjs`, `check-prompt-queues.mjs`, `check-planning-architecture.mjs`, `check-analytics-execution-plan.mjs`, `check-doc-links.mjs` (relativni Markdown linkovi van `.ai/runs` i `docs/archive`; svaki i sa `--self-test`) | Yes (path-filtered) | Yes (path-filtered) | Yes | `.github/workflows/planning-governance.yml`; okida se samo za AGENTS/roadmap/`docs/ai`/`docs/planning`/`docs/product`/`docs/roadmaps`/`docs/architecture`, `README.md`, `docs/**/*.md` i navedene status dokumente. |
 | Vercel preview | Vercel integracija | Yes | - | No | Informativno; nije required check. |
 
 ## Workflow reference

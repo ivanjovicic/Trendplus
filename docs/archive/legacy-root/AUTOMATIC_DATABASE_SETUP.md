@@ -3,39 +3,39 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding). Startup migrations now run only through the deferred `DatabaseInitializer` (`Api/Services/Startup/DeferredStartupTasksHostedService.cs`), enabled by `Database:AutoMigrate=true` or the Development environment; demo/test seed claims below are not current behavior.
 
 
-Backend sada **automatski** izvröava sve SQL migracije pri pokretanju!
+Backend sada **automatski** izvr≈°ava sve SQL migracije pri pokretanju!
 
-## ? äta se automatski deöava:
+## ? ≈†ta se automatski de≈°ava:
 
 ### 1. **Trendplus Database (Write DB)**
-- Izvröava EF Core migracije
-- Ako nema Artikala, izvröava: `005_CreateArtikliAndTestData.sql`
+- Izvr≈°ava EF Core migracije
+- Ako nema Artikala, izvr≈°ava: `005_CreateArtikliAndTestData.sql`
   - Kreira 15 test artikala
   - Dodaje Velicina/Boja kolone
   - Kreira 5 DEMO prodaja
   - Kreira OutboxMessages
 
 ### 2. **Analytics Database (Read DB)**
-- Izvröava EF Core migracije
-- Ako nema SalesFacts tabelu, izvröava: `001_CreateSalesFactTables.sql`
-- Ako nema ProductsDim tabelu, izvröava: `002_AddVelicinaBojaToProductsDim.sql`
+- Izvr≈°ava EF Core migracije
+- Ako nema SalesFacts tabelu, izvr≈°ava: `001_CreateSalesFactTables.sql`
+- Ako nema ProductsDim tabelu, izvr≈°ava: `002_AddVelicinaBojaToProductsDim.sql`
 
 ## ?? Kako koristiti:
 
 ### **Lokalna PostgreSQL instalacija:**
 
 ```powershell
-# 1. Kreiraj database-e (ako ih nemaö)
+# 1. Kreiraj database-e (ako ih nema≈°)
 createdb trendplus
 createdb analytics_db
 
-# 2. Aûuriraj appsettings.json
+# 2. A≈æuriraj appsettings.json
 # "ConnectionStrings": {
 #   "DefaultConnection": "Host=localhost;Database=trendplus;Username=postgres;Password=yourpass",
 #   "AnalyticsConnection": "Host=localhost;Database=analytics_db;Username=postgres;Password=yourpass"
 # }
 
-# 3. Pokreni backend - SVE SE DEäAVA AUTOMATSKI!
+# 3. Pokreni backend - SVE SE DE≈†AVA AUTOMATSKI!
 cd Trendplus2
 dotnet run
 ```
@@ -45,20 +45,20 @@ dotnet run
 ```powershell
 # 1. Kreiraj database-e u Neon Console (trendplus i analytics_db)
 
-# 2. Aûuriraj appsettings.json sa Neon connection string-ovima
+# 2. A≈æuriraj appsettings.json sa Neon connection string-ovima
 # "ConnectionStrings": {
 #   "DefaultConnection": "postgresql://user:pass@ep-xxx.neon.tech/trendplus?sslmode=require",
 #   "AnalyticsConnection": "postgresql://user:pass@ep-xxx.neon.tech/analytics_db?sslmode=require"
 # }
 
-# 3. Pokreni backend - SVE SE DEäAVA AUTOMATSKI!
+# 3. Pokreni backend - SVE SE DE≈†AVA AUTOMATSKI!
 cd Trendplus2
 dotnet run
 ```
 
 ## ?? Provera da li radi:
 
-Kada pokreneö `dotnet run`, trebao bi da vidiö logove:
+Kada pokrene≈° `dotnet run`, trebao bi da vidi≈° logove:
 
 ```
 === DATABASE INITIALIZATION START ===
@@ -79,7 +79,7 @@ ProductsDim table not found, creating...
 ## ?? Troubleshooting:
 
 ### Problem: "Database does not exist"
-**Reöenje:** Kreiraj database-e ru?no:
+**Re≈°enje:** Kreiraj database-e ru?no:
 ```bash
 # Lokalno
 createdb trendplus
@@ -90,26 +90,26 @@ createdb analytics_db
 ```
 
 ### Problem: "Connection failed"
-**Reöenje:** Proveri connection string-ove u `appsettings.json`
+**Re≈°enje:** Proveri connection string-ove u `appsettings.json`
 
 ### Problem: "SQL file not found"
-**Reöenje:** SQL fajlovi moraju biti kopirani u output folder.
+**Re≈°enje:** SQL fajlovi moraju biti kopirani u output folder.
 Proverite da li su ozna?eni kao **Copy to Output Directory** u projektu.
 
 ## ?? Benefiti:
 
 ? **Nema ru?nog pokretanja SQL skripti**
 ? **Radi i lokalno i na Neon-u**
-? **Idempotentno** - sigurno je pokrenuti viöe puta
+? **Idempotentno** - sigurno je pokrenuti vi≈°e puta
 ? **Workers automatski procesiraju podatke**
 ? **Analytics dashboard radi odmah**
 
 ## ?? Alternativne metode (ako automatsko ne radi):
 
-Ako iz nekog razloga automatska inicijalizacija ne radi, moûeö koristiti:
+Ako iz nekog razloga automatska inicijalizacija ne radi, mo≈æe≈° koristiti:
 
 1. **PowerShell skripte** (lokalno):
-   - `.\run-sql-simple.ps1` - Brzo izvröavanje
+   - `.\run-sql-simple.ps1` - Brzo izvr≈°avanje
    - `.\setup-manual.ps1` - Sa validacijom
    - `.\fix-analytics.ps1` - Kompletna setup
 

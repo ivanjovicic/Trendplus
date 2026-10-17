@@ -22,6 +22,10 @@ on:
       - 'scripts/check-planning-architecture.mjs'
       - 'scripts/check-analytics-execution-plan.mjs'
       - 'scripts/check-agent-instructions.mjs'
+      - 'scripts/check-doc-links.mjs'
+      - 'scripts/doc-links-baseline.txt'
+      - 'README.md'
+      - 'docs/**/*.md'
       - '.github/workflows/planning-governance.yml'
   push:
     branches: [ main, master ]
@@ -44,6 +48,10 @@ on:
       - 'scripts/check-planning-architecture.mjs'
       - 'scripts/check-analytics-execution-plan.mjs'
       - 'scripts/check-agent-instructions.mjs'
+      - 'scripts/check-doc-links.mjs'
+      - 'scripts/doc-links-baseline.txt'
+      - 'README.md'
+      - 'docs/**/*.md'
       - '.github/workflows/planning-governance.yml'
 
 permissions:
@@ -90,3 +98,9 @@ jobs:
 
       - name: Validate analytics execution plan current truth
         run: node scripts/check-analytics-execution-plan.mjs
+
+      - name: Self-test doc link validator
+        run: node scripts/check-doc-links.mjs --self-test
+
+      - name: Validate relative doc links
+        run: node scripts/check-doc-links.mjs

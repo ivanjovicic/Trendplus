@@ -3,7 +3,7 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
 
 
-## ?? Tri Na?ina da Izvröite SQL na Neon-u
+## ?? Tri Na?ina da Izvr≈°ite SQL na Neon-u
 
 ### **Opcija 1: Kompletna Setup (OBA Database-a) - PREPORU?ENO**
 
@@ -16,10 +16,10 @@ Ova opcija ?e kopirati SVE SQL upite sa instrukcijama za oba database-a.
 
 2. **Otvori Neon Console:**
    - Idi na: https://console.neon.tech
-   
+
 3. **Prati instrukcije u komentarima:**
    - SQL koji si kopirao ima 3 sekcije (A, B, C)
-   - Svaka sekcija kaûe u koji database treba da odeö
+   - Svaka sekcija ka≈æe u koji database treba da ode≈°
    - Section A ? database: `trendplus`
    - Section B ? database: `analytics_db`
    - Section C ? database: `analytics_db`
@@ -55,12 +55,12 @@ Ova opcija ?e kopirati SVE SQL upite sa instrukcijama za oba database-a.
    - Selektuj svoj projekat
    - Klikni **Connection Details**
    - Kopiraj connection string-ove za oba database-a
-   
+
    Primer:
    ```
    # Trendplus DB
    postgresql://alex:abc123@ep-cool-darkness-123456.us-east-2.aws.neon.tech/trendplus?sslmode=require
-   
+
    # Analytics DB
    postgresql://alex:abc123@ep-cool-darkness-123456.us-east-2.aws.neon.tech/analytics_db?sslmode=require
    ```
@@ -70,7 +70,7 @@ Ova opcija ?e kopirati SVE SQL upite sa instrukcijama za oba database-a.
    - Na?i liniju: `$NEON_CONNECTION_STRING = ""`
    - Nalepi svoj connection string izme?u navodnika
 
-3. **Izvröite skriptu:**
+3. **Izvr≈°ite skriptu:**
    ```powershell
    .\run-sql-neon.ps1
    ```
@@ -79,16 +79,16 @@ Ova opcija ?e kopirati SVE SQL upite sa instrukcijama za oba database-a.
 
 ## ??? Struktura Database-a
 
-Trebaö **2 Neon database-a**:
+Treba≈° **2 Neon database-a**:
 
-| Database | äta sadrûi | Migracije |
+| Database | ≈†ta sadr≈æi | Migracije |
 |----------|-----------|-----------|
 | **trendplus** | Write DB (Artikli, Prodaje, Outbox) | `Database/Migrations/005_*.sql` |
 | **analytics_db** | Read DB (SalesFacts, ProductsDim) | `Database/Analytics/001_*.sql`, `002_*.sql` |
 
 ---
 
-## ?? äta SQL Skripte Rade
+## ?? ≈†ta SQL Skripte Rade
 
 ### **Trendplus DB (005_CreateArtikliAndTestData.sql)**
 - ? Dodaje Velicina i Boja kolone u Artikli tabelu
@@ -99,13 +99,13 @@ Trebaö **2 Neon database-a**:
 ### **Analytics DB (001 + 002)**
 - ? Kreira SalesFacts i SalesLineFacts tabele
 - ? Kreira ProductsDim tabelu sa Velicina/Boja
-- ? Dodaje indexe za brûe upite
+- ? Dodaje indexe za br≈æe upite
 
 ---
 
 ## ?? Konfiguracija Backend-a za Neon
 
-Nakon öto izvröiö SQL, aûuriraj `appsettings.json`:
+Nakon ≈°to izvr≈°i≈° SQL, a≈æuriraj `appsettings.json`:
 
 ```json
 {
@@ -135,23 +135,23 @@ http://localhost:8080/analytics
 ## ? Troubleshooting
 
 ### Problem: "psql not found"
-**Reöenje:** Koristi **Opciju 1 ili 2** (copy-paste u Neon SQL Editor) - ne treba ti psql!
+**Re≈°enje:** Koristi **Opciju 1 ili 2** (copy-paste u Neon SQL Editor) - ne treba ti psql!
 
 ### Problem: "Connection failed"
-**Reöenje:** 
+**Re≈°enje:**
 - Proveri connection string
 - Proveri da li database postoji u Neon
 - Proveri whitelist IP adresa u Neon konzoli
 
 ### Problem: "Database does not exist"
-**Reöenje:** Kreiraj database-e u Neon:
+**Re≈°enje:** Kreiraj database-e u Neon:
 1. Idi na https://console.neon.tech
 2. Selektuj projekat
 3. **Databases** tab ? **New Database**
 4. Kreiraj `trendplus` i `analytics_db`
 
 ### Problem: "500 Error na /api/analytics/sales/top-products"
-**Reöenje:** 
+**Re≈°enje:**
 - Proveri da li si pokrenuo **OBE migracije** (trendplus + analytics)
 - Proveri da li postoje podaci: `SELECT COUNT(*) FROM "SalesFacts";`
 - Proveri da li workers rade: ?ekaj 90 sekundi nakon pokretanja backend-a
@@ -165,13 +165,13 @@ http://localhost:8080/analytics
 | `neon-complete-setup.ps1` | **? PREPORU?ENO** - Sve SQL skripte sa instrukcijama |
 | `neon-copy-sql.ps1` | Samo trendplus DB migracija |
 | `neon-copy-analytics.ps1` | Samo analytics DB migracije |
-| `run-sql-neon.ps1` | Izvröite SQL direktno sa psql (ako imaö instaliran) |
+| `run-sql-neon.ps1` | Izvr≈°ite SQL direktno sa psql (ako ima≈° instaliran) |
 | `run-sql-simple.ps1` | Za lokalnu PostgreSQL instalaciju |
 | `setup-manual.ps1` | Puna validacija i step-by-step setup (lokalno) |
 
 ---
 
-## ?? Uspeöno Zavröena Setup
+## ?? Uspe≈°no Zavr≈°ena Setup
 
 ### **Nakon Trendplus DB migracije:**
 ```
@@ -190,5 +190,5 @@ Table exists: ProductsDim
 ### **Nakon pokretanja backend-a (90s):**
 - Otvori http://localhost:8080/analytics
 - Dashboard prikazuje grafove sa prodajama
-- Nema 500 greöaka! ??
+- Nema 500 gre≈°aka! ??
 

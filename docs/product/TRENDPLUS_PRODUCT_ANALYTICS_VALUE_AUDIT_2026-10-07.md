@@ -193,7 +193,7 @@ Gde je matematika sofisticiranija od ulaza: DiD/control (RQ542), elastičnost, M
 | `docs/qa/BACKEND_CI_*_2026-08-1x*.md` (15 fajlova) | HISTORICAL → ARCHIVE | |
 | `docs/ai/NEXT_PROMPT_QUEUE.md` | HISTORICAL (deklarisano) | |
 | `docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md` | **CURRENT; prvobitna tvrdnja INCORRECT** | QDB01–QDB06/QDB09 imaju provider-neutral + SQL Server staging put; QDB07/08 su WAITING. Review registruje residual canonical-ingestion gap kao QDB10. |
-| Root `*.md` (HITNA_POMOC, ONE_LINE_FIX, QUICK_FIX_README, MARGIN_FORENSIC_*, untitled-plan-*.prompt.md…) i root `tmp_*`, `stdout.txt`, `pgdata/` | STALE / LOW VALUE → ARCHIVE | Šum za svakog novog čitaoca. |
+| Root `*.md` (archived 2026-10-17 to `docs/archive/legacy-root/`: HITNA_POMOC, ONE_LINE_FIX, QUICK_FIX_README, MARGIN_FORENSIC_*, untitled-plan-*.prompt.md…) i root `tmp_*`, `stdout.txt`, `pgdata/` | STALE / LOW VALUE → ARCHIVE | Šum za svakog novog čitaoca. |
 
 Ključni nalaz: dokumentacija meri **da li je prompt zatvoren sa dokazom**, ne **da li je vlasnik doneo bolju odluku**. Acceptance kriterijumi su implementacioni (testovi prolaze, SHA na main), nema nijednog product success kriterijuma (RSD, pari, dani zalihe).
 

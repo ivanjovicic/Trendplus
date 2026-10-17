@@ -3,11 +3,11 @@
 > **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding). Startup migrations now run only through the deferred `DatabaseInitializer` (`Api/Services/Startup/DeferredStartupTasksHostedService.cs`), enabled by `Database:AutoMigrate=true` or the Development environment; demo/test seed claims below are not current behavior.
 
 
-## ? äta je novo?
+## ? ≈†ta je novo?
 
-Backend sada **automatski izvröava SVE SQL migracije** pri pokretanju! 
+Backend sada **automatski izvr≈°ava SVE SQL migracije** pri pokretanju!
 
-Nema viöe ru?nog kopiranja SQL-a u Neon ili pokretanja PowerShell skripti!
+Nema vi≈°e ru?nog kopiranja SQL-a u Neon ili pokretanja PowerShell skripti!
 
 ---
 
@@ -20,7 +20,7 @@ Nema viöe ru?nog kopiranja SQL-a u Neon ili pokretanja PowerShell skripti!
 createdb trendplus
 createdb analytics_db
 
-# Pokreni backend - SVE OSTALO SE DEäAVA AUTOMATSKI!
+# Pokreni backend - SVE OSTALO SE DE≈†AVA AUTOMATSKI!
 cd Trendplus2
 dotnet run
 ```
@@ -32,32 +32,32 @@ dotnet run
 # 2. Kreiraj 2 database-a: trendplus i analytics_db
 # 3. Kopiraj connection string-ove
 
-# 4. Aûuriraj appsettings.json
+# 4. A≈æuriraj appsettings.json
 # "ConnectionStrings": {
 #   "DefaultConnection": "postgresql://user:pass@ep-xxx.neon.tech/trendplus?sslmode=require",
 #   "AnalyticsConnection": "postgresql://user:pass@ep-xxx.neon.tech/analytics_db?sslmode=require"
 # }
 
-# 5. Pokreni backend - SVE OSTALO SE DEäAVA AUTOMATSKI!
+# 5. Pokreni backend - SVE OSTALO SE DE≈†AVA AUTOMATSKI!
 cd Trendplus2
 dotnet run
 ```
 
 ---
 
-## ?? äta backend automatski radi?
+## ?? ≈†ta backend automatski radi?
 
 ### **Pri pokretanju:**
 
 1. ? **Primenjuje EF Core migracije**
 2. ? **Proverava da li postoje Artikli**
-   - Ako NE ? Izvröava `005_CreateArtikliAndTestData.sql`
+   - Ako NE ? Izvr≈°ava `005_CreateArtikliAndTestData.sql`
      - Kreira 15 test artikala sa Velicina/Boja
      - Kreira 5 DEMO prodaja
      - Kreira OutboxMessages
 3. ? **Proverava da li postoje Analytics tabele**
-   - Ako NE ? Izvröava `001_CreateSalesFactTables.sql`
-   - Ako NE ? Izvröava `002_AddVelicinaBojaToProductsDim.sql`
+   - Ako NE ? Izvr≈°ava `001_CreateSalesFactTables.sql`
+   - Ako NE ? Izvr≈°ava `002_AddVelicinaBojaToProductsDim.sql`
 4. ? **Workers** po?inju da rade:
    - `SyncWorker` ? Sinhronizuje Artikli ? ProductsDim (svakih 30s)
    - `OutboxProcessorWorker` ? Procesira prodaje ? SalesFacts (svakih 90s)
@@ -66,7 +66,7 @@ dotnet run
 
 - Otvori: http://localhost:8080/analytics
 - Dashboard prikazuje grafove sa podacima
-- **NEMA 500 GREäAKA!** ??
+- **NEMA 500 GRE≈†AKA!** ??
 
 ---
 
@@ -101,7 +101,7 @@ ProductsDim table not found, creating...
 ## ? Troubleshooting
 
 ### Problem: "Database does not exist"
-**Reöenje:**
+**Re≈°enje:**
 ```bash
 # Lokalno
 createdb trendplus
@@ -112,7 +112,7 @@ createdb analytics_db
 ```
 
 ### Problem: "SQL file not found"
-**Reöenje:** SQL fajlovi se automatski kopiraju u output folder zahvaljuju?i:
+**Re≈°enje:** SQL fajlovi se automatski kopiraju u output folder zahvaljuju?i:
 ```xml
 <ItemGroup>
   <None Include="..\Database\Migrations\*.sql" Link="Database\Migrations\%(Filename)%(Extension)">
@@ -124,20 +124,20 @@ createdb analytics_db
 Ako ne radi, pokreni: `dotnet clean && dotnet build`
 
 ### Problem: "Connection failed"
-**Reöenje:** Proveri connection string-ove u `appsettings.json`
+**Re≈°enje:** Proveri connection string-ove u `appsettings.json`
 
 ### Problem: "500 error on /api/analytics/sales/top-products"
-**Reöenje:** ?ekaj 90 sekundi da workers procesiraju podatke!
+**Re≈°enje:** ?ekaj 90 sekundi da workers procesiraju podatke!
 
 ---
 
 ## ?? Alternativne metode (backup):
 
-Ako automatska inicijalizacija ne radi (unlikely), moûeö koristiti:
+Ako automatska inicijalizacija ne radi (unlikely), mo≈æe≈° koristiti:
 
 ### **Lokalno (PostgreSQL instaliran):**
 ```powershell
-.\run-sql-simple.ps1        # Brzo izvröavanje
+.\run-sql-simple.ps1        # Brzo izvr≈°avanje
 .\setup-manual.ps1          # Sa validacijom
 .\fix-analytics.ps1         # Kompletna setup
 ```
@@ -152,11 +152,11 @@ Ako automatska inicijalizacija ne radi (unlikely), moûeö koristiti:
 
 ## ?? Benefiti automatske inicijalizacije:
 
-? **Zero-configuration** - Jednostavno pokreni `dotnet run`  
-? **Idempotentno** - Sigurno je pokrenuti viöe puta  
-? **Radi lokalno i u cloud-u** - Isti kod za oba okruûenja  
-? **Self-healing** - Automatski popravlja nedostaju?e tabele  
-? **Production-ready** - EF migracije + custom SQL seeding  
+? **Zero-configuration** - Jednostavno pokreni `dotnet run`\
+? **Idempotentno** - Sigurno je pokrenuti vi≈°e puta\
+? **Radi lokalno i u cloud-u** - Isti kod za oba okru≈æenja\
+? **Self-healing** - Automatski popravlja nedostaju?e tabele\
+? **Production-ready** - EF migracije + custom SQL seeding\
 
 ---
 
@@ -171,10 +171,10 @@ using (var scope = app.Services.CreateScope())
 }
 ```
 
-### **2. `DatabaseInitializer` izvröava:**
+### **2. `DatabaseInitializer` izvr≈°ava:**
 - EF Core migracije (`context.Database.MigrateAsync()`)
 - Provere da li postoje podaci (`context.Artikli.AnyAsync()`)
-- Izvröavanje SQL fajlova (`ExecuteSqlFileAsync()`)
+- Izvr≈°avanje SQL fajlova (`ExecuteSqlFileAsync()`)
 
 ### **3. SQL fajlovi se kopiraju u output:**
 ```xml
@@ -197,6 +197,6 @@ using (var scope = app.Services.CreateScope())
 
 ---
 
-**Autor:** GitHub Copilot  
-**Datum:** 2026-01-11  
+**Autor:** GitHub Copilot\
+**Datum:** 2026-01-11\
 **Verzija:** 2.0 - Automatic Edition ??
