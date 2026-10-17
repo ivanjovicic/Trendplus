@@ -7,6 +7,7 @@ Working branch / PR: agent/stab17-pr163-engineering -> codex/access-sale-line-id
 Main commit SHA: not delivered (PR #163 remains DRAFT/PARTIAL by policy)
 Main verification: origin/main is intentionally unchanged; final exact-head PR CI is required for the new hardening head before any merge decision
 Evidence state: repository-local hardening in progress; local disposable PostgreSQL is unavailable because Docker did not respond
+Current hardening commit: `bdc4d508` (`fix(access-import): fail closed on uncertified history`); PR #163 remains the delivery transport and is not mergeable.
 Ownership transfer: explicit owner release in merged PR #191; STAB17 is reserved by this run
 Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410ff; pushed claim a51be37fc12c67a791c8c33082687d0ff7af238c; worktree C:\Users\Ivan\.codex\worktrees\stab17-pr163\Trendplus2; branch agent/stab17-pr163-engineering; existing remote PR #163 head fb193a076e47f79870acb84ec134ee1c1fe97a35
 
