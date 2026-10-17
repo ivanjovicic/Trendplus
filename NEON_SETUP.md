@@ -1,5 +1,8 @@
 # ?? NEON DATABASE - Quick Start Guide
 
+> **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
+
+
 ## ?? Tri Na?ina da Izvršite SQL na Neon-u
 
 ### **Opcija 1: Kompletna Setup (OBA Database-a) - PREPORU?ENO**

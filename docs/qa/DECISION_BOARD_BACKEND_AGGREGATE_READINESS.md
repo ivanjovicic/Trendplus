@@ -9,8 +9,8 @@ Q45 checks whether the current Phase 1 Executive Decision Board model is stable 
 
 ## Inputs reviewed
 
-- [Analytics Decision OS Roadmap](../analytics/ANALYTICS_DECISION_OS_ROADMAP.md)
-- [Executive Decision Board Plan](../analytics/EXECUTIVE_DECISION_BOARD_PLAN.md)
+- [Analytics Decision OS Roadmap](../Analytics/ANALYTICS_DECISION_OS_ROADMAP.md)
+- [Executive Decision Board Plan](../Analytics/EXECUTIVE_DECISION_BOARD_PLAN.md)
 - [Executive Decision Board Quality Audit](EXECUTIVE_DECISION_BOARD_QUALITY_AUDIT.md)
 - [ExecutiveDecisionBoardPage.tsx](../../Klijent/clientapp/src/pages/ExecutiveDecisionBoardPage.tsx)
 - [ExecutiveDecisionBoardPage.spec.ts](../../Klijent/clientapp/src/pages/__tests__/ExecutiveDecisionBoardPage.spec.ts)

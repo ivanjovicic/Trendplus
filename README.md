@@ -4,7 +4,7 @@ Trendplus is a retail analytics and decision-support system built on .NET and Po
 
 **Current product status (2026-10-07):** internal pilot / decision-support, **not outcome-proven optimization**. Production freshness and deployed schema/worker evidence are the primary release blockers. The canonical pilot ingestion path is Access-based. The QDB connector program also proves SQL Server discovery, mapping preview and checkpointed application into `SourceSyncAppliedRows` staging, but that is **not yet equivalent to a repeatable SQL Server -> canonical Artikli/Prodaja -> analytics customer onboarding path**.
 
-The primary Analytics menu focuses on eight decision screens: business overview, inventory, supplier sales, footwear type sales, markdown priorities, pre/post markdown, actions and recommendations, and data quality. Pilot readiness, executive/product decision views, supplier scoring, daily/color analysis and reports remain available under the collapsible **Dodatne analize** group. This navigation grouping preserves existing routes and does not claim that any screen is production-certified or business-validated.
+The primary Analytics menu focuses on eight decision screens: business overview, inventory, supplier sales, footwear type sales, markdown priorities, decision pulse (weekly owner digest), actions and recommendations, and data quality. Pre/post markdown, pilot readiness, executive/product decision views, supplier scoring, daily/color analysis and reports remain available under the collapsible **Dodatne analize** group (source of truth: `Klijent/clientapp/src/layout/navConfig.ts`). The home page `/` is the starting workflow: it shows the observed Access sales date range (earliest-latest receipt with lines; not proof that every day/store is complete), the last successful clean import and freshness from `/api/analytics/refresh-status`. This navigation grouping preserves existing routes and does not claim that any screen is production-certified or business-validated.
 
 This README is primarily a developer/ops guide. Product strategy and current business-value evidence live in `docs/product/PRODUCT_VISION.md`, `docs/roadmaps/BUSINESS_ROADMAP.md` and the dated product audit under `docs/product/`.
 
@@ -87,6 +87,14 @@ Approach:
 - The importer pre-scans parent IDs (e.g. `prodaja_zaglavlje`) and either validates or optionally auto-inserts missing parents (`AutoInsertMissingParents` flag) to avoid FK violations during `prodaja_stavke` import.
 - Large tables are streamed using `IAsyncEnumerable<AccessDataRow>` to limit memory and throughput spikes.
 
+Current operational limits and guards (verified against code 2026-10-17):
+- Upload limit for `/api/access-import/run` and `/preview`: 100 MiB by default (`AccessImport:MaxUploadBytes`), with a Serbian 413 message; the limit is shown in the import UI (RQ677). A proxy in front of the host may cap uploads lower.
+- Concurrent starts are serialized with a PostgreSQL transaction advisory lock (`pg_try_advisory_xact_lock` in `AccessImportJobQueue`, RQ673); a running import is detected after reload/other session (RQ672).
+- Batch history returns `503` + `Retry-After` instead of an empty list when the database is slow (RQ674).
+- The admin key is kept only in `sessionStorage` for the tab session (RQ675).
+- Storage: with `Storage:Provider=local` (default) a queued upload exists only on the web instance disk; a separate worker without a shared disk cannot read it (open item RQ679, WAITING on the production `Storage__Provider` value).
+- Production incremental import is not approved: see STAB17 in `docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md` and the P0 section of `MASTER_ROADMAP.md`.
+
 Operational tips:
 - Docker image includes `mdbtools` and config for `odbcinst.ini` — keep image aligned with host distro.
 - If imports fail with ODBC errors, inspect logs for fallback activation (logger warns) and run `mdb-tools` locally to validate the file.
@@ -116,6 +124,7 @@ docker run -e ASPNETCORE_ENVIRONMENT=Production -e PORT=8080 -p 8080:8080 trendp
 Notes:
 - Dockerfile includes `mdbtools` and `unixodbc` so Access import works inside container.
 - Ensure PostgreSQL connection strings point to production DB and that DB migrations have run before enabling workers.
+- Startup migrations run only through the deferred `DatabaseInitializer` (`DeferredStartupTasksHostedService`) when `Database:AutoMigrate=true` or in Development; `Program.cs` does not call `Database.Migrate()` synchronously (guarded by `DatabaseMigrationOwnershipTests`).
 
 —
 
@@ -123,6 +132,7 @@ Notes:
 
 - Build: `dotnet build Api/Api.csproj`
 - Tests: `dotnet test Api.Tests/Api.Tests.csproj`
+- PostgreSQL-required tests (`[PostgresRequiredFact]`) need Docker/Testcontainers; a local run that returns early without Docker is "not run", not a pass. Such changes merge only after green exact-head PR backend CI (`AGENTS.md` section 7.1). CI gates: `docs/ci/ANALYTICS_CI_GATES.md`.
 - Run only importer preview (quick local check): call the API endpoint `POST /api/access-import/preview` with a sample ACCDB path or use the admin UI.
 
 —
@@ -149,10 +159,3 @@ Logs & monitoring:
 ## Contact / Maintainers
 
 - Primary maintainer: Ivan Jovičić — email: ivanjovicic1986@gmail.com
-
-—
-
-If you want, I can also:
-- Add a short `CONTRIBUTING.md` and `SECURITY.md`.
-- Create a markdown snippet explaining how to reproduce import failures locally with `mdbtools`.
-- Commit this README update and push to `main`.

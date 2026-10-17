@@ -1,5 +1,8 @@
 ## Plan: Resolve analytics bootstrap timeouts
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 TL;DR
 - The dashboard bootstrap endpoint (`/api/analytics/cached/dashboard/bootstrap`) composes many expensive snapshot builders. When cache is cold, the server computes multiple heavy DB queries in one request. Client-side failover layer currently times out requests after 25s (production default), so long server work or cache misses lead to client timeouts and the user-facing failure. Likely root causes: missing/old aggregates, cache backend (Redis) unavailable or misconfigured, worker not running, or missing DB indexes causing full scans.
 

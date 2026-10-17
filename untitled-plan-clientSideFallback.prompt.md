@@ -1,3 +1,5 @@
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
 Radiš kao **senior full-stack / frontend infrastructure engineer** na postojećoj aplikaciji.
 
 Treba da implementiraš **production-ready client-side API fallback mehanizam** tako da frontend koristi:

@@ -1,5 +1,8 @@
 # PR3 Engineering Review: Analytics Cost Snapshot Layer
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`.
+
+
 **Review Date:** April 19, 2026  
 **Reviewer:** Senior Engineering Review (Backend/DB)  
 **Status:** 🟢 **APPROVED FOR MERGE AS-IS**

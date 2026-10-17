@@ -14,7 +14,7 @@ Product scope: [analytics-first](docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.m
 
 Canonical product prioritization: [current business progress and decisions](docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md). This is a **priority rule**, not a second queue or an override of shared task claims.
 
-1. Max **two** independent active code/evidence feature-family tasks; complete current P1 correctness (`RQ666`, `RQ667`) before starting opportunistic P3 formatting/lint. External-source operator approvals are separate and never simulated.
+1. Max **two** independent active code/evidence feature-family tasks; complete current P1 correctness (the P1 items named in `MASTER_ROADMAP.md` current routing; `RQ666`/`RQ667` are DONE since 2026-10-15) before starting opportunistic P3 formatting/lint. External-source operator approvals are separate and never simulated.
 2. An agent must state the concrete retailer decision protected or enabled, the source grain, a negative test/counterexample, and the nearest DONE owner. If there is no changed value, no reproducible defect and no owner gate opening, **do not manufacture an RQ task or an audit report**.
 3. Keep the pilot-facing route set small: sales/day, supplier, latest inventory, markdown history/priorities, actions/digest. Do not spend cycles on frozen experimental Insight Studio, OpenTraining, RuntimeScoring, marketplace, speculative forecasts or bulk i18n while product P1/production blockers remain.
 4. Source truth and measured customer usage trump documentation volume. `CI green` ≠ production current; `historical source parity` ≠ cost provenance; `action created` ≠ measured gain. Never record an unauthenticated/synthetic browser rehearsal as deployed evidence.

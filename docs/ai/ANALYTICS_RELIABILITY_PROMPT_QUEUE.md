@@ -6124,8 +6124,8 @@ Revenue is currently described as a sales-line sum and margin contribution as re
 ### Evidence
 
 - `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts` documents revenue as `SUM(prodajna_vrednost_stavke)` and margin contribution as available-cost margin; neither definition is a route-specific net/gross/returns proof.
-- `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md` identifies return quantity as optional input, so absence of return history cannot be silently interpreted as zero returns.
-- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md` lists return/refund impact as a future metric with risks including unlinked refunds and duplicate records.
+- `docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md` identifies return quantity as optional input, so absence of return history cannot be silently interpreted as zero returns.
+- `docs/Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md` lists return/refund impact as a future metric with risks including unlinked refunds and duplicate records.
 - `RQ146` already owns schema and migration failure semantics; this task consumes that work to distinguish missing return/cost evidence from a valid zero.
 
 ### Scope
@@ -6140,8 +6140,8 @@ Revenue is currently described as a sales-line sum and margin contribution as re
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/VALIDATION_SELECTOR.md`
 - `RQ141`, `RQ146`, `RQ147` and `RQ145`
-- `docs/analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
-- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- `docs/Analytics/PILOT_ONBOARDING_IMPORT_MAP.md`
+- `docs/Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
 - current sales, supplier, report and nivelacija queries/DTOs and their nearest tests
 
 ### Do
@@ -6189,7 +6189,7 @@ Trendplus correctly blocks selected sell-through and stock-cover denominators, b
 ### Evidence
 
 - `docs/qa/KPI_METHODOLOGY_CONSISTENCY_REVIEW.md` marks GMROI as a future contract and warns that cost-based and unit-based turnover are not interchangeable.
-- `docs/analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md` confirms denominator guards for stock cover and sell-through, but not a full historical stock/economic valuation basis.
+- `docs/Analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md` confirms denominator guards for stock cover and sell-through, but not a full historical stock/economic valuation basis.
 - `docs/qa/RETAIL_ANALYTICS_COMPETITIVE_GAP_AUDIT_2026-08-12.md` identifies persisted historical inventory as a major foundation gap for average inventory, GMROI, OOS duration, lost sales and forecast validation.
 - Retail inventory products expose reorder parameters such as trailing sales period, forecast period and supplier lead time; Trendplus must expose whether its own inventory economics has the required observed inputs rather than only displaying a recommendation.
 
@@ -6204,8 +6204,8 @@ Trendplus correctly blocks selected sell-through and stock-cover denominators, b
 - `docs/ai/ARCHITECTURE_BOUNDARIES.md`
 - `docs/ai/VALIDATION_SELECTOR.md`
 - `RQ96`, `RQ117`, `RQ119`, `RQ141`, `RQ144`, `RQ147`
-- `docs/analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md`
-- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- `docs/Analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md`
+- `docs/Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
 - inventory snapshot/foundation queries, DTOs, cache policies and nearest tests
 
 ### Do
@@ -8035,7 +8035,7 @@ Inventory alerts, rebalance and size-curve responses expose `GeneratedAtUtc`, bu
 - `docs/ai/PROMPT_QUEUE_PROTOCOL.md`
 - `RQ141`, `RQ145`, `RQ146`, `RQ151`
 - `docs/qa/ANALYTICS_THIRD_CALCULATION_AUDIT_2026-09-06.md`
-- the three inventory snapshot handlers, `InventoryPage.tsx`, `InventorySnapshotContractTests.cs` and `docs/analytics/ANALYTICS_CACHE_POLICY.md`
+- the three inventory snapshot handlers, `InventoryPage.tsx`, `InventorySnapshotContractTests.cs` and `docs/Analytics/ANALYTICS_CACHE_POLICY.md`
 
 ### Do
 

@@ -91,7 +91,7 @@ The recommendation lifecycle, outcome eligibility and measurement-only statistic
 
 - `RL04`, `RL06`, `RL09`, `RL10` and `RL11` keep lifecycle, measured coverage and advisory calibration separate from live confidence mutation, but do not define causal comparability.
 - `RQ140` proves that price pre/post effects must separate price from availability and require a control/comparable cohort; the same rule is required for recommendation-outcome claims.
-- `docs/analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md` already prohibits frontend derivation of realization/calibration from incomplete data, but lacks a cross-family causal comparison gate.
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md` already prohibits frontend derivation of realization/calibration from incomplete data, but lacks a cross-family causal comparison gate.
 
 ### Scope
 
@@ -108,7 +108,7 @@ The recommendation lifecycle, outcome eligibility and measurement-only statistic
 - `RL01`, `RL04`, `RL06`, `RL09`, `RL10`, `RL11`
 - `RQ140`, `RQ141`, `RQ147`, `RQ148`, `RQ149`
 - `docs/Analytics/RECOMMENDATION_OUTCOME_LEARNING_CONTRACT.md`
-- `docs/analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
+- `docs/Analytics/ACTION_IMPACT_LEDGER_PHASE1_SPEC.md`
 
 ### Do
 

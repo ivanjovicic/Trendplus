@@ -1,5 +1,8 @@
 # ?? Image Attribution Implementation Guide
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`.
+
+
 ## Summary
 
 Your image carousel currently lacks **photographer attribution**, which is required for production use with **Unsplash** (appreciated) and **Pexels** (appreciated). This guide shows you how to add proper attribution.

@@ -15,7 +15,7 @@ The goal is to prevent two regressions:
 
 ## Files reviewed
 
-- `docs/analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
+- `docs/Analytics/RETAIL_ANALYTICS_KPI_ROADMAP.md`
 - `docs/Analytics/KPI_METHODOLOGY_AUDIT.md`
 - `docs/Analytics/STOCK_COVER_SELL_THROUGH_AUDIT.md`
 - `Klijent/clientapp/src/utils/analyticsMetricDefinitions.ts`

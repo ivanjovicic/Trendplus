@@ -1,5 +1,8 @@
 ## Plan: Access Import Pending→Running Remediation
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 TL;DR: Find why `DataImportBatches` rows stay `pending` and fix the handoff between the API and the background worker. Primary suspects: (1) no worker host registered or running, (2) runtime worker toggle disabled, (3) ClaimNext SQL filters or missing DB schema, (4) storage/file staging issues. The plan covers diagnostics, quick fixes, and targeted code/config changes.
 
 **Steps**

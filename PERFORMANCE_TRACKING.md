@@ -1,5 +1,8 @@
 # ? Performance Tracking Feature
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`.
+
+
 ## ?? Opis
 
 Dodata je funkcionalnost za tracking najdužih i najsporijih akcija u aplikaciji sa real-time dashboard-om.

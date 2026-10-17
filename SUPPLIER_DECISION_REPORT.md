@@ -1,5 +1,8 @@
 # Supplier Decision Report (Iteracija 1)
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`.
+
+
 ## Cilj
 Omogucen je profesionalni Supplier Decision Report izvoz/print bez uvodjenja novog backend endpoint-a, kroz postojeci dokument API sloj (`/api/documents/generate`, `/api/documents/print-preview`).
 

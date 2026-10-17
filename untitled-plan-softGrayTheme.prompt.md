@@ -1,5 +1,8 @@
 ## Plan: Add Soft-Gray Theme & Apply Globally
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 TL;DR: Add a new `soft-gray` theme to the existing theme system by extending `THEMES` in `ThemeContext.tsx`, ensure `data-theme` selectors and CSS fallback blocks match the theme names, expose the theme in the ThemeSettings UI, and replace remaining hardcoded colors/fallbacks with CSS variables so the new theme affects all screens.
 
 **Steps**

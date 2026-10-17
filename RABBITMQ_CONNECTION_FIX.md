@@ -1,5 +1,8 @@
 # RabbitMQ Connection Failure Fix
 
+> **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding).
+
+
 ## Problem
 
 The application was crashing during startup when RabbitMQ was unavailable with the following error:

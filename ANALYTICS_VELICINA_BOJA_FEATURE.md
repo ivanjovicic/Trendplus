@@ -1,5 +1,8 @@
 # Analytics - Dodavanje Veli?ina i Boja polja
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`.
+
+
 ## ?? Pregled izmena
 
 Dodati su **Veli?ina** i **Boja** atributi cipela u Analytics sistem, koji se prikazuju u Top Products tabelama.

@@ -1,5 +1,8 @@
 # Trendplus: Runtime Scoring and Derived Analytics Backend
 
+> **HISTORICAL (docs audit 2026-10-17):** historical implementation note/review, not maintained. Current behavior is defined by code, tests and `docs/Analytics/`; current priority by `MASTER_ROADMAP.md`. Runtime scoring is frozen scope (`docs/product/ANALYTICS_FIRST_SCOPE_2026-10-14.md`).
+
+
 ## Context
 
 Trendplus is a .NET 8 backend for a footwear retailer. It covers POS transactions, inventory, pricing, and marketplace-driven scoring. I owned the backend: API, CQRS pipeline, PostgreSQL model, workers, scoring engine, and production operations.

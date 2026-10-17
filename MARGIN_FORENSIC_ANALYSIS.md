@@ -1,5 +1,8 @@
 # Forenzička analiza marži — Trendplus2
 
+> **HISTORICAL (docs audit 2026-10-17):** historical forensic report, not a live rule. Current margin/cost rules: `Application/Analytics/AnalyticsMarginPolicy.cs` and `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`.
+
+
 > **Datum:** jun 2025  
 > **Obim:** Kompletna revizija pipeline-a za obračun marže — od Access import-a do frontend prikaza
 

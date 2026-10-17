@@ -1,5 +1,8 @@
 # ?? AUTOMATSKA INICIJALIZACIJA BAZE - FINALNA VERZIJA
 
+> **HISTORICAL (docs audit 2026-10-17):** early-2026 setup/fix note, not maintained; commands, scripts and paths may no longer match the code. Current sources: `README.md` (developer/ops), `docs/ai/AGENT_START_HERE.md` (agents), `docs/ai/ENCODING_AND_TEXT_SAFETY.md` (Serbian text/encoding). Startup migrations now run only through the deferred `DatabaseInitializer` (`Api/Services/Startup/DeferredStartupTasksHostedService.cs`), enabled by `Database:AutoMigrate=true` or the Development environment; demo/test seed claims below are not current behavior.
+
+
 ## ? Šta je novo?
 
 Backend sada **automatski izvršava SVE SQL migracije** pri pokretanju! 

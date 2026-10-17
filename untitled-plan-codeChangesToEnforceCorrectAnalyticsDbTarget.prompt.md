@@ -1,5 +1,8 @@
 ## Plan: Verifikacija i ispravka produkcionog analytics DB targeta
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 TL;DR:
 Prvo dokazati koji DB target koristi Render web proces. Ako runtime target nije Neon `trendplus` baza u kojoj postoje `public.vw_supplier_fullprice_signals` i `public.mv_supplier_decision_score_cache`, popraviti Render secret za `ConnectionStrings__AnalyticsConnection`, redeploy, pa tek onda testirati Scorecard. Ne dirati frontend, worker refresh, SQL view definicije ili supplier UX dok DB target nije potvrdjen.
 

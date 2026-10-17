@@ -29,8 +29,8 @@ It does:
 - current endpoint registration under `Api/Endpoints/*`
 - current routing/navigation under:
   - `Klijent/clientapp/src/App.tsx`
-  - [navConfig.ts](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/layout/navConfig.ts)
-  - [ConfigurationPage.tsx](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/pages/ConfigurationPage.tsx)
+  - [navConfig.ts](../../Klijent/clientapp/src/layout/navConfig.ts)
+  - [ConfigurationPage.tsx](../../Klijent/clientapp/src/pages/ConfigurationPage.tsx)
 
 ## Current Constraint
 
@@ -159,7 +159,7 @@ Required role:
 
 Backend enforcement location:
 
-- endpoint registration handlers in [AllEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AllEndpoints.cs)
+- endpoint registration handlers in [AllEndpoints.cs](../../Api/Endpoints/AllEndpoints.cs)
 - any related admin endpoint wrappers
 - shared refresh authorization helper once introduced
 
@@ -193,7 +193,7 @@ Required role:
 
 Backend enforcement location:
 
-- [CachedAnalyticsEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/CachedAnalyticsEndpoints.cs)
+- [CachedAnalyticsEndpoints.cs](../../Api/Endpoints/CachedAnalyticsEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -231,9 +231,9 @@ Required role:
 
 Backend enforcement location:
 
-- [AccessImportEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AccessImportEndpoints.cs)
-- [AccessImportRestoreEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AccessImportRestoreEndpoints.cs)
-- [AdminConfigEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AdminConfigEndpoints.cs)
+- [AccessImportEndpoints.cs](../../Api/Endpoints/AccessImportEndpoints.cs)
+- [AccessImportRestoreEndpoints.cs](../../Api/Endpoints/AccessImportRestoreEndpoints.cs)
+- [AdminConfigEndpoints.cs](../../Api/Endpoints/AdminConfigEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -271,9 +271,9 @@ Required role:
 
 Backend enforcement location:
 
-- [AllEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AllEndpoints.cs)
-- [WorkerConfigurationEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/WorkerConfigurationEndpoints.cs)
-- [AdminConfigEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AdminConfigEndpoints.cs)
+- [AllEndpoints.cs](../../Api/Endpoints/AllEndpoints.cs)
+- [WorkerConfigurationEndpoints.cs](../../Api/Endpoints/WorkerConfigurationEndpoints.cs)
+- [AdminConfigEndpoints.cs](../../Api/Endpoints/AdminConfigEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -309,9 +309,9 @@ Required role:
 
 Backend enforcement location:
 
-- [AdminBackendRoutingEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AdminBackendRoutingEndpoints.cs)
-- [AdminConfigEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AdminConfigEndpoints.cs)
-- Redis/admin handlers in [AllEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AllEndpoints.cs)
+- [AdminBackendRoutingEndpoints.cs](../../Api/Endpoints/AdminBackendRoutingEndpoints.cs)
+- [AdminConfigEndpoints.cs](../../Api/Endpoints/AdminConfigEndpoints.cs)
+- Redis/admin handlers in [AllEndpoints.cs](../../Api/Endpoints/AllEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -345,7 +345,7 @@ Required role:
 
 Backend enforcement location:
 
-- [AnalyticsActionsEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AnalyticsActionsEndpoints.cs)
+- [AnalyticsActionsEndpoints.cs](../../Api/Endpoints/AnalyticsActionsEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -385,9 +385,9 @@ Required role:
 
 Backend enforcement location:
 
-- [AnalyticsReportsEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/AnalyticsReportsEndpoints.cs)
-- [DocumentEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/DocumentEndpoints.cs)
-- [InventoryEndpoints.cs](c:/Users/Ivan/source/repos/Trendplus2/Api/Endpoints/InventoryEndpoints.cs)
+- [AnalyticsReportsEndpoints.cs](../../Api/Endpoints/AnalyticsReportsEndpoints.cs)
+- [DocumentEndpoints.cs](../../Api/Endpoints/DocumentEndpoints.cs)
+- [InventoryEndpoints.cs](../../Api/Endpoints/InventoryEndpoints.cs)
 
 Frontend visibility rule:
 
@@ -420,7 +420,7 @@ Recommendation:
 
 ### Navigation
 
-Update [navConfig.ts](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/layout/navConfig.ts):
+Update [navConfig.ts](../../Klijent/clientapp/src/layout/navConfig.ts):
 
 - hide `/access-import` for non-admin
 - hide `/admin/common-products` and admin-only repair/config links for non-admin
@@ -429,7 +429,7 @@ Update [navConfig.ts](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/sr
 
 ### Routes
 
-Update [App.tsx](c:/Users/Ivan/source/repos/Trendplus2/Klijent/clientapp/src/App.tsx):
+Update [App.tsx](../../Klijent/clientapp/src/App.tsx):
 
 - add a small route-level guard wrapper for admin routes in Phase 1
 - do not refactor lazy routing structure

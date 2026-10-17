@@ -1,5 +1,8 @@
 # Incremental Access Import - Detailed Implementation Guide
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 ## 1) Scope and constraints
 - Keep existing full import flow as fallback.
 - Add incremental mode per table key used in `AccessImportService`.

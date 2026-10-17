@@ -73,7 +73,7 @@ Earlier 2026-06-19 Q38–Q49 snapshot below is retained as archive context and i
 | Q43 | DONE | `7b24b38` plus `docs/qa/SUPPLIER_CONFIDENCE_CONTRACT_AUDIT.md` | `npm run test -- --run src/pages/__tests__/SupplierDecisionHubPage.spec.tsx src/services/__tests__/supplierDecisionReport.spec.ts` | Supplier ranking still uses internal fallback ordering, but visible confidence remains backend-gated. |
 | Q44 | DONE | `a8602ae` plus `docs/qa/INVENTORY_DECISION_CONTRACT_AUDIT.md` | `npm run test -- --run src/pages/__tests__/InventoryPage.signalActions.spec.ts` | Some inventory widgets still render derived `estimatedValueAmount`; the action-impact contract is fixed, but not every display value. |
 | Q45 | DONE | `c79f50b` plus `docs/qa/DECISION_BOARD_BACKEND_AGGREGATE_READINESS.md` | readiness review docs | Frontend board fan-out was still the active model at the time of the review. |
-| Q46 | DONE | `c79f50b` plus `docs/analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md` | contract design docs | The aggregate contract must preserve nullable impact and section context. |
+| Q46 | DONE | `c79f50b` plus `docs/Analytics/DECISION_BOARD_BACKEND_AGGREGATE_CONTRACT.md` | contract design docs | The aggregate contract must preserve nullable impact and section context. |
 | Q47 | DONE | `3b488f6` plus backend aggregate implementation files | backend/frontend checks from that period | Backend aggregate exists, but the frontend had to be switched to it separately. |
 | Q48 | DONE | ExecutiveDecisionBoard aggregate switch | board specs/guardrails/build | Legacy multi-source helper code may still sit in the file. |
 | Q49 | BLOCKED | No Q49 entry exists in the current queue snapshot | none | The queue jumps from Q48 to Q50. |

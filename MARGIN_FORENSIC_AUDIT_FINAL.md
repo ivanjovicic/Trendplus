@@ -1,5 +1,8 @@
 # Forenzička revizija marži — Finalni izveštaj
 
+> **HISTORICAL (docs audit 2026-10-17):** historical forensic report, not a live rule. Current margin/cost rules: `Application/Analytics/AnalyticsMarginPolicy.cs` and `docs/ai/ANALYTICS_BUSINESS_GLOSSARY.md`.
+
+
 > **Datum:** april 2026  
 > **Tip:** Truth-first forensic audit  
 > **Obim:** Kompletna verifikacija dve prethodne analize + implementacioni plan  

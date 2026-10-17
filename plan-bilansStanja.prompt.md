@@ -1,5 +1,8 @@
 ## Plan: Bilans stanja — Stranica u Analytics meniju
 
+> **HISTORICAL (docs audit 2026-10-17):** historical IDE plan prompt, not a queue prompt; do not claim or execute it. Use the canonical queues via `docs/ai/PROMPT_QUEUE_PROTOCOL.md` and `MASTER_ROADMAP.md`.
+
+
 TL;DR: Napraviti novu stranicu "Bilans stanja" u analytics meniju koja prikazuje bilans zaliha, detaljan popis robe (filtriran/paginisan), KPI zaliha i mogućnosti za štampu/izvoz (CSV/PDF) u skladu sa postojećim izveštajima po izgledu i funkcionalnostima.
 
 **Steps**

@@ -248,3 +248,23 @@
 - Required checks: current post-delivery `origin/main`; complete active queue/addendum scan; blocker matrix with attempted action/result, why no safe split exists and exact unblock event.
 - Usually touched files: canonical queue/roadmap/evidence docs; no product code unless the selected unblock prompt owns it.
 
+## 25. EF `ManyServiceProvidersCreatedWarning` flake in backend tests
+
+- Symptom: Many unrelated backend tests fail in one CI run with `InvalidOperationException ... ManyServiceProvidersCreatedWarning`; a rerun of failed jobs passes. Secondary symptoms appear when a service swallows the exception (for example `relation "WorkerRuntimeSettings" does not exist` after `WorkerRuntimePolicyService` fell back to allow).
+- Detection: Count the error message in the failed run log; the failing test classes change between runs.
+- Root cause: Each test host or per-test `ServiceCollection` creates a new EF internal service provider; after twenty in one process the warning throws in whichever test is next.
+- Correct fix: Use `IgnoreManyServiceProvidersCreatedWarning()` from `Api.Tests/TestDbContextOptionsBuilderExtensions.cs` (or the equivalent `ConfigureWarnings` opt-out) on every test DbContext registration; `TestHostDbContextWarningConventionTests` enforces it (RQ665, RQ685).
+- Wrong fix: Timeout bumps, skips, retries, `UseInternalServiceProvider` across hosts, or changing production DbContext configuration.
+- Required checks: convention tests, affected classes, full backend CI on the PR.
+- Usually touched files: `Api.Tests/*` registrations only.
+
+## 26. Testing Library race: control rendered after the awaited request
+
+- Symptom: A Vitest spec passes alone but fails under the full suite or `--sequence.shuffle` with `Unable to find a label/role ...` right after a `waitFor` on a mocked request.
+- Detection: Repeat the spec with `--sequence.shuffle --sequence.seed=<n>` and in the full suite; the same `getBy*` line fails intermittently.
+- Root cause: The test waits for a request, then synchronously queries a control that renders only after a later state (for example `storeFiltersReady`).
+- Correct fix: `await screen.findBy*` the control (and its option/data) before interacting; keep the assertion unchanged.
+- Wrong fix: Larger timeouts, `it.skip`, fake delays or product-code changes for test timing.
+- Required checks: repeated focused runs (alone, shuffled, full suite) before and after.
+- Usually touched files: the affected `*.spec.tsx` only (example: PR #183, `InventoryPage.queueStatus.spec.tsx`).
+
