@@ -54,6 +54,9 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 - The failures exposed concrete namespace-transition defects: minimal PostgreSQL fixtures omitted `DataImportBatches.SourceNamespace`, the private batch-creation reflection fixture used the old parameter list, collision classification did not recognize the new namespace indexes, and the read-only oracle used an unquoted analytics fact key. The same run also exposed stale expectations that source and target IDs share a value, a forbidden sequence-reset test, and an Access negative-ID sign check.
 - Corrected those fixtures/contracts and retained the production fail-closed namespace rule. The replacement test now proves that an Access source ID equal to a web/POS target ID creates a separate mapped target record, does not overwrite the web/POS record, and does not repair PostgreSQL sequences.
 - Post-correction local proof: `dotnet build Api.Tests/Api.Tests.csproj --no-restore -p:RunAnalyzers=false -v:minimal -nodeReuse:false` -> pass (21 existing warnings, 0 errors); `dotnet test ... --filter "FullyQualifiedName~NegativeEntityIdGuardTests"` -> 8/8 passed, 0 skipped; `git diff --check` -> pass. PostgreSQL coverage remains pending a new exact-head CI because Docker is unavailable locally.
+- Exact-head run `39037183108` on `09b8a66ee30b8d8f67ca9254622f427d065165fe` was inspected and rejected: 2,206 passed, 4 failed, 43 skipped. The three RQ606 failures exposed that one Access transfer row can create two movement roles, while the mixed-population oracle still expected the synthetic table key before normalization.
+- Corrected the transfer identity contract on `b98cc50c`: Dnevnik uniqueness is now namespace + physical table + source row + movement role + deterministic repeated-line ordinal; the importer sets that ordinal for repeated source documents and scopes existing transfer matching to the active namespace. The oracle test now asserts the normalized `saleslines` physical key. The migration SQL drops/recreates the named index so an older four-column index cannot survive silently.
+- Exact-head run `39055724784` on `02e6600d8b6a2b2be37e96ccee7daa50bd47ab97` was also inspected and rejected: 2,207 passed, 3 failed, 43 skipped. Its failures were exactly the above transfer-ordinal and normalized-key defects; no other Access identity failures remained. A fresh exact-head CI for `b98cc50c` is required.
 
 ## Documentation impact
 
@@ -78,3 +81,4 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 ## Next
 
 - Push the correction to existing draft PR #163, inspect its new exact-head CI, then keep STAB17 WAITING/PARTIAL until the authorized source-namespace registration, disposable PostgreSQL migration rehearsal, and production evidence gates are complete.
+- Current correction head: `b98cc50c`; exact-head CI for this SHA is pending.
