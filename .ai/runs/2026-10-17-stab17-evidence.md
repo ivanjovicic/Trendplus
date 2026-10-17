@@ -5,9 +5,9 @@ Agent/tool: Codex
 Delivery target: main through existing draft PR #163
 Working branch / PR: agent/stab17-pr163-engineering -> codex/access-sale-line-identity / #163
 Main commit SHA: not delivered (PR #163 remains DRAFT/PARTIAL by policy)
-Main verification: origin/main is intentionally unchanged; final exact-head PR CI is required for the new hardening head before any merge decision
-Evidence state: repository-local hardening in progress; local disposable PostgreSQL is unavailable because Docker did not respond
-Current hardening commit: `bdc4d508` (`fix(access-import): fail closed on uncertified history`); PR #163 remains the delivery transport and is not mergeable.
+Main verification: origin/main is intentionally unchanged; exact-head PR CI is green on the draft PR head and does not authorize merge
+Evidence state: repository-local hardening validated on exact-head CI; production/operator gates remain open
+Current hardening head: `2185e680154fec5eb4f90e5f6a449c999eaa2c0f` (docs-only evidence follow-up after code `bdc4d508`); PR #163 remains the delivery transport and is not mergeable.
 Ownership transfer: explicit owner release in merged PR #191; STAB17 is reserved by this run
 Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410ff; pushed claim a51be37fc12c67a791c8c33082687d0ff7af238c; worktree C:\Users\Ivan\.codex\worktrees\stab17-pr163\Trendplus2; branch agent/stab17-pr163-engineering; existing remote PR #163 head fb193a076e47f79870acb84ec134ee1c1fe97a35
 
@@ -74,10 +74,13 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 - `git diff --check` -> pass after the hardening patch.
 - `dotnet build Api/Api.csproj -c Release --no-restore -p:RunAnalyzers=false -v:minimal -nodeReuse:false` -> pass, 0 warnings and 0 errors.
 - `node scripts/check-agent-instructions.mjs --self-test`, `node scripts/check-agent-instructions.mjs`, `node scripts/check-prompt-queues.mjs --self-test`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs --self-test`, `node scripts/check-planning-architecture.mjs` -> pass; queue 811, planning 80.
+- Exact-head CI on `2185e680154fec5eb4f90e5f6a449c999eaa2c0f`: Planning Governance run `39069219629` -> success; Analytics Quality Gates run `39069219574` -> success; Analytics Tests & Data Integrity run `39069219620` -> success.
+- Exact-head backend CI: 2,253 total, 2,210 passed, 0 failed, 43 individually classified known skips (13 isolated PostgreSQL-certifiable, 30 legacy superseded, 0 uncovered, 0 new/reason-changed); RQ453 disposable PostgreSQL certification passed 5/5, parity 2/2, inventory 1/1, runtime raw-fact 1/1, six-screen 1/1, OP2 4/4, and integrity contracts with zero skips.
+- Exact-head frontend CI: analytics 167 files/1,305 tests passed; UI regression 3 files/11 tests passed; goods-receipt/storno 3 files/13 tests passed; release build and bundle gates passed.
 
 ## Validation not run
 
-- Disposable PostgreSQL/Testcontainers suite and migration rehearsal -> not run locally. `docker version --format '{{.Server.Version}}'` produced no daemon response in ten seconds, and the focused PostgreSQL test host remained in startup waiting for Docker. This is an environment limitation, not a passing or skipped product test. Exact-head PR CI is required before merge.
+- Disposable PostgreSQL/Testcontainers suite and migration rehearsal -> not run locally. `docker version --format '{{.Server.Version}}'` produced no daemon response in ten seconds, and the focused PostgreSQL test host remained in startup waiting for Docker. This is an environment limitation, not a passing or skipped product test. Exact-head PR CI supplied the disposable PostgreSQL proof; local migration rehearsal remains outstanding.
 - A real Windows Access ODBC file and a real Linux MDBTools file -> not available locally. The source-session contract, ODBC connection-string, predicate-pushdown and MDBTools CSV behavior tests pass; live provider execution remains CI/operator evidence.
 - Production import, production SQL, production migration/backfill, `setval`, deploy -> intentionally not run; not authorized.
 
@@ -111,13 +114,13 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 
 ## Risks
 
-- PR #163 remains draft and cannot be merged until the exact-head PostgreSQL-required CI proves the disposable database scenarios.
+- PR #163 remains draft and cannot be merged despite green exact-head CI because source certification, legacy lineage, bigint rollout, analytics projection and operator/production gates remain open.
 - Existing historical rows without a namespace/source row ID intentionally remain unmatched; routine imports fail closed instead of guessing.
 - The current target ID headroom guard intentionally blocks sales import at fewer than 10,000 IDs remaining; observed production headroom requires the separately approved bigint rollout.
 
 ## Post-close routing recovery
 
-- pending: STAB17 remains `IN_PROGRESS`; no terminal queue transition or successor promotion is authorized before exact-head CI and external production gates.
+- pending: STAB17 remains `IN_PROGRESS`/PARTIAL; exact-head CI is green, but no terminal queue transition or successor promotion is authorized before the external production gates.
 
 ## Next
 
