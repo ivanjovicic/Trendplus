@@ -29,8 +29,9 @@ namespace Infrastructure.Migrations
                     WHERE "DataOrigin" = 'access' AND "SourceNamespace" IS NOT NULL AND "SourceTableKey" IS NOT NULL AND "SourceRowId" IS NOT NULL;
 
                 DROP INDEX IF EXISTS "IX_DnevnikPromena_Access_SourceRow";
+                DROP INDEX IF EXISTS "UX_DnevnikPromena_Access_SourceNamespace_Row";
                 CREATE UNIQUE INDEX IF NOT EXISTS "UX_DnevnikPromena_Access_SourceNamespace_Row"
-                    ON "DnevnikPromena" ("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
+                    ON "DnevnikPromena" ("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId", "TipPromene")
                     WHERE "DataOrigin" = 'access' AND "SourceNamespace" IS NOT NULL AND "SourceTableKey" IS NOT NULL AND "SourceRowId" IS NOT NULL;
 
                 DROP INDEX IF EXISTS ux_prodaja_zaglavlje_access_source_row;

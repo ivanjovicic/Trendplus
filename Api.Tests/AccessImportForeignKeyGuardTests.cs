@@ -1102,12 +1102,12 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal("existing", await ScalarAsync<string>(db, """SELECT "DataOrigin" AS "Value" FROM "SalesFacts" WHERE "SaleId" = 7"""));
         Assert.Equal(imported.Id, await ScalarAsync<int>(db, """
             SELECT "SaleId" AS "Value" FROM "SalesLineFacts"
-            WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'prodajastavke'
+            WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'sales_lines'
             """));
         Assert.Equal(0, await ScalarAsync<long>(db, """
             SELECT COUNT(*)::bigint AS "Value"
             FROM "SalesLineFacts"
-            WHERE "SaleId" = 7 AND "SourceTableKey" = 'prodajastavke'
+            WHERE "SaleId" = 7 AND "SourceTableKey" = 'sales_lines'
             """));
         Assert.Equal(396m, await ScalarAsync<decimal>(db,
             $"SELECT COALESCE(SUM(\"LineTotal\"), 0) AS \"Value\" FROM \"SalesLineFacts\" WHERE \"SaleId\" = {imported.Id}"));
@@ -1141,7 +1141,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         // Negative control: corrupt ONLY the disposable analytics fixture and prove
         // a real receipt reassignment is detected, not hidden by valid grand totals.
         await db.Database.ExecuteSqlRawAsync(
-            """UPDATE "SalesLineFacts" SET "SaleId" = 7 WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'prodajastavke'""");
+            """UPDATE "SalesLineFacts" SET "SaleId" = 7 WHERE "SourceLineId" = 11 AND "SourceTableKey" = 'sales_lines'""");
         Assert.Equal(1, await ScalarAsync<long>(db, independentLineOracle));
     }
 

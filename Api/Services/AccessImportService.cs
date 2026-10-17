@@ -908,6 +908,13 @@ using NpgsqlTypes;
     private static string BuildAccessSourceKey(string sourceNamespace, string sourceTableKey, long sourceRowId)
         => $"{sourceNamespace.Trim().ToLowerInvariant()}:{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}";
 
+    private static string BuildAccessDnevnikSourceKey(
+        string sourceNamespace,
+        string sourceTableKey,
+        long sourceRowId,
+        string tipPromene)
+        => $"{BuildAccessSourceKey(sourceNamespace, sourceTableKey, sourceRowId)}:{Normalize(tipPromene)}";
+
     private string BuildAccessSaleHeaderSourceKey(string sourceTableKey, long sourceRowId)
         => BuildAccessSourceKey(CurrentSourceNamespace(), sourceTableKey, sourceRowId);
 
@@ -5773,7 +5780,11 @@ using NpgsqlTypes;
                      !string.IsNullOrWhiteSpace(candidate.SourceTableKey) &&
                      candidate.SourceRowId.HasValue))
         {
-            var sourceKey = BuildAccessSourceKey(candidate.SourceNamespace!, candidate.SourceTableKey!, candidate.SourceRowId!.Value);
+            var sourceKey = BuildAccessDnevnikSourceKey(
+                candidate.SourceNamespace!,
+                candidate.SourceTableKey!,
+                candidate.SourceRowId!.Value,
+                candidate.TipPromene);
             if (!existingBySource.TryAdd(sourceKey, candidate))
                 throw new InvalidOperationException($"ambiguous_source_identity: multiple DnevnikPromena rows claim source identity '{sourceKey}'.");
         }
@@ -5801,7 +5812,7 @@ using NpgsqlTypes;
                 throw new InvalidOperationException(
                     $"source_row_id_required: table '{table}' contains a DnevnikPromena row without a stable source ID.");
             var sourceId = id.Value;
-            var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
+            var sourceKey = BuildAccessDnevnikSourceKey(CurrentSourceNamespace(), table, sourceId, tip);
             existingBySource.TryGetValue(sourceKey, out var e);
             var targetArticleId = artikalId.HasValue
                 ? ResolveAccessArticleTargetId(articleTargetBySourceRowId, artikalId.Value, table, sourceId)
@@ -6700,7 +6711,9 @@ using NpgsqlTypes;
         var sourceIdentityCounts = new Dictionary<(AccessTransferSourceKey Key, string Direction), int>();
         var existingCompositeKeys = new Dictionary<AccessTransferLegacyKey, int>();
         foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
-            .Where(x => x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz))
+            .Where(x => x.DataOrigin == "access"
+                && x.SourceNamespace == CurrentSourceNamespace()
+                && (x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz)))
         {
             var quantity = Math.Abs(d.Kolicina ?? 0);
             var direction = d.TipPromene == TipPromeneConstants.PrenosIzlaz ? "out" : "in";

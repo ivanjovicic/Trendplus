@@ -986,7 +986,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IDObjekat", "Datum");
 
-                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId", "TipPromene")
+                        .IsUnique()
                         .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
 
                     b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
