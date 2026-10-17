@@ -299,7 +299,7 @@ public sealed class GoodsReceiptPostgresIntegrationTests : IClassFixture<Postgre
         Assert.Equal(1, await operational.Database.SqlQueryRaw<long>("SELECT COUNT(*) AS \"Value\" FROM \"Artikli\"").SingleAsync());
     }
 
-    [PostgresRequiredFact(DisplayName = "Access article ID collision with a web-owned article fails closed without overwriting it")]
+    [PostgresRequiredFact(DisplayName = "Access article source ID collision preserves the web-owned target row")]
     public async Task AccessImport_SourceIdCollisionWithAppArticle_PreservesExistingArticle()
     {
         var databases = await CreateMigratedDatabasesAsync();
@@ -321,14 +321,20 @@ public sealed class GoodsReceiptPostgresIntegrationTests : IClassFixture<Postgre
         await using var transaction = await operational.Database.BeginTransactionAsync();
         var importTask = (Task)method!.Invoke(service, [session, "artikli", true, result, CancellationToken.None])!;
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => importTask);
-        await transaction.RollbackAsync();
+        await importTask;
+        await operational.SaveChangesAsync();
 
-        Assert.Contains("ciljnim artiklom drugog porekla", error.Message, StringComparison.Ordinal);
         var article = await operational.Artikli.AsNoTracking().SingleAsync(x => x.Id == 7);
         Assert.Equal("Web receipt article", article.Naziv);
         Assert.Equal(6, article.Kolicina);
         Assert.Equal("app", article.DataOrigin);
+        var imported = await operational.Artikli.AsNoTracking().SingleAsync(x => x.SourceRowId == 7);
+        Assert.NotEqual(7, imported.Id);
+        Assert.Equal("Imported collision", imported.Naziv);
+        Assert.Equal(7L, imported.SourceRowId);
+        Assert.Equal("synthetic-test-source", imported.SourceNamespace);
+
+        await transaction.RollbackAsync();
     }
 
     [PostgresRequiredFact(DisplayName = "An Access stock snapshot serializes with a receipt so neither quantity update is lost")]
@@ -392,34 +398,11 @@ public sealed class GoodsReceiptPostgresIntegrationTests : IClassFixture<Postgre
         Assert.Equal(6, await verify.Artikli.Where(x => x.Id == 7).Select(x => x.Kolicina).SingleAsync());
     }
 
-    [PostgresRequiredFact(DisplayName = "Access sequence repair advances behind sequences without lowering ahead sequences")]
-    public async Task ResetTrendplusSequences_IsMonotonicAndHandlesImportedArticleIds()
+    [Fact(DisplayName = "Access import does not repair PostgreSQL target sequences")]
+    public void AccessImport_DoesNotRepairTargetSequences()
     {
-        var databases = await CreateMigratedDatabasesAsync();
-        await SeedAsync(databases);
-        await using var operational = CreateOperational(databases.Operational);
-        await using var analytics = CreateAnalytics(databases.Analytics);
-        await operational.Database.ExecuteSqlRawAsync("""
-            INSERT INTO "Artikli" ("Id", "PLU", "Naziv", "Kolicina", "IDObjekat", "UpdatedAt", "DataOrigin")
-            VALUES (7, 'WEB-7', 'Web article', 1, -4, NOW(), 'app')
-            """);
-        var service = new AccessImportService(operational, analytics, NullLogger<AccessImportService>.Instance);
         var repair = typeof(AccessImportService).GetMethod("ResetTrendplusSequencesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(repair);
-
-        await operational.Database.ExecuteSqlRawAsync("""
-            SELECT setval(pg_get_serial_sequence('"Artikli"', 'Id'), 100, true)
-            """);
-        await (Task)repair!.Invoke(service, [CancellationToken.None])!;
-        Assert.Equal(100, await ReadArticleSequenceValueAsync(operational));
-
-        await operational.Database.ExecuteSqlRawAsync("""
-            SELECT setval(pg_get_serial_sequence('"Artikli"', 'Id'), 1, false)
-            """);
-        await (Task)repair.Invoke(service, [CancellationToken.None])!;
-        Assert.Equal(8, await operational.Database.SqlQueryRaw<int>("""
-            SELECT nextval(pg_get_serial_sequence('"Artikli"', 'Id'))::integer AS "Value"
-            """).SingleAsync());
+        Assert.Null(repair);
     }
 
     [PostgresRequiredFact(DisplayName = "Full storno reverses stock once, retains audit, and projects negative movements")]

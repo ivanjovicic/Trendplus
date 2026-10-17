@@ -5222,13 +5222,13 @@ using NpgsqlTypes;
             TrackIncrementalAcceptedRow("artikli", row);
             acceptedRows++;
             var id = INormalized(row, aliasMap.IdAlias);
-            if (!id.HasValue || id.Value <= 0)
+            if (!id.HasValue)
                 throw new InvalidOperationException($"source_row_id_required: table '{table}' contains an article without a stable Access row ID.");
 
             Artikli? e = null;
             var sourceId = id.Value;
             var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
-            if (sourceId > 0 && trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
+            if (trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
             {
                 e = tracked;
                 trackedReuseHits++;
@@ -5665,7 +5665,7 @@ using NpgsqlTypes;
             var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
             var cena = D(row, "cena", "unitprice", "price") ?? 0m;
             var resolvedPurchaseCost = ResolveProdajaLinePurchaseCost(row);
-            if (!id.HasValue || id.Value <= 0)
+            if (!id.HasValue)
                 throw new InvalidOperationException(
                     $"source_row_id_required: table '{table}' row {rowIndex} has no stable Access sale-line ID; legacy content matching is disabled.");
             var sourceTableKey = table;
@@ -5797,7 +5797,7 @@ using NpgsqlTypes;
             var artikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
                             "artikal", "sifra", "sifraartikla", "kodartikla");
 
-            if (!id.HasValue || id.Value <= 0)
+            if (!id.HasValue)
                 throw new InvalidOperationException(
                     $"source_row_id_required: table '{table}' contains a DnevnikPromena row without a stable source ID.");
             var sourceId = id.Value;
@@ -5902,7 +5902,7 @@ using NpgsqlTypes;
             rowIndex++;
             var sourceSaleId = I(row, "iddnevnik", "idprodaja", "saleid", "iddnevnikpromene", "iddnevnikpromena");
             var idArtikal = I(row, "idartikal", "artikalid", "artiklid", "productid");
-            if (!sourceSaleId.HasValue || sourceSaleId.Value <= 0 || !idArtikal.HasValue || idArtikal.Value <= 0)
+            if (!sourceSaleId.HasValue || !idArtikal.HasValue)
                 continue;
             var targetArticleId = ResolveAccessArticleTargetId(
                 articleTargetBySourceRowId,
@@ -5996,7 +5996,7 @@ using NpgsqlTypes;
             TrackAnalyticsStoreId(zaglavlje.IDObjekat);
 
             var sourceLineId = I(row, "id", "idstavka", "lineid");
-            if (!sourceLineId.HasValue || sourceLineId.Value <= 0)
+            if (!sourceLineId.HasValue)
                 throw new InvalidOperationException(
                     $"source_row_id_required: table '{table}' contains a sale line without a stable Access row ID; legacy content matching is disabled.");
             var lineSourceTableKey = table;
@@ -6169,10 +6169,12 @@ using NpgsqlTypes;
             MarkSourceRow(result, "povracaj_zaglavlje");
 
             var id = I(row, "id", "idpovracaj", "returnid");
-            if (!id.HasValue || id.Value <= 0)
+            if (!id.HasValue)
                 throw new InvalidOperationException($"source_row_id_required: table '{table}' contains a return header without a stable Access row ID.");
             var sourceSupplierId = I(row, "iddobavljac", "dobavljacid", "supplierid");
-            if (sourceSupplierId.HasValue && sourceSupplierId.Value > 0)
+            // Access Random AutoNumber keys can be negative. A nonzero source key
+            // requires an explicit namespace-scoped map regardless of its sign.
+            if (sourceSupplierId.HasValue && sourceSupplierId.Value != 0)
                 throw new InvalidOperationException($"missing_supplier_mapping: return header source row {id.Value} references supplier source ID {sourceSupplierId.Value}; a namespace-scoped supplier map is required before import.");
             const int idDobavljac = 0;
             var datum = DT(row, "datumazapisnika", "datumpovracaja", "datum", "date") ?? DateTime.UtcNow;
@@ -6277,7 +6279,7 @@ using NpgsqlTypes;
             var razlog = S(row, "razlog", "reason");
             var stanje = S(row, "stanjeartikal", "stanjearticle", "condition", "status");
 
-            if (!id.HasValue || id.Value <= 0)
+            if (!id.HasValue)
                 throw new InvalidOperationException($"source_row_id_required: table '{table}' row {rowIndex} has no stable Access return-line ID.");
             var sourceId = id.Value;
             var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
@@ -7427,7 +7429,7 @@ using NpgsqlTypes;
             zaglavlje.SourceBatchId = _activeBatchId;
             headersToTrack.Add(zaglavlje);
 
-            foreach (var d in grp.OrderBy(d => d.SourceRowId ?? d.Id).Where(d => d.ArtikalId.HasValue && d.ArtikalId.Value > 0))
+            foreach (var d in grp.OrderBy(d => d.SourceRowId ?? d.Id).Where(d => d.ArtikalId.HasValue))
             {
                 var stavkaCena = (d.NovaProdajnaCena ?? d.StaraProdajnaCena ?? (d.Iznos > 0 ? d.Iznos : null)) ?? 0m;
                 var stavkaQty = (d.Kolicina.HasValue && d.Kolicina.Value > 0) ? d.Kolicina.Value : 1;
@@ -10976,9 +10978,15 @@ using NpgsqlTypes;
             return "target_primary_key_collision";
         if (isLine && IsConstraint(constraint, "PK_prodaja_stavke", "prodaja_stavke_pkey"))
             return "target_primary_key_collision";
-        if (isHeader && IsConstraint(constraint, "ux_prodaja_zaglavlje_access_source_row"))
+        if (isHeader && IsConstraint(
+                constraint,
+                "ux_prodaja_zaglavlje_access_source_row",
+                "ux_prodaja_zaglavlje_access_source_namespace_row"))
             return "access_source_lineage_collision";
-        if (isLine && IsConstraint(constraint, "ux_prodaja_stavke_source_row"))
+        if (isLine && IsConstraint(
+                constraint,
+                "ux_prodaja_stavke_source_row",
+                "ux_prodaja_stavke_source_namespace_row"))
             return "access_source_lineage_collision";
 
         return "unclassified_unique_constraint";

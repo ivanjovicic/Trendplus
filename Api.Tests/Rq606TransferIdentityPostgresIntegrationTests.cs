@@ -37,6 +37,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
             analyticsDb: null!,
             NullLogger<AccessImportService>.Instance);
         SetPrivateField(service, "_activeBatchId", 606L);
+        SetPrivateField(service, "_activeSourceNamespace", "synthetic-rq606");
 
         var first = new AccessImportRunResponse { BatchId = 606, Status = "running" };
         await InvokeTransferImportAsync(service, session, first, CancellationToken.None);
@@ -93,6 +94,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
             IDObjekat = 99,
             BrojRacuna = "old-document",
             DataOrigin = "access",
+            SourceNamespace = "synthetic-rq606",
             SourceTableKey = "prenosrobe",
             SourceRowId = -3001,
             SourceBatchId = 605
@@ -110,6 +112,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
         ]);
         var service = new AccessImportService(db, null!, NullLogger<AccessImportService>.Instance);
         SetPrivateField(service, "_activeBatchId", 606L);
+        SetPrivateField(service, "_activeSourceNamespace", "synthetic-rq606");
 
         var result = new AccessImportRunResponse { BatchId = 606, Status = "running" };
         await InvokeTransferImportAsync(service, session, result, CancellationToken.None);
@@ -161,6 +164,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
         await db.Database.MigrateAsync();
         var service = new AccessImportService(db, null!, NullLogger<AccessImportService>.Instance);
         SetPrivateField(service, "_activeBatchId", 606L);
+        SetPrivateField(service, "_activeSourceNamespace", "synthetic-rq606");
         using var cancellation = new CancellationTokenSource();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RetriableDbContextTransaction.ExecuteAsync(
@@ -191,6 +195,7 @@ public sealed class Rq606TransferIdentityPostgresIntegrationTests : IClassFixtur
         await using var retryDb = CreateDb(connectionString);
         var retryService = new AccessImportService(retryDb, null!, NullLogger<AccessImportService>.Instance);
         SetPrivateField(retryService, "_activeBatchId", 606L);
+        SetPrivateField(retryService, "_activeSourceNamespace", "synthetic-rq606");
         var retryResult = new AccessImportRunResponse { BatchId = 606, Status = "running" };
         await RetriableDbContextTransaction.ExecuteAsync(
             retryDb,

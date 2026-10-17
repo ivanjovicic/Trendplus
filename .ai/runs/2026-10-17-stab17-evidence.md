@@ -48,6 +48,13 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 - A real Windows Access ODBC file and a real Linux MDBTools file -> not available locally. The source-session contract, ODBC connection-string, predicate-pushdown and MDBTools CSV behavior tests pass; live provider execution remains CI/operator evidence.
 - Production import, production SQL, production migration/backfill, `setval`, deploy -> intentionally not run; not authorized.
 
+## Exact-head CI correction
+
+- The first exact-head run for `d62a3985da3f5fe472df1d33769da37091389301` (`Analytics Tests & Data Integrity` run `39035758843`) applied both disposable PostgreSQL migrations and passed its separate operations certification, but the complete backend suite failed (2,186 passed, 24 failed, 43 skipped). This was not accepted as a pass.
+- The failures exposed concrete namespace-transition defects: minimal PostgreSQL fixtures omitted `DataImportBatches.SourceNamespace`, the private batch-creation reflection fixture used the old parameter list, collision classification did not recognize the new namespace indexes, and the read-only oracle used an unquoted analytics fact key. The same run also exposed stale expectations that source and target IDs share a value, a forbidden sequence-reset test, and an Access negative-ID sign check.
+- Corrected those fixtures/contracts and retained the production fail-closed namespace rule. The replacement test now proves that an Access source ID equal to a web/POS target ID creates a separate mapped target record, does not overwrite the web/POS record, and does not repair PostgreSQL sequences.
+- Post-correction local proof: `dotnet build Api.Tests/Api.Tests.csproj --no-restore -p:RunAnalyzers=false -v:minimal -nodeReuse:false` -> pass (21 existing warnings, 0 errors); `dotnet test ... --filter "FullyQualifiedName~NegativeEntityIdGuardTests"` -> 8/8 passed, 0 skipped; `git diff --check` -> pass. PostgreSQL coverage remains pending a new exact-head CI because Docker is unavailable locally.
+
 ## Documentation impact
 
 - Added the bigint rollout/rehearsal and backup-restore backout plan.
@@ -70,4 +77,4 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 
 ## Next
 
-- Push this update to existing draft PR #163, inspect exact-head CI, then keep STAB17 WAITING/PARTIAL until the authorized source-namespace registration, disposable PostgreSQL migration rehearsal, and production evidence gates are complete.
+- Push the correction to existing draft PR #163, inspect its new exact-head CI, then keep STAB17 WAITING/PARTIAL until the authorized source-namespace registration, disposable PostgreSQL migration rehearsal, and production evidence gates are complete.

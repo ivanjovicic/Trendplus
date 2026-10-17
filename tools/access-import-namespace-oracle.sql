@@ -34,7 +34,7 @@ WITH access_headers AS (
      AND f."SourceLineId" = l.source_row_id
     WHERE l.source_namespace IS NOT NULL
       AND l.source_row_id IS NOT NULL
-      AND f.id IS NULL
+      AND f."Id" IS NULL
 )
 SELECT 'duplicate_headers' AS check_name, count(*)::bigint AS violation_count FROM duplicate_headers
 UNION ALL SELECT 'duplicate_lines', count(*)::bigint FROM duplicate_lines
