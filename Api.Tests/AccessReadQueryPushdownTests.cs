@@ -73,7 +73,7 @@ public sealed class AccessReadQueryPushdownTests
     }
 
     [Fact]
-    public void CanApplyAccessReadPushdown_WithMatchingIdAlias_ReturnsTrue()
+    public void CanApplyAccessReadPushdown_WithMatchingIdAlias_ReturnsFalseToProtectInPlaceUpdates()
     {
         var canApply = AccessImportService.CanApplyAccessReadPushdown(
             cursorMode: "id",
@@ -84,7 +84,9 @@ public sealed class AccessReadQueryPushdownTests
             idAliases: ["id", "idartikal"],
             sourceColumns: ["Naziv", "IDArtikal", "Cena"]);
 
-        Assert.True(canApply);
+        // A source ID is stable identity, not a version.  Pushing `id > cursor`
+        // would skip a correction that retains its source ID.
+        Assert.False(canApply);
     }
 
     [Fact]

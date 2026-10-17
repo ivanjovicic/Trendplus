@@ -116,7 +116,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             return;
 
         await using var db = database.Db;
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
         {
             Id = 7,
@@ -154,7 +154,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         var persistedLines = await db.ProdajaStavke.AsNoTracking().OrderBy(line => line.SourceRowId).ToListAsync();
         Assert.Equal(2, persistedLines.Count);
         Assert.All(persistedLines, line => Assert.Equal(accessHeader.Id, line.IdProdaja));
-        Assert.All(persistedLines, line => Assert.Equal(100, line.IdArtikal));
+        Assert.All(persistedLines, line => Assert.Equal(501, line.IdArtikal));
         Assert.Equal(new long?[] { 11, 12 }, persistedLines.Select(line => line.SourceRowId).ToArray());
 
         await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [source, "sales_lines", "sales_headers", false, result, CancellationToken.None]);
@@ -170,7 +170,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 [11, 7, 100, 3, 99m],
                 [12, 7, 100, 2, 99m])
         });
-        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [changedSource, "sales_lines", "sales_headers", true, result, CancellationToken.None]);
+        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [changedSource, "sales_lines", "sales_headers", false, result, CancellationToken.None]);
         persistedLines = await db.ProdajaStavke.AsNoTracking().OrderBy(line => line.SourceRowId).ToListAsync();
         Assert.Equal(new[] { 3, 2 }, persistedLines.Select(line => line.Kolicina).ToArray());
 
@@ -182,14 +182,48 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     }
 
     [PostgresRequiredFact]
-    public async Task LineTableDerivedImport_UsesGeneratedHeaderAndPreservesDuplicateLegacyLinesAcrossReimport()
+    public async Task DirectAccessSaleImport_SameNumericSourceIdInDifferentNamespacesCreatesIsolatedHeaders()
     {
         var database = await CreateDatabaseAsync();
         if (database.Db is null)
             return;
 
         await using var db = database.Db;
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        var source = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sales_headers"] = Rows(
+                ["ID", "BrojRacuna", "DatumProdaje", "IDObjekat"],
+                [42, "A-42", new DateTime(2026, 10, 17, 10, 0, 0, DateTimeKind.Utc), 1])
+        });
+
+        var first = CreateService(db, skipInvalidForeignKeys: false);
+        SetActiveSourceNamespace(first, "logical-access-a");
+        await InvokeSaleImportAsync(first, "ImportProdajaAsync", [source, "sales_headers", false, new Api.Models.AccessImportRunResponse(), CancellationToken.None]);
+        await InvokeFlushTrendWritesAsync(first);
+
+        var second = CreateService(db, skipInvalidForeignKeys: false);
+        SetActiveSourceNamespace(second, "logical-access-b");
+        await InvokeSaleImportAsync(second, "ImportProdajaAsync", [source, "sales_headers", false, new Api.Models.AccessImportRunResponse(), CancellationToken.None]);
+        await InvokeFlushTrendWritesAsync(second);
+
+        var headers = await db.ProdajaZaglavlja.AsNoTracking()
+            .Where(x => x.DataOrigin == "access" && x.SourceRowId == 42)
+            .OrderBy(x => x.SourceNamespace)
+            .ToListAsync();
+        Assert.Equal(2, headers.Count);
+        Assert.Equal(["logical-access-a", "logical-access-b"], headers.Select(x => x.SourceNamespace).ToArray());
+        Assert.NotEqual(headers[0].Id, headers[1].Id);
+    }
+
+    [PostgresRequiredFact]
+    public async Task LineTableDerivedImport_RejectsRowsWithoutStableSourceLineIds()
+    {
+        var database = await CreateDatabaseAsync();
+        if (database.Db is null)
+            return;
+
+        await using var db = database.Db;
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
         {
             Id = 7,
@@ -211,33 +245,10 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         var service = CreateService(db, skipInvalidForeignKeys: false);
         var result = new Api.Models.AccessImportRunResponse { BatchId = 7002, Status = "running" };
 
-        await InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [source, "sales_lines", false, result, CancellationToken.None]);
-        var accessHeader = await db.ProdajaZaglavlja.AsNoTracking()
-            .SingleAsync(header => header.DataOrigin == "access" && header.SourceRowId == 7);
-        Assert.NotEqual(7, accessHeader.Id);
-        var firstLines = await db.ProdajaStavke.AsNoTracking().Where(line => line.IdProdaja == accessHeader.Id).ToListAsync();
-        Assert.Equal(2, firstLines.Count);
-        Assert.All(firstLines, line => Assert.Null(line.SourceRowId));
-        Assert.Equal(1, firstLines.Select(line => line.SourceHash).Distinct().Count());
-
-        var reversedRows = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["sales_lines"] = sameLineRows.Reverse().ToList()
-        });
-        await InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [reversedRows, "sales_lines", false, result, CancellationToken.None]);
-        Assert.Equal(2, await db.ProdajaStavke.AsNoTracking().CountAsync(line => line.IdProdaja == accessHeader.Id));
-
-        var changedRows = new SyntheticAccessSession(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["sales_lines"] = Rows(
-                ["IDDnevnik", "IDArtikal", "Kolicina", "ProdajnaCena", "Datum", "IDObjekat", "BrojRacuna"],
-                [7, 100, 3, 99m, DateTime.UtcNow.Date, 2, "A-7"],
-                [7, 100, 2, 99m, DateTime.UtcNow.Date, 2, "A-7"])
-        });
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [changedRows, "sales_lines", false, result, CancellationToken.None]));
-        Assert.StartsWith("ambiguous_legacy_mapping:", ex.Message, StringComparison.Ordinal);
-        Assert.Equal(2, await db.ProdajaStavke.AsNoTracking().CountAsync(line => line.IdProdaja == accessHeader.Id));
+            InvokeSaleImportAsync(service, "ImportProdajaFromLineTableAsync", [source, "sales_lines", false, result, CancellationToken.None]));
+        Assert.StartsWith("source_row_id_required:", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(0, await db.ProdajaStavke.AsNoTracking().CountAsync());
     }
 
     [PostgresRequiredFact]
@@ -248,6 +259,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             return;
 
         await using var db = database.Db;
+        await CreateAccessArticleMappingsAsync(db, (501, 100), (502, 101));
         db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
         {
             Id = 7,
@@ -262,10 +274,11 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             Datum = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc),
             Iznos = 198m,
             BrojRacuna = "ACCESS-DN-7",
-            ArtikalId = 100,
+            ArtikalId = 501,
             Kolicina = 2,
             IDObjekat = 2,
             DataOrigin = "access",
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "dnevnikpromena",
             SourceRowId = 7,
             SourceHash = "source-row-7"
@@ -300,10 +313,11 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             Datum = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc),
             Iznos = 99m,
             BrojRacuna = "ACCESS-DN-7",
-            ArtikalId = 101,
+            ArtikalId = 502,
             Kolicina = 1,
             IDObjekat = 2,
             DataOrigin = "access",
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "dnevnikpromena",
             SourceRowId = 6,
             SourceHash = "source-row-6"
@@ -324,7 +338,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             return;
 
         await using var db = database.Db;
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         var date = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
         var headerRows = Rows(["ID", "BrojRacuna", "DatumProdaje"],
             [7, "A-7", date], [8, "A-8", date]);
@@ -359,6 +373,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             return;
 
         await using var db = database.Db;
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         var date = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
         static SyntheticAccessSession Lines(int parentId, DateTime date) => new(new Dictionary<string, IReadOnlyList<AccessDataRow>>(StringComparer.OrdinalIgnoreCase)
         {
@@ -379,21 +394,22 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     }
 
     [PostgresRequiredFact]
-    public async Task DirectSaleLinesWithoutSourceRowId_UseExactMultisetReimportAndRejectChangedSnapshot()
+    public async Task DirectSaleLinesWithoutSourceRowId_FailClosedWithoutContentMatching()
     {
         var database = await CreateDatabaseAsync();
         if (database.Db is null)
             return;
 
         await using var db = database.Db;
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
         {
             Id = 19,
             BrojRacuna = "ACCESS-19",
             DatumProdaje = DateTime.UtcNow,
             DataOrigin = "access",
-            SourceTableKey = "prodajazaglavlje",
+            SourceNamespace = "synthetic-test-source",
+            SourceTableKey = "sales_headers",
             SourceRowId = 7
         });
         await db.SaveChangesAsync();
@@ -410,19 +426,10 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
 
         var service = CreateService(db, skipInvalidForeignKeys: false);
         var result = new Api.Models.AccessImportRunResponse { BatchId = 7004, Status = "running" };
-        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Session(2), "sales_lines", "sales_headers", false, result, CancellationToken.None]);
-        var firstLines = await db.ProdajaStavke.AsNoTracking().Where(line => line.IdProdaja == 19).ToListAsync();
-        Assert.Equal(2, firstLines.Count);
-        Assert.All(firstLines, line => Assert.Null(line.SourceRowId));
-        Assert.All(firstLines, line => Assert.False(string.IsNullOrWhiteSpace(line.SourceHash)));
-
-        await InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Session(2), "sales_lines", "sales_headers", false, result, CancellationToken.None]);
-        Assert.Equal(2, await db.ProdajaStavke.AsNoTracking().CountAsync(line => line.IdProdaja == 19));
-
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Session(3), "sales_lines", "sales_headers", false, result, CancellationToken.None]));
-        Assert.StartsWith("ambiguous_legacy_mapping:", ex.Message, StringComparison.Ordinal);
-        Assert.Equal(2, await db.ProdajaStavke.AsNoTracking().CountAsync(line => line.IdProdaja == 19));
+            InvokeSaleImportAsync(service, "ImportProdajaStavkeAsync", [Session(2), "sales_lines", "sales_headers", false, result, CancellationToken.None]));
+        Assert.StartsWith("source_row_id_required:", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(0, await db.ProdajaStavke.AsNoTracking().CountAsync(line => line.IdProdaja == 19));
     }
 
     [PostgresRequiredFact]
@@ -452,6 +459,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             DatumProdaje = DateTime.UtcNow,
             IDObjekat = 2,
             DataOrigin = "access",
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_zaglavlje",
             SourceRowId = 7
         });
@@ -505,6 +513,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             IdArtikal = 200,
             Kolicina = 1,
             Cena = 123m,
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_stavke",
             SourceRowId = 11
         });
@@ -545,6 +554,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 BrojRacuna = "ACCESS-8",
                 DatumProdaje = DateTime.UtcNow,
                 DataOrigin = "access",
+                SourceNamespace = "synthetic-test-source",
                 SourceTableKey = "prodaja_zaglavlje",
                 SourceRowId = 8
             });
@@ -566,6 +576,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             IdArtikal = 200,
             Kolicina = 1,
             Cena = 123m,
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_stavke",
             SourceRowId = 11
         };
@@ -607,6 +618,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             IdArtikal = 100,
             Kolicina = 1,
             Cena = 99m,
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_stavke",
             SourceRowId = 100
         });
@@ -620,6 +632,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             IdArtikal = 200,
             Kolicina = 1,
             Cena = 123m,
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_stavke",
             SourceRowId = 100
         });
@@ -637,43 +650,28 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     }
 
     [PostgresRequiredFact]
-    public async Task ResetTrendplusSequencesAsync_NeverLowersSequenceAndCoversExplicitImportedIds()
+    public async Task VerifyTrendplusIdentityHeadroomAsync_StopsBeforeIntegerExhaustionWithoutSequenceRepair()
     {
         var database = await CreateDatabaseAsync();
         if (database.Db is null)
             return;
 
         await using var db = database.Db;
-        foreach (var createSql in new[]
+        db.ProdajaZaglavlja.Add(new ProdajaZaglavlje
         {
-            "CREATE TABLE IF NOT EXISTS \"Artikli\" (\"Id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);",
-            "CREATE TABLE IF NOT EXISTS \"Dobavljaci\" (\"Id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);",
-            "CREATE TABLE IF NOT EXISTS \"Sezone\" (\"Id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);",
-            "CREATE TABLE IF NOT EXISTS \"TipoviObuce\" (\"Id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);",
-            "CREATE TABLE IF NOT EXISTS \"povracaj_zaglavlje\" (\"id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);",
-            "CREATE TABLE IF NOT EXISTS \"povracaj_stavke\" (\"id\" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY);"
-        })
-        {
-            await db.Database.ExecuteSqlRawAsync(createSql);
-        }
-
-        await db.Database.ExecuteSqlRawAsync("INSERT INTO \"Dobavljaci\" (\"Id\") VALUES (50);");
-        var seededHeaderSequence = await db.Database.SqlQueryRaw<long>("SELECT setval(pg_get_serial_sequence('prodaja_zaglavlje', 'id'), 100, true) AS \"Value\"").SingleAsync();
-        var seededLineSequence = await db.Database.SqlQueryRaw<long>("SELECT setval(pg_get_serial_sequence('prodaja_stavke', 'id'), 80, true) AS \"Value\"").SingleAsync();
-        Assert.Equal(100, seededHeaderSequence);
-        Assert.Equal(80, seededLineSequence);
+            Id = int.MaxValue - 9_999,
+            BrojRacuna = "HEADROOM-BOUNDARY",
+            DatumProdaje = DateTime.UtcNow,
+            DataOrigin = "existing"
+        });
+        await db.SaveChangesAsync();
 
         var service = CreateService(db, skipInvalidForeignKeys: false);
-        var reset = typeof(AccessImportService).GetMethod("ResetTrendplusSequencesAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        await (Task)reset.Invoke(service, [CancellationToken.None])!;
+        var guard = typeof(AccessImportService).GetMethod("VerifyTrendplusIdentityHeadroomAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            (Task)guard.Invoke(service, [CancellationToken.None])!);
 
-        var nextHeaderId = await db.Database.SqlQueryRaw<long>("SELECT nextval(pg_get_serial_sequence('prodaja_zaglavlje', 'id')) AS \"Value\"").SingleAsync();
-        var nextLineId = await db.Database.SqlQueryRaw<long>("SELECT nextval(pg_get_serial_sequence('prodaja_stavke', 'id')) AS \"Value\"").SingleAsync();
-        var nextSupplierId = await db.Database.SqlQueryRaw<long>("SELECT nextval(pg_get_serial_sequence('\"Dobavljaci\"', 'Id')) AS \"Value\"").SingleAsync();
-
-        Assert.Equal(101, nextHeaderId);
-        Assert.Equal(81, nextLineId);
-        Assert.Equal(51, nextSupplierId);
+        Assert.StartsWith("access_target_integer_headroom_exhausted:", ex.Message, StringComparison.Ordinal);
     }
 
     [PostgresRequiredFact]
@@ -687,7 +685,8 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         await db.Database.ExecuteSqlRawAsync(
             """
             CREATE TABLE "AccessImportCursors" (
-                "TableKey" character varying(128) PRIMARY KEY,
+                "SourceNamespace" character varying(128) NOT NULL,
+                "TableKey" character varying(128) NOT NULL,
                 "CursorMode" character varying(32) NOT NULL,
                 "CursorTimestampUtc" timestamp with time zone,
                 "CursorId" bigint,
@@ -698,15 +697,17 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 "LastSuccessfulBatchId" bigint,
                 "LastError" character varying(2000),
                 "LastRunCompletedAtUtc" timestamp with time zone,
-                "UpdatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW()
+                "UpdatedAtUtc" timestamp with time zone NOT NULL DEFAULT NOW(),
+                PRIMARY KEY ("SourceNamespace", "TableKey")
             );
-            INSERT INTO "AccessImportCursors" ("TableKey", "CursorMode", "CursorId") VALUES ('sales', 'id', 7);
+            INSERT INTO "AccessImportCursors" ("SourceNamespace", "TableKey", "CursorMode", "CursorId") VALUES ('fixture-source', 'sales', 'id', 7);
             """);
 
         var repository = new AccessImportCursorRepository(db);
         await using (var transaction = await db.Database.BeginTransactionAsync())
         {
             await repository.CommitCursorAsync(
+                "fixture-source",
                 "sales",
                 DateTime.UtcNow,
                 20,
@@ -715,12 +716,12 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 rowsMerged: 10,
                 lagSeconds: 0,
                 lastSuccessfulBatchId: 9001,
-                CancellationToken.None);
+                ct: CancellationToken.None);
             await transaction.RollbackAsync();
         }
 
         var persistedCursor = await db.Database.SqlQueryRaw<long>(
-            "SELECT \"CursorId\" AS \"Value\" FROM \"AccessImportCursors\" WHERE \"TableKey\" = 'sales'").SingleAsync();
+            "SELECT \"CursorId\" AS \"Value\" FROM \"AccessImportCursors\" WHERE \"SourceNamespace\" = 'fixture-source' AND \"TableKey\" = 'sales'").SingleAsync();
         Assert.Equal(7, persistedCursor);
     }
 
@@ -738,6 +739,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             BrojRacuna = "REDACT-ME-A",
             DatumProdaje = DateTime.UtcNow,
             DataOrigin = "access",
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_zaglavlje",
             SourceRowId = 77
         });
@@ -751,6 +753,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             BrojRacuna = "REDACT-ME-B",
             DatumProdaje = DateTime.UtcNow,
             DataOrigin = "access",
+            SourceNamespace = "synthetic-test-source",
             SourceTableKey = "prodaja_zaglavlje",
             SourceRowId = 77
         });
@@ -883,8 +886,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             return;
 
         await using var db = database.Db;
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE TABLE \"Artikli\" (\"Id\" integer PRIMARY KEY, \"IDDobavljac\" integer, \"IDTipObuce\" integer);");
+        await CreateAccessArticleMappingsAsync(db, (501, 100));
         var soldAt = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
         db.ProdajaZaglavlja.AddRange(
             new ProdajaZaglavlje
@@ -971,12 +973,13 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         Assert.Equal(0, await ScalarAsync<long>(db, """
             SELECT COUNT(*)::bigint AS "Value"
             FROM (
-                SELECT source_table_key, source_row_id
+                SELECT source_namespace, source_table_key, source_row_id
                 FROM prodaja_zaglavlje
                 WHERE data_origin = 'access'
+                  AND source_namespace IS NOT NULL
                   AND source_table_key IS NOT NULL
                   AND source_row_id IS NOT NULL
-                GROUP BY source_table_key, source_row_id
+                GROUP BY source_namespace, source_table_key, source_row_id
                 HAVING COUNT(*) > 1
             ) AS duplicate_source
             """));
@@ -1014,7 +1017,8 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 "TotalAmount" numeric(18,2) NOT NULL,
                 "TotalUnits" integer NOT NULL,
                 "TotalLines" integer NOT NULL,
-                "DataOrigin" text NOT NULL
+                "DataOrigin" text NOT NULL,
+                "SourceNamespace" text NULL
             );
             CREATE TABLE "SalesLineFacts" (
                 "Id" bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -1025,11 +1029,12 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 "LineTotal" numeric(18,2) NOT NULL,
                 "NabavnaCena" numeric(18,2) NULL,
                 "DataOrigin" text NOT NULL,
+                "SourceNamespace" text NULL,
                 "SourceTableKey" text NULL,
                 "SourceLineId" bigint NULL
             );
             INSERT INTO "SalesFacts" (
-                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin","SourceNamespace")
             SELECT
                 h.id,
                 COALESCE(h.broj_racuna, ''),
@@ -1039,10 +1044,11 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 COALESCE(SUM(s.kolicina * s.cena), 0),
                 COALESCE(SUM(s.kolicina), 0)::integer,
                 COUNT(s.id)::integer,
-                h.data_origin
+                h.data_origin,
+                h.source_namespace
             FROM prodaja_zaglavlje AS h
             LEFT JOIN prodaja_stavke AS s ON s.id_prodaja = h.id
-            GROUP BY h.id, h.broj_racuna, h.datum_prodaje, h.id_objekat, h.nacin_placanja, h.data_origin;
+            GROUP BY h.id, h.broj_racuna, h.datum_prodaje, h.id_objekat, h.nacin_placanja, h.data_origin, h.source_namespace;
             """);
 
         var mappedFacts = AccessImportService.MapSalesLineFacts(lines.Select(line =>
@@ -1054,8 +1060,10 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 line.Cena,
                 line.NabavnaCena,
                 line.SourceTableKey,
-                line.SourceRowId)));
+                line.SourceRowId,
+                line.SourceNamespace)));
         var saleIds = lines.Select(line => line.IdProdaja).Distinct().ToArray();
+        var namespaceOracleSnapshots = new List<NamespaceOracleSnapshot>();
         await using (var connection = new NpgsqlConnection(database.ConnectionString))
         {
             await connection.OpenAsync();
@@ -1070,8 +1078,21 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                     NullLogger<AccessImportService>.Instance,
                     CancellationToken.None);
                 await transaction.CommitAsync();
+                namespaceOracleSnapshots.Add(await ExecuteNamespaceOracleAsync(database.ConnectionString));
             }
         }
+
+        Assert.All(namespaceOracleSnapshots, snapshot =>
+            Assert.All(snapshot.Violations.Values, violationCount => Assert.Equal(0L, violationCount)));
+        Assert.Equal(
+            namespaceOracleSnapshots[0].Violations.OrderBy(x => x.Key),
+            namespaceOracleSnapshots[1].Violations.OrderBy(x => x.Key));
+        Assert.Equal(
+            namespaceOracleSnapshots[0].NamespaceCounts.OrderBy(x => x.Key),
+            namespaceOracleSnapshots[1].NamespaceCounts.OrderBy(x => x.Key));
+        var sourceNamespaceCounts = Assert.Single(namespaceOracleSnapshots[0].NamespaceCounts);
+        Assert.Equal("synthetic-test-source", sourceNamespaceCounts.Key);
+        Assert.Equal((1L, 2L, 1L, 2L), sourceNamespaceCounts.Value);
 
         Assert.Equal(4, await ScalarAsync<long>(db, """SELECT COUNT(*)::bigint AS "Value" FROM "SalesLineFacts" """));
         Assert.Equal(396m, await ScalarAsync<decimal>(db,
@@ -1097,7 +1118,8 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             SELECT COUNT(*)::bigint AS "Value"
             FROM "SalesLineFacts" AS fact
             LEFT JOIN prodaja_stavke AS source
-              ON (
+              ON fact."SourceNamespace" IS NOT DISTINCT FROM source.source_namespace
+             AND (
                   (fact."SourceTableKey" = source.source_table_key
                    AND fact."SourceLineId" = source.source_row_id)
                   OR
@@ -1166,6 +1188,15 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
         field!.SetValue(service, value);
     }
 
+    private static void SetActiveSourceNamespace(AccessImportService service, string sourceNamespace)
+    {
+        var field = typeof(AccessImportService).GetField(
+            "_activeSourceNamespace",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        field!.SetValue(service, sourceNamespace);
+    }
+
     private static async Task InvokeFlushTrendWritesAsync(AccessImportService service)
     {
         var method = typeof(AccessImportService).GetMethod(
@@ -1190,6 +1221,33 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     {
         var schema = new AccessDataSchema(columns);
         return rows.Select(values => new AccessDataRow(schema, values)).ToList();
+    }
+
+    private static async Task CreateAccessArticleMappingsAsync(
+        TrendplusDbContext db,
+        params (int TargetId, long SourceRowId)[] mappings)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE "Artikli" (
+                "Id" integer PRIMARY KEY,
+                "IDDobavljac" integer,
+                "IDTipObuce" integer,
+                "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing',
+                "SourceNamespace" character varying(128),
+                "SourceTableKey" character varying(128),
+                "SourceRowId" bigint
+            );
+            """);
+
+        foreach (var (targetId, sourceRowId) in mappings)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO "Artikli" ("Id", "DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
+                VALUES ({targetId}, {"access"}, {"synthetic-test-source"}, {"artikli"}, {sourceRowId});
+                """);
+        }
     }
 
     private sealed class SyntheticAccessSession(IReadOnlyDictionary<string, IReadOnlyList<AccessDataRow>> tableRows) : IAccessDataReaderSession
@@ -1243,6 +1301,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 korisnik_ime character varying(200),
                 data_origin character varying(32) NOT NULL DEFAULT 'existing',
                 source_timestamp_basis character varying(64),
+                source_namespace character varying(128),
                 source_table_key character varying(128),
                 source_row_id bigint,
                 source_updated_at_utc timestamp with time zone,
@@ -1261,6 +1320,7 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 purchase_cost_provenance character varying(64),
                 supplier_id_at_sale integer,
                 shoe_type_id_at_sale integer,
+                source_namespace character varying(128),
                 source_table_key character varying(128),
                 source_row_id bigint,
                 source_updated_at_utc timestamp with time zone,
@@ -1287,18 +1347,19 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
                 "Komentar" character varying(500),
                 "KorisnikIme" character varying(200),
                 "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing',
+                "SourceNamespace" character varying(128),
                 "SourceTableKey" character varying(128),
                 "SourceRowId" bigint,
                 "SourceUpdatedAtUtc" timestamp with time zone,
                 "SourceHash" character varying(128),
                 "SourceBatchId" bigint
             );
-            CREATE UNIQUE INDEX IF NOT EXISTS ux_prodaja_zaglavlje_access_source_row
-                ON prodaja_zaglavlje (data_origin, source_table_key, source_row_id)
-                WHERE data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
-            CREATE UNIQUE INDEX IF NOT EXISTS ux_prodaja_stavke_source_row
-                ON prodaja_stavke (source_table_key, source_row_id)
-                WHERE source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_prodaja_zaglavlje_access_source_namespace_row
+                ON prodaja_zaglavlje (data_origin, source_namespace, source_table_key, source_row_id)
+                WHERE data_origin = 'access' AND source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_prodaja_stavke_source_namespace_row
+                ON prodaja_stavke (source_namespace, source_table_key, source_row_id)
+                WHERE source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL;
             """);
 
     private static async Task<T> ScalarAsync<T>(TrendplusDbContext db, string sql)
@@ -1335,6 +1396,41 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
             throw new InvalidOperationException($"Triage script returned {resultSets} result sets.");
     }
 
+    private static async Task<NamespaceOracleSnapshot> ExecuteNamespaceOracleAsync(string connectionString)
+    {
+        var script = FindNamespaceOracleScript();
+        var executable = string.Join(
+            "\n",
+            script.Split('\n').Where(line => !line.TrimStart().StartsWith("--", StringComparison.Ordinal)));
+        foreach (var forbidden in new[] { "INSERT", "UPDATE", "DELETE", "setval", "DROP ", "ALTER ", "TRUNCATE" })
+        {
+            if (executable.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Namespace oracle contains forbidden statement '{forbidden}'.");
+        }
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(script, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var violations = new Dictionary<string, long>(StringComparer.Ordinal);
+        while (await reader.ReadAsync())
+            violations.Add(reader.GetString(0), reader.GetInt64(1));
+
+        if (!await reader.NextResultAsync())
+            throw new InvalidOperationException("Namespace oracle did not return its idempotency result set.");
+
+        var namespaceCounts = new Dictionary<string, (long HeaderCount, long LineCount, long FactCount, long LineFactCount)>(StringComparer.Ordinal);
+        while (await reader.ReadAsync())
+        {
+            namespaceCounts.Add(
+                reader.GetString(0),
+                (reader.GetInt64(1), reader.GetInt64(2), reader.GetInt64(3), reader.GetInt64(4)));
+        }
+
+        return new NamespaceOracleSnapshot(violations, namespaceCounts);
+    }
+
     private static string FindTriageScript()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
@@ -1346,4 +1442,20 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
 
         throw new FileNotFoundException("tools/access-sale-header-identity-triage.sql was not found from the test output directory.");
     }
+
+    private static string FindNamespaceOracleScript()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "tools", "access-import-namespace-oracle.sql");
+            if (File.Exists(candidate))
+                return File.ReadAllText(candidate);
+        }
+
+        throw new FileNotFoundException("tools/access-import-namespace-oracle.sql was not found from the test output directory.");
+    }
+
+    private sealed record NamespaceOracleSnapshot(
+        IReadOnlyDictionary<string, long> Violations,
+        IReadOnlyDictionary<string, (long HeaderCount, long LineCount, long FactCount, long LineFactCount)> NamespaceCounts);
 }

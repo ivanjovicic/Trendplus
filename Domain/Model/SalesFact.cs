@@ -14,5 +14,6 @@ namespace Domain.Model
         public int TotalUnits { get; set; }
         public int TotalLines { get; set; }
         public string DataOrigin { get; set; } = "existing";
+        public string? SourceNamespace { get; set; }
     }
 }

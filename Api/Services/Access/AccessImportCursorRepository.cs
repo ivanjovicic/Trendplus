@@ -16,18 +16,20 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         _db = db;
     }
 
-    public async Task<AccessImportCursor> GetOrCreateAsync(string tableKey, string cursorMode, CancellationToken ct)
+    public async Task<AccessImportCursor> GetOrCreateAsync(string sourceNamespace, string tableKey, string cursorMode, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var normalizedMode = NormalizeCursorMode(cursorMode);
 
         var existing = await _db.AccessImportCursors
-            .FirstOrDefaultAsync(x => x.TableKey == normalizedTableKey, ct);
+            .FirstOrDefaultAsync(x => x.SourceNamespace == normalizedNamespace && x.TableKey == normalizedTableKey, ct);
         if (existing is not null)
             return existing;
 
         var created = new AccessImportCursor
         {
+            SourceNamespace = normalizedNamespace,
             TableKey = normalizedTableKey,
             CursorMode = normalizedMode,
             UpdatedAtUtc = DateTime.UtcNow
@@ -44,7 +46,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
             // A concurrent worker created the cursor first; return canonical persisted row.
             _db.Entry(created).State = EntityState.Detached;
             var concurrent = await _db.AccessImportCursors
-                .FirstOrDefaultAsync(x => x.TableKey == normalizedTableKey, ct);
+                .FirstOrDefaultAsync(x => x.SourceNamespace == normalizedNamespace && x.TableKey == normalizedTableKey, ct);
             if (concurrent is not null)
                 return concurrent;
 
@@ -52,16 +54,18 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         }
     }
 
-    public Task<AccessImportCursor?> GetAsync(string tableKey, CancellationToken ct)
+    public Task<AccessImportCursor?> GetAsync(string sourceNamespace, string tableKey, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         return _db.AccessImportCursors
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.TableKey == normalizedTableKey, ct);
+            .FirstOrDefaultAsync(x => x.SourceNamespace == normalizedNamespace && x.TableKey == normalizedTableKey, ct);
     }
 
-    public async Task<bool> TryAcquireLeaseAsync(string tableKey, string leaseOwner, TimeSpan leaseDuration, CancellationToken ct)
+    public async Task<bool> TryAcquireLeaseAsync(string sourceNamespace, string tableKey, string leaseOwner, TimeSpan leaseDuration, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
@@ -73,7 +77,8 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                 "LeaseAcquiredAtUtc" = {1},
                 "LeaseExpiresAtUtc" = {2},
                 "UpdatedAtUtc" = {1}
-            WHERE "TableKey" = {3}
+            WHERE "SourceNamespace" = {3}
+              AND "TableKey" = {4}
               AND (
                     "LeaseOwner" IS NULL
                  OR "LeaseExpiresAtUtc" IS NULL
@@ -85,7 +90,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         var sw = Stopwatch.StartNew();
         var affected = await _db.Database.ExecuteSqlRawAsync(
             rawSql,
-            new object[] { normalizedOwner, now, expiresAt, normalizedTableKey },
+            new object[] { normalizedOwner, now, expiresAt, normalizedNamespace, normalizedTableKey },
             ct);
         sw.Stop();
         try
@@ -107,8 +112,9 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         return affected > 0;
     }
 
-    public async Task<bool> RenewLeaseAsync(string tableKey, string leaseOwner, TimeSpan leaseDuration, CancellationToken ct)
+    public async Task<bool> RenewLeaseAsync(string sourceNamespace, string tableKey, string leaseOwner, TimeSpan leaseDuration, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
@@ -118,14 +124,15 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
             UPDATE "AccessImportCursors"
             SET "LeaseExpiresAtUtc" = {0},
                 "UpdatedAtUtc" = {1}
-            WHERE "TableKey" = {2}
-              AND "LeaseOwner" = {3};
+            WHERE "SourceNamespace" = {2}
+              AND "TableKey" = {3}
+              AND "LeaseOwner" = {4};
             """;
 
         var sw = Stopwatch.StartNew();
         var affected = await _db.Database.ExecuteSqlRawAsync(
             rawSql,
-            new object[] { expiresAt, now, normalizedTableKey, normalizedOwner },
+            new object[] { expiresAt, now, normalizedNamespace, normalizedTableKey, normalizedOwner },
             ct);
         sw.Stop();
         try
@@ -147,8 +154,9 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         return affected > 0;
     }
 
-    public async Task ReleaseLeaseAsync(string tableKey, string leaseOwner, CancellationToken ct)
+    public async Task ReleaseLeaseAsync(string sourceNamespace, string tableKey, string leaseOwner, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var normalizedOwner = NormalizeLeaseOwner(leaseOwner);
         var now = DateTime.UtcNow;
@@ -159,14 +167,15 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                 "LeaseAcquiredAtUtc" = NULL,
                 "LeaseExpiresAtUtc" = NULL,
                 "UpdatedAtUtc" = {0}
-            WHERE "TableKey" = {1}
-              AND "LeaseOwner" = {2};
+            WHERE "SourceNamespace" = {1}
+              AND "TableKey" = {2}
+              AND "LeaseOwner" = {3};
             """;
 
         var sw = Stopwatch.StartNew();
         await _db.Database.ExecuteSqlRawAsync(
             rawSql,
-            new object[] { now, normalizedTableKey, normalizedOwner },
+            new object[] { now, normalizedNamespace, normalizedTableKey, normalizedOwner },
             ct);
         sw.Stop();
         try
@@ -186,19 +195,20 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         catch { }
     }
 
-    public async Task MarkRunStartedAsync(string tableKey, CancellationToken ct)
+    public async Task MarkRunStartedAsync(string sourceNamespace, string tableKey, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
         var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LastRunStartedAtUtc" = {0},
                 "UpdatedAtUtc" = {0}
-            WHERE "TableKey" = {1};
+            WHERE "SourceNamespace" = {1} AND "TableKey" = {2};
             """;
 
         var sw = Stopwatch.StartNew();
-        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedTableKey }, ct);
+        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedNamespace, normalizedTableKey }, ct);
         sw.Stop();
         try
         {
@@ -217,19 +227,20 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         catch { }
     }
 
-    public async Task MarkRunCompletedAsync(string tableKey, CancellationToken ct)
+    public async Task MarkRunCompletedAsync(string sourceNamespace, string tableKey, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
         var rawSql = """
             UPDATE "AccessImportCursors"
             SET "LastRunCompletedAtUtc" = {0},
                 "UpdatedAtUtc" = {0}
-            WHERE "TableKey" = {1};
+            WHERE "SourceNamespace" = {1} AND "TableKey" = {2};
             """;
 
         var sw = Stopwatch.StartNew();
-        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedTableKey }, ct);
+        await _db.Database.ExecuteSqlRawAsync(rawSql, new object[] { now, normalizedNamespace, normalizedTableKey }, ct);
         sw.Stop();
         try
         {
@@ -249,6 +260,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
     }
 
     public async Task CommitCursorAsync(
+        string sourceNamespace,
         string tableKey,
         DateTime? cursorTimestampUtc,
         long? cursorId,
@@ -259,6 +271,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         long? lastSuccessfulBatchId,
         CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
 
@@ -274,7 +287,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
                 "LastError" = NULL,
                 "LastRunCompletedAtUtc" = {now},
                 "UpdatedAtUtc" = {now}
-            WHERE "TableKey" = {normalizedTableKey};
+            WHERE "SourceNamespace" = {normalizedNamespace} AND "TableKey" = {normalizedTableKey};
             """;
 
         var sw = Stopwatch.StartNew();
@@ -297,8 +310,9 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
         catch { }
     }
 
-    public async Task MarkFailureAsync(string tableKey, string? error, CancellationToken ct)
+    public async Task MarkFailureAsync(string sourceNamespace, string tableKey, string? error, CancellationToken ct)
     {
+        var normalizedNamespace = NormalizeSourceNamespace(sourceNamespace);
         var normalizedTableKey = NormalizeTableKey(tableKey);
         var now = DateTime.UtcNow;
         var trimmedError = Trim(error, 2000);
@@ -307,7 +321,7 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
             UPDATE "AccessImportCursors"
             SET "LastError" = {trimmedError},
                 "UpdatedAtUtc" = {now}
-            WHERE "TableKey" = {normalizedTableKey};
+            WHERE "SourceNamespace" = {normalizedNamespace} AND "TableKey" = {normalizedTableKey};
             """;
 
         var sw = Stopwatch.StartNew();
@@ -334,6 +348,12 @@ public sealed class AccessImportCursorRepository : IAccessImportCursorRepository
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tableKey);
         return tableKey.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeSourceNamespace(string sourceNamespace)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceNamespace);
+        return sourceNamespace.Trim().ToLowerInvariant();
     }
 
     private static string NormalizeCursorMode(string cursorMode)

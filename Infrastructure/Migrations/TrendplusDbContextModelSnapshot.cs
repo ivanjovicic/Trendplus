@@ -24,6 +24,10 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Model.AccessImportCursor", b =>
                 {
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("TableKey")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -100,7 +104,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
-                    b.HasKey("TableKey");
+                    b.HasKey("SourceNamespace", "TableKey");
 
                     b.HasIndex("LastSuccessfulBatchId");
 
@@ -560,6 +564,10 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint");
 
@@ -588,9 +596,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IDObjekat", "IDDobavljac");
 
-                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
                         .IsUnique()
-                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
 
                     b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
@@ -831,6 +839,10 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(800)
                         .HasColumnType("character varying(800)");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("SourceStorageKey")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
@@ -943,6 +955,10 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint");
 
@@ -967,8 +983,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IDObjekat", "Datum");
 
-                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
-                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
+                        .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
 
                     b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
@@ -1404,6 +1420,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("source_hash");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_namespace");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint")
                         .HasColumnName("source_row_id");
@@ -1428,9 +1449,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IdPovracaj");
 
-                    b.HasIndex("SourceTableKey", "SourceRowId")
+                    b.HasIndex("SourceNamespace", "SourceTableKey", "SourceRowId")
                         .IsUnique()
-                        .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                        .HasFilter("source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
 
                     b.HasIndex("SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
@@ -1503,6 +1524,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("source_hash");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_namespace");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint")
                         .HasColumnName("source_row_id");
@@ -1535,9 +1561,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IDDobavljac");
 
-                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
                         .IsUnique()
-                        .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                        .HasFilter("data_origin = 'access' AND source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
 
                     b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
@@ -1599,6 +1625,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("source_hash");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_namespace");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint")
                         .HasColumnName("source_row_id");
@@ -1626,9 +1657,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IdProdaja", "IdArtikal");
 
-                    b.HasIndex("SourceTableKey", "SourceRowId")
+                    b.HasIndex("SourceNamespace", "SourceTableKey", "SourceRowId")
                         .IsUnique()
-                        .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                        .HasFilter("source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
 
                     b.HasIndex("SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 
@@ -1684,6 +1715,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("source_hash");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_namespace");
+
                     b.Property<long?>("SourceRowId")
                         .HasColumnType("bigint")
                         .HasColumnName("source_row_id");
@@ -1708,9 +1744,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("DatumProdaje", "IDObjekat");
 
-                    b.HasIndex("DataOrigin", "SourceTableKey", "SourceRowId")
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId")
                         .IsUnique()
-                        .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                        .HasFilter("data_origin = 'access' AND source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
 
                     b.HasIndex("DataOrigin", "SourceTableKey", "SourceUpdatedAtUtc", "SourceRowId");
 

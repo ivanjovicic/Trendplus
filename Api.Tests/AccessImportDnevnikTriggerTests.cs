@@ -5,14 +5,14 @@ namespace Api.Tests;
 public sealed class AccessImportDnevnikTriggerTests
 {
     [Fact]
-    public void ShouldSkipLinkedTablesByDnevnikTrigger_WhenIncrementalAndNoDelta_ReturnsTrue()
+    public void ShouldSkipLinkedTablesByDnevnikTrigger_WhenIncrementalAndNoDelta_ReturnsFalse()
     {
         var shouldSkip = AccessImportService.ShouldSkipLinkedTablesByDnevnikTrigger(
             incrementalWriteMode: true,
             dnevnikTablePresent: true,
             dnevnikImportedDelta: 0);
 
-        Assert.True(shouldSkip);
+        Assert.False(shouldSkip);
     }
 
     [Fact]

@@ -18,6 +18,14 @@ namespace Api.Tests
 {
     public sealed class AccessImportEnqueueTests
     {
+        private static IOptions<AccessImportOptions> RegisteredOptions() => Options.Create(new AccessImportOptions
+        {
+            SourceNamespaces =
+            [
+                new AccessSourceNamespaceRegistration { Namespace = "test-source", Enabled = true, AllowRoutineIncremental = true }
+            ]
+        });
+
         private sealed class InMemoryFileStorage : IFileStorage
         {
             private readonly Dictionary<string, byte[]> _objects = new(StringComparer.Ordinal);
@@ -124,7 +132,7 @@ namespace Api.Tests
                 trendDb: db,
                 analyticsDb: null!,
                 logger: NullLogger<AccessImportService>.Instance,
-                options: null,
+                options: RegisteredOptions(),
                 analyticsCache: null,
                 serviceScopeFactory: null,
                 jobQueue: queue);
@@ -132,7 +140,7 @@ namespace Api.Tests
             try
             {
                 // Act
-                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false, sourceNamespace: "test-source");
 
                 // Assert
                 Assert.NotNull(result);
@@ -176,7 +184,8 @@ namespace Api.Tests
             var serviceOptions = Options.Create(new AccessImportOptions
             {
                 PreventConcurrentRuns = true,
-                RunningBatchStaleMinutes = 240
+                RunningBatchStaleMinutes = 240,
+                SourceNamespaces = [new AccessSourceNamespaceRegistration { Namespace = "test-source" }]
             });
 
             var service = new AccessImportService(
@@ -190,7 +199,7 @@ namespace Api.Tests
 
             try
             {
-                var result = await service.StartImportAsync(tmp, includeAnalytics: true, overwriteExisting: true);
+                var result = await service.StartImportAsync(tmp, includeAnalytics: true, overwriteExisting: false, sourceNamespace: "test-source");
 
                 Assert.Equal(runningBatch.Id, result.BatchId);
                 Assert.Equal("running", result.Status);
@@ -228,7 +237,8 @@ namespace Api.Tests
             var serviceOptions = Options.Create(new AccessImportOptions
             {
                 PreventConcurrentRuns = true,
-                RunningBatchStaleMinutes = 240
+                RunningBatchStaleMinutes = 240,
+                SourceNamespaces = [new AccessSourceNamespaceRegistration { Namespace = "test-source" }]
             });
 
             var service = new AccessImportService(
@@ -242,7 +252,7 @@ namespace Api.Tests
 
             try
             {
-                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false, sourceNamespace: "test-source");
                 Assert.Equal("pending", result.Status);
                 Assert.Equal(2, await db.DataImportBatches.CountAsync());
                 Assert.NotEqual(staleBatch.Id, result.BatchId);
@@ -274,7 +284,7 @@ namespace Api.Tests
                 trendDb: db,
                 analyticsDb: null!,
                 logger: NullLogger<AccessImportService>.Instance,
-                options: null,
+                options: RegisteredOptions(),
                 analyticsCache: null,
                 serviceScopeFactory: null,
                 jobQueue: queue,
@@ -284,7 +294,7 @@ namespace Api.Tests
 
             try
             {
-                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false, sourceNamespace: "test-source");
 
                 Assert.NotNull(result);
                 var batch = await db.DataImportBatches.SingleAsync();
@@ -321,7 +331,7 @@ namespace Api.Tests
                 trendDb: db,
                 analyticsDb: null!,
                 logger: NullLogger<AccessImportService>.Instance,
-                options: null,
+                options: RegisteredOptions(),
                 analyticsCache: null,
                 serviceScopeFactory: null,
                 jobQueue: queue,
@@ -331,7 +341,7 @@ namespace Api.Tests
 
             try
             {
-                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false);
+                var result = await service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false, sourceNamespace: "test-source");
 
                 Assert.NotNull(result);
                 var batch = await db.DataImportBatches.SingleAsync();
@@ -369,7 +379,7 @@ namespace Api.Tests
                 trendDb: db,
                 analyticsDb: null!,
                 logger: NullLogger<AccessImportService>.Instance,
-                options: null,
+                options: RegisteredOptions(),
                 analyticsCache: null,
                 serviceScopeFactory: null,
                 jobQueue: queue,
@@ -380,7 +390,7 @@ namespace Api.Tests
             try
             {
                 var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
-                    service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false));
+                    service.StartImportAsync(tmp, includeAnalytics: false, overwriteExisting: false, sourceNamespace: "test-source"));
 
                 Assert.Contains("timed out", ex.Message, StringComparison.OrdinalIgnoreCase);
                 Assert.Equal(1, storage.UploadCallCount);

@@ -369,15 +369,15 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("JobKey", "StartedAtUtc")
-                        .IsDescending(false, true)
-                        .HasDatabaseName("idx_analytics_refresh_runs_job_started");
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("idx_analytics_refresh_runs_created_at");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("idx_analytics_refresh_runs_status");
 
-                    b.HasIndex("CreatedAtUtc")
-                        .HasDatabaseName("idx_analytics_refresh_runs_created_at");
+                    b.HasIndex("JobKey", "StartedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("idx_analytics_refresh_runs_job_started");
 
                     b.HasIndex("WorkerName", "StartedAtUtc")
                         .HasDatabaseName("idx_analytics_refresh_runs_worker_started");
@@ -1344,6 +1344,10 @@ namespace Infrastructure.Migrations.AnalyticsDb
                     b.Property<DateTime>("SaleTimestampUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<int>("StoreId")
                         .HasColumnType("integer");
 
@@ -1401,6 +1405,10 @@ namespace Infrastructure.Migrations.AnalyticsDb
                     b.Property<long?>("SourceLineId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("SourceNamespace")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("SourceTableKey")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -1414,10 +1422,10 @@ namespace Infrastructure.Migrations.AnalyticsDb
 
                     b.HasIndex("SaleId", "ProductId");
 
-                    b.HasIndex("SaleId", "SourceTableKey", "SourceLineId")
+                    b.HasIndex("SourceNamespace", "SaleId", "SourceTableKey", "SourceLineId")
                         .IsUnique()
                         .HasDatabaseName("UX_SalesLineFacts_SaleId_SourceLine")
-                        .HasFilter("\"SourceLineId\" IS NOT NULL");
+                        .HasFilter("\"SourceNamespace\" IS NOT NULL AND \"SourceLineId\" IS NOT NULL");
 
                     b.ToTable("SalesLineFacts", (string)null);
                 });

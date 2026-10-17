@@ -1412,20 +1412,22 @@ public static class AccessImportEndpoints
             sourceFileSizeBytes = new FileInfo(resolved.Path).Length;
 
         var includeAnalytics = true;
-        var overwriteExisting = true;
+        var overwriteExisting = false;
         var includeTemporaryTables = false;
+        string? sourceNamespace = null;
 
         if (request.HasFormContentType)
         {
             var form = await request.ReadFormAsync(ct);
             includeAnalytics = ParseBoolOrDefault(form["includeAnalytics"], true);
-            overwriteExisting = ParseBoolOrDefault(form["overwriteExisting"], true);
+            overwriteExisting = ParseBoolOrDefault(form["overwriteExisting"], false);
             includeTemporaryTables = ParseBoolOrDefault(form["includeTemporaryTables"], false);
+            sourceNamespace = form["sourceNamespace"].FirstOrDefault();
         }
 
         try
         {
-            var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);
+            var run = await service.StartImportAsync(resolved.Path!, includeAnalytics, overwriteExisting, includeTemporaryTables, ct, sourceNamespace);
             batchId = run.BatchId;
             outcome = "accepted";
             // Return the full run response for backward compatibility with frontend expecting full AccessImportRunResponse

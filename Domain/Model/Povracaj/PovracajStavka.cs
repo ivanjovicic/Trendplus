@@ -36,6 +36,7 @@
         /// Stanje artikla: Ošte?eno, Pogrešna veli?ina, Neprodat, Dobar, itd.
         /// </summary>
         public string? StanjeArtikla { get; set; }
+        public string? SourceNamespace { get; set; }
         public string? SourceTableKey { get; set; }
         public long? SourceRowId { get; set; }
         public System.DateTime? SourceUpdatedAtUtc { get; set; }

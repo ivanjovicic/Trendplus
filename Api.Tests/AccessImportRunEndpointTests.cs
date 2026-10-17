@@ -57,6 +57,7 @@ public sealed class AccessImportRunEndpointTests
         content.Add(fileContent, "file", "sample.accdb");
         content.Add(new StringContent("true"), "includeAnalytics");
         content.Add(new StringContent("false"), "overwriteExisting");
+        content.Add(new StringContent("store-logical-uuid"), "sourceNamespace");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/access-import/run")
         {
@@ -70,6 +71,7 @@ public sealed class AccessImportRunEndpointTests
         Assert.Equal(1, service.StartImportCallCount);
         Assert.True(service.FileExistedWhenCalled);
         Assert.Equal(4, service.LastObservedFileSizeBytes);
+        Assert.Equal("store-logical-uuid", service.LastSourceNamespace);
         Assert.Equal("/api/access-import/batches/123", response.Headers.Location?.ToString());
     }
 
@@ -221,19 +223,21 @@ public sealed class AccessImportRunEndpointTests
         public int StartImportCallCount { get; private set; }
         public bool FileExistedWhenCalled { get; private set; }
         public long? LastObservedFileSizeBytes { get; private set; }
+        public string? LastSourceNamespace { get; private set; }
         public Func<string, bool, bool, bool, CancellationToken, Task<AccessImportRunResponse>>? StartImportHandler { get; init; }
 
         public Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default)
             => throw new NotSupportedException();
 
-        public Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default)
+        public Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default, string? sourceNamespace = null)
             => throw new NotSupportedException();
 
-        public async Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default)
+        public async Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default, string? sourceNamespace = null)
         {
             StartImportCallCount++;
             FileExistedWhenCalled = File.Exists(accessFilePath);
             LastObservedFileSizeBytes = FileExistedWhenCalled ? new FileInfo(accessFilePath).Length : null;
+            LastSourceNamespace = sourceNamespace;
 
             if (StartImportHandler is not null)
                 return await StartImportHandler(accessFilePath, includeAnalytics, overwriteExisting, includeTemporaryTables, ct);

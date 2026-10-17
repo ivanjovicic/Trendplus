@@ -23,6 +23,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DataOrigin)
                   .HasMaxLength(32)
                   .HasDefaultValue("existing");
+                eb.Property(e => e.SourceNamespace).HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasMaxLength(128);
                 eb.Property(e => e.SourceRowId);
                 eb.Property(e => e.SourceUpdatedAtUtc);
@@ -43,9 +44,9 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.IDDobavljac);
                 eb.HasIndex(e => e.DataOrigin);
                 eb.HasIndex(e => new { e.IDObjekat, e.IDDobavljac });
-                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
-                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
                 eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 // Navigation to multiple images
@@ -104,6 +105,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.StaraProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.NovaProdajnaCena).HasColumnType("decimal(18,2)");
                 eb.Property(e => e.DataOrigin).IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceNamespace).HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasMaxLength(128);
                 eb.Property(e => e.SourceRowId);
                 eb.Property(e => e.SourceUpdatedAtUtc);
@@ -111,8 +113,8 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SourceBatchId);
                 eb.HasIndex(e => e.DataOrigin);
                 eb.HasIndex(e => new { e.IDObjekat, e.Datum });
-                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
-                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
+                  .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
                 eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
@@ -224,6 +226,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.KorisnikIme).HasColumnName("korisnik_ime").HasMaxLength(200);
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
                 eb.Property(e => e.SourceTimestampBasis).HasColumnName("source_timestamp_basis").HasMaxLength(64);
+                eb.Property(e => e.SourceNamespace).HasColumnName("source_namespace").HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
@@ -232,9 +235,9 @@ namespace Infrastructure.DbContexts
 
                 eb.HasIndex(e => new { e.DatumProdaje, e.IDObjekat });
                 eb.HasIndex(e => new { e.DataOrigin, e.DatumProdaje });
-                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
-                  .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                  .HasFilter("data_origin = 'access' AND source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
                 eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 eb.HasMany(e => e.Stavke)
@@ -259,6 +262,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SupplierIdAtSale).HasColumnName("supplier_id_at_sale");
                 eb.Property(e => e.ShoeTypeIdAtSale).HasColumnName("shoe_type_id_at_sale");
                 eb.Property(e => e.AttributionBasis).HasColumnName("attribution_basis").HasMaxLength(64).IsRequired().HasDefaultValue("unknown");
+                eb.Property(e => e.SourceNamespace).HasColumnName("source_namespace").HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
@@ -269,9 +273,9 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => new { e.IdProdaja, e.IdArtikal });
                 eb.HasIndex(e => e.SupplierIdAtSale);
                 eb.HasIndex(e => e.ShoeTypeIdAtSale);
-                eb.HasIndex(e => new { e.SourceTableKey, e.SourceRowId })
+                eb.HasIndex(e => new { e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
-                  .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                  .HasFilter("source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
                 eb.HasIndex(e => new { e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
@@ -294,6 +298,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.DatumKreiranja).HasColumnName("datum_kreiranja").IsRequired();
                 eb.Property(e => e.DatumOdobrenja).HasColumnName("datum_odobrenja");
                 eb.Property(e => e.DataOrigin).HasColumnName("data_origin").IsRequired().HasMaxLength(32).HasDefaultValue("existing");
+                eb.Property(e => e.SourceNamespace).HasColumnName("source_namespace").HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
@@ -303,9 +308,9 @@ namespace Infrastructure.DbContexts
                 eb.HasIndex(e => e.BrojZapisnika).IsUnique();
                 eb.HasIndex(e => e.IDDobavljac);
                 eb.HasIndex(e => e.DatumPovracaja);
-                eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceRowId })
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
-                  .HasFilter("data_origin = 'access' AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                  .HasFilter("data_origin = 'access' AND source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
                 eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
                 
                 eb.HasMany(e => e.Stavke)
@@ -326,6 +331,7 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.Cena).HasColumnName("cena").HasColumnType("decimal(18,2)").IsRequired();
                 eb.Property(e => e.Razlog).HasColumnName("razlog");
                 eb.Property(e => e.StanjeArtikla).HasColumnName("stanje_artikla").HasMaxLength(100);
+                eb.Property(e => e.SourceNamespace).HasColumnName("source_namespace").HasMaxLength(128);
                 eb.Property(e => e.SourceTableKey).HasColumnName("source_table_key").HasMaxLength(128);
                 eb.Property(e => e.SourceRowId).HasColumnName("source_row_id");
                 eb.Property(e => e.SourceUpdatedAtUtc).HasColumnName("source_updated_at_utc");
@@ -333,9 +339,9 @@ namespace Infrastructure.DbContexts
                 eb.Property(e => e.SourceBatchId).HasColumnName("source_batch_id");
                 
                 eb.HasIndex(e => e.IdArtikal);
-                eb.HasIndex(e => new { e.SourceTableKey, e.SourceRowId })
+                eb.HasIndex(e => new { e.SourceNamespace, e.SourceTableKey, e.SourceRowId })
                   .IsUnique()
-                  .HasFilter("source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
+                  .HasFilter("source_namespace IS NOT NULL AND source_table_key IS NOT NULL AND source_row_id IS NOT NULL");
                 eb.HasIndex(e => new { e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });
             });
 
@@ -345,6 +351,7 @@ namespace Infrastructure.DbContexts
                 eb.HasKey(e => e.Id);
                 eb.Property(e => e.SourceSystem).IsRequired().HasMaxLength(64);
                 eb.Property(e => e.SourceFileName).IsRequired().HasMaxLength(300);
+                eb.Property(e => e.SourceNamespace).HasMaxLength(128);
                 eb.Property(e => e.SourceFilePath).HasMaxLength(800);
                 eb.Property(e => e.SourceStorageKey).HasMaxLength(1024);
                 eb.Property(e => e.SourceStorageProvider).HasMaxLength(32);
@@ -407,7 +414,8 @@ namespace Infrastructure.DbContexts
             modelBuilder.Entity<AccessImportCursor>(eb =>
             {
                 eb.ToTable("AccessImportCursors");
-                eb.HasKey(e => e.TableKey);
+                eb.HasKey(e => new { e.SourceNamespace, e.TableKey });
+                eb.Property(e => e.SourceNamespace).HasMaxLength(128);
                 eb.Property(e => e.TableKey).HasMaxLength(128);
                 eb.Property(e => e.CursorMode).IsRequired().HasMaxLength(32);
                 eb.Property(e => e.SourceKey).HasMaxLength(256);
