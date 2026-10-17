@@ -43,6 +43,7 @@ using Api.Endpoints;
 using Api.Services.Analytics;
 using Api.Services.Access;
 using Api.Services.DataSources;
+using Api.Services.SefXml;
 using Api.Middleware;
 using Api.Services.Startup;
 using Api.Config;
@@ -504,6 +505,10 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddSingleton<ISourceDataSessionFactory, SourceDataSessionFactory>();
     builder.Services.AddScoped<IDataSourceDiscoveryService, DataSourceDiscoveryService>();
     builder.Services.AddScoped<IDataSourceMappingPreviewService, DataSourceMappingPreviewService>();
+    builder.Services.AddSingleton<ISefXmlInvoiceParser>(_ =>
+        new SefXmlInvoiceParser(SefXmlPreviewEndpoints.GetParseLimits(builder.Configuration)));
+    builder.Services.AddScoped<ISefXmlCatalogReader, EfSefXmlCatalogReader>();
+    builder.Services.AddSingleton<SefXmlReconciliationService>();
 
     // Embedding service for AI-powered image search
     var embeddingServiceSettings = EmbeddingServiceRuntimePolicy.Resolve(
@@ -762,6 +767,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     builder.Services.AddScoped<IBatchLogService, BatchLogService>();
     builder.Services.AddScoped<INivelacijaRepairService, NivelacijaRepairService>();
     builder.Services.AddScoped<ITransferService, TransferService>();
+    builder.Services.AddScoped<GoodsReceiptService>();
     builder.Services.AddScoped<IPreNivelacijaScoringService, PreNivelacijaScoringService>();
     builder.Services.AddScoped<IShopifyImportService, ShopifyImportService>();
 
@@ -1220,6 +1226,8 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapSupplierDecisionHubEndpoints();
     app.MapDataSourceDiscoveryEndpoints();
     app.MapDataSourceMappingPreviewEndpoints();
+    app.MapSefXmlPreviewEndpoints();
+    app.MapSefXmlReconciliationEndpoints();
     app.MapScoringEndpoints();
     app.MapOpenProductTrainingEndpoints();
     app.MapShopifyEndpoints();
@@ -1238,6 +1246,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
     app.MapDocumentEndpoints();
     // Transfer endpoints
     app.MapTransferEndpoints();
+    app.MapGoodsReceiptEndpoints();
 
     Console.WriteLine("All endpoints mapped");
     Console.WriteLine($"Swagger UI available at: http://localhost:{port}/swagger");

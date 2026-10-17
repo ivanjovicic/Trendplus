@@ -150,7 +150,7 @@ public sealed class AccessImportBackgroundWorkerStartupLifecycleTests
         services.AddSingleton<IConfiguration>(configuration);
 
         services.AddDbContext<TrendplusDbContext>(options =>
-            options.UseInMemoryDatabase($"access-import-worker-{Guid.NewGuid():N}"));
+            options.UseInMemoryDatabase($"access-import-worker-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
         services.AddLogging();
         services.AddSingleton<AccessImportBackgroundWorker>();
 

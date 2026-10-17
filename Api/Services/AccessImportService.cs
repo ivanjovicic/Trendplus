@@ -995,6 +995,7 @@ using NpgsqlTypes;
         public DateTime? SourceUpdatedAtUtc { get; set; }
         public string? SourceHash { get; set; }
         public long? SourceBatchId { get; set; }
+        public string? DataOrigin { get; set; }
     }
 
     private string[] ResolveLineageIdAliasesForTable(string tableKey)
@@ -5000,6 +5001,7 @@ using NpgsqlTypes;
     private async Task ImportArtikliAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var preloadSw = System.Diagnostics.Stopwatch.StartNew();
+        await LockArticlesForStockSnapshotAsync(ct);
         var existingRows = await _trendDb.Artikli
             .AsNoTracking()
             .Select(x => new
@@ -5009,7 +5011,8 @@ using NpgsqlTypes;
                 x.SourceRowId,
                 x.SourceUpdatedAtUtc,
                 x.SourceHash,
-                x.SourceBatchId
+                x.SourceBatchId,
+                x.DataOrigin
             })
             .ToListAsync(ct);
         var existingIds = existingRows.Select(x => x.Id).ToHashSet();
@@ -5021,8 +5024,12 @@ using NpgsqlTypes;
                 SourceRowId = x.SourceRowId,
                 SourceUpdatedAtUtc = x.SourceUpdatedAtUtc,
                 SourceHash = x.SourceHash,
-                SourceBatchId = x.SourceBatchId
+                SourceBatchId = x.SourceBatchId,
+                DataOrigin = x.DataOrigin
             });
+        // Access quantities are full source snapshots. Reapply local stock movements after reading
+        // the snapshot so a later import cannot erase goods received through the web workflow.
+        var applicationStockDeltas = await AccessArticleStockOverlay.LoadAsync(_trendDb, ct);
         preloadSw.Stop();
 
         _logger.LogInformation(
@@ -5082,6 +5089,21 @@ using NpgsqlTypes;
                 var assignedId = sourceId;
                 if (assignedId > 0 && existingIds.Contains(assignedId))
                 {
+                    if (existingLineageById.TryGetValue(assignedId, out var targetOwner) &&
+                        !string.Equals(targetOwner.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogError(
+                            "Access article source ID collides with a non-Access target article. BatchId={BatchId} TableName={TableName} Operation={Operation} SourceRowId={SourceRowId} TargetArticleId={TargetArticleId} TargetDataOrigin={TargetDataOrigin}",
+                            _activeBatchId,
+                            table,
+                            "artikli-source-target-id-collision",
+                            sourceId,
+                            assignedId,
+                            targetOwner.DataOrigin);
+                        throw new InvalidOperationException(
+                            $"Access artikli import je zaustavljen: izvorni ID {sourceId} zauzet je ciljnim artiklom drugog porekla ({targetOwner.DataOrigin}). Podaci nisu prepisani; potrebna je eksplicitna identitetska rekonsilijacija.");
+                    }
+
                     if (!overwriteExisting)
                         continue;
 
@@ -5123,7 +5145,11 @@ using NpgsqlTypes;
                 result.ArtikliUpdated++;
             }
 
+            var previousQuantity = e.Kolicina;
+            var sourceSnapshotQuantity = INormalized(row, aliasMap.KolicinaAlias);
             ApplyArtikliValues(e, row, naziv!, aliasMap);
+            e.Kolicina = AccessArticleStockOverlay.Apply(
+                sourceSnapshotQuantity, applicationStockDeltas.GetValueOrDefault(e.Id), previousQuantity);
             ApplyAccessSourceLineage(e, "artikli", row);
             existingLineageById[e.Id] = new AccessLineageSnapshot
             {
@@ -5131,7 +5157,8 @@ using NpgsqlTypes;
                 SourceRowId = e.SourceRowId,
                 SourceUpdatedAtUtc = e.SourceUpdatedAtUtc,
                 SourceHash = e.SourceHash,
-                SourceBatchId = e.SourceBatchId
+                SourceBatchId = e.SourceBatchId,
+                DataOrigin = e.DataOrigin
             };
             TrackAnalyticsProductId(e.Id);
             TrackAnalyticsTypeId(e.IDTipObuce);
@@ -5183,6 +5210,20 @@ using NpgsqlTypes;
             artikliSw.ElapsedMilliseconds,
             table,
             "artikli-complete");
+    }
+
+    private async Task LockArticlesForStockSnapshotAsync(CancellationToken ct)
+    {
+        await AccessArticleStockOverlay.AcquireArticleIdentityLockAsync(_trendDb.Database, ct);
+        var connection = (NpgsqlConnection)_trendDb.Database.GetDbConnection();
+        var transaction = (NpgsqlTransaction?)_trendDb.Database.CurrentTransaction?.GetDbTransaction()
+            ?? throw new InvalidOperationException("Access artikli snapshot mora biti obrađen unutar aktivne PostgreSQL transakcije.");
+        await using var command = new NpgsqlCommand("SELECT \"Id\" FROM \"Artikli\" ORDER BY \"Id\" FOR UPDATE", connection, transaction);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            // Drain the ordered lock query; row locks remain held by the Access batch transaction.
+        }
     }
 
     private sealed record ArtikliAliasMap(
@@ -9427,51 +9468,45 @@ using NpgsqlTypes;
     private async Task ResetTrendplusSequencesAsync(CancellationToken ct)
     {
         const string sql = """
-            DO $sequence_repair$
-            DECLARE target record;
-                    current_sequence_value bigint;
+            DO $sequence_sync$
+            DECLARE
+                target record;
+                sequence_name text;
+                sequence_value bigint;
+                sequence_is_called boolean;
+                max_id bigint;
             BEGIN
                 FOR target IN
-                    SELECT pg_get_serial_sequence('"Artikli"', 'Id')::regclass AS sequence_name,
-                           (SELECT MAX("Id") FROM "Artikli") AS table_max_id
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('"Dobavljaci"', 'Id')::regclass,
-                           (SELECT MAX("Id") FROM "Dobavljaci")
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('"Sezone"', 'Id')::regclass,
-                           (SELECT MAX("Id") FROM "Sezone")
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('"TipoviObuce"', 'Id')::regclass,
-                           (SELECT MAX("Id") FROM "TipoviObuce")
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('prodaja_zaglavlje', 'id')::regclass,
-                           (SELECT MAX(id) FROM prodaja_zaglavlje)
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('prodaja_stavke', 'id')::regclass,
-                           (SELECT MAX(id) FROM prodaja_stavke)
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('"DnevnikPromena"', 'Id')::regclass,
-                           (SELECT MAX("Id") FROM "DnevnikPromena")
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('povracaj_zaglavlje', 'id')::regclass,
-                           (SELECT MAX(id) FROM povracaj_zaglavlje)
-                    UNION ALL
-                    SELECT pg_get_serial_sequence('povracaj_stavke', 'id')::regclass,
-                           (SELECT MAX(id) FROM povracaj_stavke)
+                    SELECT * FROM (VALUES
+                        ('"Artikli"', 'Id'),
+                        ('"Dobavljaci"', 'Id'),
+                        ('"Sezone"', 'Id'),
+                        ('"TipoviObuce"', 'Id'),
+                        ('prodaja_zaglavlje', 'id'),
+                        ('prodaja_stavke', 'id'),
+                        ('"DnevnikPromena"', 'Id'),
+                        ('povracaj_zaglavlje', 'id'),
+                        ('povracaj_stavke', 'id')
+                    ) AS sequence_targets(table_name, column_name)
                 LOOP
-                    IF target.sequence_name IS NULL OR target.table_max_id IS NULL THEN
-                        CONTINUE;
+                    sequence_name := pg_get_serial_sequence(target.table_name, target.column_name);
+                    IF sequence_name IS NULL THEN
+                        RAISE EXCEPTION 'Identity sequence is missing for %.%', target.table_name, target.column_name;
                     END IF;
 
-                    EXECUTE format('SELECT last_value FROM %s', target.sequence_name)
-                        INTO current_sequence_value;
+                    EXECUTE format('SELECT last_value, is_called FROM %s', sequence_name)
+                        INTO sequence_value, sequence_is_called;
+                    EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %s', target.column_name, target.table_name)
+                        INTO max_id;
 
-                    IF current_sequence_value IS NULL OR target.table_max_id > current_sequence_value THEN
-                        PERFORM setval(target.sequence_name, target.table_max_id, true);
+                    -- Imported explicit IDs can leave the sequence behind. Advance it only when needed;
+                    -- never reset it below IDs already handed to an uncommitted concurrent transaction.
+                    IF sequence_value < max_id OR (sequence_value = max_id AND NOT sequence_is_called) THEN
+                        PERFORM setval(sequence_name::regclass, GREATEST(max_id, 1), true);
                     END IF;
                 END LOOP;
             END
-            $sequence_repair$;
+            $sequence_sync$;
             """;
         await _trendDb.Database.ExecuteSqlRawAsync(sql, ct);
     }

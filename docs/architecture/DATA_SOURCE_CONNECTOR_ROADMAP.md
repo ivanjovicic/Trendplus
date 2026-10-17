@@ -17,6 +17,13 @@ Do not turn `TrendplusDbContext` into a multi-provider EF Core context in the fi
 
 The first concern remains PostgreSQL/Npgsql. This roadmap addresses the second concern.
 
+
+## Pilot dodatak 2026-10-16: SEF XML kao ulazni dokument za read-only nacrt prijema
+
+Owner-scoped izuzetak/pilot, ne genericki novi izvor ili write-back: kupac prima ulazne UBL XML fakture sa SEF, ali robu **rucno** evidentira u Accessu. Tok je (1) bezbedan lokalni XML parser, (2) bounded read-only artikli/dobavljaci lookup i oznaceno manual/unknown uparivanje, (3) UI nacrt na /unos-robe i export bez ikakvog knjizenja. Source format/semantika stavki, poreska osnova, valuta, kolicina i Access lineage moraju biti ocuvani. Nema cloud SEF credentiala, automatskog povlacenja faktura, direktnog pisanja u Access niti finansijske tvrdnje iz izmenjene cene bez ugovora. Nema produkcionog receipt write-a. Opcioni izolovani testni Trendplus upis zahteva novu eksplicitnu owner odluku i DB/warehouse/idempotency proofs.
+
+Ownership: docs/ai/DATA_SOURCE_CONNECTOR_PROMPT_QUEUE.md QDB11–QDB14; poslovni acceptance docs/pilot/SEF_XML_RECEIPT_PILOT_2026-10-16.md. QDB07/QDB08/QDB10 se ne redefinisu. Ovo ne uklanja postojece Access/SQL Server granice, MT i prod-release gate.
+
 ## Why this is the lowest-risk direction
 
 The repository already has most of the difficult low-level source-reading behavior behind the Access session boundary:

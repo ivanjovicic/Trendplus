@@ -241,7 +241,7 @@ public sealed class WorkerRuntimePolicyServiceTests : IClassFixture<PostgresCont
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning());
         services.AddSingleton<WorkerRuntimePolicyService>();
         return services.BuildServiceProvider();
     }

@@ -150,3 +150,193 @@ These are **qualitative states, not predicted counts by calendar year**. No avai
 - **Where does it fail dangerously?** Wrong cost scale, stale source, dataScope/store mismatch, leaked tenant data and “projected savings” framed as guaranteed profit. Gate these before charging for automated recommendations.
 - **When should we NOT build more?** No paying pilot; inability to reproduce source data; onboarding longer than recurring revenue can justify; partner incentives conflicting with customers; repeat recommendations never acted on.
 - **Owner decision after 60-day evidence window:** **CONTINUE RETAIL**, **SERVICE/CHANNEL**, **TEST INVOICE DIFFERENCES SEPARATELY**, or **STOP NEW PRODUCT DEVELOPMENT**. Record the choice in the existing business progress document only when customer evidence exists. Do not pre-authorize a new prompt queue or client production deployment here.
+
+
+---
+
+## 9. Independent product, market and execution verdict — 2026-10-17
+
+**Nature of this addendum:** owner-requested repository+public-source review, not a customer interview, production test, readiness certificate, booking commitment, or implementation authorization. Baseline main SHA: 8239678f71eefc79fe5d5741364f3dfa043016cf (checked 2026-10-17). Commercial figures below are **assumptions, not observed customer pricing**. For status precedence use the current canonical owning queue; older READY mentions in this research are historical. This addendum augments sections 1–8 rather than rewriting their recorded research.
+
+### 9.1 Source-truth and commercial readiness map
+
+| Job and existing evidence | Verified code / record | Unverified or unsafe commercial promise |
+| --- | --- | --- |
+| Day/store/supplier sales | Api/Services/DailySalesStatsService.cs; Klijent/clientapp/src/pages/AnalyticsDashboard.tsx; docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md documents batch-23 5,530/5,530 headers and 67,092/67,092 lines reconciled in that dated local audit | Current live sales, every secondary dashboard projection and multi-ERP portability; RQ680 IN_PROGRESS owns secondary sales population |
+| Margin and supplier capital | Application/Analytics/AnalyticsMarginPolicy.cs; Api/Endpoints/SupplierDecisionHubEndpoints.cs; RQ601 source-provenance metadata | 501 retail lines and RSD 1,711,050 historical turnover with unknown cost in batch-23 validation; even numerically present Artikli.NabavnaCena fallback is NOT verified historical cost; 20 original kalkulacija proofs missing |
+| Latest stock and proposed movements | Api/Endpoints/InventoryEndpoints.cs; Application/Analytics/Inventory/InventoryDailyStockProvenance.cs; Inventory/rebalancing pages | RQ610 is BLOCKED: no unified source generation across import, manual adjustments, POS and transfers; current snapshot cannot reconstruct historical SKU x store out-of-stock or historical ROI |
+| Markdown recommendations | Existing pre/post, priority and action surfaces; docs/qa/RQ601_RQ602_HISTORICAL_VALIDATION_2026-10-10.md | 20 treated and 20 control historical candidates are descriptive; zero fully qualified causal shadow pairs in RQ612; no measured uplift |
+| Weekly executive actions | Existing RQ585 Decision Pulse, Analytics Actions, reports and exports; docs/pilot/RETAIL_OPERATOR_VALUE_SESSION_2026-10-14.md | No observed operator adoption or paid ROI; do not implement a duplicate digest |
+| SEF invoice preview and draft | Api/Services/SefXml/SefXmlInvoiceParser.cs, Api/Endpoints/SefXmlReconciliationEndpoints.cs, Klijent/clientapp/src/components/sef-xml-pilot/SefXmlReceiptDraftWizard.tsx; QDB11/12/13 DONE | Real operator/customer SEF sample NOT RUN; isolated preview/CSV is not booked goods receipt; QDB14 WAITING |
+| Separate goods receipt ledger | Api/Endpoints/GoodsReceiptEndpoints.cs and GoodsReceiptWriteAccess.cs, Api/Services/GoodsReceiptService.cs, UnosRobePage/UnosRobeForm; PR #184 MERGED 2026-10-16 | Admin key alone is insufficient; GoodsReceipts:WritesEnabled OFF by default and named operator provision required; no live writes authorized. XML draft is **not integrated into automatic posting**. PR #185 remains open, pending exact-head proof |
+| Access incremental import | STAB17 in docs/ai/STABILIZATION_RELEASE_SECURITY_PROMPT_QUEUE.md; PR #163 draft | #42 completed; #43–#49 failures, empty AccessImportCursors and full overwrite evidence in roadmap; no proved durable cursor or cross-database namespace, no authorization to replay or fix production |
+| Deployed availability | STAB16, RQ565, Render/provider evidence owned by STAB | Deployed SHA, durable worker refresh, current Neon/Render/Vercel and source freshness not jointly certified by this study |
+
+**Critical cross-program correction:** PR #184 is already merged and contains atomic goods-receipt write/reverse operations behind fail-closed gates; earlier text stating that the manual form merely logs receipt lines is now historical and must not be treated as current functionality. PR #163 remains OPEN DRAFT, not production-safe; PR #185 remains OPEN at this review. Do not revive QDB11–QDB13; QDB14 remains independently owner-gated and its design must be reconciled with the existing ledger before any approval. Exact PR URLs: https://github.com/ivanjovicic/Trendplus/pull/163 ; https://github.com/ivanjovicic/Trendplus/pull/184 ; https://github.com/ivanjovicic/Trendplus/pull/185 .
+
+### 9.2 Buyer segmentation and accessible market, without inflated TAM
+
+| Segment | Recurring buyer job | Adoption blocker / likely paid package | Evidence status |
+| --- | --- | --- | --- |
+| Independent footwear shop, 1 location | Find stuck sizes, check receipts, avoid manual recoding | Budget, POS already enough, modest transaction volume. Receipt draft or paid one-off check first | Demand/price NOT VERIFIED |
+| Footwear/apparel retailer, 2–15 shops | Compare stores, seasonal slow sellers, supplier capital, decision priority | Cross-location product/style/size identity, independent reconciliation, ERP export rights. Best initial **hypothesis** | Demand/price NOT VERIFIED |
+| Sports/outdoor/seasonal chain | Transfers and seasonal sell-through | Variant identity, true stock timeline, lead times; do not sell forecasts yet | NOT VERIFIED |
+| Wholesaler/distributor | Receipt/invoice discrepancies, supplier contract terms | Purchase order, packing/quantity, unit/currency/tax/rabate and legal rights; not present as certified canonical source | Discovery only |
+| ERP implementation/accounting partner | Additional read-only diagnostic and fewer reconciliations | Reproducible adapters, service-level guarantees, liability, data-processing agreement | Partner channel NOT VERIFIED |
+| Generic grocery and low-SKU retail | Basic POS, cash and compliance | Incumbents adequate; low differentiation | Reject as initial ICP |
+
+Existing 2026-10-15 research records RZS 2024 broad sector G **65,015 entities** and statistical sampling-frame activity 47 **6,707 enterprises** with 47.7 **1,942**. These are **not** footwear-shop counts, unique buying accounts, measured willingness-to-pay or an addressable SOM. Definitions and methods: https://data.stat.gov.rs/Home/Result/190102?languageCode=sr-Latn ; https://data.stat.gov.rs/Metadata/21_Unutrasnja%20trgovina/Html/2101_ESMS_G0_2024_2.html . The latter is survey sampling metadata, not a census of qualified customers. Validate fresh official NACE 47.71/47.72 enterprise and store counts, legal forms and multi-store firm deduplication with RZS/APR before numeric TAM. Public dataset entry: https://www.stat.gov.rs/en-us/oblasti/strukturne-poslovne-statistike/ . For 2026 no narrower independently verified footwear buyer count was obtained, so **TAM/SAM in number of accounts = NOT VERIFIED**.
+
+For decision-making use a bottom-up **sales-reach model, not an invented market statistic**: owner builds a named list of 30 independently relevant Serbian firms, records store count, current POS, decision maker and export availability; 10 actual interviews; 3 permissioned diagnostics; 2 explicit paid offers; at least 1 signed paid pilot. Each conversion ratio will be calculated only afterward. A 3-year commercial reach assumption of 100–300 qualified contacted organizations is a *sales-capacity scenario*, not an estimate of all Serbian buyers. A working funnel illustration: 150 contacted x 30% agreeing to demo x 20% purchase = 9 customers; both percentages are **unvalidated assumptions**. Count companies, not shops and not POS licences. SAM subset also requires feasible integration, lawful data access and demonstrable unique decision; SOM requires actually reachable names and capacity to deliver.
+
+Country order: Serbia (Access/SEF process knowledge) -> Croatia/BiH/Montenegro/Slovenia only after language/tax/ERP/export and partner checks -> EU/international only as an optional read-only planning layer, NOT as portable Serbian SEF compliance. PANTHEON publicly markets localized installations across RS/HR/BIH/ME/SI (https://www.datalab.eu/); this proves an incumbent presence, not Trendplus demand. Country-specific rival density, store counts and budgets: **NOT VERIFIED**.
+
+### 9.3 Competitor matrix A — verified capability, not false absence
+
+Snapshot of vendor-published offers checked 2026-10-17. Prices represent public list figures at check time, exclude applicable taxes/implementation unless stated; geography and billing selection may change amounts. Unknown means **NOT VERIFIED**, not 'does not exist'.
+
+| Product / reach / competitor role | POS + compliance | Stock / receipts | Decision analytics | Public entry price or status | Trendplus testable distinction |
+| --- | --- | --- | --- | --- | --- |
+| **BizniSoft (RS)** direct operational incumbent | POS/fiscal/SEF integration vendor-confirmed | Robno, retail, remote data sync confirmed | Owner dashboards confirmed; footwear store-size decision detail NOT VERIFIED | Full BizniSoft suite **12 EUR/month + PDV per workstation, minimum 3 licences (36 EUR/month minimum), paid 12 months ahead**; includes POS; optional integration/LPFR extra | Do not replace POS; dated cross-system decisions only if owner cannot answer existing reports |
+| **Minimax (RS/region)** ERP/accounting incumbent | eRačun, fiscal workflows | Retail stock, receipts, pricing/nivelacija vendor-confirmed | Business reporting confirmed, specific tailored size-run NOT VERIFIED | Maksi **28 EUR/month** at observed monthly setting, other packages 10/16/21 EUR | Lower-friction owner diagnosis, not commodity invoicing |
+| **PANTHEON / Datalab (SI/RS/HR/BIH/ME)** incumbent ERP | Retail/POS capabilities confirmed | Multi-location retail + accounting confirmed | Detailed footwear decision compare NOT VERIFIED | RS POS RT rental **19.90 EUR/month** listed, license/edition/hosting conditions vary | Narrow analyst layer only if ROI above ERP configuration cost |
+| **Odoo (global)** configurable suite/substitute | POS/Inventory/Accounting apps | Purchasing, stock and extensibility vendor-confirmed | Configurable reporting; identical decision method NOT VERIFIED | US Standard **$24.90/user/month on yearly view** (observed vendor display); integration/implementation extra | Less setup than ERP customization, if proven |
+| **Shopify POS (global)** retail platform | POS, payments by supported geography | Transfers/stock, Pro | Advanced stock/product reports Pro | Shopify Basic **$39/month** monthly view, **+$89/location/month POS Pro** | Existing non-Shopify data compatibility; weak global differentiator |
+| **Lightspeed Retail (global)** POS incumbent | POS | Inventory and vendor tools | Retail analytics present, feature-by-plan to check | G2 **$69/$119/$199** historical listing; current official region plan **NOT VERIFIED** | Not an attractive market to displace without partner |
+| **Cin7 Core (global)** IMS / direct adjacent | Multi-channel integration | PO, stock, warehouses, variants | Reporting, optional forecasting | **$349/$599/$1,199 per month** vendor Core tiers; Omni PRICE NOT PUBLIC | Lower-cost limited workflow, not feature parity |
+| **Inventory Planner (global)** direct planning specialist | Not a POS substitute | Multi-location planning / purchasing | Planning, replenishment | **PRICE NOT PUBLIC** on official quote page | Local source-integrity + decisions; Trendplus cannot yet match inventory optimization |
+| **Footwear-specific regional providers** | NOT VERIFIED | NOT VERIFIED | NOT VERIFIED | PRICE NOT PUBLIC | No claimed gap or market advantage until verified product demo |
+
+Primary links: https://www.biznisoft.com/cenovnik ; https://www.biznisoft.com/ ; https://www.minimax.rs/sr-latn-rs/cenovnik ; https://www.datalab.rs/cenovnik-pantheon-licenci/ ; https://www.datalab.eu/pantheon/retail-advanced-pos/ ; https://www.odoo.com/pricing ; https://www.shopify.com/rs/pos/pricing ; https://www.lightspeedhq.com/pos/retail/ ; https://www.cin7.com/pricing/ ; https://www.inventory-planner.com/pricing/ .
+Minimax explicitly documents retail repricing (https://help.minimax.rs/help/promena-cene-vrednosna-maloprodaja). BizniSoft advertises 3,949 firms / 19,027 licences; these are vendor claims as displayed 2026-10-17, not audited counts, footwear customers or actual addressable market. Its POS page labels 2,578 outlets **December 2024**, not a current Trendplus market count. Price-comparison must separate addon/base suite, seat, location, annual billing, tax and implementation.
+
+### 9.4 Competitor matrix B — process, usability, implementation, total cost
+
+| Workflow | Trendplus current | Incumbent advantage | Trendplus real risk and TCO |
+| --- | --- | --- | --- |
+| Fiscal checkout and statutory ledger | Exists as project features, but no proven full replacement pilot | BizniSoft, Minimax, PANTHEON and localized ERP already own regulated workflow | High validation/support/liability -> **DO NOT SELL ERP replacement** |
+| Raw XML invoice -> matched catalog -> draft | Implemented synthetic preview, manual matching and unposted CSV | ERP already knows supplier/product master; eInvoice imports may exist, exact human comparison NOT VERIFIED | Setup is source mapping + authentic sample test; no auto-post without explicit approval |
+| Supplier / margin comparison | Historical reports + cost coverage | Incumbent has current invoice/cost facts when properly configured | Wrong fallback cost = potentially misleading financial decision; require source proofs |
+| Store/size seasonal decisions | Existing Inventory/Decision/Pulse and partial size curves | Inventory Planner, Cin7, established retail BI have replenishment tooling | Missing location/time identity; false OOS/transfer claim would destroy trust |
+| Go-live / operator experience | Onboarding from one legacy Access context; 20-minute validation NOT RUN | Existing ERP already embedded in bookkeeping and daily routine | New connector plus security + staff training; target 1-day read-only ingestion is only a **hypothesis**, not demonstrated |
+| Five-year TCO | Fee + export + per-connector maintenance + training + source fix + support | ERP may bundle analytics within existing subscription | If our annual fee plus upkeep exceeds cost of one Excel review, buyer rationally declines |
+
+Reviews: G2 Inventory Planner feedback mentions sync delays (3 aggregated mentions) and high cost (3 mentions), based on self-selected review corpus, **not population estimates**: https://www.g2.com/products/inventory-planner-by-sage/reviews?qs=pros-and-cons . A fashion merchant discusses planning and 88–90 day replenishment on Reddit (one person, NOT Serbian prevalence): https://www.reddit.com/r/shopify/comments/1o6uk23/inventory_forecasting_help/ . This is problem discovery, not measured willingness to pay; do not cite a lone Reddit complaint as evidence that an entire incumbent is bad.
+
+### 9.5 Ranked opportunities — weighted judgement, not measurements
+
+Scoring definition (1 poor, 5 favorable); weights add to 100: demonstrated problem 16, buyer access/ability to pay 10, competitor headroom 8, existing Trendplus reuse 12, available data 12, development ease 8, integration/support ease 8, sales ease 6, revenue ceiling 6, portability 6, legal safety 4, time to paid evidence 4. Total = sum(weight x assessor score / 5). **Every score below is subjective, low confidence pending interviews.** Low-score data-dependent ideas are NOT bad forever: they are premature.
+
+| Rank | Candidate / score / effort estimate | Strongest FOR | Strongest AGAINST / stage |
+| --- | --- | --- | --- |
+| 1 | Owner trust/navigation of existing decision flow **78.8/100**; 12–28 h | Very high reuse and safety | Commercial value unproven; NOW only on observed friction |
+| 2 | Paid dated read-only retail diagnostic **77.2**; 18–40 h packaging | Fastest realistic invoice + existing analytics | Can be done in Excel; VALIDATE buyer before product expansion |
+| 3 | Existing SEF XML unposted receipt trial **77.2**; 12–35 h pilot/repair | Clear repeatable manual workflow and existing QDB code | ERP may already import; authentic invoices absent; NOW owner validation only |
+| 4 | Historical purchase-cost provenance **75.2**; 20–55 h engineering if originals provided | Core trustworthy margin differentiation | 20 original calculations not yet supplied; WAITING owner |
+| 5 | Existing weekly Pulse + action disposition **74.8**; 10–25 h | Recurring management value without new dashboard | Without fresh inputs may not be a weekly product; VALIDATE |
+| 6 | Supplier negotiation pack **68.4**; 15–40 h | Actionable export already partly exists | Financial proof/RQ601 incomplete; NEXT after provenance |
+| 7 | Reusable source onboarding/adapter **68.0**; 40–100+ h per nontrivial ERP | Cross-customer leverage | Integration and maintenance heavy; VALIDATE first |
+| 8 | Supplier Invoice Guard discrepancy check **59.2**; 35–90 h for narrow CSV prototype | Tangible document error reduction | No confirmed PO/contract/receipt basis; no automatic overcharge claims; VALIDATE |
+| 9 | Size-run/store transfer decision **54.0**; 70–150+ h | Footwear-specific, defensible if observed | Style/variant/stock history inadequate; LATER |
+| 10 | Fully trusted historical SKU×store stock **51.6**; 80–180+ h | Enables durable inventory value | Missing full mutation generation; BLOCKED RQ610 |
+
+TOP 5 improvements to core: cost provenance, live freshness/identity truth, existing weekly decision path, source-reconciled stock status, human-readable supplier evidence. TOP 5 possible paid adjuncts: dated Retail Diagnostic, guided XML receiving draft, recurring Weekly Decision Review, bounded Supplier Invoice Guard, partner-delivered source reconciliation service. Best effort/risk/cash candidates: diagnostic, real SEF draft trial, existing Pulse review. Best existing-store benefit: reconcile sale period, trust costs, blocked/eligible stock decision. Best first paid pilots: historical audit, manual SEF drafting, weekly owner review. International longer horizon: connector-neutral read-only profit diagnostics, supplier discrepancy workflows **with contractual sources**, style/size/location planning **after observed availability**. Definitely DO NOT build now: new POS/ERP replacement, new prediction/AI scoring, speculative automatic transfers or markdown, broad many-tenant architecture, external eBay/Amazon/Shopping/scraper/model-training features.
+
+**Gates beat scores:** a 78.8 UX tweak is NOT permitted to displace P0 financial integrity or an active agent claim. The above is a commercial comparison, **not READY routing**.
+
+### 9.6 Six commercial strategies, decision and 200 development-hour envelope
+
+A generic retail SaaS: widest features, weakest single-developer feasibility. B footwear analytics overlay: strongest current software fit but source quality gating. C receipt/invoice control: clearest workflow wedge but direct ERP competition and liability. D dated read-only audit + advisory subscription: smallest initial go-to-market risk. E white-label/OEM: attractive only after partner commits distribution, costly support contracts otherwise. F **one core analytical decision product + narrowly approved paid diagnostic/receipt add-ons**: preferred conditional strategy, no permanent split into 3 products before pilot.
+
+Recommended opening offer **hypothesis**: fixed-scope, 1–2 week historical read-only diagnostic **300–600 EUR** (source reconciliation, dated sales, supplier, slow-stock caveats and owner meeting), with no guaranteed saved amount. After proven repeat use: **99–249 EUR/company/month**, priced per company with a small included store allocation; negotiated location/volume overages, setup **300–900 EUR** for new adapter mapping. XML draft as an optional service only after genuine time saved; no automated financial posting promises. Validate actual invoice/payment terms before public price list. The published low-priced ERP subscriptions (BizniSoft full suite can start at 36 EUR/month for three workstations, excluding VAT/other extras) make **29 EUR generic dashboard** a weak standalone proposition. Proof of a specific recurring decision and differentiated integration is essential.
+
+**200 hours in 90 days, conditional developer allocation:** (1) 40 h source/production correctness safety evidence and targeted existing STAB/RQ gates (no unapproved production action); (2) 35 h SEF XML draft operator reproduction, high-value UI defects and isolated regression checks (not QDB14 posting); (3) 30 h reusable dated diagnostic report/export from existing routes; (4) 25 h operator-tested trust wording/navigation **only if reproducible blocker**; (5) 25 h narrow second-source CSV/ERP read-only intake proof **only after prospect export**; (6) 25 h security, data deletion, permission and support-onboarding proof; (7) 20 h release/regression contingency. Sum 200. If gates/customer permissions are missing, stop contingent implementation and transfer capacity to existing independent P0/P1 tasks, not to speculative screens. Business-owner interviews/sales are tracked separately; even if developer hours are budgeted, there is no guarantee customers can be recruited.
+
+### 9.7 Financial model for 12/24/36 months — illustrative, not forecast
+
+Use exit-month active paying customers, **not** cumulative signups: exit MRR = active firms x blended subscription price. Assumed blended recurring price 149 EUR/company/month; variable hosting/support/payment costs **20%** of revenue; founder time opportunity cost **35 EUR/hour**; founder engineering/support allocation **200 h/quarter = 66.67 h/month** (2,333 EUR/month); other fixed infrastructure 250 EUR/month and prospecting/operations 400 EUR/month = **2,983 EUR/month fixed**. Setup fees and consulting revenue are excluded from MRR and recurring break-even (conservative treatment). Assumptions vary by customer and are NOT actual Trendplus P&L.
+
+| Scenario | 12m / 24m / 36m active clients (assumptions) | Exit MRR EUR 12/24/36 | 36m recurring contribution after 20% variable and 2,983 fixed |
+| --- | --- | --- | --- |
+| Conservative | 1 / 3 / 6 | 149 / 447 / 894 | **-2,268 EUR/month** |
+| Base | 3 / 10 / 20 | 447 / 1,490 / 2,980 | **-599 EUR/month** |
+| Optimistic | 7 / 20 / 40 | 1,043 / 2,980 / 5,960 | **+1,785 EUR/month** |
+
+Break-even active firms = ceil(2,983 / (149 x 0.8)) = **26 companies** under the defined founder-time allocation. For a full-time 160 h/month founder at 35 EUR/h with the same 650 EUR other fixed costs, break-even = ceil(6,250 / 119.20) = **53 firms**. A solo developer at 20 clients is NOT automatically earning a sustainable wage. For a 249 EUR blended package and same 80% contribution, the part-time model requires **15 firms**; at 99 EUR it requires **38 firms**. VAT, receivables, tax, churn, implementation customizations and enterprise support are **not modeled**. Record actual monthly invoicing, cash collection, cancellations, onboarding hours and 30/90-day retention; do not project investor-grade ARR until cohort evidence exists.
+
+Setup revenue scenario (NOT recurring): new paying projects per year x actually collected setup fee, minus actual onboarding hours x founder hourly cost and third-party expense. Discovery diagnostic unit economics: 450 EUR price example - 10 h founder x 35 EUR - 30 EUR direct cost = 70 EUR pre-tax contribution; at 15 h the same project loses 105 EUR. Therefore sell a strictly bounded deliverable, paid upfront, and measure time. Do not use license revenue to conceal unpaid customer-specific custom engineering.
+
+### 9.8 Operator jobs, onboarding UX and falsifiable interviews
+
+**No timed UX study has been performed.** Static code surfaces and older UX audit do not prove click/time costs. Record actual taps, task completion, source check, time and errors for these five jobs per role:
+- Single-shop owner: daily revenue, returns, stranded stock, purchase priority, supplier check.
+- 3–10-shop owner: compare shops, transfer candidates, excess capital, weekly exceptions, action follow-up.
+- Buyer: style-size shortages, replenishment basis, supplier terms, reorder budget, late deliveries.
+- Store lead: goods received, mismatches, POS returns, inventory differences, branch transfers.
+- Bookkeeper/receiving clerk: XML parse, supplier identity, tax/discount check, physical quantity, archived receipt trace.
+- Distributor: order/contract, delivered quantity, invoiced quantity, supplier price variance, disputes.
+
+For each persona's 5 tasks use one observation sheet: entry page, source identity, expected outcome, **actual click count (NOT MEASURED)**, time (NOT MEASURED), error/empty/partial states, Excel/ERP alternative, whether operator can name next decision. Proposed nav: **Pregled -> Prodaja -> Zalihe -> Dobavljači -> Cena/Nivelacije -> Odluke -> Prijem dokumenata**, with technical Admin/Workers/Data Source status outside owner flow. Routes are already present; this is a **study hypothesis**, not authorization for global restructure. Only revise proven high-friction screen.
+
+Highest-priority UX acceptance examples:
+1. Klijent/clientapp/src/pages/AnalyticsDashboard.tsx: period/store/source freshness always visible; unknown cost must show NEDOVOLJNO PODATAKA rather than profit; export and detail use same scope. Test bad source, stale source and negative returns.
+2. Klijent/clientapp/src/pages/DecisionPulsePage.tsx plus Actions: one clear next action, reason/disabled explanation, status, human owner; no invented gains; compare with current ERP/Excel.
+3. Klijent/clientapp/src/pages/UnosRobePage.tsx and components/sef-xml-pilot/SefXmlReceiptDraftWizard.tsx: prominent **NEKNJIŽENO** in XML mode, explicit distinction from gated manual committed receipt, no password persisted or confidential XML logged; pending duplicate, unmatched, invalid unit/currency show blocking reasons. Verify at phone 375 px and desktop, named-operator denial and default OFF.
+4. Klijent/clientapp/src/pages/HomePage.tsx: separate last recorded source sale horizon from last successful import and operational health; no 'fresh' label from status alone.
+
+**Six buyer interviews, 5 prompts each (ask for real artifact or screen, not praise):**
+- Current operator: last inventory decision? last invoice entry time? where cost came from? show same report in Access? would you approve a paid repeated run? Evidence: time baseline + scrubbed receipts/screen; stop if existing system wins.
+- Unrelated independent shop: which weekly question takes longest? show last exported stock? who approves software? what was last paid addon? can we send fixed-price offer? Stop if neither painful nor budgeted.
+- 3–10-shop owner: largest recent transfer/overstock? how located size gaps? who decides across stores? demonstrate ERP report? approve paid diagnostic with anonymized source? Stop if no accessible store/source grain.
+- Distributor: show actual disputed invoice line? frequency and monetary impact? what PO/contract is authority? who resolves exception? permit paid bounded CSV comparison? Stop if no authoritative line evidence.
+- Bookkeeper/receiving clerk: typical XML variant? actual count of manual edits? what physical receiving evidence exists? how are credits/PDV/rabates reconciled? which repeat step has monetary cost? Stop if protected data cannot be lawfully tested or current ERP already automates.
+- ERP partner: what client reports take manual SQL? show allowed export/API? frequency of bespoke reports? liability/support split? pilot referral on a specific account? Stop if partner refuses integration rights or support boundary.
+
+**Actual payment signal:** signed paid diagnostic, paid pilot PO/invoice, or written commitment with named budget owner, deliverable, deadline and acceptance. 'Interesting, call me later' = politeness, not demand. A refusal after observing a complete one-source workflow is an equally valuable falsification.
+
+### 9.9 Ninety-day operating gates, not a new READY queue
+
+| Deadline / owner | One deliverable | Go / stop criterion and dependency |
+| --- | --- | --- |
+| Days 1–14 / product owner | One genuine 20-minute operator value session on bounded source, including three business questions and current ERP/Excel alternative | 2 of 3 jobs independently completed and one decision supported or honestly blocked; session NOT RUN until observed |
+| Days 1–21 / owner + approved provider operator | Exact deploy/source/refresh evidence and original 20 cost kalkulacija request; PR #163 lineage owner decision | No production currentness or true purchase margin without respective STAB16/RQ601 gates |
+| Days 7–30 / operator + QDB code owner | 2–3 authorized original SEF XML samples (privately, never Git), manual-time baseline, XML preview/draft output, negative ambiguous case | No customer pass before tested; no stock write; QDB14 remains WAITING |
+| Days 15–60 / product owner | 10 interviews outside incumbent, 3 bounded diagnostics offered, 2 concrete paid proposals | If 0 verifiable paid offers or all say incumbent sufficient, stop broad feature work |
+| Days 45–90 / engineer after evidence gates | One small source-safe report/UX refinement with independent regression and access/revocation test | Do not create another feature family without observed blocker; WIP <=2 and owner queue controls READY |
+
+A prospective client must receive signed data-processing scope, retention/export/delete rules, read-only import process, data-source mapping, error disclaimers and clear owner acceptance. **Do not upload real SEF invoice XML, Access data, secret keys, customer names, receipt screenshots or raw extracted purchase prices to this public repository.** The currently tracked legacy Access binary in repository root merits separate owner-led **privacy/classification review** before presenting the public repo to prospects; this document does not inspect or publish its contents or authorize file deletion.
+
+### 9.10 Second-pass adversarial verdict and explicit no-go reasons
+
+The buyer can decline because existing ERP already supports basic turnover, stock and repricing, Excel cheaply provides small one-off reports, cost numbers lack original receipts, or sharing sensitive sales data with a new provider is not justified. A full business-grade product would need measured secure onboarding, easy independent source reconciliation, a reasonable liability/retention agreement, real backup/deletion and operator proof. ERP incumbents could readily copy (1) weekly digest, (2) top slow-stock suggestions and (3) SEF XML import preview; these are **not durable moats**. More defendable but unproven would be cross-ERP source reconciliation, auditable source-quality lineage, and a validated footwear style-size-store action workflow.
+
+An investor would still lack: verified segmented buyer counts, signed paid pilots, repeated 30/90-day usage, collection, gross margin, churn, average onboarding hours, customer ROI ground truth, security due diligence and specific partner distribution. A sole developer must keep one supported first customer and one narrow revenue wedge, not an ERP rewrite. **GO** to restricted operator validation + paid diagnostic discovery; **NO-GO** for full SaaS expansion until at least one independent paying buyer and repeatable source onboarding are proven. This is a decision gate, not a guarantee of profit.
+
+
+### 9.11 Live read-only provider verification — 2026-10-17 (new independent evidence)
+
+Unlike the dated local batch-23 audit above, this is a fresh **read-only** check through authorized connected Render/Neon account tooling. Provider URLs and query shape only; no customer payloads, names or secrets copied. No deploy, data write, SEF operation, import attempt or schema mutation was performed.
+
+| Boundary | Observed on 2026-10-17 | Consequence |
+| --- | --- | --- |
+| Render production service | `trendplus-api` web service, https://dashboard.render.com/web/srv-d55c2tre5dus73c4bve0, `autoDeploy=no`/trigger off, latest LIVE manual deploy finished 2026-10-16 11:10 UTC at SHA **16bc5fc7124fc0ac6019edd00f45da1a930e8a24**; repository baseline current main **8239678f71eefc79fe5d5741364f3dfa043016cf** | Latest web deploy is not the inspected main head. Service being LIVE alone does not certify data freshness, source identity, SEF flag or frontend version |
+| Render services / logs | Only a Trendplus web service appears in accessible Render service list; no separate dedicated Trendplus worker entry. Logs on 2026-10-16 22:12 UTC repeatedly show `ExecuteReader on access-import-queue` at ~2-second intervals | Polling is not evidence that an import or analytics refresh successfully completed; integrated worker registration/runtime cannot be inferred from a service list |
+| Neon `trendplus` database, production branch | Read-only aggregate SQL: `AccessImportCursors` row count **0**; latest `DataImportBatches.Id` **49**, last status `completed` **#42** on **2026-08-12 10:32 UTC**, attempts #43–#49 **failed** with `IsIncremental=false`, `OverwriteExisting=true`; latest `prodaja_zaglavlje.datum_prodaje` **2026-08-05 00:00 UTC** | Safe incremental delta is NOT proven and current-sales recommendations are stale. Cross-database source identity and rollback acceptance in STAB17/PR #163 are prerequisites. Do not convert these reads into an unauthorized import |
+| Neon separate `analytics` database | Read-only `SELECT count(*), max("FinishedAtUtc") FROM analytics_refresh_runs` returned **zero** rows and NULL latest refresh time | The queried analytics refresh-run table provides **no recorded durable refresh proof**. This is not by itself proof that every other analytical process never ran; reconcile the deployed runtime source/worker path in STAB16 |
+
+Reproducible read-only query shapes:
+
+```sql
+SELECT (SELECT count(*) FROM "AccessImportCursors") AS cursors,
+       (SELECT max("Id") FROM "DataImportBatches") AS latest_batch_id,
+       (SELECT max("Id") FROM "DataImportBatches" WHERE lower("Status")='completed') AS last_completed_batch_id,
+       (SELECT max(datum_prodaje) FROM prodaja_zaglavlje) AS last_sale_date;
+SELECT "Id", "Status", "StartedAtUtc", "CompletedAtUtc", "IsIncremental", "OverwriteExisting"
+FROM "DataImportBatches" ORDER BY "Id" DESC LIMIT 8;
+SELECT count(*) AS refresh_run_count, max("FinishedAtUtc") AS last_refresh_finished
+FROM analytics_refresh_runs;
+```
+
+Important: the Neon default **neondb** is an empty incidental database and is NOT the `trendplus` business database. Both named `trendplus` and `analytics` databases were queried explicitly. No customer row contents were accessed.
+
+**Adversarial commercial change:** ranking above is still a cross-opportunity *subjective product* comparison, but **source recovery STAB16/STAB17 and PR #163 source-lineage safety outrank all discretionary engineering for any recurring 'this week' promise**. A bounded **historical as-of diagnostic** can still be offered when its exact scope reconciles; a recurring current-state decision subscription should be withheld. STAB16 remains BLOCKED and STAB17 WAITING per owning queues, not silently promoted. Escalation is to an authorized owner-approved provider/source-reconciliation workflow, not this docs-only PR.

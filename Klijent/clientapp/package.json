@@ -16,6 +16,8 @@
     "check:analytics-guardrails:self-test": "node ./scripts/check-analytics-guardrails.mjs --self-test",
     "check:analytics-guardrails": "npm run check:encoding && npm run check:analytics-guardrails:self-test && node ./scripts/check-analytics-guardrails.mjs && npm run typecheck",
     "qa:rq448-fixture-smoke": "node ./scripts/qa/rq448-fixture-smoke.mjs",
+    "qa:goods-receipt-fixture-smoke": "node ./scripts/qa/goods-receipt-fixture-browser-smoke.mjs",
+    "qa:sef-xml-draft-fixture-smoke": "node ./scripts/qa/sef-xml-draft-fixture-browser-smoke.mjs",
     "responsive:baseline": "node ./scripts/responsive_baseline.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

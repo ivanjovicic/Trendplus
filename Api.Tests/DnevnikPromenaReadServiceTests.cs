@@ -147,7 +147,11 @@ public sealed class DnevnikPromenaReadServiceTests
     {
         await using var databases = await DnevnikPromenaTestDatabases.CreateAsync(_fixture);
         ReportDatabaseIdentity(databases);
-        await databases.TrendDb.Database.ExecuteSqlRawAsync("DROP TABLE \"DnevnikPromena\";");
+        // Rename the table only inside the disposable PostgreSQL fixture instead of dropping it.
+        // GoodsReceiptLines now references DnevnikPromena for an auditable linked storno;
+        // dropping would violate referential integrity before the missing-table read is exercised.
+        await databases.TrendDb.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE \"DnevnikPromena\" RENAME TO \"DnevnikPromena_UnavailableForTest\";");
 
         var exception = await Assert.ThrowsAsync<PostgresException>(() =>
             CreateService(databases).GetPagedAsync(new DnevnikPromenaListQuery()));

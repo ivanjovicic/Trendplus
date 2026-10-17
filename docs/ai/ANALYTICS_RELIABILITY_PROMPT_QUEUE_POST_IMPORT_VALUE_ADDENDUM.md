@@ -4,7 +4,11 @@ Date: 2026-10-15
 Program: RQ (part of canonical `docs/ai/ANALYTICS_RELIABILITY_PROMPT_QUEUE*.md` family).
 
 Post-close note 2026-10-14: RQ647 is DONE after its corrective direct-main delivery at `408d1b81062e5d4c114960d69ab51d4d239407e4`. Exact-main Analytics Tests run `38542983060` is green (2,076 passed / 43 skipped / 0 failed), executed the RQ647 PostgreSQL benchmark, and uploaded artifact `rq647-analytics-endpoint-benchmark-38542983060` (artifact `11884041409`). The two legacy performance skips are now `legacy-superseded`; the BCI17 inventory remains 43 known skips with 13 isolated-PostgreSQL-runnable / 30 legacy-superseded / 0 genuinely-uncovered entries. Run evidence: `.ai/runs/2026-10-14-RQ647-evidence.md` and `.ai/runs/2026-10-14-direct-claim-collision-remediation-evidence.md`.
-Current READY prompt: **none**.
+Current READY prompt: none in this addendum (RQ680 is IN_PROGRESS under its active owner; RQ683 is DONE; RQ682 is PARTIAL and released pending a durable timestamp-basis contract; RQ685 is DONE).
+
+Analytics screens code audit 2026-10-15 (main `270b49e0`): RQ680 (P1, Dashboard secondary sales endpoints must use the canonical retail population and half-open period) is the primary READY; RQ682 (P2, Nivelacije wall-clock date filter) and RQ683 (P2, calendar-day moving windows) are additional independent READY lanes in other feature families; RQ681 (P1, summary-table fast path) waits for RQ680 (same file); RQ684 (P3 copy/definitions) waits on the RQ670 re-entry rule. Product-owner WIP cap ≤2 applies to claims. Evidence: `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md`.
+
+Flaky-test diagnostics 2026-10-16 (main `f9277afe`): RQ685 (P1, test-only) was an additional independent READY lane - extend the RQ665 EF `ManyServiceProvidersCreatedWarning` opt-out to plain `ServiceCollection` test registrations; the `WorkerRuntimeSettings` 42P01 CI failure is a secondary symptom. RQ685 is now DONE; see its completion evidence below and `.ai/runs/2026-10-16-RQ685-evidence.md`.
 
 RQ667 is DONE on `main` at delivery SHA `3f91841943871b3c3e44f1f1523d992db96821ae`; exact Analytics Quality Gates run `38699085117` succeeded. RQ666/RQ667 and RQ675/RQ676/RQ677 are DONE on `main`. Open PR #169 follows up on the RQ677 upload boundary and repairs the duplicate RQ678 identifier; remote branch `codex/rq678-sale-header-identity` is separate active work. The durable-upload prompt remains WAITING on confirmed `Storage__Provider` values for the Render web and worker services; do not claim either path until refreshed ownership and dependencies permit it. **RQ669/670/671 remain WAITING** on experimental reachability, observed core-operator evidence/owner re-entry, and an approved narrow lint ratchet. RQ448, RQ565, RQ610, STAB16 and PERF16 retain their production/source gates. Zero-READY proof: `.ai/runs/2026-10-15-RQ667-evidence.md`. [Business decision/scorecard](../product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md).
 Post-close routing 2026-10-14: RQ664 closed on `main` after the repository-local browser/export proof. RQ663 is **DONE** on `main` at merge SHA `275d1c307bca979e369023e88b87b08ff83d13e3`; RQ665 is also DONE as an independent test-only CI repair. Before any further claim, check current `origin/main`, locks, active branch/worktree and PR paths. RQ662 is DONE on `b48fc1cfd7feebcb54e98e01472eb5d0cc9db7a3`. STAB16, RQ610, RQ448, RQ565 remain gated at their original deployed/source acceptance layers.
@@ -3967,3 +3971,408 @@ No batch is queued whose only source copy is on the web instance local filesyste
 ### Dependencies
 
 Owner confirmation of production storage configuration.
+
+## RQ680 - Apply the canonical retail population and half-open period to every Dashboard sales endpoint
+
+Status: IN_PROGRESS
+Priority: P1
+Type: backend analytics correctness / PostgreSQL integration tests
+Feature family: dashboard-sales-population
+Parallel-safe: yes (CachedAnalyticsEndpoints secondary sales snapshots and their tests; disjoint from RQ682 AllEndpoints nivelacije and RQ683 frontend)
+Owner: Codex
+Ready after: none (RQ605 policy is DONE; audit `docs/qa/ANALYTICS_SCREENS_CODE_AUDIT_2026-10-15.md` A1)
+Commit suggestion: `fix(analytics): one retail population and half-open period for dashboard sales endpoints`
+
+### Claim reservation — 2026-10-15
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex.
+- Inspected `origin/main`: `837986b1a1f7047cde2812c01137a57df0cfe7ad`.
+- Planned worktree / branch: `C:\Users\Ivan\.codex\worktrees\rq680-dashboard-population\Trendplus2` / `codex/rq680-dashboard-population-20261015`.
+- Bounded paths: `Api/Endpoints/CachedAnalyticsEndpoints.cs`, existing policy helpers only as needed, `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, the narrowly required top-products client contract/spec, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-15-RQ680-evidence.md`.
+- Remote collision query: no RQ680 branch or open PR; only PR #163 is open and owns separate Access-import paths. No live internal agent owns this task.
+
+### Goal
+
+Every number on the Dashboard and Analytics Details screens is computed over the same population as the KPI header: retail receipts only (DUG/KOREKCIJA excluded), the selected `dataScope`, `fromDate <= DatumProdaje < toDate`, and sales lines kept when the article is missing.
+
+### Problem
+
+`BuildSalesSummarySnapshotAsync` and the daily series apply `SalesReceiptPopulationPolicy`, `< toDate` and a left join. The transaction-stats, payment, weekday, hour, quick-insights, by-category, category-trends, top-products queries and the bootstrap category/gender/supplier breakdowns do not: they include DUG/KOREKCIJA, use `<= toDate` and inner-join `Artikli`. Top-products also ignores `dataScope`.
+
+### Evidence
+
+- Correct reference: `Api/Endpoints/CachedAnalyticsEndpoints.cs:5131-5139`, `:5231-5239`; policy `Api/Services/SalesReceiptPopulationPolicy.cs:12-19`.
+- Deviations: `CachedAnalyticsEndpoints.cs:380-386`, `:1484`, `:1540`, `:1594`, `:1642`, `:1726-1749`, `:2193`, `:5284-5289`, `:5328-5331`, `:5370-5375`, `:5458`, `:5555-5580`, `:5666`, `:5716`, `:5768`.
+- Screen: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:2577-2584` (average document value), bootstrap breakdowns; `services/analyticsApi.ts:566-581` sends no `dataScope` for top products.
+
+### Exact files
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs` (only the listed query sites; no change to the fast path owned by RQ681), `Api/Services/SalesReceiptPopulationPolicy.cs` / `SalesDataScopePolicy.cs` (reuse only, no rule change), new `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, optional `Klijent/clientapp/src/services/analyticsApi.ts` + spec if top products gains `dataScope`.
+
+### Confirm first
+
+1. On disposable PostgreSQL (Testcontainers, `ASPNETCORE_ENVIRONMENT=Testing`; never the local 5434 DB) seed one day with: 2 retail receipts, 1 DUG, 1 KOREKCIJA, 1 return receipt with negative quantity, 1 line whose article is missing, 1 receipt at exactly `toDate` 00:00, and one `existing`-origin receipt.
+2. Write the oracle as raw SQL independent of the endpoint code. Call `/api/analytics/cached/dashboard/bootstrap`, `/sales/transaction-stats`, `/sales/by-weekday`, `/sales/by-hour`, `/sales/by-payment`, `/sales/by-category`, `/quick-insights`, `/sales/top-products`. Record which ones disagree with the oracle and with the header totals **before** changing code. If none disagree, close the prompt as not reproduced with the test kept.
+
+### Fix requirements
+
+- Apply `SalesReceiptPopulationPolicy.IncludedHeaderPredicate` and `SalesDataScopePolicy.HeaderPredicate` to every listed query; use `DatumProdaje < toDate` everywhere; left-join `Artikli` and roll missing articles up as the existing unknown bucket.
+- Pass `dataScope` through top products (endpoint, cache key, client) or document why that endpoint is scope-less and hide it on scoped screens.
+- Signed returns stay signed (RQ605); do not filter negative lines.
+
+### Must not change
+
+Header KPI values, daily series, cache key format of unrelated endpoints, RQ605/RQ607 semantics, aggregated fast path (RQ681), any formula in the glossary.
+
+### Tests
+
+PostgreSQL-required integration test per endpoint against the SQL oracle (sum of category/supplier/gender/weekday/hour/payment revenue == header revenue; transaction counts equal; DUG/KOREKCIJA contribute 0; midnight `toDate` row excluded everywhere; missing-article line counted; `imported`/`existing`/`all` each). A skipped test is not proof: the CI backend job must execute it. Existing `CachedAnalyticsCriticalEndpointsIntegrationTests` stay green.
+
+### Acceptance
+
+For the seeded fixture all Dashboard/Details numbers reconcile to the header within 0.01 RSD and equal the independent oracle; CI "Complete backend analytics suite" and "RQ453 Operations analytics certification" green on the PR head and on main after merge.
+
+### Delivery
+
+Branch from fresh `origin/main`, claim per `docs/ai/PROMPT_QUEUE_PROTOCOL.md`, PR with green required CI, real merge, exact main SHA in the completion note, run log in `.ai/runs/`.
+
+## RQ681 - Retire or certify the pre-aggregated category/supplier/gender summary fast path
+
+Status: WAITING
+Priority: P1
+Type: backend analytics correctness / worker SQL
+Feature family: dashboard-sales-population
+Parallel-safe: yes (only after RQ680 is DONE; same file and helpers)
+Owner: unassigned
+Ready after: RQ680 DONE (shared `CachedAnalyticsEndpoints.cs` snapshot builders)
+Commit suggestion: `fix(analytics): do not serve partial or non-retail summary tables on the dashboard`
+
+### Goal
+
+The unfiltered Dashboard category, supplier and gender breakdowns equal the same breakdown computed from raw facts with the canonical population, or the fast path is removed.
+
+### Problem
+
+With `dataScope=all` and no store/supplier, the bootstrap returns `AnalyticsCategorySummary`/`AnalyticsGenderSummary`/`AnalyticsSupplierSummary` whenever any row exists. The writers include DUG/KOREKCIJA, refresh only the last 7 days, and re-import deletes leave holes; the read is date-inclusive and changes row grain (`Pol = "Ukupno"`) and unknown label (`Nepoznato` vs `Ostalo`).
+
+### Evidence
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs:5274-5281`, `:5318-5323`, `:5360-5365`, `:3325-3365`; `Workers/AnalyticsAggregationWorker.cs:43`, `:198-206`, `:357-371`, `:389`, `:421-423`; `Database/Migrations/007_AddAnalyticsOptimization.sql:183-258`; `Api/Services/AccessImportService.cs:4070-4087`; worker registration `Api/Config/WorkerRuntimeConfig.cs:144-145`.
+
+### Exact files
+
+`Api/Endpoints/CachedAnalyticsEndpoints.cs` (three `TryGet…FromAggregatesAsync` callers), `Workers/AnalyticsAggregationWorker.cs`, new `Api.Tests/Rq681SummaryFastPathPostgresTests.cs`. No production migration.
+
+### Confirm first
+
+1. Disposable PostgreSQL: seed 10 days of sales including DUG/KOREKCIJA; populate summary tables via the worker method for the last 7 days only. Call bootstrap unfiltered and with `storeId`; record the difference to the raw oracle.
+2. Read-only: state whether `AnalyticsAggregationWorker` is enabled in `render.yaml`/runtime config. Do not query or write the production or local business DB.
+
+### Fix requirements
+
+Preferred: remove the fast path (raw queries are already used for every filtered view) and keep the tables untouched. Alternative only with measured need: serve aggregates only when every requested date has a row with a matching generation marker and the writer applies the retail policy; otherwise fall back to raw. Either way the response grain and labels must be identical to the raw path.
+
+### Must not change
+
+Filtered breakdowns, RQ680 results, worker scheduling of unrelated summaries, schema of existing tables.
+
+### Tests
+
+PostgreSQL-required: unfiltered breakdown == raw oracle for full, partial and empty summary coverage; DUG/KOREKCIJA excluded; identical row shape with and without filters. No SKIP accepted as proof.
+
+### Acceptance
+
+No unfiltered Dashboard breakdown can differ from the raw canonical computation; CI backend suite and RQ453 certification green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, completion note with exact SHA.
+
+## RQ682 - Filter Nivelacije by the verified timestamp basis (Access wall-clock vs POS UTC)
+
+Status: PARTIAL
+Priority: P2
+Type: backend date semantics / documentation correction
+Feature family: business-day-timestamp-convention
+Parallel-safe: yes (`AllEndpoints.cs` `/api/nivelacije` handler, `BelgradeCalendarDatePolicy`, preset comment; disjoint from RQ680/RQ683)
+Owner: unassigned
+Ready after: none
+Commit suggestion: `fix(nivelacije): filter wall-clock journal dates by calendar day`
+
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex (current task).
+- Inspected `origin/main`: `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`.
+- Published claim commit on `main`: `98ec98dfacc9193524a52f857dc966e392d3de50`.
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`.
+- Bounded paths: `Api/Endpoints/AllEndpoints.cs` (Nivelacije handler only), `Application/Analytics/BelgradeCalendarDatePolicy.cs`, `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` (comment only), focused PostgreSQL test in `Api.Tests`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Remote collision query: no RQ682 branch or open PR; no RQ682 local lock in listed worktrees; open PRs #185 and #163 are path-disjoint. F: destination path was absent.
+
+### Goal
+
+A date filter "D" on any analytics or Nivelacije screen returns exactly the rows whose stored wall-clock date is D.
+
+### Problem
+
+Access sales and journal timestamps are stored as Belgrade wall-clock values tagged UTC, and analytics endpoints filter on UTC-midnight dates. `/api/nivelacije` alone converts Belgrade midnight to real UTC through `BelgradeCalendarDatePolicy`, shifting the window 2 h (summer) / 1 h (winter) back. The RQ654 decision and `analyticsPeriodPresets.ts` comment cite that policy as the analytics contract.
+
+### Evidence
+
+`Api/Services/AccessImportService.cs:8349`, `:8401-8402`, `:8427`; `Api/Endpoints/AllEndpoints.cs:7287-7308`; `Application/Analytics/BelgradeCalendarDatePolicy.cs:7-15`; `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts:28-29`; RQ586 note in `MASTER_ROADMAP.md` (`legacy_access_wall_clock`).
+
+### Exact files
+
+`Api/Endpoints/AllEndpoints.cs` (nivelacije list handler only), `Application/Analytics/BelgradeCalendarDatePolicy.cs` (rename/doc or remove if unused), `Klijent/clientapp/src/utils/analyticsPeriodPresets.ts` (comment only), test in `Api.Tests` for the nivelacije list, a one-paragraph decision note in this queue's RQ682 completion.
+
+### Confirm first
+
+1. On disposable PostgreSQL (EF InMemory is insufficient), seed two *explicit* source populations: (a) Access `DataOrigin=access` with `Datum` stored as wall-clock-UTC at D-1 23:30, D 00:30, D 23:30; (b) POS/operational `DataOrigin=existing` with genuine UTC event times corresponding to Belgrade D-1 23:30, D 00:30 and D 23:30. Call `/api/nivelacije?fromDate=D&toDate=D`. Both populations must select exactly the two D rows for their independently verified timestamp basis. Check the winter UTC+1 and summer UTC+2 cases; test near both DST transitions. The existing blanket UTC conversion incorrectly shifts Access, but a blanket raw-midnight replacement would incorrectly shift POS.
+2. Enumerate all `DnevnikPromena.Datum` writers, real UTC fallback paths and legacy imports; check if `DataOrigin` is actually sufficient to distinguish source time conventions. If not, record the precise missing per-row timestamp-basis field/authority and keep the mixed-origin population partially unavailable. Do not infer original timezone from the `DateTime.Kind` bit alone. Report, do not change import/legacy rows.
+
+### Fix requirements
+
+DO NOT apply `>= D 00:00Z, < D+1 00:00Z` indiscriminately: `AllEndpoints.cs` writes POS/operational `DnevnikPromena` with `Datum = DateTime.UtcNow` and `DataOrigin = "existing"`, whereas imported Access journal dates are legacy Belgrade wall-clock values tagged UTC. First prove the timestamp basis for each real source population, including unknown/legacy. For confirmed Access wall-clock source, use the stored calendar date with half-open UTC-tagged midnights; for confirmed real-UTC operational source, retain the existing Belgrade-midnight-to-UTC conversion. If an origin has ambiguous timestamps, fail closed / mark period evidence unavailable rather than silently treating all dates as one basis. Keep the frontend preset (Belgrade "today") unchanged; correct the shared comment to distinguish UI calendar day from stored timestamp basis. Never alter stored timestamps in this task.
+
+### Must not change
+
+Analytics endpoint date semantics, stored timestamps, import code, preset output.
+
+### Tests
+
+PostgreSQL-required source-origin × boundary matrix: Access wall-clock, POS genuine UTC, unclassified legacy; summer and winter days and DST-adjacent boundaries; explicit `from <= date < toExclusive`, plus existing Nivelacije endpoint tests. Negative test: prove that simply replacing Belgrade conversion with raw midnight moves a POS event to the wrong day. No skipped PostgreSQL proof.
+
+### Acceptance
+
+Both source-specific three-row fixtures return exactly their Belgrade business-day events; ambiguous legacy rows are not silently classified. CI green on PR and main. If source authority is absent, mark this task PARTIAL with a named provenance blocker; do not merge a blanket date conversion.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+### Completion note
+
+- Date: 2026-10-16.
+- Status: PARTIAL; no runtime code or stored timestamps were changed.
+- Completion: source audit proved `DataOrigin=existing` is ambiguous between direct UTC operational writes and historical rows that receive the database default; no safe source-specific date filter can be implemented without a per-row basis authority.
+- Changed files: this queue, `MASTER_ROADMAP.md`, `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Checks run: source-writer/schema audit; focused `Api.Tests` restore and compilation succeeded, but the selected Testcontainers test produced no result because startup hung; `git diff --check` and all governance validations/self-tests passed (18 instruction files, 811 queue tasks, 80 planning tasks).
+- Checks not run: disposable PostgreSQL origin × season/DST matrix (Docker/Testcontainers hung); production Access/database; browser/UI (no runtime/UI change).
+- Source proof: the Access importer assigns raw `DateTime` values `DateTimeKind.Utc` without converting their clock reading, and writes imported journal rows with `DataOrigin=access`; the operational Nivelacija endpoint writes `DateTime.UtcNow` with `DataOrigin=existing`.
+- Delivery mode: direct-main queue/roadmap/evidence closeout; no runtime implementation.
+- Main commit SHA: `060014e76c1fdfacf528201ed49f3e3eab3807ee` (PARTIAL/release delivery).
+- Main verification: fresh `origin/main` fetch after close-out contained `060014e76c1fdfacf528201ed49f3e3eab3807ee`.
+- Missed: no per-row timestamp-basis field or trusted legacy-row backfill authority exists on `DnevnikPromena`.
+- Follow-up: request source-owner decision for durable per-row basis and legacy treatment; post-close cascade selected RQ683 as the next READY candidate.
+- Residual risk: the existing endpoint still applies one UTC-converted day window across mixed source records.
+- Provenance blocker: `DnevnikPromena` has no `SourceTimestampBasis` field. `DataOrigin=existing` is also the model/database default for legacy rows, so it cannot distinguish the new UTC operational rows from historical rows whose timestamp basis is unknown. `SourceTimestampBasis` currently exists on `ProdajaZaglavlja`, not `DnevnikPromena`. A source-owner decision and durable per-row authority/backfill policy are required before changing the mixed-origin filter.
+- Safety: no production database or Access source was opened or changed; no blanket conversion or classification by `DateTime.Kind` was made.
+- Validation: the focused `Api.Tests` project restored and compiled, but the required PostgreSQL test did not complete because the local Docker/Testcontainers startup hung. No test pass is claimed; details are in the run log.
+- Release: the current Codex owner explicitly releases RQ682 to `unassigned` on 2026-10-16 while PARTIAL. Re-enter only after the timestamp-basis authority event above.
+- Run log: `.ai/runs/2026-10-16-RQ682-evidence.md`.
+- Evidence state: synchronized.
+- Claim reservation: inspected `origin/main` `25dbc55b9eecc7141853c16f20772a6a8a2acd4a`; shared claim commit `98ec98dfacc9193524a52f857dc966e392d3de50`; owner/worktree/branch `Codex` / `F:\Trendplus-dev\Trendplus2-rq682` / `codex/rq682-nivelacije-timestamp-basis-20261016`; remote branch/PR and lock checks were clear at claim.
+- Next: claim RQ683 on fresh `origin/main`; revisit RQ682 only after a durable per-row timestamp-basis authority event.
+
+## RQ683 - Calculate only evidence-backed calendar-day Dashboard/Details windows
+
+Status: DONE
+Priority: P2
+Type: frontend analytics calculation
+Feature family: dashboard-moving-windows
+Parallel-safe: yes (`AnalyticsDashboard.tsx` `calculateDashboardMovingStats`, `AnalyticsDetails.tsx` trend/metric block and specs; disjoint from RQ680-RQ682)
+Owner: Codex
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex (current task).
+- Inspected `origin/main`: `ca7317eb56324973b9b5a6a003363fc5be76c4a7`.
+- Published claim commit on `main`: `b1dcba4fc547efafa567cc60069218fdd1a3a43c`.
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq683` / `codex/rq683-calendar-day-windows-20261016`.
+- Bounded paths: `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, `Klijent/clientapp/src/utils/calendarDayCoverage.ts`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDashboard.movingWindows.spec.tsx`, `Klijent/clientapp/src/pages/__tests__/AnalyticsDetails.movingWindows.spec.tsx`, this queue, `MASTER_ROADMAP.md`, and `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Remote collision query: GitHub branch search `rq683` and open-PR search `RQ683` returned none; all current open PRs #185 and #163 were checked by changed filename and are path-disjoint. The listed worktrees have no changes on the bounded runtime/test paths or RQ683 lock; F: destination path is absent.
+
+Ready after: none
+Commit suggestion: `fix(analytics-dashboard): moving averages and week-over-week on calendar days`
+
+### Goal
+
+MA7, MA30, momentum, elasticity, anomaly flags and week-over-week change describe *known-complete calendar windows*, not the last N returned rows. Missing sales rows are not automatically verified zero-sale days.
+
+### Problem
+
+The daily series contains only days with sales. `calculateDashboardMovingStats` and the Details trend use `slice(-7)`/`slice(-14,-7)` on rows; with a closed day the window covers 8+ days and MA7 is overstated. Details week-over-week has no two-full-windows guard.
+
+### Evidence
+
+Backend grouping without zero-fill `Api/Endpoints/CachedAnalyticsEndpoints.cs:5242-5258`; `Klijent/clientapp/src/pages/AnalyticsDashboard.tsx:150-182`; `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:298-321`.
+
+### Exact files
+
+`Klijent/clientapp/src/pages/AnalyticsDashboard.tsx`, `Klijent/clientapp/src/pages/AnalyticsDetails.tsx`, a shared helper in `Klijent/clientapp/src/utils/` (zero-fill inside `[fromDate, toDate]`), `pages/__tests__/AnalyticsDashboard.*.spec.ts(x)`, a new Details spec. Keep new helpers below guardrail baseline lines or update `scripts/known-guardrail-baseline.json` deliberately.
+
+### Confirm first
+
+Unit test with 14 calendar days where a Sunday is absent from the series: current last-7-rows MA and momentum are not seven calendar days. A missing Sunday has unknown completeness (NOT certified zero) until a store/day source proof confirms `verified_empty`. Add a separate 14-day fixture with explicit verified-empty coverage to prove correctly divided, signed day-based signals. Commit/show failing expected behavior before the fix.
+
+### Fix requirements
+
+Build a daily calendar grid only inside the requested period. Distinguish `observed_sale`, `verified_empty`, `unknown_day`/`partial_day`, and `outside_window`; never convert missing source days to numeric zero merely because an API series omits them. `docs/architecture/STORE_DAY_SOURCE_COVERAGE.md` (RQ611) explicitly says missing history, batch #23 gaps and unverified source days are NOT certified zero. A `verified_empty` zero is usable only if a trusted source/day coverage signal exists for that exact store/scope/period; do not invent a frontend signal by guessing from row presence. Until an authoritative day-coverage contract is available in the endpoint, return an explicit unavailable (`null`) MA/momentum/elasticity/anomaly/weekly comparison for windows with missing dates. For complete windows use exact 7/30 *calendar* days and preserve signed returns. Keep existing backend payloads unless a separately owned contract is needed; no synthetic financial signals.
+
+### Must not change
+
+Header KPIs, period divisor logic (`calculateDashboardPeriodDays`), fake-zero guards from RQ656, guardrail and chart-accessibility checks.
+
+### Tests
+
+`npm run test:analytics`, `typecheck`, `build`, `check:analytics-guardrails`, `check:encoding`; new specs for gap, full, short and empty series in both screens.
+
+### Acceptance
+
+Specs prove complete calendar windows and genuinely verified zero days; a gap with no completeness evidence forces `null`/unavailable rather than inflated or fake-zero metrics. No cross-scope reuse of a different store/source's completion marker. Frontend CI job green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+### Completion note
+
+- Date: 2026-10-16.
+- Status: DONE on `main`; PR #188 merged at `797f3734bb06688bc3cdff874ea23248436dd4e0` from exact head `cc05fb3f578887b059b9ba7bf956aa0fbf36535d`.
+- Completion: Dashboard and Details moving metrics now use exact requested calendar-day windows. Missing/partial dates remain unavailable unless exact-scope, exact-period verified-empty coverage exists; current endpoints provide no such source contract, so no page invents zero-sale days.
+- Changed files: shared calendar-day helper; Dashboard and Details calculations/accessibility text; focused page and indicator regression tests; known-guardrail baseline; `MASTER_ROADMAP.md`; this queue; `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Checks run: `npm run test:analytics` (167 files / 1,303 tests); `npm run check:analytics-guardrails`; `npm run build`; focused 23-test regression set; `node scripts/check-prompt-queues.mjs` (811 tasks); `git diff --check`. PR Analytics Quality Gates run `38919858392` passed on exact PR head and included frontend analytics tests, guardrails, build and fixture browser steps. PR Analytics Tests & Data Integrity run `38919858404` also passed on exact PR head. Current-main Analytics Quality Gates run `38920483346` passed on the merge SHA and included the same frontend/browser fixture steps. Self-tests for agent instructions, prompt queues and planning architecture passed.
+- Checks not run: authenticated human/deployed browser demonstration and live source-day completeness verification; no current endpoint exposes authoritative day coverage.
+- Run log: `.ai/runs/2026-10-16-RQ683-evidence.md`.
+- Evidence state: synchronized.
+- Delivery mode: PR #188, squash merge.
+- Main commit SHA: `797f3734bb06688bc3cdff874ea23248436dd4e0`.
+- Main verification: fresh `origin/main` fetch verified `HEAD == origin/main == 797f3734bb06688bc3cdff874ea23248436dd4e0`; the exact implementation SHA is on `main`.
+- Missed: no authenticated retailer walkthrough or deployed demonstration URL was produced; the frontend has no authoritative day-coverage source contract yet.
+- Follow-up: RQ680 remains active with its owner; after it or the missing cross-program `MASTER_ROADMAP.md` routing is resolved, rerun the queue selector. Revisit source-gated work only after the named external evidence arrives.
+- Residual risk: moving-window signals intentionally remain unavailable when the source omits a date; an authoritative source/day coverage contract is a separate owner decision. Planning Governance run `38916238577` was red on predecessor `c782d9920848bcf70aab2489fb57587bc66ed0c8` and run `38921854330` was red on docs closeout SHA `15ead2439db243610e0c6f5f49d0f9f0ba6d60d9` for the same pre-existing 45 cross-program routing/index omissions; exact-main Analytics Quality Gates run `38920483346` is green. The Vercel context on the docs closeout SHA failed with `build-rate-limit`; no deploy or preview URL was produced.
+- Post-close routing: refreshed recovery base `797f3734bb06688bc3cdff874ea23248436dd4e0`; scanned all 13 active RQ queue/addendum files plus `docs/ai/SQL_ANALYTICS_PROMPT_QUEUE.md`; no direct task depends on RQ683. RQ680 remains IN_PROGRESS under another owner, RQ681 waits on RQ680, and RQ682 remains PARTIAL on the source timestamp-basis authority gate.
+- Cross-program recovery: no `Status: READY` row was present across the 24 active `*PROMPT_QUEUE*.md` files; QDB's current pointer is none (QDB11-QDB13 DONE, QDB14 waiting for real operator authorization and an isolated test database). However, `MASTER_ROADMAP.md` lacks the cross-program routing/index entries required to select the next program (planning validator reports 45 pre-existing findings), so no global Zero-READY conclusion is asserted and no unrelated prompt was claimed. Recovery is incomplete at that cross-program routing step.
+- Next: RQ680 remains owned/in progress; repair the canonical cross-program route before selecting a different program. Revisit source-gated prompts only on their named evidence/owner event.
+
+
+### 2026-10-15 independent safety review — timestamp/provenance and fake-zero guards
+
+Direct user code-review addendum (not a new task claim): `Api/Endpoints/AllEndpoints.cs` writes an operational Nivelacija journal row with `Datum = DateTime.UtcNow`, `DataOrigin = "existing"`; Access history stores a local wall-clock value tagged UTC. The former `RQ682` blanket UTC-midnight replacement would break POS dates. `RQ611` store/day completeness says absence is not proof of zero; the former `RQ683` zero-fill instructions would fabricate sales evidence for missing days. The RQ682/RQ683 task objectives remain, but the test/acceptance contracts above now require source-specific time basis and verified day completeness. No runtime change, queue claim or business DB access was performed by this review.
+
+## RQ684 - Supplier concentration definition, Serbian diacritics in analytics errors and page-scoped Inventory chart label
+
+Status: WAITING
+Priority: P3
+Type: frontend copy / KPI definition
+Feature family: analytics-copy-definitions
+Parallel-safe: yes (DailySalesStatsPage concentration helper, analyticsApi.ts messages, AnalyticsDetails messages, InventoryPriorityPanels heading)
+Owner: unassigned
+Ready after: same re-entry rule as RQ670 — a named core-operator observation or explicit owner re-entry for display-only core scope (`docs/product/TRENDPLUS_BUSINESS_PROGRESS_AND_FOCUS_2026-10-14.md`)
+Commit suggestion: `fix(analytics-ui): consistent concentration basis and Serbian error text`
+
+### Goal
+
+Supplier concentration KPIs use one basis; user-visible analytics errors are correct Serbian; the Inventory supplier chart says it covers the current page.
+
+### Problem / Evidence
+
+- `Klijent/clientapp/src/pages/DailySalesStatsPage.tsx:556-660`, InfoTip `:2165`: revenue-ordered suppliers, quantity-share sums for Top-3/Top-5/"do 80 %".
+- `Klijent/clientapp/src/services/analyticsApi.ts`: ~50 `Greska pri ucitavanju …` fallbacks; `Klijent/clientapp/src/pages/AnalyticsDetails.tsx:266-273` `Sazetak nije ucitan`, `Advanced snapshot nije ucitan`, `Health check nije dostupan`, `Analytics baza:`.
+- `Klijent/clientapp/src/pages/InventoryPage.tsx:1074`, `components/inventory/InventoryPriorityPanels.tsx:69`.
+
+### Confirm first
+
+Spec with suppliers whose revenue order differs from quantity order: current Top-3 qty share ≠ the share of the 3 largest by quantity. Grep test listing every non-diacritic message.
+
+### Fix requirements
+
+Pick one basis (sort by quantity for quantity shares, or show revenue shares) and state it in the InfoTip; replace messages with correct diacritics (`Greška pri učitavanju …`) without changing error codes or thrown types; change the chart heading to "Vrednost po dobavljaču (trenutna strana)" or feed it the backend total.
+
+### Must not change
+
+Backend payloads, error handling flow, mojibake guard.
+
+### Tests
+
+vitest specs for concentration ordering and message text; `npm run check:encoding`, `test:analytics`, `typecheck`, `build`.
+
+### Acceptance
+
+Specs green; frontend CI green on PR and main.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+## RQ685 - Close the remaining EF ManyServiceProvidersCreatedWarning gap outside WebApplicationFactory hosts
+
+Status: DONE
+Priority: P1
+Type: backend CI flakiness (test-only)
+Feature family: test-host-ef-configuration
+Parallel-safe: yes (Api.Tests / Infrastructure.Tests only; no production code)
+Owner: Codex
+Ready after: none (follow-up to RQ665)
+Commit suggestion: `test(ci): opt all test DbContext registrations out of ManyServiceProvidersCreatedWarning`
+
+### Claim reservation — 2026-10-16
+
+- Claim transition: READY -> IN_PROGRESS.
+- Owner: Codex.
+- Inspected `origin/main`: `eb18809a2dd50d92f27800d21a03d659f138353f` (post-QDB13 evidence close).
+- Planned worktree / branch: `F:\Trendplus-dev\Trendplus2-rq685` / `codex/rq685-ef-warning-test-hosts-20261016`.
+- Shared claim commit SHA: `ba0bd7bce474a46bff31cfae0ec6fe16db03693e`, verified on refreshed `origin/main` before creating the worktree.
+- Local lock: `.ai/task-locks/RQ685-codex.lock.md` (created after the shared reservation and removed before implementation commit).
+- PR #187: merged from branch `codex/rq685-ef-warning-test-hosts-20261016`; exact implementation head `d91acf1a7638caa0a1a68f350054e2b637587b97`; merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb`.
+- Bounded paths: test DbContext registration/convention files under `Api.Tests` and `Infrastructure.Tests`; this RQ addendum; `MASTER_ROADMAP.md`; `.ai/runs/2026-10-16-RQ685-evidence.md`.
+- Collision query: no RQ685 remote branch, local lock or open PR. Open PR #185 changes only `UnosArtikalaForm` frontend files; #163 owns Access import/`InfoTip.tsx`. RQ680 is active in `C:\Users\Ivan\.codex\worktrees\rq680-dashboard-population\Trendplus2`; its modified paths are the cached analytics endpoint, analytics client/spec and `Api.Tests/Rq680DashboardSalesPopulationPostgresTests.cs`, whose contexts use plain options builders rather than `AddDbContext`/`AddDbContextFactory`; no RQ685 registration/convention path overlaps. Planned F: destination was free.
+- Global priority check: BCI queue has no active READY/IN_PROGRESS task; P0 STAB16 is BLOCKED and STAB17 WAITING on external deployment/source/owner evidence; P0 RQ137/RQ139/RQ140 are PARTIAL with live/provider or source gates. No P0 repository-local READY successor was found. RQ680 + RQ685 stay within owner WIP cap 2 and both declare path-safe parallel execution.
+- Local PostgreSQL prerequisite: Docker Desktop service was stopped at claim time. Do not treat local PostgreSQL proof as run; this prompt's exact-head PR backend/PostgreSQL CI is a merge gate, followed by two green backend runs on `main`.
+- Test-only implementation is delivered on `main`; the local lock was removed before the implementation commit and no production files changed.
+
+### Problem
+
+RQ665 covered only in-process `WebApplicationFactory` hosts. Plain tests that build their own `ServiceCollection` (`AddDbContext`/`AddDbContextFactory`) also create a new EF internal service provider per test (the application service provider is part of the cache key), increase the process-wide count and throw once it exceeds twenty. Which test hits the throw depends on parallel class order, so failures move between classes and a rerun of failed jobs usually passes.
+
+### Evidence (diagnostic 2026-10-16, run log `.ai/runs/2026-10-16-flaky-tests-diagnostics.md`)
+
+- Backend workflow `analytics-tests.yml`, last 200 runs (2026-10-10..16): 119 success, 33 failure, 48 cancelled. After RQ665 merged (2026-10-14 12:50 UTC) 4 of 49 non-cancelled runs failed on this warning (~8 %): `38647868045` (229 failing tests), `38718398984` (227), `38752847869` (97), `38798077405` (18, PR #181); all passed on rerun or later commits.
+- Throwing sites in `38798077405`: `NightlyAnalyticsRefreshWorkerTests.cs:310`, `SupplierWindowedSql029LifecycleTests.cs:194`, `AnalyticsAggregationWorkerTests.cs:425`, `SupplierDecisionSchemaReadinessIntegrationTests.cs:62/234`, `SupplierDecisionWindowedColdStartRegressionTests.cs:44/119`, `VendorSalesNivelacijaContractDiagnosticsTests.cs:117`, `AnalyticsDataQualityHealthWorkerTests.cs:98` - all `ServiceCollection` registrations without the opt-out.
+- Source scan of `origin/main` `f9277afe`: 171 `UseNpgsql(`/`UseInMemoryDatabase(` sites in 91 test files, 119 without the opt-out nearby (most are plain `DbContextOptionsBuilder` which share one cached provider and are harmless; the risky ones are per-test `ServiceCollection` registrations).
+- The `relation "WorkerRuntimeSettings" does not exist` failure (`WorkerRuntimePolicyServiceTests.cs:112`) is a secondary symptom: `CreateProvider` resolved the context, the warning threw, `WorkerRuntimePolicyService.GetPolicyAsync` caught it in its generic `catch` and returned the allow fallback (log: `Failed to evaluate worker runtime policy ... ManyServiceProvidersCreatedWarning`), so `EnsureSchemaAsync` never ran on the fresh per-test database and the verify query hit 42P01. Migration `20260507132430_AddWorkerRuntimeSettings` has `[DbContext(typeof(TrendplusDbContext))]` (RQ629 pattern OK); each test uses its own database, so this is not a shared-schema race.
+
+### Scope
+
+Test-only. Add `ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))` (or one shared test helper) to every `AddDbContext`/`AddDbContextFactory` registration in `Api.Tests` and `Infrastructure.Tests`, and widen `TestHostDbContextWarningConventionTests` from factory hosts to all `ServiceCollection` registrations, with self-tests.
+
+### Must not change
+
+Production DbContext configuration, `WorkerRuntimePolicyService` behavior, assertions, timeouts, skips. Shared `UseInternalServiceProvider` remains rejected (RQ665 rationale).
+
+### Tests
+
+Convention tests with self-tests; affected classes locally only in Testing env against an isolated Docker Postgres (never 127.0.0.1:5434, never Development); full backend CI on the PR, then two further green backend runs on main.
+
+### Acceptance
+
+No test DbContext registration without the opt-out; convention test enforces it; backend + governance CI green.
+
+### Owner note (not in scope)
+
+`WorkerRuntimePolicyService.GetPolicyAsync/...` return `CreateAllowFallback` for any exception, not only missing schema. That turns an unknown state into "worker may run". Needs an explicit owner decision before any change.
+
+### Delivery
+
+PR + green required CI, real merge, exact SHA.
+
+### Completion — 2026-10-16
+
+- Status: DONE on `main`; PR #187 merged at `735c2ae295fd999bb50775a775a454f6af90b9eb` from exact head `d91acf1a7638caa0a1a68f350054e2b637587b97`.
+- Exact-head PR checks: Analytics Tests & Data Integrity run `38908923515` SUCCESS (complete backend suite and RQ453 certification), Analytics Quality Gates run `38908923965` SUCCESS, Planning Governance run `38908924156` SUCCESS.
+- Required post-merge backend checks on merge SHA `735c2ae295fd999bb50775a775a454f6af90b9eb`: push run `38910285905` SUCCESS and workflow-dispatch run `38911196844` SUCCESS.
+- Focused local tests, Release build, static conventions and governance checks are recorded in `.ai/runs/2026-10-16-RQ685-evidence.md`.
+- Post-close dependency cascade at recovery base `12d096e610bc7359ef0b299ab26a41882e704c95` scanned all 13 active RQ queue/addendum files and the active SQL analytics queue: no other prompt names or depends on RQ685. RQ682 remains the Current READY pointer; RQ683 is independently READY; RQ680 remains IN_PROGRESS, and RQ681 still depends on RQ680. No promotion or Zero-READY conclusion applies.

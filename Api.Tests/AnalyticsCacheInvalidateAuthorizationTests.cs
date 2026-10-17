@@ -134,10 +134,10 @@ public sealed class AnalyticsCacheInvalidateAuthorizationTests
             builder.Services.AddMemoryCache();
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase($"cache-invalidate-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"cache-invalidate-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddScoped<ITrendplusDbContext>(sp => sp.GetRequiredService<TrendplusDbContext>());
             builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-                options.UseInMemoryDatabase($"cache-invalidate-analytics-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"cache-invalidate-analytics-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             builder.Services.AddSingleton<IMediator, NoopMediator>();
             builder.Services.AddSingleton<RecordingAnalyticsCacheService>();

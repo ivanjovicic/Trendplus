@@ -34,6 +34,13 @@ import {
   CHART_TOOLTIP_LABEL_STYLE,
   CHART_TOOLTIP_STYLE,
 } from "../utils/chartTooltipStyle";
+import {
+  averageCalendarDayWindow,
+  buildCalendarDayGrid,
+  getCompleteCalendarDayWindow,
+  sumCalendarDayWindow,
+  type CalendarDayPoint,
+} from "../utils/calendarDayCoverage";
 import "./AnalyticsDetails.css";
 
 type TopTab = "revenue" | "units" | "velocity" | "margin";
@@ -105,9 +112,8 @@ export function deriveAnalyticsDetailMetrics(
   };
 }
 
-interface TrendPoint {
-  date: string;
-  revenue: number;
+export interface AnalyticsDetailsTrendPoint extends CalendarDayPoint {
+  revenue: number | null;
   ma7: number | null;
   ma30: number | null;
   anomaly: "spike" | "drop" | null;
@@ -126,10 +132,6 @@ const trendArrow = (value?: number | null) => {
 };
 
 const trendClass = (value?: number | null) => getTrendDirection(value);
-
-function moving(values: number[], w: number): Array<number | null> {
-  return values.map((_, i) => (i + 1 < w ? null : values.slice(i - w + 1, i + 1).reduce((a, b) => a + b, 0) / w));
-}
 
 function slope(values: number[]): number | null {
   if (values.length < 2) return null;
@@ -150,6 +152,45 @@ function std(values: number[]): number {
   const m = values.reduce((a, b) => a + b, 0) / values.length;
   const v = values.reduce((a, x) => a + (x - m) ** 2, 0) / values.length;
   return Math.sqrt(v);
+}
+
+export function calculateAnalyticsDetailsTrend(
+  daily: readonly DailySale[],
+  fromDate: string,
+  toDate: string,
+): AnalyticsDetailsTrendPoint[] {
+  if (daily.length === 0) return [];
+  const calendarDays = buildCalendarDayGrid(daily, fromDate, toDate);
+
+  return calendarDays.map((day, index) => {
+    const window7 = getCompleteCalendarDayWindow(calendarDays, index - 6, 7);
+    const window30 = getCompleteCalendarDayWindow(calendarDays, index - 29, 30);
+    const ma7 = averageCalendarDayWindow(window7, "totalRevenue");
+    const ma30 = averageCalendarDayWindow(window30, "totalRevenue");
+    const baseline = ma30 ?? ma7;
+    const anomalyWindow = window30 ?? window7;
+    const deviation = anomalyWindow
+      ? std(anomalyWindow.map((item) => item.totalRevenue!))
+      : null;
+    const difference = day.status === "observed_sale" && day.totalRevenue != null && baseline != null
+      ? day.totalRevenue - baseline
+      : null;
+    const anomaly = deviation != null && deviation > 0 && difference != null
+      ? difference >= deviation * 2
+        ? "spike"
+        : difference <= -deviation * 2
+          ? "drop"
+          : null
+      : null;
+
+    return {
+      ...day,
+      revenue: day.totalRevenue,
+      ma7,
+      ma30,
+      anomaly,
+    };
+  });
 }
 
 export function topRows(data: TopProductsAdvancedResult | null, tab: TopTab): TopProductAdvancedItem[] {
@@ -297,28 +338,24 @@ export default function AnalyticsDetails() {
     [fromDate, summary, toDate],
   );
 
-  const trend = useMemo<TrendPoint[]>(() => {
-    const s = [...daily].sort((a, b) => a.date.localeCompare(b.date));
-    if (s.length === 0) return [];
-    const r = s.map((x) => x.totalRevenue);
-    const m7 = moving(r, 7);
-    const m30 = moving(r, 30);
-    const dev = std(r);
-    return s.map((x, i) => {
-      const b = m30[i] ?? m7[i] ?? x.totalRevenue;
-      const d = x.totalRevenue - b;
-      const a = dev > 0 && d >= dev * 2 ? "spike" : dev > 0 && d <= -dev * 2 ? "drop" : null;
-      return { date: x.date, revenue: x.totalRevenue, ma7: m7[i], ma30: m30[i], anomaly: a };
-    });
-  }, [daily]);
+  const trend = useMemo(
+    () => calculateAnalyticsDetailsTrend(daily, fromDate, toDate),
+    [daily, fromDate, toDate],
+  );
+  const trendAccessibilitySummary = `${describeChartProjection(
+    trend.filter((point) => point.revenue != null),
+    "po danima",
+    ["Promet", "MA7", "MA30"],
+  )} Nedostajući dani bez dnevnog reda nisu predstavljeni kao nule.`;
 
   const metric = useMemo(() => {
-    const l7 = trend.slice(-7).map((x) => x.revenue);
-    const p7 = trend.slice(-14, -7).map((x) => x.revenue);
-    const sl = slope(l7);
-    const sL = l7.reduce((a, b) => a + b, 0);
-    const sP = p7.reduce((a, b) => a + b, 0);
-    const pct = sP > 0 ? ((sL - sP) / sP) * 100 : null;
+    const last7 = getCompleteCalendarDayWindow(trend, trend.length - 7, 7);
+    const previous7 = getCompleteCalendarDayWindow(trend, trend.length - 14, 7);
+    const l7 = last7?.map((day) => day.totalRevenue!) ?? [];
+    const sl = last7 ? slope(l7) : null;
+    const sL = sumCalendarDayWindow(last7, "totalRevenue");
+    const sP = sumCalendarDayWindow(previous7, "totalRevenue");
+    const pct = sL != null && sP != null && sP > 0 ? ((sL - sP) / sP) * 100 : null;
     const { availablePct: inStock, redZonePct: red } = projectInventoryRatios(inventory ?? {});
     const pareto = adv?.cards.find((c) => c.key === "pareto")?.value ?? null;
     return { sl, pct, inStock, red, pareto };
@@ -435,7 +472,7 @@ export default function AnalyticsDetails() {
               <h3>Trend performansi</h3>
               {trend.length > 0 ? (
                 <div className="ad-chart">
-                  <AnalyticsChartAccessibility title="Trend performansi" summary={describeChartProjection(trend, "po danima", ['Promet', 'MA7', 'MA30'])}>
+                  <AnalyticsChartAccessibility title="Trend performansi" summary={trendAccessibilitySummary}>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={trend} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />

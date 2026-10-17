@@ -74,7 +74,7 @@ describe("navConfig", () => {
       ["/analytics/supplier", "Prodaja po dobavljačima"],
       ["/analytics/shoe-type-sales-stats", "Prodaja po tipu obuće"],
       ["/analytics/pre-nivelacija-prioriteti", "Prioriteti nivelacije"],
-      ["/analytics/nivelacije-pre-post", "Pre/Posle nivelacije"],
+      ["/analytics/decision-pulse", "Puls odluka"],
       ["/analytics/actions", "Akcije i preporuke"],
       ["/analytics/data-quality", "Kvalitet podataka"],
     ]);
@@ -84,14 +84,14 @@ describe("navConfig", () => {
   it("retains the nine approved secondary analyses in their own group", () => {
     expect(findGroup("analytics-additional")?.sidebarLabel).toBe("Dodatne analize");
     expect(findGroup("analytics-additional")?.items.map(({ to, label }) => [to, label])).toEqual([
-      ["/analytics/pilot-readiness", "Pilot spremnost"],
+      ["/analytics/nivelacije-pre-post", "Pre/Posle nivelacije"],
       ["/analytics/decision-board", "Izvršni pregled odluka"],
       ["/analytics/products", "Odluke o proizvodima"],
-      ["/analytics/decision-pulse", "Puls odluka"],
       ["/analytics/supplier?tab=scorecard", "Ocena dobavljača"],
       ["/analytics/daily-sales", "Dnevna prodaja"],
       ["/analytics/color-sales-stats", "Prodaja po boji artikla"],
       ["/analytics/supplier/report", "Izveštaj dobavljača"],
+      ["/analytics/pilot-readiness", "Pilot spremnost"],
       ["/analytics/reports/pilot-intake", "Pilot izveštaj kvaliteta podataka"],
     ]);
   });
@@ -121,7 +121,28 @@ describe("navConfig", () => {
     for (const item of analyticsItems) {
       expect(canonicalPaths.has(item.to.split(/[?#]/)[0]), `${item.to} should target a canonical analytics route`).toBe(true);
     }
+    expect(analyticsItems.length).toBe(17);
     expect(analyticsItems.some((item) => item.to === "/analytics/supplier-sales-stats")).toBe(false);
     expect(analyticsItems.some((item) => item.to === "/analytics/dobavljaci-tipovi-obuce")).toBe(false);
+  });
+});
+
+describe("navConfig 2026-10-15 workflow decision", () => {
+  it("promotes Puls odluka to the primary group and keeps Pre/Posle reachable as a secondary analysis", () => {
+    const primary = findGroup("analytics-primary")?.items.map((item) => item.to) ?? [];
+    const additional = findGroup("analytics-additional")?.items.map((item) => item.to) ?? [];
+    expect(primary).toContain("/analytics/decision-pulse");
+    expect(primary).not.toContain("/analytics/nivelacije-pre-post");
+    expect(additional).toContain("/analytics/nivelacije-pre-post");
+    expect(additional).not.toContain("/analytics/decision-pulse");
+    expect(additional.indexOf("/analytics/pilot-readiness")).toBeGreaterThan(additional.indexOf("/analytics/supplier/report"));
+  });
+
+  it("does not lose or duplicate any navigation URL across all groups", () => {
+    const all = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.to));
+    expect(new Set(all).size).toBe(all.length);
+    for (const path of ["/analytics/decision-pulse", "/analytics/nivelacije-pre-post", "/analytics/pilot-readiness"]) {
+      expect(all.filter((to) => to === path)).toHaveLength(1);
+    }
   });
 });

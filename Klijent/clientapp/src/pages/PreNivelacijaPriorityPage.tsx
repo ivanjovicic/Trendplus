@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { parseEntityIdParam } from "../validation/entityId";
+import { isEntityId, parseEntityIdParam } from "../validation/entityId";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -1415,6 +1415,14 @@ export default function PreNivelacijaPriorityPage() {
             disabled: loading,
             tone: "secondary",
           },
+          ...(dataScope === getDataScope()
+            ? [{
+              key: "pre-post-history",
+              label: "Pre/posle nivelacija: isti dobavljač i radnja (vremenski okvir bira odredišni ekran)",
+              to: buildPrePostHistoryHref(activeFilters),
+              tone: "secondary" as const,
+            }]
+            : []),
           {
             key: "data-quality",
             label: "Kvalitet podataka",
@@ -1565,7 +1573,8 @@ export default function PreNivelacijaPriorityPage() {
               )}
             </article>
 
-            <article className="pnp-decision-card analytics-surface-panel pnp-shadow-comparison" aria-label="Eksperimentalno poređenje rangiranja">
+            <details className="pnp-decision-card analytics-surface-panel pnp-shadow-comparison" aria-label="Tehničko poređenje rangiranja">
+              <summary>Tehničko poređenje rangiranja <span className="pnp-shadow-disclaimer">(ne menja aktivnu preporuku)</span></summary>
               <h2>Eksperimentalno poređenje rangiranja</h2>
               <p className="pnp-shadow-disclaimer">{data?.shadowV9Comparison?.label ?? "Eksperimentalno rangiranje v9 nije dostupno."} Kanonska preporuka i redosled akcija i dalje koriste aktivni v10.</p>
               {data?.shadowV9Comparison ? (
@@ -1589,7 +1598,7 @@ export default function PreNivelacijaPriorityPage() {
                   ) : null}
                 </>
               ) : null}
-            </article>
+            </details>
 
             <article className="pnp-decision-card analytics-surface-panel">
               <div className="pnp-decision-table-head">
@@ -2083,4 +2092,16 @@ function cleanupReasonsLabel(reasonCodes: string[]): string {
     non_retail_store: "legacy ili neretail objekat",
   };
   return reasonCodes.map((code) => labels[code] ?? "izdvojeno iz preporuka").join(" · ");
+}
+
+/**
+ * Link to descriptive pre/post results for the same supplier and store. Pre/Post reads the shared data scope,
+ * so the link is offered only when it matches this page's scope.
+ */
+function buildPrePostHistoryHref(filters: ActiveFilters): string {
+  const params = new URLSearchParams();
+  if (isEntityId(filters.supplierId)) params.set("vendorId", String(filters.supplierId));
+  if (isEntityId(filters.storeId)) params.set("storeId", String(filters.storeId));
+  const query = params.toString();
+  return query ? `/analytics/nivelacije-pre-post?${query}` : "/analytics/nivelacije-pre-post";
 }

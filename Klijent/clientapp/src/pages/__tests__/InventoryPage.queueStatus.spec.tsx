@@ -425,9 +425,13 @@ describe("InventoryPage queue status sync", () => {
       expect(getRebalanceSuggestionsMock).toHaveBeenCalled();
     });
 
+    // The store filter renders only after stores are verified, which can settle after the first
+    // rebalance request; wait for the control and its option instead of assuming render order.
+    const storeSelect = await screen.findByLabelText("Filter po prodavnici");
+    await screen.findByRole("option", { name: "Prodavnica 1" });
     getRebalanceSuggestionsMock.mockClear();
 
-    fireEvent.change(screen.getByLabelText("Filter po prodavnici"), { target: { value: "1" } });
+    fireEvent.change(storeSelect, { target: { value: "1" } });
 
     await waitFor(() => {
       expect(getRebalanceSuggestionsMock).toHaveBeenCalledWith(expect.objectContaining({ fromStoreId: 1 }));

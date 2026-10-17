@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
-import { BarChart3, Package, ShoppingCart, Tags, Undo2, Wrench } from "lucide-react";
+import { Boxes, Package, ShoppingCart, Tags, Undo2 } from "lucide-react";
 
-const QUICK_ACTIONS = [
+export const QUICK_ACTIONS = [
   { to: "/prodaja", title: "Prodaja", subtitle: "Kreiranje novih računa", icon: ShoppingCart },
   { to: "/unos-robe", title: "Unos robe", subtitle: "Prijem robe po dobavljaču", icon: Package },
+  { to: "/transfers", title: "Prenosi", subtitle: "Ručni prenos robe između radnji", icon: Boxes },
   { to: "/nivelacija", title: "Nivelacija", subtitle: "Korekcija cena i marži", icon: Tags },
-  { to: "/povracaj", title: "Povraćaj robe", subtitle: "Obrada reklamacija", icon: Undo2 },
-  { to: "/analytics", title: "Analitika", subtitle: "KPI i trend performanse", icon: BarChart3 },
-  { to: "/logs", title: "Logovi", subtitle: "Nadzor i dijagnostika", icon: Wrench },
+  { to: "/povracaj", title: "Povraćaj dobavljaču", subtitle: "Vraćanje robe dobavljaču", icon: Undo2 },
 ];
 
 export default function DashboardCards() {

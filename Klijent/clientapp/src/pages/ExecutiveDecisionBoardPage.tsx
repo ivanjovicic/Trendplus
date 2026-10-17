@@ -1523,7 +1523,7 @@ export default function ExecutiveDecisionBoardPage() {
   return (
     <div className="decision-board-page">
       <AnalyticsTrustHeader
-        title="Izvršni board odluka"
+        title="Izvršni pregled odluka"
         description="Jedan pogled koji poredi najvažnije odluke, očekivani uticaj, rizik i šta je već u akciji."
         mode="recommendation"
         periodFrom={model.periodFrom}
@@ -1533,7 +1533,7 @@ export default function ExecutiveDecisionBoardPage() {
         refreshIsRunning={false}
         refreshCurrentStep={null}
         isPartial={model.isPartial}
-        dataSource="Decision Board aggregate"
+        dataSource="Zbirni pregled: proizvodi, zalihe, dobavljači i akcije"
         dataQualityStatus={model.overallDataQualityStatus ?? undefined}
         dataQualitySummary={undefined}
         dataQualityHref="/analytics/data-quality"

@@ -714,7 +714,7 @@ public sealed class AnalyticsActionsEndpointsTests
             builder.Services.AddRouting();
             builder.Services.AddLogging();
             builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName));
+                options.UseInMemoryDatabase(databaseName).IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddScoped<IAnalyticsDbContext>(sp => sp.GetRequiredService<AnalyticsDbContext>());
             builder.Services.AddScoped<AnalyticsActionItemService>();
 

@@ -963,9 +963,10 @@ export default function AnalyticsActionsPage() {
             <span className="kpi-value">{counts.deferred}</span>
             <span className="kpi-label">Odloženo</span>
           </div>
-          <div className="aaq-kpi-card kpi-done">
+          <div className="aaq-kpi-card kpi-done" title="Završeno znači da je akcija sprovedena; ostvarena korist se meri posebno.">
             <span className="kpi-value">{counts.done}</span>
             <span className="kpi-label">Završeno</span>
+            <span className="sr-only">Akcija je sprovedena; to nije ostvarena korist.</span>
           </div>
           <div className="aaq-kpi-card kpi-rejected">
             <span className="kpi-value">{counts.rejected}</span>

@@ -199,7 +199,7 @@ public sealed class VendorSalesNivelacijaContractDiagnosticsTests : IClassFixtur
             builder.WebHost.UseTestServer();
             builder.Services.AddRouting();
             builder.Services.AddLogging();
-            builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString));
+            builder.Services.AddDbContext<TrendplusDbContext>(options => options.UseNpgsql(connectionString).IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddSingleton<WorkerHealthService>();
             builder.Services.AddSingleton(new WorkerRuntimeControlService(
                 initialEnabled: true,

@@ -92,6 +92,13 @@ jobs:
           node --check scripts/qa/rq448-fixture-smoke.mjs
           npm run qa:rq448-fixture-smoke
 
+      - name: Verify goods receipt and storno on synthetic desktop/mobile browser
+        working-directory: Klijent/clientapp
+        run: |
+          npm run test -- --run src/components/UnosArtikalaForm.spec.tsx src/components/UnosRobeForm.spec.tsx src/components/GoodsReceiptHistoryPanel.spec.tsx
+          node --check scripts/qa/goods-receipt-fixture-browser-smoke.mjs
+          npm run qa:goods-receipt-fixture-smoke
+
       - name: Check bundle budget and route-lazy charts
         working-directory: Klijent/clientapp
         run: |

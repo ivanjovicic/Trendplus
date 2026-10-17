@@ -349,9 +349,9 @@ public sealed class AccessImportAdminAuthorizationTests
             builder.Services.AddLogging();
             builder.Services.AddMemoryCache();
             builder.Services.AddDbContext<TrendplusDbContext>(options =>
-                options.UseInMemoryDatabase($"access-import-admin-auth-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"access-import-admin-auth-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-                options.UseInMemoryDatabase($"access-import-admin-auth-analytics-{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase($"access-import-admin-auth-analytics-{Guid.NewGuid():N}").IgnoreManyServiceProvidersCreatedWarning());
             builder.Services.AddRateLimiter(options =>
             {
                 foreach (var policyName in new[] { "writes", "fixed", "db-heavy" })
