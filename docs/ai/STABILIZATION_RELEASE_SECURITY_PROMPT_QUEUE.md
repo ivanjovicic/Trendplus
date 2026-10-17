@@ -1765,7 +1765,8 @@ The canonical production API reports a runtime SHA contained in current `main`, 
 
 ## STAB17 - Safe incremental Access import with source-lineage bootstrap and lossless rollback
 
-Status: READY (repository-local engineering and disposable-source proof ONLY; production rollout/legacy backfill WAITING)
+Status: READY
+Execution scope: repository-local engineering and disposable-source proof ONLY; production rollout/legacy backfill WAITING
 Priority: P0
 Type: Access import correctness, operational data integrity, PostgreSQL integration and controlled release
 Feature family: access-incremental-import-source-identity
