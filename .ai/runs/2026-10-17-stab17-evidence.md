@@ -4,9 +4,9 @@ Date: 2026-10-17
 Agent/tool: Codex
 Delivery target: main through existing draft PR #163
 Working branch / PR: agent/stab17-pr163-engineering -> codex/access-sale-line-identity / #163
-Main commit SHA: pending
-Main verification: pending - PostgreSQL-required exact-head PR CI must pass before merge
-Evidence state: pending - local disposable PostgreSQL is unavailable because Docker did not respond
+Main commit SHA: not delivered (PR #163 remains DRAFT/PARTIAL by policy)
+Main verification: origin/main is intentionally unchanged; final exact-head PR CI is required for the new hardening head before any merge decision
+Evidence state: repository-local hardening in progress; local disposable PostgreSQL is unavailable because Docker did not respond
 Ownership transfer: explicit owner release in merged PR #191; STAB17 is reserved by this run
 Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410ff; pushed claim a51be37fc12c67a791c8c33082687d0ff7af238c; worktree C:\Users\Ivan\.codex\worktrees\stab17-pr163\Trendplus2; branch agent/stab17-pr163-engineering; existing remote PR #163 head fb193a076e47f79870acb84ec134ee1c1fe97a35
 
@@ -21,6 +21,31 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 - Removed the Dnevnik-delta gate as a reason to skip direct sales/returns work.
 - Added a read-only source-to-header-to-line-to-fact SQL oracle, namespace-aware analytics fact persistence, isolated bigint rollout/backout plan, and synthetic PostgreSQL integration coverage for lineage, facts, rollback, and target-ID headroom.
 - Added UI/API namespace gating and tests. Routine import cannot be started from the UI until the namespace is supplied.
+
+## 2026-10-17 final-hardening continuation
+
+- Added a read-only pre-write baseline guard. Legacy Access headers, lines, returns,
+  movements and articles without complete namespace/table/row provenance are reported
+  as `exact=0`, `ambiguous=0`, `unmatched=N` and block the transaction. No heuristic
+  reconciliation or automatic backfill is performed.
+- Kept unsupported legacy-global master/store families fail-closed: non-Access target
+  ID collisions are rejected, and a second logical Access namespace cannot reuse
+  `TipObuce`, `Dobavljaci`, `Sezone` or store IDs until their lineage migration is
+  certified.
+- Added a true pre-write PostgreSQL sequence inspection (`pg_get_serial_sequence` /
+  `pg_sequences`) for both sales tables. It rejects stale sequences, target high-water
+  collisions and low remaining Int32 headroom without calling `setval` or changing
+  schema. The existing post-flush high-water check remains as a defence in depth.
+- Fixed article replay state: preloaded `Kolicina` and persisted `SourceHash`/lineage
+  are restored on attached stubs, NULL Access stock preserves known stock, and
+  generated target IDs are retained across a flush batch for duplicate source rows.
+- UI now defaults to operational-only import when databases are separate, persists an
+  explicit Analytics pending/stale warning, and labels the result accordingly. No
+  cross-database atomicity is claimed; a durable projection/outbox remains external.
+- Expanded the read-only namespace oracle with master/product/return FK controls,
+  SalesFacts amount/quantity/line drift, provenance populations, and negative-parent
+  checks. The unrelated `InfoTip.tsx` change remains untouched after its independent
+  5/5 component test passed; it is not part of this importer hardening.
 
 ## Files changed
 
@@ -39,6 +64,13 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 - Same EF command for `AnalyticsDbContext` -> pass.
 - `npm run test:run -- src/pages/__tests__/AccessImportPage.spec.tsx src/services/__tests__/accessImportApi.spec.ts src/services/__tests__/accessImportActiveBatch.spec.ts` -> pass, 17/17.
 - `npm run build` in `Klijent/clientapp` -> pass.
+- Final-hardening local compile `dotnet build Api/Api.csproj --no-restore` -> pass, 0 errors (repository analyzer warnings only).
+- Final-hardening test compile `dotnet build Api.Tests/Api.Tests.csproj --no-restore -p:RunAnalyzers=false -v:minimal -nodeReuse:false` -> pass, 21 pre-existing warnings, 0 errors.
+- Focused non-PostgreSQL importer/queue/endpoint tests after hardening -> pass, 62/62, 0 skipped.
+- `npm run test:run -- src/pages/__tests__/AccessImportPage.spec.tsx src/services/__tests__/accessImportApi.spec.ts src/services/__tests__/accessImportActiveBatch.spec.ts` -> pass, 17/17.
+- Independent unrelated `InfoTip.spec.tsx` -> pass, 5/5.
+- `npm run build` after the Analytics pending/stale UI change -> pass (TypeScript + Vite release bundle).
+- `git diff --check` -> pass after the hardening patch.
 - `dotnet build Api/Api.csproj -c Release --no-restore -p:RunAnalyzers=false -v:minimal -nodeReuse:false` -> pass, 0 warnings and 0 errors.
 - `node scripts/check-agent-instructions.mjs --self-test`, `node scripts/check-agent-instructions.mjs`, `node scripts/check-prompt-queues.mjs --self-test`, `node scripts/check-prompt-queues.mjs`, `node scripts/check-planning-architecture.mjs --self-test`, `node scripts/check-planning-architecture.mjs` -> pass; queue 811, planning 80.
 
@@ -70,6 +102,11 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 
 - No production namespace was registered and no historical row/cursor was backfilled. Those actions require operator authority and source evidence.
 - The physical `integer` to `bigint` migration remains a reviewed rehearsal plan, not an executed migration.
+- Source-scoped target mapping for legacy-global `TipObuce`, `Dobavljac`, `Sezona` and
+  store dimensions is intentionally not claimed; the importer now blocks unsafe
+  combinations until that migration/certification is approved.
+- Durable cross-database analytics outbox/projection is not implemented; production
+  uses the explicit operational-only/pending path until that owner delivers it.
 
 ## Risks
 
@@ -83,6 +120,7 @@ Claim reservation: inspected origin/main e7781fa771d2b04aad793cefd650de40f6d410f
 
 ## Next
 
-- Push the correction to existing draft PR #163, inspect its new exact-head CI, then keep STAB17 WAITING/PARTIAL until the authorized source-namespace registration, disposable PostgreSQL migration rehearsal, and production evidence gates are complete.
-- Current correction head: `b98cc50c`; exact-head CI for this SHA is pending.
-- The final pushed head is `0255a296f4577062dcfd331f2722d1b31321e175`; its exact-head CI is green as recorded above.
+- Push the final-hardening correction to the existing draft PR #163 and inspect its
+  exact-head PostgreSQL, backend, frontend and governance results. Keep STAB17
+  IN_PROGRESS/PARTIAL until source-namespace certification, disposable bigint
+  rehearsal, real provider evidence and production operator approval exist.

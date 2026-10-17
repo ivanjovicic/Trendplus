@@ -1229,14 +1229,42 @@ public sealed class AccessImportForeignKeyGuardTests : IClassFixture<PostgresCon
     {
         await db.Database.ExecuteSqlRawAsync(
             """
-            CREATE TABLE "Artikli" (
+            CREATE TABLE IF NOT EXISTS "Artikli" (
                 "Id" integer PRIMARY KEY,
                 "IDDobavljac" integer,
                 "IDTipObuce" integer,
+                "IDSezona" integer,
                 "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing',
                 "SourceNamespace" character varying(128),
                 "SourceTableKey" character varying(128),
                 "SourceRowId" bigint
+            );
+            CREATE TABLE IF NOT EXISTS "Dobavljaci" (
+                "Id" integer PRIMARY KEY,
+                "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE TABLE IF NOT EXISTS "TipoviObuce" (
+                "Id" integer PRIMARY KEY,
+                "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE TABLE IF NOT EXISTS "Sezone" (
+                "Id" integer PRIMARY KEY,
+                "DataOrigin" character varying(32) NOT NULL DEFAULT 'existing'
+            );
+            CREATE TABLE IF NOT EXISTS povracaj_zaglavlje (
+                id integer PRIMARY KEY,
+                data_origin character varying(32) NOT NULL DEFAULT 'existing',
+                source_namespace character varying(128),
+                source_table_key character varying(128),
+                source_row_id bigint
+            );
+            CREATE TABLE IF NOT EXISTS povracaj_stavke (
+                id integer PRIMARY KEY,
+                id_povracaj integer NOT NULL,
+                id_artikal integer NOT NULL,
+                source_namespace character varying(128),
+                source_table_key character varying(128),
+                source_row_id bigint
             );
             """);
 

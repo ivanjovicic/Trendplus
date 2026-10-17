@@ -2886,6 +2886,11 @@ using NpgsqlTypes;
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = batch.StartedAtUtc
         };
+        if (!includeAnalytics)
+        {
+            result.Warnings.Add(
+                "Analytics projection is disabled for this import. Operational data will commit atomically; analytics remains pending/stale until a separately authorized projection runs.");
+        }
 
         return (batch, result);
     }
@@ -2973,6 +2978,11 @@ using NpgsqlTypes;
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = batch.StartedAtUtc
         };
+        if (!includeAnalytics)
+        {
+            result.Warnings.Add(
+                "Analytics projection is disabled for this import. Operational data will commit atomically; analytics remains pending/stale until a separately authorized projection runs.");
+        }
         InitializeBatchProgressContext(batch.Id, result);
         ResetAnalyticsDeltaTracking();
         _importedStores = [];
@@ -3052,6 +3062,12 @@ using NpgsqlTypes;
                         overwriteExisting,
                         includeTemporaryTables);
                     await PersistBatchProgressAsync("batch-start", force: true, transactionCt);
+                    await EnsureAccessBaselineAndMasterIdentitySafetyAsync(transactionCt);
+                    // Sequence inspection is deliberately read-only and happens before
+                    // any Access row is flushed. It must fail closed when PostgreSQL's
+                    // allocator is behind the target high-water mark or near Int32's
+                    // limit; no setval/ALTER/rekey is performed here.
+                    await VerifyTrendplusIdentityHeadroomAsync(transactionCt);
                     await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, transactionCt);
                     await FlushTrendWritesAsync(force: true, transactionCt);
                     await VerifyTrendplusIdentityHeadroomAsync(transactionCt);
@@ -5013,6 +5029,11 @@ using NpgsqlTypes;
                 result.TipoviInserted++;
                 TrackTrendWrite();
             }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: TipObuce source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
+            }
             else if (overwriteExisting)
             {
                 e.Naziv = naziv!;
@@ -5055,6 +5076,11 @@ using NpgsqlTypes;
                 existing[e.Id] = e;
                 result.DobavljaciInserted++;
                 TrackTrendWrite();
+            }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: Dobavljac source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
             }
             else if (overwriteExisting)
             {
@@ -5104,6 +5130,11 @@ using NpgsqlTypes;
                 result.SezoneInserted++;
                 TrackTrendWrite();
             }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: Sezona source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
+            }
             else if (overwriteExisting)
             {
                 e.Naziv = naziv!;
@@ -5121,11 +5152,22 @@ using NpgsqlTypes;
 
     private async Task ImportObjektiAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
+        var protectedPosStoreIds = await _trendDb.ProdajaZaglavlja.AsNoTracking()
+            .Where(x => x.DataOrigin != "access" && x.IDObjekat.HasValue)
+            .Select(x => x.IDObjekat!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+        var protectedStoreSet = protectedPosStoreIds.ToHashSet();
         await foreach (var row in ReadRowsForTableAsync(session, table, "objekti", ct))
         {
             MarkSourceRow(result, "objekti");
             var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
             if (!id.HasValue) continue;
+            if (protectedStoreSet.Contains(id.Value))
+            {
+                throw new InvalidOperationException(
+                    $"access_store_target_identity_collision: Objekat source id {id.Value} is already used by POS/non-Access sales; namespace-scoped store mapping is required and overwrite is blocked.");
+            }
             MarkAccepted(result, "objekti");
             TrackIncrementalAcceptedRow("objekti", row);
             var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
@@ -5155,7 +5197,8 @@ using NpgsqlTypes;
                 x.SourceUpdatedAtUtc,
                 x.SourceHash,
                 x.SourceBatchId,
-                x.DataOrigin
+                x.DataOrigin,
+                x.Kolicina
             })
             .ToListAsync(ct);
         var existingIds = existingRows.Select(x => x.Id).ToHashSet();
@@ -5242,7 +5285,19 @@ using NpgsqlTypes;
             }
             else if (existingTargetIdBySource.TryGetValue(sourceKey, out var existingTargetId))
             {
-                e = new Artikli { Id = existingTargetId };
+                var existingSnapshot = existingRows.FirstOrDefault(x => x.Id == existingTargetId);
+                e = new Artikli
+                {
+                    Id = existingTargetId,
+                    Kolicina = existingSnapshot?.Kolicina,
+                    SourceNamespace = existingSnapshot?.SourceNamespace,
+                    SourceTableKey = existingSnapshot?.SourceTableKey,
+                    SourceRowId = existingSnapshot?.SourceRowId,
+                    SourceUpdatedAtUtc = existingSnapshot?.SourceUpdatedAtUtc,
+                    SourceHash = existingSnapshot?.SourceHash,
+                    SourceBatchId = existingSnapshot?.SourceBatchId,
+                    DataOrigin = existingSnapshot?.DataOrigin ?? "access"
+                };
                 _trendDb.Artikli.Attach(e);
                 trackedCurrentBatch[sourceId] = e;
             }
@@ -5295,6 +5350,13 @@ using NpgsqlTypes;
             await FlushTrendWritesAsync(force: false, ct);
             if (shouldClearTrackedBatch)
             {
+                foreach (var trackedEntry in trackedCurrentBatch)
+                {
+                    if (trackedEntry.Value.Id > 0)
+                    {
+                        existingTargetIdBySource[BuildAccessSourceKey(CurrentSourceNamespace(), table, trackedEntry.Key)] = trackedEntry.Value.Id;
+                    }
+                }
                 flushCount++;
                 trackedCurrentBatch.Clear();
                 modifiedCurrentBatch.Clear();
@@ -9488,11 +9550,80 @@ using NpgsqlTypes;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
+    private async Task EnsureAccessBaselineAndMasterIdentitySafetyAsync(CancellationToken ct)
+    {
+        var sourceNamespace = CurrentSourceNamespace();
+
+        // A namespace registration is not historical reconciliation. Any old Access
+        // row without the complete immutable source identity is therefore a hard
+        // pre-write blocker. This is intentionally a read-only dry-run oracle: the
+        // counts are reported as exact/ambiguous/unmatched and no backfill is attempted.
+        var legacyHeaders = await _trendDb.ProdajaZaglavlja.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyLines = await _trendDb.ProdajaStavke.AsNoTracking()
+            .CountAsync(x => _trendDb.ProdajaZaglavlja.Any(h => h.Id == x.IdProdaja && h.DataOrigin == "access") &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyReturns = await _trendDb.PovracajZaglavlja.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyReturnLines = await _trendDb.PovracajStavke.AsNoTracking()
+            .CountAsync(x => _trendDb.PovracajZaglavlja.Any(h => h.Id == x.IdPovracaj && h.DataOrigin == "access") &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyMovements = await _trendDb.DnevnikPromena.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyProducts = await _trendDb.Artikli.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+
+        var unmatched = legacyHeaders + legacyLines + legacyReturns + legacyReturnLines + legacyMovements + legacyProducts;
+        if (unmatched > 0)
+        {
+            throw new InvalidOperationException(
+                $"access_source_baseline_uncertified: exact=0 ambiguous=0 unmatched={unmatched} " +
+                $"(headers={legacyHeaders}, lines={legacyLines}, returns={legacyReturns}, return_lines={legacyReturnLines}, movements={legacyMovements}, products={legacyProducts}); " +
+                "the historical Access baseline has rows without namespace/table/row identity and must be certified by a read-only owner review before import. No automatic backfill or heuristic matching is allowed.");
+        }
+
+        // TipObuce, Dobavljac, Sezona and store dimensions predate source lineage and
+        // still use a global integer key. Until their namespace-scoped target mapping
+        // is migrated, a second logical Access database must be rejected rather than
+        // allowing same-number IDs to silently share or overwrite dimensions.
+        var hasAccessMasterRows =
+            await _trendDb.TipoviObuce.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct) ||
+            await _trendDb.Dobavljaci.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct) ||
+            await _trendDb.Sezone.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct);
+
+        if (hasAccessMasterRows)
+        {
+            var completedNamespaces = await _trendDb.DataImportBatches.AsNoTracking()
+                .Where(x => x.SourceSystem == "access" &&
+                            x.Status == "completed" &&
+                            x.SourceNamespace != null)
+                .Select(x => x.SourceNamespace!)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var foreignNamespaces = completedNamespaces
+                .Where(x => !string.Equals(x, sourceNamespace, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (foreignNamespaces.Length > 0 || completedNamespaces.Count == 0)
+            {
+                var prior = foreignNamespaces.Length == 0
+                    ? "no durable source namespace checkpoint exists for the legacy master rows"
+                    : $"foreign namespaces={string.Join(',', foreignNamespaces)}";
+                throw new InvalidOperationException(
+                    $"access_master_identity_uncertified: TipObuce/Dobavljaci/Sezone still have global integer IDs and cannot be safely attributed to '{sourceNamespace}' ({prior}). Registering a namespace does not authorize heuristic master or store mapping; run the approved lineage migration/certification first.");
+            }
+        }
+    }
+
     private async Task VerifyTrendplusIdentityHeadroomAsync(CancellationToken ct)
     {
-        // Do not repair identity sequences from an import transaction.  The legacy
+        // Do not repair identity sequences from an import transaction. The legacy
         // routine used setval after importing explicit IDs, which is both a production
-        // mutation and a race with independent POS writers.  Sales target IDs remain
+        // mutation and a race with independent POS writers. Sales target IDs remain
         // PostgreSQL-owned; a separately approved bigint rollout owns any conversion.
         const int minimumRemainingIds = 10_000;
         var headerMax = await _trendDb.ProdajaZaglavlja
@@ -9506,6 +9637,51 @@ using NpgsqlTypes;
         {
             throw new InvalidOperationException(
                 $"access_target_integer_headroom_exhausted: prodaja target IDs are near Int32.MaxValue (headers={headerMax}, lines={lineMax}); stop the import and execute the separately approved bigint rollout.");
+        }
+
+        if (!(_trendDb.Database.GetDbConnection() is NpgsqlConnection connection))
+            return;
+
+        var transaction = _trendDb.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction;
+        foreach (var (table, maxId) in new[]
+        {
+            (Table: "prodaja_zaglavlje", MaxId: headerMax),
+            (Table: "prodaja_stavke", MaxId: lineMax)
+        })
+        {
+            await using var sequenceCommand = new NpgsqlCommand(
+                "SELECT pg_get_serial_sequence(@table_name, 'Id')", connection, transaction);
+            sequenceCommand.Parameters.AddWithValue("table_name", NpgsqlTypes.NpgsqlDbType.Text, table);
+            var sequenceName = (string?)await sequenceCommand.ExecuteScalarAsync(ct);
+            if (string.IsNullOrWhiteSpace(sequenceName))
+                throw new InvalidOperationException(
+                    $"access_sequence_state_unavailable: table '{table}' has no discoverable PostgreSQL identity sequence; import is blocked before writes.");
+
+            await using var stateCommand = new NpgsqlCommand(
+                """
+                SELECT last_value, start_value, increment_by, max_value
+                  FROM pg_sequences
+                 WHERE format('%I.%I', schemaname, sequencename) = @sequence_name
+                    OR sequencename = @sequence_leaf
+                """, connection, transaction);
+            stateCommand.Parameters.AddWithValue("sequence_name", NpgsqlTypes.NpgsqlDbType.Text, sequenceName);
+            stateCommand.Parameters.AddWithValue("sequence_leaf", NpgsqlTypes.NpgsqlDbType.Text, sequenceName.Split('.').Last());
+            await using var reader = await stateCommand.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct))
+                throw new InvalidOperationException(
+                    $"access_sequence_state_unavailable: PostgreSQL sequence '{sequenceName}' could not be read; import is blocked before writes.");
+
+            var lastValue = reader.IsDBNull(0) ? (long?)null : reader.GetInt64(0);
+            var startValue = reader.GetInt64(1);
+            var increment = reader.GetInt64(2);
+            var sequenceMax = reader.GetInt64(3);
+            var nextValue = lastValue.HasValue ? checked(lastValue.Value + increment) : startValue;
+            var remaining = increment > 0 ? sequenceMax - nextValue : nextValue - sequenceMax;
+            if (maxId >= nextValue || remaining < minimumRemainingIds)
+            {
+                throw new InvalidOperationException(
+                    $"access_sequence_headroom_unsafe: table '{table}' target_max={maxId}, sequence='{sequenceName}', last={lastValue?.ToString() ?? "<never>"}, next={nextValue}, sequence_max={sequenceMax}, remaining={remaining}; import was rejected before business writes. Do not repair with setval in production.");
+            }
         }
     }
 

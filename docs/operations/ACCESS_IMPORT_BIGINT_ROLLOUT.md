@@ -4,6 +4,28 @@ Status: design and isolated-validation plan only. It is not authorization to run
 
 The importer now blocks a transaction when `prodaja_zaglavlje.id` or `prodaja_stavke.id` has fewer than 10,000 values before `Int32.MaxValue`. This is a safety stop, not an attempt to repair a sequence. The incident evidence recorded only 4,281 values of headroom, so production stays WAITING for this rollout and its approved window.
 
+## P0 baseline and unsupported master families
+
+The routine path performs a read-only pre-write baseline check. Any historical Access
+header, line, return, movement or article without the complete
+`(source_namespace, physical source table, source row identity)` is reported as
+`exact=0 / ambiguous=0 / unmatched=N` and blocks the transaction. Registration of a
+namespace is not certification and no date/receipt/amount heuristic or automatic
+backfill is permitted.
+
+`TipObuce`, `Dobavljac`, `Sezona` and store dimensions still have legacy global
+integer keys in the current model. A source ID that collides with a non-Access row is
+rejected, and a second logical Access namespace is rejected while those rows lack a
+namespace-scoped target mapping. This is an intentional fail-closed boundary until
+the separately reviewed lineage migration is available; it must not be weakened by
+setting `overwriteExisting`.
+
+When Trendplus and Analytics use separate PostgreSQL databases, the supported import
+mode is operational-only (`includeAnalytics=false`). The response is persisted with
+an explicit `Analytics pending/stale` warning; it never claims cross-database
+atomicity or an analytics refresh. A durable outbox/projection worker remains a
+separate production dependency.
+
 ## Required scope
 
 All of these must be inspected and converted together in a disposable PostgreSQL rehearsal:

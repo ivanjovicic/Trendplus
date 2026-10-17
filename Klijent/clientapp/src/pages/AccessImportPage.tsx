@@ -129,7 +129,10 @@ export default function AccessImportPage() {
     const [activeTab, setActiveTab] = useState<Tab>("source");
     const [file, setFile] = useState<File | null>(null);
     const [useRootFile, setUseRootFile] = useState(false);
-    const [includeAnalytics, setIncludeAnalytics] = useState(true);
+    // Production keeps Trendplus and Analytics in separate databases. The import
+    // transaction is only atomic for the operational database, so projection is an
+    // explicit opt-in until the durable outbox worker is enabled.
+    const [includeAnalytics, setIncludeAnalytics] = useState(false);
     const [overwriteExisting] = useState(false);
     const [sourceNamespace, setSourceNamespace] = useState("");
     const [preview, setPreview] = useState<AccessImportPreviewResponse | null>(null);
@@ -774,7 +777,7 @@ export default function AccessImportPage() {
                         />
                         <label className="accimport-checkbox-row">
                             <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
-                            Ukljuci upis u Analytics
+                            Ukljuci upis u Analytics (zahteva zajedničku bazu / odvojena projekcija)
                         </label>
                         <div className="accimport-hint">Rutinski import je incremental i nikada ne briše istorijsku prodaju.</div>
                     </div>
@@ -853,7 +856,7 @@ export default function AccessImportPage() {
                             <div className="accimport-hint">Namespace: {sourceNamespace.trim() || "nije unet"}</div>
                             <label className="accimport-checkbox-row">
                                 <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
-                                Ukljuci upis u Analytics
+                                Ukljuci upis u Analytics (zahteva zajedničku bazu / odvojena projekcija)
                             </label>
                         </div>
                         <div className="accimport-field">
@@ -1086,7 +1089,7 @@ export default function AccessImportPage() {
                                 </div>
                                 <div className="accimport-kpi">
                                     <div className="accimport-kpi-label">Analytics</div>
-                                    <div className="accimport-kpi-value">{runResult.includeAnalytics ? "Da" : "Ne"}</div>
+                                    <div className="accimport-kpi-value">{runResult.includeAnalytics ? "Refreshed" : "Pending / stale"}</div>
                                 </div>
                             </div>
 
