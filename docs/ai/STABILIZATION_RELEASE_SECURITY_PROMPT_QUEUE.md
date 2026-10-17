@@ -3,8 +3,8 @@
 Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
-P0 import follow-up: STAB17 READY **for isolated repository-local engineering/proofs only** after owner-directed PR #163 release 2026-10-17; production baseline repair, cutover, live import and external acceptance remain WAITING. No production mutation authorized.
-Current READY prompt: STAB17 (P0 **repo-local engineering only**; shared claim before code; reuse DRAFT PR #163 with exclusive handoff, not a second implementation PR). `STAB16` remains BLOCKED on production provider/release gates; RQ programs retain their independent ownership.
+P0 import follow-up: STAB17 IN_PROGRESS **for isolated repository-local engineering/proofs only** after owner-directed PR #163 release 2026-10-17; production baseline repair, cutover, live import and external acceptance remain WAITING. No production mutation authorized.
+Current READY prompt: STAB17 (P0 **repo-local engineering only**, claimed by Codex `/root`; reuse DRAFT PR #163 with exclusive handoff, not a second implementation PR). `STAB16` remains BLOCKED on production provider/release gates; RQ programs retain their independent ownership.
 Current gate verdict: the first 2026-08-27 live audit found Render behind current `main`; a same-day API-only recheck now shows the canonical Render API at runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`, but no dedicated worker process or durable refresh proof is visible yet. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` and `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ## Goal
@@ -1765,16 +1765,26 @@ The canonical production API reports a runtime SHA contained in current `main`, 
 
 ## STAB17 - Safe incremental Access import with source-lineage bootstrap and lossless rollback
 
-Status: READY
+Status: IN_PROGRESS
 Execution scope: repository-local engineering and disposable-source proof ONLY; production rollout/legacy backfill WAITING
 Priority: P0
 Type: Access import correctness, operational data integrity, PostgreSQL integration and controlled release
 Feature family: access-incremental-import-source-identity
-Owner: unassigned until one receiving agent publishes an exclusive shared claim; former PR #163 author/workspace released the engineering lane by user instruction, documented in PR #163 conversation on 2026-10-17.
+Owner: Codex `/root` (exclusive shared claim in this run); former PR #163 author/workspace released the engineering lane by user instruction, documented in PR #163 conversation on 2026-10-17.
 Parallel-safe: NO for Api/Services/AccessImportService.cs, sale identity models/migrations, sales tests and related analytics paths; receiving owner MUST reuse PR #163, not open a parallel code PR, after claiming on main.
 Ready after: completed owner-directed engineering handoff at https://github.com/ivanjovicic/Trendplus/pull/163#issuecomment-6231362263; source identity implementation is allowed only with an explicit operator-supplied namespace contract and safe default OFF for unknown legacy data. Real source namespace *selection*, historical legacy mapping, schema/backfill/deploy and production mutation remain blocked without separate authorization.
 Production mutation authorization: NONE
 Commit suggestion: fix(import): make recurring Access synchronization incremental and idempotent
+
+### Claim reservation — 2026-10-17
+
+- Receiving owner/workspace: Codex `/root`; `C:\Users\Ivan\.codex\worktrees\stab17-pr163\Trendplus2`.
+- Inspected base: `origin/main` `531a2962856ea7b8151fdf71e1c52640c4e88722`; handoff baseline PR #163 `fb193a076e47f79870acb84ec134ee1c1fe97a35` on `codex/access-sale-line-identity`.
+- Delivery branch/PR: continue the existing `codex/access-sale-line-identity` / draft PR #163 from a clean isolated worktree; no new implementation PR and no force push.
+- Exclusive paths: `Api/Services/AccessImportService.cs`, `Api/Services/Access/*`, Access import API/options/UI, source-lineage models/migrations, PostgreSQL Access tests, SQL oracle, and this STAB17 evidence.
+- WIP check: RQ680 is the other active independent code/evidence family; this claim is the second allowed active family under the product-value limit.
+- Ownership transfer: `ivanjovicic` / prior PR #163 workspace -> Codex `/root`; authority: user instruction in this thread plus PR #163 owner-directed handoff comment `#6231362263` and PR #191 / main `531a2962`.
+- Claim commit SHA: pending; this reservation must be pushed to `main` before any source edit.
 
 
 ### Owner-authorized single-agent STAB17 engineering handoff — 2026-10-17
