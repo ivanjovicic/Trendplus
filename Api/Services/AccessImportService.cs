@@ -6754,7 +6754,7 @@ using NpgsqlTypes;
 
         var sourceOccurrences = new Dictionary<AccessTransferSourceKey, int>();
 
-        void AddMovement(string tipPromene, int kolicina, int? storeId, string? documentNumber, int artikalId, DateTime datum, decimal cena, decimal iznos, AccessDataRow sourceRow)
+        void AddMovement(string tipPromene, int kolicina, int? storeId, string? documentNumber, int artikalId, DateTime datum, decimal cena, decimal iznos, int occurrenceOrdinal, AccessDataRow sourceRow)
         {
             var assignedId = AllocateNextId(usedIds, ref next);
             var movement = new DnevnikPromena
@@ -6768,6 +6768,7 @@ using NpgsqlTypes;
                 Iznos = iznos,
                 IDObjekat = storeId,
                 BrojRacuna = documentNumber,
+                RedniBroj = occurrenceOrdinal > 0 ? occurrenceOrdinal : null,
                 DataOrigin = "access"
             };
             ApplyAccessSourceLineage(movement, "prenos_robe", sourceRow);
@@ -6821,9 +6822,9 @@ using NpgsqlTypes;
                     continue;
 
                 if (needsOut)
-                    AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
+                    AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, occurrence + 1, row);
                 if (needsIn)
-                    AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
+                    AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, occurrence + 1, row);
 
                 await FlushTrendWritesAsync(force: false, ct);
                 continue;
@@ -6856,7 +6857,7 @@ using NpgsqlTypes;
                 continue;
             }
 
-            AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
+            AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, 0, row);
             existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
 
             var ckUlazNew = new AccessTransferLegacyKey(
@@ -6867,7 +6868,7 @@ using NpgsqlTypes;
                 Math.Abs(kolicina),
                 idU,
                 string.IsNullOrWhiteSpace(brDok) ? null : brDok.Trim());
-            AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
+            AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, 0, row);
             existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
 
             await FlushTrendWritesAsync(force: false, ct);

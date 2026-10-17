@@ -117,7 +117,7 @@ namespace Infrastructure.DbContexts
                 // movement records (out and in). TipPromene is the derived
                 // role, so it belongs in the target identity while the source
                 // table/key remain the physical Access lineage.
-                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId, e.TipPromene })
+                eb.HasIndex(e => new { e.DataOrigin, e.SourceNamespace, e.SourceTableKey, e.SourceRowId, e.TipPromene, e.RedniBroj })
                   .IsUnique()
                   .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
                 eb.HasIndex(e => new { e.DataOrigin, e.SourceTableKey, e.SourceUpdatedAtUtc, e.SourceRowId });

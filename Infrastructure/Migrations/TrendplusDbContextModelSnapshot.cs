@@ -983,7 +983,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IDObjekat", "Datum");
 
-                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId", "TipPromene")
+                    b.HasIndex("DataOrigin", "SourceNamespace", "SourceTableKey", "SourceRowId", "TipPromene", "RedniBroj")
                         .IsUnique()
                         .HasFilter("\"DataOrigin\" = 'access' AND \"SourceNamespace\" IS NOT NULL AND \"SourceTableKey\" IS NOT NULL AND \"SourceRowId\" IS NOT NULL");
 
