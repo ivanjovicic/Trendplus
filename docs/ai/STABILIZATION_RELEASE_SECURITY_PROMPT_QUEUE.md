@@ -4,7 +4,7 @@ Created: 2026-08-04
 Repo: `ivanjovicic/Trendplus`
 Queue state: active cross-cutting queue; it supplements, and does not replace, the analytics reliability queues.
 P0 import follow-up: STAB17 IN_PROGRESS **for isolated repository-local engineering/proofs only** after owner-directed PR #163 release 2026-10-17; production baseline repair, cutover, live import and external acceptance remain WAITING. No production mutation authorized.
-Current READY prompt: STAB17 (P0 **repo-local engineering only**, claimed by Codex `/root`; reuse DRAFT PR #163 with exclusive handoff, not a second implementation PR). `STAB16` remains BLOCKED on production provider/release gates; RQ programs retain their independent ownership.
+Current READY prompt: none in STAB. STAB17 is P0 **IN_PROGRESS** in the existing exclusive Codex `/root` claim on DRAFT PR #163, not claimable by another agent; STAB16 stays BLOCKED on production provider/release gates. Cross-program RQ686/RQ687 are separately READY but cannot start while the WIP cap is full.
 Current gate verdict: the first 2026-08-27 live audit found Render behind current `main`; a same-day API-only recheck now shows the canonical Render API at runtime SHA `6ecbfa67a7304c3cbeeb71755a35255e766c8e24`, which is contained in current `main`, but no dedicated worker process or durable refresh proof is visible yet. GenAI remains BLOCKED; see `docs/qa/ANALYTICS_PRODUCTION_LIVE_AUDIT_2026-08-27.md` and `.ai/runs/2026-08-27-queue-audit-production-followups-evidence.md`.
 
 ## Goal
