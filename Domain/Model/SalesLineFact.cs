@@ -15,6 +15,7 @@ namespace Domain.Model
 
         // Source receipt-line identity (see SalesLineSourceIdentity). Unique per sale
         // together with SourceTableKey; NULL for legacy rows loaded before 2026-10-10.
+        public string? SourceNamespace { get; set; }
         public string? SourceTableKey { get; set; }
         public long? SourceLineId { get; set; }
     }

@@ -41,8 +41,8 @@ public sealed class SalesLineFactSourceLineKeyTests : IClassFixture<PostgresCont
     {
         var facts = AccessImportService.MapSalesLineFacts(new[]
         {
-            new AccessImportService.SaleLineSourceSyncRow(11, 500, 42, 1, 1000m, 600m, "access.prodaja_stavke", 7001),
-            new AccessImportService.SaleLineSourceSyncRow(12, 500, 42, 2, 950m, 600m, "access.prodaja_stavke", 7002),
+            new AccessImportService.SaleLineSourceSyncRow(11, 500, 42, 1, 1000m, 600m, "access.prodaja_stavke", 7001, "synthetic-test-source"),
+            new AccessImportService.SaleLineSourceSyncRow(12, 500, 42, 2, 950m, 600m, "access.prodaja_stavke", 7002, "synthetic-test-source"),
         });
 
         Assert.Equal(2, facts.Count);
@@ -140,8 +140,8 @@ public sealed class SalesLineFactSourceLineKeyTests : IClassFixture<PostgresCont
 
         var rows = AccessImportService.MapSalesLineFacts(new[]
         {
-            new AccessImportService.SaleLineSourceSyncRow(11, 500, 42, 1, 1000m, 600m, "access.prodaja_stavke", 7001),
-            new AccessImportService.SaleLineSourceSyncRow(12, 500, 42, 2, 950m, 600m, "access.prodaja_stavke", 7002),
+            new AccessImportService.SaleLineSourceSyncRow(11, 500, 42, 1, 1000m, 600m, "access.prodaja_stavke", 7001, "synthetic-test-source"),
+            new AccessImportService.SaleLineSourceSyncRow(12, 500, 42, 2, 950m, 600m, "access.prodaja_stavke", 7002, "synthetic-test-source"),
         });
 
         for (var attempt = 0; attempt < 2; attempt++)
@@ -159,8 +159,8 @@ public sealed class SalesLineFactSourceLineKeyTests : IClassFixture<PostgresCont
         Assert.Equal(2900m, await ScalarAsync<decimal>(connectionString, """SELECT SUM("LineTotal") FROM "SalesLineFacts" WHERE "SaleId" = 500"""));
 
         var duplicate = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(connectionString, """
-            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","DataOrigin","SourceTableKey","SourceLineId")
-            VALUES (500, 42, 1, 1000, 1000, 'access', 'access.prodaja_stavke', 7001);
+            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","DataOrigin","SourceNamespace","SourceTableKey","SourceLineId")
+            VALUES (500, 42, 1, 1000, 1000, 'access', 'synthetic-test-source', 'access.prodaja_stavke', 7001);
             """));
         Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
 

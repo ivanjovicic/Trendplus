@@ -208,12 +208,13 @@ export function isAccessImportRequestCanceledError(error: unknown): boolean {
     return false;
 }
 
-function buildFormData(file: File | null, options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean }): FormData {
+function buildFormData(file: File | null, options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean; sourceNamespace?: string }): FormData {
     const fd = new FormData();
     if (file) fd.append("file", file);
     if (options?.useRootFile !== undefined) fd.append("useRootFile", String(options.useRootFile));
     if (options?.includeAnalytics !== undefined) fd.append("includeAnalytics", String(options.includeAnalytics));
     if (options?.overwriteExisting !== undefined) fd.append("overwriteExisting", String(options.overwriteExisting));
+    if (options?.sourceNamespace?.trim()) fd.append("sourceNamespace", options.sourceNamespace.trim());
     return fd;
 }
 
@@ -236,7 +237,7 @@ export async function previewAccessImport(file: File | null, useRootFile = false
 
 export async function runAccessImport(
     file: File | null,
-    options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean; adminKey?: string }
+    options?: { useRootFile?: boolean; includeAnalytics?: boolean; overwriteExisting?: boolean; sourceNamespace?: string; adminKey?: string }
 ): Promise<AccessImportRunResponse> {
     const headers: HeadersInit = {};
     if (options?.adminKey) headers["X-Admin-Key"] = options.adminKey;

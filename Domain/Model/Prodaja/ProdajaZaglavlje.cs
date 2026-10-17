@@ -19,6 +19,7 @@ public sealed class ProdajaZaglavlje : IAccessImportSourceLineage
     /// operational sales are UTC instants. Null remains unknown for older/unclassified rows.
     /// </summary>
     public string? SourceTimestampBasis { get; set; }
+    public string? SourceNamespace { get; set; }
     public string? SourceTableKey { get; set; }
     public long? SourceRowId { get; set; }
     public DateTime? SourceUpdatedAtUtc { get; set; }

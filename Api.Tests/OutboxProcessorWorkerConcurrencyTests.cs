@@ -31,7 +31,7 @@ public sealed class OutboxProcessorWorkerConcurrencyTests : IClassFixture<Postgr
         // Line idempotency is keyed by the source receipt line; (SaleId, ProductId) is a
         // non-unique lookup because one receipt can repeat a product on several lines.
         Assert.DoesNotContain("new { e.SaleId, e.ProductId }).IsUnique()", analyticsContext, StringComparison.Ordinal);
-        Assert.Contains("new { e.SaleId, e.SourceTableKey, e.SourceLineId }", analyticsContext, StringComparison.Ordinal);
+        Assert.Contains("new { e.SourceNamespace, e.SaleId, e.SourceTableKey, e.SourceLineId }", analyticsContext, StringComparison.Ordinal);
         Assert.Contains("CREATE UNIQUE INDEX IF NOT EXISTS \"UX_SalesLineFacts_SaleId_SourceLine\"", migration, StringComparison.Ordinal);
         Assert.Contains("WHERE \"SourceLineId\" IS NOT NULL", migration, StringComparison.Ordinal);
         Assert.Contains("CREATE INDEX IF NOT EXISTS \"IX_SalesLineFacts_SaleId_ProductId\"", migration, StringComparison.Ordinal);

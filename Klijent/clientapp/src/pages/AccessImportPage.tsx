@@ -129,8 +129,12 @@ export default function AccessImportPage() {
     const [activeTab, setActiveTab] = useState<Tab>("source");
     const [file, setFile] = useState<File | null>(null);
     const [useRootFile, setUseRootFile] = useState(false);
-    const [includeAnalytics, setIncludeAnalytics] = useState(true);
-    const [overwriteExisting, setOverwriteExisting] = useState(true);
+    // Production keeps Trendplus and Analytics in separate databases. The import
+    // transaction is only atomic for the operational database, so projection is an
+    // explicit opt-in until the durable outbox worker is enabled.
+    const [includeAnalytics, setIncludeAnalytics] = useState(false);
+    const [overwriteExisting] = useState(false);
+    const [sourceNamespace, setSourceNamespace] = useState("");
     const [preview, setPreview] = useState<AccessImportPreviewResponse | null>(null);
     const [runResult, setRunResult] = useState<AccessImportRunResponse | null>(null);
     const [batches, setBatches] = useState<AccessImportBatchDto[]>([]);
@@ -410,7 +414,7 @@ export default function AccessImportPage() {
         setError(null);
         setLoadingImport(true);
         try {
-            const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting, adminKey });
+            const data = await runAccessImport(file, { useRootFile, includeAnalytics, overwriteExisting, sourceNamespace, adminKey });
             setRunResult(data);
             setActiveTab("lastImport");
             await refreshBatches("after-run");
@@ -762,14 +766,20 @@ export default function AccessImportPage() {
                     {/* Options */}
                     <div className="accimport-field">
                         <span className="accimport-label">Opcije importa</span>
+                        <label className="accimport-label" htmlFor="access-source-namespace">Registrovani Access namespace</label>
+                        <input
+                            id="access-source-namespace"
+                            className="accimport-input"
+                            value={sourceNamespace}
+                            onChange={(e) => setSourceNamespace(e.target.value)}
+                            placeholder="npr. prodavnica-001 (mora biti prethodno registrovan)"
+                            autoComplete="off"
+                        />
                         <label className="accimport-checkbox-row">
                             <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
-                            Ukljuci upis u Analytics
+                            Ukljuci upis u Analytics (zahteva zajedničku bazu / odvojena projekcija)
                         </label>
-                        <label className="accimport-checkbox-row">
-                            <input type="checkbox" checked={overwriteExisting} onChange={(e) => setOverwriteExisting(e.target.checked)} />
-                            Azuriraj postojece redove (upsert)
-                        </label>
+                        <div className="accimport-hint">Rutinski import je incremental i nikada ne briše istorijsku prodaju.</div>
                     </div>
 
                     {/* Actions */}
@@ -779,7 +789,7 @@ export default function AccessImportPage() {
                             <button className="accimport-btn accimport-btn-primary" onClick={() => void handlePreview()} disabled={busy || !sourceSelected || runtimeBlocksImport}>
                                 {loadingPreview ? "Analiziram..." : "Analiza šeme"}
                             </button>
-                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
+                            <button className="accimport-btn accimport-btn-success" onClick={() => void handleImport()} disabled={busy || !sourceSelected || !sourceNamespace.trim() || previewBlocksImport || runtimeBlocksImport}>
                                 {importBusy ? "Import u toku..." : "Pokreni import"}
                             </button>
                         </div>
@@ -797,6 +807,9 @@ export default function AccessImportPage() {
                             <div className="accimport-hint">
                                 Izaberi fajl ili uključi automatski TRENDPLUS.accdb/.mdb.
                             </div>
+                        )}
+                        {!sourceNamespace.trim() && (
+                            <div className="accimport-hint">Unesi prethodno registrovani, nepromenljivi namespace logičke Access baze.</div>
                         )}
                     </div>
 
@@ -840,13 +853,10 @@ export default function AccessImportPage() {
                         </div>
                         <div className="accimport-field">
                             <span className="accimport-label">Opcije importa</span>
+                            <div className="accimport-hint">Namespace: {sourceNamespace.trim() || "nije unet"}</div>
                             <label className="accimport-checkbox-row">
                                 <input type="checkbox" checked={includeAnalytics} onChange={(e) => setIncludeAnalytics(e.target.checked)} />
-                                Ukljuci upis u Analytics
-                            </label>
-                            <label className="accimport-checkbox-row">
-                                <input type="checkbox" checked={overwriteExisting} onChange={(e) => setOverwriteExisting(e.target.checked)} />
-                                Azuriraj postojece redove (upsert)
+                                Ukljuci upis u Analytics (zahteva zajedničku bazu / odvojena projekcija)
                             </label>
                         </div>
                         <div className="accimport-field">
@@ -855,7 +865,7 @@ export default function AccessImportPage() {
                                 <button className="accimport-btn accimport-btn-secondary" type="button" onClick={() => void handlePreview()} disabled={busy || !sourceSelected || runtimeBlocksImport}>
                                     {loadingPreview ? "Analiziram..." : "Ponovi analizu"}
                                 </button>
-                                <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || previewBlocksImport || runtimeBlocksImport}>
+                                <button className="accimport-btn accimport-btn-success" type="button" onClick={() => void handleImport()} disabled={busy || !sourceSelected || !sourceNamespace.trim() || previewBlocksImport || runtimeBlocksImport}>
                                     {importBusy ? "Import u toku..." : "Pokreni import"}
                                 </button>
                             </div>
@@ -1079,7 +1089,7 @@ export default function AccessImportPage() {
                                 </div>
                                 <div className="accimport-kpi">
                                     <div className="accimport-kpi-label">Analytics</div>
-                                    <div className="accimport-kpi-value">{runResult.includeAnalytics ? "Da" : "Ne"}</div>
+                                    <div className="accimport-kpi-value">{runResult.includeAnalytics ? "Refreshed" : "Pending / stale"}</div>
                                 </div>
                             </div>
 

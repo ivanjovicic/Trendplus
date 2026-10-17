@@ -21,6 +21,7 @@ public sealed class ProdajaStavka : IAccessImportSourceLineage
     public int? SupplierIdAtSale { get; set; }
     public int? ShoeTypeIdAtSale { get; set; }
     public string AttributionBasis { get; set; } = SaleDimensionAttribution.Unknown;
+    public string? SourceNamespace { get; set; }
     public string? SourceTableKey { get; set; }
     public long? SourceRowId { get; set; }
     public DateTime? SourceUpdatedAtUtc { get; set; }

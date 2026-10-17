@@ -2,6 +2,7 @@ namespace Domain.Model;
 
 public interface IAccessImportSourceLineage
 {
+    string? SourceNamespace { get; set; }
     string? SourceTableKey { get; set; }
     long? SourceRowId { get; set; }
     DateTime? SourceUpdatedAtUtc { get; set; }

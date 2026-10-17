@@ -9,6 +9,9 @@ namespace Domain.Model
 
         public string SourceSystem { get; set; } = "access";
         public string SourceFileName { get; set; } = string.Empty;
+        /// <summary>Registered immutable logical Access database identity.</summary>
+        [MaxLength(128)]
+        public string? SourceNamespace { get; set; }
         [MaxLength(800)]
         public string? SourceFilePath { get; set; }
         [MaxLength(1024)]

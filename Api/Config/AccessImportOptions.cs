@@ -33,22 +33,51 @@ public sealed class AccessImportOptions
     // If true, the importer will attempt to insert missing `prodaja_zaglavlje` rows
     // found in the Access file before importing `prodaja_stavke`. Default: false (opt-in).
     public bool AutoInsertMissingParents { get; set; } = false;
+    /// <summary>
+    /// Logical Access databases are explicitly registered here.  A namespace is an
+    /// operator-owned immutable identifier (normally a UUID), never a filename,
+    /// filesystem path or file hash.  A normal upload is rejected until its value
+    /// is registered.
+    /// </summary>
+    public List<AccessSourceNamespaceRegistration> SourceNamespaces { get; set; } = [];
     public AccessIncrementalOptions Incremental { get; set; } = new();
+}
+
+public sealed class AccessSourceNamespaceRegistration
+{
+    /// <summary>Immutable logical database identity supplied by the operator.</summary>
+    public string Namespace { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
+    /// <summary>Only registered namespaces may use the routine incremental path.</summary>
+    public bool AllowRoutineIncremental { get; set; } = true;
 }
 
 public sealed class AccessIncrementalOptions
 {
-    // Global feature toggle.
-    public bool Enabled { get; set; }
+    // Routine uploads are incremental by default.  ID-only profiles deliberately
+    // re-read known source identities and compare their hashes; they are not an
+    // unsafe `id > cursor` shortcut.
+    public bool Enabled { get; set; } = true;
 
-    // full | shadow | incremental
-    public string Mode { get; set; } = "full";
+    // shadow | incremental. `full` remains accepted for historical configuration
+    // compatibility but does not authorize snapshot deletion or overwrite.
+    public string Mode { get; set; } = "incremental";
 
     public int DefaultBatchSize { get; set; } = 2000;
     public int DefaultOverlapSeconds { get; set; } = 60;
 
-    // Per-table incremental profiles.
-    public List<AccessIncrementalTableProfile> Profiles { get; set; } = [];
+    // Per-table incremental profiles. Physical source-table identity is appended
+    // when the cursor is persisted, so aliases such as Prodaja and Prodaja2025
+    // cannot share an ID cursor.
+    public List<AccessIncrementalTableProfile> Profiles { get; set; } =
+    [
+        new() { TableKey = "artikli", CursorMode = "id_or_composite" },
+        new() { TableKey = "prodaja_zaglavlje", CursorMode = "id_or_composite" },
+        new() { TableKey = "prodaja_stavke", CursorMode = "id_or_composite" },
+        new() { TableKey = "dnevnik_promena", CursorMode = "id_or_composite" },
+        new() { TableKey = "povracaj_zaglavlje", CursorMode = "id_or_composite" },
+        new() { TableKey = "povracaj_stavke", CursorMode = "id_or_composite" }
+    ];
 }
 
 public sealed class AccessIncrementalTableProfile

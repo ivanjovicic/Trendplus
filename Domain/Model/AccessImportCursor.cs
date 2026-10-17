@@ -4,7 +4,9 @@ namespace Domain.Model;
 
 public sealed class AccessImportCursor
 {
-    [Key]
+    [MaxLength(128)]
+    public string SourceNamespace { get; set; } = string.Empty;
+
     [MaxLength(128)]
     public string TableKey { get; set; } = string.Empty;
 

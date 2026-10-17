@@ -74,6 +74,7 @@ namespace Domain.Model.Povracaj
         public List<PovracajStavka> Stavke { get; set; } = new();
 
         public string DataOrigin { get; set; } = "existing";
+        public string? SourceNamespace { get; set; }
         public string? SourceTableKey { get; set; }
         public long? SourceRowId { get; set; }
         public DateTime? SourceUpdatedAtUtc { get; set; }

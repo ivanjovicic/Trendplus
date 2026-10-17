@@ -125,3 +125,27 @@ describe("AccessImportPage upload size limit (RQ677)", () => {
     expect(await screen.findByText(/dozvoljeno je najviše 100 MiB/)).toBeInTheDocument();
   });
 });
+
+describe("AccessImportPage source namespace gate", () => {
+  beforeEach(() => {
+    vi.mocked(getAccessImportBatches).mockReset();
+    vi.mocked(getAccessImportBatches).mockResolvedValue([]);
+    vi.mocked(getAccessImportRuntimeStatus).mockResolvedValue({ available: true, platform: "linux", missingDependencies: [], detail: null } as never);
+    window.sessionStorage.clear();
+  });
+
+  it("does not allow a routine upload until an immutable registered namespace is supplied", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Maksimalna veličina fajla: 100 MiB");
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["access"], "store.accdb")] } });
+
+    const importButton = screen.getAllByRole("button", { name: "Pokreni import" })[0];
+    expect(importButton).toBeDisabled();
+    expect(screen.getByText(/Unesi prethodno registrovani/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Registrovani Access namespace"), { target: { value: "store-logical-uuid" } });
+    expect(importButton).toBeEnabled();
+  });
+});

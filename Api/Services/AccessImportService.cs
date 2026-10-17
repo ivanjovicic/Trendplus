@@ -30,8 +30,8 @@ using NpgsqlTypes;
     public interface IAccessImportService
     {
         Task<AccessImportPreviewResponse> PreviewAsync(string accessFilePath, bool includeTemporaryTables = false, CancellationToken ct = default);
-        Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
-        Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default);
+        Task<AccessImportRunResponse> ImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default, string? sourceNamespace = null);
+        Task<AccessImportRunResponse> StartImportAsync(string accessFilePath, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, CancellationToken ct = default, string? sourceNamespace = null);
         Task<AccessImportRunResponse> RunExistingBatchAsync(long batchId, string accessFilePath, string sourceFileName, bool includeAnalytics, bool overwriteExisting, bool includeTemporaryTables = false, bool deleteWorkingFileAfterCompletion = false, CancellationToken ct = default);
         Task RefreshBatchStatusesAsync(long? batchId = null, CancellationToken ct = default);
         Task<List<AccessImportBatchDto>> GetRecentBatchStatusesAsync(int take = 20, CancellationToken ct = default);
@@ -299,6 +299,11 @@ using NpgsqlTypes;
     private sealed class ActiveIncrementalTableScope
     {
         public required long BatchId { get; init; }
+        public required string SourceNamespace { get; init; }
+        // The durable cursor key includes the physical Access table.  A logical
+        // import role (for example prodaja_zaglavlje) can be satisfied by more
+        // than one physical table, whose row IDs are not interchangeable.
+        public required string CursorTableKey { get; init; }
         public required string TableKey { get; init; }
         public required string SourceTableName { get; init; }
         public required string CursorMode { get; init; }
@@ -382,6 +387,9 @@ using NpgsqlTypes;
     private string? _cliFilePath;
     private int _pendingTrendWrites;
     private long? _activeBatchId;
+    // Set only from DataImportBatch.SourceNamespace after registry validation.  It is
+    // deliberately never inferred from an upload's filename, path or bytes.
+    private string? _activeSourceNamespace;
     private int _salesHeaderRowsWithUnknownDate;
     private AccessImportRunResponse? _activeBatchResult;
     private string? _activeBatchStep;
@@ -449,6 +457,36 @@ using NpgsqlTypes;
         _trendFlushCount = 0;
         _batchHeartbeatPersistCount = 0;
         _incrementalTableSnapshots.Clear();
+    }
+
+    private string ResolveRegisteredSourceNamespace(string? sourceNamespace)
+    {
+        if (string.IsNullOrWhiteSpace(sourceNamespace))
+            throw new InvalidOperationException("access_source_namespace_required: choose a registered immutable Access source namespace before importing.");
+
+        var normalized = sourceNamespace.Trim().ToLowerInvariant();
+        var registration = _options.SourceNamespaces.FirstOrDefault(x =>
+            x.Enabled && string.Equals(x.Namespace?.Trim(), normalized, StringComparison.OrdinalIgnoreCase));
+        if (registration is null)
+            throw new InvalidOperationException("access_source_namespace_unregistered: the supplied Access source namespace is not registered for routine import.");
+        if (!registration.AllowRoutineIncremental)
+            throw new InvalidOperationException("access_source_namespace_not_routine_enabled: this namespace is registered but routine incremental import is not approved.");
+
+        return normalized;
+    }
+
+    private string CurrentSourceNamespace()
+    {
+        if (!string.IsNullOrWhiteSpace(_activeSourceNamespace))
+            return _activeSourceNamespace;
+
+        // Reflection-only synthetic unit tests call private import routines without a
+        // persisted batch.  Production paths always have a batch and therefore never
+        // reach this value.
+        if (_activeBatchId is null)
+            return "synthetic-test-source";
+
+        throw new InvalidOperationException("access_source_namespace_missing_on_batch: import lineage cannot be written without a registered source namespace.");
     }
 
     /// <summary>
@@ -557,9 +595,10 @@ using NpgsqlTypes;
         bool incrementalWriteMode,
         bool dnevnikTablePresent,
         int dnevnikImportedDelta)
-        => incrementalWriteMode
-           && dnevnikTablePresent
-           && dnevnikImportedDelta <= 0;
+        // A journal delta is neither a complete sales feed nor a reliable cursor for
+        // receipt lines.  Each physical sales/returns table owns its own anti-join and
+        // cursor, so absence of a Dnevnik delta must never suppress those tables.
+        => false;
 
     private AccessIncrementalTableProfile? ResolveIncrementalProfile(string tableKey)
     {
@@ -574,6 +613,16 @@ using NpgsqlTypes;
             .FirstOrDefault(x =>
                 x.Enabled &&
                 Normalize(x.TableKey).Equals(normalizedTableKey, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string BuildPhysicalCursorTableKey(string logicalTableKey, string? sourceTableName)
+    {
+        var logical = Normalize(logicalTableKey);
+        var physical = Normalize(sourceTableName);
+        if (string.IsNullOrWhiteSpace(logical) || string.IsNullOrWhiteSpace(physical))
+            throw new InvalidOperationException("access_cursor_table_identity_required: incremental cursors require both a logical import role and a physical Access table.");
+
+        return $"{logical}:{physical}";
     }
 
     private static string[] BuildNormalizedAliasArray(IEnumerable<string>? aliases, IReadOnlyList<string> fallbackAliases)
@@ -637,10 +686,13 @@ using NpgsqlTypes;
         if (string.Equals(normalizedMode, "none", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var cursor = await _cursorRepository.GetOrCreateAsync(tableKey, normalizedMode, ct);
+        var sourceNamespace = CurrentSourceNamespace();
+        var cursorTableKey = BuildPhysicalCursorTableKey(tableKey, tableName);
+        var cursor = await _cursorRepository.GetOrCreateAsync(sourceNamespace, cursorTableKey, normalizedMode, ct);
         var leaseDurationSeconds = Math.Clamp(Math.Max(_options.HeartbeatIntervalSeconds, _options.StatusUpdateThrottleSeconds) * 3, 30, 600);
         var leaseAcquired = await _cursorRepository.TryAcquireLeaseAsync(
-            tableKey,
+            sourceNamespace,
+            cursorTableKey,
             _incrementalLeaseOwner,
             TimeSpan.FromSeconds(leaseDurationSeconds),
             ct);
@@ -651,11 +703,13 @@ using NpgsqlTypes;
                 $"Incremental import lease is busy for table '{tableKey}'. Retry after the current worker finishes.");
         }
 
-        await _cursorRepository.MarkRunStartedAsync(tableKey, ct);
+        await _cursorRepository.MarkRunStartedAsync(sourceNamespace, cursorTableKey, ct);
 
         return new ActiveIncrementalTableScope
         {
             BatchId = batchId,
+            SourceNamespace = sourceNamespace,
+            CursorTableKey = cursorTableKey,
             TableKey = tableKey,
             SourceTableName = tableName ?? tableKey,
             CursorMode = normalizedMode,
@@ -691,7 +745,8 @@ using NpgsqlTypes;
             var nextTieBreakerId = scope.MaxSeenTieBreakerId;
 
             await _cursorRepository.CommitCursorAsync(
-                scope.TableKey,
+                scope.SourceNamespace,
+                scope.CursorTableKey,
                 nextTimestamp,
                 nextId,
                 nextTieBreakerId,
@@ -704,12 +759,12 @@ using NpgsqlTypes;
                 ct);
         }
 
-        await _cursorRepository.MarkRunCompletedAsync(scope.TableKey, ct);
+        await _cursorRepository.MarkRunCompletedAsync(scope.SourceNamespace, scope.CursorTableKey, ct);
 
         _logger.LogInformation(
             "Access incremental scope completed. BatchId: {BatchId}. TableKey: {TableKey}. SourceTable: {SourceTable}. Mode: {Mode}. ApplyFilter: {ApplyFilter}. CommitOnSuccess: {CommitOnSuccess}. RowsScanned: {RowsScanned}. RowsPassedFilter: {RowsPassedFilter}. RowsFilteredOut: {RowsFilteredOut}. RowsAccepted: {RowsAccepted}. NextCursorTimestampUtc: {NextCursorTimestampUtc}. NextCursorId: {NextCursorId}.",
             scope.BatchId,
-            scope.TableKey,
+            scope.CursorTableKey,
             scope.SourceTableName,
             scope.CursorMode,
             scope.ApplyFilter,
@@ -729,7 +784,7 @@ using NpgsqlTypes;
 
         try
         {
-            await _cursorRepository.MarkFailureAsync(scope.TableKey, ex.GetBaseException().Message, CancellationToken.None);
+            await _cursorRepository.MarkFailureAsync(scope.SourceNamespace, scope.CursorTableKey, ex.GetBaseException().Message, CancellationToken.None);
         }
         catch (Exception innerEx)
         {
@@ -737,7 +792,7 @@ using NpgsqlTypes;
                 innerEx,
                 "Access incremental scope failure marker could not be persisted. BatchId: {BatchId}. TableKey: {TableKey}.",
                 scope.BatchId,
-                scope.TableKey);
+                scope.CursorTableKey);
         }
     }
 
@@ -748,7 +803,7 @@ using NpgsqlTypes;
 
         try
         {
-            await _cursorRepository.ReleaseLeaseAsync(scope.TableKey, _incrementalLeaseOwner, CancellationToken.None);
+            await _cursorRepository.ReleaseLeaseAsync(scope.SourceNamespace, scope.CursorTableKey, _incrementalLeaseOwner, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -756,7 +811,7 @@ using NpgsqlTypes;
                 ex,
                 "Access incremental scope lease release failed. BatchId: {BatchId}. TableKey: {TableKey}.",
                 scope.BatchId,
-                scope.TableKey);
+                scope.CursorTableKey);
         }
     }
 
@@ -767,9 +822,9 @@ using NpgsqlTypes;
             string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase) &&
             (scope.MaxSeenTimestampUtc.HasValue || scope.MaxSeenId.HasValue || scope.MaxSeenTieBreakerId.HasValue);
 
-        _incrementalTableSnapshots[scope.TableKey] = new IncrementalTableSnapshot
+        _incrementalTableSnapshots[scope.CursorTableKey] = new IncrementalTableSnapshot
         {
-            TableKey = scope.TableKey,
+            TableKey = scope.CursorTableKey,
             SourceTableName = scope.SourceTableName,
             CursorMode = scope.CursorMode,
             AppliedFilter = scope.ApplyFilter,
@@ -842,6 +897,7 @@ using NpgsqlTypes;
             ? scope!.TimestampAliases
             : ResolveDefaultLineageTimestampAliases();
 
+        entity.SourceNamespace = CurrentSourceNamespace();
         entity.SourceTableKey = Normalize(tableKey);
         entity.SourceRowId = ReadCursorInt(row, idAliases);
         entity.SourceUpdatedAtUtc = ReadCursorTimestamp(row, timestampAliases);
@@ -849,56 +905,48 @@ using NpgsqlTypes;
         entity.SourceBatchId = _activeBatchId;
     }
 
-    private static string BuildAccessSaleHeaderSourceKey(string sourceTableKey, long sourceRowId)
-        => $"{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}";
+    private static string BuildAccessSourceKey(string sourceNamespace, string sourceTableKey, long sourceRowId)
+        => $"{sourceNamespace.Trim().ToLowerInvariant()}:{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}";
 
-    private static Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> BuildAccessSaleHeadersBySource(
+    private static string BuildAccessDnevnikSourceKey(
+        string sourceNamespace,
+        string sourceTableKey,
+        long sourceRowId,
+        string tipPromene)
+        => $"{BuildAccessSourceKey(sourceNamespace, sourceTableKey, sourceRowId)}:{Normalize(tipPromene)}";
+
+    private string BuildAccessSaleHeaderSourceKey(string sourceTableKey, long sourceRowId)
+        => BuildAccessSourceKey(CurrentSourceNamespace(), sourceTableKey, sourceRowId);
+
+    private Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> BuildAccessSaleHeadersBySource(
         IEnumerable<Domain.Model.Prodaja.ProdajaZaglavlje> headers)
     {
         var result = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
         foreach (var header in headers.Where(header =>
                      string.Equals(header.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
                      !string.IsNullOrWhiteSpace(header.SourceTableKey) &&
-                     header.SourceRowId.HasValue))
+                     header.SourceRowId.HasValue &&
+                     string.Equals(header.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase)))
         {
-            var key = BuildAccessSaleHeaderSourceKey(header.SourceTableKey!, header.SourceRowId!.Value);
-            result.TryAdd(key, header);
+            var key = BuildAccessSourceKey(header.SourceNamespace!, header.SourceTableKey!, header.SourceRowId!.Value);
+            if (!result.TryAdd(key, header))
+                throw new InvalidOperationException(
+                    $"ambiguous_legacy_mapping: multiple prodaja_zaglavlje rows claim source identity '{key}'.");
         }
 
         return result;
     }
 
-    private static InvalidOperationException CreateSaleHeaderIdentityConflict(
-        string sourceTableKey,
-        long sourceRowId,
-        int conflictingTargetId,
-        string conflictingDataOrigin)
-        => new(
-            "duplicate_sale_header_identity: Access sale-header source identity " +
-            $"'{Normalize(sourceTableKey)}:{sourceRowId.ToString(CultureInfo.InvariantCulture)}' cannot use target id " +
-            $"{conflictingTargetId.ToString(CultureInfo.InvariantCulture)} because that id belongs to data origin " +
-            $"'{TrimToMaxLength(conflictingDataOrigin, 32) ?? "unknown"}'. The import was stopped before any sale header or line was reassigned.");
-
     private Domain.Model.Prodaja.ProdajaZaglavlje? ResolveAccessSaleHeaderBySource(
-        Dictionary<int, Domain.Model.Prodaja.ProdajaZaglavlje> existingByTargetId,
-        Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> existingBySource,
+        IReadOnlyDictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje> existingBySource,
         string sourceTableKey,
-        long sourceRowId,
-        int preferredTargetId)
+        long sourceRowId)
     {
         var sourceKey = BuildAccessSaleHeaderSourceKey(sourceTableKey, sourceRowId);
         if (existingBySource.TryGetValue(sourceKey, out var mappedHeader))
             return mappedHeader;
-
-        if (existingByTargetId.TryGetValue(preferredTargetId, out var conflictingHeader))
-        {
-            throw CreateSaleHeaderIdentityConflict(
-                sourceTableKey,
-                sourceRowId,
-                conflictingHeader.Id,
-                conflictingHeader.DataOrigin);
-        }
-
+        // A target row with the same numeric ID is not a mapping. Source and target
+        // identities are independent; callers must create a generated target row.
         return null;
     }
 
@@ -909,8 +957,97 @@ using NpgsqlTypes;
         AccessDataRow row)
     {
         ApplyAccessSourceLineage(header, sourceTableKey, row);
+        header.SourceNamespace = CurrentSourceNamespace();
         header.SourceTableKey = Normalize(sourceTableKey);
         header.SourceRowId = sourceRowId;
+    }
+
+    private string BuildAccessSaleLineSourceKey(string sourceTableKey, long sourceRowId)
+        => BuildAccessSourceKey(CurrentSourceNamespace(), sourceTableKey, sourceRowId);
+
+    private Dictionary<string, ProdajaStavka> BuildAccessSaleLinesBySource(
+        IEnumerable<ProdajaStavka> lines)
+    {
+        var result = new Dictionary<string, ProdajaStavka>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in lines.Where(line =>
+                     !string.IsNullOrWhiteSpace(line.SourceTableKey) &&
+                     line.SourceRowId.HasValue &&
+                     string.Equals(line.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase)))
+        {
+            var key = BuildAccessSourceKey(line.SourceNamespace!, line.SourceTableKey!, line.SourceRowId!.Value);
+            if (!result.TryAdd(key, line))
+            {
+                throw new InvalidOperationException(
+                    $"ambiguous_legacy_import_identity: multiple prodaja_stavke rows claim source identity '{key}'.");
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<Dictionary<long, int>> BuildAccessArticleTargetsBySourceRowIdAsync(CancellationToken ct)
+    {
+        var namespaceValue = CurrentSourceNamespace();
+        var sourceRows = await _trendDb.Artikli
+            .AsNoTracking()
+            .Where(article =>
+                article.DataOrigin == "access" &&
+                article.SourceNamespace == namespaceValue &&
+                article.SourceRowId.HasValue)
+            .Select(article => new { article.Id, SourceRowId = article.SourceRowId!.Value, article.SourceTableKey })
+            .ToListAsync(ct);
+
+        var targets = new Dictionary<long, int>();
+        foreach (var sourceRow in sourceRows)
+        {
+            if (!targets.TryAdd(sourceRow.SourceRowId, sourceRow.Id) &&
+                targets[sourceRow.SourceRowId] != sourceRow.Id)
+            {
+                throw new InvalidOperationException(
+                    $"ambiguous_product_mapping: Access source namespace '{namespaceValue}' has more than one product target for source row {sourceRow.SourceRowId}. The line foreign key cannot be guessed.");
+            }
+        }
+
+        return targets;
+    }
+
+    private static int ResolveAccessArticleTargetId(
+        IReadOnlyDictionary<long, int> targetBySourceRowId,
+        long sourceArticleId,
+        string table,
+        int rowIndex)
+    {
+        if (!targetBySourceRowId.TryGetValue(sourceArticleId, out var targetArticleId))
+        {
+            throw new InvalidOperationException(
+                $"missing_product_mapping: table '{table}' row {rowIndex} references Access product source row {sourceArticleId} without a namespace-scoped target mapping.");
+        }
+
+        return targetArticleId;
+    }
+
+    private ProdajaStavka? ResolveAccessSaleLineBySource(
+        IReadOnlyDictionary<string, ProdajaStavka> existingBySource,
+        string sourceTableKey,
+        long sourceRowId)
+    {
+        // The Access source ID and the PostgreSQL target ID are unrelated.
+        // A matching target ID (including a POS line ID) must not reject a new
+        // Access source row. Only a durable source-line mapping permits updates.
+        var sourceKey = BuildAccessSaleLineSourceKey(sourceTableKey, sourceRowId);
+        return existingBySource.TryGetValue(sourceKey, out var mappedLine) ? mappedLine : null;
+    }
+
+    private void ApplyAccessSaleLineSourceLineage(
+        ProdajaStavka line,
+        string sourceTableKey,
+        long sourceRowId,
+        AccessDataRow row)
+    {
+        ApplyAccessSourceLineage(line, sourceTableKey, row);
+        line.SourceNamespace = CurrentSourceNamespace();
+        line.SourceTableKey = Normalize(sourceTableKey);
+        line.SourceRowId = sourceRowId;
     }
 
     private bool ShouldSkipStaleOrUnchangedAccessOverwrite(
@@ -965,6 +1102,7 @@ using NpgsqlTypes;
 
     private sealed class AccessLineageSnapshot : IAccessImportSourceLineage
     {
+        public string? SourceNamespace { get; set; }
         public string? SourceTableKey { get; set; }
         public long? SourceRowId { get; set; }
         public DateTime? SourceUpdatedAtUtc { get; set; }
@@ -1063,7 +1201,12 @@ using NpgsqlTypes;
             case "id_or_composite":
             case "id":
             default:
-                include = !scope.CursorId.HasValue || !rowId.HasValue || rowId.Value > scope.CursorId.Value;
+                // An ID-only cursor can prove that a row is new, but cannot prove
+                // that an already-seen Access row did not change.  Read it again
+                // and use the namespace/table/row identity plus source hash as the
+                // anti-join.  This is deliberately less selective than an unsafe
+                // `id > cursor` filter and also admits late rows with lower IDs.
+                include = true;
                 break;
         }
 
@@ -1094,9 +1237,10 @@ using NpgsqlTypes;
 
         if (!rowTimestamp.HasValue)
         {
-            if (!scope.CursorId.HasValue || !rowId.HasValue)
-                return true;
-            return rowId.Value > scope.CursorId.Value;
+            // A timestamp_then_id profile is only selective when the source row
+            // actually has the configured, reliable timestamp. Falling back to an
+            // ID comparison here would skip an in-place change with the same ID.
+            return true;
         }
 
         if (rowTimestamp.Value > effectiveCursorTimestamp.Value)
@@ -1235,12 +1379,13 @@ using NpgsqlTypes;
         return normalizedMode switch
         {
             "timestamp" => cursorTimestampUtc.HasValue && hasTimestampColumn,
-            "timestamp_then_id" => (cursorTimestampUtc.HasValue && hasTimestampColumn) ||
-                                   (cursorId.HasValue && hasIdColumn) ||
-                                   (cursorTieBreakerId.HasValue && hasIdColumn),
-            "id_or_composite" => cursorId.HasValue && hasIdColumn,
-            "id" => cursorId.HasValue && hasIdColumn,
-            _ => cursorId.HasValue && hasIdColumn
+            "timestamp_then_id" => cursorTimestampUtc.HasValue && hasTimestampColumn,
+            // ID-only modes intentionally never push down an `id > cursor`
+            // predicate: an Access update can retain its ID.  In-memory lineage
+            // anti-join/hash comparison is the safe fallback.
+            "id_or_composite" => false,
+            "id" => false,
+            _ => false
         };
     }
 
@@ -1280,14 +1425,15 @@ using NpgsqlTypes;
             return;
 
         var renewed = await _cursorRepository.RenewLeaseAsync(
-            scope.TableKey,
+            scope.SourceNamespace,
+            scope.CursorTableKey,
             _incrementalLeaseOwner,
             TimeSpan.FromSeconds(scope.LeaseDurationSeconds),
             ct);
         if (!renewed)
         {
             throw new InvalidOperationException(
-                $"Incremental import lease was lost for table '{scope.TableKey}'. Aborting to preserve single-writer safety.");
+                $"Incremental import lease was lost for table '{scope.CursorTableKey}'. Aborting to preserve single-writer safety.");
         }
 
         scope.LastLeaseRenewedUtc = now;
@@ -2317,8 +2463,12 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? sourceNamespace = null)
     {
+        if (overwriteExisting)
+            throw new InvalidOperationException("access_full_overwrite_disabled: routine Access imports never reset historical sales.");
+        var registeredNamespace = ResolveRegisteredSourceNamespace(sourceNamespace);
         var (batch, _) = await CreateImportBatchAsync(
             sourceFilePath: accessFilePath,
             sourceStorageKey: null,
@@ -2327,6 +2477,7 @@ using NpgsqlTypes;
             includeAnalytics: includeAnalytics,
             overwriteExisting: overwriteExisting,
             includeTemporaryTables: includeTemporaryTables,
+            sourceNamespace: registeredNamespace,
             ct: ct);
         return await ExecuteImportBatchAsync(
             batch.Id,
@@ -2344,9 +2495,13 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? sourceNamespace = null)
     {
         EnsurePlatformSupport();
+        if (overwriteExisting)
+            throw new InvalidOperationException("access_full_overwrite_disabled: routine Access imports never reset historical sales.");
+        var registeredNamespace = ResolveRegisteredSourceNamespace(sourceNamespace);
         if (!File.Exists(accessFilePath))
             throw new FileNotFoundException("ACCDB fajl nije pronađen.", accessFilePath);
 
@@ -2376,6 +2531,7 @@ using NpgsqlTypes;
                 includeAnalytics: includeAnalytics,
                 overwriteExisting: overwriteExisting,
                 includeTemporaryTables: includeTemporaryTables,
+                sourceNamespace: registeredNamespace,
                 ct: ct);
 
             _logger.LogInformation(
@@ -2534,6 +2690,7 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables,
+        string sourceNamespace,
         CancellationToken ct)
     {
         EnsurePlatformSupport();
@@ -2553,7 +2710,7 @@ using NpgsqlTypes;
             // RQ673: cross-instance guard. Stale recovery, the active-batch check and the insert
             // all run in one transaction while holding pg_advisory_xact_lock(AccessImportBatchCreateAdvisoryLockKey).
             return await CreateImportBatchUnderAdvisoryLockAsync(
-                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, sourceNamespace, now, ct);
         }
 
         if (_options.PreventConcurrentRuns)
@@ -2565,7 +2722,7 @@ using NpgsqlTypes;
         }
 
         return await InsertPendingImportBatchAsync(
-            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, sourceNamespace, now, ct);
     }
 
     /// <summary>
@@ -2584,12 +2741,13 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables,
+        string sourceNamespace,
         DateTime now,
         CancellationToken ct)
     {
         if (_trendDb.Database.CurrentTransaction is not null)
             return await CreateImportBatchInLockedTransactionAsync(
-                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+                sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, sourceNamespace, now, ct);
 
         (DataImportBatch Batch, AccessImportRunResponse Result) created = default;
         var strategy = _trendDb.Database.CreateExecutionStrategy();
@@ -2599,7 +2757,7 @@ using NpgsqlTypes;
             try
             {
                 created = await CreateImportBatchInLockedTransactionAsync(
-                    sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+                    sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, sourceNamespace, now, ct);
                 await transaction.CommitAsync(ct);
             }
             catch
@@ -2624,6 +2782,7 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables,
+        string sourceNamespace,
         DateTime now,
         CancellationToken ct)
     {
@@ -2640,7 +2799,7 @@ using NpgsqlTypes;
             throw new AccessImportBatchAlreadyActiveException(activeBatch.Id, activeBatch.StartedAtUtc, activeBatch.SourceFileName);
 
         return await InsertPendingImportBatchAsync(
-            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, now, ct);
+            sourceFilePath, sourceStorageKey, sourceStorageProvider, sourceFileName, hasLocalSource, includeAnalytics, overwriteExisting, includeTemporaryTables, sourceNamespace, now, ct);
     }
 
     private async Task<(DataImportBatch Batch, AccessImportRunResponse Result)> InsertPendingImportBatchAsync(
@@ -2652,6 +2811,7 @@ using NpgsqlTypes;
         bool includeAnalytics,
         bool overwriteExisting,
         bool includeTemporaryTables,
+        string sourceNamespace,
         DateTime now,
         CancellationToken ct)
     {
@@ -2661,6 +2821,7 @@ using NpgsqlTypes;
             SourceFileName = string.IsNullOrWhiteSpace(sourceFileName)
                 ? (hasLocalSource ? Path.GetFileName(sourceFilePath!) : "access-import-source")
                 : sourceFileName,
+            SourceNamespace = sourceNamespace,
             SourceFilePath = sourceFilePath,
             SourceStorageKey = sourceStorageKey,
             SourceStorageProvider = sourceStorageProvider,
@@ -2725,6 +2886,11 @@ using NpgsqlTypes;
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = batch.StartedAtUtc
         };
+        if (!includeAnalytics)
+        {
+            result.Warnings.Add(
+                "Analytics projection is disabled for this import. Operational data will commit atomically; analytics remains pending/stale until a separately authorized projection runs.");
+        }
 
         return (batch, result);
     }
@@ -2785,6 +2951,9 @@ using NpgsqlTypes;
         includeAnalytics = batch.IncludeAnalytics;
         overwriteExisting = batch.OverwriteExisting;
         includeTemporaryTables = batch.IncludeTemporaryTables;
+        if (overwriteExisting)
+            throw new InvalidOperationException("access_full_overwrite_disabled: queued routine imports may not reset historical sales.");
+        _activeSourceNamespace = ResolveRegisteredSourceNamespace(batch.SourceNamespace);
         if (string.IsNullOrWhiteSpace(batch.SourceFilePath) && string.IsNullOrWhiteSpace(batch.SourceStorageKey))
             batch.SourceFilePath = accessFilePath;
         batch.SourceFileName = string.IsNullOrWhiteSpace(sourceFileName) ? batch.SourceFileName : sourceFileName;
@@ -2809,6 +2978,11 @@ using NpgsqlTypes;
             IncludeAnalytics = includeAnalytics,
             StartedAtUtc = batch.StartedAtUtc
         };
+        if (!includeAnalytics)
+        {
+            result.Warnings.Add(
+                "Analytics projection is disabled for this import. Operational data will commit atomically; analytics remains pending/stale until a separately authorized projection runs.");
+        }
         InitializeBatchProgressContext(batch.Id, result);
         ResetAnalyticsDeltaTracking();
         _importedStores = [];
@@ -2847,6 +3021,13 @@ using NpgsqlTypes;
 
             await RetriableDbContextTransaction.ExecuteAsync(_trendDb, async transactionCt =>
             {
+                IDbContextTransaction? analyticsTransaction = null;
+                if (includeAnalytics)
+                {
+                    EnsureAnalyticsSharesTrendplusDatabase();
+                    analyticsTransaction = await EnlistAnalyticsContextInTrendTransactionAsync(transactionCt);
+                }
+
                 var originalAutoDetectChanges = _trendDb.ChangeTracker.AutoDetectChangesEnabled;
                 try
                 {
@@ -2881,9 +3062,15 @@ using NpgsqlTypes;
                         overwriteExisting,
                         includeTemporaryTables);
                     await PersistBatchProgressAsync("batch-start", force: true, transactionCt);
+                    await EnsureAccessBaselineAndMasterIdentitySafetyAsync(transactionCt);
+                    // Sequence inspection is deliberately read-only and happens before
+                    // any Access row is flushed. It must fail closed when PostgreSQL's
+                    // allocator is behind the target high-water mark or near Int32's
+                    // limit; no setval/ALTER/rekey is performed here.
+                    await VerifyTrendplusIdentityHeadroomAsync(transactionCt);
                     await ImportTrendplusAsync(session, overwriteExisting, includeTemporaryTables, result, transactionCt);
                     await FlushTrendWritesAsync(force: true, transactionCt);
-                    await ResetTrendplusSequencesAsync(transactionCt);
+                    await VerifyTrendplusIdentityHeadroomAsync(transactionCt);
 
                     if (includeAnalytics)
                         await SyncAnalyticsAsync(result, transactionCt);
@@ -2926,6 +3113,8 @@ using NpgsqlTypes;
                 finally
                 {
                     _trendDb.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetectChanges;
+                    if (analyticsTransaction is not null)
+                        await analyticsTransaction.DisposeAsync();
                 }
             }, _logger, "AccessImportBatchExecution", ct);
 
@@ -3133,6 +3322,7 @@ using NpgsqlTypes;
             }
 
             ClearBatchProgressContext();
+            _activeSourceNamespace = null;
 
             if (snapshot.IsSnapshot)
                 TryDeleteFile(snapshot.FilePath, "import-cleanup", batch.SourceFileName, batch.Id, "snapshot");
@@ -4281,7 +4471,9 @@ using NpgsqlTypes;
         => ex.SqlState is PostgresErrorCodes.UndefinedColumn or PostgresErrorCodes.UndefinedTable;
 
     private bool ShouldResetAccessSalesSnapshot(bool overwriteExisting)
-        => overwriteExisting && !IsIncrementalWriteMode();
+        // Snapshot deletion is intentionally unavailable on the routine upload path.
+        // A separately authorized recovery run must use an audited maintenance tool.
+        => false;
 
     private async Task ResetAccessSalesSnapshotAsync(AccessImportRunResponse result, CancellationToken ct)
     {
@@ -4837,6 +5029,11 @@ using NpgsqlTypes;
                 result.TipoviInserted++;
                 TrackTrendWrite();
             }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: TipObuce source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
+            }
             else if (overwriteExisting)
             {
                 e.Naziv = naziv!;
@@ -4879,6 +5076,11 @@ using NpgsqlTypes;
                 existing[e.Id] = e;
                 result.DobavljaciInserted++;
                 TrackTrendWrite();
+            }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: Dobavljac source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
             }
             else if (overwriteExisting)
             {
@@ -4928,6 +5130,11 @@ using NpgsqlTypes;
                 result.SezoneInserted++;
                 TrackTrendWrite();
             }
+            else if (!string.Equals(e.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"access_master_target_identity_collision: Sezona source id {id.Value} would reuse existing non-Access target id {e.Id}; namespace-scoped mapping is required and heuristic reuse is blocked.");
+            }
             else if (overwriteExisting)
             {
                 e.Naziv = naziv!;
@@ -4945,11 +5152,22 @@ using NpgsqlTypes;
 
     private async Task ImportObjektiAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
+        var protectedPosStoreIds = await _trendDb.ProdajaZaglavlja.AsNoTracking()
+            .Where(x => x.DataOrigin != "access" && x.IDObjekat.HasValue)
+            .Select(x => x.IDObjekat!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+        var protectedStoreSet = protectedPosStoreIds.ToHashSet();
         await foreach (var row in ReadRowsForTableAsync(session, table, "objekti", ct))
         {
             MarkSourceRow(result, "objekti");
             var id = I(row, "id", "idobjekat", "storeid", "idobjekta", "poslovnicaid");
             if (!id.HasValue) continue;
+            if (protectedStoreSet.Contains(id.Value))
+            {
+                throw new InvalidOperationException(
+                    $"access_store_target_identity_collision: Objekat source id {id.Value} is already used by POS/non-Access sales; namespace-scoped store mapping is required and overwrite is blocked.");
+            }
             MarkAccepted(result, "objekti");
             TrackIncrementalAcceptedRow("objekti", row);
             var naziv = S(row, "nazivobjekta", "naziv", "storename", "name", "poslovnica",
@@ -4973,19 +5191,33 @@ using NpgsqlTypes;
             .Select(x => new
             {
                 x.Id,
+                x.SourceNamespace,
                 x.SourceTableKey,
                 x.SourceRowId,
                 x.SourceUpdatedAtUtc,
                 x.SourceHash,
                 x.SourceBatchId,
-                x.DataOrigin
+                x.DataOrigin,
+                x.Kolicina
             })
             .ToListAsync(ct);
         var existingIds = existingRows.Select(x => x.Id).ToHashSet();
+        var existingTargetIdBySource = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var existingRow in existingRows.Where(x =>
+                     string.Equals(x.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(x.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(x.SourceTableKey) &&
+                     x.SourceRowId.HasValue))
+        {
+            var sourceKey = BuildAccessSourceKey(existingRow.SourceNamespace!, existingRow.SourceTableKey!, existingRow.SourceRowId!.Value);
+            if (!existingTargetIdBySource.TryAdd(sourceKey, existingRow.Id))
+                throw new InvalidOperationException($"ambiguous_source_identity: multiple Artikli rows claim source identity '{sourceKey}'.");
+        }
         var existingLineageById = existingRows.ToDictionary(
             x => x.Id,
             x => new AccessLineageSnapshot
             {
+                SourceNamespace = x.SourceNamespace,
                 SourceTableKey = x.SourceTableKey,
                 SourceRowId = x.SourceRowId,
                 SourceUpdatedAtUtc = x.SourceUpdatedAtUtc,
@@ -5040,71 +5272,48 @@ using NpgsqlTypes;
             TrackIncrementalAcceptedRow("artikli", row);
             acceptedRows++;
             var id = INormalized(row, aliasMap.IdAlias);
+            if (!id.HasValue)
+                throw new InvalidOperationException($"source_row_id_required: table '{table}' contains an article without a stable Access row ID.");
 
             Artikli? e = null;
-            var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
+            var sourceId = id.Value;
+            var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
+            if (trackedCurrentBatch.TryGetValue(sourceId, out var tracked))
             {
                 e = tracked;
                 trackedReuseHits++;
+            }
+            else if (existingTargetIdBySource.TryGetValue(sourceKey, out var existingTargetId))
+            {
+                var existingSnapshot = existingRows.FirstOrDefault(x => x.Id == existingTargetId);
+                e = new Artikli
+                {
+                    Id = existingTargetId,
+                    Kolicina = existingSnapshot?.Kolicina,
+                    SourceNamespace = existingSnapshot?.SourceNamespace,
+                    SourceTableKey = existingSnapshot?.SourceTableKey,
+                    SourceRowId = existingSnapshot?.SourceRowId,
+                    SourceUpdatedAtUtc = existingSnapshot?.SourceUpdatedAtUtc,
+                    SourceHash = existingSnapshot?.SourceHash,
+                    SourceBatchId = existingSnapshot?.SourceBatchId,
+                    DataOrigin = existingSnapshot?.DataOrigin ?? "access"
+                };
+                _trendDb.Artikli.Attach(e);
+                trackedCurrentBatch[sourceId] = e;
             }
 
             var isInsert = false;
             if (e is null)
             {
-                var assignedId = sourceId;
-                if (assignedId > 0 && existingIds.Contains(assignedId))
-                {
-                    if (existingLineageById.TryGetValue(assignedId, out var targetOwner) &&
-                        !string.Equals(targetOwner.DataOrigin, "access", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogError(
-                            "Access article source ID collides with a non-Access target article. BatchId={BatchId} TableName={TableName} Operation={Operation} SourceRowId={SourceRowId} TargetArticleId={TargetArticleId} TargetDataOrigin={TargetDataOrigin}",
-                            _activeBatchId,
-                            table,
-                            "artikli-source-target-id-collision",
-                            sourceId,
-                            assignedId,
-                            targetOwner.DataOrigin);
-                        throw new InvalidOperationException(
-                            $"Access artikli import je zaustavljen: izvorni ID {sourceId} zauzet je ciljnim artiklom drugog porekla ({targetOwner.DataOrigin}). Podaci nisu prepisani; potrebna je eksplicitna identitetska rekonsilijacija.");
-                    }
-
-                    if (!overwriteExisting)
-                        continue;
-
-                    if (existingLineageById.TryGetValue(assignedId, out var existingLineage) &&
-                        ShouldSkipStaleOrUnchangedAccessOverwrite(existingLineage, "artikli", row))
-                    {
-                        continue;
-                    }
-
-                    e = new Artikli { Id = assignedId };
-                    _trendDb.Artikli.Attach(e);
-                    trackedCurrentBatch[assignedId] = e;
-                    result.ArtikliUpdated++;
-                }
-                else
-                {
-                    if (assignedId <= 0 || usedIds.Contains(assignedId))
-                        assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                    else
-                        usedIds.Add(assignedId);
-
-                    e = new Artikli { Id = assignedId };
-                    _trendDb.Artikli.Add(e);
-                    trackedCurrentBatch[assignedId] = e;
-                    existingIds.Add(assignedId);
-                    existingLineageById[assignedId] = new AccessLineageSnapshot();
-                    result.ArtikliInserted++;
-                    isInsert = true;
-                }
+                e = new Artikli();
+                _trendDb.Artikli.Add(e);
+                trackedCurrentBatch[sourceId] = e;
+                existingTargetIdBySource[sourceKey] = e.Id;
+                result.ArtikliInserted++;
+                isInsert = true;
             }
             else
             {
-                if (!overwriteExisting)
-                    continue;
-
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "artikli", row))
                     continue;
 
@@ -5116,9 +5325,10 @@ using NpgsqlTypes;
             ApplyArtikliValues(e, row, naziv!, aliasMap);
             e.Kolicina = AccessArticleStockOverlay.Apply(
                 sourceSnapshotQuantity, applicationStockDeltas.GetValueOrDefault(e.Id), previousQuantity);
-            ApplyAccessSourceLineage(e, "artikli", row);
+            ApplyAccessSourceLineage(e, table, row);
             existingLineageById[e.Id] = new AccessLineageSnapshot
             {
+                SourceNamespace = e.SourceNamespace,
                 SourceTableKey = e.SourceTableKey,
                 SourceRowId = e.SourceRowId,
                 SourceUpdatedAtUtc = e.SourceUpdatedAtUtc,
@@ -5140,6 +5350,13 @@ using NpgsqlTypes;
             await FlushTrendWritesAsync(force: false, ct);
             if (shouldClearTrackedBatch)
             {
+                foreach (var trackedEntry in trackedCurrentBatch)
+                {
+                    if (trackedEntry.Value.Id > 0)
+                    {
+                        existingTargetIdBySource[BuildAccessSourceKey(CurrentSourceNamespace(), table, trackedEntry.Key)] = trackedEntry.Value.Id;
+                    }
+                }
                 flushCount++;
                 trackedCurrentBatch.Clear();
                 modifiedCurrentBatch.Clear();
@@ -5288,34 +5505,33 @@ using NpgsqlTypes;
     {
         _salesHeaderRowsWithUnknownDate = 0;
         var existingHeaders = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
-        var existing = ToFirstDictionary(existingHeaders, x => x.Id);
         var existingBySource = BuildAccessSaleHeadersBySource(existingHeaders);
+        var importedHeaders = new HashSet<Domain.Model.Prodaja.ProdajaZaglavlje>();
+        var seenSourceIds = new HashSet<int>();
         await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_zaglavlje", ct))
         {
             MarkSourceRow(result, "prodaja_zaglavlje");
             var id = I(row, "id", "idprodaja", "saleid", "iddnevnik");
             if (!id.HasValue) continue;
+            if (!seenSourceIds.Add(id.Value))
+                throw new InvalidOperationException(
+                    $"ambiguous_source_identity: direct sale header table '{table}' repeats source header ID {id.Value} in one snapshot.");
             var sourceSaleDate = DT(row, "datumprodaje", "datum", "saledate");
             if (!sourceSaleDate.HasValue)
                 _salesHeaderRowsWithUnknownDate++;
             MarkAccepted(result, "prodaja_zaglavlje");
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
-            TrackAnalyticsSaleId(id.Value);
-
-            var sourceTableKey = "prodaja_zaglavlje";
+            var sourceTableKey = table;
             var sourceKey = BuildAccessSaleHeaderSourceKey(sourceTableKey, id.Value);
             var e = ResolveAccessSaleHeaderBySource(
-                existing,
                 existingBySource,
                 sourceTableKey,
-                id.Value,
                 id.Value);
 
             if (e is null)
             {
                 e = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
-                    Id = id.Value,
                     BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
                     DatumProdaje = sourceSaleDate ?? DateTime.UtcNow,
                     NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
@@ -5325,12 +5541,11 @@ using NpgsqlTypes;
                     SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(e);
-                existing[e.Id] = e;
                 existingBySource[sourceKey] = e;
                 result.ProdajaInserted++;
                 TrackTrendWrite();
             }
-            else if (overwriteExisting)
+            else
             {
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_zaglavlje", row))
                     continue;
@@ -5348,72 +5563,96 @@ using NpgsqlTypes;
             }
 
             ApplyAccessSaleHeaderSourceLineage(e, sourceTableKey, id.Value, row);
+            importedHeaders.Add(e);
             TrackAnalyticsStoreId(e.IDObjekat);
 
             await FlushTrendWritesAsync(force: false, ct);
+        }
+
+        await FlushTrendWritesAsync(force: true, ct);
+        foreach (var header in importedHeaders)
+        {
+            if (header.Id <= 0)
+                throw new InvalidOperationException(
+                    $"source_target_mapping_missing: Access header source row {header.SourceRowId} has no generated PostgreSQL target ID after flush.");
+            TrackAnalyticsSaleId(header.Id);
         }
     }
 
     private async Task ImportProdajaStavkeAsync(IAccessDataReaderSession session, string table, string? parentTable, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existing = ToFirstDictionary(_trendDb.ProdajaStavke.AsNoTracking().ToList(), x => x.Id);
+        var existingLines = _trendDb.ProdajaStavke.AsNoTracking().ToList();
+        var existingBySource = BuildAccessSaleLinesBySource(existingLines);
+        var articleTargetBySourceRowId = await BuildAccessArticleTargetsBySourceRowIdAsync(ct);
         var attributionByArticleId = await _trendDb.Artikli
             .AsNoTracking()
             .Select(a => new { a.Id, a.IDDobavljac, a.IDTipObuce })
             .ToDictionaryAsync(a => a.Id, a => (a.IDDobavljac, a.IDTipObuce), ct);
-        var usedIds = existing.Keys.ToHashSet();
-        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
-
-        // Snapshot existing composite-key counts so we can preserve legitimate duplicate source rows
-        // while still avoiding re-inserting occurrences that are already present in PostgreSQL.
-        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
-        foreach (var e in existing.Values)
+        // Resolve every Access foreign key through durable lineage. Numeric target IDs
+        // may belong to POS or legacy rows and are never evidence of source identity.
+        // A line table that does not name its parent table cannot be associated by
+        // a target ID or by a fabricated table name.  We may use its parent source
+        // ID only when it resolves to exactly one durable header identity in this
+        // namespace; otherwise the import stops before it can cross-link receipts.
+        var sourceHeaderTableKey = parentTable;
+        var persistedHeaders = await _trendDb.ProdajaZaglavlja.AsNoTracking().ToListAsync(ct);
+        var headersBySource = BuildAccessSaleHeadersBySource(persistedHeaders);
+        foreach (var pendingHeader in _trendDb.ChangeTracker
+                     .Entries<Domain.Model.Prodaja.ProdajaZaglavlje>()
+                     .Where(entry => entry.State is EntityState.Added or EntityState.Modified)
+                     .Select(entry => entry.Entity))
         {
-            var ck = (e.IdProdaja, e.IdArtikal, e.Cena);
-            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+            if (pendingHeader.SourceRowId.HasValue && !string.IsNullOrWhiteSpace(pendingHeader.SourceTableKey))
+            {
+                var sourceKey = BuildAccessSaleHeaderSourceKey(pendingHeader.SourceTableKey, pendingHeader.SourceRowId.Value);
+                if (!headersBySource.TryAdd(sourceKey, pendingHeader) && headersBySource[sourceKey].Id != pendingHeader.Id)
+                    throw new InvalidOperationException("ambiguous_legacy_mapping: multiple pending Access headers claim the same source identity.");
+            }
         }
-        var consumedExistingCompositeKeys = new Dictionary<(int, int, decimal), int>();
-            var saleIds = (await _trendDb.ProdajaZaglavlja
-                    .AsNoTracking()
-                    .Select(x => x.Id)
-                    .ToListAsync(ct))
-                .ToHashSet();
-            // Include any prodaja_zaglavlje entities that were added to the current DbContext
-            // but not yet flushed to the database (pending parents created earlier in this import).
-            var pendingFromTracker = _trendDb.ChangeTracker
-                .Entries<Domain.Model.Prodaja.ProdajaZaglavlje>()
-                .Where(e => e.State == EntityState.Added)
-                .Select(e => e.Entity.Id)
-                .ToHashSet();
-            if (pendingFromTracker.Count > 0)
-                saleIds.UnionWith(pendingFromTracker);
-        // Pre-scan Access parent IDs if parentTable provided
+
         HashSet<int> accessSaleIds = new();
         if (!string.IsNullOrWhiteSpace(parentTable))
         {
             accessSaleIds = await ReadIdsFromAccessTableAsync(session, parentTable, ct);
-            var missingSaleIds = accessSaleIds.Except(saleIds).ToList();
+            var missingSaleIds = accessSaleIds
+                .Where(sourceId => !headersBySource.ContainsKey(BuildAccessSaleHeaderSourceKey(sourceHeaderTableKey!, sourceId)))
+                .ToList();
             if (missingSaleIds.Count > 0)
             {
                 if (_options.AutoInsertMissingParents)
                 {
                     _logger.LogInformation("Auto-inserting {Count} missing prodaja_zaglavlje rows before importing prodaja_stavke.", missingSaleIds.Count);
-                    var insertedIds = await EnsureProdajaZaglavljeExistsAsync(missingSaleIds, session, parentTable, overwriteExisting, result, ct);
-                    // Prefer to merge newly inserted ids returned by the helper so we don't need an extra round-trip.
-                    if (insertedIds is not null && insertedIds.Count > 0)
-                        saleIds.UnionWith(insertedIds);
-                    else
-                        saleIds = (await _trendDb.ProdajaZaglavlja.AsNoTracking().Select(x => x.Id).ToListAsync(ct)).ToHashSet();
+                    var insertedHeaders = await EnsureProdajaZaglavljeExistsAsync(missingSaleIds, session, parentTable, overwriteExisting, result, ct);
+                    foreach (var (sourceId, header) in insertedHeaders)
+                        headersBySource[BuildAccessSaleHeaderSourceKey(sourceHeaderTableKey!, sourceId)] = header;
                 }
                 else if (!_options.SkipInvalidForeignKeys)
                 {
                     var sample = string.Join(",", missingSaleIds.Take(20));
-                    throw new InvalidOperationException($"prodaja_stavke FK violation: missing parent prodaja ids count={missingSaleIds.Count}, sample={sample}");
+                    throw new InvalidOperationException($"missing_parent_mapping: Access prodaja_stavke references {missingSaleIds.Count} source parent IDs without a confirmed {sourceHeaderTableKey} lineage mapping; sample source IDs={sample}.");
                 }
                 else
                 {
-                    _logger.LogWarning("Found {Count} prodaja parent ids present in Access but missing in DB; will skip orphan lines (SkipInvalidForeignKeys=true).", missingSaleIds.Count);
+                    _logger.LogWarning("Found {Count} Access sale parent IDs without a confirmed source mapping; related lines will be skipped. SourceHeaderTableKey: {SourceHeaderTableKey}.", missingSaleIds.Count, sourceHeaderTableKey);
                 }
+            }
+        }
+
+        var headersByUnqualifiedSourceId = new Dictionary<long, Domain.Model.Prodaja.ProdajaZaglavlje>();
+        if (string.IsNullOrWhiteSpace(parentTable))
+        {
+            foreach (var header in headersBySource.Values
+                         .Where(header => header.SourceRowId.HasValue &&
+                                          string.Equals(header.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase))
+                         .GroupBy(header => header.SourceRowId!.Value))
+            {
+                if (header.Count() != 1)
+                {
+                    throw new InvalidOperationException(
+                        $"ambiguous_parent_mapping: Access sale source row {header.Key} occurs in multiple physical header tables; the line table must explicitly declare its parent table.");
+                }
+
+                headersByUnqualifiedSourceId.Add(header.Key, header.Single());
             }
         }
         var orphanRows = 0;
@@ -5429,63 +5668,91 @@ using NpgsqlTypes;
             var idArtikal = I(row, "idartikal", "productid", "artiklid");
             if (!idProdaja.HasValue || !idArtikal.HasValue)
                 continue;
+            var targetArticleId = ResolveAccessArticleTargetId(articleTargetBySourceRowId, idArtikal.Value, table, rowIndex);
 
-            if (!saleIds.Contains(idProdaja.Value))
+            Domain.Model.Prodaja.ProdajaZaglavlje? mappedHeader;
+            var parentIdentity = sourceHeaderTableKey is null
+                ? $"unqualified-source-id:{idProdaja.Value}"
+                : $"{sourceHeaderTableKey}:{idProdaja.Value}";
+            if (sourceHeaderTableKey is null)
+            {
+                headersByUnqualifiedSourceId.TryGetValue(idProdaja.Value, out mappedHeader);
+            }
+            else
+            {
+                headersBySource.TryGetValue(
+                    BuildAccessSaleHeaderSourceKey(sourceHeaderTableKey, idProdaja.Value),
+                    out mappedHeader);
+            }
+
+            if (mappedHeader is null)
             {
                 orphanRows++;
-                var sourceRowJson = SerializeRowForDiagnostics(row);
                 var logMessage = TrimToMaxLength(
-                    $"FK-skip: prodaja_stavke row skipped because id_prodaja={idProdaja.Value} does not exist in prodaja_zaglavlje.",
+                    $"FK-skip: prodaja_stavke row skipped because source parent {parentIdentity} has no confirmed target mapping.",
                     2000);
                 if (orphanSamples.Count < ForeignKeyWarningSampleLimit)
-                    orphanSamples.Add($"row {rowIndex}: id_prodaja={idProdaja.Value}");
+                    orphanSamples.Add($"row {rowIndex}: source={parentIdentity}");
 
                 _logger.LogWarning(
-                    "Access import detected orphan prodaja_stavke row. TableName: {TableName}. RowIndex: {RowIndex}. InvalidIdProdaja: {InvalidIdProdaja}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}. SourceRowJson: {SourceRowJson}.",
+                    "Access import detected sale line with no confirmed parent mapping. BatchId: {BatchId}. TableName: {TableName}. Step: {Step}. RowIndex: {RowIndex}. SourceHeaderTableKey: {SourceHeaderTableKey}. SourceRowId: {SourceRowId}. SkipInvalidForeignKeys: {SkipInvalidForeignKeys}.",
+                    result.BatchId,
                     table,
+                    "import-sale-lines",
                     rowIndex,
+                    parentIdentity,
                     idProdaja.Value,
-                    _options.SkipInvalidForeignKeys,
-                    sourceRowJson);
+                    _options.SkipInvalidForeignKeys);
 
                 AddAccessImportLogEntry(
                     result.BatchId,
                     table,
                     rowIndex,
                     "warning",
-                    logMessage,
-                    sourceRowJson);
+                    logMessage);
                 TrackTrendWrite();
 
                 if (!_options.SkipInvalidForeignKeys)
                 {
                     throw new InvalidOperationException(
-                        $"Tabela '{table}' sadrzi prodaja_stavke red sa nepostojecim id_prodaja={idProdaja.Value} na redu {rowIndex}. SourceRow={sourceRowJson}");
+                        $"missing_parent_mapping: table '{table}' row {rowIndex} references source parent {sourceHeaderTableKey}:{idProdaja.Value} without a confirmed target mapping.");
                 }
 
                 await FlushTrendWritesAsync(force: false, ct);
                 continue;
             }
+            var targetSaleId = mappedHeader.Id;
+            if (targetSaleId <= 0)
+                throw new InvalidOperationException($"source_target_mapping_missing: Access sale header source {sourceHeaderTableKey}:{idProdaja.Value} has not received a PostgreSQL ID yet.");
 
             MarkAccepted(result, "prodaja_stavke");
             TrackIncrementalAcceptedRow("prodaja_stavke", row);
-            TrackAnalyticsSaleId(idProdaja.Value);
-            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsSaleId(targetSaleId);
+            TrackAnalyticsProductId(targetArticleId);
 
             var id = I(row, "id", "idstavka", "lineid");
             var qty = I(row, "kolicina", "qty", "quantity") ?? 0;
             var cena = D(row, "cena", "unitprice", "price") ?? 0m;
             var resolvedPurchaseCost = ResolveProdajaLinePurchaseCost(row);
-
-            var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
+            if (!id.HasValue)
+                throw new InvalidOperationException(
+                    $"source_row_id_required: table '{table}' row {rowIndex} has no stable Access sale-line ID; legacy content matching is disabled.");
+            var sourceTableKey = table;
+            var sourceId = id.Value;
+            var e = ResolveAccessSaleLineBySource(existingBySource, sourceTableKey, sourceId);
+            if (e is not null)
             {
-                if (!overwriteExisting) continue;
+                // Parent ownership is an identity invariant even on a read-only re-import.
+                // Check before the no-overwrite/stale shortcuts; otherwise a reused source
+                // line ID could be silently accepted against another receipt.
+                if (e.IdProdaja != targetSaleId)
+                    throw new InvalidOperationException(
+                        "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "prodaja_stavke", row))
                     continue;
 
-                e.IdProdaja = idProdaja.Value;
-                e.IdArtikal = idArtikal.Value;
+                e.IdProdaja = targetSaleId;
+                e.IdArtikal = targetArticleId;
                 e.Kolicina = qty;
                 e.Cena = cena;
                 if (resolvedPurchaseCost.Cost.HasValue)
@@ -5494,42 +5761,26 @@ using NpgsqlTypes;
                     e.PurchaseCostProvenance = resolvedPurchaseCost.Provenance;
                 }
                 ApplyFrozenCurrentMasterAttributionIfUnknown(e, attributionByArticleId);
-                ApplyAccessSourceLineage(e, "prodaja_stavke", row);
+                ApplyAccessSaleLineSourceLineage(e, sourceTableKey, sourceId, row);
                 _trendDb.ProdajaStavke.Update(e);
                 result.ProdajaStavkeUpdated++;
                 TrackTrendWrite();
             }
             else
             {
-                var compositeKey = (idProdaja.Value, idArtikal.Value, cena);
-                existingCompositeKeys.TryGetValue(compositeKey, out var existingCompositeCount);
-                consumedExistingCompositeKeys.TryGetValue(compositeKey, out var consumedExistingCompositeCount);
-                if (consumedExistingCompositeCount < existingCompositeCount)
-                {
-                    consumedExistingCompositeKeys[compositeKey] = consumedExistingCompositeCount + 1;
-                    continue;
-                }
-
-                var assignedId = sourceId;
-                if (assignedId <= 0 || usedIds.Contains(assignedId))
-                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                else
-                    usedIds.Add(assignedId);
-
                 var newLine = new Domain.Model.Prodaja.ProdajaStavka
                 {
-                    Id = assignedId,
-                    IdProdaja = idProdaja.Value,
-                    IdArtikal = idArtikal.Value,
+                    IdProdaja = targetSaleId,
+                    IdArtikal = targetArticleId,
                     Kolicina = qty,
                     Cena = cena,
                     NabavnaCena = resolvedPurchaseCost.Cost,
                     PurchaseCostProvenance = resolvedPurchaseCost.Provenance ?? PurchaseCostProvenance.Unknown
                 };
                 ApplyFrozenCurrentMasterAttributionIfUnknown(newLine, attributionByArticleId);
-                ApplyAccessSourceLineage(newLine, "prodaja_stavke", row);
+                ApplyAccessSaleLineSourceLineage(newLine, sourceTableKey, sourceId, row);
                 _trendDb.ProdajaStavke.Add(newLine);
-                existing[newLine.Id] = newLine;
+                existingBySource[BuildAccessSaleLineSourceKey(sourceTableKey, sourceId)] = newLine;
                 result.ProdajaStavkeInserted++;
                 TrackTrendWrite();
             }
@@ -5564,6 +5815,7 @@ using NpgsqlTypes;
                 _options.SkipInvalidForeignKeys,
                 string.Join("; ", orphanSamples));
         }
+
     }
 
     private async Task<bool> IsProdajaLineTableAsync(IAccessDataReaderSession session, string table, CancellationToken ct)
@@ -5582,17 +5834,23 @@ using NpgsqlTypes;
 
     private async Task ImportDnevnikPromenaAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existing = ToFirstDictionary(_trendDb.DnevnikPromena.AsNoTracking().ToList(), x => x.Id);
-        var dbExistingIds = existing.Keys.ToHashSet();
-        var usedIds = existing.Keys.ToHashSet();
-        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
-        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
-        var existingCompositeKeys = new Dictionary<(string, int, DateTime, decimal), int>();
-        foreach (var v in existing.Values)
+        var existing = _trendDb.DnevnikPromena.AsNoTracking().ToList();
+        var existingBySource = new Dictionary<string, DnevnikPromena>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in existing.Where(candidate =>
+                     string.Equals(candidate.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(candidate.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(candidate.SourceTableKey) &&
+                     candidate.SourceRowId.HasValue))
         {
-            var ck = (v.TipPromene ?? "", v.ArtikalId ?? 0, v.Datum, v.Iznos);
-            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+            var sourceKey = BuildAccessDnevnikSourceKey(
+                candidate.SourceNamespace!,
+                candidate.SourceTableKey!,
+                candidate.SourceRowId!.Value,
+                candidate.TipPromene);
+            if (!existingBySource.TryAdd(sourceKey, candidate))
+                throw new InvalidOperationException($"ambiguous_source_identity: multiple DnevnikPromena rows claim source identity '{sourceKey}'.");
         }
+        var articleTargetBySourceRowId = await BuildAccessArticleTargetsBySourceRowIdAsync(ct);
         var supplierByKey = _trendDb.Dobavljaci
             .AsNoTracking()
             .Where(x => !string.IsNullOrWhiteSpace(x.Naziv))
@@ -5612,45 +5870,31 @@ using NpgsqlTypes;
             var artikalId = I(row, "idartikal", "idartikal", "artikalid", "artiklid", "productid", "idproizvoda",
                             "artikal", "sifra", "sifraartikla", "kodartikla");
 
-            DnevnikPromena? e = null;
-            var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && dbExistingIds.Contains(sourceId) && existing.TryGetValue(sourceId, out var found))
-                e = found;
+            if (!id.HasValue)
+                throw new InvalidOperationException(
+                    $"source_row_id_required: table '{table}' contains a DnevnikPromena row without a stable source ID.");
+            var sourceId = id.Value;
+            var sourceKey = BuildAccessDnevnikSourceKey(CurrentSourceNamespace(), table, sourceId, tip);
+            existingBySource.TryGetValue(sourceKey, out var e);
+            var targetArticleId = artikalId.HasValue
+                ? ResolveAccessArticleTargetId(articleTargetBySourceRowId, artikalId.Value, table, sourceId)
+                : (int?)null;
 
             var isInsert = false;
             if (e is null)
             {
-                // Composite-key dedup: skip if an identical (TipPromene, ArtikalId, Datum, Iznos) row already exists.
-                var compositeKey = (tip, artikalId ?? 0, datum, iznos);
-                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
-                {
-                    existingCompositeKeys[compositeKey] = ckCount - 1;
-                    continue;
-                }
-
-                var assignedId = sourceId;
-                if (assignedId <= 0 || usedIds.Contains(assignedId))
-                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                else
-                    usedIds.Add(assignedId);
-
-                e = new DnevnikPromena { Id = assignedId, DataOrigin = "access" };
+                e = new DnevnikPromena { DataOrigin = "access" };
                 _trendDb.DnevnikPromena.Add(e);
-                existing[assignedId] = e;
+                existingBySource[sourceKey] = e;
                 result.DnevnikInserted++;
-                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
                 isInsert = true;
             }
-            else if (overwriteExisting)
+            else
             {
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "dnevnik_promena", row))
                     continue;
 
                 result.DnevnikUpdated++;
-            }
-            else
-            {
-                continue;
             }
             MarkAccepted(result, "dnevnik_promena");
             TrackIncrementalAcceptedRow("dnevnik_promena", row);
@@ -5664,12 +5908,8 @@ using NpgsqlTypes;
                               "brnaloga", "brojnaloga", "nalog", "brojkalkulacije");
 
             var komentar = S(row, "komentar", "comment", "napomena", "opis", "beleska", "info", "memo");
-            var dobavljacId = I(row, "iddobavljac", "dobavljacid", "supplierid", "idd", "iddob");
-            if (!dobavljacId.HasValue)
-            {
-                var dobavljacNaziv = S(row, "dobavljac", "dobavljacnaziv", "supplier", "suppliername", "nazivdobavljaca");
-                dobavljacId = ResolveSupplierIdByName(dobavljacNaziv, supplierByKey);
-            }
+            var dobavljacNaziv = S(row, "dobavljac", "dobavljacnaziv", "supplier", "suppliername", "nazivdobavljaca");
+            var dobavljacId = ResolveSupplierIdByName(dobavljacNaziv, supplierByKey);
 
             if (!dobavljacId.HasValue)
             {
@@ -5678,7 +5918,7 @@ using NpgsqlTypes;
             }
 
             e.DobavljacId = dobavljacId;
-            e.ArtikalId = artikalId;
+            e.ArtikalId = targetArticleId;
             e.StaraProdajnaCena = D(row, "staracena", "stara", "staraprodajnacena", "cenabefore", "oldprice", "cenabefore");
             e.NovaProdajnaCena = D(row, "novacena", "nova", "novaprodajnacena", "cenaafter", "newprice");
             e.Komentar = komentar;
@@ -5688,7 +5928,7 @@ using NpgsqlTypes;
             e.RedniBroj = I(row, "rednibr", "rednibrojartikla", "rbrartikla", "rbr", "rbroj",
                              "sek", "seqno", "seq", "linebr", "redni");
             e.DataOrigin = "access";
-            ApplyAccessSourceLineage(e, "dnevnik_promena", row);
+            ApplyAccessSourceLineage(e, table, row);
             TrackAnalyticsMovementId(e.Id);
             TrackAnalyticsProductId(e.ArtikalId ?? 0);
             TrackAnalyticsSupplierId(e.DobavljacId);
@@ -5705,48 +5945,43 @@ using NpgsqlTypes;
     private async Task ImportProdajaFromLineTableAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         var existingHeaderRows = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
-        var existingZaglavlja = ToFirstDictionary(existingHeaderRows, x => x.Id);
         var existingHeadersBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
+        var articleTargetBySourceRowId = await BuildAccessArticleTargetsBySourceRowIdAsync(ct);
 
-        var dnevnikById = _trendDb.DnevnikPromena.AsNoTracking()
-            .OrderBy(x => x.Id)
-            .ToDictionary(x => x.Id, x => x);
+        var dnevnikById = new Dictionary<int, DnevnikPromena>();
+        foreach (var candidate in _trendDb.DnevnikPromena.AsNoTracking().ToList().Where(candidate =>
+                     string.Equals(candidate.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(candidate.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     candidate.SourceRowId.HasValue))
+        {
+            var sourceId = checked((int)candidate.SourceRowId!.Value);
+            if (!dnevnikById.TryAdd(sourceId, candidate))
+                throw new InvalidOperationException($"ambiguous_parent_mapping: DnevnikPromena source row {sourceId} exists in multiple physical tables for namespace '{CurrentSourceNamespace()}'.");
+        }
 
-        var maxStavkaId = _trendDb.ProdajaStavke.AsNoTracking().Any()
-            ? _trendDb.ProdajaStavke.AsNoTracking().Max(x => x.Id)
-            : 0;
-
-        var existingLineCounts = _trendDb.ProdajaStavke
-            .AsNoTracking()
-            .GroupBy(x => new { x.IdProdaja, x.IdArtikal, x.Kolicina, x.Cena })
-            .Select(g => new
-            {
-                g.Key.IdProdaja,
-                g.Key.IdArtikal,
-                g.Key.Kolicina,
-                g.Key.Cena,
-                Count = g.Count()
-            })
-            .AsEnumerable()
-            .ToDictionary(
-                x => BuildProdajaLineKey(x.IdProdaja, x.IdArtikal, x.Kolicina, x.Cena),
-                x => x.Count,
-                StringComparer.OrdinalIgnoreCase);
-
-        var consumedExistingLineCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pendingHeadersByBusinessKey = new Dictionary<string, Domain.Model.Prodaja.ProdajaZaglavlje>(StringComparer.OrdinalIgnoreCase);
-        var pendingHeaderIdsByBusinessKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var existingLineRows = _trendDb.ProdajaStavke.AsNoTracking().ToList();
+        var existingLinesBySource = BuildAccessSaleLinesBySource(existingLineRows);
+        var headersToTrack = new HashSet<Domain.Model.Prodaja.ProdajaZaglavlje>();
+        var sourceHeaderShapes = new Dictionary<long, string>();
+        var insertedStavke = 0;
         var updatedHeaderIds = new HashSet<int>();
         var missingDnevnikHeaderRowCount = 0;
         var missingDnevnikHeaderIds = new HashSet<int>();
         var flushProbeCounter = 0;
+        var rowIndex = 0;
 
         await foreach (var row in ReadRowsForTableAsync(session, table, "prodaja_stavke", ct))
         {
+            rowIndex++;
             var sourceSaleId = I(row, "iddnevnik", "idprodaja", "saleid", "iddnevnikpromene", "iddnevnikpromena");
             var idArtikal = I(row, "idartikal", "artikalid", "artiklid", "productid");
-            if (!sourceSaleId.HasValue || sourceSaleId.Value <= 0 || !idArtikal.HasValue || idArtikal.Value <= 0)
+            if (!sourceSaleId.HasValue || !idArtikal.HasValue)
                 continue;
+            var targetArticleId = ResolveAccessArticleTargetId(
+                articleTargetBySourceRowId,
+                idArtikal.Value,
+                table,
+                rowIndex);
 
             MarkSourceRow(result, "prodaja_zaglavlje");
             MarkSourceRow(result, "prodaja_stavke");
@@ -5764,8 +5999,7 @@ using NpgsqlTypes;
             TrackIncrementalAcceptedRow("prodaja_zaglavlje", row);
             MarkAccepted(result, "prodaja_stavke");
             TrackIncrementalAcceptedRow("prodaja_stavke", row);
-            TrackAnalyticsSaleId(sourceSaleId.Value);
-            TrackAnalyticsProductId(idArtikal.Value);
+            TrackAnalyticsProductId(targetArticleId);
 
             var qty = I(row, "kolicina", "qty", "quantity") ?? 1;
             if (qty <= 0)
@@ -5775,43 +6009,45 @@ using NpgsqlTypes;
             var resolvedPurchaseCost = ResolveProdajaLinePurchaseCost(row);
             var idObjekat = I(row, "idobjekat", "storeid");
             var brojRacunaFromRow = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber");
+            var headerDate = dnevnik?.Datum ?? rowSaleDate!.Value;
+            var headerStoreId = dnevnik?.IDObjekat ?? idObjekat;
+            var headerReceipt = dnevnik?.BrojRacuna ?? brojRacunaFromRow;
+            var headerShape = string.Join("|",
+                Normalize(headerReceipt),
+                headerDate.Ticks.ToString(CultureInfo.InvariantCulture),
+                headerStoreId?.ToString(CultureInfo.InvariantCulture) ?? "unknown");
+            if (sourceHeaderShapes.TryGetValue(sourceSaleId.Value, out var priorShape) &&
+                !string.Equals(priorShape, headerShape, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"ambiguous_source_identity: line-table source header {sourceSaleId.Value} has conflicting receipt/date/store values within one source snapshot.");
+            }
+            sourceHeaderShapes[sourceSaleId.Value] = headerShape;
 
-            const string headerSourceTableKey = "prodaja_stavke";
+            var headerSourceTableKey = dnevnik?.SourceTableKey ?? table;
             var headerSourceKey = BuildAccessSaleHeaderSourceKey(headerSourceTableKey, sourceSaleId.Value);
             var zaglavlje = ResolveAccessSaleHeaderBySource(
-                existingZaglavlja,
                 existingHeadersBySource,
                 headerSourceTableKey,
-                sourceSaleId.Value,
                 sourceSaleId.Value);
 
             if (zaglavlje is null)
             {
-                var brojRacuna = dnevnik?.BrojRacuna ?? brojRacunaFromRow;
-                var businessKey = BuildProdajaHeaderBusinessKey(sourceSaleId.Value, brojRacuna);
-
-                if (!pendingHeadersByBusinessKey.TryGetValue(businessKey, out zaglavlje))
+                zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
-                    zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
-                    {
-                        Id = sourceSaleId.Value,
-                        BrojRacuna = brojRacuna,
-                        DatumProdaje = dnevnik?.Datum ?? rowSaleDate!.Value,
-                        NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
-                        IDObjekat = idObjekat,
-                        DataOrigin = "access",
-                        SourceTimestampBasis = "legacy_access_wall_clock"
-                    };
-                    _trendDb.ProdajaZaglavlja.Add(zaglavlje);
-                    pendingHeadersByBusinessKey[businessKey] = zaglavlje;
-                    pendingHeaderIdsByBusinessKey[businessKey] = zaglavlje.Id;
-                    existingZaglavlja[zaglavlje.Id] = zaglavlje;
-                    existingHeadersBySource[headerSourceKey] = zaglavlje;
-                    result.ProdajaInserted++;
-                    TrackTrendWrite();
-                }
+                    BrojRacuna = headerReceipt,
+                    DatumProdaje = headerDate,
+                    NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
+                    IDObjekat = headerStoreId,
+                    DataOrigin = "access",
+                    SourceTimestampBasis = "legacy_access_wall_clock"
+                };
+                _trendDb.ProdajaZaglavlja.Add(zaglavlje);
+                existingHeadersBySource[headerSourceKey] = zaglavlje;
+                result.ProdajaInserted++;
+                TrackTrendWrite();
             }
-            else if (overwriteExisting)
+            else
             {
                 if (string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna))
                     zaglavlje.BrojRacuna = brojRacunaFromRow;
@@ -5829,34 +6065,61 @@ using NpgsqlTypes;
             }
 
             ApplyAccessSaleHeaderSourceLineage(zaglavlje, headerSourceTableKey, sourceSaleId.Value, row);
+            headersToTrack.Add(zaglavlje);
             TrackAnalyticsStoreId(zaglavlje.IDObjekat);
 
-            var lineKey = BuildProdajaLineKey(zaglavlje.Id, idArtikal.Value, qty, cena);
-            existingLineCounts.TryGetValue(lineKey, out var existingCountForKey);
-            consumedExistingLineCounts.TryGetValue(lineKey, out var consumedCountForKey);
+            var sourceLineId = I(row, "id", "idstavka", "lineid");
+            if (!sourceLineId.HasValue)
+                throw new InvalidOperationException(
+                    $"source_row_id_required: table '{table}' contains a sale line without a stable Access row ID; legacy content matching is disabled.");
+            var lineSourceTableKey = table;
+            var line = ResolveAccessSaleLineBySource(
+                existingLinesBySource,
+                lineSourceTableKey,
+                sourceLineId.Value);
 
-            if (consumedCountForKey < existingCountForKey)
+            if (line is not null)
             {
-                consumedExistingLineCounts[lineKey] = consumedCountForKey + 1;
+                // Fail closed before skip/staleness checks, including overwriteExisting=false.
+                // One Access line identity must never migrate to another receipt.
+                if (line.IdProdaja != zaglavlje.Id)
+                    throw new InvalidOperationException(
+                        "duplicate_sale_line_identity: an existing source line resolves to a different sale header.");
+                if (ShouldSkipStaleOrUnchangedAccessOverwrite(line, lineSourceTableKey, row))
+                    continue;
+                line.IdProdaja = zaglavlje.Id;
+                line.IdArtikal = targetArticleId;
+                line.Kolicina = qty;
+                line.Cena = cena;
+                line.NabavnaCena = resolvedPurchaseCost.Cost;
+                line.PurchaseCostProvenance = resolvedPurchaseCost.Provenance ?? PurchaseCostProvenance.Unknown;
+                ApplyAccessSaleLineSourceLineage(line, lineSourceTableKey, sourceLineId.Value, row);
+                _trendDb.ProdajaStavke.Update(line);
+                result.ProdajaStavkeUpdated++;
+                TrackTrendWrite();
+                // Updates must flush too; otherwise a large re-import retains every tracked
+                // line until the final forced flush, exhausting memory on real datasets.
+                await FlushTrendWritesAsync(force: false, ct);
                 continue;
             }
 
-            var line = new Domain.Model.Prodaja.ProdajaStavka
+            line = new Domain.Model.Prodaja.ProdajaStavka
             {
-                Id = ++maxStavkaId,
                 IdProdaja = zaglavlje.Id,
-                IdArtikal = idArtikal.Value,
+                IdArtikal = targetArticleId,
                 Kolicina = qty,
                 Cena = cena,
                 NabavnaCena = resolvedPurchaseCost.Cost,
                 PurchaseCostProvenance = resolvedPurchaseCost.Provenance ?? PurchaseCostProvenance.Unknown
             };
-            ApplyAccessSourceLineage(line, "prodaja_stavke", row);
+            ApplyAccessSaleLineSourceLineage(line, lineSourceTableKey, sourceLineId.Value, row);
             if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
                 line.Prodaja = zaglavlje;
 
             _trendDb.ProdajaStavke.Add(line);
+            existingLinesBySource[BuildAccessSaleLineSourceKey(lineSourceTableKey, sourceLineId.Value)] = line;
             result.ProdajaStavkeInserted++;
+            insertedStavke++;
             TrackTrendWrite();
 
             flushProbeCounter++;
@@ -5864,21 +6127,15 @@ using NpgsqlTypes;
             {
                 flushProbeCounter = 0;
                 await FlushTrendWritesAsync(force: false, ct);
-
-                // Keep explicit business-key -> persisted id mapping up to date after each flush.
-                foreach (var (businessKey, header) in pendingHeadersByBusinessKey)
-                    pendingHeaderIdsByBusinessKey[businessKey] = header.Id;
             }
         }
 
-        foreach (var (businessKey, header) in pendingHeadersByBusinessKey)
-            pendingHeaderIdsByBusinessKey[businessKey] = header.Id;
-
-        if (pendingHeaderIdsByBusinessKey.Count > 0)
+        await FlushTrendWritesAsync(force: true, ct);
+        foreach (var header in headersToTrack)
         {
-            _logger.LogDebug(
-                "Access import prodaja header-id map refreshed after buffered ingest. HeaderKeys: {HeaderKeys}.",
-                pendingHeaderIdsByBusinessKey.Count);
+            if (header.Id <= 0)
+                throw new InvalidOperationException($"source_target_mapping_missing: line-table header source row {header.SourceRowId} has no generated PostgreSQL target ID after flush.");
+            TrackAnalyticsSaleId(header.Id);
         }
 
         if (missingDnevnikHeaderRowCount > 0)
@@ -5888,6 +6145,7 @@ using NpgsqlTypes;
             result.Warnings.Add(
                 $"Tabela '{table}' ima {missingDnevnikHeaderRowCount} stavki prodaje bez odgovarajuceg reda u DnevnikPromena i bez validnog datuma. Preskoceno je {missingDnevnikHeaderIds.Count} racuna kako bi se izbeglo upisivanje datuma importa kao datuma prodaje. Primeri IDDnevnik: {sample}{suffix}.");
         }
+
     }
 
     private async Task ApplyApproximateProdajaStavkeNabavnaCenaBackfillAsync(AccessImportRunResponse result, CancellationToken ct)
@@ -5966,21 +6224,17 @@ using NpgsqlTypes;
 
     private async Task ImportPovracajAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existing = ToFirstDictionary(_trendDb.PovracajZaglavlja.AsNoTracking().ToList(), x => x.Id);
-        var usedIds = existing.Keys.ToHashSet();
-        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
-        var existingByBroj = BuildDuplicateTolerantLookup(
-            _trendDb.PovracajZaglavlja
-                .AsNoTracking()
-                .Where(x => x.BrojZapisnika != null)
-                .OrderBy(x => x.Id)
-                .ToList(),
-            x => x.BrojZapisnika,
-            out var duplicateBrojevi);
-        AddDuplicateKeyWarning(
-            result.Warnings,
-            duplicateBrojevi,
-            "Postoje duplikati broja zapisnika u postojecoj tabeli povracaja. Import ce koristiti prvi pronadjeni zapis za svaki broj zapisnika");
+        var existingBySource = new Dictionary<string, PovracajZaglavlje>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in _trendDb.PovracajZaglavlja.AsNoTracking().ToList().Where(candidate =>
+                     string.Equals(candidate.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(candidate.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(candidate.SourceTableKey) &&
+                     candidate.SourceRowId.HasValue))
+        {
+            var sourceKey = BuildAccessSourceKey(candidate.SourceNamespace!, candidate.SourceTableKey!, candidate.SourceRowId!.Value);
+            if (!existingBySource.TryAdd(sourceKey, candidate))
+                throw new InvalidOperationException($"ambiguous_source_identity: multiple return headers claim source identity '{sourceKey}'.");
+        }
         var seq = 0;
 
         await foreach (var row in ReadRowsForTableAsync(session, table, "povracaj_zaglavlje", ct))
@@ -5988,30 +6242,27 @@ using NpgsqlTypes;
             MarkSourceRow(result, "povracaj_zaglavlje");
 
             var id = I(row, "id", "idpovracaj", "returnid");
-            var idDobavljac = I(row, "iddobavljac", "dobavljacid", "supplierid") ?? 0;
+            if (!id.HasValue)
+                throw new InvalidOperationException($"source_row_id_required: table '{table}' contains a return header without a stable Access row ID.");
+            var sourceSupplierId = I(row, "iddobavljac", "dobavljacid", "supplierid");
+            // Access Random AutoNumber keys can be negative. A nonzero source key
+            // requires an explicit namespace-scoped map regardless of its sign.
+            if (sourceSupplierId.HasValue && sourceSupplierId.Value != 0)
+                throw new InvalidOperationException($"missing_supplier_mapping: return header source row {id.Value} references supplier source ID {sourceSupplierId.Value}; a namespace-scoped supplier map is required before import.");
+            const int idDobavljac = 0;
             var datum = DT(row, "datumazapisnika", "datumpovracaja", "datum", "date") ?? DateTime.UtcNow;
             var broj = S(row, "brojzapisnika", "brozapisnika", "broj", "recordnumber", "returnno")
                 ?? $"ZP-{datum:yyyyMMdd}-{++seq:D4}";
 
-            PovracajZaglavlje? e = null;
-            var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && existing.TryGetValue(sourceId, out var foundById))
-                e = foundById;
-            else if (existingByBroj.TryGetValue(broj, out var foundByBroj))
-                e = foundByBroj;
+            var sourceId = id.Value;
+            var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
+            existingBySource.TryGetValue(sourceKey, out var e);
 
             var isInsert = false;
             if (e is null)
             {
-                var assignedId = sourceId;
-                if (assignedId <= 0 || usedIds.Contains(assignedId))
-                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                else
-                    usedIds.Add(assignedId);
-
                 e = new PovracajZaglavlje
                 {
-                    Id = assignedId,
                     BrojZapisnika = broj,
                     IDDobavljac = idDobavljac,
                     DatumPovracaja = datum,
@@ -6020,22 +6271,17 @@ using NpgsqlTypes;
                     DataOrigin = "access"
                 };
                 _trendDb.PovracajZaglavlja.Add(e);
-                existing[e.Id] = e;
-                existingByBroj[broj] = e;
+                existingBySource[sourceKey] = e;
                 result.PovracajInserted++;
                 isInsert = true;
                 TrackTrendWrite();
             }
-            else if (overwriteExisting)
+            else
             {
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "povracaj_zaglavlje", row))
                     continue;
 
                 result.PovracajUpdated++;
-            }
-            else
-            {
-                continue;
             }
 
             MarkAccepted(result, "povracaj_zaglavlje");
@@ -6050,7 +6296,7 @@ using NpgsqlTypes;
             e.Komentar = S(row, "komentar", "comment", "napomena");
             e.KreatorKorisnik = S(row, "korisnik", "kreirao", "user", "username", "operater");
             e.DataOrigin = "access";
-            ApplyAccessSourceLineage(e, "povracaj_zaglavlje", row);
+            ApplyAccessSourceLineage(e, table, row);
 
             if (!isInsert)
                 _trendDb.PovracajZaglavlja.Update(e);
@@ -6062,27 +6308,40 @@ using NpgsqlTypes;
 
     private async Task ImportPovracajStavkeAsync(IAccessDataReaderSession session, string table, bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
-        var existing = ToFirstDictionary(_trendDb.PovracajStavke.AsNoTracking().ToList(), x => x.Id);
-        var usedIds = existing.Keys.ToHashSet();
-        var nextGeneratedId = usedIds.Count == 0 ? 1 : usedIds.Max() + 1;
-        var povracajIds = _trendDb.PovracajZaglavlja.AsNoTracking().Select(x => x.Id).ToHashSet();
-
-        // Composite-key multiset to detect duplicate inserts when Access rows lack a stable id.
-        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
-        foreach (var v in existing.Values)
+        var existingBySource = new Dictionary<string, PovracajStavka>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in _trendDb.PovracajStavke.AsNoTracking().ToList().Where(candidate =>
+                     string.Equals(candidate.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(candidate.SourceTableKey) &&
+                     candidate.SourceRowId.HasValue))
         {
-            var ck = (v.IdPovracaj, v.IdArtikal, v.Cena);
-            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
+            var sourceKey = BuildAccessSourceKey(candidate.SourceNamespace!, candidate.SourceTableKey!, candidate.SourceRowId!.Value);
+            if (!existingBySource.TryAdd(sourceKey, candidate))
+                throw new InvalidOperationException($"ambiguous_source_identity: multiple return lines claim source identity '{sourceKey}'.");
         }
+        var headersBySourceRowId = new Dictionary<int, PovracajZaglavlje>();
+        foreach (var candidate in _trendDb.PovracajZaglavlja.AsNoTracking().ToList().Where(candidate =>
+                     string.Equals(candidate.DataOrigin, "access", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(candidate.SourceNamespace, CurrentSourceNamespace(), StringComparison.OrdinalIgnoreCase) &&
+                     candidate.SourceRowId.HasValue))
+        {
+            var sourceId = checked((int)candidate.SourceRowId!.Value);
+            if (!headersBySourceRowId.TryAdd(sourceId, candidate) && headersBySourceRowId[sourceId].Id != candidate.Id)
+                throw new InvalidOperationException($"ambiguous_parent_mapping: return source row {sourceId} occurs in more than one physical header table.");
+        }
+        var articleTargetBySourceRowId = await BuildAccessArticleTargetsBySourceRowIdAsync(ct);
+        var rowIndex = 0;
 
         await foreach (var row in ReadRowsForTableAsync(session, table, "povracaj_stavke", ct))
         {
+            rowIndex++;
             MarkSourceRow(result, "povracaj_stavke");
 
             var idPovracaj = I(row, "idpovracaj", "returnid", "idzaglavlje");
             var idArtikal = I(row, "idartikal", "productid", "artiklid");
-            if (!idPovracaj.HasValue || !idArtikal.HasValue || !povracajIds.Contains(idPovracaj.Value))
-                continue;
+            if (!idPovracaj.HasValue || !idArtikal.HasValue ||
+                !headersBySourceRowId.TryGetValue(idPovracaj.Value, out var mappedHeader))
+                throw new InvalidOperationException($"missing_parent_mapping: table '{table}' row {rowIndex} lacks a namespace-scoped return-header mapping.");
+            var targetArticleId = ResolveAccessArticleTargetId(articleTargetBySourceRowId, idArtikal.Value, table, rowIndex);
 
             MarkAccepted(result, "povracaj_stavke");
             TrackIncrementalAcceptedRow("povracaj_stavke", row);
@@ -6093,55 +6352,40 @@ using NpgsqlTypes;
             var razlog = S(row, "razlog", "reason");
             var stanje = S(row, "stanjeartikal", "stanjearticle", "condition", "status");
 
-            var sourceId = id.GetValueOrDefault();
-            if (sourceId > 0 && existing.TryGetValue(sourceId, out var e))
+            if (!id.HasValue)
+                throw new InvalidOperationException($"source_row_id_required: table '{table}' row {rowIndex} has no stable Access return-line ID.");
+            var sourceId = id.Value;
+            var sourceKey = BuildAccessSourceKey(CurrentSourceNamespace(), table, sourceId);
+            if (existingBySource.TryGetValue(sourceKey, out var e))
             {
-                if (!overwriteExisting)
-                    continue;
                 if (ShouldSkipStaleOrUnchangedAccessOverwrite(e, "povracaj_stavke", row))
                     continue;
 
-                e.IdPovracaj = idPovracaj.Value;
-                e.IdArtikal = idArtikal.Value;
+                e.IdPovracaj = mappedHeader.Id;
+                e.IdArtikal = targetArticleId;
                 e.Kolicina = qty;
                 e.Cena = cena;
                 e.Razlog = razlog;
                 e.StanjeArtikla = stanje;
-                ApplyAccessSourceLineage(e, "povracaj_stavke", row);
+                ApplyAccessSourceLineage(e, table, row);
                 _trendDb.PovracajStavke.Update(e);
                 result.PovracajStavkeUpdated++;
                 TrackTrendWrite();
             }
             else
             {
-                // Composite-key dedup: skip if an identical (IdPovracaj, IdArtikal, Cena) row already exists.
-                var compositeKey = (idPovracaj.Value, idArtikal.Value, cena);
-                if (existingCompositeKeys.TryGetValue(compositeKey, out var ckCount) && ckCount > 0)
-                {
-                    existingCompositeKeys[compositeKey] = ckCount - 1;
-                    continue;
-                }
-
-                var assignedId = sourceId;
-                if (assignedId <= 0 || usedIds.Contains(assignedId))
-                    assignedId = AllocateNextId(usedIds, ref nextGeneratedId);
-                else
-                    usedIds.Add(assignedId);
-
                 var newLine = new PovracajStavka
                 {
-                    Id = assignedId,
-                    IdPovracaj = idPovracaj.Value,
-                    IdArtikal = idArtikal.Value,
+                    IdPovracaj = mappedHeader.Id,
+                    IdArtikal = targetArticleId,
                     Kolicina = qty,
                     Cena = cena,
                     Razlog = razlog,
                     StanjeArtikla = stanje
                 };
-                ApplyAccessSourceLineage(newLine, "povracaj_stavke", row);
+                ApplyAccessSourceLineage(newLine, table, row);
                 _trendDb.PovracajStavke.Add(newLine);
-                existing[newLine.Id] = newLine;
-                existingCompositeKeys[compositeKey] = existingCompositeKeys.GetValueOrDefault(compositeKey) + 1;
+                existingBySource[sourceKey] = newLine;
                 result.PovracajStavkeInserted++;
                 TrackTrendWrite();
             }
@@ -6529,7 +6773,9 @@ using NpgsqlTypes;
         var sourceIdentityCounts = new Dictionary<(AccessTransferSourceKey Key, string Direction), int>();
         var existingCompositeKeys = new Dictionary<AccessTransferLegacyKey, int>();
         foreach (var d in _trendDb.DnevnikPromena.AsNoTracking()
-            .Where(x => x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz))
+            .Where(x => x.DataOrigin == "access"
+                && x.SourceNamespace == CurrentSourceNamespace()
+                && (x.TipPromene == TipPromeneConstants.PrenosIzlaz || x.TipPromene == TipPromeneConstants.PrenosUlaz)))
         {
             var quantity = Math.Abs(d.Kolicina ?? 0);
             var direction = d.TipPromene == TipPromeneConstants.PrenosIzlaz ? "out" : "in";
@@ -6570,7 +6816,7 @@ using NpgsqlTypes;
 
         var sourceOccurrences = new Dictionary<AccessTransferSourceKey, int>();
 
-        void AddMovement(string tipPromene, int kolicina, int? storeId, string? documentNumber, int artikalId, DateTime datum, decimal cena, decimal iznos, AccessDataRow sourceRow)
+        void AddMovement(string tipPromene, int kolicina, int? storeId, string? documentNumber, int artikalId, DateTime datum, decimal cena, decimal iznos, int occurrenceOrdinal, AccessDataRow sourceRow)
         {
             var assignedId = AllocateNextId(usedIds, ref next);
             var movement = new DnevnikPromena
@@ -6584,6 +6830,7 @@ using NpgsqlTypes;
                 Iznos = iznos,
                 IDObjekat = storeId,
                 BrojRacuna = documentNumber,
+                RedniBroj = occurrenceOrdinal > 0 ? occurrenceOrdinal : null,
                 DataOrigin = "access"
             };
             ApplyAccessSourceLineage(movement, "prenos_robe", sourceRow);
@@ -6637,9 +6884,9 @@ using NpgsqlTypes;
                     continue;
 
                 if (needsOut)
-                    AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
+                    AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, occurrence + 1, row);
                 if (needsIn)
-                    AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
+                    AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, occurrence + 1, row);
 
                 await FlushTrendWritesAsync(force: false, ct);
                 continue;
@@ -6672,7 +6919,7 @@ using NpgsqlTypes;
                 continue;
             }
 
-            AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, row);
+            AddMovement(TipPromeneConstants.PrenosIzlaz, -kolicina, idIz, brDok, idArtikal.Value, datum, cena, iznos, 0, row);
             existingCompositeKeys[ckIzlaz] = existingCompositeKeys.GetValueOrDefault(ckIzlaz) + 1;
 
             var ckUlazNew = new AccessTransferLegacyKey(
@@ -6683,7 +6930,7 @@ using NpgsqlTypes;
                 Math.Abs(kolicina),
                 idU,
                 string.IsNullOrWhiteSpace(brDok) ? null : brDok.Trim());
-            AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, row);
+            AddMovement(TipPromeneConstants.PrenosUlaz, kolicina, idU, brDok, idArtikal.Value, datum, cena, iznos, 0, row);
             existingCompositeKeys[ckUlazNew] = existingCompositeKeys.GetValueOrDefault(ckUlazNew) + 1;
 
             await FlushTrendWritesAsync(force: false, ct);
@@ -7139,22 +7386,14 @@ using NpgsqlTypes;
     private static string BuildProdajaLineKey(int idProdaja, int idArtikal, int qty, decimal cena)
         => $"{idProdaja}|{idArtikal}|{qty}|{cena.ToString(CultureInfo.InvariantCulture)}";
 
-    private static string BuildProdajaHeaderBusinessKey(int sourceSaleId, string? brojRacuna)
-    {
-        var normalizedBroj = string.IsNullOrWhiteSpace(brojRacuna)
-            ? string.Empty
-            : Normalize(brojRacuna);
-        return $"{sourceSaleId}|{normalizedBroj}";
-    }
-
     private async Task SynthesizeProdajaFromDnevnikAsync(bool overwriteExisting, AccessImportRunResponse result, CancellationToken ct)
     {
         static bool IsSaleType(string tip) => TipPromeneConstants.IsSale(tip);
 
         var saleEntries = await _trendDb.DnevnikPromena
             .AsNoTracking()
-            .Where(d => d.DataOrigin == "access")
-            .OrderBy(d => d.Id)
+            .Where(d => d.DataOrigin == "access" && d.SourceNamespace == CurrentSourceNamespace())
+            .OrderBy(d => d.SourceRowId ?? d.Id)
             .ToListAsync(ct);
         saleEntries = saleEntries
             .Where(d => IsSaleType(d.TipPromene))
@@ -7163,53 +7402,49 @@ using NpgsqlTypes;
         if (saleEntries.Count == 0)
             return;
 
+        var duplicateJournalSourceId = saleEntries
+            .GroupBy(entry => entry.SourceRowId ?? entry.Id)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateJournalSourceId is not null)
+            throw new InvalidOperationException(
+                $"ambiguous_source_identity: DnevnikPromena has multiple sale rows with source row ID {duplicateJournalSourceId.Key}.");
+
         var existingHeaderRows = _trendDb.ProdajaZaglavlja.AsNoTracking().ToList();
-        var existingZaglavlja = ToFirstDictionary(existingHeaderRows, x => x.Id);
         var existingHeadersBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
 
         var groups = saleEntries
             .GroupBy(d => string.IsNullOrWhiteSpace(d.BrojRacuna)
-                ? $"DN-{d.Id}"
-                : $"{Normalize(d.BrojRacuna)}|{d.IDObjekat?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}|{d.Datum.Date:yyyyMMdd}")
+                ? $"{Normalize(d.SourceTableKey)}|DN-{(d.SourceRowId ?? d.Id).ToString(CultureInfo.InvariantCulture)}"
+                : $"{Normalize(d.SourceTableKey)}|{Normalize(d.BrojRacuna)}|{d.IDObjekat?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}|{d.Datum.Date:yyyyMMdd}")
             .ToList();
 
-        int maxStavkaId = await _trendDb.ProdajaStavke.AsNoTracking().AnyAsync(ct)
-            ? await _trendDb.ProdajaStavke.AsNoTracking().MaxAsync(x => x.Id, ct)
-            : 0;
-
-        // Composite-key dedup: track existing stavke to avoid re-inserting on repeated imports
-        var existingCompositeKeys = new Dictionary<(int, int, decimal), int>();
-        foreach (var es in _trendDb.ProdajaStavke.AsNoTracking())
-        {
-            var ck = (es.IdProdaja, es.IdArtikal, es.Cena);
-            existingCompositeKeys[ck] = existingCompositeKeys.GetValueOrDefault(ck) + 1;
-        }
-        var consumedExistingCompositeKeys = new Dictionary<(int, int, decimal), int>();
+        var existingLineRows = await _trendDb.ProdajaStavke.AsNoTracking().ToListAsync(ct);
+        var existingLinesBySource = BuildAccessSaleLinesBySource(existingLineRows);
 
         var insertedProdaja = 0;
         var updatedProdaja = 0;
         var insertedStavke = 0;
         var skippedDuplicateStavke = 0;
         var flushProbeCounter = 0;
+        var headersToTrack = new HashSet<Domain.Model.Prodaja.ProdajaZaglavlje>();
 
         foreach (var grp in groups)
         {
-            var first = grp.First();
+            var first = grp.OrderBy(d => d.SourceRowId ?? d.Id).First();
+            var sourceHeaderRowId = first.SourceRowId ?? first.Id;
             TrackAnalyticsStoreId(first.IDObjekat);
-            const string headerSourceTableKey = "dnevnik_promena";
-            var headerSourceKey = BuildAccessSaleHeaderSourceKey(headerSourceTableKey, first.Id);
+            var headerSourceTableKey = first.SourceTableKey
+                ?? throw new InvalidOperationException("source_table_key_required: synthesized sales require DnevnikPromena physical-table provenance.");
+            var headerSourceKey = BuildAccessSaleHeaderSourceKey(headerSourceTableKey, sourceHeaderRowId);
             var zaglavlje = ResolveAccessSaleHeaderBySource(
-                existingZaglavlja,
                 existingHeadersBySource,
                 headerSourceTableKey,
-                first.Id,
-                first.Id);
+                sourceHeaderRowId);
 
             if (zaglavlje is null)
             {
                 zaglavlje = new Domain.Model.Prodaja.ProdajaZaglavlje
                 {
-                    Id = first.Id,
                     BrojRacuna = string.IsNullOrWhiteSpace(first.BrojRacuna) ? null : first.BrojRacuna,
                     DatumProdaje = first.Datum,
                     NacinPlacanja = null,
@@ -7219,13 +7454,12 @@ using NpgsqlTypes;
                     SourceTimestampBasis = "legacy_access_wall_clock"
                 };
                 _trendDb.ProdajaZaglavlja.Add(zaglavlje);
-                existingZaglavlja[zaglavlje.Id] = zaglavlje;
                 existingHeadersBySource[headerSourceKey] = zaglavlje;
                 result.ProdajaInserted++;
                 insertedProdaja++;
                 TrackTrendWrite();
             }
-            else if (overwriteExisting)
+            else
             {
                 var shouldUpdate = false;
                 if (string.IsNullOrWhiteSpace(zaglavlje.BrojRacuna) && !string.IsNullOrWhiteSpace(first.BrojRacuna))
@@ -7263,40 +7497,76 @@ using NpgsqlTypes;
                 }
             }
 
+            zaglavlje.SourceNamespace = CurrentSourceNamespace();
             zaglavlje.SourceTableKey = headerSourceTableKey;
-            zaglavlje.SourceRowId = first.Id;
+            zaglavlje.SourceRowId = sourceHeaderRowId;
             zaglavlje.SourceUpdatedAtUtc = first.SourceUpdatedAtUtc;
             zaglavlje.SourceHash = first.SourceHash;
             zaglavlje.SourceBatchId = _activeBatchId;
+            headersToTrack.Add(zaglavlje);
 
-            foreach (var d in grp.Where(d => d.ArtikalId.HasValue && d.ArtikalId.Value > 0))
+            foreach (var d in grp.OrderBy(d => d.SourceRowId ?? d.Id).Where(d => d.ArtikalId.HasValue))
             {
                 var stavkaCena = (d.NovaProdajnaCena ?? d.StaraProdajnaCena ?? (d.Iznos > 0 ? d.Iznos : null)) ?? 0m;
                 var stavkaQty = (d.Kolicina.HasValue && d.Kolicina.Value > 0) ? d.Kolicina.Value : 1;
 
-                // Composite-key dedup: skip if this (IdProdaja, IdArtikal, Cena) already exists
-                var compositeKey = (zaglavlje.Id, d.ArtikalId!.Value, stavkaCena);
-                existingCompositeKeys.TryGetValue(compositeKey, out var existingCount);
-                consumedExistingCompositeKeys.TryGetValue(compositeKey, out var consumedCount);
-                if (consumedCount < existingCount)
+                var lineSourceTableKey = d.SourceTableKey
+                    ?? throw new InvalidOperationException("source_table_key_required: synthesized sale lines require DnevnikPromena physical-table provenance.");
+                var stavka = ResolveAccessSaleLineBySource(
+                    existingLinesBySource,
+                    lineSourceTableKey,
+                    d.SourceRowId ?? d.Id);
+                if (stavka is not null)
                 {
-                    consumedExistingCompositeKeys[compositeKey] = consumedCount + 1;
-                    skippedDuplicateStavke++;
+                    // A no-overwrite import must still reject an already-mapped line
+                    // pointing to a different generated header.
+                    if (stavka.IdProdaja != zaglavlje.Id)
+                        throw new InvalidOperationException(
+                            "duplicate_sale_line_identity: a synthesized source line resolves to a different sale header.");
+                    if ((d.SourceUpdatedAtUtc.HasValue && stavka.SourceUpdatedAtUtc.HasValue &&
+                         stavka.SourceUpdatedAtUtc.Value > d.SourceUpdatedAtUtc.Value) ||
+                        (!string.IsNullOrWhiteSpace(stavka.SourceHash) &&
+                         string.Equals(stavka.SourceHash, d.SourceHash, StringComparison.Ordinal)))
+                    {
+                        skippedDuplicateStavke++;
+                        continue;
+                    }
+
+                    stavka.IdProdaja = zaglavlje.Id;
+                    stavka.IdArtikal = d.ArtikalId!.Value;
+                    stavka.Kolicina = stavkaQty;
+                    stavka.Cena = stavkaCena;
+                    stavka.SourceNamespace = CurrentSourceNamespace();
+                    stavka.SourceTableKey = lineSourceTableKey;
+                    stavka.SourceRowId = d.SourceRowId ?? d.Id;
+                    stavka.SourceUpdatedAtUtc = d.SourceUpdatedAtUtc;
+                    stavka.SourceHash = d.SourceHash;
+                    stavka.SourceBatchId = _activeBatchId;
+                    _trendDb.ProdajaStavke.Update(stavka);
+                    result.ProdajaStavkeUpdated++;
+                    TrackTrendWrite();
+                    await FlushTrendWritesAsync(force: false, ct);
                     continue;
                 }
 
-                var stavka = new Domain.Model.Prodaja.ProdajaStavka
+                stavka = new Domain.Model.Prodaja.ProdajaStavka
                 {
-                    Id = ++maxStavkaId,
                     IdProdaja = zaglavlje.Id,
                     IdArtikal = d.ArtikalId!.Value,
                     Kolicina = stavkaQty,
-                    Cena = stavkaCena
+                    Cena = stavkaCena,
+                    SourceNamespace = CurrentSourceNamespace(),
+                    SourceTableKey = lineSourceTableKey,
+                    SourceRowId = d.SourceRowId ?? d.Id,
+                    SourceUpdatedAtUtc = d.SourceUpdatedAtUtc,
+                    SourceHash = d.SourceHash,
+                    SourceBatchId = _activeBatchId
                 };
                 if (_trendDb.Entry(zaglavlje).State == EntityState.Added)
                     stavka.Prodaja = zaglavlje;
 
                 _trendDb.ProdajaStavke.Add(stavka);
+                existingLinesBySource[BuildAccessSaleLineSourceKey(lineSourceTableKey, d.SourceRowId ?? d.Id)] = stavka;
                 result.ProdajaStavkeInserted++;
                 insertedStavke++;
                 TrackTrendWrite();
@@ -7309,7 +7579,14 @@ using NpgsqlTypes;
                 }
             }
 
-            TrackAnalyticsSaleId(zaglavlje.Id);
+        }
+
+        await FlushTrendWritesAsync(force: true, ct);
+        foreach (var header in headersToTrack)
+        {
+            if (header.Id <= 0)
+                throw new InvalidOperationException($"source_target_mapping_missing: synthesized header source row {header.SourceRowId} has no generated PostgreSQL target ID after flush.");
+            TrackAnalyticsSaleId(header.Id);
         }
 
         var summary = $"Sintetizovano {insertedProdaja} prodaja i {insertedStavke} stavki iz DnevnikPromena (nije pronadjena posebna tabela prodaje).";
@@ -8000,14 +8277,16 @@ using NpgsqlTypes;
         decimal TotalAmount,
         int TotalUnits,
         int TotalLines,
-        string DataOrigin);
+        string DataOrigin,
+        string SourceNamespace);
 
     private sealed record SaleHeaderSyncRow(
         int Id,
         string? BrojRacuna,
         DateTime DatumProdaje,
         int? IDObjekat,
-        string? NacinPlacanja);
+        string? NacinPlacanja,
+        string? SourceNamespace);
 
     internal sealed record SaleLineSourceSyncRow(
         int Id,
@@ -8017,7 +8296,8 @@ using NpgsqlTypes;
         decimal Cena,
         decimal? NabavnaCena,
         string? SourceTableKey,
-        long? SourceRowId);
+        long? SourceRowId,
+        string? SourceNamespace = null);
 
     internal sealed record SalesLineFactSyncRow(
         int SaleId,
@@ -8028,7 +8308,8 @@ using NpgsqlTypes;
         decimal? NabavnaCena,
         string DataOrigin,
         string? SourceTableKey = null,
-        long? SourceLineId = null);
+        long? SourceLineId = null,
+        string? SourceNamespace = null);
 
     // One fact row per source receipt line; repeated products on a receipt stay separate.
     internal static List<SalesLineFactSyncRow> MapSalesLineFacts(IEnumerable<SaleLineSourceSyncRow> lines)
@@ -8047,7 +8328,8 @@ using NpgsqlTypes;
                     x.NabavnaCena,
                     "access",
                     sourceTableKey,
-                    sourceLineId);
+                    sourceLineId,
+                    x.SourceNamespace);
             })
             .ToList();
 
@@ -8097,6 +8379,40 @@ using NpgsqlTypes;
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("Analytics DB connection string is not configured.");
         return connectionString;
+    }
+
+    private void EnsureAnalyticsSharesTrendplusDatabase()
+    {
+        if (_analyticsDb is null)
+            throw new InvalidOperationException("analytics_atomicity_unavailable: analytics was requested but AnalyticsDbContext is not configured.");
+
+        var trendConnection = new NpgsqlConnectionStringBuilder(
+            _trendDb.Database.GetConnectionString() ?? _trendDb.Database.GetDbConnection().ConnectionString);
+        var analyticsConnection = new NpgsqlConnectionStringBuilder(GetAnalyticsConnectionString());
+        var sameDatabase = string.Equals(trendConnection.Host, analyticsConnection.Host, StringComparison.OrdinalIgnoreCase)
+            && trendConnection.Port == analyticsConnection.Port
+            && string.Equals(trendConnection.Database, analyticsConnection.Database, StringComparison.Ordinal)
+            && string.Equals(trendConnection.Username, analyticsConnection.Username, StringComparison.Ordinal)
+            && string.Equals(trendConnection.Password, analyticsConnection.Password, StringComparison.Ordinal)
+            && trendConnection.SslMode == analyticsConnection.SslMode
+            && string.Equals(trendConnection.SearchPath, analyticsConnection.SearchPath, StringComparison.Ordinal);
+
+        if (!sameDatabase)
+            throw new InvalidOperationException(
+                "analytics_atomicity_unavailable: Access import cannot include analytics because Trendplus and Analytics use separate PostgreSQL connection identities; no cross-database atomic commit is available.");
+    }
+
+    private async Task<IDbContextTransaction?> EnlistAnalyticsContextInTrendTransactionAsync(CancellationToken ct)
+    {
+        var connection = _trendDb.Database.GetDbConnection();
+        var transaction = _trendDb.Database.CurrentTransaction?.GetDbTransaction();
+        if (connection is not NpgsqlConnection || transaction is not NpgsqlTransaction)
+            throw new InvalidOperationException("analytics_atomicity_unavailable: Access import requires an active PostgreSQL Trendplus transaction.");
+
+        if (!ReferenceEquals(_analyticsDb.Database.GetDbConnection(), connection))
+            _analyticsDb.Database.SetDbConnection(connection, contextOwnsConnection: false);
+
+        return await _analyticsDb.Database.UseTransactionAsync(transaction, ct);
     }
 
     private static async Task ExecuteAnalyticsNonQueryAsync(
@@ -8352,7 +8668,8 @@ using NpgsqlTypes;
                     x.BrojRacuna,
                     x.DatumProdaje,
                     x.IDObjekat,
-                    x.NacinPlacanja))
+                    x.NacinPlacanja,
+                    x.SourceNamespace))
                 .ToListAsync(ct);
 
         var salesLinesRaw = saleIds.Length == 0
@@ -8368,7 +8685,8 @@ using NpgsqlTypes;
                     x.Cena,
                     x.NabavnaCena,
                     x.SourceTableKey,
-                    x.SourceRowId))
+                    x.SourceRowId,
+                    x.SourceNamespace))
                 .ToListAsync(ct);
 
         var salesLineFacts = MapSalesLineFacts(salesLinesRaw);
@@ -8393,7 +8711,8 @@ using NpgsqlTypes;
                 lines.Sum(x => x.LineTotal),
                 lines.Sum(x => x.Qty),
                 lines.Count,
-                "access"));
+                "access",
+                sale.SourceNamespace ?? CurrentSourceNamespace()));
         }
 
         var effectiveStoreIds = _analyticsDeltaStoreIds
@@ -8565,16 +8884,13 @@ using NpgsqlTypes;
         AccessImportRunResponse result,
         CancellationToken ct)
     {
-        var analyticsConnectionString = GetAnalyticsConnectionString();
-        await using var connection = new NpgsqlConnection(analyticsConnectionString);
-        await connection.OpenAsync(ct);
-
-        await using var transaction = await connection.BeginTransactionAsync(ct);
+        var connection = _trendDb.Database.GetDbConnection() as NpgsqlConnection
+            ?? throw new InvalidOperationException("analytics_atomicity_unavailable: Trendplus is not using PostgreSQL.");
+        var transaction = _trendDb.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction
+            ?? throw new InvalidOperationException("analytics_atomicity_unavailable: analytics payload has no shared Trendplus transaction.");
         try
         {
-            // Keep the complete analytics projection for one import batch atomic.
-            // The Trendplus transaction cannot span the separate analytics database,
-            // so this transaction is the rollback boundary before a retry is queued.
+            // Analytics facts and operational sales share the outer Trendplus transaction.
             if (payload.Stores.Count > 0)
                 await UpsertStoresDimBulkAsync(connection, transaction, payload.Stores, ct);
             if (payload.Products.Count > 0)
@@ -8592,12 +8908,10 @@ using NpgsqlTypes;
             if (payload.Movements.Count > 0)
                 await UpsertInventoryMovementsBulkAsync(connection, transaction, payload.Movements, ct);
 
-            await transaction.CommitAsync(ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Analytics projection failed for Access import batch. Rolling back the complete analytics batch.");
-            try { await transaction.RollbackAsync(CancellationToken.None); } catch { }
+            _logger.LogError(ex, "Analytics projection failed for Access import batch. The shared operational transaction will roll back.");
             throw;
         }
 
@@ -8868,14 +9182,15 @@ using NpgsqlTypes;
                 "TotalAmount" numeric(18,2) NOT NULL,
                 "TotalUnits" integer NOT NULL,
                 "TotalLines" integer NOT NULL,
-                "DataOrigin" text NOT NULL
+                "DataOrigin" text NOT NULL,
+                "SourceNamespace" text NOT NULL
             ) ON COMMIT DROP;
             """;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, _logger);
 
         using (var importer = connection.BeginBinaryImport("""
             COPY temp_sales_facts (
-                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin","SourceNamespace")
             FROM STDIN (FORMAT BINARY)
             """))
         {
@@ -8891,6 +9206,7 @@ using NpgsqlTypes;
                 importer.Write(row.TotalUnits, NpgsqlDbType.Integer);
                 importer.Write(row.TotalLines, NpgsqlDbType.Integer);
                 importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                importer.Write(row.SourceNamespace, NpgsqlDbType.Text);
             }
 
             importer.Complete();
@@ -8898,9 +9214,9 @@ using NpgsqlTypes;
 
         const string mergeSql = """
             INSERT INTO "SalesFacts" (
-                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin")
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin","SourceNamespace")
             SELECT
-                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin"
+                "SaleId","BrojRacuna","SaleTimestampUtc","StoreId","PaymentType","TotalAmount","TotalUnits","TotalLines","DataOrigin","SourceNamespace"
             FROM temp_sales_facts
             ON CONFLICT ("SaleId") DO UPDATE
             SET
@@ -8950,6 +9266,7 @@ using NpgsqlTypes;
                 "LineTotal" numeric(18,2) NOT NULL,
                 "NabavnaCena" numeric(18,2) NULL,
                 "DataOrigin" text NOT NULL,
+                "SourceNamespace" text NULL,
                 "SourceTableKey" text NULL,
                 "SourceLineId" bigint NULL
             ) ON COMMIT DROP;
@@ -8957,7 +9274,7 @@ using NpgsqlTypes;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, createTempSql, ct, logger);
 
         using (var importer = connection.BeginBinaryImport("""
-            COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId")
+            COPY temp_sales_line_facts ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceNamespace","SourceTableKey","SourceLineId")
             FROM STDIN (FORMAT BINARY)
             """))
         {
@@ -8971,6 +9288,7 @@ using NpgsqlTypes;
                 importer.Write(row.LineTotal, NpgsqlDbType.Numeric);
                 WriteNullableDecimal(importer, row.NabavnaCena);
                 importer.Write(row.DataOrigin, NpgsqlDbType.Text);
+                WriteNullableString(importer, row.SourceNamespace);
                 WriteNullableString(importer, row.SourceTableKey);
                 if (row.SourceLineId.HasValue)
                     importer.Write(row.SourceLineId.Value, NpgsqlDbType.Bigint);
@@ -8982,8 +9300,8 @@ using NpgsqlTypes;
         }
 
         const string insertSql = """
-            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId")
-            SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceTableKey","SourceLineId"
+            INSERT INTO "SalesLineFacts" ("SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceNamespace","SourceTableKey","SourceLineId")
+            SELECT "SaleId","ProductId","Qty","UnitPrice","LineTotal","NabavnaCena","DataOrigin","SourceNamespace","SourceTableKey","SourceLineId"
             FROM temp_sales_line_facts;
             """;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, insertSql, ct, logger);
@@ -9232,50 +9550,139 @@ using NpgsqlTypes;
         await ExecuteAnalyticsNonQueryAsync(connection, transaction, mergeSql, ct, _logger);
     }
 
-    private async Task ResetTrendplusSequencesAsync(CancellationToken ct)
+    private async Task EnsureAccessBaselineAndMasterIdentitySafetyAsync(CancellationToken ct)
     {
-        const string sql = """
-            DO $sequence_sync$
-            DECLARE
-                target record;
-                sequence_name text;
-                sequence_value bigint;
-                sequence_is_called boolean;
-                max_id bigint;
-            BEGIN
-                FOR target IN
-                    SELECT * FROM (VALUES
-                        ('"Artikli"', 'Id'),
-                        ('"Dobavljaci"', 'Id'),
-                        ('"Sezone"', 'Id'),
-                        ('"TipoviObuce"', 'Id'),
-                        ('prodaja_zaglavlje', 'id'),
-                        ('prodaja_stavke', 'id'),
-                        ('"DnevnikPromena"', 'Id'),
-                        ('povracaj_zaglavlje', 'id'),
-                        ('povracaj_stavke', 'id')
-                    ) AS sequence_targets(table_name, column_name)
-                LOOP
-                    sequence_name := pg_get_serial_sequence(target.table_name, target.column_name);
-                    IF sequence_name IS NULL THEN
-                        RAISE EXCEPTION 'Identity sequence is missing for %.%', target.table_name, target.column_name;
-                    END IF;
+        var sourceNamespace = CurrentSourceNamespace();
 
-                    EXECUTE format('SELECT last_value, is_called FROM %s', sequence_name)
-                        INTO sequence_value, sequence_is_called;
-                    EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %s', target.column_name, target.table_name)
-                        INTO max_id;
+        // A namespace registration is not historical reconciliation. Any old Access
+        // row without the complete immutable source identity is therefore a hard
+        // pre-write blocker. This is intentionally a read-only dry-run oracle: the
+        // counts are reported as exact/ambiguous/unmatched and no backfill is attempted.
+        var legacyHeaders = await _trendDb.ProdajaZaglavlja.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyLines = await _trendDb.ProdajaStavke.AsNoTracking()
+            .CountAsync(x => _trendDb.ProdajaZaglavlja.Any(h => h.Id == x.IdProdaja && h.DataOrigin == "access") &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyReturns = await _trendDb.PovracajZaglavlja.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyReturnLines = await _trendDb.PovracajStavke.AsNoTracking()
+            .CountAsync(x => _trendDb.PovracajZaglavlja.Any(h => h.Id == x.IdPovracaj && h.DataOrigin == "access") &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyMovements = await _trendDb.DnevnikPromena.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
+        var legacyProducts = await _trendDb.Artikli.AsNoTracking()
+            .CountAsync(x => x.DataOrigin == "access" &&
+                             (x.SourceNamespace == null || x.SourceTableKey == null || !x.SourceRowId.HasValue), ct);
 
-                    -- Imported explicit IDs can leave the sequence behind. Advance it only when needed;
-                    -- never reset it below IDs already handed to an uncommitted concurrent transaction.
-                    IF sequence_value < max_id OR (sequence_value = max_id AND NOT sequence_is_called) THEN
-                        PERFORM setval(sequence_name::regclass, GREATEST(max_id, 1), true);
-                    END IF;
-                END LOOP;
-            END
-            $sequence_sync$;
-            """;
-        await _trendDb.Database.ExecuteSqlRawAsync(sql, ct);
+        var unmatched = legacyHeaders + legacyLines + legacyReturns + legacyReturnLines + legacyMovements + legacyProducts;
+        if (unmatched > 0)
+        {
+            throw new InvalidOperationException(
+                $"access_source_baseline_uncertified: exact=0 ambiguous=0 unmatched={unmatched} " +
+                $"(headers={legacyHeaders}, lines={legacyLines}, returns={legacyReturns}, return_lines={legacyReturnLines}, movements={legacyMovements}, products={legacyProducts}); " +
+                "the historical Access baseline has rows without namespace/table/row identity and must be certified by a read-only owner review before import. No automatic backfill or heuristic matching is allowed.");
+        }
+
+        // TipObuce, Dobavljac, Sezona and store dimensions predate source lineage and
+        // still use a global integer key. Until their namespace-scoped target mapping
+        // is migrated, a second logical Access database must be rejected rather than
+        // allowing same-number IDs to silently share or overwrite dimensions.
+        var hasAccessMasterRows =
+            await _trendDb.TipoviObuce.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct) ||
+            await _trendDb.Dobavljaci.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct) ||
+            await _trendDb.Sezone.AsNoTracking().AnyAsync(x => x.DataOrigin == "access", ct);
+
+        if (hasAccessMasterRows)
+        {
+            var completedNamespaces = await _trendDb.DataImportBatches.AsNoTracking()
+                .Where(x => x.SourceSystem == "access" &&
+                            x.Status == "completed" &&
+                            x.SourceNamespace != null)
+                .Select(x => x.SourceNamespace!)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var foreignNamespaces = completedNamespaces
+                .Where(x => !string.Equals(x, sourceNamespace, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (foreignNamespaces.Length > 0 || completedNamespaces.Count == 0)
+            {
+                var prior = foreignNamespaces.Length == 0
+                    ? "no durable source namespace checkpoint exists for the legacy master rows"
+                    : $"foreign namespaces={string.Join(',', foreignNamespaces)}";
+                throw new InvalidOperationException(
+                    $"access_master_identity_uncertified: TipObuce/Dobavljaci/Sezone still have global integer IDs and cannot be safely attributed to '{sourceNamespace}' ({prior}). Registering a namespace does not authorize heuristic master or store mapping; run the approved lineage migration/certification first.");
+            }
+        }
+    }
+
+    private async Task VerifyTrendplusIdentityHeadroomAsync(CancellationToken ct)
+    {
+        // Do not repair identity sequences from an import transaction. The legacy
+        // routine used setval after importing explicit IDs, which is both a production
+        // mutation and a race with independent POS writers. Sales target IDs remain
+        // PostgreSQL-owned; a separately approved bigint rollout owns any conversion.
+        const int minimumRemainingIds = 10_000;
+        var headerMax = await _trendDb.ProdajaZaglavlja
+            .Select(x => (int?)x.Id)
+            .MaxAsync(ct) ?? 0;
+        var lineMax = await _trendDb.ProdajaStavke
+            .Select(x => (int?)x.Id)
+            .MaxAsync(ct) ?? 0;
+
+        if (headerMax > int.MaxValue - minimumRemainingIds || lineMax > int.MaxValue - minimumRemainingIds)
+        {
+            throw new InvalidOperationException(
+                $"access_target_integer_headroom_exhausted: prodaja target IDs are near Int32.MaxValue (headers={headerMax}, lines={lineMax}); stop the import and execute the separately approved bigint rollout.");
+        }
+
+        if (!(_trendDb.Database.GetDbConnection() is NpgsqlConnection connection))
+            return;
+
+        var transaction = _trendDb.Database.CurrentTransaction?.GetDbTransaction() as NpgsqlTransaction;
+        foreach (var (table, maxId) in new[]
+        {
+            (Table: "prodaja_zaglavlje", MaxId: headerMax),
+            (Table: "prodaja_stavke", MaxId: lineMax)
+        })
+        {
+            await using var sequenceCommand = new NpgsqlCommand(
+                "SELECT pg_get_serial_sequence(@table_name, 'Id')", connection, transaction);
+            sequenceCommand.Parameters.AddWithValue("table_name", NpgsqlTypes.NpgsqlDbType.Text, table);
+            var sequenceName = (string?)await sequenceCommand.ExecuteScalarAsync(ct);
+            if (string.IsNullOrWhiteSpace(sequenceName))
+                throw new InvalidOperationException(
+                    $"access_sequence_state_unavailable: table '{table}' has no discoverable PostgreSQL identity sequence; import is blocked before writes.");
+
+            await using var stateCommand = new NpgsqlCommand(
+                """
+                SELECT last_value, start_value, increment_by, max_value
+                  FROM pg_sequences
+                 WHERE format('%I.%I', schemaname, sequencename) = @sequence_name
+                    OR sequencename = @sequence_leaf
+                """, connection, transaction);
+            stateCommand.Parameters.AddWithValue("sequence_name", NpgsqlTypes.NpgsqlDbType.Text, sequenceName);
+            stateCommand.Parameters.AddWithValue("sequence_leaf", NpgsqlTypes.NpgsqlDbType.Text, sequenceName.Split('.').Last());
+            await using var reader = await stateCommand.ExecuteReaderAsync(ct);
+            if (!await reader.ReadAsync(ct))
+                throw new InvalidOperationException(
+                    $"access_sequence_state_unavailable: PostgreSQL sequence '{sequenceName}' could not be read; import is blocked before writes.");
+
+            var lastValue = reader.IsDBNull(0) ? (long?)null : reader.GetInt64(0);
+            var startValue = reader.GetInt64(1);
+            var increment = reader.GetInt64(2);
+            var sequenceMax = reader.GetInt64(3);
+            var nextValue = lastValue.HasValue ? checked(lastValue.Value + increment) : startValue;
+            var remaining = increment > 0 ? sequenceMax - nextValue : nextValue - sequenceMax;
+            if (maxId >= nextValue || remaining < minimumRemainingIds)
+            {
+                throw new InvalidOperationException(
+                    $"access_sequence_headroom_unsafe: table '{table}' target_max={maxId}, sequence='{sequenceName}', last={lastValue?.ToString() ?? "<never>"}, next={nextValue}, sequence_max={sequenceMax}, remaining={remaining}; import was rejected before business writes. Do not repair with setval in production.");
+            }
+        }
     }
 
     private async Task EnsureDataImportBatchesTableIfEnabledAsync(CancellationToken ct)
@@ -9946,7 +10353,7 @@ using NpgsqlTypes;
         return ids;
     }
 
-    private async Task<HashSet<int>> EnsureProdajaZaglavljeExistsAsync(
+    private async Task<Dictionary<int, Domain.Model.Prodaja.ProdajaZaglavlje>> EnsureProdajaZaglavljeExistsAsync(
         IEnumerable<int> missingIds,
         IAccessDataReaderSession session,
         string parentTable,
@@ -9955,11 +10362,10 @@ using NpgsqlTypes;
         CancellationToken ct)
     {
         var toInsert = new HashSet<int>(missingIds);
-        if (toInsert.Count == 0) return new HashSet<int>();
+        if (toInsert.Count == 0) return new Dictionary<int, Domain.Model.Prodaja.ProdajaZaglavlje>();
 
-        var insertedIds = new HashSet<int>();
+        var mappedHeaders = new Dictionary<int, Domain.Model.Prodaja.ProdajaZaglavlje>();
         var existingHeaderRows = await _trendDb.ProdajaZaglavlja.AsNoTracking().ToListAsync(ct);
-        var existingByTargetId = ToFirstDictionary(existingHeaderRows, header => header.Id);
         var existingBySource = BuildAccessSaleHeadersBySource(existingHeaderRows);
         const string headerSourceTableKey = "prodaja_zaglavlje";
 
@@ -9970,28 +10376,18 @@ using NpgsqlTypes;
                 continue;
 
             var mappedHeader = ResolveAccessSaleHeaderBySource(
-                existingByTargetId,
                 existingBySource,
                 headerSourceTableKey,
-                id.Value,
                 id.Value);
             if (mappedHeader is not null)
             {
-                // This path can only link a line safely when the durable source mapping retains
-                // the same target id. Remapping line foreign keys requires an explicit contract.
-                if (mappedHeader.Id != id.Value)
-                {
-                    throw new InvalidOperationException(
-                        "duplicate_sale_header_identity: an Access line references a source sale id that is mapped to a different target header id. The import was stopped rather than attaching the line to the wrong sale.");
-                }
-
+                mappedHeaders[id.Value] = mappedHeader;
                 toInsert.Remove(id.Value);
                 continue;
             }
 
             var e = new Domain.Model.Prodaja.ProdajaZaglavlje
             {
-                Id = id.Value,
                 BrojRacuna = S(row, "brojracuna", "brojkalkulacije", "invoice", "receiptnumber"),
                 DatumProdaje = DT(row, "datumprodaje", "datum", "saledate") ?? DateTime.MinValue,
                 NacinPlacanja = S(row, "nacinplacanja", "paymenttype"),
@@ -10006,25 +10402,23 @@ using NpgsqlTypes;
 
             ApplyAccessSaleHeaderSourceLineage(e, headerSourceTableKey, id.Value, row);
             _trendDb.ProdajaZaglavlja.Add(e);
-            existingByTargetId[e.Id] = e;
             existingBySource[BuildAccessSaleHeaderSourceKey(headerSourceTableKey, id.Value)] = e;
+            mappedHeaders[id.Value] = e;
             result.ProdajaInserted++;
-            insertedIds.Add(id.Value);
             toInsert.Remove(id.Value);
             TrackTrendWrite();
-            TrackAnalyticsSaleId(e.Id);
             TrackAnalyticsStoreId(e.IDObjekat);
         }
 
-        await FlushTrendWritesAsync(force: false, ct);
-
-        if (insertedIds.Count > 0)
+        await FlushTrendWritesAsync(force: true, ct);
+        foreach (var (sourceId, header) in mappedHeaders)
         {
-            // Make sure parents exist in PostgreSQL before prodaja_stavke import continues.
-            await FlushTrendWritesAsync(force: true, ct);
+            if (header.Id <= 0)
+                throw new InvalidOperationException($"source_target_mapping_missing: Access parent source row {sourceId} has no generated PostgreSQL target ID after flush.");
+            TrackAnalyticsSaleId(header.Id);
         }
 
-        return insertedIds;
+        return mappedHeaders;
     }
 
     internal static string Normalize(string? s)
@@ -10685,9 +11079,14 @@ using NpgsqlTypes;
             .Select(group => group.Key)
             .Take(10)
             .ToArray();
+        var pendingSaleLines = _trendDb.ChangeTracker
+            .Entries<Domain.Model.Prodaja.ProdajaStavka>()
+            .Where(entry => entry.State is EntityState.Added or EntityState.Modified)
+            .ToList();
 
         _logger.LogInformation(
-            "Access import sale-header flush diagnostics. BatchId: {BatchId}. Step: {Step}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}.",
+            "Access import sale-header flush diagnostics. Operation: {Operation}. BatchId: {BatchId}. Step: {Step}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}.",
+            "flush-trend-writes",
             _activeBatchId,
             "db-flush",
             pendingHeaders.Count(entry => entry.State == EntityState.Added),
@@ -10698,7 +11097,7 @@ using NpgsqlTypes;
                 .Select(entry => new
                 {
                     entry.State,
-                    entry.Entity.Id,
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
                     entry.Entity.DataOrigin,
                     entry.Entity.SourceTableKey,
                     entry.Entity.SourceRowId
@@ -10709,25 +11108,40 @@ using NpgsqlTypes;
         {
             await _trendDb.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException ex) when (TryGetSaleHeaderUniqueViolation(ex, out var postgresException))
+        catch (DbUpdateException ex) when (TryGetAccessImportUniqueViolation(ex, out var postgresException))
         {
-            var collisionKind = ClassifySaleHeaderUniqueViolation(postgresException.ConstraintName);
+            var collisionKind = ClassifyAccessImportUniqueViolation(postgresException);
             _logger.LogError(
                 ex,
-                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. SqlState: {SqlState}. CollisionKind: {CollisionKind}. Table: {Table}. Constraint: {Constraint}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}.",
+                "Access import sale-header identity conflict. BatchId: {BatchId}. Step: {Step}. SqlState: {SqlState}. CollisionKind: {CollisionKind}. TableName: {TableName}. ConstraintName: {ConstraintName}. AddedHeaders: {AddedHeaders}. ModifiedHeaders: {ModifiedHeaders}. AddedOrModifiedLines: {Lines}. DuplicatePreparedHeaderIds: {DuplicatePreparedHeaderIds}. HeaderSourceSamples: {HeaderSourceSamples}. LineSourceSamples: {LineSourceSamples}.",
                 _activeBatchId,
-                "db-flush",
+                _activeBatchStep ?? "db-flush",
                 postgresException.SqlState,
                 collisionKind,
                 postgresException.TableName,
                 postgresException.ConstraintName,
                 pendingHeaders.Count(entry => entry.State == EntityState.Added),
                 pendingHeaders.Count(entry => entry.State == EntityState.Modified),
-                duplicateAddedHeaderIds);
-            // Surface only the classified constraint kind, not source row values,
-            // receipt numbers or PostgreSQL Detail, which may contain customer data.
+                pendingSaleLines.Count,
+                duplicateAddedHeaderIds,
+                pendingHeaders.Take(5).Select(entry => new
+                {
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
+                    entry.Entity.DataOrigin,
+                    entry.Entity.SourceTableKey,
+                    entry.Entity.SourceRowId
+                }).ToArray(),
+                pendingSaleLines.Take(5).Select(entry => new
+                {
+                    TargetId = entry.Entity.Id > 0 ? entry.Entity.Id : (int?)null,
+                    TargetHeaderId = entry.Entity.IdProdaja > 0 ? entry.Entity.IdProdaja : (int?)null,
+                    entry.Entity.SourceTableKey,
+                    entry.Entity.SourceRowId
+                }).ToArray());
+            // The operator-facing text keeps the stable prefix and constraint class.
+            // ConstraintName, source row ids and PostgreSQL Detail stay in the server log.
             throw new InvalidOperationException(
-                BuildSaleHeaderUniqueViolationMessage(collisionKind),
+                BuildAccessImportUniqueViolationMessage(postgresException, collisionKind),
                 ex);
         }
         _trendDb.ChangeTracker.Clear();
@@ -10742,45 +11156,69 @@ using NpgsqlTypes;
             force);
     }
 
-    // The caller must still consult SqlState/TableName to verify that this was a
-    // sale-header 23505. An unknown constraint is NOT evidence of a PK conflict.
-    private static string ClassifySaleHeaderUniqueViolation(string? constraintName)
+    // SqlState and TableName must already identify a sale-header or sale-line 23505.
+    // An unknown constraint is not evidence of a primary-key collision.
+    private static string ClassifyAccessImportUniqueViolation(PostgresException exception)
     {
-        if (string.Equals(constraintName, "PK_prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(constraintName, "prodaja_zaglavlje_pkey", StringComparison.OrdinalIgnoreCase))
-            return "target_primary_key_collision";
+        var constraint = exception.ConstraintName;
+        var isHeader = string.Equals(exception.TableName, "prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase);
+        var isLine = string.Equals(exception.TableName, "prodaja_stavke", StringComparison.OrdinalIgnoreCase);
 
-        if (string.Equals(constraintName, "ux_prodaja_zaglavlje_access_source_row", StringComparison.OrdinalIgnoreCase))
+        if (isHeader && IsConstraint(constraint, "PK_prodaja_zaglavlje", "prodaja_zaglavlje_pkey"))
+            return "target_primary_key_collision";
+        if (isLine && IsConstraint(constraint, "PK_prodaja_stavke", "prodaja_stavke_pkey"))
+            return "target_primary_key_collision";
+        if (isHeader && IsConstraint(
+                constraint,
+                "ux_prodaja_zaglavlje_access_source_row",
+                "ux_prodaja_zaglavlje_access_source_namespace_row"))
+            return "access_source_lineage_collision";
+        if (isLine && IsConstraint(
+                constraint,
+                "ux_prodaja_stavke_source_row",
+                "ux_prodaja_stavke_source_namespace_row"))
             return "access_source_lineage_collision";
 
         return "unclassified_unique_constraint";
     }
 
-    private static string BuildSaleHeaderUniqueViolationMessage(string collisionKind)
-        => collisionKind switch
+    private static bool IsConstraint(string? actual, params string[] expected)
+        => expected.Any(name => string.Equals(actual, name, StringComparison.OrdinalIgnoreCase));
+
+    private static string BuildAccessImportUniqueViolationMessage(PostgresException exception, string collisionKind)
+    {
+        var isLine = string.Equals(exception.TableName, "prodaja_stavke", StringComparison.OrdinalIgnoreCase);
+        var prefix = isLine ? "duplicate_sale_line_identity" : "duplicate_sale_header_identity";
+        return collisionKind switch
         {
             "target_primary_key_collision" =>
-                "duplicate_sale_header_identity: target_primary_key_collision (SQLSTATE 23505). " +
-                "The PostgreSQL sale-header ID is already occupied. No automatic reparenting was performed; " +
+                $"{prefix}: target_primary_key_collision (SQLSTATE 23505). " +
+                (isLine
+                    ? "The PostgreSQL sale-line ID is already occupied. No automatic reparenting was performed; "
+                    : "The PostgreSQL sale-header ID is already occupied. No automatic reparenting was performed; ") +
                 "the import transaction will roll back without advancing its cursor.",
             "access_source_lineage_collision" =>
-                "duplicate_sale_header_identity: access_source_lineage_collision (SQLSTATE 23505). " +
-                "A sale header already claims the same Access source table and row ID. " +
+                $"{prefix}: access_source_lineage_collision (SQLSTATE 23505). " +
+                (isLine
+                    ? "A sale line already claims the same Access source table and row ID. "
+                    : "A sale header already claims the same Access source table and row ID. ") +
                 "The import transaction will roll back without advancing its cursor.",
             _ =>
-                "duplicate_sale_header_identity: unclassified_unique_constraint (SQLSTATE 23505). " +
-                "A PostgreSQL sale-header unique constraint was violated; inspect the server log's " +
-                "BatchId, Constraint and HeaderSourceSamples before choosing a remediation. " +
+                $"{prefix}: unclassified_unique_constraint (SQLSTATE 23505). " +
+                "A PostgreSQL unique constraint was violated; inspect the server log's " +
+                "BatchId, ConstraintName and HeaderSourceSamples before choosing a remediation. " +
                 "The import transaction will roll back without advancing its cursor."
         };
+    }
 
-    private static bool TryGetSaleHeaderUniqueViolation(Exception exception, out PostgresException postgresException)
+    private static bool TryGetAccessImportUniqueViolation(Exception exception, out PostgresException postgresException)
     {
         for (Exception? current = exception; current is not null; current = current.InnerException)
         {
             if (current is PostgresException postgres &&
                 postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
-                string.Equals(postgres.TableName, "prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase))
+                (string.Equals(postgres.TableName, "prodaja_zaglavlje", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(postgres.TableName, "prodaja_stavke", StringComparison.OrdinalIgnoreCase)))
             {
                 postgresException = postgres;
                 return true;
@@ -10792,7 +11230,14 @@ using NpgsqlTypes;
     }
 
     private static string GetAccessImportFailureMessage(Exception exception)
-        => exception.Message.StartsWith("duplicate_sale_header_identity:", StringComparison.Ordinal)
+        => exception.Message.StartsWith("primary_key_collision:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("source_lineage_unique_collision:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("other_unique_constraint_collision:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("duplicate_sale_header_identity:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("duplicate_sale_line_identity:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("duplicate_source_line_identity:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("ambiguous_legacy_mapping:", StringComparison.Ordinal) ||
+           exception.Message.StartsWith("ambiguous_legacy_import_identity:", StringComparison.Ordinal)
             ? exception.Message
             : exception.GetBaseException().Message;
 

@@ -92,7 +92,10 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.PaymentType).HasMaxLength(100);
                 entity.Property(e => e.TotalAmount).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.Property(e => e.SourceNamespace).HasMaxLength(128);
 
+                // SaleId is the PostgreSQL target identity, therefore globally unique
+                // regardless of source namespace. SourceNamespace remains provenance.
                 entity.HasIndex(e => e.SaleId).IsUnique();
                 entity.HasIndex(e => e.SaleTimestampUtc);
                 entity.HasIndex(e => e.StoreId);
@@ -109,15 +112,16 @@ namespace Infrastructure.DbContexts
                 entity.Property(e => e.LineTotal).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.NabavnaCena).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.DataOrigin).HasMaxLength(32).HasDefaultValue("existing");
+                entity.Property(e => e.SourceNamespace).HasMaxLength(128);
                 entity.Property(e => e.SourceTableKey).HasMaxLength(128);
 
                 entity.HasIndex(e => e.SaleId);
                 // Not unique: one receipt can carry the same product on several lines.
                 entity.HasIndex(e => new { e.SaleId, e.ProductId });
-                entity.HasIndex(e => new { e.SaleId, e.SourceTableKey, e.SourceLineId })
+                entity.HasIndex(e => new { e.SourceNamespace, e.SaleId, e.SourceTableKey, e.SourceLineId })
                     .HasDatabaseName("UX_SalesLineFacts_SaleId_SourceLine")
                     .IsUnique()
-                    .HasFilter("\"SourceLineId\" IS NOT NULL");
+                    .HasFilter("\"SourceNamespace\" IS NOT NULL AND \"SourceLineId\" IS NOT NULL");
             });
 
             modelBuilder.Entity<SuppliersDim>(entity =>
